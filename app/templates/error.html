@@ -1,0 +1,11 @@
+{% extends "base.html" %}
+{% block title %}Ошибка — RanobeLib Companion{% endblock %}
+{% block content %}
+<main class="content">
+  <div class="error-page">
+    <span class="error-page__status">{{ status_code }}</span>
+    <p class="error-page__detail">{{ detail }}</p>
+    <a href="/">На главную</a>
+  </div>
+</main>
+{% endblock %}
