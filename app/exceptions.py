@@ -13,10 +13,13 @@ doesn't carry 300's baggage of clients expecting a Location-style redirect.
 
 from __future__ import annotations
 
+import logging
 from dataclasses import dataclass
 from typing import Any
 
+from fastapi import FastAPI, Request
 from fastapi.encoders import jsonable_encoder
+from fastapi.responses import JSONResponse
 from ranobelib import (
     AuthRequiredError,
     ChapterNotFoundError,
@@ -27,6 +30,8 @@ from ranobelib import (
     TitleNotFoundError,
     VolumeNotFoundError,
 )
+
+logger = logging.getLogger(__name__)
 
 
 @dataclass(frozen=True)
@@ -85,3 +90,17 @@ def build_error_response(exc: RanobeLibError) -> ErrorResponse:
 
     # Any other RanobeLibError subclass the table above doesn't cover.
     return ErrorResponse(500, {"detail": "Внутренняя ошибка, попробуйте позже"})
+
+
+def register_exception_handlers(app: FastAPI) -> None:
+    """Attach the RanobeLibError -> HTTP mapping to `app`. Route handlers must not catch
+    RanobeLibError themselves — this is the single place that does."""
+    app.add_exception_handler(RanobeLibError, _handle_ranobelib_error)
+
+
+async def _handle_ranobelib_error(request: Request, exc: RanobeLibError) -> JSONResponse:
+    logger.warning(
+        "%s on %s %s", type(exc).__name__, request.method, request.url.path, exc_info=exc
+    )
+    error = build_error_response(exc)
+    return JSONResponse(status_code=error.status_code, content=error.content)
