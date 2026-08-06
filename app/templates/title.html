@@ -8,18 +8,30 @@
     {% endif %}
     <div class="title-hero__info">
       <h1 class="title-hero__name">{{ title.name }}</h1>
-      {% if title.rus_name and title.rus_name != title.name %}
-      <p class="title-hero__alt-name">{{ title.rus_name }}</p>
+      {% set alt_names = [] %}
+      {% if title.rus_name and title.rus_name != title.name %}{% set _ = alt_names.append(title.rus_name) %}{% endif %}
+      {% if title.eng_name and title.eng_name != title.name %}{% set _ = alt_names.append(title.eng_name) %}{% endif %}
+      {% for other in title.other_names %}{% if other != title.name %}{% set _ = alt_names.append(other) %}{% endif %}{% endfor %}
+      {% if alt_names %}
+      <p class="title-hero__alt-name">{{ alt_names | join(" / ") }}</p>
       {% endif %}
       <div class="title-hero__badges">
         {% for genre in title.genres %}
         <span class="badge">{{ genre.name }}</span>
         {% endfor %}
       </div>
+      {% if title.tags %}
+      <div class="title-hero__badges">
+        {% for tag in title.tags %}
+        <span class="badge badge--muted">{{ tag.name }}</span>
+        {% endfor %}
+      </div>
+      {% endif %}
       <div class="title-hero__meta">
         <span>{{ title.status.label }}</span>
         <span>{{ title.age_restriction.label }}</span>
         {% if title.is_licensed %}<span>Лицензировано</span>{% endif %}
+        {% if title.release_date %}<span>{{ title.release_date }}</span>{% endif %}
         {% if title.chapter_count %}<span>{{ title.chapter_count }} глав</span>{% endif %}
       </div>
     </div>

@@ -216,6 +216,12 @@ a {
   padding: 3px 9px;
 }
 
+.badge--muted {
+  background: transparent;
+  border: 1px solid var(--border);
+  color: var(--text-muted);
+}
+
 .title-hero__meta {
   display: flex;
   gap: 14px;

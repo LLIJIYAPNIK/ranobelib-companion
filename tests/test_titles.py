@@ -2,7 +2,7 @@ from unittest.mock import patch
 
 from fastapi.testclient import TestClient
 from ranobelib import TitleNotFoundError
-from ranobelib.models import Cover, Label, Title
+from ranobelib.models import Cover, Label, Tag, Title
 
 from app.main import app
 
@@ -80,6 +80,31 @@ def test_show_title_renders_metadata() -> None:
     assert "Тестовый роман" in response.text
     assert "https://example.com/cover.jpg" in response.text
     assert "42" in response.text
+
+
+def test_show_title_renders_full_metadata() -> None:
+    title = Title(
+        id=6712,
+        name="Test Novel",
+        rus_name="Тестовый роман",
+        eng_name="Test Novel EN",
+        other_names=["Alt Title"],
+        slug="test-novel",
+        slug_url="6712--test-novel",
+        cover=Cover(default="https://example.com/cover.jpg"),
+        age_restriction=Label(id=0, label="16+"),
+        status=Label(id=1, label="Онгоинг"),
+        release_date="2020",
+        tags=[Tag(id=1, name="Реинкарнация")],
+    )
+    with patch("app.services.client.RanobeLib", return_value=_FakeClient(title)):
+        response = client.get("/titles/6712--test-novel")
+
+    assert response.status_code == 200
+    assert "Test Novel EN" in response.text
+    assert "Alt Title" in response.text
+    assert "2020" in response.text
+    assert "Реинкарнация" in response.text
 
 
 def test_show_title_not_found_renders_html_error_page() -> None:
