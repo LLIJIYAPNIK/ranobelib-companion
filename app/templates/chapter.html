@@ -8,8 +8,14 @@
       Глава {{ chapter.number }}{% if chapter.name %} · {{ chapter.name }}{% endif %}
     </h1>
   </div>
+  {#
+    Rendered as real HTML (bypassing Jinja's autoescape), not as escaped text.
+    content_html has already been run through app/chapter_html.sanitize_chapter_html() -
+    see that module's docstring for why this app re-sanitizes rather than trusting
+    Chapter.content outright (ranobelib-python-sdk#31).
+  #}
   <article class="reader-content">
-    {{ chapter.content }}
+    {{ content_html | safe }}
   </article>
 </main>
 {% endblock %}
