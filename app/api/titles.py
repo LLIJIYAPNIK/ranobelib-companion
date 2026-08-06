@@ -40,9 +40,12 @@ async def open_title(request: Request, url: str) -> Response:
 async def show_title(request: Request, slug_url: str) -> HTMLResponse:
     async with get_client(slug_url) as lib:
         title = await lib.get_info()
+        volumes = await lib.get_table_of_contents()
     cover_url = title.cover.default or title.cover.md or title.cover.thumbnail
     response = templates.TemplateResponse(
-        request, "title.html", {"title": title, "cover_url": cover_url}
+        request,
+        "title.html",
+        {"title": title, "cover_url": cover_url, "volumes": volumes},
     )
     remember(response, request, slug_url=title.slug_url, name=title.name)
     return response

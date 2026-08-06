@@ -54,5 +54,22 @@
     <div><span class="title-credits__label">Переводы:</span>{{ title.teams | map(attribute="name") | join(", ") }}</div>
     {% endif %}
   </section>
+
+  <section class="toc">
+    <h2 class="toc__title">Оглавление</h2>
+    {% for volume in volumes %}
+    <div class="toc__volume">
+      <h3 class="toc__volume-title">Том {{ volume.number }}</h3>
+      <ul class="toc__chapters">
+        {% for chapter in volume.chapters %}
+        <li class="toc__chapter">
+          <span class="toc__chapter-number">{{ chapter.number }}</span>
+          <span class="toc__chapter-name">{{ chapter.name or "Без названия" }}</span>
+        </li>
+        {% endfor %}
+      </ul>
+    </div>
+    {% endfor %}
+  </section>
 </main>
 {% endblock %}
