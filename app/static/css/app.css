@@ -288,6 +288,11 @@ a {
   font-size: 13px;
 }
 
+.toc__chapter-checkbox {
+  flex: 0 0 auto;
+  accent-color: var(--accent);
+}
+
 .toc__chapter-number {
   font-family: var(--font-mono);
   color: var(--text-muted);

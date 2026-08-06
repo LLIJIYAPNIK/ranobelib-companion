@@ -133,6 +133,9 @@ def test_show_title_renders_table_of_contents() -> None:
     assert "Без названия" in response.text
     assert "3 переводов" in response.text
     assert response.text.count("переводов") == 1
+    assert 'name="chapters"' in response.text
+    assert 'value="1--1"' in response.text
+    assert 'value="1--1.5"' in response.text
 
 
 def test_show_title_not_found_renders_html_error_page() -> None:
