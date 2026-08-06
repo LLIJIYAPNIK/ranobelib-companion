@@ -349,6 +349,19 @@ a {
   margin: 0;
 }
 
+.reader-nav__adjacent {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  margin-top: 4px;
+}
+
+.reader-nav__adjacent a {
+  color: var(--accent-teal);
+  text-decoration: none;
+  font-size: 13px;
+}
+
 .reader-content {
   max-width: 640px;
   margin: 0 auto;

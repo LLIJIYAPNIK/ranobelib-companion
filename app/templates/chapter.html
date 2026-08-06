@@ -7,6 +7,10 @@
     <h1 class="reader-nav__heading">
       Глава {{ chapter.number }}{% if chapter.name %} · {{ chapter.name }}{% endif %}
     </h1>
+    <div class="reader-nav__adjacent">
+      {% if prev_url %}<a href="{{ prev_url }}">‹ Предыдущая глава</a>{% endif %}
+      {% if next_url %}<a href="{{ next_url }}">Следующая глава ›</a>{% endif %}
+    </div>
   </div>
   {#
     Rendered as real HTML (bypassing Jinja's autoescape), not as escaped text.
