@@ -216,6 +216,12 @@ a {
   padding: 3px 9px;
 }
 
+.badge--muted {
+  background: transparent;
+  border: 1px solid var(--border);
+  color: var(--text-muted);
+}
+
 .title-hero__meta {
   display: flex;
   gap: 14px;
@@ -242,6 +248,61 @@ a {
 .title-credits__label {
   color: var(--text-muted);
   margin-right: 6px;
+}
+
+.toc {
+  margin-top: 28px;
+}
+
+.toc__title {
+  font-size: 18px;
+  font-weight: 700;
+  margin: 0 0 16px;
+}
+
+.toc__volume {
+  margin-bottom: 20px;
+}
+
+.toc__volume-title {
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--text-secondary);
+  margin: 0 0 8px;
+}
+
+.toc__chapters {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+.toc__chapter {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 10px;
+  border-bottom: 1px solid var(--border);
+  font-size: 13px;
+}
+
+.toc__chapter-checkbox {
+  flex: 0 0 auto;
+  accent-color: var(--accent);
+}
+
+.toc__chapter-number {
+  font-family: var(--font-mono);
+  color: var(--text-muted);
+  flex: 0 0 auto;
+  min-width: 44px;
+}
+
+.toc__chapter-name {
+  color: var(--text-secondary);
+  flex: 1;
 }
 
 .error-page {

@@ -3,7 +3,7 @@ from unittest.mock import patch
 from urllib.parse import quote, unquote
 
 from fastapi.testclient import TestClient
-from ranobelib.models import Cover, Label, Title
+from ranobelib.models import Cover, Label, Title, Volume
 
 from app.main import app
 
@@ -34,6 +34,9 @@ class _FakeClient:
 
     async def get_info(self) -> Title:
         return self._title
+
+    async def get_table_of_contents(self) -> list[Volume]:
+        return []
 
 
 def test_show_title_sets_recent_titles_cookie() -> None:
