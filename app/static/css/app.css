@@ -323,3 +323,52 @@ a {
   font-size: 20px;
   font-weight: 700;
 }
+
+.reader-nav {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding-bottom: 20px;
+  margin-bottom: 20px;
+  border-bottom: 1px solid var(--border);
+}
+
+.reader-nav__back {
+  color: var(--text-muted);
+  text-decoration: none;
+  font-size: 13px;
+}
+
+.reader-nav__back:hover {
+  color: var(--accent-teal);
+}
+
+.reader-nav__heading {
+  font-size: 18px;
+  font-weight: 700;
+  margin: 0;
+}
+
+.reader-content {
+  max-width: 640px;
+  margin: 0 auto;
+  color: var(--text-secondary);
+  font-size: 15px;
+  line-height: 1.85;
+}
+
+.reader-content p {
+  margin: 0 0 16px;
+}
+
+.reader-content img {
+  max-width: 100%;
+  height: auto;
+  border-radius: 6px;
+}
+
+.reader-content hr {
+  border: none;
+  border-top: 1px solid var(--border);
+  margin: 24px 0;
+}

@@ -1,0 +1,15 @@
+{% extends "base.html" %}
+{% block title %}Глава {{ chapter.number }} — RanobeLib Companion{% endblock %}
+{% block content %}
+<main class="content">
+  <div class="reader-nav">
+    <a class="reader-nav__back" href="/titles/{{ slug_url }}">← К оглавлению</a>
+    <h1 class="reader-nav__heading">
+      Глава {{ chapter.number }}{% if chapter.name %} · {{ chapter.name }}{% endif %}
+    </h1>
+  </div>
+  <article class="reader-content">
+    {{ chapter.content }}
+  </article>
+</main>
+{% endblock %}
