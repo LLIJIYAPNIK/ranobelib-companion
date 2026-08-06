@@ -65,6 +65,9 @@
         <li class="toc__chapter">
           <span class="toc__chapter-number">{{ chapter.number }}</span>
           <span class="toc__chapter-name">{{ chapter.name or "Без названия" }}</span>
+          {% if chapter.branches_count > 1 %}
+          <span class="badge badge--muted">{{ chapter.branches_count }} переводов</span>
+          {% endif %}
         </li>
         {% endfor %}
       </ul>

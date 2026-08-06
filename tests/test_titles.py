@@ -119,6 +119,7 @@ def test_show_title_renders_table_of_contents() -> None:
             chapters=[
                 Chapter(id=1, volume="1", number="1", name="Начало"),
                 Chapter(id=2, volume="1", number="1.5", name=None),
+                Chapter(id=3, volume="1", number="2", name="Переводы", branches_count=3),
             ],
         )
     ]
@@ -130,6 +131,8 @@ def test_show_title_renders_table_of_contents() -> None:
     assert "Начало" in response.text
     assert "1.5" in response.text
     assert "Без названия" in response.text
+    assert "3 переводов" in response.text
+    assert response.text.count("переводов") == 1
 
 
 def test_show_title_not_found_renders_html_error_page() -> None:
