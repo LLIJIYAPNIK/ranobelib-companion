@@ -3,6 +3,7 @@
 from fastapi import APIRouter, Request
 from fastapi.responses import HTMLResponse, RedirectResponse, Response
 
+from app.recent_titles import remember
 from app.services.client import get_client
 from app.templating import templates
 
@@ -40,6 +41,8 @@ async def show_title(request: Request, slug_url: str) -> HTMLResponse:
     async with get_client(slug_url) as lib:
         title = await lib.get_info()
     cover_url = title.cover.default or title.cover.md or title.cover.thumbnail
-    return templates.TemplateResponse(
+    response = templates.TemplateResponse(
         request, "title.html", {"title": title, "cover_url": cover_url}
     )
+    remember(response, request, slug_url=title.slug_url, name=title.name)
+    return response
