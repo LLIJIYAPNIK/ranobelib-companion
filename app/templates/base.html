@@ -1,0 +1,23 @@
+<!doctype html>
+<html lang="ru">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>{% block title %}RanobeLib Companion{% endblock %}</title>
+  <link rel="stylesheet" href="{{ url_for('static', path='css/app.css') }}">
+</head>
+<body>
+  <div class="app-shell">
+    <nav class="sidebar">
+      <div class="sidebar__brand" aria-hidden="true"></div>
+      <a class="sidebar__link{% if active_nav == 'home' %} sidebar__link--active{% endif %}" href="/">Главная</a>
+      <span class="sidebar__link sidebar__link--disabled" title="Скоро">Библиотека</span>
+      <span class="sidebar__link sidebar__link--disabled" title="Скоро">Загрузки</span>
+      <span class="sidebar__link sidebar__link--disabled" title="Скоро">Активность</span>
+    </nav>
+    <div class="main">
+      {% block content %}{% endblock %}
+    </div>
+  </div>
+</body>
+</html>

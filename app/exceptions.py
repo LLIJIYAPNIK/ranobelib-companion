@@ -19,7 +19,7 @@ from typing import Any
 
 from fastapi import FastAPI, Request
 from fastapi.encoders import jsonable_encoder
-from fastapi.responses import JSONResponse
+from fastapi.responses import JSONResponse, Response
 from ranobelib import (
     AuthRequiredError,
     ChapterNotFoundError,
@@ -30,6 +30,8 @@ from ranobelib import (
     TitleNotFoundError,
     VolumeNotFoundError,
 )
+
+from app.templating import templates
 
 logger = logging.getLogger(__name__)
 
@@ -98,9 +100,22 @@ def register_exception_handlers(app: FastAPI) -> None:
     app.add_exception_handler(RanobeLibError, _handle_ranobelib_error)
 
 
-async def _handle_ranobelib_error(request: Request, exc: RanobeLibError) -> JSONResponse:
+async def _handle_ranobelib_error(request: Request, exc: RanobeLibError) -> Response:
     logger.warning(
         "%s on %s %s", type(exc).__name__, request.method, request.url.path, exc_info=exc
     )
     error = build_error_response(exc)
+    if _wants_html(request):
+        return templates.TemplateResponse(
+            request,
+            "error.html",
+            {"status_code": error.status_code, "detail": error.content["detail"]},
+            status_code=error.status_code,
+        )
     return JSONResponse(status_code=error.status_code, content=error.content)
+
+
+def _wants_html(request: Request) -> bool:
+    """True for a browser page navigation, so it gets an error.html page instead of raw
+    JSON - this app is server-rendered, not a JSON API consumed by a separate client."""
+    return "text/html" in request.headers.get("accept", "")

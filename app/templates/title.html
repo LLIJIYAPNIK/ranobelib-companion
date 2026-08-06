@@ -1,0 +1,46 @@
+{% extends "base.html" %}
+{% block title %}{{ title.name }} — RanobeLib Companion{% endblock %}
+{% block content %}
+<main class="content">
+  <div class="title-hero">
+    {% if cover_url %}
+    <img class="title-hero__cover" src="{{ cover_url }}" alt="Обложка «{{ title.name }}»">
+    {% endif %}
+    <div class="title-hero__info">
+      <h1 class="title-hero__name">{{ title.name }}</h1>
+      {% if title.rus_name and title.rus_name != title.name %}
+      <p class="title-hero__alt-name">{{ title.rus_name }}</p>
+      {% endif %}
+      <div class="title-hero__badges">
+        {% for genre in title.genres %}
+        <span class="badge">{{ genre.name }}</span>
+        {% endfor %}
+      </div>
+      <div class="title-hero__meta">
+        <span>{{ title.status.label }}</span>
+        <span>{{ title.age_restriction.label }}</span>
+        {% if title.is_licensed %}<span>Лицензировано</span>{% endif %}
+        {% if title.chapter_count %}<span>{{ title.chapter_count }} глав</span>{% endif %}
+      </div>
+    </div>
+  </div>
+
+  {% if title.summary %}
+  <section class="title-summary">
+    <p>{{ title.summary }}</p>
+  </section>
+  {% endif %}
+
+  <section class="title-credits">
+    {% if title.authors %}
+    <div><span class="title-credits__label">Авторы:</span>{{ title.authors | map(attribute="name") | join(", ") }}</div>
+    {% endif %}
+    {% if title.artists %}
+    <div><span class="title-credits__label">Художники:</span>{{ title.artists | map(attribute="name") | join(", ") }}</div>
+    {% endif %}
+    {% if title.teams %}
+    <div><span class="title-credits__label">Переводы:</span>{{ title.teams | map(attribute="name") | join(", ") }}</div>
+    {% endif %}
+  </section>
+</main>
+{% endblock %}
