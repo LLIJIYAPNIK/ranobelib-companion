@@ -1,8 +1,9 @@
+from datetime import UTC, datetime
 from unittest.mock import patch
 
 from fastapi.testclient import TestClient
-from ranobelib import ChapterNotFoundError
-from ranobelib.models import Chapter, Volume
+from ranobelib import ChapterNotFoundError, MultipleTranslationsError
+from ranobelib.models import Chapter, ChapterBranch, ChapterUser, Team, Volume
 
 from app.main import app
 
@@ -99,3 +100,35 @@ def test_read_chapter_not_found() -> None:
 
     assert response.status_code == 404
     assert "Глава не найдена" in response.text
+
+
+def test_read_chapter_multiple_translations_shows_choice_page() -> None:
+    branches = [
+        ChapterBranch(
+            id=1,
+            branch_id=1,
+            created_at=datetime(2024, 1, 1, tzinfo=UTC),
+            teams=[Team(id=1, slug="team-a", slug_url="team-a", name="Команда А")],
+            user=ChapterUser(id=1, username="uploader1"),
+        ),
+        ChapterBranch(
+            id=2,
+            branch_id=2,
+            created_at=datetime(2024, 3, 1, tzinfo=UTC),
+            teams=[],
+            user=ChapterUser(id=2, username="solo_translator"),
+        ),
+    ]
+    exc = MultipleTranslationsError(
+        "6712--test-novel", volume="1", number="5", branches=branches
+    )
+    with patch("app.services.client.RanobeLib", return_value=_FakeClient(exc=exc)):
+        response = client.get(
+            "/titles/6712--test-novel/chapters/1/5", headers={"accept": "text/html"}
+        )
+
+    assert response.status_code == 409
+    assert "Команда А" in response.text
+    assert "solo_translator" in response.text
+    assert 'href="/titles/6712--test-novel/chapters/1/5?branch_id=1"' in response.text
+    assert 'href="/titles/6712--test-novel/chapters/1/5?branch_id=2"' in response.text

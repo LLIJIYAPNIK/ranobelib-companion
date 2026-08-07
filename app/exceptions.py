@@ -106,6 +106,21 @@ async def _handle_ranobelib_error(request: Request, exc: RanobeLibError) -> Resp
     )
     error = build_error_response(exc)
     if _wants_html(request):
+        if isinstance(exc, MultipleTranslationsError):
+            return templates.TemplateResponse(
+                request,
+                "choose_translation.html",
+                {
+                    "slug_url": exc.slug_url,
+                    "volume": exc.volume,
+                    "number": exc.number,
+                    "branches": exc.branches,
+                    # branch_id isn't in the request that failed - the same route with it
+                    # added as a query param is exactly what should be retried.
+                    "target_path": request.url.path,
+                },
+                status_code=error.status_code,
+            )
         return templates.TemplateResponse(
             request,
             "error.html",
