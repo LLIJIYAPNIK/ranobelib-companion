@@ -3,6 +3,7 @@ from unittest.mock import patch
 
 import pytest
 from fastapi.testclient import TestClient
+from ranobelib import AuthRequiredError, RateLimitError
 from ranobelib.models import Chapter, Volume
 
 from app.main import app
@@ -64,6 +65,17 @@ class _FailingExportClient(_FakeClient):
         raise RuntimeError("boom")
 
 
+class _RaisingChapterClient(_FakeClient):
+    def __init__(self, exc: Exception) -> None:
+        super().__init__(chapter=Chapter(id=1, volume="1", number="5"))
+        self._exc = exc
+
+    async def get_chapter(
+        self, volume: int, number: str, *, branch_id: int | None = None
+    ) -> Chapter:
+        raise self._exc
+
+
 def test_export_chapter_returns_file_and_cleans_up_afterwards() -> None:
     chapter = Chapter(id=1, volume="1", number="5", content="<p>x</p>")
     fake = _FakeClient(chapter)
@@ -109,6 +121,26 @@ def test_export_chapter_malformed_slug_url_returns_friendly_404_not_500() -> Non
 
     assert response.status_code == 404
     assert response.json() == {"detail": "Тайтл не найден, проверьте ссылку"}
+
+
+def test_export_chapter_auth_required() -> None:
+    fake = _RaisingChapterClient(AuthRequiredError("https://ranobelib.me/x"))
+    with patch("app.services.client.RanobeLib", return_value=fake):
+        response = client.get("/titles/6712--test-novel/chapters/1/5/export?fmt=txt")
+
+    assert response.status_code == 403
+    assert response.json() == {"detail": "Требуется авторизация — недоступно"}
+
+
+def test_export_chapter_rate_limited() -> None:
+    fake = _RaisingChapterClient(RateLimitError(retry_after=30))
+    with patch("app.services.client.RanobeLib", return_value=fake):
+        response = client.get("/titles/6712--test-novel/chapters/1/5/export?fmt=txt")
+
+    assert response.status_code == 429
+    assert response.json() == {
+        "detail": "ranobelib сейчас ограничивает запросы, попробуйте позже"
+    }
 
 
 def test_export_chapters_combines_selected_chapters_into_one_file() -> None:

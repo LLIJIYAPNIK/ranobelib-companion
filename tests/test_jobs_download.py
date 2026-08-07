@@ -2,7 +2,12 @@ import os
 from datetime import UTC, datetime
 
 import pytest
-from ranobelib import MultipleTitleTranslationsError, TitleNotFoundError
+from ranobelib import (
+    AuthRequiredError,
+    MultipleTitleTranslationsError,
+    RateLimitError,
+    TitleNotFoundError,
+)
 from ranobelib.exceptions import AmbiguousChapter
 from ranobelib.models import Chapter, ChapterBranch, ChapterUser, Volume
 
@@ -154,6 +159,30 @@ async def test_run_download_job_maps_known_sdk_error(monkeypatch: pytest.MonkeyP
 
     assert job.status == "error"
     assert job.error == "Тайтл не найден, проверьте ссылку"
+
+
+async def test_run_download_job_maps_auth_required(monkeypatch: pytest.MonkeyPatch) -> None:
+    exc = AuthRequiredError("https://ranobelib.me/x")
+    fake = _FakeClient(exc=exc)
+    monkeypatch.setattr("app.jobs.download.open_client", lambda slug_url: fake)
+
+    job = _job()
+    await run_download_job(job)
+
+    assert job.status == "error"
+    assert job.error == "Требуется авторизация — недоступно"
+
+
+async def test_run_download_job_maps_rate_limit(monkeypatch: pytest.MonkeyPatch) -> None:
+    exc = RateLimitError(retry_after=30)
+    fake = _FakeClient(exc=exc)
+    monkeypatch.setattr("app.jobs.download.open_client", lambda slug_url: fake)
+
+    job = _job()
+    await run_download_job(job)
+
+    assert job.status == "error"
+    assert job.error == "ranobelib сейчас ограничивает запросы, попробуйте позже"
 
 
 async def test_run_download_job_maps_unexpected_error(monkeypatch: pytest.MonkeyPatch) -> None:
