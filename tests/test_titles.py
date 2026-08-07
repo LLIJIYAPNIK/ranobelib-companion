@@ -156,6 +156,8 @@ def test_show_title_renders_export_form() -> None:
         'formaction="/titles/6712--test-novel/volumes/1/export"' in response.text
     )
     assert "Скачать том" in response.text
+    assert 'action="/titles/6712--test-novel/download"' in response.text
+    assert "Скачать тайтл" in response.text
 
 
 def test_show_title_not_found_renders_html_error_page() -> None:
