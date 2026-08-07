@@ -20,6 +20,7 @@ class _FakeClient:
         self._chapter = chapter
         self._exc = exc
         self._volumes = volumes or []
+        self.received_branch_id: int | None | str = "not called"
 
     async def __aenter__(self) -> "_FakeClient":
         return self
@@ -27,7 +28,10 @@ class _FakeClient:
     async def __aexit__(self, *exc_info: object) -> bool:
         return False
 
-    async def get_chapter(self, volume: int, number: str) -> Chapter:
+    async def get_chapter(
+        self, volume: int, number: str, *, branch_id: int | None = None
+    ) -> Chapter:
+        self.received_branch_id = branch_id
         if self._exc is not None:
             raise self._exc
         assert self._chapter is not None
@@ -132,3 +136,23 @@ def test_read_chapter_multiple_translations_shows_choice_page() -> None:
     assert "solo_translator" in response.text
     assert 'href="/titles/6712--test-novel/chapters/1/5?branch_id=1"' in response.text
     assert 'href="/titles/6712--test-novel/chapters/1/5?branch_id=2"' in response.text
+
+
+def test_read_chapter_passes_branch_id_from_query_to_sdk() -> None:
+    chapter = Chapter(id=1, volume="1", number="5", content="<p>x</p>")
+    fake = _FakeClient(chapter)
+    with patch("app.services.client.RanobeLib", return_value=fake):
+        response = client.get("/titles/6712--test-novel/chapters/1/5?branch_id=42")
+
+    assert response.status_code == 200
+    assert fake.received_branch_id == 42
+
+
+def test_read_chapter_passes_no_branch_id_by_default() -> None:
+    chapter = Chapter(id=1, volume="1", number="5", content="<p>x</p>")
+    fake = _FakeClient(chapter)
+    with patch("app.services.client.RanobeLib", return_value=fake):
+        response = client.get("/titles/6712--test-novel/chapters/1/5")
+
+    assert response.status_code == 200
+    assert fake.received_branch_id is None
