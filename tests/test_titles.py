@@ -139,6 +139,21 @@ def test_show_title_renders_table_of_contents() -> None:
     assert 'href="/titles/6712--test-novel/chapters/1/1"' in response.text
 
 
+def test_show_title_renders_export_form() -> None:
+    title = _fake_title()
+    volumes = [
+        Volume(number="1", chapters=[Chapter(id=1, volume="1", number="1", name="Начало")])
+    ]
+    with patch("app.services.client.RanobeLib", return_value=_FakeClient(title, volumes)):
+        response = client.get("/titles/6712--test-novel")
+
+    assert response.status_code == 200
+    assert 'action="/titles/6712--test-novel/export"' in response.text
+    assert 'name="fmt"' in response.text
+    assert '<option value="epub">EPUB</option>' in response.text
+    assert '<option value="txt">TXT</option>' in response.text
+
+
 def test_show_title_not_found_renders_html_error_page() -> None:
     exc = TitleNotFoundError("6712--missing")
     with patch("app.services.client.RanobeLib", return_value=_RaisingClient(exc)):

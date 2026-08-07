@@ -250,14 +250,58 @@ a {
   margin-right: 6px;
 }
 
+.btn {
+  height: 44px;
+  padding: 0 26px;
+  border-radius: 8px;
+  font-size: 15px;
+  font-weight: 700;
+  border: none;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  color: var(--text-primary);
+  font-family: inherit;
+}
+
+.btn--primary {
+  background: var(--accent);
+}
+
 .toc {
   margin-top: 28px;
+}
+
+.toc__header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 12px;
+  margin-bottom: 16px;
+}
+
+.toc__export {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.toc__export-format {
+  height: 36px;
+  padding: 0 10px;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  background: var(--bg-surface);
+  color: var(--text-primary);
+  font-family: var(--font-mono);
+  font-size: 13px;
 }
 
 .toc__title {
   font-size: 18px;
   font-weight: 700;
-  margin: 0 0 16px;
+  margin: 0;
 }
 
 .toc__volume {

@@ -1,7 +1,9 @@
-"""Exporting chapters to a downloadable file (single chapter for now, see PR 8)."""
+"""Exporting chapters to a downloadable file - a single chapter or several selected
+ones combined into one file."""
 
 import os
 import tempfile
+from typing import Annotated
 
 from fastapi import APIRouter, HTTPException, Query
 from fastapi.responses import FileResponse
@@ -34,6 +36,38 @@ async def export_chapter(
     )
 
 
+@router.get("/export")
+async def export_chapters(
+    slug_url: str,
+    fmt: str,
+    chapters: Annotated[list[str], Query()],
+) -> FileResponse:
+    _require_known_format(fmt)
+    parsed = [_parse_chapter_key(key) for key in chapters]
+    fd, path = tempfile.mkstemp(suffix=f".{fmt}")
+    os.close(fd)
+    async with get_client(slug_url) as lib:
+        fetched = await lib.get_chapters(parsed)
+        await lib.export(fetched, fmt=fmt, path=path)
+    return FileResponse(
+        path,
+        filename=f"{slug_url}--{len(fetched)}-chapters.{fmt}",
+        background=BackgroundTask(os.remove, path),
+    )
+
+
 def _require_known_format(fmt: str) -> None:
     if fmt not in available_export_formats():
         raise HTTPException(status_code=400, detail="Неизвестный формат экспорта")
+
+
+def _parse_chapter_key(key: str) -> tuple[int, str]:
+    """Parse a `"{volume}--{number}"` checkbox value (see title.html) into the
+    `(volume, number)` pair `RanobeLib.get_chapters()` expects."""
+    volume, separator, number = key.partition("--")
+    if not separator:
+        raise HTTPException(status_code=400, detail="Некорректный список глав")
+    try:
+        return int(volume), number
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail="Некорректный список глав") from exc
