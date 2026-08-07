@@ -1,0 +1,25 @@
+{% extends "base.html" %}
+{% block title %}Выбор перевода — RanobeLib Companion{% endblock %}
+{% block content %}
+<main class="content">
+  <div class="translation-choice">
+    <a class="translation-choice__back" href="/titles/{{ slug_url }}">← К оглавлению</a>
+    <h1 class="translation-choice__heading">Несколько переводов главы {{ number }}</h1>
+    <p class="translation-choice__hint">
+      У этой главы есть переводы от нескольких команд — выберите, какой открыть.
+    </p>
+    <ul class="translation-choice__list">
+      {% for branch in branches %}
+      <li>
+        <a class="translation-choice__link" href="{{ target_path }}?branch_id={{ branch.branch_id }}">
+          <span class="translation-choice__team">
+            {% if branch.teams %}{{ branch.teams | map(attribute="name") | join(", ") }}{% else %}{{ branch.user.username }}{% endif %}
+          </span>
+          <span class="translation-choice__date">{{ branch.created_at.strftime("%d.%m.%Y") }}</span>
+        </a>
+      </li>
+      {% endfor %}
+    </ul>
+  </div>
+</main>
+{% endblock %}
