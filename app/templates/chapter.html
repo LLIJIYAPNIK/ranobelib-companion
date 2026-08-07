@@ -1,0 +1,25 @@
+{% extends "base.html" %}
+{% block title %}Глава {{ chapter.number }} — RanobeLib Companion{% endblock %}
+{% block content %}
+<main class="content">
+  <div class="reader-nav">
+    <a class="reader-nav__back" href="/titles/{{ slug_url }}">← К оглавлению</a>
+    <h1 class="reader-nav__heading">
+      Глава {{ chapter.number }}{% if chapter.name %} · {{ chapter.name }}{% endif %}
+    </h1>
+    <div class="reader-nav__adjacent">
+      {% if prev_url %}<a href="{{ prev_url }}">‹ Предыдущая глава</a>{% endif %}
+      {% if next_url %}<a href="{{ next_url }}">Следующая глава ›</a>{% endif %}
+    </div>
+  </div>
+  {#
+    Rendered as real HTML (bypassing Jinja's autoescape), not as escaped text.
+    content_html has already been run through app/chapter_html.sanitize_chapter_html() -
+    see that module's docstring for why this app re-sanitizes rather than trusting
+    Chapter.content outright (ranobelib-python-sdk#31).
+  #}
+  <article class="reader-content">
+    {{ content_html | safe }}
+  </article>
+</main>
+{% endblock %}

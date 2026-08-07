@@ -70,8 +70,10 @@
             value="{{ volume.number }}--{{ chapter.number }}"
             aria-label="Выбрать главу {{ chapter.number }}"
           >
-          <span class="toc__chapter-number">{{ chapter.number }}</span>
-          <span class="toc__chapter-name">{{ chapter.name or "Без названия" }}</span>
+          <a class="toc__chapter-link" href="/titles/{{ title.slug_url }}/chapters/{{ chapter.volume }}/{{ chapter.number }}">
+            <span class="toc__chapter-number">{{ chapter.number }}</span>
+            <span class="toc__chapter-name">{{ chapter.name or "Без названия" }}</span>
+          </a>
           {% if chapter.branches_count > 1 %}
           <span class="badge badge--muted">{{ chapter.branches_count }} переводов</span>
           {% endif %}
