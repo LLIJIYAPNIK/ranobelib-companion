@@ -400,6 +400,32 @@ a {
   margin: 24px 0;
 }
 
+.reader-export {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 8px;
+}
+
+.reader-export__label {
+  font-size: 12px;
+  color: var(--text-muted);
+}
+
+.reader-export__link {
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  padding: 6px 14px;
+  font-size: 12px;
+  color: var(--accent-teal);
+  text-decoration: none;
+}
+
+.reader-export__link:hover {
+  border-color: var(--accent-teal);
+}
+
 .translation-choice {
   display: flex;
   flex-direction: column;

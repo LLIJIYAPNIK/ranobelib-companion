@@ -11,6 +11,17 @@
       {% if prev_url %}<a href="{{ prev_url }}">‹ Предыдущая глава</a>{% endif %}
       {% if next_url %}<a href="{{ next_url }}">Следующая глава ›</a>{% endif %}
     </div>
+    {% if export_formats %}
+    <div class="reader-export">
+      <span class="reader-export__label">Скачать главу:</span>
+      {% for fmt in export_formats %}
+      <a
+        class="reader-export__link"
+        href="/titles/{{ slug_url }}/chapters/{{ chapter.volume }}/{{ chapter.number }}/export?fmt={{ fmt }}{% if branch_id %}&branch_id={{ branch_id }}{% endif %}"
+      >{{ fmt | upper }}</a>
+      {% endfor %}
+    </div>
+    {% endif %}
   </div>
   {#
     Rendered as real HTML (bypassing Jinja's autoescape), not as escaped text.
