@@ -1,0 +1,56 @@
+{% extends "base.html" %}
+{% block title %}Скачивание {{ slug_url }} — RanobeLib Companion{% endblock %}
+{% block content %}
+<main class="content">
+  <div class="download-status" data-status-url="/titles/{{ slug_url }}/download/{{ job.id }}/status">
+    <a class="reader-nav__back" href="/titles/{{ slug_url }}">← К оглавлению</a>
+    <h1 class="download-status__heading">Скачивание тайтла целиком</h1>
+
+    {% if job.status == "needs_translation" %}
+    <p class="download-status__text">
+      У {{ job.ambiguous_chapters | length }} глав несколько переводов — выберите один
+      вариант перевода для всего тайтла.
+    </p>
+    <ul class="download-status__ambiguous">
+      {% for chapter in job.ambiguous_chapters %}
+      <li class="download-status__ambiguous-item">
+        <span class="download-status__ambiguous-chapter">Том {{ chapter.volume }}, глава {{ chapter.number }}</span>
+        <span class="download-status__ambiguous-branches">
+          {% for branch in chapter.branches %}{{ loop.index }}) {% if branch.teams %}{{ branch.teams | map(attribute="name") | join(", ") }}{% else %}{{ branch.user.username }}{% endif %}{% if not loop.last %} · {% endif %}{% endfor %}
+        </span>
+      </li>
+      {% endfor %}
+    </ul>
+    <form method="post" action="/titles/{{ slug_url }}/download" class="download-status__retry">
+      <input type="hidden" name="fmt" value="{{ job.fmt }}">
+      <select name="translation_index" class="toc__export-format" aria-label="Вариант перевода">
+        {% for index in range(max_branches) %}
+        <option value="{{ index }}">Вариант {{ index + 1 }}</option>
+        {% endfor %}
+      </select>
+      <button type="submit" class="btn btn--primary">Скачать с этим переводом</button>
+    </form>
+    {% else %}
+    <div class="download-status__bar">
+      <div
+        class="download-status__bar-fill"
+        data-role="bar-fill"
+        style="width: {{ (job.completed / job.total * 100) if job.total else 0 }}%"
+      ></div>
+    </div>
+    <p class="download-status__text{% if job.status == 'error' %} download-status__text--error{% endif %}" data-role="status-text">
+      {% if job.status == "queued" %}В очереди…
+      {% elif job.status == "running" %}{% if job.total %}Глава {{ job.completed }} из {{ job.total }}{% else %}Начинаем скачивание…{% endif %}
+      {% elif job.status == "exporting" %}Сборка файла…
+      {% elif job.status == "done" %}Готово
+      {% elif job.status == "error" %}{{ job.error }}
+      {% endif %}
+    </p>
+    {% if job.status == "done" %}
+    <a class="btn btn--primary" href="/titles/{{ slug_url }}/download/{{ job.id }}/file">Скачать файл</a>
+    {% endif %}
+    {% endif %}
+  </div>
+  <script src="{{ url_for('static', path='js/download-status.js') }}" defer></script>
+</main>
+{% endblock %}
