@@ -5,6 +5,7 @@ from fastapi.responses import HTMLResponse
 from ranobelib.models import Volume
 
 from app.services.client import get_client
+from app.services.exports import available_export_formats
 from app.templating import templates
 
 router = APIRouter(prefix="/titles/{slug_url}/chapters")
@@ -30,6 +31,8 @@ async def read_chapter(
             "chapter": chapter,
             "prev_url": prev_url,
             "next_url": next_url,
+            "branch_id": branch_id,
+            "export_formats": available_export_formats(),
         },
     )
 

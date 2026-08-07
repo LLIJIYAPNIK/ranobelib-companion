@@ -5,6 +5,7 @@ from fastapi.responses import HTMLResponse, RedirectResponse, Response
 
 from app.recent_titles import remember
 from app.services.client import get_client
+from app.services.exports import available_export_formats
 from app.templating import templates
 
 router = APIRouter(prefix="/titles")
@@ -45,7 +46,12 @@ async def show_title(request: Request, slug_url: str) -> HTMLResponse:
     response = templates.TemplateResponse(
         request,
         "title.html",
-        {"title": title, "cover_url": cover_url, "volumes": volumes},
+        {
+            "title": title,
+            "cover_url": cover_url,
+            "volumes": volumes,
+            "export_formats": available_export_formats(),
+        },
     )
     remember(response, request, slug_url=title.slug_url, name=title.name)
     return response
