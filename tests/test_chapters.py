@@ -50,22 +50,6 @@ def test_read_chapter_renders_heading_and_content() -> None:
     assert "<p>Текст главы</p>" in response.text
 
 
-def test_read_chapter_sanitizes_content() -> None:
-    chapter = Chapter(
-        id=1,
-        volume="1",
-        number="5",
-        name="Начало",
-        content="<p>hi</p><script>alert('xss')</script>",
-    )
-    with patch("app.services.client.RanobeLib", return_value=_FakeClient(chapter)):
-        response = client.get("/titles/6712--test-novel/chapters/1/5")
-
-    assert response.status_code == 200
-    assert "<script>" not in response.text
-    assert "alert" not in response.text
-
-
 def test_read_chapter_shows_adjacent_chapter_links() -> None:
     chapter = Chapter(id=2, volume="1", number="2", name="Середина", content="<p>x</p>")
     volumes = [

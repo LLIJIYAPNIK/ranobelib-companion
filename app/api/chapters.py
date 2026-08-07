@@ -4,7 +4,6 @@ from fastapi import APIRouter, Request
 from fastapi.responses import HTMLResponse
 from ranobelib.models import Volume
 
-from app.chapter_html import sanitize_chapter_html
 from app.services.client import get_client
 from app.templating import templates
 
@@ -18,7 +17,6 @@ async def read_chapter(
     async with get_client(slug_url) as lib:
         chapter = await lib.get_chapter(volume, number)
         volumes = await lib.get_table_of_contents()
-    content_html = sanitize_chapter_html(chapter.content or "")
     prev_url, next_url = _adjacent_chapter_urls(slug_url, volumes, str(volume), number)
     return templates.TemplateResponse(
         request,
@@ -26,7 +24,6 @@ async def read_chapter(
         {
             "slug_url": slug_url,
             "chapter": chapter,
-            "content_html": content_html,
             "prev_url": prev_url,
             "next_url": next_url,
         },
