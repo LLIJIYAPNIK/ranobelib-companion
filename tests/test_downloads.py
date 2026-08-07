@@ -1,11 +1,14 @@
 import os
 import tempfile
 import time
+from datetime import UTC, datetime
 from pathlib import Path
 from unittest.mock import patch
 
 from fastapi.testclient import TestClient
-from ranobelib.models import Chapter, Volume
+from ranobelib import MultipleTitleTranslationsError
+from ranobelib.exceptions import AmbiguousChapter
+from ranobelib.models import Chapter, ChapterBranch, ChapterUser, Team, Volume
 
 from app.jobs.store import create_job, get_job
 from app.main import app
@@ -41,6 +44,35 @@ class _FakeClient:
         with open(path, "w", encoding="utf-8") as f:
             f.write("exported content")
         return path
+
+
+class _AmbiguousClient:
+    def __init__(self, exc: Exception) -> None:
+        self._exc = exc
+
+    async def __aenter__(self) -> "_AmbiguousClient":
+        return self
+
+    async def __aexit__(self, *exc_info: object) -> bool:
+        return False
+
+    async def download_title(self, **kwargs: object) -> list[Volume]:
+        raise self._exc
+
+
+def _branch(branch_id: int, team_name: str | None = None) -> ChapterBranch:
+    teams = (
+        [Team(id=branch_id, slug=f"t{branch_id}", slug_url=f"t{branch_id}", name=team_name)]
+        if team_name
+        else []
+    )
+    return ChapterBranch(
+        id=branch_id,
+        branch_id=branch_id,
+        created_at=datetime(2024, 1, 1, tzinfo=UTC),
+        teams=teams,
+        user=ChapterUser(id=branch_id, username=f"user{branch_id}"),
+    )
 
 
 def _job_id_from_location(location: str) -> str:
@@ -183,3 +215,53 @@ def test_download_result_file_serves_and_cleans_up() -> None:
     assert response.content == b"exported content"
     assert 'filename="6712--test-novel.epub"' in response.headers["content-disposition"]
     assert not os.path.exists(path)
+
+
+def test_show_download_status_renders_translation_choice() -> None:
+    job = create_job("6712--test-novel", "epub")
+    job.status = "needs_translation"
+    job.ambiguous_chapters = [
+        AmbiguousChapter(
+            volume="1",
+            number="5",
+            branches=[_branch(1, "Команда А"), _branch(2, "Команда Б")],
+        ),
+        AmbiguousChapter(volume="1", number="6", branches=[_branch(3, "Команда В")]),
+    ]
+
+    response = client.get(f"/titles/6712--test-novel/download/{job.id}")
+
+    assert response.status_code == 200
+    assert "Том 1, глава 5" in response.text
+    assert "Том 1, глава 6" in response.text
+    assert "Команда А" in response.text
+    assert "Команда Б" in response.text
+    assert 'action="/titles/6712--test-novel/download"' in response.text
+    assert 'value="epub"' in response.text
+    # max_branches across all ambiguous chapters is 2 (the first chapter's two branches)
+    assert '<option value="0">Вариант 1</option>' in response.text
+    assert '<option value="1">Вариант 2</option>' in response.text
+    assert '<option value="2">' not in response.text
+
+
+def test_start_download_needs_translation_end_to_end() -> None:
+    exc = MultipleTitleTranslationsError(
+        "6712--test-novel",
+        chapters=[
+            AmbiguousChapter(volume="1", number="5", branches=[_branch(1), _branch(2)])
+        ],
+    )
+    with patch("app.services.client.RanobeLib", return_value=_AmbiguousClient(exc)):
+        response = client.post(
+            "/titles/6712--test-novel/download", data={"fmt": "epub"}
+        )
+
+    job_id = _job_id_from_location(response.headers["location"])
+    _wait_until_terminal(job_id)
+    job = get_job(job_id)
+    assert job is not None
+    assert job.status == "needs_translation"
+    assert len(job.ambiguous_chapters) == 1
+
+    status_response = client.get(f"/titles/6712--test-novel/download/{job_id}")
+    assert "выберите один" in status_response.text

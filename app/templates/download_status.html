@@ -20,7 +20,29 @@
     {% elif job.status == "error" %}
     <p class="download-status__text download-status__text--error">{{ job.error }}</p>
     {% elif job.status == "needs_translation" %}
-    <p class="download-status__text">У части глав несколько переводов — нужно выбрать один.</p>
+    <p class="download-status__text">
+      У {{ job.ambiguous_chapters | length }} глав несколько переводов — выберите один
+      вариант перевода для всего тайтла.
+    </p>
+    <ul class="download-status__ambiguous">
+      {% for chapter in job.ambiguous_chapters %}
+      <li class="download-status__ambiguous-item">
+        <span class="download-status__ambiguous-chapter">Том {{ chapter.volume }}, глава {{ chapter.number }}</span>
+        <span class="download-status__ambiguous-branches">
+          {% for branch in chapter.branches %}{{ loop.index }}) {% if branch.teams %}{{ branch.teams | map(attribute="name") | join(", ") }}{% else %}{{ branch.user.username }}{% endif %}{% if not loop.last %} · {% endif %}{% endfor %}
+        </span>
+      </li>
+      {% endfor %}
+    </ul>
+    <form method="post" action="/titles/{{ slug_url }}/download" class="download-status__retry">
+      <input type="hidden" name="fmt" value="{{ job.fmt }}">
+      <select name="translation_index" class="toc__export-format" aria-label="Вариант перевода">
+        {% for index in range(max_branches) %}
+        <option value="{{ index }}">Вариант {{ index + 1 }}</option>
+        {% endfor %}
+      </select>
+      <button type="submit" class="btn btn--primary">Скачать с этим переводом</button>
+    </form>
     {% endif %}
   </div>
 </main>

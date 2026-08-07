@@ -35,10 +35,11 @@ async def start_download(
 @router.get("/{job_id}")
 async def show_download_status(request: Request, slug_url: str, job_id: str) -> HTMLResponse:
     job = _get_job_or_404(slug_url, job_id)
+    max_branches = max((len(chapter.branches) for chapter in job.ambiguous_chapters), default=0)
     return templates.TemplateResponse(
         request,
         "download_status.html",
-        {"slug_url": slug_url, "job": job},
+        {"slug_url": slug_url, "job": job, "max_branches": max_branches},
     )
 
 

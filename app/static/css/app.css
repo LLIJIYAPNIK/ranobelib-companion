@@ -576,3 +576,37 @@ a {
 .download-status__text--error {
   color: var(--accent-orange);
 }
+
+.download-status__ambiguous {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  font-size: 13px;
+}
+
+.download-status__ambiguous-item {
+  padding: 8px 10px;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  background: var(--bg-surface);
+}
+
+.download-status__ambiguous-chapter {
+  display: block;
+  font-weight: 700;
+  color: var(--text-secondary);
+  margin-bottom: 2px;
+}
+
+.download-status__ambiguous-branches {
+  color: var(--text-muted);
+}
+
+.download-status__retry {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
