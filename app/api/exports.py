@@ -7,7 +7,7 @@ from fastapi import APIRouter, HTTPException, Query
 from fastapi.responses import FileResponse
 from starlette.background import BackgroundTask
 
-from app.services.client import get_client
+from app.services.client import open_client
 from app.services.exports import require_known_format, temp_export_path
 
 router = APIRouter(prefix="/titles/{slug_url}")
@@ -23,7 +23,7 @@ async def export_chapter(
 ) -> FileResponse:
     require_known_format(fmt)
     with temp_export_path(fmt) as path:
-        async with get_client(slug_url) as lib:
+        async with open_client(slug_url) as lib:
             chapter = await lib.get_chapter(volume, number, branch_id=branch_id)
             await lib.export([chapter], fmt=fmt, path=path)
     return FileResponse(
@@ -42,7 +42,7 @@ async def export_chapters(
     require_known_format(fmt)
     parsed = [_parse_chapter_key(key) for key in chapters]
     with temp_export_path(fmt) as path:
-        async with get_client(slug_url) as lib:
+        async with open_client(slug_url) as lib:
             fetched = await lib.get_chapters(parsed)
             await lib.export(fetched, fmt=fmt, path=path)
     return FileResponse(
@@ -56,7 +56,7 @@ async def export_chapters(
 async def export_volume(slug_url: str, volume: int, fmt: str) -> FileResponse:
     require_known_format(fmt)
     with temp_export_path(fmt) as path:
-        async with get_client(slug_url) as lib:
+        async with open_client(slug_url) as lib:
             fetched = await lib.get_volume(volume)
             await lib.export(fetched.chapters, fmt=fmt, path=path)
     return FileResponse(
@@ -74,7 +74,7 @@ async def export_volumes(
 ) -> FileResponse:
     require_known_format(fmt)
     with temp_export_path(fmt) as path:
-        async with get_client(slug_url) as lib:
+        async with open_client(slug_url) as lib:
             fetched = await lib.get_volumes(volumes)
             chapters = [chapter for vol in fetched for chapter in vol.chapters]
             await lib.export(chapters, fmt=fmt, path=path)

@@ -103,6 +103,14 @@ def test_export_chapter_rejects_unknown_format() -> None:
     assert fake.export_calls == []
 
 
+def test_export_chapter_malformed_slug_url_returns_friendly_404_not_500() -> None:
+    # No RanobeLib patch here on purpose - see the equivalent test in test_titles.py.
+    response = client.get("/titles/not-a-valid-slug/chapters/1/5/export?fmt=txt")
+
+    assert response.status_code == 404
+    assert response.json() == {"detail": "Тайтл не найден, проверьте ссылку"}
+
+
 def test_export_chapters_combines_selected_chapters_into_one_file() -> None:
     chapters = [
         Chapter(id=1, volume="1", number="1", content="<p>a</p>"),

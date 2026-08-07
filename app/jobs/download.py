@@ -9,7 +9,7 @@ from ranobelib import MultipleTitleTranslationsError, RanobeLibError
 
 from app.exceptions import build_error_response
 from app.jobs.models import DownloadJob
-from app.services.client import get_client
+from app.services.client import open_client
 from app.services.exports import temp_export_path
 
 logger = logging.getLogger(__name__)
@@ -30,7 +30,7 @@ async def run_download_job(
         job.total = total
 
     try:
-        async with get_client(job.slug_url) as lib:
+        async with open_client(job.slug_url) as lib:
             volumes = await lib.download_title(
                 branch_id=branch_id,
                 translation_index=translation_index,

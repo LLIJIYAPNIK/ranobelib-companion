@@ -178,3 +178,13 @@ def test_show_title_not_found_returns_json_without_html_accept() -> None:
 
     assert response.status_code == 404
     assert response.json() == {"detail": "Тайтл не найден, проверьте ссылку"}
+
+
+def test_show_title_malformed_slug_url_returns_friendly_404_not_500() -> None:
+    # No RanobeLib patch here on purpose - the real SDK class raises a plain ValueError
+    # for a slug_url that doesn't parse, which open_client() must convert rather than
+    # letting it fall through as an unhandled 500.
+    response = client.get("/titles/not-a-valid-slug")
+
+    assert response.status_code == 404
+    assert response.json() == {"detail": "Тайтл не найден, проверьте ссылку"}

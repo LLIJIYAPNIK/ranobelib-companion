@@ -106,6 +106,14 @@ def test_read_chapter_not_found() -> None:
     assert "Глава не найдена" in response.text
 
 
+def test_read_chapter_malformed_slug_url_returns_friendly_404_not_500() -> None:
+    # No RanobeLib patch here on purpose - see the equivalent test in test_titles.py.
+    response = client.get("/titles/not-a-valid-slug/chapters/1/5")
+
+    assert response.status_code == 404
+    assert response.json() == {"detail": "Тайтл не найден, проверьте ссылку"}
+
+
 def test_read_chapter_multiple_translations_shows_choice_page() -> None:
     branches = [
         ChapterBranch(
