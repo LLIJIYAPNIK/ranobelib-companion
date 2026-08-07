@@ -4,7 +4,7 @@ from fastapi import APIRouter, Request
 from fastapi.responses import HTMLResponse, RedirectResponse, Response
 
 from app.recent_titles import remember
-from app.services.client import get_client
+from app.services.client import get_client, open_client
 from app.services.exports import available_export_formats
 from app.templating import templates
 
@@ -39,7 +39,7 @@ async def open_title(request: Request, url: str) -> Response:
 
 @router.get("/{slug_url}")
 async def show_title(request: Request, slug_url: str) -> HTMLResponse:
-    async with get_client(slug_url) as lib:
+    async with open_client(slug_url) as lib:
         title = await lib.get_info()
         volumes = await lib.get_table_of_contents()
     cover_url = title.cover.default or title.cover.md or title.cover.thumbnail

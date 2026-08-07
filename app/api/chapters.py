@@ -4,7 +4,7 @@ from fastapi import APIRouter, Query, Request
 from fastapi.responses import HTMLResponse
 from ranobelib.models import Volume
 
-from app.services.client import get_client
+from app.services.client import open_client
 from app.services.exports import available_export_formats
 from app.templating import templates
 
@@ -19,7 +19,7 @@ async def read_chapter(
     number: str,
     branch_id: int | None = Query(default=None),
 ) -> HTMLResponse:
-    async with get_client(slug_url) as lib:
+    async with open_client(slug_url) as lib:
         chapter = await lib.get_chapter(volume, number, branch_id=branch_id)
         volumes = await lib.get_table_of_contents()
     prev_url, next_url = _adjacent_chapter_urls(slug_url, volumes, str(volume), number)

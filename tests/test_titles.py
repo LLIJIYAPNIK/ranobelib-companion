@@ -1,7 +1,7 @@
 from unittest.mock import patch
 
 from fastapi.testclient import TestClient
-from ranobelib import TitleNotFoundError
+from ranobelib import RanobeLibError, RateLimitError, TitleNotFoundError
 from ranobelib.models import Chapter, Cover, Label, Tag, Title, Volume
 
 from app.main import app
@@ -72,6 +72,20 @@ def test_open_title_rejects_unparseable_input() -> None:
 
     assert response.status_code == 400
     assert "Не удалось распознать ссылку" in response.text
+
+
+def test_open_title_rate_limited() -> None:
+    exc = RateLimitError(retry_after=30)
+    with patch("app.services.client.RanobeLib", return_value=_RaisingClient(exc)):
+        response = client.get(
+            "/titles/open",
+            params={"url": "https://ranobelib.me/ru/book/6712--test-novel"},
+        )
+
+    assert response.status_code == 429
+    assert response.json() == {
+        "detail": "ranobelib сейчас ограничивает запросы, попробуйте позже"
+    }
 
 
 def test_show_title_renders_metadata() -> None:
@@ -178,3 +192,29 @@ def test_show_title_not_found_returns_json_without_html_accept() -> None:
 
     assert response.status_code == 404
     assert response.json() == {"detail": "Тайтл не найден, проверьте ссылку"}
+
+
+def test_show_title_malformed_slug_url_returns_friendly_404_not_500() -> None:
+    # No RanobeLib patch here on purpose - the real SDK class raises a plain ValueError
+    # for a slug_url that doesn't parse, which open_client() must convert rather than
+    # letting it fall through as an unhandled 500.
+    response = client.get("/titles/not-a-valid-slug")
+
+    assert response.status_code == 404
+    assert response.json() == {"detail": "Тайтл не найден, проверьте ссылку"}
+
+
+class _UnmappedError(RanobeLibError):
+    """A stand-in for a future RanobeLibError subclass this app's table doesn't cover
+    yet - used to confirm the fallback branch's HTML page never leaks the exception's
+    own message (which could carry internal detail)."""
+
+
+def test_show_title_unmapped_error_html_page_hides_the_message() -> None:
+    exc = _UnmappedError("some internal SDK detail")
+    with patch("app.services.client.RanobeLib", return_value=_RaisingClient(exc)):
+        response = client.get("/titles/6712--test-novel", headers={"accept": "text/html"})
+
+    assert response.status_code == 500
+    assert "Внутренняя ошибка, попробуйте позже" in response.text
+    assert "some internal SDK detail" not in response.text

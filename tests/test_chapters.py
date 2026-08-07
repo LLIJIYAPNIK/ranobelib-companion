@@ -2,7 +2,12 @@ from datetime import UTC, datetime
 from unittest.mock import patch
 
 from fastapi.testclient import TestClient
-from ranobelib import ChapterNotFoundError, MultipleTranslationsError
+from ranobelib import (
+    AuthRequiredError,
+    ChapterNotFoundError,
+    MultipleTranslationsError,
+    RateLimitError,
+)
 from ranobelib.models import Chapter, ChapterBranch, ChapterUser, Team, Volume
 
 from app.main import app
@@ -104,6 +109,34 @@ def test_read_chapter_not_found() -> None:
 
     assert response.status_code == 404
     assert "Глава не найдена" in response.text
+
+
+def test_read_chapter_auth_required() -> None:
+    exc = AuthRequiredError("https://ranobelib.me/x")
+    with patch("app.services.client.RanobeLib", return_value=_FakeClient(exc=exc)):
+        response = client.get("/titles/6712--test-novel/chapters/1/5")
+
+    assert response.status_code == 403
+    assert response.json() == {"detail": "Требуется авторизация — недоступно"}
+
+
+def test_read_chapter_rate_limited() -> None:
+    exc = RateLimitError(retry_after=30)
+    with patch("app.services.client.RanobeLib", return_value=_FakeClient(exc=exc)):
+        response = client.get("/titles/6712--test-novel/chapters/1/5")
+
+    assert response.status_code == 429
+    assert response.json() == {
+        "detail": "ranobelib сейчас ограничивает запросы, попробуйте позже"
+    }
+
+
+def test_read_chapter_malformed_slug_url_returns_friendly_404_not_500() -> None:
+    # No RanobeLib patch here on purpose - see the equivalent test in test_titles.py.
+    response = client.get("/titles/not-a-valid-slug/chapters/1/5")
+
+    assert response.status_code == 404
+    assert response.json() == {"detail": "Тайтл не найден, проверьте ссылку"}
 
 
 def test_read_chapter_multiple_translations_shows_choice_page() -> None:

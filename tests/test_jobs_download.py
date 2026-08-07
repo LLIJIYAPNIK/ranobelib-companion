@@ -2,7 +2,12 @@ import os
 from datetime import UTC, datetime
 
 import pytest
-from ranobelib import MultipleTitleTranslationsError, TitleNotFoundError
+from ranobelib import (
+    AuthRequiredError,
+    MultipleTitleTranslationsError,
+    RateLimitError,
+    TitleNotFoundError,
+)
 from ranobelib.exceptions import AmbiguousChapter
 from ranobelib.models import Chapter, ChapterBranch, ChapterUser, Volume
 
@@ -74,7 +79,7 @@ async def test_run_download_job_completes_successfully(
     chapters = [Chapter(id=1, volume="1", number="1", content="<p>a</p>")]
     volumes = [Volume(number="1", chapters=chapters)]
     fake = _FakeClient(volumes=volumes)
-    monkeypatch.setattr("app.jobs.download.get_client", lambda slug_url: fake)
+    monkeypatch.setattr("app.jobs.download.open_client", lambda slug_url: fake)
 
     job = _job()
     await run_download_job(job)
@@ -101,7 +106,7 @@ async def test_run_download_job_reports_progress_via_on_chapter(
     ]
     volumes = [Volume(number="1", chapters=chapters)]
     fake = _FakeClient(volumes=volumes)
-    monkeypatch.setattr("app.jobs.download.get_client", lambda slug_url: fake)
+    monkeypatch.setattr("app.jobs.download.open_client", lambda slug_url: fake)
 
     job = _job()
     await run_download_job(job)
@@ -118,7 +123,7 @@ async def test_run_download_job_passes_translation_index(
 ) -> None:
     volumes = [Volume(number="1", chapters=[Chapter(id=1, volume="1", number="1")])]
     fake = _FakeClient(volumes=volumes)
-    monkeypatch.setattr("app.jobs.download.get_client", lambda slug_url: fake)
+    monkeypatch.setattr("app.jobs.download.open_client", lambda slug_url: fake)
 
     job = _job()
     await run_download_job(job, translation_index=2)
@@ -133,7 +138,7 @@ async def test_run_download_job_needs_translation(monkeypatch: pytest.MonkeyPatc
     ambiguous = [AmbiguousChapter(volume="1", number="5", branches=[_branch(1), _branch(2)])]
     exc = MultipleTitleTranslationsError("6712--test-novel", chapters=ambiguous)
     fake = _FakeClient(exc=exc)
-    monkeypatch.setattr("app.jobs.download.get_client", lambda slug_url: fake)
+    monkeypatch.setattr("app.jobs.download.open_client", lambda slug_url: fake)
 
     job = _job()
     await run_download_job(job)
@@ -147,7 +152,7 @@ async def test_run_download_job_needs_translation(monkeypatch: pytest.MonkeyPatc
 async def test_run_download_job_maps_known_sdk_error(monkeypatch: pytest.MonkeyPatch) -> None:
     exc = TitleNotFoundError("6712--missing")
     fake = _FakeClient(exc=exc)
-    monkeypatch.setattr("app.jobs.download.get_client", lambda slug_url: fake)
+    monkeypatch.setattr("app.jobs.download.open_client", lambda slug_url: fake)
 
     job = _job()
     await run_download_job(job)
@@ -156,12 +161,49 @@ async def test_run_download_job_maps_known_sdk_error(monkeypatch: pytest.MonkeyP
     assert job.error == "Тайтл не найден, проверьте ссылку"
 
 
+async def test_run_download_job_maps_auth_required(monkeypatch: pytest.MonkeyPatch) -> None:
+    exc = AuthRequiredError("https://ranobelib.me/x")
+    fake = _FakeClient(exc=exc)
+    monkeypatch.setattr("app.jobs.download.open_client", lambda slug_url: fake)
+
+    job = _job()
+    await run_download_job(job)
+
+    assert job.status == "error"
+    assert job.error == "Требуется авторизация — недоступно"
+
+
+async def test_run_download_job_maps_rate_limit(monkeypatch: pytest.MonkeyPatch) -> None:
+    exc = RateLimitError(retry_after=30)
+    fake = _FakeClient(exc=exc)
+    monkeypatch.setattr("app.jobs.download.open_client", lambda slug_url: fake)
+
+    job = _job()
+    await run_download_job(job)
+
+    assert job.status == "error"
+    assert job.error == "ranobelib сейчас ограничивает запросы, попробуйте позже"
+
+
 async def test_run_download_job_maps_unexpected_error(monkeypatch: pytest.MonkeyPatch) -> None:
     fake = _BoomClient()
-    monkeypatch.setattr("app.jobs.download.get_client", lambda slug_url: fake)
+    monkeypatch.setattr("app.jobs.download.open_client", lambda slug_url: fake)
 
     job = _job()
     await run_download_job(job)
 
     assert job.status == "error"
     assert job.error == "Внутренняя ошибка, попробуйте позже"
+
+
+async def test_run_download_job_malformed_slug_url_is_a_friendly_error() -> None:
+    # No open_client patch here on purpose - real get_client()/RanobeLib(...) raises a
+    # plain ValueError for this slug, which open_client() must convert to
+    # TitleNotFoundError rather than leaving the runner's except Exception fallback (a
+    # generic "internal error") to catch it.
+    job = DownloadJob(id="job-1", slug_url="not-a-valid-slug", fmt="epub")
+
+    await run_download_job(job)
+
+    assert job.status == "error"
+    assert job.error == "Тайтл не найден, проверьте ссылку"

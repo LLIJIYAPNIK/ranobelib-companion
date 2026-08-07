@@ -7,6 +7,7 @@ from ranobelib import (
     ChapterNotFoundError,
     MultipleTitleTranslationsError,
     MultipleTranslationsError,
+    RanobeLibError,
     RateLimitError,
     TitleNotFoundError,
     VolumeNotFoundError,
@@ -105,3 +106,17 @@ def test_rate_limit() -> None:
     assert response.json() == {
         "detail": "ranobelib сейчас ограничивает запросы, попробуйте позже"
     }
+
+
+class _UnmappedError(RanobeLibError):
+    """A stand-in for a future RanobeLibError subclass this app's table doesn't know
+    about yet - the fallback branch must still hide it behind a generic message, not
+    leak its own text (which could carry internal detail) to the client."""
+
+
+def test_unmapped_error_falls_back_to_generic_message() -> None:
+    response = _client_raising(_UnmappedError("some internal SDK detail")).get("/raise")
+
+    assert response.status_code == 500
+    assert response.json() == {"detail": "Внутренняя ошибка, попробуйте позже"}
+    assert "some internal SDK detail" not in response.text
