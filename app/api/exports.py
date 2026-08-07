@@ -1,5 +1,4 @@
-"""Exporting chapters to a downloadable file - a single chapter or several selected
-ones combined into one file."""
+"""Exporting to a downloadable file - single/selected chapters, or whole volumes."""
 
 import os
 import tempfile
@@ -52,6 +51,39 @@ async def export_chapters(
     return FileResponse(
         path,
         filename=f"{slug_url}--{len(fetched)}-chapters.{fmt}",
+        background=BackgroundTask(os.remove, path),
+    )
+
+
+@router.get("/volumes/{volume}/export")
+async def export_volume(slug_url: str, volume: int, fmt: str) -> FileResponse:
+    _require_known_format(fmt)
+    with _temp_export_path(fmt) as path:
+        async with get_client(slug_url) as lib:
+            fetched = await lib.get_volume(volume)
+            await lib.export(fetched.chapters, fmt=fmt, path=path)
+    return FileResponse(
+        path,
+        filename=f"{slug_url}--volume-{volume}.{fmt}",
+        background=BackgroundTask(os.remove, path),
+    )
+
+
+@router.get("/volumes/export")
+async def export_volumes(
+    slug_url: str,
+    fmt: str,
+    volumes: Annotated[list[int], Query()],
+) -> FileResponse:
+    _require_known_format(fmt)
+    with _temp_export_path(fmt) as path:
+        async with get_client(slug_url) as lib:
+            fetched = await lib.get_volumes(volumes)
+            chapters = [chapter for vol in fetched for chapter in vol.chapters]
+            await lib.export(chapters, fmt=fmt, path=path)
+    return FileResponse(
+        path,
+        filename=f"{slug_url}--{len(fetched)}-volumes.{fmt}",
         background=BackgroundTask(os.remove, path),
     )
 

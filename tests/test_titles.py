@@ -152,6 +152,10 @@ def test_show_title_renders_export_form() -> None:
     assert 'name="fmt"' in response.text
     assert '<option value="epub">EPUB</option>' in response.text
     assert '<option value="txt">TXT</option>' in response.text
+    assert (
+        'formaction="/titles/6712--test-novel/volumes/1/export"' in response.text
+    )
+    assert "Скачать том" in response.text
 
 
 def test_show_title_not_found_renders_html_error_page() -> None:

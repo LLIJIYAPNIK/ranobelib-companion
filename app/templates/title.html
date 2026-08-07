@@ -71,7 +71,16 @@
     </div>
     {% for volume in volumes %}
     <div class="toc__volume">
-      <h3 class="toc__volume-title">Том {{ volume.number }}</h3>
+      <div class="toc__volume-header">
+        <h3 class="toc__volume-title">Том {{ volume.number }}</h3>
+        {% if export_formats %}
+        <button
+          type="submit"
+          formaction="/titles/{{ title.slug_url }}/volumes/{{ volume.number }}/export"
+          class="btn btn--sm"
+        >Скачать том</button>
+        {% endif %}
+      </div>
       <ul class="toc__chapters">
         {% for chapter in volume.chapters %}
         <li class="toc__chapter">
