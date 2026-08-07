@@ -3,7 +3,7 @@ from unittest.mock import patch
 
 import pytest
 from fastapi.testclient import TestClient
-from ranobelib.models import Chapter
+from ranobelib.models import Chapter, Volume
 
 from app.main import app
 
@@ -11,11 +11,20 @@ client = TestClient(app)
 
 
 class _FakeClient:
-    def __init__(self, chapter: Chapter, chapters: list[Chapter] | None = None) -> None:
+    def __init__(
+        self,
+        chapter: Chapter,
+        chapters: list[Chapter] | None = None,
+        volume: Volume | None = None,
+        volumes: list[Volume] | None = None,
+    ) -> None:
         self._chapter = chapter
         self._chapters = chapters or []
+        self._volume = volume
+        self._volumes = volumes or []
         self.received_branch_id: int | None | str = "not called"
         self.received_chapter_keys: list[tuple[int, str]] | None = None
+        self.received_volume_numbers: list[int] | None = None
         self.export_calls: list[tuple[list[Chapter], str, str]] = []
 
     async def __aenter__(self) -> "_FakeClient":
@@ -33,6 +42,14 @@ class _FakeClient:
     async def get_chapters(self, chapters: list[tuple[int, str]]) -> list[Chapter]:
         self.received_chapter_keys = chapters
         return self._chapters
+
+    async def get_volume(self, volume: int) -> Volume:
+        assert self._volume is not None
+        return self._volume
+
+    async def get_volumes(self, volumes: list[int]) -> list[Volume]:
+        self.received_volume_numbers = volumes
+        return self._volumes
 
     async def export(self, chapters: list[Chapter], *, fmt: str, path: str) -> str:
         self.export_calls.append((chapters, fmt, path))
@@ -163,3 +180,82 @@ def test_export_chapters_requires_at_least_one_chapter() -> None:
 
     assert response.status_code == 422
     assert fake.export_calls == []
+
+
+def test_export_volume_combines_its_chapters_into_one_file() -> None:
+    chapters = [
+        Chapter(id=1, volume="1", number="1", content="<p>a</p>"),
+        Chapter(id=2, volume="1", number="2", content="<p>b</p>"),
+    ]
+    volume = Volume(number="1", chapters=chapters)
+    fake = _FakeClient(chapter=chapters[0], volume=volume)
+    with patch("app.services.client.RanobeLib", return_value=fake):
+        response = client.get("/titles/6712--test-novel/volumes/1/export?fmt=epub")
+
+    assert response.status_code == 200
+    assert response.content == b"exported content"
+    assert (
+        'filename="6712--test-novel--volume-1.epub"'
+        in response.headers["content-disposition"]
+    )
+    assert len(fake.export_calls) == 1
+    exported_chapters, fmt, path = fake.export_calls[0]
+    assert exported_chapters == chapters
+    assert fmt == "epub"
+    assert not os.path.exists(path)
+
+
+def test_export_volume_rejects_unknown_format() -> None:
+    volume = Volume(number="1", chapters=[])
+    fake = _FakeClient(chapter=Chapter(id=1, volume="1", number="1"), volume=volume)
+    with patch("app.services.client.RanobeLib", return_value=fake):
+        response = client.get("/titles/6712--test-novel/volumes/1/export?fmt=docx")
+
+    assert response.status_code == 400
+    assert fake.export_calls == []
+
+
+def test_export_volumes_combines_several_volumes_into_one_file() -> None:
+    chapters_v1 = [Chapter(id=1, volume="1", number="1", content="<p>a</p>")]
+    chapters_v2 = [Chapter(id=2, volume="2", number="1", content="<p>b</p>")]
+    volumes = [Volume(number="1", chapters=chapters_v1), Volume(number="2", chapters=chapters_v2)]
+    fake = _FakeClient(chapter=chapters_v1[0], volumes=volumes)
+    with patch("app.services.client.RanobeLib", return_value=fake):
+        response = client.get(
+            "/titles/6712--test-novel/volumes/export?fmt=epub&volumes=1&volumes=2"
+        )
+
+    assert response.status_code == 200
+    assert (
+        'filename="6712--test-novel--2-volumes.epub"'
+        in response.headers["content-disposition"]
+    )
+    assert fake.received_volume_numbers == [1, 2]
+    assert len(fake.export_calls) == 1
+    exported_chapters, fmt, path = fake.export_calls[0]
+    assert exported_chapters == chapters_v1 + chapters_v2
+    assert fmt == "epub"
+    assert not os.path.exists(path)
+
+
+def test_export_volumes_requires_at_least_one_volume() -> None:
+    fake = _FakeClient(chapter=Chapter(id=1, volume="1", number="1"))
+    with patch("app.services.client.RanobeLib", return_value=fake):
+        response = client.get("/titles/6712--test-novel/volumes/export?fmt=txt")
+
+    assert response.status_code == 422
+    assert fake.export_calls == []
+
+
+def test_export_volume_cleans_up_temp_file_when_export_fails() -> None:
+    volume = Volume(number="1", chapters=[Chapter(id=1, volume="1", number="1")])
+    fake = _FailingExportClient(chapter=Chapter(id=1, volume="1", number="1"), volume=volume)
+    with (
+        patch("app.services.client.RanobeLib", return_value=fake),
+        pytest.raises(RuntimeError),
+    ):
+        client.get("/titles/6712--test-novel/volumes/1/export?fmt=txt")
+
+    assert len(fake.export_calls) == 1
+    path = fake.export_calls[0][2]
+    assert not os.path.exists(path)
