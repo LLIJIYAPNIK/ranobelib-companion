@@ -3,6 +3,8 @@ ones combined into one file."""
 
 import os
 import tempfile
+from collections.abc import Iterator
+from contextlib import contextmanager
 from typing import Annotated
 
 from fastapi import APIRouter, HTTPException, Query
@@ -24,11 +26,10 @@ async def export_chapter(
     branch_id: int | None = Query(default=None),
 ) -> FileResponse:
     _require_known_format(fmt)
-    fd, path = tempfile.mkstemp(suffix=f".{fmt}")
-    os.close(fd)
-    async with get_client(slug_url) as lib:
-        chapter = await lib.get_chapter(volume, number, branch_id=branch_id)
-        await lib.export([chapter], fmt=fmt, path=path)
+    with _temp_export_path(fmt) as path:
+        async with get_client(slug_url) as lib:
+            chapter = await lib.get_chapter(volume, number, branch_id=branch_id)
+            await lib.export([chapter], fmt=fmt, path=path)
     return FileResponse(
         path,
         filename=f"{slug_url}--{volume}-{number}.{fmt}",
@@ -44,16 +45,33 @@ async def export_chapters(
 ) -> FileResponse:
     _require_known_format(fmt)
     parsed = [_parse_chapter_key(key) for key in chapters]
-    fd, path = tempfile.mkstemp(suffix=f".{fmt}")
-    os.close(fd)
-    async with get_client(slug_url) as lib:
-        fetched = await lib.get_chapters(parsed)
-        await lib.export(fetched, fmt=fmt, path=path)
+    with _temp_export_path(fmt) as path:
+        async with get_client(slug_url) as lib:
+            fetched = await lib.get_chapters(parsed)
+            await lib.export(fetched, fmt=fmt, path=path)
     return FileResponse(
         path,
         filename=f"{slug_url}--{len(fetched)}-chapters.{fmt}",
         background=BackgroundTask(os.remove, path),
     )
+
+
+@contextmanager
+def _temp_export_path(fmt: str) -> Iterator[str]:
+    """A temp file path to export to, removed if the block raises before finishing.
+
+    On the happy path, the file is left behind for the route to hand to FileResponse,
+    which deletes it itself (via a background task) once the response has been sent -
+    this only cleans up the case get_chapter(s)/export() fails partway through and no
+    response ever gets to do that.
+    """
+    fd, path = tempfile.mkstemp(suffix=f".{fmt}")
+    os.close(fd)
+    try:
+        yield path
+    except BaseException:
+        os.remove(path)
+        raise
 
 
 def _require_known_format(fmt: str) -> None:
