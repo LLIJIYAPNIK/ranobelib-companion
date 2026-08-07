@@ -1,11 +1,13 @@
 import os
+import tempfile
 import time
+from pathlib import Path
 from unittest.mock import patch
 
 from fastapi.testclient import TestClient
 from ranobelib.models import Chapter, Volume
 
-from app.jobs.store import get_job
+from app.jobs.store import create_job, get_job
 from app.main import app
 
 client = TestClient(app, follow_redirects=False)
@@ -101,3 +103,83 @@ def test_start_download_passes_translation_index_through() -> None:
     assert job.status == "done"
 
     os.remove(job.result_path)
+
+
+def test_show_download_status_renders_running_progress() -> None:
+    job = create_job("6712--test-novel", "epub")
+    job.status = "running"
+    job.completed = 3
+    job.total = 10
+
+    response = client.get(f"/titles/6712--test-novel/download/{job.id}")
+
+    assert response.status_code == 200
+    assert "Глава 3 из 10" in response.text
+
+
+def test_show_download_status_renders_done_with_file_link() -> None:
+    job = create_job("6712--test-novel", "epub")
+    job.status = "done"
+
+    response = client.get(f"/titles/6712--test-novel/download/{job.id}")
+
+    assert response.status_code == 200
+    assert "Готово" in response.text
+    assert f'href="/titles/6712--test-novel/download/{job.id}/file"' in response.text
+
+
+def test_show_download_status_unknown_job_returns_404() -> None:
+    response = client.get("/titles/6712--test-novel/download/does-not-exist")
+
+    assert response.status_code == 404
+
+
+def test_show_download_status_rejects_mismatched_slug_url() -> None:
+    job = create_job("6712--test-novel", "epub")
+
+    response = client.get(f"/titles/other-title/download/{job.id}")
+
+    assert response.status_code == 404
+
+
+def test_download_status_json_shape() -> None:
+    job = create_job("6712--test-novel", "epub")
+    job.status = "running"
+    job.completed = 2
+    job.total = 5
+
+    response = client.get(f"/titles/6712--test-novel/download/{job.id}/status")
+
+    assert response.status_code == 200
+    assert response.json() == {
+        "status": "running",
+        "completed": 2,
+        "total": 5,
+        "error": None,
+    }
+
+
+def test_download_result_file_not_ready_returns_404() -> None:
+    job = create_job("6712--test-novel", "epub")
+    job.status = "running"
+
+    response = client.get(f"/titles/6712--test-novel/download/{job.id}/file")
+
+    assert response.status_code == 404
+
+
+def test_download_result_file_serves_and_cleans_up() -> None:
+    job = create_job("6712--test-novel", "epub")
+    job.status = "done"
+    fd, path = tempfile.mkstemp(suffix=".epub")
+    os.close(fd)
+    with open(path, "w", encoding="utf-8") as f:
+        f.write("exported content")
+    job.result_path = Path(path)
+
+    response = client.get(f"/titles/6712--test-novel/download/{job.id}/file")
+
+    assert response.status_code == 200
+    assert response.content == b"exported content"
+    assert 'filename="6712--test-novel.epub"' in response.headers["content-disposition"]
+    assert not os.path.exists(path)

@@ -1,0 +1,27 @@
+{% extends "base.html" %}
+{% block title %}Скачивание {{ slug_url }} — RanobeLib Companion{% endblock %}
+{% block content %}
+<main class="content">
+  <div class="download-status">
+    <a class="reader-nav__back" href="/titles/{{ slug_url }}">← К оглавлению</a>
+    <h1 class="download-status__heading">Скачивание тайтла целиком</h1>
+
+    {% if job.status == "queued" %}
+    <p class="download-status__text">В очереди…</p>
+    {% elif job.status == "running" %}
+    <p class="download-status__text">
+      {% if job.total %}Глава {{ job.completed }} из {{ job.total }}{% else %}Начинаем скачивание…{% endif %}
+    </p>
+    {% elif job.status == "exporting" %}
+    <p class="download-status__text">Сборка файла…</p>
+    {% elif job.status == "done" %}
+    <p class="download-status__text">Готово</p>
+    <a class="btn btn--primary" href="/titles/{{ slug_url }}/download/{{ job.id }}/file">Скачать файл</a>
+    {% elif job.status == "error" %}
+    <p class="download-status__text download-status__text--error">{{ job.error }}</p>
+    {% elif job.status == "needs_translation" %}
+    <p class="download-status__text">У части глав несколько переводов — нужно выбрать один.</p>
+    {% endif %}
+  </div>
+</main>
+{% endblock %}

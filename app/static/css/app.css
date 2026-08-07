@@ -553,3 +553,26 @@ a {
   color: var(--text-muted);
   flex: 0 0 auto;
 }
+
+.download-status {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  max-width: 480px;
+}
+
+.download-status__heading {
+  font-size: 20px;
+  font-weight: 800;
+  margin: 0;
+}
+
+.download-status__text {
+  font-size: 14px;
+  color: var(--text-secondary);
+  margin: 0;
+}
+
+.download-status__text--error {
+  color: var(--accent-orange);
+}
