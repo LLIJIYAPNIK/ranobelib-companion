@@ -6,7 +6,7 @@ from fastapi import FastAPI
 from fastapi.staticfiles import StaticFiles
 from starlette.middleware.sessions import SessionMiddleware
 
-from app.api import auth, chapters, downloads, exports, health, home, titles
+from app.api import auth, chapters, downloads, exports, health, home, library, titles
 from app.config import get_settings
 from app.db.connection import get_connection
 from app.db.migrate import run_migrations
@@ -33,5 +33,6 @@ app.include_router(auth.router)
 app.include_router(chapters.router)
 app.include_router(exports.router)
 app.include_router(downloads.router)
+app.include_router(library.router)
 app.include_router(titles.router)
 register_exception_handlers(app)

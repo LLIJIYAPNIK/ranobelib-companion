@@ -1,6 +1,9 @@
+from collections.abc import Iterator
 from datetime import UTC, datetime
+from pathlib import Path
 from unittest.mock import patch
 
+import pytest
 from fastapi.testclient import TestClient
 from ranobelib import (
     AuthRequiredError,
@@ -10,6 +13,10 @@ from ranobelib import (
 )
 from ranobelib.models import Chapter, ChapterBranch, ChapterUser, Team, Volume
 
+import app.db.connection as db_connection
+from app.config import get_settings
+from app.db.connection import get_connection
+from app.db.library import add_entry, get_entry
 from app.main import app
 
 client = TestClient(app)
@@ -189,3 +196,60 @@ def test_read_chapter_passes_no_branch_id_by_default() -> None:
 
     assert response.status_code == 200
     assert fake.received_branch_id is None
+
+
+@pytest.fixture
+def logged_in_client(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> Iterator[TestClient]:
+    """Isolated DB + an authenticated session - see tests/test_api_auth.py for why the
+    isolation dance (own DB file, reset connection singleton, `with TestClient`) is
+    needed."""
+    monkeypatch.setenv("DB_PATH", str(tmp_path / "test.db"))
+    monkeypatch.setenv("SESSION_SECRET_KEY", "test-secret")
+    get_settings.cache_clear()
+    db_connection._connection = None
+
+    with TestClient(app) as test_client:
+        test_client.post(
+            "/register",
+            data={
+                "email": "alice@example.com",
+                "password": "hunter2pass",
+                "password_confirm": "hunter2pass",
+            },
+        )
+        yield test_client
+
+    get_settings.cache_clear()
+    db_connection._connection = None
+
+
+def test_read_chapter_records_progress_for_title_in_library(
+    logged_in_client: TestClient,
+) -> None:
+    add_entry(get_connection(), user_id=1, slug_url="6712--test-novel")
+    chapter = Chapter(id=1, volume="1", number="5", content="<p>x</p>")
+    with patch("app.services.client.RanobeLib", return_value=_FakeClient(chapter)):
+        logged_in_client.get("/titles/6712--test-novel/chapters/1/5")
+
+    entry = get_entry(get_connection(), user_id=1, slug_url="6712--test-novel")
+    assert entry.last_read_volume == "1"
+    assert entry.last_read_number == "5"
+
+
+def test_read_chapter_does_not_add_title_to_library(logged_in_client: TestClient) -> None:
+    chapter = Chapter(id=1, volume="1", number="5", content="<p>x</p>")
+    with patch("app.services.client.RanobeLib", return_value=_FakeClient(chapter)):
+        response = logged_in_client.get("/titles/6712--test-novel/chapters/1/5")
+
+    assert response.status_code == 200
+    assert get_entry(get_connection(), user_id=1, slug_url="6712--test-novel") is None
+
+
+def test_read_chapter_anonymous_does_not_touch_the_database(tmp_path: Path) -> None:
+    # No login here - just confirms current_user=None takes the no-op path rather than
+    # erroring out trying to record progress for nobody.
+    chapter = Chapter(id=1, volume="1", number="5", content="<p>x</p>")
+    with patch("app.services.client.RanobeLib", return_value=_FakeClient(chapter)):
+        response = client.get("/titles/6712--test-novel/chapters/1/5")
+
+    assert response.status_code == 200
