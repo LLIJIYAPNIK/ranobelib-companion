@@ -1,0 +1,42 @@
+{% extends "base.html" %}
+{% block title %}Все тайтлы — RanobeLib Companion{% endblock %}
+{% block content %}
+{% include "_library_tabs.html" %}
+<header class="header">
+  <form class="search-form" method="get" action="/library/catalog">
+    <input
+      class="search-input"
+      type="text"
+      name="query"
+      placeholder="Поиск по каталогу…"
+      value="{{ query or '' }}"
+    >
+    <select name="sort" class="toc__export-format" aria-label="Сортировка">
+      {% for value, label in sort_options.items() %}
+      <option value="{{ value }}"{% if value == sort %} selected{% endif %}>{{ label }}</option>
+      {% endfor %}
+    </select>
+    <button class="search-button" type="submit">Искать</button>
+  </form>
+</header>
+<main class="content">
+  <div
+    class="catalog-grid"
+    data-role="catalog-grid"
+    data-query="{{ query or '' }}"
+    data-sort="{{ sort }}"
+    data-next-page="{{ page + 1 if has_next_page else '' }}"
+  >
+    {% include "_catalog_cards.html" %}
+  </div>
+  <div class="catalog-grid__sentinel" data-role="catalog-sentinel" aria-hidden="true"></div>
+  <noscript>
+    {% if has_next_page %}
+    <p class="content__hint">
+      <a href="?query={{ query or '' }}&sort={{ sort }}&page={{ page + 1 }}">Следующая страница</a>
+    </p>
+    {% endif %}
+  </noscript>
+  <script src="{{ url_for('static', path='js/catalog-scroll.js') }}" defer></script>
+</main>
+{% endblock %}

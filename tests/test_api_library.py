@@ -194,6 +194,7 @@ def test_show_library_anonymous_is_viewable_but_prompts_to_log_in(client: TestCl
     assert response.status_code == 200
     assert 'href="/login"' in response.text
     assert 'href="/register"' in response.text
+    assert 'href="/library/catalog"' in response.text  # locked-state CTA (PR 15)
 
 
 def test_show_library_empty_state(client: TestClient) -> None:

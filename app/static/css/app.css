@@ -41,6 +41,11 @@ a {
 .sidebar {
   width: 64px;
   flex: 0 0 64px;
+  align-self: flex-start;
+  position: sticky;
+  top: 0;
+  height: 100vh;
+  overflow-y: auto;
   background: var(--bg-panel);
   border-right: 1px solid var(--border);
   display: flex;
@@ -374,6 +379,72 @@ a {
   font-size: 14px;
   font-weight: 600;
   text-decoration: none;
+}
+
+.library-tabs {
+  display: flex;
+  gap: 20px;
+  padding: 0 32px;
+  border-bottom: 1px solid var(--border);
+}
+
+.library-tabs__link {
+  padding: 14px 0;
+  color: var(--text-muted);
+  text-decoration: none;
+  font-size: 14px;
+  font-weight: 600;
+  border-bottom: 2px solid transparent;
+}
+
+.library-tabs__link:hover {
+  color: var(--text-secondary);
+}
+
+.library-tabs__link--active {
+  color: var(--text-primary);
+  border-bottom-color: var(--accent-teal);
+}
+
+.catalog-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+  gap: 20px;
+}
+
+.catalog-grid__sentinel {
+  height: 1px;
+}
+
+.catalog-card {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  text-decoration: none;
+  color: inherit;
+}
+
+.catalog-card__cover {
+  width: 100%;
+  aspect-ratio: 2 / 3;
+  border-radius: 8px;
+  object-fit: cover;
+  background: var(--bg-surface);
+}
+
+.catalog-card__name {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text-primary);
+  line-height: 1.4;
+}
+
+.catalog-card:hover .catalog-card__name {
+  color: var(--accent-teal);
+}
+
+.catalog-card__status {
+  align-self: flex-start;
 }
 
 .title-hero {
