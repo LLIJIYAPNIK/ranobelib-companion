@@ -9,6 +9,7 @@
   const statusUrl = root.dataset.statusUrl;
   const bar = root.querySelector('[data-role="bar-fill"]');
   const text = root.querySelector('[data-role="status-text"]');
+  const etaText = root.querySelector('[data-role="eta-text"]');
   if (!statusUrl || !text) return;
 
   const RUNNING_LABELS = {
@@ -19,6 +20,12 @@
   };
 
   const TERMINAL_STATUSES = new Set(["done", "error", "needs_translation"]);
+
+  function formatEta(seconds) {
+    const total = Math.round(seconds);
+    if (total < 60) return `${total} с`;
+    return `${Math.round(total / 60)} мин`;
+  }
 
   async function poll() {
     let data;
@@ -40,6 +47,12 @@
     }
     const label = RUNNING_LABELS[data.status];
     if (label) text.textContent = label(data);
+    if (etaText) {
+      etaText.textContent =
+        data.status === "running" && data.eta_seconds != null
+          ? `Осталось ≈ ${formatEta(data.eta_seconds)}`
+          : "";
+    }
 
     setTimeout(poll, 1500);
   }

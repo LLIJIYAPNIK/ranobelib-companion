@@ -200,7 +200,21 @@ def test_download_status_json_shape() -> None:
         "completed": 2,
         "total": 5,
         "error": None,
+        "eta_seconds": None,  # no started_at set on this job - not enough signal yet
     }
+
+
+def test_download_status_includes_eta_once_running() -> None:
+    job = create_job("6712--test-novel", "epub")
+    job.status = "running"
+    job.started_at = time.monotonic() - 10  # 10s elapsed
+    job.completed = 5
+    job.total = 10
+
+    response = client.get(f"/titles/6712--test-novel/download/{job.id}/status")
+
+    # 5 chapters in 10s -> 0.5 chapters/s -> 5 remaining chapters -> 10s left
+    assert response.json()["eta_seconds"] == pytest.approx(10.0, rel=0.1)
 
 
 def test_download_result_file_not_ready_returns_404() -> None:
@@ -310,9 +324,9 @@ def test_start_download_records_history_for_logged_in_user(
         response = logged_in_client.post(
             "/titles/6712--test-novel/download", data={"fmt": "epub"}
         )
+        job_id = _job_id_from_location(response.headers["location"])
+        _wait_until_terminal(job_id)
 
-    job_id = _job_id_from_location(response.headers["location"])
-    _wait_until_terminal(job_id)
     os.remove(get_job(job_id).result_path)
 
     entries = list_download_history(get_connection(), user_id=1)
@@ -333,9 +347,9 @@ def test_start_download_anonymous_records_no_history(
         response = logged_in_client.post(
             "/titles/6712--test-novel/download", data={"fmt": "epub"}
         )
+        job_id = _job_id_from_location(response.headers["location"])
+        _wait_until_terminal(job_id)
 
-    job_id = _job_id_from_location(response.headers["location"])
-    _wait_until_terminal(job_id)
     os.remove(get_job(job_id).result_path)
 
     assert list_download_history(get_connection(), user_id=1) == []

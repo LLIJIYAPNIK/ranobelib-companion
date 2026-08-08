@@ -11,6 +11,7 @@ from starlette.background import BackgroundTask
 from app.auth.dependencies import get_current_user
 from app.db.users import User
 from app.jobs.download import run_download_job
+from app.jobs.eta import estimate_remaining_seconds
 from app.jobs.models import DownloadJob
 from app.jobs.store import create_job, get_job, track_task
 from app.services.exports import require_known_format
@@ -78,4 +79,5 @@ def _job_status_payload(job: DownloadJob) -> dict[str, Any]:
         "completed": job.completed,
         "total": job.total,
         "error": job.error,
+        "eta_seconds": estimate_remaining_seconds(job),
     }

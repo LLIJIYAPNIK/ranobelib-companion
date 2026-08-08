@@ -46,6 +46,7 @@
       {% elif job.status == "error" %}{{ job.error }}
       {% endif %}
     </p>
+    <p class="download-status__eta" data-role="eta-text"></p>
     {% if job.status == "done" %}
     <a class="btn btn--primary" href="/titles/{{ slug_url }}/download/{{ job.id }}/file">Скачать файл</a>
     {% endif %}
