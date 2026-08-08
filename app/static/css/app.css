@@ -277,6 +277,105 @@ a {
   color: var(--text-muted);
 }
 
+/* "Читаю" locked for anonymous visitors - Claude Design import
+   "RanobeLib Library Locked" (see CLAUDE.md, "Дизайн"). */
+
+.library-locked {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 22px;
+  max-width: 420px;
+  margin: 0 auto;
+  padding: 48px 40px;
+  border: 1px solid var(--border);
+  border-radius: 16px;
+  background: var(--bg-surface);
+}
+
+.library-locked__icon {
+  position: relative;
+  width: 64px;
+  height: 74px;
+}
+
+.library-locked__icon-shackle {
+  position: absolute;
+  top: 0;
+  left: 14px;
+  width: 36px;
+  height: 34px;
+  box-sizing: border-box;
+  border: 6px solid #4b4a58;
+  border-bottom: none;
+  border-radius: 18px 18px 0 0;
+}
+
+.library-locked__icon-body {
+  position: absolute;
+  bottom: 0;
+  width: 64px;
+  height: 46px;
+  border-radius: 8px;
+  background: linear-gradient(135deg, var(--accent), #5b21b6);
+}
+
+.library-locked__icon-keyhole {
+  position: absolute;
+  bottom: 16px;
+  left: 28px;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: #1c1230;
+}
+
+.library-locked__icon-keyhole-stem {
+  position: absolute;
+  bottom: 11px;
+  left: 30.5px;
+  width: 3px;
+  height: 9px;
+  background: #1c1230;
+}
+
+.library-locked__copy {
+  text-align: center;
+}
+
+.library-locked__title {
+  margin: 0 0 8px;
+  font-size: 16px;
+  font-weight: 700;
+  color: var(--text-primary);
+}
+
+.library-locked__text {
+  margin: 0;
+  font-size: 14px;
+  line-height: 1.6;
+  color: var(--text-muted);
+}
+
+.library-locked__text a {
+  color: #a78bfa;
+}
+
+.library-locked__text a:hover {
+  color: #c4b5fd;
+}
+
+.library-locked__cta {
+  margin-top: 4px;
+  padding: 10px 22px;
+  border-radius: 8px;
+  background: var(--accent);
+  color: var(--text-primary);
+  font-size: 14px;
+  font-weight: 600;
+  text-decoration: none;
+}
+
 .title-hero {
   display: flex;
   gap: 28px;

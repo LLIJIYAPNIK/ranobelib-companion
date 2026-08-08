@@ -45,14 +45,23 @@
     </p>
     {% endif %}
   {% else %}
-  <p class="content__hint">
-    Список того, что вы читаете, — только для зарегистрированных пользователей. Сами
-    тайтлы при этом доступны всем без входа — библиотека нужна лишь для того, чтобы
-    запоминать, что читаете именно вы.
-  </p>
-  <p class="content__hint">
-    <a href="/login">Войти</a> или <a href="/register">зарегистрироваться</a>.
-  </p>
+  <div class="library-locked">
+    <div class="library-locked__icon" aria-hidden="true">
+      <span class="library-locked__icon-shackle"></span>
+      <span class="library-locked__icon-body"></span>
+      <span class="library-locked__icon-keyhole"></span>
+      <span class="library-locked__icon-keyhole-stem"></span>
+    </div>
+    <div class="library-locked__copy">
+      <p class="library-locked__title">Список читаемого скрыт</p>
+      <p class="library-locked__text">
+        <a href="/login">Войдите</a> или <a href="/register">зарегистрируйтесь</a>,
+        чтобы видеть свою библиотеку. Каталог тайтлов RanobeLib открыт всем — смотреть
+        и читать можно без регистрации.
+      </p>
+    </div>
+    <a href="/" class="library-locked__cta">Смотреть каталог</a>
+  </div>
   {% endif %}
 </main>
 {% endblock %}
