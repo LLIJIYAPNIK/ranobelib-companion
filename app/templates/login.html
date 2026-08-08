@@ -9,16 +9,28 @@
   <p class="form-error">{{ error }}</p>
   {% endif %}
   <form class="auth-form" method="post" action="/login">
-    <input
-      class="search-input"
-      type="email"
-      name="email"
-      placeholder="Email"
-      value="{{ submitted_email or '' }}"
-      required
-      autofocus
-    >
-    <input class="search-input" type="password" name="password" placeholder="Пароль" required>
+    <div class="auth-form__field">
+      <label class="auth-form__label" for="login-email">Email</label>
+      <input
+        class="auth-form__input"
+        id="login-email"
+        type="email"
+        name="email"
+        value="{{ submitted_email or '' }}"
+        required
+        autofocus
+      >
+    </div>
+    <div class="auth-form__field">
+      <label class="auth-form__label" for="login-password">Пароль</label>
+      <input
+        class="auth-form__input"
+        id="login-password"
+        type="password"
+        name="password"
+        required
+      >
+    </div>
     <button class="btn btn--primary" type="submit">Войти</button>
   </form>
   <p class="content__hint">Ещё нет аккаунта? <a href="/register">Зарегистрироваться</a>.</p>
