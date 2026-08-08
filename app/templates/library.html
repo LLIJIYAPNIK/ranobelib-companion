@@ -1,6 +1,7 @@
 {% extends "base.html" %}
 {% block title %}Библиотека — RanobeLib Companion{% endblock %}
 {% block content %}
+{% include "_library_tabs.html" %}
 {% if current_user %}
 <header class="header">
   <form class="search-form" method="post" action="/library/add">
@@ -60,7 +61,7 @@
         и читать можно без регистрации.
       </p>
     </div>
-    <a href="/" class="library-locked__cta">Смотреть каталог</a>
+    <a href="/library/catalog" class="library-locked__cta">Смотреть каталог</a>
   </div>
   {% endif %}
 </main>

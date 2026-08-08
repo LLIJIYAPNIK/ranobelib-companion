@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from typing import Annotated
 
-from fastapi import APIRouter, Depends, Form, Request
+from fastapi import APIRouter, Depends, Form, Query, Request
 from fastapi.responses import HTMLResponse, RedirectResponse, Response
 from ranobelib import RanobeLibError
 
@@ -12,6 +12,7 @@ from app.auth.dependencies import get_current_user, require_current_user
 from app.db.connection import get_connection
 from app.db.library import LibraryEntry, add_entry, list_entries, remove_entry
 from app.db.users import User
+from app.services.catalog import get_catalog
 from app.services.client import get_client, open_client
 from app.templating import templates
 
@@ -27,8 +28,44 @@ async def show_library(
     show them (library.html prompts them to log in/register instead of the list)."""
     items = await _library_items(user) if user is not None else []
     return templates.TemplateResponse(
-        request, "library.html", {"active_nav": "library", "items": items}
+        request,
+        "library.html",
+        {"active_nav": "library", "active_tab": "reading", "items": items},
     )
+
+
+@router.get("/catalog")
+async def show_catalog(
+    request: Request, page: Annotated[int, Query(ge=1)] = 1
+) -> HTMLResponse:
+    """The catalog tab - unlike "Читаю", browsing it has never needed an account (see
+    the "Список читаемого скрыт" copy on library.html's locked state)."""
+    async with get_catalog() as catalog:
+        result = await catalog.list_titles(page=page)
+    return templates.TemplateResponse(
+        request,
+        "catalog.html",
+        {
+            "active_nav": "library",
+            "active_tab": "catalog",
+            "items": result.items,
+            "has_next_page": result.has_next_page,
+            "page": page,
+        },
+    )
+
+
+@router.get("/catalog/page", response_model=None)
+async def catalog_page_fragment(
+    request: Request, page: Annotated[int, Query(ge=1)] = 1
+) -> Response:
+    """Just the card markup, no base.html - what catalog-scroll.js fetches and appends
+    as the visitor scrolls (see app/static/js/catalog-scroll.js)."""
+    async with get_catalog() as catalog:
+        result = await catalog.list_titles(page=page)
+    response = templates.TemplateResponse(request, "_catalog_cards.html", {"items": result.items})
+    response.headers["X-Has-Next-Page"] = "true" if result.has_next_page else "false"
+    return response
 
 
 @router.post("/add", response_model=None)
