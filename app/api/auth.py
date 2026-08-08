@@ -9,7 +9,7 @@ from __future__ import annotations
 from fastapi import APIRouter, Form, Request
 from fastapi.responses import HTMLResponse, RedirectResponse, Response
 
-from app.auth.passwords import PasswordTooLongError, hash_password
+from app.auth.passwords import PasswordTooLongError, hash_password, verify_password
 from app.db.connection import get_connection
 from app.db.users import create_user, get_user_by_email
 from app.templating import templates
@@ -49,5 +49,35 @@ async def register(
             status_code=400,
         )
 
-    create_user(conn, email, password_hash)
-    return RedirectResponse(url="/login", status_code=303)
+    user = create_user(conn, email, password_hash)
+    request.session["user_id"] = user.id
+    return RedirectResponse(url="/", status_code=303)
+
+
+@router.get("/login")
+async def show_login(request: Request) -> HTMLResponse:
+    return templates.TemplateResponse(request, "login.html", {})
+
+
+@router.post("/login", response_model=None)
+async def login(
+    request: Request, email: str = Form(...), password: str = Form(...)
+) -> Response:
+    user = get_user_by_email(get_connection(), email)
+    # Same message either way - not confirming/denying whether an email is registered.
+    if user is None or not verify_password(password, user.password_hash):
+        return templates.TemplateResponse(
+            request,
+            "login.html",
+            {"error": "Неверный email или пароль", "submitted_email": email},
+            status_code=400,
+        )
+
+    request.session["user_id"] = user.id
+    return RedirectResponse(url="/", status_code=303)
+
+
+@router.post("/logout")
+async def logout(request: Request) -> Response:
+    request.session.clear()
+    return RedirectResponse(url="/", status_code=303)

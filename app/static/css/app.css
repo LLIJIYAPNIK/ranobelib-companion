@@ -73,6 +73,34 @@ a {
   cursor: default;
 }
 
+.sidebar__account {
+  margin-top: auto;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  padding-top: 12px;
+  border-top: 1px solid var(--border);
+  width: 100%;
+}
+
+.sidebar__account-email {
+  font-size: 10px;
+  color: var(--text-muted);
+  max-width: 56px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  text-align: center;
+}
+
+.sidebar__account-logout {
+  background: none;
+  border: none;
+  font-family: inherit;
+  padding: 0;
+}
+
 .main {
   flex: 1;
   min-width: 0;

@@ -1,0 +1,26 @@
+{% extends "base.html" %}
+{% block title %}Вход — RanobeLib Companion{% endblock %}
+{% block content %}
+<header class="header">
+  <h1 class="toc__title">Вход</h1>
+</header>
+<main class="content">
+  {% if error %}
+  <p class="form-error">{{ error }}</p>
+  {% endif %}
+  <form class="auth-form" method="post" action="/login">
+    <input
+      class="search-input"
+      type="email"
+      name="email"
+      placeholder="Email"
+      value="{{ submitted_email or '' }}"
+      required
+      autofocus
+    >
+    <input class="search-input" type="password" name="password" placeholder="Пароль" required>
+    <button class="btn btn--primary" type="submit">Войти</button>
+  </form>
+  <p class="content__hint">Ещё нет аккаунта? <a href="/register">Зарегистрироваться</a>.</p>
+</main>
+{% endblock %}
