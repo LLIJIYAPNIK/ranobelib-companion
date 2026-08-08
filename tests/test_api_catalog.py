@@ -84,6 +84,42 @@ def test_show_catalog_passes_page_to_the_sdk() -> None:
     assert fake.received_kwargs["page"] == 3
 
 
+def test_show_catalog_passes_query_to_the_sdk() -> None:
+    page = CatalogPage(items=[], page=1, has_next_page=False)
+    fake = _FakeCatalog(page)
+    with patch("app.services.catalog.Catalog", return_value=fake):
+        client.get("/library/catalog", params={"query": "dxd"})
+
+    assert fake.received_kwargs["query"] == "dxd"
+
+
+def test_show_catalog_empty_query_is_treated_as_no_search() -> None:
+    page = CatalogPage(items=[], page=1, has_next_page=False)
+    fake = _FakeCatalog(page)
+    with patch("app.services.catalog.Catalog", return_value=fake):
+        client.get("/library/catalog", params={"query": ""})
+
+    assert fake.received_kwargs["query"] is None
+
+
+def test_show_catalog_renders_query_in_search_input_and_data_attribute() -> None:
+    page = CatalogPage(items=[], page=1, has_next_page=False)
+    with patch("app.services.catalog.Catalog", return_value=_FakeCatalog(page)):
+        response = client.get("/library/catalog", params={"query": "dxd"})
+
+    assert 'value="dxd"' in response.text
+    assert 'data-query="dxd"' in response.text
+
+
+def test_catalog_page_fragment_passes_query_to_the_sdk() -> None:
+    page = CatalogPage(items=[], page=2, has_next_page=False)
+    fake = _FakeCatalog(page)
+    with patch("app.services.catalog.Catalog", return_value=fake):
+        client.get("/library/catalog/page", params={"query": "dxd", "page": 2})
+
+    assert fake.received_kwargs["query"] == "dxd"
+
+
 def test_catalog_page_fragment_returns_only_cards() -> None:
     page = CatalogPage(items=[_fake_title(1, "High School DxD")], page=2, has_next_page=True)
     with patch("app.services.catalog.Catalog", return_value=_FakeCatalog(page)):
