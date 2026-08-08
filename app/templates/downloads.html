@@ -2,7 +2,6 @@
 {% block title %}Загрузки — RanobeLib Companion{% endblock %}
 {% block content %}
 <main class="content">
-  {% if current_user %}
   <h1 class="toc__title">Загрузки</h1>
 
   <section class="downloads-section" data-role="active-downloads">
@@ -60,13 +59,5 @@
     <p class="content__hint">Пока ничего не скачивали.</p>
     {% endif %}
   </section>
-
-  {% else %}
-  {% from "_locked_feature.html" import locked_feature %}
-  {% call locked_feature("Список загрузок скрыт", "/", "На главную") %}
-  <a href="/login">Войдите</a> или <a href="/register">зарегистрируйтесь</a>,
-  чтобы видеть свои загрузки. Само скачивание тайтла не требует регистрации.
-  {% endcall %}
-  {% endif %}
 </main>
 {% endblock %}

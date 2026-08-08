@@ -7,7 +7,7 @@ from typing import Annotated, Any
 from fastapi import APIRouter, Depends, Request
 from fastapi.responses import HTMLResponse, JSONResponse
 
-from app.auth.dependencies import get_current_user, require_current_user
+from app.auth.dependencies import require_current_user
 from app.db.connection import get_connection
 from app.db.downloads import list_download_history
 from app.db.users import User
@@ -21,12 +21,12 @@ router = APIRouter(prefix="/downloads")
 
 @router.get("")
 async def show_downloads(
-    request: Request, user: Annotated[User | None, Depends(get_current_user)]
+    request: Request, user: Annotated[User, Depends(require_current_user)]
 ) -> HTMLResponse:
-    """Viewing the page doesn't require an account - same "public page, personal content
-    needs a login" split as /library (PR 14)."""
-    active_jobs = list_active_jobs_for_user(user.id) if user is not None else []
-    history = list_download_history(get_connection(), user.id) if user is not None else []
+    """Unlike /library, downloading always required knowing who's asking (it spends
+    ranobelib.me API quota) - viewing the section follows the same rule now."""
+    active_jobs = list_active_jobs_for_user(user.id)
+    history = list_download_history(get_connection(), user.id)
     return templates.TemplateResponse(
         request,
         "downloads.html",

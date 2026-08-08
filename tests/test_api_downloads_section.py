@@ -112,14 +112,11 @@ def test_list_downloads_status_omits_anonymous_jobs(client: TestClient) -> None:
     assert response.json() == []
 
 
-def test_show_downloads_anonymous_is_viewable_but_prompts_to_log_in(
-    client: TestClient,
-) -> None:
-    response = client.get("/downloads")
+def test_show_downloads_requires_login(client: TestClient) -> None:
+    response = client.get("/downloads", follow_redirects=False)
 
-    assert response.status_code == 200
-    assert 'href="/login"' in response.text
-    assert 'href="/register"' in response.text
+    assert response.status_code == 303
+    assert response.headers["location"] == "/login"
 
 
 def test_show_downloads_empty_state(client: TestClient) -> None:

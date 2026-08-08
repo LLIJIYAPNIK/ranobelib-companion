@@ -8,7 +8,7 @@ from fastapi import APIRouter, Depends, Form, HTTPException, Request
 from fastapi.responses import FileResponse, HTMLResponse, JSONResponse, RedirectResponse
 from starlette.background import BackgroundTask
 
-from app.auth.dependencies import get_current_user
+from app.auth.dependencies import require_current_user
 from app.db.users import User
 from app.jobs.download import run_download_job
 from app.jobs.eta import estimate_remaining_seconds
@@ -23,13 +23,12 @@ router = APIRouter(prefix="/titles/{slug_url}/download")
 @router.post("")
 async def start_download(
     slug_url: str,
-    current_user: Annotated[User | None, Depends(get_current_user)],
+    current_user: Annotated[User, Depends(require_current_user)],
     fmt: Annotated[str, Form()],
     translation_index: Annotated[int | None, Form()] = None,
 ) -> RedirectResponse:
     require_known_format(fmt)
-    user_id = current_user.id if current_user is not None else None
-    job = create_job(slug_url, fmt, user_id=user_id)
+    job = create_job(slug_url, fmt, user_id=current_user.id)
     task = asyncio.create_task(
         run_download_job(job, translation_index=translation_index)
     )
