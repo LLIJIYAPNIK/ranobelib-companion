@@ -14,4 +14,7 @@ build/
 # app-managed SDK cache (dev only — prod cache_dir lives on a persistent volume)
 .cache/
 
+# app database (dev only — prod db_path lives on a persistent volume)
+.ranobelib_companion.db
+
 .idea/
