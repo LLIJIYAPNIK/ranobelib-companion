@@ -1,0 +1,9 @@
+{% macro title_card(slug_url, name, cover_url=none) %}
+<a class="title-card" href="/titles/{{ slug_url }}">
+  {% if cover_url %}
+  <img class="title-card__cover" src="{{ cover_url }}" alt="Обложка «{{ name }}»" loading="lazy">
+  {% endif %}
+  <span class="title-card__name">{{ name }}</span>
+  {% if caller %}{{ caller() }}{% endif %}
+</a>
+{% endmacro %}

@@ -1,12 +1,8 @@
+{% from "_title_card.html" import title_card %}
 {% for title in items %}
-{% set cover_url = title.cover.default or title.cover.md or title.cover.thumbnail %}
-<a class="catalog-card" href="/titles/{{ title.slug_url }}">
-  {% if cover_url %}
-  <img class="catalog-card__cover" src="{{ cover_url }}" alt="Обложка «{{ title.name }}»" loading="lazy">
-  {% endif %}
-  <span class="catalog-card__name">{{ title.name }}</span>
-  {% if title.status %}
-  <span class="badge catalog-card__status">{{ title.status.label }}</span>
-  {% endif %}
-</a>
+{% call title_card(title.slug_url, title.name, title.cover.default or title.cover.md or title.cover.thumbnail) %}
+{% if title.status %}
+<span class="badge title-card__status">{{ title.status.label }}</span>
+{% endif %}
+{% endcall %}
 {% endfor %}
