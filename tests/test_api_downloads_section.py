@@ -1,4 +1,5 @@
-"""GET /downloads/status - the JSON list app/static/js/downloads-status.js polls."""
+"""The "Загрузки" section: GET /downloads (page) and GET /downloads/status (JSON list
+app/static/js/downloads-status.js polls)."""
 
 from collections.abc import Iterator
 from pathlib import Path
@@ -9,6 +10,8 @@ from fastapi.testclient import TestClient
 import app.db.connection as db_connection
 import app.jobs.store as job_store
 from app.config import get_settings
+from app.db.connection import get_connection
+from app.db.downloads import record_download
 from app.jobs.store import create_job
 
 
@@ -107,3 +110,60 @@ def test_list_downloads_status_omits_anonymous_jobs(client: TestClient) -> None:
     response = client.get("/downloads/status")
 
     assert response.json() == []
+
+
+def test_show_downloads_anonymous_is_viewable_but_prompts_to_log_in(
+    client: TestClient,
+) -> None:
+    response = client.get("/downloads")
+
+    assert response.status_code == 200
+    assert 'href="/login"' in response.text
+    assert 'href="/register"' in response.text
+
+
+def test_show_downloads_empty_state(client: TestClient) -> None:
+    _register(client)
+
+    response = client.get("/downloads")
+
+    assert response.status_code == 200
+    assert "Сейчас ничего не скачивается" in response.text
+    assert "Пока ничего не скачивали" in response.text
+
+
+def test_show_downloads_lists_active_job_with_progress(client: TestClient) -> None:
+    _register(client)  # user id 1
+    job = create_job("6712--test-novel", "epub", user_id=1)
+    job.status = "running"
+    job.completed = 3
+    job.total = 10
+
+    response = client.get("/downloads")
+
+    assert response.status_code == 200
+    assert f'data-job-id="{job.id}"' in response.text
+    assert "6712--test-novel" in response.text
+    assert "Глава 3 из 10" in response.text
+    assert "static/js/downloads-status.js" in response.text
+
+
+def test_show_downloads_lists_history(client: TestClient) -> None:
+    _register(client)  # user id 1
+    record_download(get_connection(), 1, "6712--test-novel", "epub", "done", 42, None)
+
+    response = client.get("/downloads")
+
+    assert response.status_code == 200
+    assert "6712--test-novel" in response.text
+    assert "Готово" in response.text
+    assert "42 глав" in response.text
+
+
+def test_show_downloads_history_shows_error(client: TestClient) -> None:
+    _register(client)  # user id 1
+    record_download(get_connection(), 1, "6712--test-novel", "epub", "error", None, "Опа")
+
+    response = client.get("/downloads")
+
+    assert "Опа" in response.text

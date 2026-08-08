@@ -1,0 +1,17 @@
+{% macro locked_feature(title, cta_href, cta_label) %}
+<div class="locked-feature">
+  <div class="locked-feature__icon" aria-hidden="true">
+    <span class="locked-feature__icon-shackle"></span>
+    <span class="locked-feature__icon-body"></span>
+    <span class="locked-feature__icon-keyhole"></span>
+    <span class="locked-feature__icon-keyhole-stem"></span>
+  </div>
+  <div class="locked-feature__copy">
+    <p class="locked-feature__title">{{ title }}</p>
+    <p class="locked-feature__text">
+      {{ caller() }}
+    </p>
+  </div>
+  <a href="{{ cta_href }}" class="locked-feature__cta">{{ cta_label }}</a>
+</div>
+{% endmacro %}

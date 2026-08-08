@@ -1,0 +1,72 @@
+{% extends "base.html" %}
+{% block title %}Загрузки — RanobeLib Companion{% endblock %}
+{% block content %}
+<main class="content">
+  {% if current_user %}
+  <h1 class="toc__title">Загрузки</h1>
+
+  <section class="downloads-section" data-role="active-downloads">
+    <h2 class="downloads-section__title">Текущие</h2>
+    {% if active_jobs %}
+    <ul class="downloads-list">
+      {% for job in active_jobs %}
+      <li class="downloads-list__item" data-job-id="{{ job.id }}">
+        <a class="downloads-list__link" href="/titles/{{ job.slug_url }}/download/{{ job.id }}">
+          {{ job.slug_url }}
+        </a>
+        <span class="downloads-list__fmt">{{ job.fmt | upper }}</span>
+        <div class="download-status__bar">
+          <div
+            class="download-status__bar-fill"
+            data-role="bar-fill"
+            style="width: {{ (job.completed / job.total * 100) if job.total else 0 }}%"
+          ></div>
+        </div>
+        <span class="downloads-list__status" data-role="status-text">
+          {% if job.status == "queued" %}В очереди…
+          {% elif job.status == "running" %}{% if job.total %}Глава {{ job.completed }} из {{ job.total }}{% else %}Начинаем скачивание…{% endif %}
+          {% elif job.status == "exporting" %}Сборка файла…
+          {% elif job.status == "needs_translation" %}Нужен выбор перевода
+          {% endif %}
+        </span>
+        <span class="downloads-list__eta" data-role="eta-text"></span>
+      </li>
+      {% endfor %}
+    </ul>
+    <script src="{{ url_for('static', path='js/downloads-status.js') }}" defer></script>
+    {% else %}
+    <p class="content__hint">Сейчас ничего не скачивается.</p>
+    {% endif %}
+  </section>
+
+  <section class="downloads-section">
+    <h2 class="downloads-section__title">История</h2>
+    {% if history %}
+    <ul class="downloads-history">
+      {% for entry in history %}
+      <li class="downloads-history__item">
+        <a class="downloads-history__link" href="/titles/{{ entry.slug_url }}">{{ entry.slug_url }}</a>
+        <span class="downloads-history__fmt">{{ entry.fmt | upper }}</span>
+        <span class="downloads-history__status{% if entry.status == 'error' %} downloads-history__status--error{% endif %}">
+          {% if entry.status == "done" %}Готово{% if entry.chapter_count %} · {{ entry.chapter_count }} глав{% endif %}
+          {% else %}{{ entry.error or "Ошибка" }}
+          {% endif %}
+        </span>
+        <span class="downloads-history__date">{{ entry.finished_at[:16].replace("T", " ") }}</span>
+      </li>
+      {% endfor %}
+    </ul>
+    {% else %}
+    <p class="content__hint">Пока ничего не скачивали.</p>
+    {% endif %}
+  </section>
+
+  {% else %}
+  {% from "_locked_feature.html" import locked_feature %}
+  {% call locked_feature("Список загрузок скрыт", "/", "На главную") %}
+  <a href="/login">Войдите</a> или <a href="/register">зарегистрируйтесь</a>,
+  чтобы видеть свои загрузки. Само скачивание тайтла не требует регистрации.
+  {% endcall %}
+  {% endif %}
+</main>
+{% endblock %}

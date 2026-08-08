@@ -44,23 +44,12 @@
     </p>
     {% endif %}
   {% else %}
-  <div class="library-locked">
-    <div class="library-locked__icon" aria-hidden="true">
-      <span class="library-locked__icon-shackle"></span>
-      <span class="library-locked__icon-body"></span>
-      <span class="library-locked__icon-keyhole"></span>
-      <span class="library-locked__icon-keyhole-stem"></span>
-    </div>
-    <div class="library-locked__copy">
-      <p class="library-locked__title">Список читаемого скрыт</p>
-      <p class="library-locked__text">
-        <a href="/login">Войдите</a> или <a href="/register">зарегистрируйтесь</a>,
-        чтобы видеть свою библиотеку. Каталог тайтлов RanobeLib открыт всем — смотреть
-        и читать можно без регистрации.
-      </p>
-    </div>
-    <a href="/library/catalog" class="library-locked__cta">Смотреть каталог</a>
-  </div>
+  {% from "_locked_feature.html" import locked_feature %}
+  {% call locked_feature("Список читаемого скрыт", "/library/catalog", "Смотреть каталог") %}
+  <a href="/login">Войдите</a> или <a href="/register">зарегистрируйтесь</a>,
+  чтобы видеть свою библиотеку. Каталог тайтлов RanobeLib открыт всем — смотреть
+  и читать можно без регистрации.
+  {% endcall %}
   {% endif %}
 </main>
 {% endblock %}
