@@ -8,7 +8,7 @@ from fastapi import APIRouter, Depends, Form, Request
 from fastapi.responses import HTMLResponse, RedirectResponse, Response
 from ranobelib import RanobeLibError
 
-from app.auth.dependencies import require_current_user
+from app.auth.dependencies import get_current_user, require_current_user
 from app.db.connection import get_connection
 from app.db.library import LibraryEntry, add_entry, list_entries, remove_entry
 from app.db.users import User
@@ -20,9 +20,12 @@ router = APIRouter(prefix="/library")
 
 @router.get("")
 async def show_library(
-    request: Request, user: Annotated[User, Depends(require_current_user)]
+    request: Request, user: Annotated[User | None, Depends(get_current_user)]
 ) -> HTMLResponse:
-    items = await _library_items(user)
+    """Viewing the library page itself doesn't require an account - only an anonymous
+    visitor can't have a personal reading list, so that's the one thing the page won't
+    show them (library.html prompts them to log in/register instead of the list)."""
+    items = await _library_items(user) if user is not None else []
     return templates.TemplateResponse(
         request, "library.html", {"active_nav": "library", "items": items}
     )

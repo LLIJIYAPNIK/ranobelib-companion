@@ -1,6 +1,7 @@
 {% extends "base.html" %}
 {% block title %}Библиотека — RanobeLib Companion{% endblock %}
 {% block content %}
+{% if current_user %}
 <header class="header">
   <form class="search-form" method="post" action="/library/add">
     <input
@@ -14,31 +15,43 @@
     <button class="search-button" type="submit">Добавить</button>
   </form>
 </header>
+{% endif %}
 <main class="content">
   {% if error %}
   <p class="form-error">{{ error }}</p>
   {% endif %}
   <h1 class="toc__title">Читаю</h1>
-  {% if items %}
-  <ul class="library-list">
-    {% for item in items %}
-    <li class="library-list__item">
-      <a class="library-list__link" href="/titles/{{ item.entry.slug_url }}">
-        {{ item.name or item.entry.slug_url }}
-      </a>
-      {% if item.entry.last_read_volume %}
-      <span class="library-list__progress">
-        Том {{ item.entry.last_read_volume }}, глава {{ item.entry.last_read_number }}
-      </span>
-      {% else %}
-      <span class="library-list__progress library-list__progress--muted">Ещё не начали читать</span>
-      {% endif %}
-    </li>
-    {% endfor %}
-  </ul>
+  {% if current_user %}
+    {% if items %}
+    <ul class="library-list">
+      {% for item in items %}
+      <li class="library-list__item">
+        <a class="library-list__link" href="/titles/{{ item.entry.slug_url }}">
+          {{ item.name or item.entry.slug_url }}
+        </a>
+        {% if item.entry.last_read_volume %}
+        <span class="library-list__progress">
+          Том {{ item.entry.last_read_volume }}, глава {{ item.entry.last_read_number }}
+        </span>
+        {% else %}
+        <span class="library-list__progress library-list__progress--muted">Ещё не начали читать</span>
+        {% endif %}
+      </li>
+      {% endfor %}
+    </ul>
+    {% else %}
+    <p class="content__hint">
+      Пока пусто. Вставьте ссылку выше или откройте тайтл и нажмите «Добавить в библиотеку».
+    </p>
+    {% endif %}
   {% else %}
   <p class="content__hint">
-    Пока пусто. Вставьте ссылку выше или откройте тайтл и нажмите «Добавить в библиотеку».
+    Список того, что вы читаете, — только для зарегистрированных пользователей. Сами
+    тайтлы при этом доступны всем без входа — библиотека нужна лишь для того, чтобы
+    запоминать, что читаете именно вы.
+  </p>
+  <p class="content__hint">
+    <a href="/login">Войти</a> или <a href="/register">зарегистрироваться</a>.
   </p>
   {% endif %}
 </main>
