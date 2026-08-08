@@ -43,13 +43,13 @@ def _register(client: TestClient, email: str = "alice@example.com") -> None:
     )
 
 
-def _fake_title(slug_url: str = "6712--test-novel") -> Title:
+def _fake_title(slug_url: str = "6712--test-novel", cover: Cover | None = None) -> Title:
     return Title(
         id=6712,
         name="Test Novel",
         slug="test-novel",
         slug_url=slug_url,
-        cover=Cover(),
+        cover=cover or Cover(),
         age_restriction=Label(id=0, label="16+"),
         status=Label(id=1, label="Онгоинг"),
     )
@@ -225,6 +225,17 @@ def test_show_library_lists_added_titles_with_progress(client: TestClient) -> No
     assert response.status_code == 200
     assert "Test Novel" in response.text
     assert "Том 1, глава 5" in response.text
+
+
+def test_show_library_renders_cover(client: TestClient) -> None:
+    _register(client)
+    title = _fake_title(cover=Cover(default="https://example.com/cover.jpg"))
+
+    with patch("app.services.client.RanobeLib", return_value=_FakeClient(title)):
+        client.post("/library/6712--test-novel/add")
+        response = client.get("/library")
+
+    assert 'src="https://example.com/cover.jpg"' in response.text
 
 
 def test_show_library_survives_one_unreachable_title(client: TestClient) -> None:
