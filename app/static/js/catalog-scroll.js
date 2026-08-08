@@ -9,9 +9,15 @@
   let nextPage = grid.dataset.nextPage ? Number(grid.dataset.nextPage) : null;
   let loading = false;
 
-  const observer = new IntersectionObserver((entries) => {
-    if (entries.some((entry) => entry.isIntersecting)) loadNextPage();
-  });
+  // rootMargin extends the trigger zone below the viewport, so the next page starts
+  // loading while the visitor still has some unread cards to scroll through instead of
+  // only once they hit the very bottom.
+  const observer = new IntersectionObserver(
+    (entries) => {
+      if (entries.some((entry) => entry.isIntersecting)) loadNextPage();
+    },
+    { rootMargin: "600px 0px" }
+  );
 
   async function loadNextPage() {
     if (loading || !nextPage) return;
