@@ -11,6 +11,11 @@
       placeholder="Поиск по каталогу…"
       value="{{ query or '' }}"
     >
+    <select name="sort" class="toc__export-format" aria-label="Сортировка">
+      {% for value, label in sort_options.items() %}
+      <option value="{{ value }}"{% if value == sort %} selected{% endif %}>{{ label }}</option>
+      {% endfor %}
+    </select>
     <button class="search-button" type="submit">Искать</button>
   </form>
 </header>
@@ -19,6 +24,7 @@
     class="catalog-grid"
     data-role="catalog-grid"
     data-query="{{ query or '' }}"
+    data-sort="{{ sort }}"
     data-next-page="{{ page + 1 if has_next_page else '' }}"
   >
     {% include "_catalog_cards.html" %}
@@ -27,7 +33,7 @@
   <noscript>
     {% if has_next_page %}
     <p class="content__hint">
-      <a href="?query={{ query or '' }}&page={{ page + 1 }}">Следующая страница</a>
+      <a href="?query={{ query or '' }}&sort={{ sort }}&page={{ page + 1 }}">Следующая страница</a>
     </p>
     {% endif %}
   </noscript>

@@ -111,6 +111,42 @@ def test_show_catalog_renders_query_in_search_input_and_data_attribute() -> None
     assert 'data-query="dxd"' in response.text
 
 
+def test_show_catalog_defaults_sort_to_last_chapter_at() -> None:
+    page = CatalogPage(items=[], page=1, has_next_page=False)
+    fake = _FakeCatalog(page)
+    with patch("app.services.catalog.Catalog", return_value=fake):
+        client.get("/library/catalog")
+
+    assert fake.received_kwargs["sort"] == "last_chapter_at"
+
+
+def test_show_catalog_passes_sort_to_the_sdk() -> None:
+    page = CatalogPage(items=[], page=1, has_next_page=False)
+    fake = _FakeCatalog(page)
+    with patch("app.services.catalog.Catalog", return_value=fake):
+        client.get("/library/catalog", params={"sort": "views"})
+
+    assert fake.received_kwargs["sort"] == "views"
+
+
+def test_show_catalog_renders_sort_in_select_and_data_attribute() -> None:
+    page = CatalogPage(items=[], page=1, has_next_page=False)
+    with patch("app.services.catalog.Catalog", return_value=_FakeCatalog(page)):
+        response = client.get("/library/catalog", params={"sort": "views"})
+
+    assert 'data-sort="views"' in response.text
+    assert '<option value="views" selected>' in response.text
+
+
+def test_catalog_page_fragment_passes_sort_to_the_sdk() -> None:
+    page = CatalogPage(items=[], page=1, has_next_page=False)
+    fake = _FakeCatalog(page)
+    with patch("app.services.catalog.Catalog", return_value=fake):
+        client.get("/library/catalog/page", params={"sort": "views"})
+
+    assert fake.received_kwargs["sort"] == "views"
+
+
 def test_catalog_page_fragment_passes_query_to_the_sdk() -> None:
     page = CatalogPage(items=[], page=2, has_next_page=False)
     fake = _FakeCatalog(page)

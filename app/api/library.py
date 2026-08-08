@@ -18,6 +18,19 @@ from app.templating import templates
 
 router = APIRouter(prefix="/library")
 
+# Catalog.list_titles()'s own known-accepted `sort` values (see its docstring - the SDK
+# doesn't validate `sort` itself, so this is only for the dropdown, not enforced here).
+DEFAULT_CATALOG_SORT = "last_chapter_at"
+CATALOG_SORT_OPTIONS = {
+    "last_chapter_at": "По обновлению",
+    "name": "По названию",
+    "created_at": "По дате добавления",
+    "views": "По просмотрам",
+    "chap_count": "По числу глав",
+    "rate_avg": "По рейтингу",
+    "random": "Случайно",
+}
+
 
 @router.get("")
 async def show_library(
@@ -38,12 +51,13 @@ async def show_library(
 async def show_catalog(
     request: Request,
     query: str | None = None,
+    sort: str = DEFAULT_CATALOG_SORT,
     page: Annotated[int, Query(ge=1)] = 1,
 ) -> HTMLResponse:
     """The catalog tab - unlike "Читаю", browsing it has never needed an account (see
     the "Список читаемого скрыт" copy on library.html's locked state)."""
     async with get_catalog() as catalog:
-        result = await catalog.list_titles(page=page, query=query or None)
+        result = await catalog.list_titles(page=page, query=query or None, sort=sort)
     return templates.TemplateResponse(
         request,
         "catalog.html",
@@ -54,6 +68,8 @@ async def show_catalog(
             "has_next_page": result.has_next_page,
             "page": page,
             "query": query,
+            "sort": sort,
+            "sort_options": CATALOG_SORT_OPTIONS,
         },
     )
 
@@ -62,12 +78,13 @@ async def show_catalog(
 async def catalog_page_fragment(
     request: Request,
     query: str | None = None,
+    sort: str = DEFAULT_CATALOG_SORT,
     page: Annotated[int, Query(ge=1)] = 1,
 ) -> Response:
     """Just the card markup, no base.html - what catalog-scroll.js fetches and appends
     as the visitor scrolls (see app/static/js/catalog-scroll.js)."""
     async with get_catalog() as catalog:
-        result = await catalog.list_titles(page=page, query=query or None)
+        result = await catalog.list_titles(page=page, query=query or None, sort=sort)
     response = templates.TemplateResponse(request, "_catalog_cards.html", {"items": result.items})
     response.headers["X-Has-Next-Page"] = "true" if result.has_next_page else "false"
     return response
