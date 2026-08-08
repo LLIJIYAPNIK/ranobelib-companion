@@ -24,22 +24,20 @@
   <h1 class="toc__title">Читаю</h1>
   {% if current_user %}
     {% if items %}
-    <ul class="library-list">
+    <div class="title-card-grid">
+      {% from "_title_card.html" import title_card %}
       {% for item in items %}
-      <li class="library-list__item">
-        <a class="library-list__link" href="/titles/{{ item.entry.slug_url }}">
-          {{ item.name or item.entry.slug_url }}
-        </a>
-        {% if item.entry.last_read_volume %}
-        <span class="library-list__progress">
-          Том {{ item.entry.last_read_volume }}, глава {{ item.entry.last_read_number }}
-        </span>
-        {% else %}
-        <span class="library-list__progress library-list__progress--muted">Ещё не начали читать</span>
-        {% endif %}
-      </li>
+      {% call title_card(item.entry.slug_url, item.name or item.entry.slug_url, item.cover_url) %}
+      {% if item.entry.last_read_volume %}
+      <span class="title-card__meta">
+        Том {{ item.entry.last_read_volume }}, глава {{ item.entry.last_read_number }}
+      </span>
+      {% else %}
+      <span class="title-card__meta title-card__meta--muted">Ещё не начали читать</span>
+      {% endif %}
+      {% endcall %}
       {% endfor %}
-    </ul>
+    </div>
     {% else %}
     <p class="content__hint">
       Пока пусто. Вставьте ссылку выше или откройте тайтл и нажмите «Добавить в библиотеку».

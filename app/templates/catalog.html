@@ -21,7 +21,7 @@
 </header>
 <main class="content">
   <div
-    class="catalog-grid"
+    class="title-card-grid"
     data-role="catalog-grid"
     data-query="{{ query or '' }}"
     data-sort="{{ sort }}"
@@ -29,7 +29,7 @@
   >
     {% include "_catalog_cards.html" %}
   </div>
-  <div class="catalog-grid__sentinel" data-role="catalog-sentinel" aria-hidden="true"></div>
+  <div class="title-card-grid__sentinel" data-role="catalog-sentinel" aria-hidden="true"></div>
   <noscript>
     {% if has_next_page %}
     <p class="content__hint">

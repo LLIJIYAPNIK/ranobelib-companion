@@ -151,20 +151,22 @@ def _safe_next(next_url: str | None, default: str) -> str:
 
 
 async def _library_items(user: User) -> list[dict[str, LibraryEntry | str | None]]:
-    """Each entry's display name, fetched fresh through the SDK (cheap - cache_dir makes
-    it a local cache hit after the first request) rather than stored in our own DB, which
-    would duplicate SDK response data. A title that's gone/unreachable on ranobelib.me
-    doesn't take the whole page down with it - it just renders with its slug_url as a
-    fallback label instead of a name.
+    """Each entry's display name/cover, fetched fresh through the SDK (cheap - cache_dir
+    makes it a local cache hit after the first request) rather than stored in our own DB,
+    which would duplicate SDK response data. A title that's gone/unreachable on
+    ranobelib.me doesn't take the whole page down with it - it just renders with its
+    slug_url as a fallback label instead of a name, and no cover.
     """
     items: list[dict[str, LibraryEntry | str | None]] = []
     for entry in list_entries(get_connection(), user.id):
         name: str | None = None
+        cover_url: str | None = None
         try:
             async with open_client(entry.slug_url) as lib:
                 title = await lib.get_info()
             name = title.name
+            cover_url = title.cover.default or title.cover.md or title.cover.thumbnail
         except RanobeLibError:
-            name = None
-        items.append({"entry": entry, "name": name})
+            pass
+        items.append({"entry": entry, "name": name, "cover_url": cover_url})
     return items

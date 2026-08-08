@@ -18,9 +18,13 @@ _MAX_ENTRIES = 8
 _MAX_AGE_SECONDS = 180 * 24 * 60 * 60
 
 
-def read_recent(request: Request) -> list[dict[str, str]]:
+def read_recent(request: Request) -> list[dict[str, str | None]]:
     """Recently opened titles from the cookie, most recent first. Never raises on bad
-    cookie content - a malformed/tampered cookie is just treated as an empty history."""
+    cookie content - a malformed/tampered cookie is just treated as an empty history.
+
+    `cover_url` is optional in the stored shape - cookies written before it existed just
+    don't have it, and that's fine, not a reason to drop the whole entry (see PR 16).
+    """
     raw = request.cookies.get(_COOKIE_NAME)
     if not raw:
         return []
@@ -31,7 +35,11 @@ def read_recent(request: Request) -> list[dict[str, str]]:
     if not isinstance(data, list):
         return []
     return [
-        item
+        {
+            "slug_url": item["slug_url"],
+            "name": item["name"],
+            "cover_url": item.get("cover_url") if isinstance(item.get("cover_url"), str) else None,
+        }
         for item in data
         if isinstance(item, dict)
         and isinstance(item.get("slug_url"), str)
@@ -39,14 +47,20 @@ def read_recent(request: Request) -> list[dict[str, str]]:
     ]
 
 
-def remember(response: Response, request: Request, *, slug_url: str, name: str) -> None:
+def remember(
+    response: Response, request: Request, *, slug_url: str, name: str, cover_url: str | None = None
+) -> None:
     """Move `slug_url` to the front of the recent-titles cookie on `response`."""
     recent = [item for item in read_recent(request) if item["slug_url"] != slug_url]
-    recent.insert(0, {"slug_url": slug_url, "name": name})
+    recent.insert(0, {"slug_url": slug_url, "name": name, "cover_url": cover_url})
     payload = json.dumps(recent[:_MAX_ENTRIES], ensure_ascii=False)
     response.set_cookie(
         _COOKIE_NAME,
-        quote(payload),
+        # safe="" - a raw "/" (e.g. from a cover_url) is outside the charset Python's
+        # http.cookies accepts unquoted, which otherwise makes it wrap the whole value in
+        # a literal quoted-string that some cookie-jar implementations don't strip back
+        # off on read.
+        quote(payload, safe=""),
         max_age=_MAX_AGE_SECONDS,
         httponly=True,
         samesite="lax",

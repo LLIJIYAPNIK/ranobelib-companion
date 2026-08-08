@@ -28,11 +28,12 @@
   {% if recent %}
   <section>
     <h2 class="recent__title">Недавние</h2>
-    <ul class="recent__list">
+    <div class="title-card-grid">
+      {% from "_title_card.html" import title_card %}
       {% for item in recent %}
-      <li><a href="/titles/{{ item.slug_url }}">{{ item.name }}</a></li>
+      {{ title_card(item.slug_url, item.name, item.cover_url) }}
       {% endfor %}
-    </ul>
+    </div>
   </section>
   {% endif %}
 </main>
