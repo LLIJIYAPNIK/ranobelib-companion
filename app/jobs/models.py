@@ -18,9 +18,13 @@ class DownloadJob:
     id: str
     slug_url: str
     fmt: str
+    user_id: int | None = None
     status: JobStatus = "queued"
     completed: int = 0
     total: int = 0
+    started_at: float | None = None
+    """`time.monotonic()` timestamp set when `status` becomes "running" - the basis for
+    `app/jobs/eta.py`'s remaining-time estimate."""
     error: str | None = None
     ambiguous_chapters: list[AmbiguousChapter] = field(default_factory=list)
     result_path: Path | None = None

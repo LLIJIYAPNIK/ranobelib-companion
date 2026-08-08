@@ -15,9 +15,11 @@ _jobs: dict[str, DownloadJob] = {}
 _tasks: dict[str, asyncio.Task[None]] = {}
 
 
-def create_job(slug_url: str, fmt: str) -> DownloadJob:
-    """Register a new job in the "queued" state and return it."""
-    job = DownloadJob(id=str(uuid4()), slug_url=slug_url, fmt=fmt)
+def create_job(slug_url: str, fmt: str, user_id: int | None = None) -> DownloadJob:
+    """Register a new job in the "queued" state and return it. `user_id` is None for an
+    anonymous visitor - downloading has never required an account, it just means this job
+    won't show up in anyone's "Загрузки" list (see app/api/downloads_section.py)."""
+    job = DownloadJob(id=str(uuid4()), slug_url=slug_url, fmt=fmt, user_id=user_id)
     _jobs[job.id] = job
     return job
 

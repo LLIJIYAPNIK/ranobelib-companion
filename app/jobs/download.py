@@ -3,10 +3,13 @@
 from __future__ import annotations
 
 import logging
+import time
 from pathlib import Path
 
 from ranobelib import MultipleTitleTranslationsError, RanobeLibError
 
+from app.db.connection import get_connection
+from app.db.downloads import record_download
 from app.exceptions import build_error_response
 from app.jobs.models import DownloadJob
 from app.services.client import open_client
@@ -24,6 +27,7 @@ async def run_download_job(
     """Fetch every chapter of `job.slug_url` and export them into one file, updating
     `job` in place as it goes - this is what the status endpoint polls."""
     job.status = "running"
+    job.started_at = time.monotonic()
 
     def on_chapter(completed: int, total: int) -> None:
         job.completed = completed
@@ -42,14 +46,28 @@ async def run_download_job(
                 await lib.export(chapters, fmt=job.fmt, path=path)
         job.result_path = Path(path)
         job.status = "done"
+        _record_history(job, chapter_count=len(chapters))
     except MultipleTitleTranslationsError as exc:
+        # Not a terminal state - the retry form on download_status.html re-POSTs with a
+        # translation_index, so no history entry yet.
         job.status = "needs_translation"
         job.ambiguous_chapters = exc.chapters
     except RanobeLibError as exc:
         logger.warning("%s downloading %s", type(exc).__name__, job.slug_url, exc_info=exc)
         job.status = "error"
         job.error = build_error_response(exc).content["detail"]
+        _record_history(job)
     except Exception:
         logger.exception("Unexpected error downloading %s", job.slug_url)
         job.status = "error"
         job.error = "Внутренняя ошибка, попробуйте позже"
+        _record_history(job)
+
+
+def _record_history(job: DownloadJob, chapter_count: int | None = None) -> None:
+    """No-op for an anonymous download (no user_id) - see create_job()."""
+    if job.user_id is None:
+        return
+    record_download(
+        get_connection(), job.user_id, job.slug_url, job.fmt, job.status, chapter_count, job.error
+    )
