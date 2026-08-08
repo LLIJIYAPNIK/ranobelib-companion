@@ -46,3 +46,53 @@ def test_returns_none_for_nonpositive_elapsed_time() -> None:
     job = _job(started_at=100.0, completed=5, total=10)
 
     assert estimate_remaining_seconds(job, now=100.0) is None
+
+
+def test_prefers_the_recent_window_over_the_since_start_average() -> None:
+    # Since start: 10 chapters in 100s -> 0.1 chapters/s -> would say 900s left.
+    # Recent window: 1 chapter in the last 2s -> 0.5 chapters/s, 90 remaining -> 180s left.
+    job = _job(
+        started_at=0.0,
+        completed=10,
+        total=100,
+        recent_ticks=[(98.0, 9), (100.0, 10)],
+    )
+
+    assert estimate_remaining_seconds(job, now=100.0) == pytest.approx(180.0)
+
+
+def test_eta_falls_as_pace_recovers_after_a_slowdown() -> None:
+    # A stall (e.g. ranobelib.me rate-limiting) shouldn't make the estimate climb
+    # forever - once the recent window is past the stall, it should reflect the faster
+    # pace immediately rather than staying dragged down by the whole run's average.
+    slow_job = _job(
+        started_at=0.0, completed=10, total=20, recent_ticks=[(0.0, 5), (100.0, 10)]
+    )
+    slow_eta = estimate_remaining_seconds(slow_job, now=100.0)
+
+    recovered_job = _job(
+        started_at=0.0,
+        completed=15,
+        total=20,
+        recent_ticks=[(100.0, 10), (101.0, 11), (102.0, 12), (103.0, 13), (104.0, 15)],
+    )
+    recovered_eta = estimate_remaining_seconds(recovered_job, now=104.0)
+
+    assert recovered_eta < slow_eta
+
+
+def test_ignores_a_window_with_only_one_sample() -> None:
+    # Falls back to the since-start average rather than dividing by a zero-length window.
+    job = _job(started_at=90.0, completed=5, total=10, recent_ticks=[(100.0, 5)])
+
+    assert estimate_remaining_seconds(job, now=100.0) == pytest.approx(10.0)
+
+
+def test_ignores_a_stalled_window(monkeypatch: pytest.MonkeyPatch) -> None:
+    # No progress within the recent window (e.g. stuck retrying a rate-limited request) -
+    # falls back to the since-start average instead of a division by zero/negative rate.
+    job = _job(
+        started_at=90.0, completed=5, total=10, recent_ticks=[(95.0, 5), (100.0, 5)]
+    )
+
+    assert estimate_remaining_seconds(job, now=100.0) == pytest.approx(10.0)

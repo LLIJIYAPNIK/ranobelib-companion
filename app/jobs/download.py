@@ -17,6 +17,10 @@ from app.services.exports import temp_export_path
 
 logger = logging.getLogger(__name__)
 
+_TICK_HISTORY_SIZE = 10
+"""How many recent on_chapter() ticks app/jobs/eta.py's estimate looks at - a small
+window so the estimate tracks the *current* pace rather than the whole run's average."""
+
 
 async def run_download_job(
     job: DownloadJob,
@@ -32,6 +36,9 @@ async def run_download_job(
     def on_chapter(completed: int, total: int) -> None:
         job.completed = completed
         job.total = total
+        job.recent_ticks.append((time.monotonic(), completed))
+        if len(job.recent_ticks) > _TICK_HISTORY_SIZE:
+            job.recent_ticks.pop(0)
 
     try:
         async with open_client(job.slug_url) as lib:
