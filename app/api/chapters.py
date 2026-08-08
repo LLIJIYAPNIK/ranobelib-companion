@@ -1,9 +1,15 @@
 """Online chapter reading."""
 
-from fastapi import APIRouter, Query, Request
+from typing import Annotated
+
+from fastapi import APIRouter, Depends, Query, Request
 from fastapi.responses import HTMLResponse
 from ranobelib.models import Volume
 
+from app.auth.dependencies import get_current_user
+from app.db.connection import get_connection
+from app.db.library import record_progress
+from app.db.users import User
 from app.services.client import open_client
 from app.services.exports import available_export_formats
 from app.templating import templates
@@ -17,11 +23,16 @@ async def read_chapter(
     slug_url: str,
     volume: int,
     number: str,
+    current_user: Annotated[User | None, Depends(get_current_user)],
     branch_id: int | None = Query(default=None),
 ) -> HTMLResponse:
     async with open_client(slug_url) as lib:
         chapter = await lib.get_chapter(volume, number, branch_id=branch_id)
         volumes = await lib.get_table_of_contents()
+    if current_user is not None:
+        # No-op if this title isn't in the user's library - reading doesn't implicitly
+        # add it (see app/db/library.py, record_progress).
+        record_progress(get_connection(), current_user.id, slug_url, str(volume), number)
     prev_url, next_url = _adjacent_chapter_urls(slug_url, volumes, str(volume), number)
     return templates.TemplateResponse(
         request,
