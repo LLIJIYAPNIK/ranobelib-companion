@@ -73,6 +73,34 @@ a {
   cursor: default;
 }
 
+.sidebar__account {
+  margin-top: auto;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  padding-top: 12px;
+  border-top: 1px solid var(--border);
+  width: 100%;
+}
+
+.sidebar__account-email {
+  font-size: 10px;
+  color: var(--text-muted);
+  max-width: 56px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  text-align: center;
+}
+
+.sidebar__account-logout {
+  background: none;
+  border: none;
+  font-family: inherit;
+  padding: 0;
+}
+
 .main {
   flex: 1;
   min-width: 0;
@@ -142,6 +170,48 @@ a {
 .form-error {
   color: var(--accent-orange);
   font-size: 13px;
+}
+
+.auth-form {
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  gap: 16px;
+  max-width: 320px;
+  margin-top: 16px;
+}
+
+.auth-form__field {
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  gap: 6px;
+}
+
+.auth-form__label {
+  font-size: 13px;
+  color: var(--text-secondary);
+}
+
+.auth-form__input {
+  width: 100%;
+  height: 40px;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  background: var(--bg-surface);
+  color: var(--text-primary);
+  font-family: var(--font-sans);
+  font-size: 14px;
+  padding: 0 12px;
+}
+
+.auth-form__input::placeholder {
+  color: var(--text-muted);
+}
+
+.auth-form .btn {
+  width: 100%;
+  justify-content: center;
 }
 
 .recent__title {
