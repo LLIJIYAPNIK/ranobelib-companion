@@ -16,6 +16,8 @@ from ranobelib.models import Cover, Label, Title, Volume
 
 import app.db.connection as db_connection
 from app.config import get_settings
+from app.db.connection import get_connection
+from app.db.library import record_progress
 
 
 @pytest.fixture
@@ -184,3 +186,98 @@ def test_add_rejects_protocol_relative_next(client: TestClient) -> None:
         )
 
     assert response.headers["location"] == "/titles/6712--test-novel"
+
+
+def test_show_library_requires_login(client: TestClient) -> None:
+    response = client.get("/library", follow_redirects=False)
+
+    assert response.status_code == 303
+    assert response.headers["location"] == "/login"
+
+
+def test_show_library_empty_state(client: TestClient) -> None:
+    _register(client)
+
+    response = client.get("/library")
+
+    assert response.status_code == 200
+    assert "Пока пусто" in response.text
+
+
+def test_show_library_lists_added_titles_with_progress(client: TestClient) -> None:
+    _register(client)
+    title = _fake_title()
+
+    with patch("app.services.client.RanobeLib", return_value=_FakeClient(title)):
+        client.post("/library/6712--test-novel/add")
+
+    # Progress recording itself is covered by tests/test_chapters.py - here just check
+    # the library page reflects it once it's there.
+    record_progress(
+        get_connection(), user_id=1, slug_url="6712--test-novel", volume="1", number="5"
+    )
+
+    with patch("app.services.client.RanobeLib", return_value=_FakeClient(title)):
+        response = client.get("/library")
+
+    assert response.status_code == 200
+    assert "Test Novel" in response.text
+    assert "Том 1, глава 5" in response.text
+
+
+def test_show_library_survives_one_unreachable_title(client: TestClient) -> None:
+    _register(client)
+    title = _fake_title()
+
+    with patch("app.services.client.RanobeLib", return_value=_FakeClient(title)):
+        client.post("/library/6712--test-novel/add")
+
+    class _RaisingClient:
+        async def __aenter__(self) -> "_RaisingClient":
+            return self
+
+        async def __aexit__(self, *exc_info: object) -> bool:
+            return False
+
+        async def get_info(self) -> Title:
+            raise TitleNotFoundError("6712--test-novel")
+
+    with patch("app.services.client.RanobeLib", return_value=_RaisingClient()):
+        response = client.get("/library")
+
+    assert response.status_code == 200
+    assert "6712--test-novel" in response.text
+
+
+def test_add_by_url_resolves_and_adds(client: TestClient) -> None:
+    _register(client)
+    title = _fake_title()
+
+    with patch("app.services.client.RanobeLib", return_value=_FakeClient(title)):
+        response = client.post(
+            "/library/add",
+            data={"url": "https://ranobelib.me/ru/book/6712--test-novel"},
+            follow_redirects=False,
+        )
+
+    assert response.status_code == 303
+    assert response.headers["location"] == "/titles/6712--test-novel"
+
+
+def test_add_by_url_rejects_unparseable_input(client: TestClient) -> None:
+    _register(client)
+
+    response = client.post("/library/add", data={"url": "not a link at all"})
+
+    assert response.status_code == 400
+    assert "Не удалось распознать ссылку" in response.text
+
+
+def test_add_by_url_requires_login(client: TestClient) -> None:
+    response = client.post(
+        "/library/add", data={"url": "https://ranobelib.me/ru/book/6712--x"},
+        follow_redirects=False,
+    )
+
+    assert response.status_code == 303
+    assert response.headers["location"] == "/login"

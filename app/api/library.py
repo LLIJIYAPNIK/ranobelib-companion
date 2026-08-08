@@ -4,16 +4,57 @@ from __future__ import annotations
 
 from typing import Annotated
 
-from fastapi import APIRouter, Depends, Form
-from fastapi.responses import RedirectResponse
+from fastapi import APIRouter, Depends, Form, Request
+from fastapi.responses import HTMLResponse, RedirectResponse, Response
+from ranobelib import RanobeLibError
 
 from app.auth.dependencies import require_current_user
 from app.db.connection import get_connection
-from app.db.library import add_entry, remove_entry
+from app.db.library import LibraryEntry, add_entry, list_entries, remove_entry
 from app.db.users import User
-from app.services.client import open_client
+from app.services.client import get_client, open_client
+from app.templating import templates
 
 router = APIRouter(prefix="/library")
+
+
+@router.get("")
+async def show_library(
+    request: Request, user: Annotated[User, Depends(require_current_user)]
+) -> HTMLResponse:
+    items = await _library_items(user)
+    return templates.TemplateResponse(
+        request, "library.html", {"active_nav": "library", "items": items}
+    )
+
+
+@router.post("/add", response_model=None)
+async def add_to_library_by_url(
+    request: Request,
+    user: Annotated[User, Depends(require_current_user)],
+    url: Annotated[str, Form()],
+) -> Response:
+    """The library page's own "paste a link" form - same URL resolution as `open_title`
+    in app/api/titles.py (PR 4), just followed by adding the resolved title instead of
+    only redirecting to it."""
+    try:
+        async with get_client(url) as lib:
+            title = await lib.get_info()
+    except ValueError:
+        items = await _library_items(user)
+        return templates.TemplateResponse(
+            request,
+            "library.html",
+            {
+                "active_nav": "library",
+                "items": items,
+                "error": "Не удалось распознать ссылку на тайтл",
+                "submitted_url": url,
+            },
+            status_code=400,
+        )
+    add_entry(get_connection(), user.id, title.slug_url)
+    return RedirectResponse(url=f"/titles/{title.slug_url}", status_code=303)
 
 
 @router.post("/{slug_url}/add")
@@ -45,3 +86,23 @@ def _safe_next(next_url: str | None, default: str) -> str:
     if next_url and next_url.startswith("/") and not next_url.startswith("//"):
         return next_url
     return default
+
+
+async def _library_items(user: User) -> list[dict[str, LibraryEntry | str | None]]:
+    """Each entry's display name, fetched fresh through the SDK (cheap - cache_dir makes
+    it a local cache hit after the first request) rather than stored in our own DB, which
+    would duplicate SDK response data. A title that's gone/unreachable on ranobelib.me
+    doesn't take the whole page down with it - it just renders with its slug_url as a
+    fallback label instead of a name.
+    """
+    items: list[dict[str, LibraryEntry | str | None]] = []
+    for entry in list_entries(get_connection(), user.id):
+        name: str | None = None
+        try:
+            async with open_client(entry.slug_url) as lib:
+                title = await lib.get_info()
+            name = title.name
+        except RanobeLibError:
+            name = None
+        items.append({"entry": entry, "name": name})
+    return items

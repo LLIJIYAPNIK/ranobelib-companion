@@ -1,0 +1,45 @@
+{% extends "base.html" %}
+{% block title %}Библиотека — RanobeLib Companion{% endblock %}
+{% block content %}
+<header class="header">
+  <form class="search-form" method="post" action="/library/add">
+    <input
+      class="search-input"
+      type="text"
+      name="url"
+      placeholder="Вставьте ссылку на тайтл, чтобы добавить в библиотеку…"
+      value="{{ submitted_url or '' }}"
+      required
+    >
+    <button class="search-button" type="submit">Добавить</button>
+  </form>
+</header>
+<main class="content">
+  {% if error %}
+  <p class="form-error">{{ error }}</p>
+  {% endif %}
+  <h1 class="toc__title">Читаю</h1>
+  {% if items %}
+  <ul class="library-list">
+    {% for item in items %}
+    <li class="library-list__item">
+      <a class="library-list__link" href="/titles/{{ item.entry.slug_url }}">
+        {{ item.name or item.entry.slug_url }}
+      </a>
+      {% if item.entry.last_read_volume %}
+      <span class="library-list__progress">
+        Том {{ item.entry.last_read_volume }}, глава {{ item.entry.last_read_number }}
+      </span>
+      {% else %}
+      <span class="library-list__progress library-list__progress--muted">Ещё не начали читать</span>
+      {% endif %}
+    </li>
+    {% endfor %}
+  </ul>
+  {% else %}
+  <p class="content__hint">
+    Пока пусто. Вставьте ссылку выше или откройте тайтл и нажмите «Добавить в библиотеку».
+  </p>
+  {% endif %}
+</main>
+{% endblock %}
