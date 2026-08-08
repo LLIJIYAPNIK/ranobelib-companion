@@ -1,0 +1,33 @@
+{% extends "base.html" %}
+{% block title %}Регистрация — RanobeLib Companion{% endblock %}
+{% block content %}
+<header class="header">
+  <h1 class="toc__title">Регистрация</h1>
+</header>
+<main class="content">
+  {% if error %}
+  <p class="form-error">{{ error }}</p>
+  {% endif %}
+  <form class="auth-form" method="post" action="/register">
+    <input
+      class="search-input"
+      type="email"
+      name="email"
+      placeholder="Email"
+      value="{{ submitted_email or '' }}"
+      required
+      autofocus
+    >
+    <input class="search-input" type="password" name="password" placeholder="Пароль" required>
+    <input
+      class="search-input"
+      type="password"
+      name="password_confirm"
+      placeholder="Повторите пароль"
+      required
+    >
+    <button class="btn btn--primary" type="submit">Зарегистрироваться</button>
+  </form>
+  <p class="content__hint">Уже есть аккаунт? <a href="/login">Войти</a>.</p>
+</main>
+{% endblock %}

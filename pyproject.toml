@@ -4,6 +4,7 @@ version = "0.1.0"
 description = "Web UI for reading and downloading ranobe, built on top of ranobelib-python-sdk"
 requires-python = ">=3.12"
 dependencies = [
+    "bcrypt>=5.0.0",
     "fastapi>=0.141.1",
     "jinja2>=3.1.6",
     "python-multipart>=0.0.32",

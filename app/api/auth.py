@@ -1,0 +1,53 @@
+"""Application-level accounts: registration, login, logout.
+
+Unrelated to ranobelib.me - this is our own email+password login, not an integration
+with a ranobelib.me account (see CLAUDE.md, "Обязательные решения из ТЗ", "Авторизация").
+"""
+
+from __future__ import annotations
+
+from fastapi import APIRouter, Form, Request
+from fastapi.responses import HTMLResponse, RedirectResponse, Response
+
+from app.auth.passwords import PasswordTooLongError, hash_password
+from app.db.connection import get_connection
+from app.db.users import create_user, get_user_by_email
+from app.templating import templates
+
+router = APIRouter()
+
+
+@router.get("/register")
+async def show_register(request: Request) -> HTMLResponse:
+    return templates.TemplateResponse(request, "register.html", {})
+
+
+@router.post("/register", response_model=None)
+async def register(
+    request: Request,
+    email: str = Form(...),
+    password: str = Form(...),
+    password_confirm: str = Form(...),
+) -> Response:
+    conn = get_connection()
+    error: str | None = None
+    if password != password_confirm:
+        error = "Пароли не совпадают"
+    elif get_user_by_email(conn, email) is not None:
+        error = "Этот email уже зарегистрирован"
+    else:
+        try:
+            password_hash = hash_password(password)
+        except PasswordTooLongError:
+            error = "Пароль слишком длинный"
+
+    if error is not None:
+        return templates.TemplateResponse(
+            request,
+            "register.html",
+            {"error": error, "submitted_email": email},
+            status_code=400,
+        )
+
+    create_user(conn, email, password_hash)
+    return RedirectResponse(url="/login", status_code=303)
