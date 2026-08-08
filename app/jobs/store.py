@@ -28,6 +28,18 @@ def get_job(job_id: str) -> DownloadJob | None:
     return _jobs.get(job_id)
 
 
+def list_active_jobs_for_user(user_id: int) -> list[DownloadJob]:
+    """The "Текущие" section of "Загрузки" (app/api/downloads_section.py) - jobs that
+    haven't reached a terminal state yet. Finished ones live in `download_history`
+    instead (see app/db/downloads.py); this isn't the place to also show those.
+    """
+    return [
+        job
+        for job in _jobs.values()
+        if job.user_id == user_id and job.status not in ("done", "error")
+    ]
+
+
 def track_task(job_id: str, task: asyncio.Task[None]) -> None:
     """Keep a strong reference to `task` so it isn't garbage-collected mid-run - asyncio
     only holds a weak reference internally (see `asyncio.create_task()`'s own docs).
