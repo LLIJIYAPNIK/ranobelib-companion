@@ -1,8 +1,14 @@
 """Title lookup: resolve a pasted link/slug, fetch metadata, render the title page."""
 
-from fastapi import APIRouter, Request
+from typing import Annotated
+
+from fastapi import APIRouter, Depends, Request
 from fastapi.responses import HTMLResponse, RedirectResponse, Response
 
+from app.auth.dependencies import get_current_user
+from app.db.connection import get_connection
+from app.db.library import get_entry
+from app.db.users import User
 from app.recent_titles import remember
 from app.services.client import get_client, open_client
 from app.services.exports import available_export_formats
@@ -38,11 +44,18 @@ async def open_title(request: Request, url: str) -> Response:
 
 
 @router.get("/{slug_url}")
-async def show_title(request: Request, slug_url: str) -> HTMLResponse:
+async def show_title(
+    request: Request,
+    slug_url: str,
+    current_user: Annotated[User | None, Depends(get_current_user)],
+) -> HTMLResponse:
     async with open_client(slug_url) as lib:
         title = await lib.get_info()
         volumes = await lib.get_table_of_contents()
     cover_url = title.cover.default or title.cover.md or title.cover.thumbnail
+    in_library = False
+    if current_user is not None:
+        in_library = get_entry(get_connection(), current_user.id, title.slug_url) is not None
     response = templates.TemplateResponse(
         request,
         "title.html",
@@ -51,6 +64,7 @@ async def show_title(request: Request, slug_url: str) -> HTMLResponse:
             "cover_url": cover_url,
             "volumes": volumes,
             "export_formats": available_export_formats(),
+            "in_library": in_library,
         },
     )
     remember(response, request, slug_url=title.slug_url, name=title.name)

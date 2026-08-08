@@ -345,6 +345,15 @@ a {
   background: var(--accent);
 }
 
+.btn--secondary {
+  background: transparent;
+  border: 1px solid var(--border);
+}
+
+.btn--secondary:hover {
+  border-color: var(--accent-teal);
+}
+
 .btn--sm {
   height: 26px;
   padding: 0 12px;

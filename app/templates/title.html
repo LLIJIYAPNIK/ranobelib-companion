@@ -34,16 +34,29 @@
         {% if title.release_date %}<span>{{ title.release_date }}</span>{% endif %}
         {% if title.chapter_count %}<span>{{ title.chapter_count }} глав</span>{% endif %}
       </div>
-      {% if export_formats %}
-      <form method="post" action="/titles/{{ title.slug_url }}/download" class="title-hero__actions">
-        <select name="fmt" class="toc__export-format" aria-label="Формат скачивания">
-          {% for fmt in export_formats %}
-          <option value="{{ fmt }}">{{ fmt | upper }}</option>
-          {% endfor %}
-        </select>
-        <button type="submit" class="btn btn--primary">Скачать тайтл</button>
-      </form>
-      {% endif %}
+      <div class="title-hero__actions">
+        {% if export_formats %}
+        <form method="post" action="/titles/{{ title.slug_url }}/download">
+          <select name="fmt" class="toc__export-format" aria-label="Формат скачивания">
+            {% for fmt in export_formats %}
+            <option value="{{ fmt }}">{{ fmt | upper }}</option>
+            {% endfor %}
+          </select>
+          <button type="submit" class="btn btn--primary">Скачать тайтл</button>
+        </form>
+        {% endif %}
+        {% if in_library %}
+        <form method="post" action="/library/{{ title.slug_url }}/remove">
+          <input type="hidden" name="next" value="/titles/{{ title.slug_url }}">
+          <button type="submit" class="btn btn--secondary">Убрать из библиотеки</button>
+        </form>
+        {% else %}
+        <form method="post" action="/library/{{ title.slug_url }}/add">
+          <input type="hidden" name="next" value="/titles/{{ title.slug_url }}">
+          <button type="submit" class="btn btn--secondary">Добавить в библиотеку</button>
+        </form>
+        {% endif %}
+      </div>
     </div>
   </div>
 
