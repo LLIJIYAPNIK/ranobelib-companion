@@ -1,15 +1,21 @@
 import os
 import tempfile
 import time
+from collections.abc import Iterator
 from datetime import UTC, datetime
 from pathlib import Path
 from unittest.mock import patch
 
+import pytest
 from fastapi.testclient import TestClient
 from ranobelib import MultipleTitleTranslationsError
 from ranobelib.exceptions import AmbiguousChapter
 from ranobelib.models import Chapter, ChapterBranch, ChapterUser, Team, Volume
 
+import app.db.connection as db_connection
+from app.config import get_settings
+from app.db.connection import get_connection
+from app.db.downloads import list_download_history
 from app.jobs.store import create_job, get_job
 from app.main import app
 
@@ -89,19 +95,49 @@ def _wait_until_terminal(job_id: str, timeout: float = 2.0) -> None:
     raise AssertionError(f"job {job_id} did not reach a terminal state in time")
 
 
-def test_start_download_redirects_to_status_page() -> None:
-    volumes = [Volume(number="1", chapters=[Chapter(id=1, volume="1", number="1")])]
-    with patch("app.services.client.RanobeLib", return_value=_FakeClient(volumes)):
-        response = client.post(
-            "/titles/6712--test-novel/download", data={"fmt": "epub"}
+@pytest.fixture
+def logged_in_client(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> Iterator[TestClient]:
+    """Isolated DB + an authenticated session - see tests/test_api_auth.py."""
+    monkeypatch.setenv("DB_PATH", str(tmp_path / "test.db"))
+    monkeypatch.setenv("SESSION_SECRET_KEY", "test-secret")
+    get_settings.cache_clear()
+    db_connection._connection = None
+
+    with TestClient(app, follow_redirects=False) as test_client:
+        test_client.post(
+            "/register",
+            data={
+                "email": "alice@example.com",
+                "password": "hunter2pass",
+                "password_confirm": "hunter2pass",
+            },
         )
+        yield test_client
+
+    get_settings.cache_clear()
+    db_connection._connection = None
+
+
+def test_start_download_requires_login() -> None:
+    response = client.post("/titles/6712--test-novel/download", data={"fmt": "epub"})
 
     assert response.status_code == 303
-    location = response.headers["location"]
-    assert location.startswith("/titles/6712--test-novel/download/")
+    assert response.headers["location"] == "/login"
 
-    job_id = _job_id_from_location(location)
-    _wait_until_terminal(job_id)
+
+def test_start_download_redirects_to_status_page(logged_in_client: TestClient) -> None:
+    volumes = [Volume(number="1", chapters=[Chapter(id=1, volume="1", number="1")])]
+    with patch("app.services.client.RanobeLib", return_value=_FakeClient(volumes)):
+        response = logged_in_client.post(
+            "/titles/6712--test-novel/download", data={"fmt": "epub"}
+        )
+        assert response.status_code == 303
+        location = response.headers["location"]
+        assert location.startswith("/titles/6712--test-novel/download/")
+
+        job_id = _job_id_from_location(location)
+        _wait_until_terminal(job_id)
+
     job = get_job(job_id)
     assert job is not None
     assert job.status == "done"
@@ -112,24 +148,26 @@ def test_start_download_redirects_to_status_page() -> None:
     os.remove(job.result_path)
 
 
-def test_start_download_rejects_unknown_format() -> None:
-    response = client.post(
+def test_start_download_rejects_unknown_format(logged_in_client: TestClient) -> None:
+    response = logged_in_client.post(
         "/titles/6712--test-novel/download", data={"fmt": "docx"}
     )
 
     assert response.status_code == 400
 
 
-def test_start_download_passes_translation_index_through() -> None:
+def test_start_download_passes_translation_index_through(
+    logged_in_client: TestClient,
+) -> None:
     volumes = [Volume(number="1", chapters=[Chapter(id=1, volume="1", number="1")])]
     with patch("app.services.client.RanobeLib", return_value=_FakeClient(volumes)):
-        response = client.post(
+        response = logged_in_client.post(
             "/titles/6712--test-novel/download",
             data={"fmt": "txt", "translation_index": "1"},
         )
+        job_id = _job_id_from_location(response.headers["location"])
+        _wait_until_terminal(job_id)
 
-    job_id = _job_id_from_location(response.headers["location"])
-    _wait_until_terminal(job_id)
     job = get_job(job_id)
     assert job is not None
     assert job.status == "done"
@@ -164,6 +202,9 @@ def test_show_download_status_renders_done_with_file_link() -> None:
     assert response.status_code == 200
     assert "Готово" in response.text
     assert f'href="/titles/6712--test-novel/download/{job.id}/file"' in response.text
+    # a job that's already terminal on page load must not include the poller - see
+    # download-status.js's docstring for why (an infinite reload loop otherwise).
+    assert "static/js/download-status.js" not in response.text
 
 
 def test_show_download_status_unknown_job_returns_404() -> None:
@@ -194,7 +235,21 @@ def test_download_status_json_shape() -> None:
         "completed": 2,
         "total": 5,
         "error": None,
+        "eta_seconds": None,  # no started_at set on this job - not enough signal yet
     }
+
+
+def test_download_status_includes_eta_once_running() -> None:
+    job = create_job("6712--test-novel", "epub")
+    job.status = "running"
+    job.started_at = time.monotonic() - 10  # 10s elapsed
+    job.completed = 5
+    job.total = 10
+
+    response = client.get(f"/titles/6712--test-novel/download/{job.id}/status")
+
+    # 5 chapters in 10s -> 0.5 chapters/s -> 5 remaining chapters -> 10s left
+    assert response.json()["eta_seconds"] == pytest.approx(10.0, rel=0.1)
 
 
 def test_download_result_file_not_ready_returns_404() -> None:
@@ -250,7 +305,7 @@ def test_show_download_status_renders_translation_choice() -> None:
     assert '<option value="2">' not in response.text
 
 
-def test_start_download_needs_translation_end_to_end() -> None:
+def test_start_download_needs_translation_end_to_end(logged_in_client: TestClient) -> None:
     exc = MultipleTitleTranslationsError(
         "6712--test-novel",
         chapters=[
@@ -258,12 +313,12 @@ def test_start_download_needs_translation_end_to_end() -> None:
         ],
     )
     with patch("app.services.client.RanobeLib", return_value=_AmbiguousClient(exc)):
-        response = client.post(
+        response = logged_in_client.post(
             "/titles/6712--test-novel/download", data={"fmt": "epub"}
         )
+        job_id = _job_id_from_location(response.headers["location"])
+        _wait_until_terminal(job_id)
 
-    job_id = _job_id_from_location(response.headers["location"])
-    _wait_until_terminal(job_id)
     job = get_job(job_id)
     assert job is not None
     assert job.status == "needs_translation"
@@ -271,3 +326,24 @@ def test_start_download_needs_translation_end_to_end() -> None:
 
     status_response = client.get(f"/titles/6712--test-novel/download/{job_id}")
     assert "выберите один" in status_response.text
+
+
+def test_start_download_records_history_for_logged_in_user(
+    logged_in_client: TestClient,
+) -> None:
+    volumes = [Volume(number="1", chapters=[Chapter(id=1, volume="1", number="1")])]
+    with patch("app.services.client.RanobeLib", return_value=_FakeClient(volumes)):
+        response = logged_in_client.post(
+            "/titles/6712--test-novel/download", data={"fmt": "epub"}
+        )
+        job_id = _job_id_from_location(response.headers["location"])
+        _wait_until_terminal(job_id)
+
+    os.remove(get_job(job_id).result_path)
+
+    entries = list_download_history(get_connection(), user_id=1)
+    assert len(entries) == 1
+    assert entries[0].slug_url == "6712--test-novel"
+    assert entries[0].fmt == "epub"
+    assert entries[0].status == "done"
+    assert entries[0].chapter_count == 1

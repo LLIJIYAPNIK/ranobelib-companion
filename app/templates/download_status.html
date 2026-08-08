@@ -2,7 +2,11 @@
 {% block title %}Скачивание {{ slug_url }} — RanobeLib Companion{% endblock %}
 {% block content %}
 <main class="content">
-  <div class="download-status" data-status-url="/titles/{{ slug_url }}/download/{{ job.id }}/status">
+  <div
+    class="download-status"
+    data-status-url="/titles/{{ slug_url }}/download/{{ job.id }}/status"
+    data-file-url="/titles/{{ slug_url }}/download/{{ job.id }}/file"
+  >
     <a class="reader-nav__back" href="/titles/{{ slug_url }}">← К оглавлению</a>
     <h1 class="download-status__heading">Скачивание тайтла целиком</h1>
 
@@ -46,11 +50,14 @@
       {% elif job.status == "error" %}{{ job.error }}
       {% endif %}
     </p>
+    <p class="download-status__eta" data-role="eta-text"></p>
     {% if job.status == "done" %}
     <a class="btn btn--primary" href="/titles/{{ slug_url }}/download/{{ job.id }}/file">Скачать файл</a>
     {% endif %}
     {% endif %}
   </div>
+  {% if job.status not in ("done", "error", "needs_translation") %}
   <script src="{{ url_for('static', path='js/download-status.js') }}" defer></script>
+  {% endif %}
 </main>
 {% endblock %}

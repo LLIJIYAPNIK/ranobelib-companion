@@ -4,11 +4,14 @@ import asyncio
 import os
 from typing import Annotated, Any
 
-from fastapi import APIRouter, Form, HTTPException, Request
+from fastapi import APIRouter, Depends, Form, HTTPException, Request
 from fastapi.responses import FileResponse, HTMLResponse, JSONResponse, RedirectResponse
 from starlette.background import BackgroundTask
 
+from app.auth.dependencies import require_current_user
+from app.db.users import User
 from app.jobs.download import run_download_job
+from app.jobs.eta import estimate_remaining_seconds
 from app.jobs.models import DownloadJob
 from app.jobs.store import create_job, get_job, track_task
 from app.services.exports import require_known_format
@@ -20,11 +23,12 @@ router = APIRouter(prefix="/titles/{slug_url}/download")
 @router.post("")
 async def start_download(
     slug_url: str,
+    current_user: Annotated[User, Depends(require_current_user)],
     fmt: Annotated[str, Form()],
     translation_index: Annotated[int | None, Form()] = None,
 ) -> RedirectResponse:
     require_known_format(fmt)
-    job = create_job(slug_url, fmt)
+    job = create_job(slug_url, fmt, user_id=current_user.id)
     task = asyncio.create_task(
         run_download_job(job, translation_index=translation_index)
     )
@@ -74,4 +78,5 @@ def _job_status_payload(job: DownloadJob) -> dict[str, Any]:
         "completed": job.completed,
         "total": job.total,
         "error": job.error,
+        "eta_seconds": estimate_remaining_seconds(job),
     }

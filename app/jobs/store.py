@@ -15,15 +15,29 @@ _jobs: dict[str, DownloadJob] = {}
 _tasks: dict[str, asyncio.Task[None]] = {}
 
 
-def create_job(slug_url: str, fmt: str) -> DownloadJob:
-    """Register a new job in the "queued" state and return it."""
-    job = DownloadJob(id=str(uuid4()), slug_url=slug_url, fmt=fmt)
+def create_job(slug_url: str, fmt: str, user_id: int | None = None) -> DownloadJob:
+    """Register a new job in the "queued" state and return it. `user_id` is None for an
+    anonymous visitor - downloading has never required an account, it just means this job
+    won't show up in anyone's "Загрузки" list (see app/api/downloads_section.py)."""
+    job = DownloadJob(id=str(uuid4()), slug_url=slug_url, fmt=fmt, user_id=user_id)
     _jobs[job.id] = job
     return job
 
 
 def get_job(job_id: str) -> DownloadJob | None:
     return _jobs.get(job_id)
+
+
+def list_active_jobs_for_user(user_id: int) -> list[DownloadJob]:
+    """The "Текущие" section of "Загрузки" (app/api/downloads_section.py) - jobs that
+    haven't reached a terminal state yet. Finished ones live in `download_history`
+    instead (see app/db/downloads.py); this isn't the place to also show those.
+    """
+    return [
+        job
+        for job in _jobs.values()
+        if job.user_id == user_id and job.status not in ("done", "error")
+    ]
 
 
 def track_task(job_id: str, task: asyncio.Task[None]) -> None:

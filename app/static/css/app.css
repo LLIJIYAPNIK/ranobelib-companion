@@ -225,10 +225,11 @@ a {
   margin: 24px 0 12px;
 }
 
-/* "Читаю" locked for anonymous visitors - Claude Design import
-   "RanobeLib Library Locked" (see CLAUDE.md, "Дизайн"). */
+/* Personal-feature-needs-an-account state (originally "Читаю" locked for anonymous
+   visitors - Claude Design import "RanobeLib Library Locked", see CLAUDE.md, "Дизайн"),
+   generalized for reuse by "Загрузки" (PR 17) too. */
 
-.library-locked {
+.locked-feature {
   display: flex;
   flex-direction: column;
   align-items: center;
@@ -241,13 +242,13 @@ a {
   background: var(--bg-surface);
 }
 
-.library-locked__icon {
+.locked-feature__icon {
   position: relative;
   width: 64px;
   height: 74px;
 }
 
-.library-locked__icon-shackle {
+.locked-feature__icon-shackle {
   position: absolute;
   top: 0;
   left: 14px;
@@ -259,7 +260,7 @@ a {
   border-radius: 18px 18px 0 0;
 }
 
-.library-locked__icon-body {
+.locked-feature__icon-body {
   position: absolute;
   bottom: 0;
   width: 64px;
@@ -268,7 +269,7 @@ a {
   background: linear-gradient(135deg, var(--accent), #5b21b6);
 }
 
-.library-locked__icon-keyhole {
+.locked-feature__icon-keyhole {
   position: absolute;
   bottom: 16px;
   left: 28px;
@@ -278,7 +279,7 @@ a {
   background: #1c1230;
 }
 
-.library-locked__icon-keyhole-stem {
+.locked-feature__icon-keyhole-stem {
   position: absolute;
   bottom: 11px;
   left: 30.5px;
@@ -287,33 +288,33 @@ a {
   background: #1c1230;
 }
 
-.library-locked__copy {
+.locked-feature__copy {
   text-align: center;
 }
 
-.library-locked__title {
+.locked-feature__title {
   margin: 0 0 8px;
   font-size: 16px;
   font-weight: 700;
   color: var(--text-primary);
 }
 
-.library-locked__text {
+.locked-feature__text {
   margin: 0;
   font-size: 14px;
   line-height: 1.6;
   color: var(--text-muted);
 }
 
-.library-locked__text a {
+.locked-feature__text a {
   color: #a78bfa;
 }
 
-.library-locked__text a:hover {
+.locked-feature__text a:hover {
   color: #c4b5fd;
 }
 
-.library-locked__cta {
+.locked-feature__cta {
   margin-top: 4px;
   padding: 10px 22px;
   border-radius: 8px;
@@ -838,6 +839,12 @@ a {
   color: var(--accent-orange);
 }
 
+.download-status__eta {
+  font-size: 12px;
+  color: var(--text-muted);
+  margin: 0;
+}
+
 .download-status__ambiguous {
   list-style: none;
   margin: 0;
@@ -870,4 +877,94 @@ a {
   display: flex;
   align-items: center;
   gap: 10px;
+}
+
+.downloads-section {
+  margin-top: 28px;
+}
+
+.downloads-section:first-of-type {
+  margin-top: 20px;
+}
+
+.downloads-section__title {
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--text-secondary);
+  margin: 0 0 12px;
+}
+
+.downloads-list,
+.downloads-history {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+.downloads-list__item,
+.downloads-history__item {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: 12px 0;
+  border-bottom: 1px solid var(--border);
+  font-size: 13px;
+}
+
+.downloads-list__link,
+.downloads-history__link {
+  flex: 1;
+  min-width: 0;
+  color: var(--text-primary);
+  font-weight: 600;
+  text-decoration: none;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.downloads-list__link:hover,
+.downloads-history__link:hover {
+  color: var(--accent-teal);
+}
+
+.downloads-list__fmt,
+.downloads-history__fmt {
+  flex: 0 0 auto;
+  font-family: var(--font-mono);
+  color: var(--text-muted);
+}
+
+.downloads-list__item .download-status__bar {
+  flex: 1;
+  max-width: 120px;
+}
+
+.downloads-list__status {
+  flex: 0 0 auto;
+  color: var(--text-secondary);
+}
+
+.downloads-list__eta {
+  flex: 0 0 auto;
+  color: var(--text-muted);
+  font-size: 12px;
+}
+
+.downloads-history__status {
+  flex: 0 0 auto;
+  color: var(--text-secondary);
+}
+
+.downloads-history__status--error {
+  color: var(--accent-orange);
+}
+
+.downloads-history__date {
+  flex: 0 0 auto;
+  font-family: var(--font-mono);
+  color: var(--text-muted);
+  font-size: 12px;
 }
