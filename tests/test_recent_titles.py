@@ -10,13 +10,13 @@ from app.main import app
 client = TestClient(app)
 
 
-def _fake_title(slug_url: str, name: str) -> Title:
+def _fake_title(slug_url: str, name: str, cover: Cover | None = None) -> Title:
     return Title(
         id=1,
         name=name,
         slug=slug_url.split("--", 1)[1],
         slug_url=slug_url,
-        cover=Cover(),
+        cover=cover or Cover(),
         age_restriction=Label(id=0, label="16+"),
         status=Label(id=1, label="Онгоинг"),
     )
@@ -47,7 +47,21 @@ def test_show_title_sets_recent_titles_cookie() -> None:
 
     cookie = response.cookies.get("recent_titles")
     assert cookie is not None
-    assert json.loads(unquote(cookie)) == [{"slug_url": "1--first-novel", "name": "First Novel"}]
+    assert json.loads(unquote(cookie)) == [
+        {"slug_url": "1--first-novel", "name": "First Novel", "cover_url": None}
+    ]
+
+
+def test_show_title_stores_cover_url_in_recent_titles_cookie() -> None:
+    client.cookies.clear()
+    title = _fake_title(
+        "1--first-novel", "First Novel", cover=Cover(default="https://example.com/cover.jpg")
+    )
+    with patch("app.services.client.RanobeLib", return_value=_FakeClient(title)):
+        response = client.get("/titles/1--first-novel")
+
+    cookie = json.loads(unquote(response.cookies.get("recent_titles")))
+    assert cookie[0]["cover_url"] == "https://example.com/cover.jpg"
 
 
 def test_show_title_moves_reopened_title_to_front() -> None:
@@ -77,6 +91,31 @@ def test_home_lists_recent_titles_from_cookie() -> None:
 
     assert "First Novel" in response.text
     assert 'href="/titles/1--first-novel"' in response.text
+    assert "<img" not in response.text  # old cookie shape, no cover_url - no crash either
+
+    client.cookies.clear()
+
+
+def test_home_renders_cover_when_present_in_cookie() -> None:
+    client.cookies.clear()
+    client.cookies.set(
+        "recent_titles",
+        quote(
+            json.dumps(
+                [
+                    {
+                        "slug_url": "1--first-novel",
+                        "name": "First Novel",
+                        "cover_url": "https://example.com/cover.jpg",
+                    }
+                ]
+            )
+        ),
+    )
+
+    response = client.get("/")
+
+    assert 'src="https://example.com/cover.jpg"' in response.text
 
     client.cookies.clear()
 

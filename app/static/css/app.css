@@ -225,25 +225,6 @@ a {
   margin: 24px 0 12px;
 }
 
-.recent__list {
-  list-style: none;
-  margin: 0;
-  padding: 0;
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-}
-
-.recent__list a {
-  text-decoration: none;
-  color: var(--text-secondary);
-  font-size: 13px;
-}
-
-.recent__list a:hover {
-  color: var(--accent-teal);
-}
-
 .library-list {
   list-style: none;
   margin: 16px 0 0;
