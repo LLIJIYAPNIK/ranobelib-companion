@@ -3,6 +3,7 @@
 {% block content %}
 <main class="content">
   <h1 class="toc__title">Активность</h1>
+  {% if current_user %}
   <p class="content__hint">За сегодня.</p>
 
   <div class="activity-stats">
@@ -55,5 +56,12 @@
     <p class="content__hint">Сегодня ничего не скачивали.</p>
     {% endif %}
   </section>
+  {% else %}
+  {% from "_locked_feature.html" import locked_feature %}
+  {% call locked_feature("Активность скрыта", "/login", "Войти") %}
+  <a href="/login">Войдите</a> или <a href="/register">зарегистрируйтесь</a>,
+  чтобы видеть свою активность за сегодня.
+  {% endcall %}
+  {% endif %}
 </main>
 {% endblock %}

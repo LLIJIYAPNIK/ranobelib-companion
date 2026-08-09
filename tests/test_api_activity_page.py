@@ -67,11 +67,14 @@ def _fake_title(slug_url: str = "6712--test-novel") -> Title:
     )
 
 
-def test_show_activity_requires_login(client: TestClient) -> None:
-    response = client.get("/activity", follow_redirects=False)
+def test_show_activity_anonymous_is_viewable_but_prompts_to_log_in(
+    client: TestClient,
+) -> None:
+    response = client.get("/activity")
 
-    assert response.status_code == 303
-    assert response.headers["location"] == "/login"
+    assert response.status_code == 200
+    assert 'href="/login"' in response.text
+    assert 'href="/register"' in response.text
 
 
 def test_show_activity_empty_state(client: TestClient) -> None:

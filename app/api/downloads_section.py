@@ -7,7 +7,7 @@ from typing import Annotated, Any
 from fastapi import APIRouter, Depends, Request
 from fastapi.responses import HTMLResponse, JSONResponse
 
-from app.auth.dependencies import require_current_user
+from app.auth.dependencies import get_current_user, require_current_user
 from app.db.connection import get_connection
 from app.db.downloads import list_download_history
 from app.db.users import User
@@ -21,12 +21,16 @@ router = APIRouter(prefix="/downloads")
 
 @router.get("")
 async def show_downloads(
-    request: Request, user: Annotated[User, Depends(require_current_user)]
+    request: Request, user: Annotated[User | None, Depends(get_current_user)]
 ) -> HTMLResponse:
-    """Unlike /library, downloading always required knowing who's asking (it spends
-    ranobelib.me API quota) - viewing the section follows the same rule now."""
-    active_jobs = list_active_jobs_for_user(user.id)
-    history = list_download_history(get_connection(), user.id)
+    """Viewing the page itself doesn't require an account - same locked-screen gate as
+    /library (PR 22): an anonymous visitor just can't have any downloads of their own, so
+    that's the one thing the page won't show them (downloads.html prompts them to log in/
+    register instead of the lists). Starting/tracking an actual download still requires
+    login wherever it spends ranobelib.me API quota - see require_current_user below and
+    on POST /titles/{slug_url}/download."""
+    active_jobs = list_active_jobs_for_user(user.id) if user is not None else []
+    history = list_download_history(get_connection(), user.id) if user is not None else []
     return templates.TemplateResponse(
         request,
         "downloads.html",
