@@ -4,6 +4,7 @@
 <main class="content">
   <h1 class="toc__title">Загрузки</h1>
 
+  {% if current_user %}
   <section class="downloads-section" data-role="active-downloads">
     <h2 class="downloads-section__title">Текущие</h2>
     {% if active_jobs %}
@@ -23,5 +24,12 @@
     <p class="content__hint">Пока ничего не скачивали.</p>
     {% endif %}
   </section>
+  {% else %}
+  {% from "_locked_feature.html" import locked_feature %}
+  {% call locked_feature("Загрузки скрыты", "/login", "Войти") %}
+  <a href="/login">Войдите</a> или <a href="/register">зарегистрируйтесь</a>,
+  чтобы видеть свои загрузки и их историю.
+  {% endcall %}
+  {% endif %}
 </main>
 {% endblock %}
