@@ -1,17 +1,18 @@
 {% extends "base.html" %}
-{% block title %}{{ title.name }} — RanobeLib Companion{% endblock %}
+{% set display_name = title.rus_name or title.name %}
+{% block title %}{{ display_name }} — RanobeLib Companion{% endblock %}
 {% block content %}
 <main class="content">
   <div class="title-hero">
     {% if cover_url %}
-    <img class="title-hero__cover" src="{{ cover_url }}" alt="Обложка «{{ title.name }}»">
+    <img class="title-hero__cover" src="{{ cover_url }}" alt="Обложка «{{ display_name }}»">
     {% endif %}
     <div class="title-hero__info">
-      <h1 class="title-hero__name">{{ title.name }}</h1>
+      <h1 class="title-hero__name">{{ display_name }}</h1>
       {% set alt_names = [] %}
-      {% if title.rus_name and title.rus_name != title.name %}{% set _ = alt_names.append(title.rus_name) %}{% endif %}
-      {% if title.eng_name and title.eng_name != title.name %}{% set _ = alt_names.append(title.eng_name) %}{% endif %}
-      {% for other in title.other_names %}{% if other != title.name %}{% set _ = alt_names.append(other) %}{% endif %}{% endfor %}
+      {% if title.name != display_name %}{% set _ = alt_names.append(title.name) %}{% endif %}
+      {% if title.eng_name and title.eng_name != display_name %}{% set _ = alt_names.append(title.eng_name) %}{% endif %}
+      {% for other in title.other_names %}{% if other != display_name %}{% set _ = alt_names.append(other) %}{% endif %}{% endfor %}
       {% if alt_names %}
       <p class="title-hero__alt-name">{{ alt_names | join(" / ") }}</p>
       {% endif %}

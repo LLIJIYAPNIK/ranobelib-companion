@@ -100,6 +100,40 @@ def test_show_title_renders_metadata() -> None:
     assert "42" in response.text
 
 
+def test_show_title_uses_russian_name_as_the_primary_heading() -> None:
+    # PR 25: rus_name (already in the SDK's Title model, no issue needed) becomes the
+    # primary display name wherever the title's name is shown, with the original name
+    # falling back to an alt-name line instead of disappearing.
+    title = _fake_title()
+    with patch("app.services.client.RanobeLib", return_value=_FakeClient(title)):
+        response = client.get("/titles/6712--test-novel")
+
+    assert response.status_code == 200
+    assert "<title>Тестовый роман — RanobeLib Companion</title>" in response.text
+    assert '<h1 class="title-hero__name">Тестовый роман</h1>' in response.text
+    assert '<p class="title-hero__alt-name">Test Novel</p>' in response.text
+    assert 'alt="Обложка «Тестовый роман»"' in response.text
+
+
+def test_show_title_falls_back_to_original_name_without_a_russian_one() -> None:
+    title = Title(
+        id=6712,
+        name="Test Novel",
+        slug="test-novel",
+        slug_url="6712--test-novel",
+        cover=Cover(default="https://example.com/cover.jpg"),
+        age_restriction=Label(id=0, label="16+"),
+        status=Label(id=1, label="Онгоинг"),
+    )
+    with patch("app.services.client.RanobeLib", return_value=_FakeClient(title)):
+        response = client.get("/titles/6712--test-novel")
+
+    assert response.status_code == 200
+    assert "<title>Test Novel — RanobeLib Companion</title>" in response.text
+    assert '<h1 class="title-hero__name">Test Novel</h1>' in response.text
+    assert "title-hero__alt-name" not in response.text
+
+
 def test_show_title_renders_full_metadata() -> None:
     title = Title(
         id=6712,
