@@ -17,12 +17,20 @@ from app.jobs.models import DownloadJob
 
 class _FakeClient:
     def __init__(
-        self, volumes: list[Volume] | None = None, exc: Exception | None = None
+        self,
+        volumes: list[Volume] | None = None,
+        exc: Exception | None = None,
+        fail_times: int | None = None,
     ) -> None:
         self._volumes = volumes or []
         self._exc = exc
+        # None means "every call fails" (the old, unconditional behavior); an int caps how
+        # many of the first calls fail before download_title() starts succeeding, for
+        # exercising _download_title_with_retries()'s recovery path.
+        self._fail_times = fail_times
         self.export_calls: list[tuple[list[Chapter], str, str]] = []
         self.download_kwargs: dict[str, object] | None = None
+        self.download_calls = 0
 
     async def __aenter__(self) -> "_FakeClient":
         return self
@@ -37,8 +45,11 @@ class _FakeClient:
         translation_index: int | None = None,
         on_chapter: object = None,
     ) -> list[Volume]:
+        self.download_calls += 1
         self.download_kwargs = {"branch_id": branch_id, "translation_index": translation_index}
-        if self._exc is not None:
+        if self._exc is not None and (
+            self._fail_times is None or self.download_calls <= self._fail_times
+        ):
             raise self._exc
         chapters = [chapter for volume in self._volumes for chapter in volume.chapters]
         total = len(chapters)
@@ -174,15 +185,54 @@ async def test_run_download_job_maps_auth_required(monkeypatch: pytest.MonkeyPat
 
 
 async def test_run_download_job_maps_rate_limit(monkeypatch: pytest.MonkeyPatch) -> None:
+    # A title where the rate limit never lets up: _download_title_with_retries() should
+    # still give up eventually (after _RATE_LIMIT_RETRIES retries) and surface the same
+    # "error" status as before this retry loop existed, not hang or retry forever.
     exc = RateLimitError(retry_after=30)
     fake = _FakeClient(exc=exc)
     monkeypatch.setattr("app.jobs.download.open_client", lambda slug_url: fake)
+    sleeps: list[float] = []
+
+    async def fake_sleep(delay: float) -> None:
+        sleeps.append(delay)
 
     job = _job()
-    await run_download_job(job)
+    await run_download_job(job, sleep=fake_sleep)
 
     assert job.status == "error"
     assert job.error == "ranobelib сейчас ограничивает запросы, попробуйте позже"
+    assert sleeps == [30, 30, 30, 30, 30]
+    assert fake.download_calls == 6
+
+
+async def test_run_download_job_recovers_after_transient_rate_limit(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    # Reproduces PR 20: a long title's sequential fetch outlasts ApiClient's own retry
+    # budget and gets a RateLimitError partway through. RanobeLib.download_title() itself
+    # has no memory of where it stopped, but its disk cache means retrying the whole call
+    # is cheap - already-fetched chapters come back from cache, so this must recover into
+    # a normal "done" job rather than surfacing as a terminal error.
+    chapters = [Chapter(id=1, volume="1", number="1")]
+    volumes = [Volume(number="1", chapters=chapters)]
+    exc = RateLimitError(retry_after=None)
+    fake = _FakeClient(volumes=volumes, exc=exc, fail_times=2)
+    monkeypatch.setattr("app.jobs.download.open_client", lambda slug_url: fake)
+    sleeps: list[float] = []
+
+    async def fake_sleep(delay: float) -> None:
+        sleeps.append(delay)
+
+    job = _job()
+    await run_download_job(job, sleep=fake_sleep)
+
+    assert job.status == "done"
+    assert fake.download_calls == 3
+    # No Retry-After header on either failure, so both back off by the fallback delay.
+    assert sleeps == [30, 30]
+
+    assert job.result_path is not None
+    os.remove(job.result_path)
 
 
 async def test_run_download_job_maps_unexpected_error(monkeypatch: pytest.MonkeyPatch) -> None:
