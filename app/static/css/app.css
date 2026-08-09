@@ -16,6 +16,14 @@
   --font-sans:
     -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif;
   --font-mono: ui-monospace, Menlo, monospace;
+  --font-serif: Georgia, "Times New Roman", serif;
+  /* Reader typography/width settings (PR 30) - overridden inline on :root by
+     reader-settings.js from the visitor's saved preference (localStorage), read fresh on
+     every chapter page load. These defaults match the reader's pre-PR-30 hardcoded values. */
+  --reader-font-family: var(--font-sans);
+  --reader-font-size: 15px;
+  --reader-line-height: 1.85;
+  --reader-width: 640px;
 }
 
 * {
@@ -701,18 +709,19 @@ a {
 }
 
 .reader-nav__adjacent--bottom {
-  max-width: 640px;
+  max-width: var(--reader-width);
   margin: 24px auto 0;
   padding-top: 20px;
   border-top: 1px solid var(--border);
 }
 
 .reader-content {
-  max-width: 640px;
+  max-width: var(--reader-width);
   margin: 0 auto;
   color: var(--text-secondary);
-  font-size: 15px;
-  line-height: 1.85;
+  font-family: var(--reader-font-family);
+  font-size: var(--reader-font-size);
+  line-height: var(--reader-line-height);
 }
 
 .reader-content p {
@@ -729,6 +738,53 @@ a {
   border: none;
   border-top: 1px solid var(--border);
   margin: 24px 0;
+}
+
+.reader-settings {
+  margin-top: 8px;
+}
+
+.reader-settings__toggle {
+  display: inline-flex;
+  align-items: center;
+  width: fit-content;
+  height: 30px;
+  padding: 0 12px;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--text-secondary);
+  cursor: pointer;
+  list-style: none;
+}
+
+.reader-settings__toggle::-webkit-details-marker {
+  display: none;
+}
+
+.reader-settings__toggle:hover {
+  border-color: var(--accent-teal);
+  color: var(--accent-teal);
+}
+
+.reader-settings__panel {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  margin-top: 10px;
+  padding: 14px;
+  background: var(--bg-surface);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+}
+
+.reader-settings__field {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  font-size: 12px;
+  color: var(--text-muted);
 }
 
 .reader-export {

@@ -68,6 +68,20 @@ def test_read_chapter_renders_heading_and_content() -> None:
     assert "<p>Текст главы</p>" in response.text
 
 
+def test_read_chapter_renders_reader_settings_panel() -> None:
+    chapter = Chapter(id=1, volume="1", number="5", content="<p>x</p>")
+    with patch("app.services.client.RanobeLib", return_value=_FakeClient(chapter)):
+        response = client.get("/titles/6712--test-novel/chapters/1/5")
+
+    assert response.status_code == 200
+    assert 'data-role="reader-settings"' in response.text
+    assert 'data-setting="fontFamily"' in response.text
+    assert 'data-setting="fontSize"' in response.text
+    assert 'data-setting="lineHeight"' in response.text
+    assert 'data-setting="width"' in response.text
+    assert "static/js/reader-settings.js" in response.text
+
+
 def test_read_chapter_shows_adjacent_chapter_links() -> None:
     chapter = Chapter(id=2, volume="1", number="2", name="Середина", content="<p>x</p>")
     volumes = [
