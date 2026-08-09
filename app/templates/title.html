@@ -35,6 +35,12 @@
         {% if title.release_date %}<span>{{ title.release_date }}</span>{% endif %}
         {% if title.chapter_count %}<span>{{ title.chapter_count }} глав</span>{% endif %}
       </div>
+      {% if in_library and progress_percent is not none %}
+      <p class="content__hint">Прочитано {{ progress_percent }}%</p>
+      <div class="reading-progress reading-progress--hero">
+        <div class="reading-progress__fill" style="width: {{ progress_percent }}%"></div>
+      </div>
+      {% endif %}
       <div class="title-hero__actions">
         {% if export_formats %}
         <form method="post" action="/titles/{{ title.slug_url }}/download">

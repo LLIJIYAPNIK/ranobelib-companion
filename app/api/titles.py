@@ -9,6 +9,7 @@ from app.auth.dependencies import get_current_user
 from app.db.connection import get_connection
 from app.db.library import get_entry
 from app.db.users import User
+from app.reading_progress import reading_progress_percent
 from app.recent_titles import remember
 from app.services.client import get_client, open_client
 from app.services.exports import available_export_formats
@@ -53,9 +54,16 @@ async def show_title(
         title = await lib.get_info()
         volumes = await lib.get_table_of_contents()
     cover_url = title.cover.default or title.cover.md or title.cover.thumbnail
-    in_library = False
+    library_entry = None
     if current_user is not None:
-        in_library = get_entry(get_connection(), current_user.id, title.slug_url) is not None
+        library_entry = get_entry(get_connection(), current_user.id, title.slug_url)
+    progress_percent = (
+        reading_progress_percent(
+            volumes, library_entry.last_read_volume, library_entry.last_read_number
+        )
+        if library_entry is not None
+        else None
+    )
     response = templates.TemplateResponse(
         request,
         "title.html",
@@ -64,7 +72,8 @@ async def show_title(
             "cover_url": cover_url,
             "volumes": volumes,
             "export_formats": available_export_formats(),
-            "in_library": in_library,
+            "in_library": library_entry is not None,
+            "progress_percent": progress_percent,
         },
     )
     remember(

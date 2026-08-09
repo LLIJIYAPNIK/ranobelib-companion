@@ -12,6 +12,7 @@ from app.auth.dependencies import get_current_user, require_current_user
 from app.db.connection import get_connection
 from app.db.library import LibraryEntry, add_entry, list_entries, remove_entry
 from app.db.users import User
+from app.reading_progress import reading_progress_percent
 from app.services.catalog import get_catalog
 from app.services.client import get_client, open_client
 from app.templating import templates
@@ -150,23 +151,38 @@ def _safe_next(next_url: str | None, default: str) -> str:
     return default
 
 
-async def _library_items(user: User) -> list[dict[str, LibraryEntry | str | None]]:
-    """Each entry's display name/cover, fetched fresh through the SDK (cheap - cache_dir
-    makes it a local cache hit after the first request) rather than stored in our own DB,
-    which would duplicate SDK response data. A title that's gone/unreachable on
-    ranobelib.me doesn't take the whole page down with it - it just renders with its
-    slug_url as a fallback label instead of a name, and no cover.
+async def _library_items(user: User) -> list[dict[str, LibraryEntry | str | int | None]]:
+    """Each entry's display name/cover/reading-progress, fetched fresh through the SDK
+    (cheap - cache_dir makes it a local cache hit after the first request) rather than
+    stored in our own DB, which would duplicate SDK response data. A title that's gone/
+    unreachable on ranobelib.me doesn't take the whole page down with it - it just renders
+    with its slug_url as a fallback label instead of a name, and no cover/progress.
     """
-    items: list[dict[str, LibraryEntry | str | None]] = []
+    items: list[dict[str, LibraryEntry | str | int | None]] = []
     for entry in list_entries(get_connection(), user.id):
         name: str | None = None
         cover_url: str | None = None
+        progress_percent: int | None = None
         try:
             async with open_client(entry.slug_url) as lib:
                 title = await lib.get_info()
-            name = title.rus_name or title.name
-            cover_url = title.cover.default or title.cover.md or title.cover.thumbnail
+                name = title.rus_name or title.name
+                cover_url = title.cover.default or title.cover.md or title.cover.thumbnail
+                # Only worth the extra fetch once there's a recorded position to place -
+                # nothing to compute a percentage against for a never-opened entry.
+                if entry.last_read_volume is not None:
+                    volumes = await lib.get_table_of_contents()
+                    progress_percent = reading_progress_percent(
+                        volumes, entry.last_read_volume, entry.last_read_number
+                    )
         except RanobeLibError:
             pass
-        items.append({"entry": entry, "name": name, "cover_url": cover_url})
+        items.append(
+            {
+                "entry": entry,
+                "name": name,
+                "cover_url": cover_url,
+                "progress_percent": progress_percent,
+            }
+        )
     return items
