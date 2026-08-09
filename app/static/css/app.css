@@ -1057,4 +1057,102 @@ a {
     flex: 1;
     text-align: left;
   }
+
+  .header {
+    padding: 14px 16px;
+    flex-wrap: wrap;
+  }
+
+  .content {
+    padding: 16px;
+  }
+
+  .library-tabs {
+    padding: 0 16px;
+  }
+
+  .search-form {
+    max-width: none;
+    flex-wrap: wrap;
+  }
+
+  .search-input {
+    flex: 1 1 100%;
+  }
+
+  .title-card-grid {
+    grid-template-columns: repeat(auto-fill, minmax(100px, 1fr));
+    gap: 10px;
+  }
+
+  .title-card__name {
+    font-size: 11px;
+  }
+
+  .locked-feature {
+    padding: 32px 20px;
+  }
+
+  .title-hero {
+    gap: 14px;
+    padding-bottom: 16px;
+  }
+
+  .title-hero__cover {
+    width: 100px;
+    height: 148px;
+    flex: 0 0 100px;
+  }
+
+  .title-hero__name {
+    font-size: 22px;
+    letter-spacing: -0.3px;
+    line-height: 1.15;
+  }
+
+  .title-hero__actions {
+    flex-wrap: wrap;
+  }
+
+  .title-hero__actions form {
+    display: flex;
+    flex: 1 1 100%;
+    gap: 8px;
+  }
+
+  .toc__volume-header {
+    flex-wrap: wrap;
+  }
+
+  .downloads-list__item,
+  .downloads-history__item {
+    flex-wrap: wrap;
+    gap: 6px 10px;
+  }
+
+  .downloads-list__link,
+  .downloads-history__link {
+    flex: 1 1 100%;
+    white-space: normal;
+  }
+
+  .downloads-list__item .download-status__bar {
+    flex: 1 1 100%;
+    max-width: none;
+    order: 3;
+  }
+
+  .activity-stats {
+    gap: 16px;
+    flex-wrap: wrap;
+  }
+
+  .activity-stats__item {
+    flex: 1 1 30%;
+    min-width: 90px;
+  }
+
+  .activity-stats__value {
+    font-size: 17px;
+  }
 }
