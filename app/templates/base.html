@@ -10,10 +10,32 @@
   <div class="app-shell">
     <nav class="sidebar">
       <div class="sidebar__brand" aria-hidden="true"></div>
-      <a class="sidebar__link{% if active_nav == 'home' %} sidebar__link--active{% endif %}" href="/">Главная</a>
-      <a class="sidebar__link{% if active_nav == 'library' %} sidebar__link--active{% endif %}" href="/library">Библиотека</a>
-      <a class="sidebar__link{% if active_nav == 'downloads' %} sidebar__link--active{% endif %}" href="/downloads">Загрузки</a>
-      <a class="sidebar__link{% if active_nav == 'activity' %} sidebar__link--active{% endif %}" href="/activity">Активность</a>
+      <a class="sidebar__link{% if active_nav == 'home' %} sidebar__link--active{% endif %}" href="/" title="Главная" aria-label="Главная">
+        <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+          <path d="M3 11.5 12 4l9 7.5"/>
+          <path d="M5.5 10v9a1 1 0 0 0 1 1h11a1 1 0 0 0 1-1v-9"/>
+          <path d="M9.5 20v-6h5v6"/>
+        </svg>
+      </a>
+      <a class="sidebar__link{% if active_nav == 'library' %} sidebar__link--active{% endif %}" href="/library" title="Библиотека" aria-label="Библиотека">
+        <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+          <path d="M12 6.5c-1.6-1.2-3.7-1.8-6-1.8v13c2.3 0 4.4.6 6 1.8"/>
+          <path d="M12 6.5c1.6-1.2 3.7-1.8 6-1.8v13c-2.3 0-4.4.6-6 1.8"/>
+          <path d="M12 6.5v13"/>
+        </svg>
+      </a>
+      <a class="sidebar__link{% if active_nav == 'downloads' %} sidebar__link--active{% endif %}" href="/downloads" title="Загрузки" aria-label="Загрузки">
+        <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+          <path d="M12 4v11"/>
+          <path d="M7.5 11 12 15.5 16.5 11"/>
+          <path d="M4.5 18.5v1a1 1 0 0 0 1 1h13a1 1 0 0 0 1-1v-1"/>
+        </svg>
+      </a>
+      <a class="sidebar__link{% if active_nav == 'activity' %} sidebar__link--active{% endif %}" href="/activity" title="Активность" aria-label="Активность">
+        <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+          <path d="M3 12h4l2.2-6 3.6 12 2.2-6H21"/>
+        </svg>
+      </a>
       <div class="sidebar__account">
         {% if current_user %}
         <span class="sidebar__account-email" title="{{ current_user.email }}">{{ current_user.email }}</span>

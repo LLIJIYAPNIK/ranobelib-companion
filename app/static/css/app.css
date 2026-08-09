@@ -69,6 +69,10 @@ a {
   text-align: center;
 }
 
+.sidebar__link svg {
+  vertical-align: middle;
+}
+
 .sidebar__link--active {
   color: var(--accent-teal);
 }
