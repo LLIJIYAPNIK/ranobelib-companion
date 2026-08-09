@@ -398,6 +398,24 @@ a {
   color: var(--text-muted);
 }
 
+.reading-progress {
+  height: 3px;
+  background: var(--border);
+  border-radius: 2px;
+  overflow: hidden;
+}
+
+.reading-progress__fill {
+  height: 100%;
+  background: var(--accent-teal);
+  border-radius: 2px;
+}
+
+.reading-progress--hero {
+  max-width: 320px;
+  margin-top: 4px;
+}
+
 .title-hero {
   display: flex;
   gap: 28px;
