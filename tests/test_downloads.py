@@ -37,6 +37,7 @@ class _FakeClient:
         *,
         branch_id: int | None = None,
         translation_index: int | None = None,
+        chapter_delay: float = 0.0,
         on_chapter: object = None,
     ) -> list[Volume]:
         chapters = [chapter for volume in self._volumes for chapter in volume.chapters]
