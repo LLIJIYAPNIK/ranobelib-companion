@@ -91,6 +91,36 @@ def test_read_chapter_shows_adjacent_chapter_links() -> None:
     assert 'href="/titles/6712--test-novel/chapters/1/3"' in response.text
 
 
+def test_read_chapter_duplicates_adjacent_links_below_the_content() -> None:
+    # PR 28: the same prev/next navigation as the top block, repeated after the chapter
+    # text so it doesn't take a scroll back to the top to reach it.
+    chapter = Chapter(id=2, volume="1", number="2", name="Середина", content="<p>x</p>")
+    volumes = [
+        Volume(
+            number="1",
+            chapters=[
+                Chapter(id=1, volume="1", number="1"),
+                Chapter(id=2, volume="1", number="2"),
+                Chapter(id=3, volume="1", number="3"),
+            ],
+        )
+    ]
+    with patch(
+        "app.services.client.RanobeLib",
+        return_value=_FakeClient(chapter, volumes=volumes),
+    ):
+        response = client.get("/titles/6712--test-novel/chapters/1/2")
+
+    assert response.status_code == 200
+    assert response.text.count('href="/titles/6712--test-novel/chapters/1/1"') == 2
+    assert response.text.count('href="/titles/6712--test-novel/chapters/1/3"') == 2
+    assert 'class="reader-nav__adjacent reader-nav__adjacent--bottom"' in response.text
+    # Bottom block comes after the chapter content, not before it.
+    assert response.text.index("reader-nav__adjacent--bottom") > response.text.index(
+        'data-role="chapter"'
+    )
+
+
 def test_read_chapter_crosses_volume_boundary() -> None:
     chapter = Chapter(id=1, volume="1", number="3", name="Конец тома", content="<p>x</p>")
     volumes = [
