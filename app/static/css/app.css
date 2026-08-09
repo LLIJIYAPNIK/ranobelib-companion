@@ -700,6 +700,13 @@ a {
   font-size: 13px;
 }
 
+.reader-nav__adjacent--bottom {
+  max-width: 640px;
+  margin: 24px auto 0;
+  padding-top: 20px;
+  border-top: 1px solid var(--border);
+}
+
 .reader-content {
   max-width: 640px;
   margin: 0 auto;
@@ -1178,6 +1185,13 @@ a {
     border-top: 1px solid var(--border);
     justify-content: space-between;
     z-index: 40;
+  }
+
+  /* The top instance is already pinned to the bottom of the viewport above (immersive
+     reader mode, PR 19) - a second copy after the chapter content would just duplicate
+     it on screen at once, so it's mobile-only redundant here. */
+  .reader-nav__adjacent--bottom {
+    display: none;
   }
 
   body.reader-page .main {
