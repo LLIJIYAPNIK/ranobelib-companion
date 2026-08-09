@@ -72,6 +72,9 @@ class _FakeClient:
     async def get_table_of_contents(self) -> list[Volume]:
         return self._volumes
 
+    async def estimate_title_size(self) -> int:
+        return 0
+
 
 def test_add_requires_login(client: TestClient) -> None:
     response = client.post(

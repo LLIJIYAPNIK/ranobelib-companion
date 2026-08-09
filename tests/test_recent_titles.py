@@ -38,6 +38,9 @@ class _FakeClient:
     async def get_table_of_contents(self) -> list[Volume]:
         return []
 
+    async def estimate_title_size(self) -> int:
+        return 0
+
 
 def test_show_title_sets_recent_titles_cookie() -> None:
     client.cookies.clear()

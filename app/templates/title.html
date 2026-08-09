@@ -34,6 +34,7 @@
         {% if title.is_licensed %}<span>Лицензировано</span>{% endif %}
         {% if title.release_date %}<span>{{ title.release_date }}</span>{% endif %}
         {% if title.chapter_count %}<span>{{ title.chapter_count }} глав</span>{% endif %}
+        {% if estimated_size_label %}<span>≈ {{ estimated_size_label }}</span>{% endif %}
       </div>
       {% if in_library and progress_percent is not none %}
       <p class="content__hint">Прочитано {{ progress_percent }}%</p>
