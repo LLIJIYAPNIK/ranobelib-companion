@@ -996,3 +996,186 @@ a {
   text-transform: uppercase;
   letter-spacing: 0.5px;
 }
+
+/* Mobile breakpoint — layout adapted from the "Mobile Home" / "Mobile Title Page" /
+   "Mobile Reader" / "Mobile Downloads" frames in the Claude Design import (see
+   CLAUDE.md, "Дизайн"). Sidebar becomes a bottom tab bar, matching those frames;
+   account controls move to a slim fixed top strip, which isn't covered by any of
+   the mobile frames, extended here from the same visual language. */
+@media (max-width: 640px) {
+  .main {
+    padding-top: 48px;
+    padding-bottom: 72px;
+  }
+
+  .sidebar {
+    position: fixed;
+    top: auto;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    width: 100%;
+    height: 64px;
+    flex-direction: row;
+    align-items: center;
+    justify-content: space-around;
+    gap: 0;
+    padding: 0;
+    border-right: none;
+    border-top: 1px solid var(--border);
+    z-index: 40;
+  }
+
+  .sidebar__brand {
+    display: none;
+  }
+
+  .sidebar__link {
+    font-size: 10px;
+  }
+
+  .sidebar__account {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    margin-top: 0;
+    width: auto;
+    flex-direction: row;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    padding: 10px 16px;
+    border-top: none;
+    border-bottom: 1px solid var(--border);
+    background: var(--bg-panel);
+    z-index: 40;
+  }
+
+  .sidebar__account-email {
+    max-width: none;
+    flex: 1;
+    text-align: left;
+  }
+
+  .header {
+    padding: 14px 16px;
+    flex-wrap: wrap;
+  }
+
+  .content {
+    padding: 16px;
+  }
+
+  .library-tabs {
+    padding: 0 16px;
+  }
+
+  .search-form {
+    max-width: none;
+    flex-wrap: wrap;
+  }
+
+  .search-input {
+    flex: 1 1 100%;
+  }
+
+  .title-card-grid {
+    grid-template-columns: repeat(auto-fill, minmax(100px, 1fr));
+    gap: 10px;
+  }
+
+  .title-card__name {
+    font-size: 11px;
+  }
+
+  .locked-feature {
+    padding: 32px 20px;
+  }
+
+  .title-hero {
+    gap: 14px;
+    padding-bottom: 16px;
+  }
+
+  .title-hero__cover {
+    width: 100px;
+    height: 148px;
+    flex: 0 0 100px;
+  }
+
+  .title-hero__name {
+    font-size: 22px;
+    letter-spacing: -0.3px;
+    line-height: 1.15;
+  }
+
+  .title-hero__actions {
+    flex-wrap: wrap;
+  }
+
+  .title-hero__actions form {
+    display: flex;
+    flex: 1 1 100%;
+    gap: 8px;
+  }
+
+  .toc__volume-header {
+    flex-wrap: wrap;
+  }
+
+  .downloads-list__item,
+  .downloads-history__item {
+    flex-wrap: wrap;
+    gap: 6px 10px;
+  }
+
+  .downloads-list__link,
+  .downloads-history__link {
+    flex: 1 1 100%;
+    white-space: normal;
+  }
+
+  .downloads-list__item .download-status__bar {
+    flex: 1 1 100%;
+    max-width: none;
+    order: 3;
+  }
+
+  .activity-stats {
+    gap: 16px;
+    flex-wrap: wrap;
+  }
+
+  .activity-stats__item {
+    flex: 1 1 30%;
+    min-width: 90px;
+  }
+
+  .activity-stats__value {
+    font-size: 17px;
+  }
+
+  .reader-nav__adjacent {
+    position: fixed;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    margin: 0;
+    padding: 14px 20px;
+    background: var(--bg-panel);
+    border-top: 1px solid var(--border);
+    justify-content: space-between;
+    z-index: 40;
+  }
+
+  body.reader-page .main {
+    padding-top: 0;
+    padding-bottom: 56px;
+  }
+
+  body.reader-page .sidebar,
+  body.reader-page .sidebar__account {
+    display: none;
+  }
+}
