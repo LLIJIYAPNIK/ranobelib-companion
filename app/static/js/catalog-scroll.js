@@ -44,8 +44,27 @@
     grid.insertAdjacentHTML("beforeend", await response.text());
     nextPage = response.headers.get("X-Has-Next-Page") === "true" ? nextPage + 1 : null;
     loading = false;
-    if (!nextPage) observer.unobserve(sentinel);
+    if (!nextPage) {
+      observer.unobserve(sentinel);
+      return;
+    }
+    rearm();
   }
 
+  // IntersectionObserver only reports a *change* in intersection - if the sentinel is
+  // still inside the trigger zone right after a page loads (e.g. on a tall/wide screen
+  // where a page of cards never fills the viewport), the ratio never crosses the
+  // threshold again and no further pages load on their own, even though there's plainly
+  // room for more - only a manual resize/zoom, which forces a fresh layout pass, used to
+  // unstick it. Re-observing the sentinel makes IntersectionObserver report its current
+  // state fresh, the same way it does the first time observe() is called, so this covers
+  // both "just appended more content" and "the viewport itself was resized" without
+  // duplicating the rootMargin math by hand.
+  function rearm() {
+    observer.unobserve(sentinel);
+    observer.observe(sentinel);
+  }
+
+  window.addEventListener("resize", rearm);
   observer.observe(sentinel);
 })();
