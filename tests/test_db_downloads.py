@@ -1,8 +1,9 @@
 import sqlite3
+from datetime import UTC, datetime, timedelta
 
 import pytest
 
-from app.db.downloads import list_download_history, record_download
+from app.db.downloads import list_download_history, list_download_history_today, record_download
 from app.db.migrate import run_migrations
 
 
@@ -74,3 +75,34 @@ def test_list_download_history_respects_limit(conn: sqlite3.Connection) -> None:
 
 def test_list_download_history_empty(conn: sqlite3.Connection) -> None:
     assert list_download_history(conn, 1) == []
+
+
+def test_list_download_history_today_includes_todays_entry(conn: sqlite3.Connection) -> None:
+    record_download(conn, 1, "6712--test-novel", "epub", "done", 1, None)
+
+    entries = list_download_history_today(conn, 1)
+
+    assert [entry.slug_url for entry in entries] == ["6712--test-novel"]
+
+
+def test_list_download_history_today_excludes_yesterday(conn: sqlite3.Connection) -> None:
+    yesterday = (datetime.now(UTC) - timedelta(days=1)).isoformat()
+    conn.execute(
+        "INSERT INTO download_history "
+        "(user_id, slug_url, fmt, status, chapter_count, error, finished_at) "
+        "VALUES (1, '6712--old-novel', 'epub', 'done', 1, NULL, ?)",
+        (yesterday,),
+    )
+    conn.commit()
+
+    assert list_download_history_today(conn, 1) == []
+
+
+def test_list_download_history_today_excludes_other_users(conn: sqlite3.Connection) -> None:
+    conn.execute(
+        "INSERT INTO users (id, email, password_hash, created_at) "
+        "VALUES (2, 'bob@example.com', 'hash', 'now')"
+    )
+    record_download(conn, 2, "6712--test-novel", "epub", "done", 1, None)
+
+    assert list_download_history_today(conn, 1) == []
