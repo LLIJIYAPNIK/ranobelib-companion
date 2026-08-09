@@ -18,7 +18,7 @@
       {% endif %}
       <div class="title-hero__badges">
         {% for genre in title.genres %}
-        <span class="badge">{{ genre.name }}</span>
+        <a class="badge badge--link" href="/library/catalog?genre={{ genre.id }}&genre_name={{ genre.name | urlencode }}">{{ genre.name }}</a>
         {% endfor %}
       </div>
       {% if title.tags %}

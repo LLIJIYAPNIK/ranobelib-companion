@@ -16,15 +16,26 @@
       <option value="{{ value }}"{% if value == sort %} selected{% endif %}>{{ label }}</option>
       {% endfor %}
     </select>
+    {% if genre %}
+    <input type="hidden" name="genre" value="{{ genre }}">
+    <input type="hidden" name="genre_name" value="{{ genre_name or '' }}">
+    {% endif %}
     <button class="search-button" type="submit">Искать</button>
   </form>
 </header>
+{% if genre %}
+<p class="content__hint">
+  Жанр: {{ genre_name or genre }} ·
+  <a href="?query={{ query or '' }}&sort={{ sort }}">Сбросить фильтр</a>
+</p>
+{% endif %}
 <main class="content">
   <div
     class="title-card-grid"
     data-role="catalog-grid"
     data-query="{{ query or '' }}"
     data-sort="{{ sort }}"
+    data-genre="{{ genre or '' }}"
     data-next-page="{{ page + 1 if has_next_page else '' }}"
   >
     {% include "_catalog_cards.html" %}
@@ -33,7 +44,7 @@
   <noscript>
     {% if has_next_page %}
     <p class="content__hint">
-      <a href="?query={{ query or '' }}&sort={{ sort }}&page={{ page + 1 }}">Следующая страница</a>
+      <a href="?query={{ query or '' }}&sort={{ sort }}{% if genre %}&genre={{ genre }}{% endif %}&page={{ page + 1 }}">Следующая страница</a>
     </p>
     {% endif %}
   </noscript>
