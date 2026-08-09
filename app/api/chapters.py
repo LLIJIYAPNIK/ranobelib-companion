@@ -7,6 +7,7 @@ from fastapi.responses import HTMLResponse
 from ranobelib.models import Volume
 
 from app.auth.dependencies import get_current_user
+from app.db.activity import record_chapter_read
 from app.db.connection import get_connection
 from app.db.library import record_progress
 from app.db.users import User
@@ -33,6 +34,9 @@ async def read_chapter(
         # No-op if this title isn't in the user's library - reading doesn't implicitly
         # add it (see app/db/library.py, record_progress).
         record_progress(get_connection(), current_user.id, slug_url, str(volume), number)
+        # Unlike record_progress, this always writes - it's an activity feed entry, not a
+        # library-membership check (see app/db/activity.py).
+        record_chapter_read(get_connection(), current_user.id, slug_url, str(volume), number)
     prev_url, next_url = _adjacent_chapter_urls(slug_url, volumes, str(volume), number)
     return templates.TemplateResponse(
         request,
