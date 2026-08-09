@@ -158,6 +158,56 @@ def test_show_catalog_renders_sort_in_select_and_data_attribute() -> None:
     assert '<option value="views" selected>' in response.text
 
 
+def test_show_catalog_passes_genre_to_the_sdk_as_a_single_item_list() -> None:
+    page = CatalogPage(items=[], page=1, has_next_page=False)
+    fake = _FakeCatalog(page)
+    with patch("app.services.catalog.Catalog", return_value=fake):
+        client.get("/library/catalog", params={"genre": 5})
+
+    assert fake.received_kwargs["genres"] == [5]
+
+
+def test_show_catalog_without_genre_passes_none() -> None:
+    page = CatalogPage(items=[], page=1, has_next_page=False)
+    fake = _FakeCatalog(page)
+    with patch("app.services.catalog.Catalog", return_value=fake):
+        client.get("/library/catalog")
+
+    assert fake.received_kwargs["genres"] is None
+
+
+def test_show_catalog_renders_genre_filter_chip_and_hidden_fields() -> None:
+    page = CatalogPage(items=[], page=1, has_next_page=False)
+    with patch("app.services.catalog.Catalog", return_value=_FakeCatalog(page)):
+        response = client.get(
+            "/library/catalog", params={"genre": 5, "genre_name": "Фэнтези"}
+        )
+
+    assert response.status_code == 200
+    assert "Жанр: Фэнтези" in response.text
+    assert 'name="genre" value="5"' in response.text
+    assert 'name="genre_name" value="Фэнтези"' in response.text
+    assert 'data-genre="5"' in response.text
+
+
+def test_show_catalog_without_genre_omits_the_filter_chip() -> None:
+    page = CatalogPage(items=[], page=1, has_next_page=False)
+    with patch("app.services.catalog.Catalog", return_value=_FakeCatalog(page)):
+        response = client.get("/library/catalog")
+
+    assert "Жанр:" not in response.text
+    assert 'name="genre"' not in response.text
+
+
+def test_catalog_page_fragment_passes_genre_to_the_sdk() -> None:
+    page = CatalogPage(items=[], page=1, has_next_page=False)
+    fake = _FakeCatalog(page)
+    with patch("app.services.catalog.Catalog", return_value=fake):
+        client.get("/library/catalog/page", params={"genre": 5})
+
+    assert fake.received_kwargs["genres"] == [5]
+
+
 def test_catalog_page_fragment_passes_sort_to_the_sdk() -> None:
     page = CatalogPage(items=[], page=1, has_next_page=False)
     fake = _FakeCatalog(page)

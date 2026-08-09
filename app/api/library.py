@@ -53,12 +53,25 @@ async def show_catalog(
     request: Request,
     query: str | None = None,
     sort: str = DEFAULT_CATALOG_SORT,
+    genre: int | None = None,
+    genre_name: str | None = None,
     page: Annotated[int, Query(ge=1)] = 1,
 ) -> HTMLResponse:
     """The catalog tab - unlike "Читаю", browsing it has never needed an account (see
-    the "Список читаемого скрыт" copy on library.html's locked state)."""
+    the "Список читаемого скрыт" copy on library.html's locked state).
+
+    `genre`/`genre_name` (PR 31): a genre badge on the title page links here with both -
+    `genre_name` is display-only, forwarded as-is from what the title page already knew
+    about its own genre, since there's no public endpoint to look up a genre's name from
+    its id alone (see Catalog.list_titles()'s own docstring).
+    """
     async with get_catalog() as catalog:
-        result = await catalog.list_titles(page=page, query=query or None, sort=sort)
+        result = await catalog.list_titles(
+            page=page,
+            query=query or None,
+            sort=sort,
+            genres=[genre] if genre is not None else None,
+        )
     return templates.TemplateResponse(
         request,
         "catalog.html",
@@ -71,6 +84,8 @@ async def show_catalog(
             "query": query,
             "sort": sort,
             "sort_options": CATALOG_SORT_OPTIONS,
+            "genre": genre,
+            "genre_name": genre_name,
         },
     )
 
@@ -80,12 +95,18 @@ async def catalog_page_fragment(
     request: Request,
     query: str | None = None,
     sort: str = DEFAULT_CATALOG_SORT,
+    genre: int | None = None,
     page: Annotated[int, Query(ge=1)] = 1,
 ) -> Response:
     """Just the card markup, no base.html - what catalog-scroll.js fetches and appends
     as the visitor scrolls (see app/static/js/catalog-scroll.js)."""
     async with get_catalog() as catalog:
-        result = await catalog.list_titles(page=page, query=query or None, sort=sort)
+        result = await catalog.list_titles(
+            page=page,
+            query=query or None,
+            sort=sort,
+            genres=[genre] if genre is not None else None,
+        )
     response = templates.TemplateResponse(request, "_catalog_cards.html", {"items": result.items})
     response.headers["X-Has-Next-Page"] = "true" if result.has_next_page else "false"
     return response

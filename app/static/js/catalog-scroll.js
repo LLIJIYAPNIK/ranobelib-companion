@@ -26,6 +26,7 @@
     const params = new URLSearchParams({ page: String(nextPage) });
     if (grid.dataset.query) params.set("query", grid.dataset.query);
     if (grid.dataset.sort) params.set("sort", grid.dataset.sort);
+    if (grid.dataset.genre) params.set("genre", grid.dataset.genre);
 
     let response;
     try {

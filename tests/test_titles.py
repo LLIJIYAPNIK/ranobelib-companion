@@ -2,7 +2,7 @@ from unittest.mock import patch
 
 from fastapi.testclient import TestClient
 from ranobelib import RanobeLibError, RateLimitError, TitleNotFoundError
-from ranobelib.models import Chapter, Cover, Label, Tag, Title, Volume
+from ranobelib.models import Chapter, Cover, Genre, Label, Tag, Title, Volume
 
 from app.main import app
 
@@ -208,6 +208,34 @@ def test_show_title_renders_full_metadata() -> None:
     assert "Alt Title" in response.text
     assert "2020" in response.text
     assert "Реинкарнация" in response.text
+
+
+def test_show_title_genres_link_to_the_filtered_catalog() -> None:
+    # PR 31: a genre badge is a link into /library/catalog, not just a static label -
+    # inherits genre_id/genres list support already added to Catalog.list_titles() (PR 15,
+    # despite CLAUDE.md's roadmap notes describing that as still blocked - it shipped).
+    title = Title(
+        id=6712,
+        name="Test Novel",
+        slug="test-novel",
+        slug_url="6712--test-novel",
+        cover=Cover(),
+        age_restriction=Label(id=0, label="16+"),
+        status=Label(id=1, label="Онгоинг"),
+        genres=[Genre(id=5, name="Фэнтези"), Genre(id=8, name="Романтика")],
+    )
+    with patch("app.services.client.RanobeLib", return_value=_FakeClient(title)):
+        response = client.get("/titles/6712--test-novel")
+
+    assert response.status_code == 200
+    assert (
+        'href="/library/catalog?genre=5&genre_name='
+        '%D0%A4%D1%8D%D0%BD%D1%82%D0%B5%D0%B7%D0%B8"' in response.text
+    )
+    assert (
+        'href="/library/catalog?genre=8&genre_name='
+        '%D0%A0%D0%BE%D0%BC%D0%B0%D0%BD%D1%82%D0%B8%D0%BA%D0%B0"' in response.text
+    )
 
 
 def test_show_title_renders_table_of_contents() -> None:
