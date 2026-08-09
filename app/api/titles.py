@@ -4,6 +4,7 @@ from typing import Annotated
 
 from fastapi import APIRouter, Depends, Request
 from fastapi.responses import HTMLResponse, RedirectResponse, Response
+from ranobelib import RanobeLibError
 
 from app.auth.dependencies import get_current_user
 from app.db.connection import get_connection
@@ -53,6 +54,12 @@ async def show_title(
     async with open_client(slug_url) as lib:
         title = await lib.get_info()
         volumes = await lib.get_table_of_contents()
+        try:
+            estimated_size = await lib.estimate_title_size()
+        except RanobeLibError:
+            # A sampled chapter failing (rate limit, needs auth, ...) shouldn't take the
+            # whole page down over a supplementary estimate - just omit it.
+            estimated_size = 0
     cover_url = title.cover.default or title.cover.md or title.cover.thumbnail
     library_entry = None
     if current_user is not None:
@@ -74,6 +81,7 @@ async def show_title(
             "export_formats": available_export_formats(),
             "in_library": library_entry is not None,
             "progress_percent": progress_percent,
+            "estimated_size_label": _format_size(estimated_size) if estimated_size else None,
         },
     )
     remember(
@@ -84,3 +92,15 @@ async def show_title(
         cover_url=cover_url,
     )
     return response
+
+
+def _format_size(size_bytes: int) -> str:
+    """Human-readable rendering of `RanobeLib.estimate_title_size()`'s byte estimate -
+    display-only web-layer formatting, not part of the estimate itself (see
+    ranobelib.sizing's own docstring for why the estimate is approximate)."""
+    size = float(size_bytes)
+    for unit in ("Б", "КБ", "МБ"):
+        if size < 1024:
+            return f"{size:.0f} {unit}" if unit == "Б" else f"{size:.1f} {unit}"
+        size /= 1024
+    return f"{size:.1f} ГБ"

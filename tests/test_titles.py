@@ -24,9 +24,15 @@ def _fake_title(slug_url: str = "6712--test-novel") -> Title:
 
 
 class _FakeClient:
-    def __init__(self, title: Title, volumes: list[Volume] | None = None) -> None:
+    def __init__(
+        self,
+        title: Title,
+        volumes: list[Volume] | None = None,
+        estimated_size: int = 0,
+    ) -> None:
         self._title = title
         self._volumes = volumes or []
+        self._estimated_size = estimated_size
 
     async def __aenter__(self) -> "_FakeClient":
         return self
@@ -39,6 +45,9 @@ class _FakeClient:
 
     async def get_table_of_contents(self) -> list[Volume]:
         return self._volumes
+
+    async def estimate_title_size(self) -> int:
+        return self._estimated_size
 
 
 class _RaisingClient:
@@ -98,6 +107,48 @@ def test_show_title_renders_metadata() -> None:
     assert "Тестовый роман" in response.text
     assert "https://example.com/cover.jpg" in response.text
     assert "42" in response.text
+
+
+def test_show_title_renders_estimated_size() -> None:
+    title = _fake_title()
+    with patch(
+        "app.services.client.RanobeLib",
+        return_value=_FakeClient(title, estimated_size=1_500_000),
+    ):
+        response = client.get("/titles/6712--test-novel")
+
+    assert response.status_code == 200
+    assert "≈ 1.4 МБ" in response.text
+
+
+def test_show_title_omits_size_when_estimate_is_zero() -> None:
+    # 0 is estimate_title_size()'s own "nothing to estimate" return (no chapters, or none
+    # with a resolvable translation) - not a real "≈0 Б" title.
+    title = _fake_title()
+    with patch(
+        "app.services.client.RanobeLib",
+        return_value=_FakeClient(title, estimated_size=0),
+    ):
+        response = client.get("/titles/6712--test-novel")
+
+    assert response.status_code == 200
+    assert "≈" not in response.text
+
+
+def test_show_title_survives_size_estimate_failure() -> None:
+    # A sampled chapter failing (rate limit, needs auth, ...) is a supplementary estimate
+    # falling through, not a reason to 500 the whole page.
+    class _FlakyEstimateClient(_FakeClient):
+        async def estimate_title_size(self) -> int:
+            raise RateLimitError(retry_after=30)
+
+    title = _fake_title()
+    with patch("app.services.client.RanobeLib", return_value=_FlakyEstimateClient(title)):
+        response = client.get("/titles/6712--test-novel")
+
+    assert response.status_code == 200
+    assert "Test Novel" in response.text
+    assert "≈" not in response.text
 
 
 def test_show_title_uses_russian_name_as_the_primary_heading() -> None:
