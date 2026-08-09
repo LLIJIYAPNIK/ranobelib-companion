@@ -4,6 +4,7 @@ from datetime import UTC, datetime
 import pytest
 from ranobelib import (
     AuthRequiredError,
+    DownloadTitleInterruptedError,
     MultipleTitleTranslationsError,
     RateLimitError,
     TitleNotFoundError,
@@ -17,12 +18,20 @@ from app.jobs.models import DownloadJob
 
 class _FakeClient:
     def __init__(
-        self, volumes: list[Volume] | None = None, exc: Exception | None = None
+        self,
+        volumes: list[Volume] | None = None,
+        exc: Exception | None = None,
+        fail_times: int | None = None,
     ) -> None:
         self._volumes = volumes or []
         self._exc = exc
+        # None means "every call fails" (the old, unconditional behavior); an int caps how
+        # many of the first calls fail before download_title() starts succeeding, for
+        # exercising _download_title_riding_out_rate_limits()'s recovery path.
+        self._fail_times = fail_times
         self.export_calls: list[tuple[list[Chapter], str, str]] = []
         self.download_kwargs: dict[str, object] | None = None
+        self.download_calls = 0
 
     async def __aenter__(self) -> "_FakeClient":
         return self
@@ -35,10 +44,18 @@ class _FakeClient:
         *,
         branch_id: int | None = None,
         translation_index: int | None = None,
+        chapter_delay: float = 0.0,
         on_chapter: object = None,
     ) -> list[Volume]:
-        self.download_kwargs = {"branch_id": branch_id, "translation_index": translation_index}
-        if self._exc is not None:
+        self.download_calls += 1
+        self.download_kwargs = {
+            "branch_id": branch_id,
+            "translation_index": translation_index,
+            "chapter_delay": chapter_delay,
+        }
+        if self._exc is not None and (
+            self._fail_times is None or self.download_calls <= self._fail_times
+        ):
             raise self._exc
         chapters = [chapter for volume in self._volumes for chapter in volume.chapters]
         total = len(chapters)
@@ -71,6 +88,26 @@ def _branch(branch_id: int) -> ChapterBranch:
         teams=[],
         user=ChapterUser(id=branch_id, username=f"user{branch_id}"),
     )
+
+
+def _interrupted(
+    slug_url: str, *, completed: int, total: int, cause: Exception
+) -> DownloadTitleInterruptedError:
+    """Build a `DownloadTitleInterruptedError` with `cause` as its `__cause__`, the way
+    `download_title()` itself raises one (`raise ... from cause`)."""
+    volumes = (
+        [Volume(number="1", chapters=[Chapter(id=1, volume="1", number="1")])]
+        if completed
+        else []
+    )
+    try:
+        raise cause
+    except Exception as raised:
+        exc = DownloadTitleInterruptedError(
+            slug_url, volumes=volumes, completed=completed, total=total
+        )
+        exc.__cause__ = raised
+        return exc
 
 
 async def test_run_download_job_completes_successfully(
@@ -118,7 +155,7 @@ async def test_run_download_job_reports_progress_via_on_chapter(
     os.remove(job.result_path)
 
 
-async def test_run_download_job_passes_translation_index(
+async def test_run_download_job_passes_translation_index_and_chapter_delay(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     volumes = [Volume(number="1", chapters=[Chapter(id=1, volume="1", number="1")])]
@@ -128,7 +165,13 @@ async def test_run_download_job_passes_translation_index(
     job = _job()
     await run_download_job(job, translation_index=2)
 
-    assert fake.download_kwargs == {"branch_id": None, "translation_index": 2}
+    assert fake.download_kwargs is not None
+    assert fake.download_kwargs["branch_id"] is None
+    assert fake.download_kwargs["translation_index"] == 2
+    # PR 20: be gentler on the API for a long title's sequential fetch, so it gets rate
+    # limited less often in the first place rather than only leaning on retries to
+    # recover from it - keep this in sync with app/jobs/download.py's _CHAPTER_DELAY.
+    assert fake.download_kwargs["chapter_delay"] == 0.5
 
     assert job.result_path is not None
     os.remove(job.result_path)
@@ -173,16 +216,113 @@ async def test_run_download_job_maps_auth_required(monkeypatch: pytest.MonkeyPat
     assert job.error == "Требуется авторизация — недоступно"
 
 
-async def test_run_download_job_maps_rate_limit(monkeypatch: pytest.MonkeyPatch) -> None:
+async def test_run_download_job_maps_rate_limit_after_retries_exhausted(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    # A title where the rate limit never lets up: the job runner should still give up
+    # eventually (after _RATE_LIMIT_RETRIES whole-call retries) and surface the usual
+    # "error" status, not hang or retry forever.
     exc = RateLimitError(retry_after=30)
     fake = _FakeClient(exc=exc)
     monkeypatch.setattr("app.jobs.download.open_client", lambda slug_url: fake)
+    sleeps: list[float] = []
+
+    async def fake_sleep(delay: float) -> None:
+        sleeps.append(delay)
 
     job = _job()
-    await run_download_job(job)
+    await run_download_job(job, sleep=fake_sleep)
 
     assert job.status == "error"
     assert job.error == "ranobelib сейчас ограничивает запросы, попробуйте позже"
+    assert sleeps == [30] * 10
+    assert fake.download_calls == 11
+
+
+async def test_run_download_job_recovers_after_transient_rate_limit(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    # PR 20 follow-up: previously a rate-limited download just ended in "error" and the
+    # user had to go back to the title page and click "Скачать тайтл" again. Now the job
+    # runner retries the whole download_title() call itself - cheap even for a long title,
+    # since RanobeLib's disk cache serves already-fetched chapters back for free - so it
+    # recovers into "done" on its own instead.
+    chapters = [Chapter(id=1, volume="1", number="1")]
+    volumes = [Volume(number="1", chapters=chapters)]
+    exc = RateLimitError(retry_after=None)
+    fake = _FakeClient(volumes=volumes, exc=exc, fail_times=2)
+    monkeypatch.setattr("app.jobs.download.open_client", lambda slug_url: fake)
+    sleeps: list[float] = []
+
+    async def fake_sleep(delay: float) -> None:
+        sleeps.append(delay)
+
+    job = _job()
+    await run_download_job(job, sleep=fake_sleep)
+
+    assert job.status == "done"
+    assert fake.download_calls == 3
+    # No Retry-After header on either failure, so both back off by the fallback delay.
+    assert sleeps == [30, 30]
+
+    assert job.result_path is not None
+    os.remove(job.result_path)
+
+
+async def test_run_download_job_recovers_after_download_interrupted_by_rate_limit(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    # Same recovery, but via DownloadTitleInterruptedError - the shape download_title()
+    # actually raises once its own internal rate-limit retry budget
+    # (max_rate_limit_retries) is exhausted partway through the per-chapter loop.
+    chapters = [Chapter(id=1, volume="1", number="1")]
+    volumes = [Volume(number="1", chapters=chapters)]
+    exc = _interrupted("6712--test-novel", completed=2, total=5, cause=RateLimitError())
+    fake = _FakeClient(volumes=volumes, exc=exc, fail_times=1)
+    monkeypatch.setattr("app.jobs.download.open_client", lambda slug_url: fake)
+    sleeps: list[float] = []
+
+    async def fake_sleep(delay: float) -> None:
+        sleeps.append(delay)
+
+    job = _job()
+    await run_download_job(job, sleep=fake_sleep)
+
+    assert job.status == "done"
+    assert fake.download_calls == 2
+    assert sleeps == [30]
+
+    assert job.result_path is not None
+    os.remove(job.result_path)
+
+
+async def test_run_download_job_does_not_retry_download_interrupted_by_other_causes(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    # A DownloadTitleInterruptedError NOT caused by rate limiting (e.g. a chapter that
+    # turns out to need auth) isn't something waiting and retrying would fix - it must
+    # surface immediately as an error, not burn through the whole retry budget first.
+    exc = _interrupted(
+        "6712--test-novel",
+        completed=2,
+        total=5,
+        cause=AuthRequiredError("https://ranobelib.me/x"),
+    )
+    fake = _FakeClient(exc=exc)
+    monkeypatch.setattr("app.jobs.download.open_client", lambda slug_url: fake)
+    sleeps: list[float] = []
+
+    async def fake_sleep(delay: float) -> None:
+        sleeps.append(delay)
+
+    job = _job()
+    await run_download_job(job, sleep=fake_sleep)
+
+    assert job.status == "error"
+    assert job.completed == 0  # on_chapter() was never called by this fake
+    assert fake.download_calls == 1
+    assert sleeps == []
+    assert job.error == "Требуется авторизация — недоступно (скачано 2 из 5 глав)"
 
 
 async def test_run_download_job_maps_unexpected_error(monkeypatch: pytest.MonkeyPatch) -> None:
