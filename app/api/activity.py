@@ -5,8 +5,8 @@ from __future__ import annotations
 from dataclasses import dataclass
 from typing import Annotated
 
-from fastapi import APIRouter, Depends, Form
-from fastapi.responses import Response
+from fastapi import APIRouter, Depends, Form, Request
+from fastapi.responses import HTMLResponse, Response
 from ranobelib import RanobeLibError
 
 from app.auth.dependencies import require_current_user
@@ -17,6 +17,7 @@ from app.db.users import User
 from app.jobs.models import DownloadJob
 from app.jobs.store import list_active_jobs_for_user
 from app.services.client import open_client
+from app.templating import templates
 
 router = APIRouter(prefix="/activity")
 
@@ -54,6 +55,19 @@ async def build_activity_summary(user: User) -> ActivitySummary:
         active_time_label=_format_active_time(total_active_seconds_today(conn, user.id)),
         active_jobs=list_active_jobs_for_user(user.id),
         downloads_today=list_download_history_today(conn, user.id),
+    )
+
+
+@router.get("")
+async def show_activity(
+    request: Request, user: Annotated[User, Depends(require_current_user)]
+) -> HTMLResponse:
+    """Like /downloads (PR 17), this has always spent ranobelib.me API quota just to
+    render (resolving each read title's name/cover), so it follows the same rule: viewing
+    it requires knowing who's asking."""
+    summary = await build_activity_summary(user)
+    return templates.TemplateResponse(
+        request, "activity.html", {"active_nav": "activity", "summary": summary}
     )
 
 

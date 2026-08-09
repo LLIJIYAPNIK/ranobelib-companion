@@ -1,0 +1,59 @@
+{% extends "base.html" %}
+{% block title %}Активность — RanobeLib Companion{% endblock %}
+{% block content %}
+<main class="content">
+  <h1 class="toc__title">Активность</h1>
+  <p class="content__hint">За сегодня.</p>
+
+  <div class="activity-stats">
+    <div class="activity-stats__item">
+      <span class="activity-stats__value activity-stats__value--accent">{{ summary.chapters_read_today }}</span>
+      <span class="activity-stats__label">Глав прочитано</span>
+    </div>
+    <div class="activity-stats__item">
+      <span class="activity-stats__value">{{ summary.active_time_label }}</span>
+      <span class="activity-stats__label">Активное время чтения</span>
+    </div>
+    <div class="activity-stats__item">
+      <span class="activity-stats__value">{{ summary.downloads_today | length }}</span>
+      <span class="activity-stats__label">Скачано сегодня</span>
+    </div>
+  </div>
+
+  <section class="downloads-section">
+    <h2 class="downloads-section__title">Читали сегодня</h2>
+    {% if summary.read_today %}
+    <div class="title-card-grid">
+      {% from "_title_card.html" import title_card %}
+      {% for item in summary.read_today %}
+      {% call title_card(item.slug_url, item.name or item.slug_url, item.cover_url) %}
+      <span class="title-card__meta">{{ item.chapters_read }} глав сегодня</span>
+      {% endcall %}
+      {% endfor %}
+    </div>
+    {% else %}
+    <p class="content__hint">Сегодня ещё ничего не читали.</p>
+    {% endif %}
+  </section>
+
+  <section class="downloads-section" data-role="active-downloads">
+    <h2 class="downloads-section__title">Текущие загрузки</h2>
+    {% if summary.active_jobs %}
+    {% from "_active_downloads.html" import active_downloads_list with context %}
+    {{ active_downloads_list(summary.active_jobs) }}
+    {% else %}
+    <p class="content__hint">Сейчас ничего не скачивается.</p>
+    {% endif %}
+  </section>
+
+  <section class="downloads-section">
+    <h2 class="downloads-section__title">Скачано сегодня</h2>
+    {% if summary.downloads_today %}
+    {% from "_download_history.html" import download_history_list %}
+    {{ download_history_list(summary.downloads_today) }}
+    {% else %}
+    <p class="content__hint">Сегодня ничего не скачивали.</p>
+    {% endif %}
+  </section>
+</main>
+{% endblock %}

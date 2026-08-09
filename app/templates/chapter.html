@@ -27,8 +27,11 @@
     Rendered as real HTML (bypassing Jinja's autoescape), not as escaped text.
     Chapter.content is sanitized to a restricted tag/attribute set by the SDK itself.
   #}
-  <article class="reader-content">
+  <article class="reader-content" data-role="chapter" data-slug-url="{{ slug_url }}">
     {{ chapter.content | safe }}
   </article>
 </main>
+{% if current_user %}
+<script src="{{ url_for('static', path='js/activity-heartbeat.js') }}" defer></script>
+{% endif %}
 {% endblock %}
