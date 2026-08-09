@@ -7,6 +7,7 @@ from fastapi.staticfiles import StaticFiles
 from starlette.middleware.sessions import SessionMiddleware
 
 from app.api import (
+    activity,
     auth,
     chapters,
     downloads,
@@ -38,6 +39,7 @@ app.add_middleware(
 )
 app.mount("/static", StaticFiles(directory=Path(__file__).parent / "static"), name="static")
 app.include_router(health.router)
+app.include_router(activity.router)
 app.include_router(home.router)
 app.include_router(auth.router)
 app.include_router(chapters.router)

@@ -1,0 +1,16 @@
+{% macro download_history_list(entries) %}
+<ul class="downloads-history">
+  {% for entry in entries %}
+  <li class="downloads-history__item">
+    <a class="downloads-history__link" href="/titles/{{ entry.slug_url }}">{{ entry.slug_url }}</a>
+    <span class="downloads-history__fmt">{{ entry.fmt | upper }}</span>
+    <span class="downloads-history__status{% if entry.status == 'error' %} downloads-history__status--error{% endif %}">
+      {% if entry.status == "done" %}Готово{% if entry.chapter_count %} · {{ entry.chapter_count }} глав{% endif %}
+      {% else %}{{ entry.error or "Ошибка" }}
+      {% endif %}
+    </span>
+    <span class="downloads-history__date">{{ entry.finished_at[:16].replace("T", " ") }}</span>
+  </li>
+  {% endfor %}
+</ul>
+{% endmacro %}

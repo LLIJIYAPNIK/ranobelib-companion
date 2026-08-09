@@ -52,16 +52,33 @@ def list_download_history(
         "ORDER BY finished_at DESC, id DESC LIMIT ?",
         (user_id, limit),
     ).fetchall()
-    return [
-        DownloadHistoryEntry(
-            id=row["id"],
-            user_id=row["user_id"],
-            slug_url=row["slug_url"],
-            fmt=row["fmt"],
-            status=row["status"],
-            chapter_count=row["chapter_count"],
-            error=row["error"],
-            finished_at=row["finished_at"],
-        )
-        for row in rows
-    ]
+    return [_row_to_entry(row) for row in rows]
+
+
+def list_download_history_today(
+    conn: sqlite3.Connection, user_id: int
+) -> list[DownloadHistoryEntry]:
+    """Today's finished downloads (UTC calendar date) - the "скачано сегодня" part of the
+    Активность section (see app/api/activity.py). Includes both "done" and "error"
+    entries, same as `list_download_history()` - a failed download still happened today.
+    """
+    today = datetime.now(UTC).date().isoformat()
+    rows = conn.execute(
+        "SELECT * FROM download_history WHERE user_id = ? AND finished_at >= ? "
+        "ORDER BY finished_at DESC, id DESC",
+        (user_id, today),
+    ).fetchall()
+    return [_row_to_entry(row) for row in rows]
+
+
+def _row_to_entry(row: sqlite3.Row) -> DownloadHistoryEntry:
+    return DownloadHistoryEntry(
+        id=row["id"],
+        user_id=row["user_id"],
+        slug_url=row["slug_url"],
+        fmt=row["fmt"],
+        status=row["status"],
+        chapter_count=row["chapter_count"],
+        error=row["error"],
+        finished_at=row["finished_at"],
+    )

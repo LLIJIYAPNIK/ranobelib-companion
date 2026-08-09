@@ -13,7 +13,7 @@
       <a class="sidebar__link{% if active_nav == 'home' %} sidebar__link--active{% endif %}" href="/">Главная</a>
       <a class="sidebar__link{% if active_nav == 'library' %} sidebar__link--active{% endif %}" href="/library">Библиотека</a>
       <a class="sidebar__link{% if active_nav == 'downloads' %} sidebar__link--active{% endif %}" href="/downloads">Загрузки</a>
-      <span class="sidebar__link sidebar__link--disabled" title="Скоро">Активность</span>
+      <a class="sidebar__link{% if active_nav == 'activity' %} sidebar__link--active{% endif %}" href="/activity">Активность</a>
       <div class="sidebar__account">
         {% if current_user %}
         <span class="sidebar__account-email" title="{{ current_user.email }}">{{ current_user.email }}</span>

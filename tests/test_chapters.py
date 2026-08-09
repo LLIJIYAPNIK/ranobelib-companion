@@ -15,6 +15,7 @@ from ranobelib.models import Chapter, ChapterBranch, ChapterUser, Team, Volume
 
 import app.db.connection as db_connection
 from app.config import get_settings
+from app.db.activity import list_chapters_read_today
 from app.db.connection import get_connection
 from app.db.library import add_entry, get_entry
 from app.main import app
@@ -243,6 +244,39 @@ def test_read_chapter_does_not_add_title_to_library(logged_in_client: TestClient
 
     assert response.status_code == 200
     assert get_entry(get_connection(), user_id=1, slug_url="6712--test-novel") is None
+
+
+def test_read_chapter_includes_heartbeat_script_when_logged_in(
+    logged_in_client: TestClient,
+) -> None:
+    chapter = Chapter(id=1, volume="1", number="5", content="<p>x</p>")
+    with patch("app.services.client.RanobeLib", return_value=_FakeClient(chapter)):
+        response = logged_in_client.get("/titles/6712--test-novel/chapters/1/5")
+
+    assert "static/js/activity-heartbeat.js" in response.text
+    assert 'data-slug-url="6712--test-novel"' in response.text
+
+
+def test_read_chapter_omits_heartbeat_script_when_anonymous() -> None:
+    chapter = Chapter(id=1, volume="1", number="5", content="<p>x</p>")
+    with patch("app.services.client.RanobeLib", return_value=_FakeClient(chapter)):
+        response = client.get("/titles/6712--test-novel/chapters/1/5")
+
+    assert "static/js/activity-heartbeat.js" not in response.text
+
+
+def test_read_chapter_records_activity_even_outside_the_library(
+    logged_in_client: TestClient,
+) -> None:
+    # Deliberately not added to the library first - unlike record_progress, the activity
+    # feed isn't gated on library membership (see app/db/activity.py).
+    chapter = Chapter(id=1, volume="1", number="5", content="<p>x</p>")
+    with patch("app.services.client.RanobeLib", return_value=_FakeClient(chapter)):
+        logged_in_client.get("/titles/6712--test-novel/chapters/1/5")
+
+    counts = list_chapters_read_today(get_connection(), user_id=1)
+    assert [c.slug_url for c in counts] == ["6712--test-novel"]
+    assert counts[0].chapters_read == 1
 
 
 def test_read_chapter_anonymous_does_not_touch_the_database(tmp_path: Path) -> None:

@@ -968,3 +968,31 @@ a {
   color: var(--text-muted);
   font-size: 12px;
 }
+
+.activity-stats {
+  display: flex;
+  gap: 32px;
+  margin: 20px 0 8px;
+}
+
+.activity-stats__item {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.activity-stats__value {
+  font-size: 20px;
+  font-weight: 800;
+}
+
+.activity-stats__value--accent {
+  color: var(--accent-teal);
+}
+
+.activity-stats__label {
+  font-size: 11px;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
