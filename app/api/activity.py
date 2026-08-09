@@ -9,7 +9,7 @@ from fastapi import APIRouter, Depends, Form, Request
 from fastapi.responses import HTMLResponse, Response
 from ranobelib import RanobeLibError
 
-from app.auth.dependencies import require_current_user
+from app.auth.dependencies import get_current_user, require_current_user
 from app.db.activity import list_chapters_read_today, record_heartbeat, total_active_seconds_today
 from app.db.connection import get_connection
 from app.db.downloads import DownloadHistoryEntry, list_download_history_today
@@ -60,12 +60,13 @@ async def build_activity_summary(user: User) -> ActivitySummary:
 
 @router.get("")
 async def show_activity(
-    request: Request, user: Annotated[User, Depends(require_current_user)]
+    request: Request, user: Annotated[User | None, Depends(get_current_user)]
 ) -> HTMLResponse:
-    """Like /downloads (PR 17), this has always spent ranobelib.me API quota just to
-    render (resolving each read title's name/cover), so it follows the same rule: viewing
-    it requires knowing who's asking."""
-    summary = await build_activity_summary(user)
+    """Same locked-screen gate as /library and /downloads (PR 22): viewing the page
+    itself doesn't require an account - build_activity_summary() (which resolves each
+    read title's name/cover through the SDK) only runs for a logged-in user, so this
+    doesn't spend ranobelib.me API quota just to render for an anonymous visitor."""
+    summary = await build_activity_summary(user) if user is not None else None
     return templates.TemplateResponse(
         request, "activity.html", {"active_nav": "activity", "summary": summary}
     )
