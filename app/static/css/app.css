@@ -55,13 +55,6 @@ a {
   padding: 20px 0;
 }
 
-.sidebar__brand {
-  width: 28px;
-  height: 28px;
-  border-radius: 6px;
-  background: var(--accent);
-}
-
 .sidebar__link {
   font-size: 11px;
   color: var(--text-muted);
@@ -1028,10 +1021,6 @@ a {
     border-right: none;
     border-top: 1px solid var(--border);
     z-index: 40;
-  }
-
-  .sidebar__brand {
-    display: none;
   }
 
   .sidebar__link {
