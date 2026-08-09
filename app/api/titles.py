@@ -67,5 +67,11 @@ async def show_title(
             "in_library": in_library,
         },
     )
-    remember(response, request, slug_url=title.slug_url, name=title.name, cover_url=cover_url)
+    remember(
+        response,
+        request,
+        slug_url=title.slug_url,
+        name=title.rus_name or title.name,
+        cover_url=cover_url,
+    )
     return response

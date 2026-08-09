@@ -164,7 +164,7 @@ async def _library_items(user: User) -> list[dict[str, LibraryEntry | str | None
         try:
             async with open_client(entry.slug_url) as lib:
                 title = await lib.get_info()
-            name = title.name
+            name = title.rus_name or title.name
             cover_url = title.cover.default or title.cover.md or title.cover.thumbnail
         except RanobeLibError:
             pass

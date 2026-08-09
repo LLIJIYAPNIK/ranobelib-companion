@@ -52,6 +52,26 @@ def test_show_catalog_renders_cards() -> None:
     assert 'data-next-page="2"' in response.text
 
 
+def test_show_catalog_prefers_russian_name() -> None:
+    title = Title(
+        id=1,
+        name="High School DxD",
+        rus_name="Школа демонов",
+        slug="test-novel-1",
+        slug_url="1--test-novel-1",
+        cover=Cover(),
+        age_restriction=Label(id=0, label="16+"),
+        status=Label(id=1, label="Онгоинг"),
+    )
+    page = CatalogPage(items=[title], page=1, has_next_page=False)
+    with patch("app.services.catalog.Catalog", return_value=_FakeCatalog(page)):
+        response = client.get("/library/catalog")
+
+    assert response.status_code == 200
+    assert "Школа демонов" in response.text
+    assert "High School DxD" not in response.text
+
+
 def test_show_catalog_no_next_page_leaves_data_next_page_empty() -> None:
     page = CatalogPage(items=[_fake_title()], page=1, has_next_page=False)
     with patch("app.services.catalog.Catalog", return_value=_FakeCatalog(page)):

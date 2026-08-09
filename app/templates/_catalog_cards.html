@@ -1,6 +1,6 @@
 {% from "_title_card.html" import title_card %}
 {% for title in items %}
-{% call title_card(title.slug_url, title.name, title.cover.default or title.cover.md or title.cover.thumbnail) %}
+{% call title_card(title.slug_url, title.rus_name or title.name, title.cover.default or title.cover.md or title.cover.thumbnail) %}
 {% if title.status %}
 <span class="badge title-card__status">{{ title.status.label }}</span>
 {% endif %}
