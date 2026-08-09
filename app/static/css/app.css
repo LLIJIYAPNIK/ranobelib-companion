@@ -1155,4 +1155,27 @@ a {
   .activity-stats__value {
     font-size: 17px;
   }
+
+  .reader-nav__adjacent {
+    position: fixed;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    margin: 0;
+    padding: 14px 20px;
+    background: var(--bg-panel);
+    border-top: 1px solid var(--border);
+    justify-content: space-between;
+    z-index: 40;
+  }
+
+  body.reader-page .main {
+    padding-top: 0;
+    padding-bottom: 56px;
+  }
+
+  body.reader-page .sidebar,
+  body.reader-page .sidebar__account {
+    display: none;
+  }
 }
