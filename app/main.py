@@ -4,7 +4,6 @@ from pathlib import Path
 
 from fastapi import FastAPI
 from fastapi.staticfiles import StaticFiles
-from starlette.middleware.sessions import SessionMiddleware
 
 from app.api import (
     activity,
@@ -19,6 +18,7 @@ from app.api import (
     settings,
     titles,
 )
+from app.auth.session_middleware import RememberMeSessionMiddleware
 from app.config import get_settings
 from app.db.connection import get_connection
 from app.db.migrate import run_migrations
@@ -33,8 +33,10 @@ async def lifespan(app: FastAPI) -> AsyncIterator[None]:
 
 app = FastAPI(title="ranobelib-companion", lifespan=lifespan)
 app.add_middleware(
-    SessionMiddleware,
+    RememberMeSessionMiddleware,
     secret_key=get_settings().session_secret_key,
+    default_max_age=get_settings().session_max_age,
+    remember_max_age=get_settings().session_remember_max_age,
     session_cookie="session",
     same_site="lax",
 )
