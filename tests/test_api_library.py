@@ -76,6 +76,25 @@ class _FakeClient:
         return 0
 
 
+class _FakeChapterClient:
+    def __init__(self, chapter: Chapter) -> None:
+        self._chapter = chapter
+
+    async def __aenter__(self) -> "_FakeChapterClient":
+        return self
+
+    async def __aexit__(self, *exc_info: object) -> bool:
+        return False
+
+    async def get_chapter(
+        self, volume: int, number: str, *, branch_id: int | None = None
+    ) -> Chapter:
+        return self._chapter
+
+    async def get_table_of_contents(self) -> list[Volume]:
+        return []
+
+
 def test_add_requires_login(client: TestClient) -> None:
     response = client.post(
         "/library/6712--test-novel/add", follow_redirects=False
@@ -117,6 +136,25 @@ def test_add_then_remove_round_trip(client: TestClient) -> None:
     assert remove_response.status_code == 303
     assert remove_response.headers["location"] == "/library"
     assert "Добавить в библиотеку" in title_page_after.text
+
+
+def test_reading_a_chapter_auto_adds_title_and_the_page_reflects_it(
+    client: TestClient,
+) -> None:
+    """PR 35: no explicit "Добавить" click here, just opening a chapter - the title
+    page should already show the "in library" state on the very next load."""
+    _register(client)
+    title = _fake_title()
+    chapter = Chapter(id=1, volume="1", number="1", content="<p>x</p>")
+
+    with patch("app.services.client.RanobeLib", return_value=_FakeChapterClient(chapter)):
+        chapter_response = client.get("/titles/6712--test-novel/chapters/1/1")
+    assert chapter_response.status_code == 200
+
+    with patch("app.services.client.RanobeLib", return_value=_FakeClient(title)):
+        title_page = client.get("/titles/6712--test-novel")
+
+    assert "Убрать из библиотеки" in title_page.text
 
 
 def test_title_page_shows_reading_progress_for_library_entry(client: TestClient) -> None:

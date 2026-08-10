@@ -70,8 +70,10 @@ def list_entries(conn: sqlite3.Connection, user_id: int) -> list[LibraryEntry]:
 def record_progress(
     conn: sqlite3.Connection, user_id: int, slug_url: str, volume: str, number: str
 ) -> None:
-    """No-op if `slug_url` isn't in this user's library - reading doesn't implicitly add
-    a title, only an explicit `add_entry()` does (see app/api/library.py)."""
+    """Only updates an existing row - no-op if `slug_url` isn't in this user's library.
+    In practice the chapter-read route (PR 35) calls `add_entry()` right before this, so
+    the row always exists by the time we get here; this stays a plain UPDATE rather than
+    an upsert so other callers without that guarantee can't silently create entries."""
     conn.execute(
         "UPDATE library_entries "
         "SET last_read_volume = ?, last_read_number = ?, last_read_at = ? "

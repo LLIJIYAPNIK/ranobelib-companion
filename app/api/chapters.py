@@ -9,7 +9,7 @@ from ranobelib.models import Volume
 from app.auth.dependencies import get_current_user
 from app.db.activity import record_chapter_read
 from app.db.connection import get_connection
-from app.db.library import record_progress
+from app.db.library import add_entry, record_progress
 from app.db.users import User
 from app.services.client import open_client
 from app.services.exports import available_export_formats
@@ -31,8 +31,11 @@ async def read_chapter(
         chapter = await lib.get_chapter(volume, number, branch_id=branch_id)
         volumes = await lib.get_table_of_contents()
     if current_user is not None:
-        # No-op if this title isn't in the user's library - reading doesn't implicitly
-        # add it (see app/db/library.py, record_progress).
+        # PR 35: opening any chapter adds the title to the library if it isn't there
+        # yet, same as clicking "Добавить в библиотеку" - add_entry() is idempotent
+        # (INSERT OR IGNORE), so repeat opens don't duplicate the entry or touch its
+        # added_at (see app/db/library.py).
+        add_entry(get_connection(), current_user.id, slug_url)
         record_progress(get_connection(), current_user.id, slug_url, str(volume), number)
         # Unlike record_progress, this always writes - it's an activity feed entry, not a
         # library-membership check (see app/db/activity.py).
