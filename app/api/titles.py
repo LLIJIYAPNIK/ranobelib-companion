@@ -54,12 +54,6 @@ async def show_title(
     async with open_client(slug_url) as lib:
         title = await lib.get_info()
         volumes = await lib.get_table_of_contents()
-        try:
-            estimated_size = await lib.estimate_title_size()
-        except RanobeLibError:
-            # A sampled chapter failing (rate limit, needs auth, ...) shouldn't take the
-            # whole page down over a supplementary estimate - just omit it.
-            estimated_size = 0
     cover_url = title.cover.default or title.cover.md or title.cover.thumbnail
     library_entry = None
     if current_user is not None:
@@ -81,7 +75,6 @@ async def show_title(
             "export_formats": available_export_formats(),
             "in_library": library_entry is not None,
             "progress_percent": progress_percent,
-            "estimated_size_label": _format_size(estimated_size) if estimated_size else None,
         },
     )
     remember(
@@ -92,6 +85,22 @@ async def show_title(
         cover_url=cover_url,
     )
     return response
+
+
+@router.get("/{slug_url}/size-estimate")
+async def title_size_estimate(slug_url: str) -> dict[str, str | None]:
+    """PR 43: `estimate_title_size()` samples several chapters' content, which can take
+    a few seconds - fetched by the title page's own JS after the page has already
+    rendered (title-size-estimate.js), instead of blocking `show_title()` on it.
+    """
+    async with open_client(slug_url) as lib:
+        try:
+            estimated_size = await lib.estimate_title_size()
+        except RanobeLibError:
+            # A sampled chapter failing (rate limit, needs auth, ...) shouldn't fail the
+            # estimate outright - just omit it.
+            estimated_size = 0
+    return {"label": _format_size(estimated_size) if estimated_size else None}
 
 
 def _format_size(size_bytes: int) -> str:

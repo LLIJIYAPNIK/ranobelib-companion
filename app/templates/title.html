@@ -34,7 +34,7 @@
         {% if title.is_licensed %}<span>Лицензировано</span>{% endif %}
         {% if title.release_date %}<span>{{ title.release_date }}</span>{% endif %}
         {% if title.chapter_count %}<span>{{ title.chapter_count }} глав</span>{% endif %}
-        {% if estimated_size_label %}<span>≈ {{ estimated_size_label }}</span>{% endif %}
+        <span data-role="title-size-estimate" data-slug-url="{{ title.slug_url }}">Оцениваем размер…</span>
       </div>
       {% if in_library and progress_percent is not none %}
       <p class="content__hint">Прочитано {{ progress_percent }}%</p>
@@ -143,5 +143,6 @@
     {% endfor %}
   </form>
   <script src="{{ url_for('static', path='js/chapter-export-panel.js') }}" defer></script>
+  <script src="{{ url_for('static', path='js/title-size-estimate.js') }}" defer></script>
 </main>
 {% endblock %}
