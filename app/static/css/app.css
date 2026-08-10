@@ -466,6 +466,27 @@ a {
   animation: library-tab-indicator-in 0.2s ease;
 }
 
+@keyframes library-tabs-content-in {
+  from {
+    opacity: 0;
+    transform: translateY(6px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* PR 47: /library and /library/catalog (the "Читаю"/"Все тайтлы" tabs) are separate
+   server-rendered pages, not a client-side tab switch - so this fades/slides each page's
+   own content in on load rather than animating a shared element between them. Applies at
+   every breakpoint (unlike PR 46's mobile-only .main animation, which exists to echo the
+   sidebar becoming a bottom tab bar there) - these two tabs render identically above and
+   below the mobile breakpoint. */
+.library-tabs-content {
+  animation: library-tabs-content-in 0.18s ease-out;
+}
+
 .catalog-genres {
   margin: 12px 32px 0;
 }
