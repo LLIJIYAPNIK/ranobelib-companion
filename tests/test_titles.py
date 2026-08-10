@@ -109,19 +109,47 @@ def test_show_title_renders_metadata() -> None:
     assert "42" in response.text
 
 
-def test_show_title_renders_estimated_size() -> None:
+def test_show_title_renders_size_estimate_placeholder() -> None:
+    # PR 43: show_title() no longer computes the estimate itself - it just renders a
+    # placeholder that title-size-estimate.js fills in from the endpoint below.
+    title = _fake_title()
+    with patch("app.services.client.RanobeLib", return_value=_FakeClient(title)):
+        response = client.get("/titles/6712--test-novel")
+
+    assert response.status_code == 200
+    assert 'data-role="title-size-estimate"' in response.text
+    assert 'data-slug-url="6712--test-novel"' in response.text
+    assert 'class="spinner"' in response.text
+    assert 'data-role="title-size-estimate-status"' in response.text
+    assert "Загружаем главы…" in response.text
+    assert "static/js/title-size-estimate.js" in response.text
+
+
+def test_show_title_does_not_call_estimate_title_size() -> None:
+    class _BlockingEstimateClient(_FakeClient):
+        async def estimate_title_size(self) -> int:
+            raise AssertionError("show_title() must not block on the size estimate")
+
+    title = _fake_title()
+    with patch("app.services.client.RanobeLib", return_value=_BlockingEstimateClient(title)):
+        response = client.get("/titles/6712--test-novel")
+
+    assert response.status_code == 200
+
+
+def test_title_size_estimate_endpoint_returns_formatted_label() -> None:
     title = _fake_title()
     with patch(
         "app.services.client.RanobeLib",
         return_value=_FakeClient(title, estimated_size=1_500_000),
     ):
-        response = client.get("/titles/6712--test-novel")
+        response = client.get("/titles/6712--test-novel/size-estimate")
 
     assert response.status_code == 200
-    assert "≈ 1.4 МБ" in response.text
+    assert response.json() == {"label": "1.4 МБ"}
 
 
-def test_show_title_omits_size_when_estimate_is_zero() -> None:
+def test_title_size_estimate_endpoint_omits_label_when_zero() -> None:
     # 0 is estimate_title_size()'s own "nothing to estimate" return (no chapters, or none
     # with a resolvable translation) - not a real "≈0 Б" title.
     title = _fake_title()
@@ -129,26 +157,25 @@ def test_show_title_omits_size_when_estimate_is_zero() -> None:
         "app.services.client.RanobeLib",
         return_value=_FakeClient(title, estimated_size=0),
     ):
-        response = client.get("/titles/6712--test-novel")
+        response = client.get("/titles/6712--test-novel/size-estimate")
 
     assert response.status_code == 200
-    assert "≈" not in response.text
+    assert response.json() == {"label": None}
 
 
-def test_show_title_survives_size_estimate_failure() -> None:
+def test_title_size_estimate_endpoint_survives_sample_failure() -> None:
     # A sampled chapter failing (rate limit, needs auth, ...) is a supplementary estimate
-    # falling through, not a reason to 500 the whole page.
+    # falling through, not a reason to error the whole request.
     class _FlakyEstimateClient(_FakeClient):
         async def estimate_title_size(self) -> int:
             raise RateLimitError(retry_after=30)
 
     title = _fake_title()
     with patch("app.services.client.RanobeLib", return_value=_FlakyEstimateClient(title)):
-        response = client.get("/titles/6712--test-novel")
+        response = client.get("/titles/6712--test-novel/size-estimate")
 
     assert response.status_code == 200
-    assert "Test Novel" in response.text
-    assert "≈" not in response.text
+    assert response.json() == {"label": None}
 
 
 def test_show_title_uses_russian_name_as_the_primary_heading() -> None:
