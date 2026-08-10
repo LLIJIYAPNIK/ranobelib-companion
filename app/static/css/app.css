@@ -64,10 +64,35 @@ a {
 }
 
 .sidebar__link {
+  display: flex;
+  align-items: center;
+  gap: 12px;
   font-size: 11px;
   color: var(--text-muted);
   text-decoration: none;
   text-align: center;
+}
+
+.sidebar__label {
+  display: none;
+  font-size: 13px;
+  white-space: nowrap;
+}
+
+@media (min-width: 641px) {
+  .sidebar--expanded {
+    width: 200px;
+    flex: 0 0 200px;
+    align-items: stretch;
+  }
+
+  .sidebar--expanded .sidebar__link {
+    padding: 0 22px;
+  }
+
+  .sidebar--expanded .sidebar__label {
+    display: inline;
+  }
 }
 
 .sidebar__toggle {
@@ -1158,6 +1183,10 @@ a {
 
   .sidebar__link {
     font-size: 10px;
+  }
+
+  .sidebar__toggle {
+    display: none;
   }
 
   .sidebar__account {
