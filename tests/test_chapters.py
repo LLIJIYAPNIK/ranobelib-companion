@@ -277,13 +277,16 @@ def test_read_chapter_records_progress_for_title_in_library(
     assert entry.last_read_number == "5"
 
 
-def test_read_chapter_does_not_add_title_to_library(logged_in_client: TestClient) -> None:
+def test_read_chapter_adds_title_to_library_if_missing(logged_in_client: TestClient) -> None:
     chapter = Chapter(id=1, volume="1", number="5", content="<p>x</p>")
     with patch("app.services.client.RanobeLib", return_value=_FakeClient(chapter)):
         response = logged_in_client.get("/titles/6712--test-novel/chapters/1/5")
 
     assert response.status_code == 200
-    assert get_entry(get_connection(), user_id=1, slug_url="6712--test-novel") is None
+    entry = get_entry(get_connection(), user_id=1, slug_url="6712--test-novel")
+    assert entry is not None
+    assert entry.last_read_volume == "1"
+    assert entry.last_read_number == "5"
 
 
 def test_read_chapter_includes_heartbeat_script_when_logged_in(
