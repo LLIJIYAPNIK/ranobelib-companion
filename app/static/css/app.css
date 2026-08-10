@@ -198,6 +198,14 @@ a {
   gap: 6px;
 }
 
+.auth-form__field--checkbox {
+  flex-direction: row;
+  align-items: center;
+  gap: 8px;
+  font-size: 13px;
+  color: var(--text-secondary);
+}
+
 .auth-form__label {
   font-size: 13px;
   color: var(--text-secondary);

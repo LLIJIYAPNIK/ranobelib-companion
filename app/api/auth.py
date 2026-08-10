@@ -10,6 +10,7 @@ from fastapi import APIRouter, Form, Request
 from fastapi.responses import HTMLResponse, RedirectResponse, Response
 
 from app.auth.passwords import PasswordTooLongError, hash_password, verify_password
+from app.auth.session_middleware import REMEMBER_ME_KEY
 from app.db.connection import get_connection
 from app.db.users import create_user, get_user_by_email
 from app.templating import templates
@@ -61,7 +62,10 @@ async def show_login(request: Request) -> HTMLResponse:
 
 @router.post("/login", response_model=None)
 async def login(
-    request: Request, email: str = Form(...), password: str = Form(...)
+    request: Request,
+    email: str = Form(...),
+    password: str = Form(...),
+    remember_me: bool = Form(default=False),
 ) -> Response:
     user = get_user_by_email(get_connection(), email)
     # Same message either way - not confirming/denying whether an email is registered.
@@ -74,6 +78,10 @@ async def login(
         )
 
     request.session["user_id"] = user.id
+    if remember_me:
+        # PR 36: extends the session cookie's lifetime - see
+        # app/auth/session_middleware.py, RememberMeSessionMiddleware.
+        request.session[REMEMBER_ME_KEY] = True
     return RedirectResponse(url="/", status_code=303)
 
 

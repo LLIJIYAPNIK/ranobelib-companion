@@ -20,6 +20,12 @@ deployment.
 ``app/main.py``). Without an explicit value, a random key is generated per process
 start, which invalidates every session on restart - fine for local dev, not for a real
 deployment, so an unset value is logged as a warning rather than passed silently.
+
+``session_max_age``/``session_remember_max_age`` are the two session-cookie lifetimes
+(in seconds) used by ``RememberMeSessionMiddleware`` (``app/auth/session_middleware.py``,
+PR 36): the former for an ordinary login, the latter when "Запомнить меня" was checked.
+The default for ``session_max_age`` matches Starlette's own ``SessionMiddleware``
+default (14 days) so unchecked behaves exactly as before PR 36.
 """
 
 from __future__ import annotations
@@ -36,6 +42,8 @@ logger = logging.getLogger(__name__)
 _DEFAULT_CACHE_DIR = ".ranobelib_cache"
 _DEFAULT_CACHE_TTL_SECONDS = 6 * 60 * 60  # 6 hours
 _DEFAULT_DB_PATH = ".ranobelib_companion.db"
+_DEFAULT_SESSION_MAX_AGE_SECONDS = 14 * 24 * 60 * 60  # 14 days - Starlette's own default
+_DEFAULT_SESSION_REMEMBER_MAX_AGE_SECONDS = 90 * 24 * 60 * 60  # 90 days
 
 
 @dataclass(frozen=True)
@@ -44,6 +52,8 @@ class Settings:
     cache_ttl: float
     db_path: Path
     session_secret_key: str
+    session_max_age: int
+    session_remember_max_age: int
 
 
 @lru_cache
@@ -60,4 +70,12 @@ def get_settings() -> Settings:
         cache_ttl=float(os.environ.get("CACHE_TTL_SECONDS", _DEFAULT_CACHE_TTL_SECONDS)),
         db_path=Path(os.environ.get("DB_PATH", _DEFAULT_DB_PATH)),
         session_secret_key=session_secret_key,
+        session_max_age=int(
+            os.environ.get("SESSION_MAX_AGE_SECONDS", _DEFAULT_SESSION_MAX_AGE_SECONDS)
+        ),
+        session_remember_max_age=int(
+            os.environ.get(
+                "SESSION_REMEMBER_MAX_AGE_SECONDS", _DEFAULT_SESSION_REMEMBER_MAX_AGE_SECONDS
+            )
+        ),
     )

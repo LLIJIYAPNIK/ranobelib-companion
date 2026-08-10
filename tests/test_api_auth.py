@@ -105,6 +105,42 @@ def test_login_correct_credentials_establishes_session(client: TestClient) -> No
     assert "alice@example.com" in response.text
 
 
+def test_login_without_remember_me_uses_the_default_session_lifetime(
+    client: TestClient,
+) -> None:
+    _register(client, "alice@example.com", password="hunter2pass")
+    client.post("/logout")
+
+    response = client.post(
+        "/login",
+        data={"email": "alice@example.com", "password": "hunter2pass"},
+        follow_redirects=False,
+    )
+
+    assert response.status_code == 303
+    assert f"Max-Age={get_settings().session_max_age}" in response.headers["set-cookie"]
+
+
+def test_login_with_remember_me_extends_the_session_lifetime(client: TestClient) -> None:
+    _register(client, "alice@example.com", password="hunter2pass")
+    client.post("/logout")
+
+    response = client.post(
+        "/login",
+        data={
+            "email": "alice@example.com",
+            "password": "hunter2pass",
+            "remember_me": "on",
+        },
+        follow_redirects=False,
+    )
+
+    assert response.status_code == 303
+    assert (
+        f"Max-Age={get_settings().session_remember_max_age}" in response.headers["set-cookie"]
+    )
+
+
 def test_logout_clears_session(client: TestClient) -> None:
     _register(client, "alice@example.com")
 
