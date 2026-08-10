@@ -8,7 +8,20 @@
 </head>
 <body class="{% block body_class %}{% endblock %}">
   <div class="app-shell">
-    <nav class="sidebar">
+    <nav class="sidebar" data-role="sidebar">
+      <button
+        class="sidebar__toggle"
+        type="button"
+        data-role="sidebar-toggle"
+        aria-label="Развернуть меню"
+        aria-expanded="false"
+      >
+        <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+          <path d="M4 7h16"/>
+          <path d="M4 12h16"/>
+          <path d="M4 17h16"/>
+        </svg>
+      </button>
       <a class="sidebar__link{% if active_nav == 'home' %} sidebar__link--active{% endif %}" href="/" title="Главная" aria-label="Главная">
         <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
           <path d="M3 11.5 12 4l9 7.5"/>
@@ -57,5 +70,6 @@
       {% block content %}{% endblock %}
     </div>
   </div>
+  <script src="{{ url_for('static', path='js/sidebar-toggle.js') }}" defer></script>
 </body>
 </html>
