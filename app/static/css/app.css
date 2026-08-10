@@ -130,8 +130,19 @@ a {
   transition: transform 0.15s ease;
 }
 
+@keyframes sidebar-active-highlight {
+  from {
+    background-color: rgba(34, 211, 197, 0);
+  }
+  to {
+    background-color: rgba(34, 211, 197, 0.12);
+  }
+}
+
 .sidebar__link--active {
   color: var(--accent-teal);
+  background-color: rgba(34, 211, 197, 0.12);
+  animation: sidebar-active-highlight 0.3s ease;
 }
 
 .sidebar__link--disabled {
