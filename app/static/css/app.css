@@ -1190,6 +1190,11 @@ a {
 
   .sidebar__link {
     font-size: 10px;
+    gap: 0;
+    padding: 12px;
+    min-width: 44px;
+    min-height: 44px;
+    justify-content: center;
   }
 
   .sidebar__toggle {
