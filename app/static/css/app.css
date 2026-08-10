@@ -421,21 +421,49 @@ a {
 }
 
 .library-tabs__link {
+  position: relative;
   padding: 14px 0;
   color: var(--text-muted);
   text-decoration: none;
   font-size: 14px;
   font-weight: 600;
-  border-bottom: 2px solid transparent;
+  transition: color 0.15s ease;
 }
 
-.library-tabs__link:hover {
-  color: var(--text-secondary);
+.library-tabs__link::after {
+  content: "";
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: -1px;
+  height: 2px;
+  background: var(--accent-teal);
+  transform: scaleX(0);
+  transform-origin: left;
+}
+
+@media (hover: hover) {
+  .library-tabs__link:hover {
+    color: var(--text-secondary);
+  }
+}
+
+@keyframes library-tab-indicator-in {
+  from {
+    transform: scaleX(0);
+  }
+  to {
+    transform: scaleX(1);
+  }
 }
 
 .library-tabs__link--active {
   color: var(--text-primary);
-  border-bottom-color: var(--accent-teal);
+}
+
+.library-tabs__link--active::after {
+  transform: scaleX(1);
+  animation: library-tab-indicator-in 0.2s ease;
 }
 
 .catalog-genres {
