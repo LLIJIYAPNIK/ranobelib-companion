@@ -287,6 +287,20 @@ def test_show_title_renders_export_form() -> None:
     assert "Скачать тайтл" in response.text
 
 
+def test_show_title_export_panel_is_a_sticky_js_enhanced_floating_panel() -> None:
+    title = _fake_title()
+    volumes = [
+        Volume(number="1", chapters=[Chapter(id=1, volume="1", number="1", name="Начало")])
+    ]
+    with patch("app.services.client.RanobeLib", return_value=_FakeClient(title, volumes)):
+        response = client.get("/titles/6712--test-novel")
+
+    assert response.status_code == 200
+    assert 'data-role="chapter-toc-form"' in response.text
+    assert 'data-role="chapter-export-panel"' in response.text
+    assert "static/js/chapter-export-panel.js" in response.text
+
+
 def test_show_title_not_found_renders_html_error_page() -> None:
     exc = TitleNotFoundError("6712--missing")
     with patch("app.services.client.RanobeLib", return_value=_RaisingClient(exc)):

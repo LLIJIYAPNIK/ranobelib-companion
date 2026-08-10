@@ -86,11 +86,16 @@
     {% endif %}
   </section>
 
-  <form method="get" action="/titles/{{ title.slug_url }}/export" class="toc">
+  <form
+    method="get"
+    action="/titles/{{ title.slug_url }}/export"
+    class="toc"
+    data-role="chapter-toc-form"
+  >
     <div class="toc__header">
       <h2 class="toc__title">Оглавление</h2>
       {% if export_formats %}
-      <div class="toc__export-panel">
+      <div class="toc__export-panel" data-role="chapter-export-panel">
         <div class="toc__export">
           <select name="fmt" class="toc__export-format" aria-label="Формат экспорта">
             {% for fmt in export_formats %}
@@ -137,5 +142,6 @@
     </div>
     {% endfor %}
   </form>
+  <script src="{{ url_for('static', path='js/chapter-export-panel.js') }}" defer></script>
 </main>
 {% endblock %}
