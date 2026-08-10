@@ -23,3 +23,10 @@ def test_sidebar_links_to_settings_page() -> None:
     assert response.status_code == 200
     assert 'href="/settings"' in response.text
     assert 'sidebar__link--active' in response.text
+
+
+def test_settings_page_offers_a_monospace_font_choice() -> None:
+    response = client.get("/settings")
+
+    assert response.status_code == 200
+    assert '<option value="mono">' in response.text

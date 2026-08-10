@@ -4,7 +4,11 @@
 // storage in the app DB was called out as optional in the roadmap and isn't done here.
 (() => {
   const STORAGE_KEY = "readerSettings";
-  const FONT_FAMILIES = { sans: "var(--font-sans)", serif: "var(--font-serif)" };
+  const FONT_FAMILIES = {
+    sans: "var(--font-sans)",
+    serif: "var(--font-serif)",
+    mono: "var(--font-mono)",
+  };
   const DEFAULTS = { fontFamily: "sans", fontSize: "15", lineHeight: "1.85", width: "640" };
 
   const root = document.documentElement;
