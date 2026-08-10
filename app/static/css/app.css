@@ -1407,6 +1407,14 @@ a {
     animation: mobile-section-in 0.15s ease-out;
   }
 
+  /* PR 47: /library and /library/catalog's own content already fades in via
+     .library-tabs-content - without this, .main's animation above would run at the same
+     time, and since CSS opacity compounds across nested animated elements, the two
+     together would read as one slower, muddier fade instead of either intended one. */
+  .main:has(.library-tabs-content) {
+    animation: none;
+  }
+
   .sidebar {
     position: fixed;
     top: auto;
