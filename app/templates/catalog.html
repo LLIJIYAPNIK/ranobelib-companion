@@ -24,7 +24,7 @@
   </form>
 </header>
 {% if genre %}
-<p class="content__hint">
+<p class="content__hint content__hint--page">
   Жанр: {{ genre_name or genre }} ·
   <a href="?query={{ query or '' }}&sort={{ sort }}">Сбросить фильтр</a>
 </p>

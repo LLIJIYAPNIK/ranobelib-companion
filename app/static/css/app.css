@@ -1238,6 +1238,10 @@ a {
     padding: 0 16px;
   }
 
+  .content__hint--page {
+    padding: 0 16px;
+  }
+
   .search-form {
     max-width: none;
     flex-wrap: wrap;
