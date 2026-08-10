@@ -435,6 +435,53 @@ a {
   border-bottom-color: var(--accent-teal);
 }
 
+.catalog-genres {
+  margin: 12px 32px 0;
+}
+
+.catalog-genres__toggle {
+  display: inline-flex;
+  align-items: center;
+  width: fit-content;
+  height: 30px;
+  padding: 0 12px;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--text-secondary);
+  cursor: pointer;
+  list-style: none;
+}
+
+.catalog-genres__toggle::-webkit-details-marker {
+  display: none;
+}
+
+.catalog-genres__toggle:hover {
+  border-color: var(--accent-teal);
+  color: var(--accent-teal);
+}
+
+.catalog-genres__panel {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px 16px;
+  margin-top: 10px;
+  padding: 14px;
+  background: var(--bg-surface);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+}
+
+.catalog-genres__option {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 13px;
+  color: var(--text-secondary);
+}
+
 .title-card-grid {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
@@ -1268,6 +1315,10 @@ a {
 
   .content__hint--page {
     padding: 0 16px;
+  }
+
+  .catalog-genres {
+    margin: 12px 16px 0;
   }
 
   .search-form {

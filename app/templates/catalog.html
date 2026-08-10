@@ -3,7 +3,7 @@
 {% block content %}
 {% include "_library_tabs.html" %}
 <header class="header">
-  <form class="search-form" method="get" action="/library/catalog">
+  <form class="search-form" id="catalog-search-form" method="get" action="/library/catalog">
     <input
       class="search-input"
       type="text"
@@ -16,16 +16,31 @@
       <option value="{{ value }}"{% if value == sort %} selected{% endif %}>{{ label }}</option>
       {% endfor %}
     </select>
-    {% if genre %}
-    <input type="hidden" name="genre" value="{{ genre }}">
-    <input type="hidden" name="genre_name" value="{{ genre_name or '' }}">
-    {% endif %}
     <button class="search-button" type="submit">Искать</button>
   </form>
 </header>
-{% if genre %}
+{% if all_genres %}
+<details class="catalog-genres" data-role="catalog-genres"{% if genres %} open{% endif %}>
+  <summary class="catalog-genres__toggle">Жанры{% if genres %} ({{ genres | length }}){% endif %}</summary>
+  <div class="catalog-genres__panel">
+    {% for genre in all_genres %}
+    <label class="catalog-genres__option">
+      <input
+        type="checkbox"
+        name="genres"
+        value="{{ genre.id }}"
+        form="catalog-search-form"
+        {% if genre.id in genres %}checked{% endif %}
+      >
+      <span>{{ genre.name }}</span>
+    </label>
+    {% endfor %}
+  </div>
+</details>
+{% endif %}
+{% if genres %}
 <p class="content__hint content__hint--page">
-  Жанр: {{ genre_name or genre }} ·
+  Жанр{{ "ы" if genres | length > 1 else "" }}: {{ selected_genre_names | join(", ") }} ·
   <a href="?query={{ query or '' }}&sort={{ sort }}">Сбросить фильтр</a>
 </p>
 {% endif %}
@@ -35,7 +50,7 @@
     data-role="catalog-grid"
     data-query="{{ query or '' }}"
     data-sort="{{ sort }}"
-    data-genre="{{ genre or '' }}"
+    data-genres="{{ genres | join(',') }}"
     data-next-page="{{ page + 1 if has_next_page else '' }}"
   >
     {% include "_catalog_cards.html" %}
@@ -44,7 +59,7 @@
   <noscript>
     {% if has_next_page %}
     <p class="content__hint">
-      <a href="?query={{ query or '' }}&sort={{ sort }}{% if genre %}&genre={{ genre }}{% endif %}&page={{ page + 1 }}">Следующая страница</a>
+      <a href="?query={{ query or '' }}&sort={{ sort }}{% for g in genres %}&genres={{ g }}{% endfor %}&page={{ page + 1 }}">Следующая страница</a>
     </p>
     {% endif %}
   </noscript>

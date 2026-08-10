@@ -1,8 +1,9 @@
+import re
 from unittest.mock import patch
 
 from fastapi.testclient import TestClient
 from ranobelib import CatalogPage
-from ranobelib.models import Cover, Label, Title
+from ranobelib.models import Cover, Genre, Label, Title
 
 from app.main import app
 
@@ -22,9 +23,15 @@ def _fake_title(id_: int = 1, name: str = "Test Novel") -> Title:
 
 
 class _FakeCatalog:
-    def __init__(self, page: CatalogPage | None = None, exc: Exception | None = None) -> None:
+    def __init__(
+        self,
+        page: CatalogPage | None = None,
+        exc: Exception | None = None,
+        genres: list[Genre] | None = None,
+    ) -> None:
         self._page = page
         self._exc = exc
+        self._genres = genres or []
         self.received_kwargs: dict[str, object] | None = None
 
     async def __aenter__(self) -> "_FakeCatalog":
@@ -39,6 +46,9 @@ class _FakeCatalog:
             raise self._exc
         assert self._page is not None
         return self._page
+
+    async def list_genres(self) -> list[Genre]:
+        return self._genres
 
 
 def test_show_catalog_renders_cards() -> None:
@@ -158,16 +168,25 @@ def test_show_catalog_renders_sort_in_select_and_data_attribute() -> None:
     assert '<option value="views" selected>' in response.text
 
 
-def test_show_catalog_passes_genre_to_the_sdk_as_a_single_item_list() -> None:
+def test_show_catalog_passes_genres_to_the_sdk() -> None:
     page = CatalogPage(items=[], page=1, has_next_page=False)
     fake = _FakeCatalog(page)
     with patch("app.services.catalog.Catalog", return_value=fake):
-        client.get("/library/catalog", params={"genre": 5})
+        client.get("/library/catalog", params={"genres": 5})
 
     assert fake.received_kwargs["genres"] == [5]
 
 
-def test_show_catalog_without_genre_passes_none() -> None:
+def test_show_catalog_passes_several_genres_to_the_sdk() -> None:
+    page = CatalogPage(items=[], page=1, has_next_page=False)
+    fake = _FakeCatalog(page)
+    with patch("app.services.catalog.Catalog", return_value=fake):
+        client.get("/library/catalog", params={"genres": [5, 8]})
+
+    assert fake.received_kwargs["genres"] == [5, 8]
+
+
+def test_show_catalog_without_genres_passes_none() -> None:
     page = CatalogPage(items=[], page=1, has_next_page=False)
     fake = _FakeCatalog(page)
     with patch("app.services.catalog.Catalog", return_value=fake):
@@ -176,36 +195,50 @@ def test_show_catalog_without_genre_passes_none() -> None:
     assert fake.received_kwargs["genres"] is None
 
 
-def test_show_catalog_renders_genre_filter_chip_and_hidden_fields() -> None:
+def test_show_catalog_renders_genre_checkboxes() -> None:
     page = CatalogPage(items=[], page=1, has_next_page=False)
-    with patch("app.services.catalog.Catalog", return_value=_FakeCatalog(page)):
-        response = client.get(
-            "/library/catalog", params={"genre": 5, "genre_name": "Фэнтези"}
-        )
+    genres = [Genre(id=5, name="Фэнтези"), Genre(id=8, name="Романтика")]
+    with patch("app.services.catalog.Catalog", return_value=_FakeCatalog(page, genres=genres)):
+        response = client.get("/library/catalog", params={"genres": 5})
 
     assert response.status_code == 200
-    assert "Жанр: Фэнтези" in response.text
-    assert 'name="genre" value="5"' in response.text
-    assert 'name="genre_name" value="Фэнтези"' in response.text
-    assert 'data-genre="5"' in response.text
+    assert 'data-role="catalog-genres"' in response.text
+    assert '<span>Фэнтези</span>' in response.text
+    assert '<span>Романтика</span>' in response.text
+
+    checkbox_5 = re.search(r'value="5"[^>]*>', response.text)
+    checkbox_8 = re.search(r'value="8"[^>]*>', response.text)
+    assert checkbox_5 is not None and "checked" in checkbox_5.group(0)
+    assert checkbox_8 is not None and "checked" not in checkbox_8.group(0)
 
 
-def test_show_catalog_without_genre_omits_the_filter_chip() -> None:
+def test_show_catalog_renders_genre_filter_chip_with_resolved_names() -> None:
+    page = CatalogPage(items=[], page=1, has_next_page=False)
+    genres = [Genre(id=5, name="Фэнтези"), Genre(id=8, name="Романтика")]
+    with patch("app.services.catalog.Catalog", return_value=_FakeCatalog(page, genres=genres)):
+        response = client.get("/library/catalog", params={"genres": [5, 8]})
+
+    assert response.status_code == 200
+    assert "Жанры: Фэнтези, Романтика" in response.text
+    assert 'data-genres="5,8"' in response.text
+
+
+def test_show_catalog_without_genres_omits_the_filter_chip() -> None:
     page = CatalogPage(items=[], page=1, has_next_page=False)
     with patch("app.services.catalog.Catalog", return_value=_FakeCatalog(page)):
         response = client.get("/library/catalog")
 
     assert "Жанр:" not in response.text
-    assert 'name="genre"' not in response.text
+    assert 'data-role="catalog-genres"' not in response.text
 
 
-def test_catalog_page_fragment_passes_genre_to_the_sdk() -> None:
+def test_catalog_page_fragment_passes_genres_to_the_sdk() -> None:
     page = CatalogPage(items=[], page=1, has_next_page=False)
     fake = _FakeCatalog(page)
     with patch("app.services.catalog.Catalog", return_value=fake):
-        client.get("/library/catalog/page", params={"genre": 5})
+        client.get("/library/catalog/page", params={"genres": [5, 8]})
 
-    assert fake.received_kwargs["genres"] == [5]
+    assert fake.received_kwargs["genres"] == [5, 8]
 
 
 def test_catalog_page_fragment_passes_sort_to_the_sdk() -> None:
