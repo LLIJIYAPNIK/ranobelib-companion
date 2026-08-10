@@ -20,9 +20,19 @@
   </form>
 </header>
 {% if all_genres %}
-<details class="catalog-genres" data-role="catalog-genres"{% if genres %} open{% endif %}>
-  <summary class="catalog-genres__toggle">Жанры{% if genres %} ({{ genres | length }}){% endif %}</summary>
-  <div class="catalog-genres__panel">
+<div class="catalog-genres" data-role="catalog-genres">
+  <button
+    type="button"
+    class="catalog-genres__toggle"
+    data-role="catalog-genres-toggle"
+    aria-expanded="{{ 'true' if genres else 'false' }}"
+    aria-controls="catalog-genres-panel"
+  >Жанры{% if genres %} ({{ genres | length }}){% endif %}</button>
+  <div
+    class="catalog-genres__panel{% if genres %} catalog-genres__panel--open{% endif %}"
+    id="catalog-genres-panel"
+    data-role="catalog-genres-panel"
+  >
     {% for genre in all_genres %}
     <label class="catalog-genres__option">
       <input
@@ -36,7 +46,7 @@
     </label>
     {% endfor %}
   </div>
-</details>
+</div>
 {% endif %}
 {% if genres %}
 <p class="content__hint content__hint--page">
@@ -64,5 +74,6 @@
     {% endif %}
   </noscript>
   <script src="{{ url_for('static', path='js/catalog-scroll.js') }}" defer></script>
+  <script src="{{ url_for('static', path='js/catalog-genres-toggle.js') }}" defer></script>
 </main>
 {% endblock %}
