@@ -421,21 +421,70 @@ a {
 }
 
 .library-tabs__link {
+  position: relative;
   padding: 14px 0;
   color: var(--text-muted);
   text-decoration: none;
   font-size: 14px;
   font-weight: 600;
-  border-bottom: 2px solid transparent;
+  transition: color 0.15s ease;
 }
 
-.library-tabs__link:hover {
-  color: var(--text-secondary);
+.library-tabs__link::after {
+  content: "";
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: -1px;
+  height: 2px;
+  background: var(--accent-teal);
+  transform: scaleX(0);
+  transform-origin: left;
+}
+
+@media (hover: hover) {
+  .library-tabs__link:hover {
+    color: var(--text-secondary);
+  }
+}
+
+@keyframes library-tab-indicator-in {
+  from {
+    transform: scaleX(0);
+  }
+  to {
+    transform: scaleX(1);
+  }
 }
 
 .library-tabs__link--active {
   color: var(--text-primary);
-  border-bottom-color: var(--accent-teal);
+}
+
+.library-tabs__link--active::after {
+  transform: scaleX(1);
+  animation: library-tab-indicator-in 0.2s ease;
+}
+
+@keyframes library-tabs-content-in {
+  from {
+    opacity: 0;
+    transform: translateY(6px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* PR 47: /library and /library/catalog (the "Читаю"/"Все тайтлы" tabs) are separate
+   server-rendered pages, not a client-side tab switch - so this fades/slides each page's
+   own content in on load rather than animating a shared element between them. Applies at
+   every breakpoint (unlike PR 46's mobile-only .main animation, which exists to echo the
+   sidebar becoming a bottom tab bar there) - these two tabs render identically above and
+   below the mobile breakpoint. */
+.library-tabs-content {
+  animation: library-tabs-content-in 0.18s ease-out;
 }
 
 .catalog-genres {
@@ -1356,6 +1405,14 @@ a {
     padding-top: 48px;
     padding-bottom: 72px;
     animation: mobile-section-in 0.15s ease-out;
+  }
+
+  /* PR 47: /library and /library/catalog's own content already fades in via
+     .library-tabs-content - without this, .main's animation above would run at the same
+     time, and since CSS opacity compounds across nested animated elements, the two
+     together would read as one slower, muddier fade instead of either intended one. */
+  .main:has(.library-tabs-content) {
+    animation: none;
   }
 
   .sidebar {
