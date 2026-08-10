@@ -16,6 +16,7 @@ from app.api import (
     health,
     home,
     library,
+    settings,
     titles,
 )
 from app.config import get_settings
@@ -47,5 +48,6 @@ app.include_router(exports.router)
 app.include_router(downloads.router)
 app.include_router(downloads_section.router)
 app.include_router(library.router)
+app.include_router(settings.router)
 app.include_router(titles.router)
 register_exception_handlers(app)
