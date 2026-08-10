@@ -754,32 +754,9 @@ a {
   margin: 24px 0;
 }
 
-.reader-settings {
-  margin-top: 8px;
-}
-
-.reader-settings__toggle {
-  display: inline-flex;
-  align-items: center;
-  width: fit-content;
-  height: 30px;
-  padding: 0 12px;
-  border: 1px solid var(--border);
-  border-radius: 6px;
-  font-size: 12px;
-  font-weight: 600;
-  color: var(--text-secondary);
-  cursor: pointer;
-  list-style: none;
-}
-
-.reader-settings__toggle::-webkit-details-marker {
-  display: none;
-}
-
-.reader-settings__toggle:hover {
-  border-color: var(--accent-teal);
-  color: var(--accent-teal);
+.reader-settings-page {
+  margin-top: 20px;
+  max-width: 480px;
 }
 
 .reader-settings__panel {

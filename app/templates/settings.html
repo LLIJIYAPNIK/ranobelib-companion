@@ -1,0 +1,43 @@
+{% extends "base.html" %}
+{% block title %}Настройки чтения — RanobeLib Companion{% endblock %}
+{% block content %}
+<main class="content">
+  <h1 class="toc__title">Настройки чтения</h1>
+  <div class="reader-settings-page reader-settings__panel" data-role="reader-settings">
+    <label class="reader-settings__field">
+      <span>Шрифт</span>
+      <select class="toc__export-format" data-setting="fontFamily">
+        <option value="sans">Обычный</option>
+        <option value="serif">С засечками</option>
+      </select>
+    </label>
+    <label class="reader-settings__field">
+      <span>Размер шрифта</span>
+      <select class="toc__export-format" data-setting="fontSize">
+        <option value="14">Мелкий</option>
+        <option value="15">Обычный</option>
+        <option value="17">Крупный</option>
+        <option value="19">Очень крупный</option>
+      </select>
+    </label>
+    <label class="reader-settings__field">
+      <span>Межстрочный интервал</span>
+      <select class="toc__export-format" data-setting="lineHeight">
+        <option value="1.5">Плотный</option>
+        <option value="1.85">Обычный</option>
+        <option value="2.2">Свободный</option>
+      </select>
+    </label>
+    <label class="reader-settings__field">
+      <span>Ширина области чтения</span>
+      <select class="toc__export-format" data-setting="width">
+        <option value="520">Узкая</option>
+        <option value="640">Обычная</option>
+        <option value="840">Широкая</option>
+        <option value="1080">Максимальная</option>
+      </select>
+    </label>
+  </div>
+</main>
+<script src="{{ url_for('static', path='js/reader-settings.js') }}" defer></script>
+{% endblock %}
