@@ -703,21 +703,27 @@ a {
   border: 1px solid var(--border);
 }
 
-.btn--secondary:hover {
-  border-color: var(--accent-teal);
-}
-
 /* One shared hover treatment for every button-like element in the app - previously some
    had no hover feedback at all (.btn--primary, .btn--sm, .search-button,
    .locked-feature__cta) and others changed color/border instantly with no transition
-   (.btn--secondary, .catalog-genres__toggle, .reader-export__link). */
-.btn:hover,
-.search-button:hover,
-.locked-feature__cta:hover,
-.catalog-genres__toggle:hover,
-.reader-export__link:hover {
-  transform: scale(1.03);
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+   (.btn--secondary, .catalog-genres__toggle, .reader-export__link).
+
+   Gated to hover-capable devices (mouse/trackpad) - a plain :hover rule applies on tap
+   on a touchscreen and only clears on the next unrelated tap, leaving the scaled-up/
+   shadowed state "stuck" until then (same issue fixed for the sidebar in PR 42). */
+@media (hover: hover) {
+  .btn--secondary:hover {
+    border-color: var(--accent-teal);
+  }
+
+  .btn:hover,
+  .search-button:hover,
+  .locked-feature__cta:hover,
+  .catalog-genres__toggle:hover,
+  .reader-export__link:hover {
+    transform: scale(1.03);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+  }
 }
 
 .btn--sm {
