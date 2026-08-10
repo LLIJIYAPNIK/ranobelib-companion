@@ -77,14 +77,6 @@ a {
   transition: color 0.15s ease;
 }
 
-.sidebar__link:hover {
-  color: var(--accent-teal);
-}
-
-.sidebar__link:hover svg {
-  transform: scale(1.12);
-}
-
 .sidebar__label {
   display: inline-block;
   max-width: 0;
@@ -121,13 +113,26 @@ a {
   transition: color 0.15s ease;
 }
 
-.sidebar__toggle:hover {
-  color: var(--accent-teal);
-}
-
 .sidebar__link svg {
   vertical-align: middle;
   transition: transform 0.15s ease;
+}
+
+/* Hover-only devices (mouse/trackpad) - gated so a tap on a touchscreen doesn't leave
+   the color/scale change "stuck" until the visitor taps elsewhere (touch UAs otherwise
+   apply :hover on tap and only clear it on the next unrelated tap). */
+@media (hover: hover) {
+  .sidebar__link:hover {
+    color: var(--accent-teal);
+  }
+
+  .sidebar__link:hover svg {
+    transform: scale(1.12);
+  }
+
+  .sidebar__toggle:hover {
+    color: var(--accent-teal);
+  }
 }
 
 @keyframes sidebar-active-highlight {
