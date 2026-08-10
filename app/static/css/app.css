@@ -1333,9 +1333,29 @@ a {
    account controls move to a slim fixed top strip, which isn't covered by any of
    the mobile frames, extended here from the same visual language. */
 @media (max-width: 640px) {
+  /* PR 46: switching sidebar section here is a full page navigation (server-rendered,
+     no client-side router), not a single-page-app transition - so "animating between
+     sections" means fading/sliding each newly-loaded page's content in on paint,
+     instead of the previous hard cut. Kept short (150ms) so it doesn't read as added
+     load time, and scoped to this mobile breakpoint only - the desktop sidebar already
+     stays put alongside .main rather than being replaced by page navigation the way the
+     mobile bottom tab bar visually reads as "switching sections", so it doesn't need
+     this treatment. */
+  @keyframes mobile-section-in {
+    from {
+      opacity: 0;
+      transform: translateY(6px);
+    }
+    to {
+      opacity: 1;
+      transform: translateY(0);
+    }
+  }
+
   .main {
     padding-top: 48px;
     padding-bottom: 72px;
+    animation: mobile-section-in 0.15s ease-out;
   }
 
   .sidebar {
