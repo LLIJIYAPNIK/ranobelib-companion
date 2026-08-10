@@ -5,7 +5,7 @@
   {% else %}
   <div class="title-card__cover" aria-hidden="true"></div>
   {% endif %}
-  <span class="title-card__name">{{ name }}</span>
+  <span class="title-card__name" title="{{ name }}">{{ name }}</span>
   {% if caller %}{{ caller() }}{% endif %}
 </a>
 {% endmacro %}
