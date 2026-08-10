@@ -25,13 +25,8 @@
       </select>
     </label>
     <label class="reader-settings__field">
-      <span>Ширина области чтения</span>
-      <select class="toc__export-format" data-setting="width">
-        <option value="520">Узкая</option>
-        <option value="640">Обычная</option>
-        <option value="840">Широкая</option>
-        <option value="1080">Максимальная</option>
-      </select>
+      <span>Ширина области чтения — <output for="width"></output>px</span>
+      <input type="range" id="width" data-setting="width" min="420" max="1200" step="20">
     </label>
   </div>
   <div class="reader-settings-preview" data-role="reader-settings-preview">
