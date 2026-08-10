@@ -119,6 +119,9 @@ def test_show_title_renders_size_estimate_placeholder() -> None:
     assert response.status_code == 200
     assert 'data-role="title-size-estimate"' in response.text
     assert 'data-slug-url="6712--test-novel"' in response.text
+    assert 'class="spinner"' in response.text
+    assert 'data-role="title-size-estimate-status"' in response.text
+    assert "Загружаем главы…" in response.text
     assert "static/js/title-size-estimate.js" in response.text
 
 
