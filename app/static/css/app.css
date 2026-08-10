@@ -454,18 +454,10 @@ a {
   font-weight: 600;
   color: var(--text-secondary);
   cursor: pointer;
-  list-style: none;
+  background: none;
+  font-family: inherit;
   transition: transform 0.15s ease, box-shadow 0.15s ease, border-color 0.15s ease,
     color 0.15s ease;
-}
-
-.catalog-genres__toggle::-webkit-details-marker {
-  display: none;
-}
-
-.catalog-genres__toggle:hover {
-  border-color: var(--accent-teal);
-  color: var(--accent-teal);
 }
 
 .catalog-genres__panel {
@@ -477,6 +469,25 @@ a {
   background: var(--bg-surface);
   border: 1px solid var(--border);
   border-radius: 8px;
+  box-shadow: 0 10px 24px rgba(0, 0, 0, 0.35);
+  max-height: 600px;
+  opacity: 1;
+  overflow: hidden;
+  transition: max-height 0.25s ease, opacity 0.2s ease, padding 0.25s ease,
+    margin-top 0.25s ease, border-color 0.2s ease, box-shadow 0.2s ease;
+}
+
+/* No-JS fallback: without catalog-genres-toggle.js the panel just stays visible (the
+   button then does nothing, same as reader-settings/chapter-export-panel elsewhere in
+   this app) - only JS-enhanced pages get the collapsed default. */
+.catalog-genres__panel--js:not(.catalog-genres__panel--open) {
+  max-height: 0;
+  opacity: 0;
+  padding-top: 0;
+  padding-bottom: 0;
+  margin-top: 0;
+  border-color: transparent;
+  box-shadow: none;
 }
 
 .catalog-genres__option {
@@ -724,6 +735,21 @@ a {
     transform: scale(1.03);
     box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
   }
+
+  .catalog-genres__toggle:hover {
+    border-color: var(--accent-teal);
+    color: var(--accent-teal);
+  }
+
+  .toc__export-format:hover {
+    border-color: var(--accent-teal);
+  }
+
+  .translation-choice__link:hover {
+    border-color: var(--accent-teal);
+    transform: translateY(-2px);
+    box-shadow: 0 8px 20px rgba(0, 0, 0, 0.35);
+  }
 }
 
 .btn--sm {
@@ -777,11 +803,20 @@ a {
   height: 36px;
   padding: 0 10px;
   border: 1px solid var(--border);
-  border-radius: 6px;
+  border-radius: 8px;
   background: var(--bg-surface);
   color: var(--text-primary);
   font-family: var(--font-mono);
   font-size: 13px;
+  cursor: pointer;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.2);
+  transition: border-color 0.15s ease, box-shadow 0.15s ease;
+}
+
+.toc__export-format:focus-visible {
+  border-color: var(--accent-teal);
+  box-shadow: 0 0 0 3px rgba(34, 211, 197, 0.18);
+  outline: none;
 }
 
 .toc__title {
@@ -1020,11 +1055,23 @@ a {
   border-color: var(--accent-teal);
 }
 
+@keyframes translation-choice-in {
+  from {
+    opacity: 0;
+    transform: translateY(-8px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
 .translation-choice {
   display: flex;
   flex-direction: column;
   gap: 14px;
   max-width: 640px;
+  animation: translation-choice-in 0.2s ease;
 }
 
 .translation-choice__back {
@@ -1069,10 +1116,8 @@ a {
   padding: 14px 16px;
   text-decoration: none;
   color: inherit;
-}
-
-.translation-choice__link:hover {
-  border-color: var(--accent-teal);
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.2);
+  transition: border-color 0.15s ease, transform 0.15s ease, box-shadow 0.15s ease;
 }
 
 .translation-choice__team {
