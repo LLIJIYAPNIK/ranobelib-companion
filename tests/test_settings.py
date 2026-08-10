@@ -23,3 +23,25 @@ def test_sidebar_links_to_settings_page() -> None:
     assert response.status_code == 200
     assert 'href="/settings"' in response.text
     assert 'sidebar__link--active' in response.text
+
+
+def test_settings_page_offers_a_monospace_font_choice() -> None:
+    response = client.get("/settings")
+
+    assert response.status_code == 200
+    assert '<option value="mono">' in response.text
+
+
+def test_settings_page_font_size_is_a_slider_with_live_preview() -> None:
+    response = client.get("/settings")
+
+    assert response.status_code == 200
+    assert 'type="range" id="fontSize" data-setting="fontSize"' in response.text
+    assert 'data-role="reader-settings-preview"' in response.text
+
+
+def test_settings_page_reading_width_is_a_slider() -> None:
+    response = client.get("/settings")
+
+    assert response.status_code == 200
+    assert 'type="range" id="width" data-setting="width"' in response.text

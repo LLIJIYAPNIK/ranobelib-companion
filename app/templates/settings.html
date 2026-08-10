@@ -7,18 +7,14 @@
     <label class="reader-settings__field">
       <span>Шрифт</span>
       <select class="toc__export-format" data-setting="fontFamily">
-        <option value="sans">Обычный</option>
+        <option value="sans">Без засечек</option>
         <option value="serif">С засечками</option>
+        <option value="mono">Моноширинный</option>
       </select>
     </label>
     <label class="reader-settings__field">
-      <span>Размер шрифта</span>
-      <select class="toc__export-format" data-setting="fontSize">
-        <option value="14">Мелкий</option>
-        <option value="15">Обычный</option>
-        <option value="17">Крупный</option>
-        <option value="19">Очень крупный</option>
-      </select>
+      <span>Размер шрифта — <output for="fontSize"></output>px</span>
+      <input type="range" id="fontSize" data-setting="fontSize" min="12" max="22" step="1">
     </label>
     <label class="reader-settings__field">
       <span>Межстрочный интервал</span>
@@ -29,14 +25,15 @@
       </select>
     </label>
     <label class="reader-settings__field">
-      <span>Ширина области чтения</span>
-      <select class="toc__export-format" data-setting="width">
-        <option value="520">Узкая</option>
-        <option value="640">Обычная</option>
-        <option value="840">Широкая</option>
-        <option value="1080">Максимальная</option>
-      </select>
+      <span>Ширина области чтения — <output for="width"></output>px</span>
+      <input type="range" id="width" data-setting="width" min="420" max="1200" step="20">
     </label>
+  </div>
+  <div class="reader-settings-preview" data-role="reader-settings-preview">
+    <p>
+      Так будет выглядеть текст главы с выбранными настройками. Меняйте параметры
+      слева — пример обновляется сразу, без сохранения и перезагрузки страницы.
+    </p>
   </div>
 </main>
 <script src="{{ url_for('static', path='js/reader-settings.js') }}" defer></script>

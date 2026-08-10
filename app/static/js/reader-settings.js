@@ -4,7 +4,11 @@
 // storage in the app DB was called out as optional in the roadmap and isn't done here.
 (() => {
   const STORAGE_KEY = "readerSettings";
-  const FONT_FAMILIES = { sans: "var(--font-sans)", serif: "var(--font-serif)" };
+  const FONT_FAMILIES = {
+    sans: "var(--font-sans)",
+    serif: "var(--font-serif)",
+    mono: "var(--font-mono)",
+  };
   const DEFAULTS = { fontFamily: "sans", fontSize: "15", lineHeight: "1.85", width: "640" };
 
   const root = document.documentElement;
@@ -33,12 +37,20 @@
   const panel = document.querySelector('[data-role="reader-settings"]');
   if (!panel) return;
 
-  for (const select of panel.querySelectorAll("select[data-setting]")) {
-    const key = select.dataset.setting;
-    select.value = settings[key];
-    select.addEventListener("change", () => {
-      settings = { ...settings, [key]: select.value };
+  function updateReadout(control) {
+    if (control.type !== "range") return;
+    const output = panel.querySelector(`output[for="${control.id}"]`);
+    if (output) output.textContent = control.value;
+  }
+
+  for (const control of panel.querySelectorAll("[data-setting]")) {
+    const key = control.dataset.setting;
+    control.value = settings[key];
+    updateReadout(control);
+    control.addEventListener("input", () => {
+      settings = { ...settings, [key]: control.value };
       apply(settings);
+      updateReadout(control);
       localStorage.setItem(STORAGE_KEY, JSON.stringify(settings));
     });
   }
