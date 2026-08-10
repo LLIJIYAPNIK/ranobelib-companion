@@ -73,6 +73,8 @@ a {
   color: var(--text-muted);
   text-decoration: none;
   text-align: center;
+  border-radius: 8px;
+  transition: color 0.15s ease;
 }
 
 .sidebar__label {
@@ -108,18 +110,44 @@ a {
   padding: 0;
   color: var(--text-muted);
   cursor: pointer;
-}
-
-.sidebar__toggle:hover {
-  color: var(--accent-teal);
+  transition: color 0.15s ease;
 }
 
 .sidebar__link svg {
   vertical-align: middle;
+  transition: transform 0.15s ease;
+}
+
+/* Hover-only devices (mouse/trackpad) - gated so a tap on a touchscreen doesn't leave
+   the color/scale change "stuck" until the visitor taps elsewhere (touch UAs otherwise
+   apply :hover on tap and only clear it on the next unrelated tap). */
+@media (hover: hover) {
+  .sidebar__link:hover {
+    color: var(--accent-teal);
+  }
+
+  .sidebar__link:hover svg {
+    transform: scale(1.12);
+  }
+
+  .sidebar__toggle:hover {
+    color: var(--accent-teal);
+  }
+}
+
+@keyframes sidebar-active-highlight {
+  from {
+    background-color: rgba(34, 211, 197, 0);
+  }
+  to {
+    background-color: rgba(34, 211, 197, 0.12);
+  }
 }
 
 .sidebar__link--active {
   color: var(--accent-teal);
+  background-color: rgba(34, 211, 197, 0.12);
+  animation: sidebar-active-highlight 0.3s ease;
 }
 
 .sidebar__link--disabled {
