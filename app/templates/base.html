@@ -8,13 +8,27 @@
 </head>
 <body class="{% block body_class %}{% endblock %}">
   <div class="app-shell">
-    <nav class="sidebar">
+    <nav class="sidebar" data-role="sidebar">
+      <button
+        class="sidebar__toggle"
+        type="button"
+        data-role="sidebar-toggle"
+        aria-label="Развернуть меню"
+        aria-expanded="false"
+      >
+        <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+          <path d="M4 7h16"/>
+          <path d="M4 12h16"/>
+          <path d="M4 17h16"/>
+        </svg>
+      </button>
       <a class="sidebar__link{% if active_nav == 'home' %} sidebar__link--active{% endif %}" href="/" title="Главная" aria-label="Главная">
         <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
           <path d="M3 11.5 12 4l9 7.5"/>
           <path d="M5.5 10v9a1 1 0 0 0 1 1h11a1 1 0 0 0 1-1v-9"/>
           <path d="M9.5 20v-6h5v6"/>
         </svg>
+        <span class="sidebar__label">Главная</span>
       </a>
       <a class="sidebar__link{% if active_nav == 'library' %} sidebar__link--active{% endif %}" href="/library" title="Библиотека" aria-label="Библиотека">
         <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
@@ -22,6 +36,7 @@
           <path d="M12 6.5c1.6-1.2 3.7-1.8 6-1.8v13c-2.3 0-4.4.6-6 1.8"/>
           <path d="M12 6.5v13"/>
         </svg>
+        <span class="sidebar__label">Библиотека</span>
       </a>
       <a class="sidebar__link{% if active_nav == 'downloads' %} sidebar__link--active{% endif %}" href="/downloads" title="Загрузки" aria-label="Загрузки">
         <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
@@ -29,17 +44,20 @@
           <path d="M7.5 11 12 15.5 16.5 11"/>
           <path d="M4.5 18.5v1a1 1 0 0 0 1 1h13a1 1 0 0 0 1-1v-1"/>
         </svg>
+        <span class="sidebar__label">Загрузки</span>
       </a>
       <a class="sidebar__link{% if active_nav == 'activity' %} sidebar__link--active{% endif %}" href="/activity" title="Активность" aria-label="Активность">
         <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
           <path d="M3 12h4l2.2-6 3.6 12 2.2-6H21"/>
         </svg>
+        <span class="sidebar__label">Активность</span>
       </a>
       <a class="sidebar__link{% if active_nav == 'settings' %} sidebar__link--active{% endif %}" href="/settings" title="Настройки" aria-label="Настройки">
         <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
           <circle cx="12" cy="12" r="3"/>
           <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/>
         </svg>
+        <span class="sidebar__label">Настройки</span>
       </a>
       <div class="sidebar__account">
         {% if current_user %}
@@ -57,5 +75,6 @@
       {% block content %}{% endblock %}
     </div>
   </div>
+  <script src="{{ url_for('static', path='js/sidebar-toggle.js') }}" defer></script>
 </body>
 </html>

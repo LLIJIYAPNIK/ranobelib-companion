@@ -53,6 +53,7 @@ a {
   position: sticky;
   top: 0;
   height: 100vh;
+  overflow-x: hidden;
   overflow-y: auto;
   background: var(--bg-panel);
   border-right: 1px solid var(--border);
@@ -61,13 +62,56 @@ a {
   align-items: center;
   gap: 22px;
   padding: 20px 0;
+  transition: width 0.2s ease, flex-basis 0.2s ease;
 }
 
 .sidebar__link {
+  display: flex;
+  align-items: center;
+  gap: 12px;
   font-size: 11px;
   color: var(--text-muted);
   text-decoration: none;
   text-align: center;
+}
+
+.sidebar__label {
+  display: inline-block;
+  max-width: 0;
+  overflow: hidden;
+  opacity: 0;
+  font-size: 13px;
+  white-space: nowrap;
+  transition: max-width 0.2s ease, opacity 0.15s ease;
+}
+
+@media (min-width: 641px) {
+  .sidebar--expanded {
+    width: 200px;
+    flex: 0 0 200px;
+    align-items: stretch;
+  }
+
+  .sidebar--expanded .sidebar__link {
+    padding: 0 22px;
+  }
+
+  .sidebar--expanded .sidebar__label {
+    max-width: 140px;
+    opacity: 1;
+  }
+}
+
+.sidebar__toggle {
+  background: none;
+  border: none;
+  padding: 0;
+  color: var(--text-muted);
+  cursor: pointer;
+}
+
+.sidebar__toggle:hover {
+  color: var(--accent-teal);
 }
 
 .sidebar__link svg {
@@ -1146,6 +1190,10 @@ a {
 
   .sidebar__link {
     font-size: 10px;
+  }
+
+  .sidebar__toggle {
+    display: none;
   }
 
   .sidebar__account {
