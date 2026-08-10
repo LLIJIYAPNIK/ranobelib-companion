@@ -778,6 +778,28 @@ a {
   color: var(--text-muted);
 }
 
+.reader-settings__field input[type="range"] {
+  accent-color: var(--accent-teal);
+  width: 100%;
+}
+
+.reader-settings-preview {
+  margin-top: 16px;
+  padding: 16px;
+  background: var(--bg-surface);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  color: var(--text-secondary);
+  font-family: var(--reader-font-family);
+  font-size: var(--reader-font-size);
+  line-height: var(--reader-line-height);
+}
+
+.reader-settings-preview p {
+  max-width: var(--reader-width);
+  margin: 0;
+}
+
 .reader-export {
   display: flex;
   align-items: center;

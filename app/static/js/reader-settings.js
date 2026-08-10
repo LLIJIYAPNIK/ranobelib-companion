@@ -37,12 +37,20 @@
   const panel = document.querySelector('[data-role="reader-settings"]');
   if (!panel) return;
 
-  for (const select of panel.querySelectorAll("select[data-setting]")) {
-    const key = select.dataset.setting;
-    select.value = settings[key];
-    select.addEventListener("change", () => {
-      settings = { ...settings, [key]: select.value };
+  function updateReadout(control) {
+    if (control.type !== "range") return;
+    const output = panel.querySelector(`output[for="${control.id}"]`);
+    if (output) output.textContent = control.value;
+  }
+
+  for (const control of panel.querySelectorAll("[data-setting]")) {
+    const key = control.dataset.setting;
+    control.value = settings[key];
+    updateReadout(control);
+    control.addEventListener("input", () => {
+      settings = { ...settings, [key]: control.value };
       apply(settings);
+      updateReadout(control);
       localStorage.setItem(STORAGE_KEY, JSON.stringify(settings));
     });
   }

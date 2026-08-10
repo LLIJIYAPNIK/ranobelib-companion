@@ -30,3 +30,11 @@ def test_settings_page_offers_a_monospace_font_choice() -> None:
 
     assert response.status_code == 200
     assert '<option value="mono">' in response.text
+
+
+def test_settings_page_font_size_is_a_slider_with_live_preview() -> None:
+    response = client.get("/settings")
+
+    assert response.status_code == 200
+    assert 'type="range" id="fontSize" data-setting="fontSize"' in response.text
+    assert 'data-role="reader-settings-preview"' in response.text
