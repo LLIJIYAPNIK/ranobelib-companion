@@ -211,9 +211,9 @@ def test_show_title_renders_full_metadata() -> None:
 
 
 def test_show_title_genres_link_to_the_filtered_catalog() -> None:
-    # PR 31: a genre badge is a link into /library/catalog, not just a static label -
-    # inherits genre_id/genres list support already added to Catalog.list_titles() (PR 15,
-    # despite CLAUDE.md's roadmap notes describing that as still blocked - it shipped).
+    # PR 31/38: a genre badge is a link into /library/catalog, not just a static label -
+    # just the id, the catalog page resolves the display name itself via
+    # Catalog.list_genres() (PR 38) rather than needing it forwarded in the URL.
     title = Title(
         id=6712,
         name="Test Novel",
@@ -228,14 +228,8 @@ def test_show_title_genres_link_to_the_filtered_catalog() -> None:
         response = client.get("/titles/6712--test-novel")
 
     assert response.status_code == 200
-    assert (
-        'href="/library/catalog?genre=5&genre_name='
-        '%D0%A4%D1%8D%D0%BD%D1%82%D0%B5%D0%B7%D0%B8"' in response.text
-    )
-    assert (
-        'href="/library/catalog?genre=8&genre_name='
-        '%D0%A0%D0%BE%D0%BC%D0%B0%D0%BD%D1%82%D0%B8%D0%BA%D0%B0"' in response.text
-    )
+    assert 'href="/library/catalog?genres=5"' in response.text
+    assert 'href="/library/catalog?genres=8"' in response.text
 
 
 def test_show_title_renders_table_of_contents() -> None:

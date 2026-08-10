@@ -13,7 +13,7 @@ from app.db.connection import get_connection
 from app.db.library import LibraryEntry, add_entry, list_entries, remove_entry
 from app.db.users import User
 from app.reading_progress import reading_progress_percent
-from app.services.catalog import get_catalog
+from app.services.catalog import get_catalog, list_genres
 from app.services.client import get_client, open_client
 from app.templating import templates
 
@@ -53,25 +53,30 @@ async def show_catalog(
     request: Request,
     query: str | None = None,
     sort: str = DEFAULT_CATALOG_SORT,
-    genre: int | None = None,
-    genre_name: str | None = None,
+    genres: Annotated[list[int] | None, Query()] = None,
     page: Annotated[int, Query(ge=1)] = 1,
 ) -> HTMLResponse:
     """The catalog tab - unlike "Читаю", browsing it has never needed an account (see
     the "Список читаемого скрыт" copy on library.html's locked state).
 
-    `genre`/`genre_name` (PR 31): a genre badge on the title page links here with both -
-    `genre_name` is display-only, forwarded as-is from what the title page already knew
-    about its own genre, since there's no public endpoint to look up a genre's name from
-    its id alone (see Catalog.list_titles()'s own docstring).
+    `genres` (PR 31/38): a genre badge on the title page links here with a single id,
+    and the checkbox filter block on this page itself (PR 38) can send several - both
+    are the same repeated `?genres=5&genres=8` query param, matching
+    `Catalog.list_titles(genres=[...])`'s own parameter name. Their display names are
+    resolved from `list_genres()` (SDK >=0.7.0) rather than forwarded from the caller,
+    unlike PR 31's original `genre_name` workaround - there's a real endpoint for that
+    now.
     """
+    genres = genres or []
+    all_genres = await list_genres()
     async with get_catalog() as catalog:
         result = await catalog.list_titles(
             page=page,
             query=query or None,
             sort=sort,
-            genres=[genre] if genre is not None else None,
+            genres=genres or None,
         )
+    genre_names_by_id = {genre.id: genre.name for genre in all_genres}
     return templates.TemplateResponse(
         request,
         "catalog.html",
@@ -84,8 +89,9 @@ async def show_catalog(
             "query": query,
             "sort": sort,
             "sort_options": CATALOG_SORT_OPTIONS,
-            "genre": genre,
-            "genre_name": genre_name,
+            "all_genres": all_genres,
+            "genres": genres,
+            "selected_genre_names": [genre_names_by_id.get(g, str(g)) for g in genres],
         },
     )
 
@@ -95,7 +101,7 @@ async def catalog_page_fragment(
     request: Request,
     query: str | None = None,
     sort: str = DEFAULT_CATALOG_SORT,
-    genre: int | None = None,
+    genres: Annotated[list[int] | None, Query()] = None,
     page: Annotated[int, Query(ge=1)] = 1,
 ) -> Response:
     """Just the card markup, no base.html - what catalog-scroll.js fetches and appends
@@ -105,7 +111,7 @@ async def catalog_page_fragment(
             page=page,
             query=query or None,
             sort=sort,
-            genres=[genre] if genre is not None else None,
+            genres=genres or None,
         )
     response = templates.TemplateResponse(request, "_catalog_cards.html", {"items": result.items})
     response.headers["X-Has-Next-Page"] = "true" if result.has_next_page else "false"
