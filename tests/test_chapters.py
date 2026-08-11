@@ -103,7 +103,8 @@ def test_read_chapter_shows_adjacent_chapter_links() -> None:
 
 def test_read_chapter_duplicates_adjacent_links_below_the_content() -> None:
     # PR 28: the same prev/next navigation as the top block, repeated after the chapter
-    # text so it doesn't take a scroll back to the top to reach it.
+    # text so it doesn't take a scroll back to the top to reach it. PR 52 adds a third
+    # copy in the reveal-on-scroll-up overlay, ahead of both - see the test below.
     chapter = Chapter(id=2, volume="1", number="2", name="Середина", content="<p>x</p>")
     volumes = [
         Volume(
@@ -122,12 +123,41 @@ def test_read_chapter_duplicates_adjacent_links_below_the_content() -> None:
         response = client.get("/titles/6712--test-novel/chapters/1/2")
 
     assert response.status_code == 200
-    assert response.text.count('href="/titles/6712--test-novel/chapters/1/1"') == 2
-    assert response.text.count('href="/titles/6712--test-novel/chapters/1/3"') == 2
+    assert response.text.count('href="/titles/6712--test-novel/chapters/1/1"') == 3
+    assert response.text.count('href="/titles/6712--test-novel/chapters/1/3"') == 3
     assert 'class="reader-nav__adjacent reader-nav__adjacent--bottom"' in response.text
     # Bottom block comes after the chapter content, not before it.
     assert response.text.index("reader-nav__adjacent--bottom") > response.text.index(
         'data-role="chapter"'
+    )
+
+
+def test_read_chapter_renders_reveal_on_scroll_up_overlay() -> None:
+    # PR 52: a fixed panel duplicating the back link/heading/prev-next, shown on any
+    # upward scroll mid-chapter - see app/static/js/reader-scroll-nav.js.
+    chapter = Chapter(id=2, volume="1", number="2", name="Середина", content="<p>x</p>")
+    volumes = [
+        Volume(
+            number="1",
+            chapters=[
+                Chapter(id=1, volume="1", number="1"),
+                Chapter(id=2, volume="1", number="2"),
+                Chapter(id=3, volume="1", number="3"),
+            ],
+        )
+    ]
+    with patch(
+        "app.services.client.RanobeLib",
+        return_value=_FakeClient(chapter, volumes=volumes),
+    ):
+        response = client.get("/titles/6712--test-novel/chapters/1/2")
+
+    assert response.status_code == 200
+    assert 'data-role="reader-scroll-nav"' in response.text
+    assert "static/js/reader-scroll-nav.js" in response.text
+    # The overlay is the very first thing in the page - ahead of the in-flow nav.
+    assert response.text.index('data-role="reader-scroll-nav"') < response.text.index(
+        'class="reader-nav"'
     )
 
 
