@@ -50,6 +50,19 @@ def test_settings_page_offers_a_tap_to_read_toggle() -> None:
     )
 
 
+def test_settings_page_offers_a_paragraph_style_choice() -> None:
+    response = client.get("/settings")
+
+    assert response.status_code == 200
+    assert 'data-setting="paragraphStyle"' in response.text
+    assert '<option value="chat">' in response.text
+    assert '<option value="plain">' in response.text
+    # Same section as the tapToRead toggle - it's meaningless without that mechanic on.
+    assert response.text.index("Чтение с помощью тапа") < response.text.index(
+        'data-setting="paragraphStyle"'
+    )
+
+
 def test_sidebar_links_to_settings_page() -> None:
     response = client.get("/settings")
 
