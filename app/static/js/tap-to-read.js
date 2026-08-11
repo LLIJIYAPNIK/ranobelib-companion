@@ -14,9 +14,20 @@
 // timestamp for when it was revealed) or "plain" (the same plate, no timestamp). The
 // timestamp is stamped fresh from Date.now() whenever a paragraph is (re-)shown, never
 // persisted - purely decorative, not a real read receipt.
+//
+// PR 65: readerSettings.paragraphAnimation picks how a paragraph enters. Every option but
+// "typewriter" is a CSS @keyframes animation (app/static/css/app.css) added as a class at
+// the same moment the wrap is un-hidden - browsers replay a CSS animation automatically
+// whenever `display` goes from `none` to visible, no JS re-triggering needed.
+// "typewriter" instead reveals the wrap's own text nodes one character at a time (walking
+// the DOM so nested tags like <em>/<a> stay intact), themed to go with PR 64's chat
+// style; a paragraph with no text at all (a bare <img>) has nothing to type, so it just
+// appears immediately - same "don't break on non-<p> content" rule as everything else
+// here.
 (() => {
   const SETTINGS_KEY = "readerSettings";
   const PROGRESS_KEY_PREFIX = "tapToReadProgress:";
+  const CSS_ANIMATIONS = new Set(["slide-up", "slide-left", "fade", "blur-focus"]);
 
   function loadSettings() {
     try {
@@ -30,6 +41,10 @@
   if (settings.tapToRead !== true) return;
 
   const paragraphStyle = settings.paragraphStyle === "plain" ? "plain" : "chat";
+  const paragraphAnimation =
+    CSS_ANIMATIONS.has(settings.paragraphAnimation) || settings.paragraphAnimation === "typewriter"
+      ? settings.paragraphAnimation
+      : "none";
 
   const content = document.querySelector('[data-role="chapter"]');
   if (!content) return;
@@ -67,13 +82,64 @@
     wrap.appendChild(time);
   }
 
+  function textNodesOf(wrap) {
+    const walker = document.createTreeWalker(wrap, NodeFilter.SHOW_TEXT);
+    const nodes = [];
+    let node;
+    while ((node = walker.nextNode())) nodes.push(node);
+    return nodes;
+  }
+
+  // Clears the wrap's text (capturing what to type back in) *before* it's un-hidden, so
+  // there's never a flash of the full paragraph ahead of the reveal.
+  function prepareTypewriter(wrap) {
+    const captured = textNodesOf(wrap).map((node) => ({ node, text: node.nodeValue }));
+    for (const { node } of captured) node.nodeValue = "";
+    return captured;
+  }
+
+  function startTypewriter(captured) {
+    const totalChars = captured.reduce((sum, { text }) => sum + text.length, 0);
+    if (totalChars === 0) return; // nothing to type (e.g. a bare <img>) - already visible
+
+    // A fixed-ish overall duration regardless of paragraph length feels more like a
+    // reveal animation and less like actually waiting for someone to type a long one:
+    // short paragraphs get a leisurely per-character delay, long ones a brisker one.
+    const delay = Math.min(20, Math.max(4, 900 / totalChars));
+    let nodeIndex = 0;
+    let charIndex = 0;
+
+    const timer = setInterval(() => {
+      if (nodeIndex >= captured.length) {
+        clearInterval(timer);
+        return;
+      }
+      const current = captured[nodeIndex];
+      current.node.nodeValue += current.text[charIndex];
+      charIndex += 1;
+      if (charIndex >= current.text.length) {
+        nodeIndex += 1;
+        charIndex = 0;
+      }
+    }, delay);
+  }
+
   let revealedCount = 0;
   let hint = null;
 
   function reveal(count) {
     for (let i = revealedCount; i < count; i++) {
-      wraps[i].classList.remove("reader-content__paragraph--hidden");
-      stampTime(wraps[i]);
+      const wrap = wraps[i];
+      const pendingTypewriter =
+        paragraphAnimation === "typewriter" ? prepareTypewriter(wrap) : null;
+
+      if (CSS_ANIMATIONS.has(paragraphAnimation)) {
+        wrap.classList.add(`reader-content__paragraph-wrap--anim-${paragraphAnimation}`);
+      }
+      wrap.classList.remove("reader-content__paragraph--hidden");
+      stampTime(wrap);
+
+      if (pendingTypewriter) startTypewriter(pendingTypewriter);
     }
     revealedCount = count;
 

@@ -14,12 +14,13 @@
     fontSize: "15",
     lineHeight: "1.85",
     width: "640",
-    // PR 63/64: tapToRead and paragraphStyle are read directly from this same
-    // localStorage key by app/static/js/tap-to-read.js on the chapter page - neither is
-    // a CSS custom property like the rest of these, so apply() below has nothing to do
-    // for either.
+    // PR 63/64/65: tapToRead, paragraphStyle and paragraphAnimation are read directly
+    // from this same localStorage key by app/static/js/tap-to-read.js on the chapter
+    // page - none of them is a CSS custom property like the rest of these, so apply()
+    // below has nothing to do for any of them.
     tapToRead: false,
     paragraphStyle: "chat",
+    paragraphAnimation: "none",
   };
 
   const root = document.documentElement;
