@@ -826,6 +826,11 @@ a {
 
 .toc {
   margin-top: 28px;
+  /* Clearance for the fixed export panel below (PR 51) so it never sits over the last
+     couple of chapters/checkboxes on a long table of contents - reserved unconditionally
+     (not just while the panel is actually visible) so the list doesn't jump/reflow as it
+     slides in and out. */
+  padding-bottom: 96px;
 }
 
 .toc__header {
@@ -838,9 +843,17 @@ a {
 }
 
 .toc__export-panel {
-  position: sticky;
-  top: 16px;
-  z-index: 5;
+  /* PR 37 originally made this `position: sticky`, which only holds an element within
+     its own containing block (here, the short `.toc__header` row) - once the page
+     scrolls past that row, the panel scrolls away with it despite `sticky`, which is
+     exactly the bug PR 51 fixes: `fixed` anchors to the viewport instead, so it stays
+     reachable for the entire length of a long chapter list. Bottom-anchored rather than
+     top - avoids the top-right "download ready" toast (PR 50) and needs no coordination
+     with the mobile fixed account header up there. */
+  position: fixed;
+  bottom: 24px;
+  right: 32px;
+  z-index: 45;
   opacity: 1;
   transform: translateY(0);
   transition: opacity 0.2s ease, transform 0.2s ease;
@@ -848,7 +861,7 @@ a {
 
 .toc__export-panel--js:not(.toc__export-panel--visible) {
   opacity: 0;
-  transform: translateY(-8px);
+  transform: translateY(8px);
   pointer-events: none;
 }
 
@@ -1556,6 +1569,25 @@ a {
 
   .toc__volume-header {
     flex-wrap: wrap;
+  }
+
+  .toc {
+    /* Wider clearance than desktop - the panel spans full width down here (below) and
+       needs room above the fixed bottom tab bar too. */
+    padding-bottom: 132px;
+  }
+
+  .toc__export-panel {
+    /* Full-width bar above the fixed bottom tab bar (PR 46, 64px tall) instead of a
+       corner-anchored box - same 76px clearance already used by the download-ready toast
+       (PR 50) for the same tab bar. */
+    bottom: 76px;
+    left: 12px;
+    right: 12px;
+  }
+
+  .toc__export {
+    justify-content: center;
   }
 
   .downloads-list__item,
