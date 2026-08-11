@@ -55,6 +55,22 @@ def list_ready_jobs_for_user(user_id: int) -> list[DownloadJob]:
     ]
 
 
+def ready_file_url(job_id: str | None, user_id: int) -> str | None:
+    """The file-download URL for `job_id`, if its job still has an exported file waiting
+    to be picked up - same criterion as `list_ready_jobs_for_user()` above, scoped to one
+    job so a `download_history` row (see app/db/downloads.py) can offer its own "Скачать"
+    button (PR 58) without needing to know about every other ready job. Returns None for a
+    row with no `job_id` (recorded before PR 58, or an anonymous download), a job the
+    in-memory store no longer has (process restart), one belonging to someone else, or one
+    whose file has already been delivered or swept."""
+    if job_id is None:
+        return None
+    job = _jobs.get(job_id)
+    if job is None or job.user_id != user_id or job.status != "done" or job.result_path is None:
+        return None
+    return f"/titles/{job.slug_url}/download/{job.id}/file"
+
+
 def delete_result_file(job: DownloadJob) -> None:
     """Removes `job`'s exported file from disk and clears `result_path`, so it stops
     showing up as "ready to download" (see list_ready_jobs_for_user() above) and a repeat
