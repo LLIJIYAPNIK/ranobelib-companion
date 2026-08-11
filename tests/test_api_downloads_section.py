@@ -12,7 +12,7 @@ import app.jobs.store as job_store
 from app.config import get_settings
 from app.db.connection import get_connection
 from app.db.downloads import list_download_history, record_download
-from app.jobs.store import create_job
+from app.jobs.store import create_job, delete_result_file
 
 
 @pytest.fixture
@@ -224,6 +224,52 @@ def test_show_downloads_history_shows_error(client: TestClient) -> None:
     response = client.get("/downloads")
 
     assert "Опа" in response.text
+
+
+def test_show_downloads_offers_download_link_for_a_ready_job(client: TestClient) -> None:
+    # PR 58: even if the visitor closed the "file ready" toast (PR 50) without clicking
+    # through, the file is still on disk and this page should still offer it.
+    _register(client)  # user id 1
+    job = create_job("6712--test-novel", "epub", user_id=1)
+    job.status = "done"
+    job.result_path = Path("/tmp/whatever.epub")
+    record_download(
+        get_connection(), 1, "6712--test-novel", "epub", "done", 1, None, job_id=job.id
+    )
+
+    response = client.get("/downloads")
+
+    assert response.status_code == 200
+    assert f'href="/titles/6712--test-novel/download/{job.id}/file"' in response.text
+
+
+def test_show_downloads_omits_download_link_once_the_file_is_gone(client: TestClient) -> None:
+    _register(client)  # user id 1
+    job = create_job("6712--test-novel", "epub", user_id=1)
+    job.status = "done"
+    job.result_path = Path("/tmp/whatever.epub")
+    record_download(
+        get_connection(), 1, "6712--test-novel", "epub", "done", 1, None, job_id=job.id
+    )
+    delete_result_file(job)
+
+    response = client.get("/downloads")
+
+    assert f"/download/{job.id}/file" not in response.text
+
+
+def test_show_downloads_omits_download_link_for_a_row_with_no_job_id(
+    client: TestClient,
+) -> None:
+    # A history row written before PR 58 (or an anonymous download - see record_download())
+    # has no job_id to look up, so it must not render a broken/absent link.
+    _register(client)  # user id 1
+    record_download(get_connection(), 1, "6712--test-novel", "epub", "done", 1, None)
+
+    response = client.get("/downloads")
+
+    assert response.status_code == 200
+    assert "downloads-history__download" not in response.text
 
 
 def test_delete_history_entry_requires_login(client: TestClient) -> None:

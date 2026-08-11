@@ -19,7 +19,7 @@
     <h2 class="downloads-section__title">История</h2>
     {% if history %}
     {% from "_download_history.html" import download_history_list with context %}
-    {{ download_history_list(history) }}
+    {{ download_history_list(history, ready_files) }}
     {% else %}
     <p class="content__hint">Пока ничего не скачивали.</p>
     {% endif %}

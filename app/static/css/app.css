@@ -1617,6 +1617,10 @@ a {
   font-size: 12px;
 }
 
+.downloads-history__download {
+  flex: 0 0 auto;
+}
+
 .downloads-history__delete {
   flex: 0 0 auto;
   background: none;

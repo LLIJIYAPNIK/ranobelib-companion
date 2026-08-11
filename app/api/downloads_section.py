@@ -17,6 +17,7 @@ from app.jobs.models import DownloadJob
 from app.jobs.store import (
     list_active_jobs_for_user,
     list_ready_jobs_for_user,
+    ready_file_url,
     sweep_expired_result_files,
 )
 from app.templating import templates
@@ -36,10 +37,24 @@ async def show_downloads(
     on POST /titles/{slug_url}/download."""
     active_jobs = list_active_jobs_for_user(user.id) if user is not None else []
     history = list_download_history(get_connection(), user.id) if user is not None else []
+    ready_files = (
+        {
+            entry.id: url
+            for entry in history
+            if (url := ready_file_url(entry.job_id, user.id)) is not None
+        }
+        if user is not None
+        else {}
+    )
     return templates.TemplateResponse(
         request,
         "downloads.html",
-        {"active_nav": "downloads", "active_jobs": active_jobs, "history": history},
+        {
+            "active_nav": "downloads",
+            "active_jobs": active_jobs,
+            "history": history,
+            "ready_files": ready_files,
+        },
     )
 
 

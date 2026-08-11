@@ -8,6 +8,7 @@ from app.jobs.store import (
     create_job,
     delete_result_file,
     get_job,
+    ready_file_url,
     sweep_expired_result_files,
     track_task,
 )
@@ -91,6 +92,45 @@ def test_sweep_expired_result_files_ignores_still_running_jobs() -> None:
     job.status = "running"
 
     sweep_expired_result_files(ttl_seconds=0)  # must not raise on a job with no result yet
+
+
+def test_ready_file_url_returns_none_for_missing_job_id() -> None:
+    assert ready_file_url(None, user_id=1) is None
+
+
+def test_ready_file_url_returns_none_for_unknown_job() -> None:
+    assert ready_file_url("does-not-exist", user_id=1) is None
+
+
+def test_ready_file_url_returns_none_for_another_users_job() -> None:
+    job = create_job("6712--test-novel", "epub", user_id=1)
+    job.status = "done"
+    job.result_path = Path("/tmp/whatever.epub")
+
+    assert ready_file_url(job.id, user_id=2) is None
+
+
+def test_ready_file_url_returns_none_while_still_running() -> None:
+    job = create_job("6712--test-novel", "epub", user_id=1)
+    job.status = "running"
+
+    assert ready_file_url(job.id, user_id=1) is None
+
+
+def test_ready_file_url_returns_none_once_delivered() -> None:
+    job = create_job("6712--test-novel", "epub", user_id=1)
+    job.status = "done"
+    job.result_path = None
+
+    assert ready_file_url(job.id, user_id=1) is None
+
+
+def test_ready_file_url_returns_the_file_url_when_still_ready() -> None:
+    job = create_job("6712--test-novel", "epub", user_id=1)
+    job.status = "done"
+    job.result_path = Path("/tmp/whatever.epub")
+
+    assert ready_file_url(job.id, user_id=1) == f"/titles/6712--test-novel/download/{job.id}/file"
 
 
 async def test_track_task_survives_until_it_completes() -> None:

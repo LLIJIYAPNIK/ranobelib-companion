@@ -76,8 +76,8 @@ class _BoomClient(_FakeClient):
         raise RuntimeError("boom")
 
 
-def _job() -> DownloadJob:
-    return DownloadJob(id="job-1", slug_url="6712--test-novel", fmt="epub")
+def _job(user_id: int | None = None) -> DownloadJob:
+    return DownloadJob(id="job-1", slug_url="6712--test-novel", fmt="epub", user_id=user_id)
 
 
 def _branch(branch_id: int) -> ChapterBranch:
@@ -334,6 +334,32 @@ async def test_run_download_job_maps_unexpected_error(monkeypatch: pytest.Monkey
 
     assert job.status == "error"
     assert job.error == "Внутренняя ошибка, попробуйте позже"
+
+
+async def test_run_download_job_records_its_own_job_id_in_history(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    # PR 58: the history row needs the job's id back to know whether the exported file is
+    # still on disk (app/jobs/store.py's ready_file_url()) - without it, the "Скачать"
+    # button on that row would have no job to look up.
+    chapters = [Chapter(id=1, volume="1", number="1")]
+    volumes = [Volume(number="1", chapters=chapters)]
+    fake = _FakeClient(volumes=volumes)
+    monkeypatch.setattr("app.jobs.download.open_client", lambda slug_url: fake)
+    recorded: dict[str, object] = {}
+
+    def fake_record_download(*args: object, **kwargs: object) -> None:
+        recorded["args"] = args
+        recorded["kwargs"] = kwargs
+
+    monkeypatch.setattr("app.jobs.download.record_download", fake_record_download)
+
+    job = _job(user_id=1)
+    await run_download_job(job)
+
+    assert recorded["kwargs"] == {"job_id": "job-1"}
+
+    os.remove(job.result_path)
 
 
 async def test_run_download_job_malformed_slug_url_is_a_friendly_error() -> None:
