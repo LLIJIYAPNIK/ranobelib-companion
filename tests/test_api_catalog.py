@@ -60,6 +60,8 @@ def test_show_catalog_renders_cards() -> None:
     assert "High School DxD" in response.text
     assert 'href="/titles/1--test-novel-1"' in response.text
     assert 'data-next-page="2"' in response.text
+    # PR 54: the sort <select> is progressively enhanced into a custom listbox.
+    assert "static/js/custom-dropdown.js" in response.text
 
 
 def test_show_catalog_prefers_russian_name() -> None:

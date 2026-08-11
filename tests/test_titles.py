@@ -322,6 +322,21 @@ def test_show_title_export_panel_is_a_sticky_js_enhanced_floating_panel() -> Non
     assert "static/js/chapter-export-panel.js" in response.text
 
 
+def test_show_title_format_selects_are_progressively_enhanced_into_dropdowns() -> None:
+    # PR 54: both the title-level "Скачать тайтл" and the selected-chapters "Скачать
+    # выбранное" format pickers are plain <select>s enhanced by the same shared script.
+    title = _fake_title()
+    volumes = [
+        Volume(number="1", chapters=[Chapter(id=1, volume="1", number="1", name="Начало")])
+    ]
+    with patch("app.services.client.RanobeLib", return_value=_FakeClient(title, volumes)):
+        response = client.get("/titles/6712--test-novel")
+
+    assert response.status_code == 200
+    assert response.text.count('class="toc__export-format"') == 2
+    assert "static/js/custom-dropdown.js" in response.text
+
+
 def test_show_title_not_found_renders_html_error_page() -> None:
     exc = TitleNotFoundError("6712--missing")
     with patch("app.services.client.RanobeLib", return_value=_RaisingClient(exc)):
