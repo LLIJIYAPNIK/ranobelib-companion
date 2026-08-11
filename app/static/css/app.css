@@ -2271,3 +2271,132 @@ a {
     max-width: none;
   }
 }
+
+/* Fullscreen image viewer (PR 66) - image-lightbox.js only ever creates this overlay
+   when tap-to-read (PR 62-65) is off, so it never has to coexist with that mode's own
+   "tap the reading area to reveal the next paragraph" behavior. z-index above even the
+   "file ready" toast above (60) - a fullscreen viewer should sit above every other
+   overlay in the app, not behind one. */
+.image-lightbox {
+  position: fixed;
+  inset: 0;
+  z-index: 100;
+  display: none;
+  align-items: center;
+  justify-content: center;
+  background: rgba(0, 0, 0, 0.9);
+}
+
+.image-lightbox--open {
+  display: flex;
+}
+
+.image-lightbox__viewport {
+  max-width: 90vw;
+  max-height: 80vh;
+  overflow: auto;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.image-lightbox__image {
+  max-width: 100%;
+  max-height: 80vh;
+  border-radius: 6px;
+  transform-origin: center center;
+  transition: transform 0.15s ease;
+}
+
+.image-lightbox__close,
+.image-lightbox__nav {
+  position: absolute;
+  background: rgba(26, 25, 34, 0.7);
+  border: 1px solid var(--border);
+  color: var(--text-primary);
+  font-size: 22px;
+  line-height: 1;
+  width: 40px;
+  height: 40px;
+  border-radius: 999px;
+  cursor: pointer;
+  transition: color 0.15s ease, border-color 0.15s ease;
+}
+
+.image-lightbox__close {
+  top: 16px;
+  right: 16px;
+}
+
+.image-lightbox__nav {
+  top: 50%;
+  transform: translateY(-50%);
+}
+
+.image-lightbox__nav--prev {
+  left: 16px;
+}
+
+.image-lightbox__nav--next {
+  right: 16px;
+}
+
+.image-lightbox__nav[hidden] {
+  display: none;
+}
+
+.image-lightbox__toolbar {
+  position: absolute;
+  bottom: 16px;
+  left: 50%;
+  transform: translateX(-50%);
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 8px 14px;
+  background: rgba(26, 25, 34, 0.7);
+  border: 1px solid var(--border);
+  border-radius: 999px;
+}
+
+.image-lightbox__zoom-in,
+.image-lightbox__zoom-out,
+.image-lightbox__download {
+  background: none;
+  border: none;
+  color: var(--text-primary);
+  font-size: 18px;
+  line-height: 1;
+  cursor: pointer;
+  text-decoration: none;
+}
+
+.image-lightbox__counter {
+  font-family: var(--font-mono);
+  font-size: 12px;
+  color: var(--text-secondary);
+  min-width: 44px;
+  text-align: center;
+}
+
+@media (hover: hover) {
+  .image-lightbox__close:hover,
+  .image-lightbox__nav:hover {
+    border-color: var(--accent-teal);
+    color: var(--accent-teal);
+  }
+
+  .image-lightbox__zoom-in:hover,
+  .image-lightbox__zoom-out:hover,
+  .image-lightbox__download:hover {
+    color: var(--accent-teal);
+  }
+}
+
+@media (max-width: 640px) {
+  .image-lightbox__nav {
+    width: 36px;
+    height: 36px;
+    font-size: 18px;
+  }
+}
