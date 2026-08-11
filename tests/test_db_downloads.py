@@ -3,7 +3,12 @@ from datetime import UTC, datetime, timedelta
 
 import pytest
 
-from app.db.downloads import list_download_history, list_download_history_today, record_download
+from app.db.downloads import (
+    delete_entry,
+    list_download_history,
+    list_download_history_today,
+    record_download,
+)
 from app.db.migrate import run_migrations
 
 
@@ -106,3 +111,31 @@ def test_list_download_history_today_excludes_other_users(conn: sqlite3.Connecti
     record_download(conn, 2, "6712--test-novel", "epub", "done", 1, None)
 
     assert list_download_history_today(conn, 1) == []
+
+
+def test_delete_entry_removes_this_users_entry(conn: sqlite3.Connection) -> None:
+    record_download(conn, 1, "6712--test-novel", "epub", "done", 1, None)
+    entry_id = list_download_history(conn, 1)[0].id
+
+    deleted = delete_entry(conn, entry_id, 1)
+
+    assert deleted is True
+    assert list_download_history(conn, 1) == []
+
+
+def test_delete_entry_returns_false_for_unknown_id(conn: sqlite3.Connection) -> None:
+    assert delete_entry(conn, 999, 1) is False
+
+
+def test_delete_entry_does_not_remove_another_users_entry(conn: sqlite3.Connection) -> None:
+    conn.execute(
+        "INSERT INTO users (id, email, password_hash, created_at) "
+        "VALUES (2, 'bob@example.com', 'hash', 'now')"
+    )
+    record_download(conn, 2, "6712--test-novel", "epub", "done", 1, None)
+    entry_id = list_download_history(conn, 2)[0].id
+
+    deleted = delete_entry(conn, entry_id, 1)
+
+    assert deleted is False
+    assert len(list_download_history(conn, 2)) == 1

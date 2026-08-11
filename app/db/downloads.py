@@ -43,6 +43,20 @@ def record_download(
     conn.commit()
 
 
+def delete_entry(conn: sqlite3.Connection, entry_id: int, user_id: int) -> bool:
+    """True if a row was actually deleted. Scoping the DELETE by `user_id` as well as
+    `id` means an id that exists but belongs to another user deletes nothing and reports
+    back the same as an id that doesn't exist at all - the caller turns both into a 404,
+    not a 403, so a visitor can't use this to probe which entry ids belong to someone
+    else (same reasoning as `_get_job_or_404` in app/api/downloads.py)."""
+    cursor = conn.execute(
+        "DELETE FROM download_history WHERE id = ? AND user_id = ?",
+        (entry_id, user_id),
+    )
+    conn.commit()
+    return cursor.rowcount > 0
+
+
 def list_download_history(
     conn: sqlite3.Connection, user_id: int, limit: int = 20
 ) -> list[DownloadHistoryEntry]:

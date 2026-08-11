@@ -4,13 +4,13 @@ from __future__ import annotations
 
 from typing import Annotated, Any
 
-from fastapi import APIRouter, Depends, Request
-from fastapi.responses import HTMLResponse, JSONResponse
+from fastapi import APIRouter, Depends, HTTPException, Request
+from fastapi.responses import HTMLResponse, JSONResponse, Response
 
 from app.auth.dependencies import get_current_user, require_current_user
 from app.config import get_settings
 from app.db.connection import get_connection
-from app.db.downloads import list_download_history
+from app.db.downloads import delete_entry, list_download_history
 from app.db.users import User
 from app.jobs.eta import estimate_remaining_seconds
 from app.jobs.models import DownloadJob
@@ -61,6 +61,16 @@ async def list_downloads_ready(
     sweep_expired_result_files(get_settings().download_file_ttl)
     jobs = list_ready_jobs_for_user(user.id)
     return JSONResponse([_ready_job_summary(job) for job in jobs])
+
+
+@router.delete("/history/{entry_id}")
+async def delete_download_history_entry(
+    entry_id: int,
+    user: Annotated[User, Depends(require_current_user)],
+) -> Response:
+    if not delete_entry(get_connection(), entry_id, user.id):
+        raise HTTPException(status_code=404, detail="Запись не найдена")
+    return Response(status_code=204)
 
 
 def _job_summary(job: DownloadJob) -> dict[str, Any]:
