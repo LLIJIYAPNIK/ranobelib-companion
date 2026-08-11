@@ -77,6 +77,16 @@ a {
   transition: color 0.15s ease;
 }
 
+/* Direct nav links (icon-only in the collapsed state) get a fixed square hit-box with
+   the icon centered inside - unlike the account/login links below them, which stay
+   auto-sized to their text and shouldn't be squeezed into 44x44. */
+.sidebar > .sidebar__link {
+  justify-content: center;
+  gap: 0;
+  width: 44px;
+  height: 44px;
+}
+
 .sidebar__label {
   display: inline-block;
   max-width: 0;
@@ -95,6 +105,10 @@ a {
   }
 
   .sidebar--expanded .sidebar__link {
+    width: auto;
+    height: auto;
+    justify-content: flex-start;
+    gap: 12px;
     padding: 10px 22px;
   }
 
