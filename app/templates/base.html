@@ -45,6 +45,9 @@
           <path d="M4.5 18.5v1a1 1 0 0 0 1 1h13a1 1 0 0 0 1-1v-1"/>
         </svg>
         <span class="sidebar__label">Загрузки</span>
+        {% if current_user %}
+        <span class="sidebar__badge" data-role="downloads-badge" hidden>0</span>
+        {% endif %}
       </a>
       <a class="sidebar__link{% if active_nav == 'activity' %} sidebar__link--active{% endif %}" href="/activity" title="Активность" aria-label="Активность">
         <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
@@ -81,6 +84,7 @@
   <script src="{{ url_for('static', path='js/sidebar-toggle.js') }}" defer></script>
   {% if current_user %}
   <script src="{{ url_for('static', path='js/download-ready.js') }}" defer></script>
+  <script src="{{ url_for('static', path='js/downloads-status.js') }}" defer></script>
   {% endif %}
 </body>
 </html>

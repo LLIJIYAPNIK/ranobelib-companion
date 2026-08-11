@@ -98,6 +98,7 @@ a {
 }
 
 .sidebar__link {
+  position: relative;
   display: flex;
   align-items: center;
   gap: 12px;
@@ -107,6 +108,24 @@ a {
   text-align: center;
   border-radius: 8px;
   transition: color 0.15s ease;
+}
+
+/* Active-downloads count (PR 56) - anchored to the icon's corner in the collapsed
+   sidebar (phone-style notification dot), inline after the label once expanded. */
+.sidebar__badge {
+  position: absolute;
+  top: 2px;
+  right: 2px;
+  min-width: 16px;
+  height: 16px;
+  padding: 0 4px;
+  border-radius: 999px;
+  background: var(--accent-orange);
+  color: var(--bg-page);
+  font-size: 10px;
+  font-weight: 600;
+  line-height: 16px;
+  text-align: center;
 }
 
 /* Direct nav links (icon-only in the collapsed state) get a fixed square hit-box with
@@ -147,6 +166,11 @@ a {
   .sidebar--expanded .sidebar__label {
     max-width: 140px;
     opacity: 1;
+  }
+
+  .sidebar--expanded .sidebar__badge {
+    position: static;
+    margin-left: auto;
   }
 }
 
