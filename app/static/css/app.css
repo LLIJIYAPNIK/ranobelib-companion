@@ -1620,3 +1620,82 @@ a {
     display: none;
   }
 }
+
+/* Global "file ready" toasts (PR 50) - rendered by download-ready.js from
+   GET /downloads/ready, which is polled on every logged-in page so a finished title
+   download gets delivered wherever the visitor ends up, not only on its own job page. */
+.download-ready {
+  position: fixed;
+  top: 16px;
+  right: 16px;
+  z-index: 60;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  max-width: 320px;
+}
+
+.download-ready[hidden] {
+  display: none;
+}
+
+@keyframes download-ready-in {
+  from {
+    opacity: 0;
+    transform: translateY(-8px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.download-ready__toast {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 12px;
+  background: var(--bg-surface);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  box-shadow: 0 8px 20px rgba(0, 0, 0, 0.35);
+  animation: download-ready-in 0.2s ease;
+}
+
+.download-ready__text {
+  flex: 1;
+  font-size: 13px;
+  color: var(--text-secondary);
+}
+
+.download-ready__dismiss {
+  background: none;
+  border: none;
+  padding: 4px;
+  color: var(--text-muted);
+  font-size: 18px;
+  line-height: 1;
+  cursor: pointer;
+  transition: color 0.15s ease;
+}
+
+@media (hover: hover) {
+  .download-ready__dismiss:hover {
+    color: var(--accent-teal);
+  }
+}
+
+@media (max-width: 640px) {
+  .download-ready {
+    /* Anchored above the fixed bottom tab bar (or the reader's own bottom nav on a
+       chapter page, PR 28/52) instead of below the fixed top account header - the top of
+       the page is where a visitor's actual content starts on mobile (e.g. the home
+       page's search field), so a toast there would sit on top of it instead of beside
+       it like it does on desktop. */
+    top: auto;
+    bottom: 76px;
+    right: 12px;
+    left: 12px;
+    max-width: none;
+  }
+}
