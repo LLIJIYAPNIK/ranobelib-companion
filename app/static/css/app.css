@@ -1413,6 +1413,73 @@ a {
   text-align: right;
 }
 
+/* PR 65: reveal animations (readerSettings.paragraphAnimation) - a CSS @keyframes
+   animation replays automatically the moment its element's `display` goes from `none` to
+   visible, so tap-to-read.js only has to add one of these classes when it un-hides a
+   wrap; no JS-driven timing needed for any of these ("typewriter" is the one option that
+   isn't here, since it reveals actual text nodes over time instead - see the .js file). */
+@keyframes reader-reveal-slide-up {
+  from {
+    opacity: 0;
+    transform: translateY(18px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes reader-reveal-slide-left {
+  0% {
+    opacity: 0;
+    transform: translateX(-28px);
+  }
+  70% {
+    opacity: 1;
+    transform: translateX(6px);
+  }
+  100% {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+
+@keyframes reader-reveal-fade {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+@keyframes reader-reveal-blur-focus {
+  from {
+    opacity: 0;
+    filter: blur(6px);
+  }
+  to {
+    opacity: 1;
+    filter: blur(0);
+  }
+}
+
+.reader-content__paragraph-wrap--anim-slide-up {
+  animation: reader-reveal-slide-up 0.35s ease both;
+}
+
+.reader-content__paragraph-wrap--anim-slide-left {
+  animation: reader-reveal-slide-left 0.45s cubic-bezier(0.34, 1.56, 0.64, 1) both;
+}
+
+.reader-content__paragraph-wrap--anim-fade {
+  animation: reader-reveal-fade 0.4s ease both;
+}
+
+.reader-content__paragraph-wrap--anim-blur-focus {
+  animation: reader-reveal-blur-focus 0.45s ease both;
+}
+
 .reader-settings-page {
   margin-top: 20px;
   max-width: 480px;
