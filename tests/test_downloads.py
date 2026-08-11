@@ -13,6 +13,7 @@ from ranobelib.exceptions import AmbiguousChapter
 from ranobelib.models import Chapter, ChapterBranch, ChapterUser, Team, Volume
 
 import app.db.connection as db_connection
+import app.jobs.store as job_store
 from app.config import get_settings
 from app.db.connection import get_connection
 from app.db.downloads import list_download_history
@@ -277,6 +278,25 @@ def test_download_result_file_serves_and_cleans_up() -> None:
     assert response.content == b"exported content"
     assert 'filename="6712--test-novel.epub"' in response.headers["content-disposition"]
     assert not os.path.exists(path)
+    assert job.result_path is None
+
+
+def test_download_result_file_repeat_request_returns_friendly_404() -> None:
+    job = create_job("6712--test-novel", "epub")
+    job.status = "done"
+    fd, path = tempfile.mkstemp(suffix=".epub")
+    os.close(fd)
+    with open(path, "w", encoding="utf-8") as f:
+        f.write("exported content")
+    job.result_path = Path(path)
+
+    first = client.get(f"/titles/6712--test-novel/download/{job.id}/file")
+    assert first.status_code == 200
+
+    second = client.get(f"/titles/6712--test-novel/download/{job.id}/file")
+
+    assert second.status_code == 404
+    assert "скачан" in second.json()["detail"]
 
 
 def test_show_download_status_renders_translation_choice() -> None:
@@ -327,6 +347,46 @@ def test_start_download_needs_translation_end_to_end(logged_in_client: TestClien
 
     status_response = client.get(f"/titles/6712--test-novel/download/{job_id}")
     assert "выберите один" in status_response.text
+
+
+def test_download_delivered_via_global_toast_after_leaving_job_page(
+    logged_in_client: TestClient, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """PR 50's actual bug scenario: start a download and never open (or leave) its own
+    status page - the only page-scoped signal (download-status.js) never runs, so the file
+    must still reach the visitor through GET /downloads/ready, polled from any page."""
+    # _jobs is a process-wide dict (see app/jobs/store.py) shared with every other test in
+    # this file - reset it so an earlier test's leftover "done" job for this same user_id=1
+    # doesn't also show up as "ready" below.
+    monkeypatch.setattr(job_store, "_jobs", {})
+    volumes = [Volume(number="1", chapters=[Chapter(id=1, volume="1", number="1")])]
+    with patch("app.services.client.RanobeLib", return_value=_FakeClient(volumes)):
+        response = logged_in_client.post(
+            "/titles/6712--test-novel/download", data={"fmt": "epub"}
+        )
+        job_id = _job_id_from_location(response.headers["location"])
+        # Deliberately never GET the job's own status page or /status - simulating a
+        # visitor who clicked "Скачать тайтл" and immediately navigated elsewhere.
+        _wait_until_terminal(job_id)
+
+    ready = logged_in_client.get("/downloads/ready")
+    assert ready.status_code == 200
+    body = ready.json()
+    assert len(body) == 1
+    assert body[0]["job_id"] == job_id
+    assert body[0]["slug_url"] == "6712--test-novel"
+    file_url = body[0]["file_url"]
+
+    download = logged_in_client.get(file_url)
+    assert download.status_code == 200
+    assert download.content == b"exported content"
+
+    # Delivered - no longer offered again, and a repeat click 404s cleanly rather than
+    # erroring on the now-missing file.
+    ready_after = logged_in_client.get("/downloads/ready")
+    assert ready_after.json() == []
+    repeat = logged_in_client.get(file_url)
+    assert repeat.status_code == 404
 
 
 def test_start_download_records_history_for_logged_in_user(

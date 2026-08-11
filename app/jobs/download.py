@@ -197,7 +197,12 @@ def _rate_limit_delay(exc: RateLimitError) -> float:
 
 
 def _record_history(job: DownloadJob, chapter_count: int | None = None) -> None:
-    """No-op for an anonymous download (no user_id) - see create_job()."""
+    """Called exactly once, at each point `job` reaches a terminal state (done or error) -
+    also where `finished_at` gets set, the basis for sweep_expired_result_files() cleaning
+    up an exported file nobody came back to download. The history write itself is a no-op
+    for an anonymous download (no user_id, see create_job()), but the file it produced
+    still needs sweeping regardless."""
+    job.finished_at = time.monotonic()
     if job.user_id is None:
         return
     record_download(

@@ -26,6 +26,11 @@ deployment, so an unset value is logged as a warning rather than passed silently
 PR 36): the former for an ordinary login, the latter when "Запомнить меня" was checked.
 The default for ``session_max_age`` matches Starlette's own ``SessionMiddleware``
 default (14 days) so unchecked behaves exactly as before PR 36.
+
+``download_file_ttl`` is the fallback cleanup window (in seconds) for a whole-title
+download's exported file (``app/jobs/store.py``'s ``sweep_expired_result_files()``, PR 50):
+normally deleted the moment a visitor actually downloads it (job page or the global
+"file ready" toast), this TTL only matters if nobody ever comes back to click it.
 """
 
 from __future__ import annotations
@@ -44,6 +49,7 @@ _DEFAULT_CACHE_TTL_SECONDS = 6 * 60 * 60  # 6 hours
 _DEFAULT_DB_PATH = ".ranobelib_companion.db"
 _DEFAULT_SESSION_MAX_AGE_SECONDS = 14 * 24 * 60 * 60  # 14 days - Starlette's own default
 _DEFAULT_SESSION_REMEMBER_MAX_AGE_SECONDS = 90 * 24 * 60 * 60  # 90 days
+_DEFAULT_DOWNLOAD_FILE_TTL_SECONDS = 30 * 60  # 30 minutes
 
 
 @dataclass(frozen=True)
@@ -54,6 +60,7 @@ class Settings:
     session_secret_key: str
     session_max_age: int
     session_remember_max_age: int
+    download_file_ttl: float
 
 
 @lru_cache
@@ -77,5 +84,8 @@ def get_settings() -> Settings:
             os.environ.get(
                 "SESSION_REMEMBER_MAX_AGE_SECONDS", _DEFAULT_SESSION_REMEMBER_MAX_AGE_SECONDS
             )
+        ),
+        download_file_ttl=float(
+            os.environ.get("DOWNLOAD_FILE_TTL_SECONDS", _DEFAULT_DOWNLOAD_FILE_TTL_SECONDS)
         ),
     )

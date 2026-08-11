@@ -112,6 +112,63 @@ def test_list_downloads_status_omits_anonymous_jobs(client: TestClient) -> None:
     assert response.json() == []
 
 
+def test_list_downloads_ready_requires_login(client: TestClient) -> None:
+    response = client.get("/downloads/ready", follow_redirects=False)
+
+    assert response.status_code == 303
+    assert response.headers["location"] == "/login"
+
+
+def test_list_downloads_ready_empty_for_new_user(client: TestClient) -> None:
+    _register(client)
+
+    response = client.get("/downloads/ready")
+
+    assert response.status_code == 200
+    assert response.json() == []
+
+
+def test_list_downloads_ready_shows_finished_undelivered_job(client: TestClient) -> None:
+    _register(client)  # user id 1
+    job = create_job("6712--test-novel", "epub", user_id=1)
+    job.status = "done"
+    job.result_path = Path("/tmp/whatever.epub")
+
+    response = client.get("/downloads/ready")
+
+    assert response.status_code == 200
+    body = response.json()
+    assert len(body) == 1
+    assert body[0]["job_id"] == job.id
+    assert body[0]["slug_url"] == "6712--test-novel"
+    assert body[0]["fmt"] == "epub"
+    assert body[0]["file_url"] == f"/titles/6712--test-novel/download/{job.id}/file"
+
+
+def test_list_downloads_ready_omits_active_and_delivered_jobs(client: TestClient) -> None:
+    _register(client)  # user id 1
+    active_job = create_job("6712--active-novel", "epub", user_id=1)
+    active_job.status = "running"
+    delivered_job = create_job("6712--delivered-novel", "epub", user_id=1)
+    delivered_job.status = "done"
+    delivered_job.result_path = None
+
+    response = client.get("/downloads/ready")
+
+    assert response.json() == []
+
+
+def test_list_downloads_ready_omits_other_users_jobs(client: TestClient) -> None:
+    _register(client)  # user id 1
+    other_job = create_job("6712--other-novel", "epub", user_id=999)
+    other_job.status = "done"
+    other_job.result_path = Path("/tmp/whatever.epub")
+
+    response = client.get("/downloads/ready")
+
+    assert response.json() == []
+
+
 def test_show_downloads_anonymous_is_viewable_but_prompts_to_log_in(
     client: TestClient,
 ) -> None:

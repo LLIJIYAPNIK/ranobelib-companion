@@ -1,7 +1,6 @@
 """Starting and tracking a whole-title background download job."""
 
 import asyncio
-import os
 from typing import Annotated, Any
 
 from fastapi import APIRouter, Depends, Form, HTTPException, Request
@@ -13,7 +12,7 @@ from app.db.users import User
 from app.jobs.download import run_download_job
 from app.jobs.eta import estimate_remaining_seconds
 from app.jobs.models import DownloadJob
-from app.jobs.store import create_job, get_job, track_task
+from app.jobs.store import create_job, delete_result_file, get_job, track_task
 from app.services.exports import require_known_format
 from app.templating import templates
 
@@ -56,12 +55,16 @@ async def download_status(slug_url: str, job_id: str) -> JSONResponse:
 @router.get("/{job_id}/file")
 async def download_result_file(slug_url: str, job_id: str) -> FileResponse:
     job = _get_job_or_404(slug_url, job_id)
-    if job.status != "done" or job.result_path is None:
+    if job.status != "done":
         raise HTTPException(status_code=404, detail="Файл ещё не готов")
+    if job.result_path is None:
+        # Already picked up once (this route was hit before, which clears result_path -
+        # see delete_result_file()) or swept by TTL for sitting unclaimed too long.
+        raise HTTPException(status_code=404, detail="Файл уже скачан или срок хранения истёк")
     return FileResponse(
         job.result_path,
         filename=f"{slug_url}.{job.fmt}",
-        background=BackgroundTask(os.remove, job.result_path),
+        background=BackgroundTask(delete_result_file, job),
     )
 
 

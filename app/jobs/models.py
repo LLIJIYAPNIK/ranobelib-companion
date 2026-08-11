@@ -34,3 +34,7 @@ class DownloadJob:
     error: str | None = None
     ambiguous_chapters: list[AmbiguousChapter] = field(default_factory=list)
     result_path: Path | None = None
+    finished_at: float | None = None
+    """`time.monotonic()` timestamp set when `status` becomes a terminal state (done or
+    error) - the basis for app/jobs/store.py's sweep_expired_result_files(), which deletes
+    an exported file nobody came back to download within the configured TTL."""
