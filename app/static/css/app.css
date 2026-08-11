@@ -1363,6 +1363,26 @@ a {
   max-width: 480px;
 }
 
+/* Named sections (PR 61) - .reader-settings-page used to render every field as one flat
+   list, which stopped scaling as soon as a second, unrelated group of settings (the
+   upcoming "Чтение с помощью тапа" section, PR 63-65) needed a place to live. Same
+   section-heading look as .downloads-section/.downloads-section__title elsewhere in this
+   file, reused rather than invented fresh. */
+.reader-settings-section {
+  margin-top: 28px;
+}
+
+.reader-settings-section:first-of-type {
+  margin-top: 0;
+}
+
+.reader-settings-section__title {
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--text-secondary);
+  margin: 0 0 12px;
+}
+
 .reader-settings__panel {
   display: flex;
   flex-wrap: wrap;

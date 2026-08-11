@@ -3,31 +3,41 @@
 {% block content %}
 <main class="content">
   <h1 class="toc__title">Настройки чтения</h1>
-  <div class="reader-settings-page reader-settings__panel" data-role="reader-settings">
-    <label class="reader-settings__field">
-      <span>Шрифт</span>
-      <select class="toc__export-format" data-setting="fontFamily">
-        <option value="sans">Без засечек</option>
-        <option value="serif">С засечками</option>
-        <option value="mono">Моноширинный</option>
-      </select>
-    </label>
-    <label class="reader-settings__field">
-      <span>Размер шрифта — <output for="fontSize"></output>px</span>
-      <input type="range" id="fontSize" data-setting="fontSize" min="12" max="22" step="1">
-    </label>
-    <label class="reader-settings__field">
-      <span>Межстрочный интервал</span>
-      <select class="toc__export-format" data-setting="lineHeight">
-        <option value="1.5">Плотный</option>
-        <option value="1.85">Обычный</option>
-        <option value="2.2">Свободный</option>
-      </select>
-    </label>
-    <label class="reader-settings__field">
-      <span>Ширина области чтения — <output for="width"></output>px</span>
-      <input type="range" id="width" data-setting="width" min="420" max="1200" step="20">
-    </label>
+  <div class="reader-settings-page" data-role="reader-settings">
+    <section class="reader-settings-section">
+      <h2 class="reader-settings-section__title">Типографика</h2>
+      <div class="reader-settings__panel">
+        <label class="reader-settings__field">
+          <span>Шрифт</span>
+          <select class="toc__export-format" data-setting="fontFamily">
+            <option value="sans">Без засечек</option>
+            <option value="serif">С засечками</option>
+            <option value="mono">Моноширинный</option>
+          </select>
+        </label>
+        <label class="reader-settings__field">
+          <span>Размер шрифта — <output for="fontSize"></output>px</span>
+          <input type="range" id="fontSize" data-setting="fontSize" min="12" max="22" step="1">
+        </label>
+        <label class="reader-settings__field">
+          <span>Межстрочный интервал</span>
+          <select class="toc__export-format" data-setting="lineHeight">
+            <option value="1.5">Плотный</option>
+            <option value="1.85">Обычный</option>
+            <option value="2.2">Свободный</option>
+          </select>
+        </label>
+        <label class="reader-settings__field">
+          <span>Ширина области чтения — <output for="width"></output>px</span>
+          <input type="range" id="width" data-setting="width" min="420" max="1200" step="20">
+        </label>
+      </div>
+    </section>
+
+    <section class="reader-settings-section">
+      <h2 class="reader-settings-section__title">Чтение с помощью тапа</h2>
+      <p class="content__hint">Скоро здесь появится переключатель постепенного раскрытия абзацев.</p>
+    </section>
   </div>
   <div class="reader-settings-preview" data-role="reader-settings-preview">
     <p>
