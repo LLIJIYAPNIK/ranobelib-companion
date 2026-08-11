@@ -1375,6 +1375,44 @@ a {
   cursor: pointer;
 }
 
+/* PR 64: the background plate every revealed paragraph sits in - shared by both
+   paragraphStyle options (readerSettings), which differ only in color/shape and whether
+   .reader-content__paragraph-time (below) gets added at all. Zeroing the margin on what
+   tap-to-read.js wrapped keeps the plate's own margin as the only spacing, instead of
+   doubling up with .reader-content p's. */
+.reader-content__paragraph-wrap {
+  margin: 0 0 16px;
+  padding: 12px 16px;
+  border-radius: 10px;
+}
+
+.reader-content__paragraph-wrap > * {
+  margin: 0;
+}
+
+.reader-content__paragraph-wrap--plain {
+  background: var(--bg-surface);
+  border: 1px solid var(--border);
+}
+
+/* Message-bubble look: accent-tinted instead of the neutral surface color, and an
+   asymmetric corner (like the tail-less bubbles most chat apps use) instead of a plain
+   rectangle - visually distinct from --plain, not just "has a timestamp, doesn't". */
+.reader-content__paragraph-wrap--chat {
+  background: rgba(34, 211, 197, 0.12);
+  border: 1px solid rgba(34, 211, 197, 0.25);
+  border-radius: 14px 14px 14px 4px;
+}
+
+.reader-content__paragraph-time {
+  display: block;
+  margin-top: 6px;
+  font-size: 11px;
+  color: var(--text-muted);
+  font-family: var(--font-mono);
+  text-align: right;
+}
+
 .reader-settings-page {
   margin-top: 20px;
   max-width: 480px;

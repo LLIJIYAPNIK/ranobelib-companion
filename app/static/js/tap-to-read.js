@@ -8,25 +8,45 @@
 // Off by default: readerSettings.tapToRead (PR 63 adds the actual switch on /settings,
 // same localStorage key reader-settings.js already owns) has to be explicitly true, so
 // until that switch exists nobody can turn this on and regular reading is unaffected.
+//
+// PR 64: each revealed paragraph gets wrapped in its own background plate, in one of two
+// styles picked by readerSettings.paragraphStyle - "chat" (a message-bubble look plus a
+// timestamp for when it was revealed) or "plain" (the same plate, no timestamp). The
+// timestamp is stamped fresh from Date.now() whenever a paragraph is (re-)shown, never
+// persisted - purely decorative, not a real read receipt.
 (() => {
   const SETTINGS_KEY = "readerSettings";
   const PROGRESS_KEY_PREFIX = "tapToReadProgress:";
 
-  function isEnabled() {
+  function loadSettings() {
     try {
-      return JSON.parse(localStorage.getItem(SETTINGS_KEY) || "{}").tapToRead === true;
+      return JSON.parse(localStorage.getItem(SETTINGS_KEY) || "{}");
     } catch {
-      return false;
+      return {};
     }
   }
 
-  if (!isEnabled()) return;
+  const settings = loadSettings();
+  if (settings.tapToRead !== true) return;
+
+  const paragraphStyle = settings.paragraphStyle === "plain" ? "plain" : "chat";
 
   const content = document.querySelector('[data-role="chapter"]');
   if (!content) return;
 
-  const paragraphs = [...content.children];
-  if (paragraphs.length === 0) return;
+  const originalParagraphs = [...content.children];
+  if (originalParagraphs.length === 0) return;
+
+  // Wrap every paragraph-equivalent unit in its own plate - the reveal mechanic's
+  // hidden/shown toggle and the background-plate styling both need one element to act
+  // on regardless of what's actually inside it (<p>, a bare <img>, ...).
+  const wraps = originalParagraphs.map((el) => {
+    const wrap = document.createElement("div");
+    wrap.className = `reader-content__paragraph-wrap reader-content__paragraph-wrap--${paragraphStyle} reader-content__paragraph--hidden`;
+    el.replaceWith(wrap);
+    wrap.appendChild(el);
+    return wrap;
+  });
 
   // Keyed by the full path+query, not just the chapter's slug - a different branch_id
   // (PR 7) can mean genuinely different content at the same volume/number, and shouldn't
@@ -36,18 +56,28 @@
   function loadRevealedCount() {
     const stored = Number(localStorage.getItem(progressKey));
     if (!Number.isInteger(stored) || stored < 1) return 1;
-    return Math.min(stored, paragraphs.length);
+    return Math.min(stored, wraps.length);
   }
 
-  let revealedCount = loadRevealedCount();
+  function stampTime(wrap) {
+    if (paragraphStyle !== "chat") return;
+    const time = document.createElement("span");
+    time.className = "reader-content__paragraph-time";
+    time.textContent = new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
+    wrap.appendChild(time);
+  }
+
+  let revealedCount = 0;
   let hint = null;
 
-  function render() {
-    paragraphs.forEach((el, index) => {
-      el.classList.toggle("reader-content__paragraph--hidden", index >= revealedCount);
-    });
+  function reveal(count) {
+    for (let i = revealedCount; i < count; i++) {
+      wraps[i].classList.remove("reader-content__paragraph--hidden");
+      stampTime(wraps[i]);
+    }
+    revealedCount = count;
 
-    if (revealedCount >= paragraphs.length) {
+    if (revealedCount >= wraps.length) {
       hint?.remove();
       return;
     }
@@ -60,12 +90,12 @@
   }
 
   content.classList.add("reader-content--tap-to-read");
-  render();
+  reveal(loadRevealedCount());
 
   content.addEventListener("click", () => {
-    if (revealedCount >= paragraphs.length) return;
-    revealedCount += 1;
-    localStorage.setItem(progressKey, String(revealedCount));
-    render();
+    if (revealedCount >= wraps.length) return;
+    const next = revealedCount + 1;
+    localStorage.setItem(progressKey, String(next));
+    reveal(next);
   });
 })();
