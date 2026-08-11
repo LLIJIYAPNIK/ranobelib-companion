@@ -324,6 +324,8 @@ def test_show_download_status_renders_translation_choice() -> None:
     assert '<option value="0">Вариант 1</option>' in response.text
     assert '<option value="1">Вариант 2</option>' in response.text
     assert '<option value="2">' not in response.text
+    # PR 54: the plain <select> is progressively enhanced into a custom listbox.
+    assert "static/js/custom-dropdown.js" in response.text
 
 
 def test_start_download_needs_translation_end_to_end(logged_in_client: TestClient) -> None:

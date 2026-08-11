@@ -15,6 +15,12 @@ def test_settings_page_renders_reader_settings_panel() -> None:
     assert 'data-setting="lineHeight"' in response.text
     assert 'data-setting="width"' in response.text
     assert "static/js/reader-settings.js" in response.text
+    # PR 54: the fontFamily/lineHeight <select>s are progressively enhanced into custom
+    # listboxes - script order matters here, it must load after reader-settings.js so the
+    # trigger's initial label reflects the value that script just set from localStorage.
+    assert response.text.index("static/js/reader-settings.js") < response.text.index(
+        "static/js/custom-dropdown.js"
+    )
 
 
 def test_sidebar_links_to_settings_page() -> None:
