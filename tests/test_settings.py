@@ -23,6 +23,19 @@ def test_settings_page_renders_reader_settings_panel() -> None:
     )
 
 
+def test_settings_page_groups_fields_into_named_sections() -> None:
+    response = client.get("/settings")
+
+    assert response.status_code == 200
+    assert "Типографика" in response.text
+    assert "Чтение с помощью тапа" in response.text
+    # The typography section's own heading comes before its fields, and before the
+    # (currently empty) tap-to-read section - grouping, not just extra headings anywhere.
+    typography_index = response.text.index("Типографика")
+    tap_reading_index = response.text.index("Чтение с помощью тапа")
+    assert typography_index < response.text.index('data-setting="fontFamily"') < tap_reading_index
+
+
 def test_sidebar_links_to_settings_page() -> None:
     response = client.get("/settings")
 
