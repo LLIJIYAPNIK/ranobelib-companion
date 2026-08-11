@@ -23,6 +23,7 @@ class DownloadHistoryEntry:
     chapter_count: int | None
     error: str | None
     finished_at: str
+    job_id: str | None
 
 
 def record_download(
@@ -33,12 +34,27 @@ def record_download(
     status: str,
     chapter_count: int | None,
     error: str | None,
+    job_id: str | None = None,
 ) -> None:
+    """`job_id` links this row back to the in-memory `DownloadJob` (see app/jobs/store.py)
+    that produced it, so a "Скачать" button on the history row (PR 58) can tell whether the
+    exported file is still on disk waiting to be picked up. It's optional (defaults to
+    None) because a job's in-memory id is meaningless past a process restart, but the
+    history row itself is permanent - an old row just won't offer the button."""
     conn.execute(
         "INSERT INTO download_history "
-        "(user_id, slug_url, fmt, status, chapter_count, error, finished_at) "
-        "VALUES (?, ?, ?, ?, ?, ?, ?)",
-        (user_id, slug_url, fmt, status, chapter_count, error, datetime.now(UTC).isoformat()),
+        "(user_id, slug_url, fmt, status, chapter_count, error, finished_at, job_id) "
+        "VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
+        (
+            user_id,
+            slug_url,
+            fmt,
+            status,
+            chapter_count,
+            error,
+            datetime.now(UTC).isoformat(),
+            job_id,
+        ),
     )
     conn.commit()
 
@@ -95,4 +111,5 @@ def _row_to_entry(row: sqlite3.Row) -> DownloadHistoryEntry:
         chapter_count=row["chapter_count"],
         error=row["error"],
         finished_at=row["finished_at"],
+        job_id=row["job_id"],
     )

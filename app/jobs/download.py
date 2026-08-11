@@ -206,5 +206,12 @@ def _record_history(job: DownloadJob, chapter_count: int | None = None) -> None:
     if job.user_id is None:
         return
     record_download(
-        get_connection(), job.user_id, job.slug_url, job.fmt, job.status, chapter_count, job.error
+        get_connection(),
+        job.user_id,
+        job.slug_url,
+        job.fmt,
+        job.status,
+        chapter_count,
+        job.error,
+        job_id=job.id,
     )
