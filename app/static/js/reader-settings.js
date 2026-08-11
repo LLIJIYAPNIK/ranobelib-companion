@@ -9,7 +9,16 @@
     serif: "var(--font-serif)",
     mono: "var(--font-mono)",
   };
-  const DEFAULTS = { fontFamily: "sans", fontSize: "15", lineHeight: "1.85", width: "640" };
+  const DEFAULTS = {
+    fontFamily: "sans",
+    fontSize: "15",
+    lineHeight: "1.85",
+    width: "640",
+    // PR 63: tapToRead itself is read directly from this same localStorage key by
+    // app/static/js/tap-to-read.js on the chapter page - it isn't a CSS custom property
+    // like the rest of these, so apply() below has nothing to do for it.
+    tapToRead: false,
+  };
 
   const root = document.documentElement;
 
@@ -45,12 +54,20 @@
 
   for (const control of panel.querySelectorAll("[data-setting]")) {
     const key = control.dataset.setting;
-    control.value = settings[key];
-    updateReadout(control);
-    control.addEventListener("input", () => {
-      settings = { ...settings, [key]: control.value };
-      apply(settings);
+    const isCheckbox = control.type === "checkbox";
+    // A checkbox's own .value is always the fixed string "on" - its checked state is
+    // what actually holds the setting (a boolean, not a string like every other field
+    // here), so it needs separate read/write handling rather than reusing .value.
+    if (isCheckbox) {
+      control.checked = Boolean(settings[key]);
+    } else {
+      control.value = settings[key];
       updateReadout(control);
+    }
+    control.addEventListener("input", () => {
+      settings = { ...settings, [key]: isCheckbox ? control.checked : control.value };
+      apply(settings);
+      if (!isCheckbox) updateReadout(control);
       localStorage.setItem(STORAGE_KEY, JSON.stringify(settings));
     });
   }

@@ -36,6 +36,20 @@ def test_settings_page_groups_fields_into_named_sections() -> None:
     assert typography_index < response.text.index('data-setting="fontFamily"') < tap_reading_index
 
 
+def test_settings_page_offers_a_tap_to_read_toggle() -> None:
+    response = client.get("/settings")
+
+    assert response.status_code == 200
+    assert (
+        'type="checkbox" class="reader-settings__toggle" data-setting="tapToRead"'
+        in response.text
+    )
+    # It belongs to the "Чтение с помощью тапа" section (PR 61), not floating anywhere.
+    assert response.text.index("Чтение с помощью тапа") < response.text.index(
+        'data-setting="tapToRead"'
+    )
+
+
 def test_sidebar_links_to_settings_page() -> None:
     response = client.get("/settings")
 
