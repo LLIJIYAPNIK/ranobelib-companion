@@ -50,7 +50,7 @@
   <section class="downloads-section">
     <h2 class="downloads-section__title">Скачано сегодня</h2>
     {% if summary.downloads_today %}
-    {% from "_download_history.html" import download_history_list %}
+    {% from "_download_history.html" import download_history_list with context %}
     {{ download_history_list(summary.downloads_today) }}
     {% else %}
     <p class="content__hint">Сегодня ничего не скачивали.</p>

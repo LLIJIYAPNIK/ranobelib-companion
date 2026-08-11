@@ -1617,6 +1617,29 @@ a {
   font-size: 12px;
 }
 
+.downloads-history__delete {
+  flex: 0 0 auto;
+  background: none;
+  border: none;
+  padding: 4px;
+  color: var(--text-muted);
+  font-size: 18px;
+  line-height: 1;
+  cursor: pointer;
+  transition: color 0.15s ease;
+}
+
+.downloads-history__delete:disabled {
+  opacity: 0.5;
+  cursor: default;
+}
+
+@media (hover: hover) {
+  .downloads-history__delete:hover:not(:disabled) {
+    color: var(--accent-orange);
+  }
+}
+
 .activity-stats {
   display: flex;
   gap: 32px;
