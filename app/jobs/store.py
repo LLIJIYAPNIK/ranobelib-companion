@@ -40,6 +40,20 @@ def list_active_jobs_for_user(user_id: int) -> list[DownloadJob]:
     ]
 
 
+def list_ready_jobs_for_user(user_id: int) -> list[DownloadJob]:
+    """Finished jobs whose exported file is still on disk, waiting to be picked up - the
+    global "file ready" poller (app/static/js/download-ready.js) reads this from any page,
+    not just the job's own status page (PR 50). A job falls out of this list once its file
+    is delivered or swept by TTL (see delete_result_file() below), not when `status`
+    becomes "done" - that's immediate and would make every finished job "ready" forever.
+    """
+    return [
+        job
+        for job in _jobs.values()
+        if job.user_id == user_id and job.status == "done" and job.result_path is not None
+    ]
+
+
 def track_task(job_id: str, task: asyncio.Task[None]) -> None:
     """Keep a strong reference to `task` so it isn't garbage-collected mid-run - asyncio
     only holds a weak reference internally (see `asyncio.create_task()`'s own docs).

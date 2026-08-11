@@ -13,7 +13,7 @@ from app.db.downloads import list_download_history
 from app.db.users import User
 from app.jobs.eta import estimate_remaining_seconds
 from app.jobs.models import DownloadJob
-from app.jobs.store import list_active_jobs_for_user
+from app.jobs.store import list_active_jobs_for_user, list_ready_jobs_for_user
 from app.templating import templates
 
 router = APIRouter(prefix="/downloads")
@@ -46,6 +46,17 @@ async def list_downloads_status(
     return JSONResponse([_job_summary(job) for job in jobs])
 
 
+@router.get("/ready")
+async def list_downloads_ready(
+    user: Annotated[User, Depends(require_current_user)],
+) -> JSONResponse:
+    """Polled from every page (see app/static/js/download-ready.js), not just a specific
+    job's own status page - so a title downloaded and then left to run in the background
+    still gets delivered to the visitor once it's done, wherever they've navigated to."""
+    jobs = list_ready_jobs_for_user(user.id)
+    return JSONResponse([_ready_job_summary(job) for job in jobs])
+
+
 def _job_summary(job: DownloadJob) -> dict[str, Any]:
     return {
         "job_id": job.id,
@@ -55,4 +66,13 @@ def _job_summary(job: DownloadJob) -> dict[str, Any]:
         "completed": job.completed,
         "total": job.total,
         "eta_seconds": estimate_remaining_seconds(job),
+    }
+
+
+def _ready_job_summary(job: DownloadJob) -> dict[str, Any]:
+    return {
+        "job_id": job.id,
+        "slug_url": job.slug_url,
+        "fmt": job.fmt,
+        "file_url": f"/titles/{job.slug_url}/download/{job.id}/file",
     }
