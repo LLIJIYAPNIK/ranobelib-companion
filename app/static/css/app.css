@@ -685,6 +685,19 @@ a {
   gap: 8px;
   text-decoration: none;
   color: inherit;
+  /* PR 60: the sidebar's width transition (.sidebar, PR 39) resizes .content on every
+     animation frame, which forces .title-card-grid's auto-fill columns to relayout every
+     card in it - fine for one page of cards, but infinite scroll (PR 15/24) never trims
+     the DOM, so a catalog scrolled through a while accumulates hundreds of them and the
+     transition visibly janks. content-visibility skips layout/paint entirely for cards
+     currently far outside the viewport, so a reflow-triggering event like this only ever
+     costs what's actually on screen, however many more are loaded below. The
+     contain-intrinsic-size fallback keeps the grid's row heights (and thus scrollbar/
+     scroll position) stable before a card has ever been rendered once; the `auto` keyword
+     switches to remembering each card's real rendered height afterwards, since it varies
+     with title length and isn't safe to hardcode.  */
+  content-visibility: auto;
+  contain-intrinsic-size: auto 260px;
 }
 
 .title-card__cover {
