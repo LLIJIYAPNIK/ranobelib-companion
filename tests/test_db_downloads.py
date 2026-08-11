@@ -26,7 +26,7 @@ def conn() -> sqlite3.Connection:
 
 
 def test_record_download_stores_a_done_entry(conn: sqlite3.Connection) -> None:
-    record_download(conn, 1, "6712--test-novel", "epub", "done", 42, None)
+    record_download(conn, 1, "6712--test-novel", "epub", "done", 42, None, job_id="job-1")
 
     entries = list_download_history(conn, 1)
     assert len(entries) == 1
@@ -38,6 +38,13 @@ def test_record_download_stores_a_done_entry(conn: sqlite3.Connection) -> None:
     assert entry.chapter_count == 42
     assert entry.error is None
     assert entry.finished_at is not None
+    assert entry.job_id == "job-1"
+
+
+def test_record_download_job_id_defaults_to_none(conn: sqlite3.Connection) -> None:
+    record_download(conn, 1, "6712--test-novel", "epub", "done", 42, None)
+
+    assert list_download_history(conn, 1)[0].job_id is None
 
 
 def test_record_download_stores_an_error_entry(conn: sqlite3.Connection) -> None:
