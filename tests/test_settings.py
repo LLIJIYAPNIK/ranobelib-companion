@@ -63,6 +63,19 @@ def test_settings_page_offers_a_paragraph_style_choice() -> None:
     )
 
 
+def test_settings_page_offers_a_paragraph_animation_choice() -> None:
+    response = client.get("/settings")
+
+    assert response.status_code == 200
+    assert 'data-setting="paragraphAnimation"' in response.text
+    for value in ("none", "slide-up", "slide-left", "fade", "typewriter", "blur-focus"):
+        assert f'<option value="{value}">' in response.text
+    # Same section as the other tap-to-read options.
+    assert response.text.index("Чтение с помощью тапа") < response.text.index(
+        'data-setting="paragraphAnimation"'
+    )
+
+
 def test_sidebar_links_to_settings_page() -> None:
     response = client.get("/settings")
 
