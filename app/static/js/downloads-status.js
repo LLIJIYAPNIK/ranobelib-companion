@@ -12,6 +12,18 @@
   const section = document.querySelector('[data-role="active-downloads"]');
   if (!badge && !section) return;
 
+  // [data-role="active-downloads"] itself renders unconditionally for any logged-in
+  // visitor (downloads.html/activity.html show it either way, with a "nothing right
+  // now" hint when there's nothing active) - only the job *list* inside it depends on
+  // there actually being one. Bug: reloading whenever a poll simply finds zero jobs,
+  // with no memory of whether there ever were any, meant every visit to either page
+  // with nothing currently downloading (the overwhelming majority of visits) reloaded
+  // in an infinite loop, since the freshly reloaded page still has zero jobs and
+  // reloads again immediately. Tracking "were there ever jobs during this page view"
+  // and only reloading on the transition to zero is what the comment above already
+  // described - this just actually implements it.
+  let sawActiveJobs = Boolean(section && section.querySelector("[data-job-id]"));
+
   const STATUS_LABELS = {
     queued: () => "В очереди…",
     running: (job) =>
@@ -43,8 +55,12 @@
 
     if (section) {
       if (jobs.length === 0) {
-        window.location.reload();
-        return;
+        if (sawActiveJobs) {
+          window.location.reload();
+          return;
+        }
+      } else {
+        sawActiveJobs = true;
       }
 
       for (const job of jobs) {
