@@ -1007,6 +1007,7 @@ a {
   background: var(--bg-panel);
   border-bottom: 1px solid var(--border);
   transform: translateY(-100%);
+  transition: transform 0.25s ease;
 }
 
 .reader-scroll-nav--visible {
