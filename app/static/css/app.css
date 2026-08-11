@@ -1358,6 +1358,19 @@ a {
   margin: 24px 0;
 }
 
+/* Progressive tap-to-read (PR 62) - only ever applied once tap-to-read.js has confirmed
+   the visitor actually turned the setting on, so this never affects default reading. */
+.reader-content__paragraph--hidden {
+  display: none;
+}
+
+.reader-content__tap-hint {
+  color: var(--text-muted);
+  font-size: 13px;
+  text-align: center;
+  cursor: pointer;
+}
+
 .reader-settings-page {
   margin-top: 20px;
   max-width: 480px;

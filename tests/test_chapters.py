@@ -161,6 +161,18 @@ def test_read_chapter_renders_reveal_on_scroll_up_overlay() -> None:
     )
 
 
+def test_read_chapter_includes_tap_to_read_script() -> None:
+    # PR 62: off by default (readerSettings.tapToRead, PR 63 adds the switch), but the
+    # script itself loads on every chapter page so turning it on later needs no server
+    # round trip - it just starts reading a localStorage key nobody can set yet.
+    chapter = Chapter(id=1, volume="1", number="5", content="<p>x</p>")
+    with patch("app.services.client.RanobeLib", return_value=_FakeClient(chapter)):
+        response = client.get("/titles/6712--test-novel/chapters/1/5")
+
+    assert response.status_code == 200
+    assert "static/js/tap-to-read.js" in response.text
+
+
 def test_read_chapter_crosses_volume_boundary() -> None:
     chapter = Chapter(id=1, volume="1", number="3", name="Конец тома", content="<p>x</p>")
     volumes = [
