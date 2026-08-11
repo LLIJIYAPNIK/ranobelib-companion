@@ -1,4 +1,4 @@
-{% macro download_history_list(entries) %}
+{% macro download_history_list(entries, ready_files={}) %}
 <ul class="downloads-history">
   {% for entry in entries %}
   <li class="downloads-history__item" data-entry-id="{{ entry.id }}">
@@ -10,6 +10,9 @@
       {% endif %}
     </span>
     <span class="downloads-history__date">{{ entry.finished_at[:16].replace("T", " ") }}</span>
+    {% if entry.id in ready_files %}
+    <a class="downloads-history__download btn btn--sm" href="{{ ready_files[entry.id] }}">Скачать</a>
+    {% endif %}
     <button
       type="button"
       class="downloads-history__delete"
