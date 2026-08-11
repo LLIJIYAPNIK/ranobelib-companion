@@ -987,6 +987,49 @@ a {
   font-weight: 700;
 }
 
+/* Reveal-on-scroll-up overlay (PR 52) - a compact duplicate of .reader-nav's controls
+   (back link, heading, prev/next) that reader-scroll-nav.js slides into view over the
+   chapter text on any upward scroll, so reaching them mid-chapter doesn't take a scroll
+   all the way back to the top. `position: sticky` (not `fixed`) keeps it contained within
+   `.main`'s own box instead of the viewport, so it never overlaps the sidebar - same trick
+   PR 51 avoided for the opposite reason (there, `sticky` was the bug because the
+   containing block was too short; here `.main` spans the whole chapter, so it isn't).
+   `transform` handles the actual show/hide, layered independently on top of that. */
+.reader-scroll-nav {
+  position: sticky;
+  top: 0;
+  z-index: 50;
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 8px 20px;
+  padding: 14px 32px;
+  background: var(--bg-panel);
+  border-bottom: 1px solid var(--border);
+  transform: translateY(-100%);
+  transition: transform 0.25s ease;
+}
+
+.reader-scroll-nav--visible {
+  transform: translateY(0);
+}
+
+.reader-scroll-nav__heading {
+  flex: 1;
+  min-width: 0;
+  font-size: 14px;
+  font-weight: 700;
+  margin: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.reader-scroll-nav .reader-nav__adjacent {
+  flex: 0 0 auto;
+  margin-top: 0;
+}
+
 .reader-nav {
   display: flex;
   flex-direction: column;
@@ -1640,6 +1683,18 @@ a {
      it on screen at once, so it's mobile-only redundant here. */
   .reader-nav__adjacent--bottom {
     display: none;
+  }
+
+  /* The prev/next block embedded in .reader-scroll-nav (PR 52) would otherwise also
+     match the bare .reader-nav__adjacent rule above and get pinned to the bottom of the
+     viewport too, split off from the rest of its own overlay panel - keep it a normal
+     flex child of that panel instead, same as on desktop. */
+  .reader-scroll-nav .reader-nav__adjacent {
+    position: static;
+    padding: 0;
+    background: none;
+    border-top: none;
+    z-index: auto;
   }
 
   body.reader-page .main {

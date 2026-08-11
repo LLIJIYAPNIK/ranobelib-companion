@@ -3,6 +3,13 @@
 {% block body_class %}reader-page{% endblock %}
 {% from "_chapter_nav.html" import chapter_nav %}
 {% block content %}
+<div class="reader-scroll-nav" data-role="reader-scroll-nav">
+  <a class="reader-nav__back" href="/titles/{{ slug_url }}">← К оглавлению</a>
+  <h2 class="reader-scroll-nav__heading">
+    Глава {{ chapter.number }}{% if chapter.name %} · {{ chapter.name }}{% endif %}
+  </h2>
+  {{ chapter_nav(prev_url, next_url) }}
+</div>
 <main class="content">
   <div class="reader-nav">
     <a class="reader-nav__back" href="/titles/{{ slug_url }}">← К оглавлению</a>
@@ -35,4 +42,5 @@
 <script src="{{ url_for('static', path='js/activity-heartbeat.js') }}" defer></script>
 {% endif %}
 <script src="{{ url_for('static', path='js/reader-settings.js') }}" defer></script>
+<script src="{{ url_for('static', path='js/reader-scroll-nav.js') }}" defer></script>
 {% endblock %}
