@@ -277,6 +277,25 @@ def test_download_result_file_serves_and_cleans_up() -> None:
     assert response.content == b"exported content"
     assert 'filename="6712--test-novel.epub"' in response.headers["content-disposition"]
     assert not os.path.exists(path)
+    assert job.result_path is None
+
+
+def test_download_result_file_repeat_request_returns_friendly_404() -> None:
+    job = create_job("6712--test-novel", "epub")
+    job.status = "done"
+    fd, path = tempfile.mkstemp(suffix=".epub")
+    os.close(fd)
+    with open(path, "w", encoding="utf-8") as f:
+        f.write("exported content")
+    job.result_path = Path(path)
+
+    first = client.get(f"/titles/6712--test-novel/download/{job.id}/file")
+    assert first.status_code == 200
+
+    second = client.get(f"/titles/6712--test-novel/download/{job.id}/file")
+
+    assert second.status_code == 404
+    assert "скачан" in second.json()["detail"]
 
 
 def test_show_download_status_renders_translation_choice() -> None:

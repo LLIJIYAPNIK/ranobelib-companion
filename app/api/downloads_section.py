@@ -8,12 +8,17 @@ from fastapi import APIRouter, Depends, Request
 from fastapi.responses import HTMLResponse, JSONResponse
 
 from app.auth.dependencies import get_current_user, require_current_user
+from app.config import get_settings
 from app.db.connection import get_connection
 from app.db.downloads import list_download_history
 from app.db.users import User
 from app.jobs.eta import estimate_remaining_seconds
 from app.jobs.models import DownloadJob
-from app.jobs.store import list_active_jobs_for_user, list_ready_jobs_for_user
+from app.jobs.store import (
+    list_active_jobs_for_user,
+    list_ready_jobs_for_user,
+    sweep_expired_result_files,
+)
 from app.templating import templates
 
 router = APIRouter(prefix="/downloads")
@@ -53,6 +58,7 @@ async def list_downloads_ready(
     """Polled from every page (see app/static/js/download-ready.js), not just a specific
     job's own status page - so a title downloaded and then left to run in the background
     still gets delivered to the visitor once it's done, wherever they've navigated to."""
+    sweep_expired_result_files(get_settings().download_file_ttl)
     jobs = list_ready_jobs_for_user(user.id)
     return JSONResponse([_ready_job_summary(job) for job in jobs])
 
