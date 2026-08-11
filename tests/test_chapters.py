@@ -173,6 +173,17 @@ def test_read_chapter_includes_tap_to_read_script() -> None:
     assert "static/js/tap-to-read.js" in response.text
 
 
+def test_read_chapter_includes_image_lightbox_script() -> None:
+    # PR 66: the script itself checks readerSettings.tapToRead at runtime and disables
+    # itself in that mode, so it loads unconditionally regardless of the setting.
+    chapter = Chapter(id=1, volume="1", number="5", content="<p>x</p>")
+    with patch("app.services.client.RanobeLib", return_value=_FakeClient(chapter)):
+        response = client.get("/titles/6712--test-novel/chapters/1/5")
+
+    assert response.status_code == 200
+    assert "static/js/image-lightbox.js" in response.text
+
+
 def test_read_chapter_crosses_volume_boundary() -> None:
     chapter = Chapter(id=1, volume="1", number="3", name="Конец тома", content="<p>x</p>")
     volumes = [
