@@ -11,7 +11,7 @@ import app.db.connection as db_connection
 import app.jobs.store as job_store
 from app.config import get_settings
 from app.db.connection import get_connection
-from app.db.downloads import record_download
+from app.db.downloads import list_download_history, record_download
 from app.jobs.store import create_job
 
 
@@ -224,3 +224,41 @@ def test_show_downloads_history_shows_error(client: TestClient) -> None:
     response = client.get("/downloads")
 
     assert "Опа" in response.text
+
+
+def test_delete_history_entry_requires_login(client: TestClient) -> None:
+    response = client.delete("/downloads/history/1", follow_redirects=False)
+
+    assert response.status_code == 303
+    assert response.headers["location"] == "/login"
+
+
+def test_delete_history_entry_removes_own_entry(client: TestClient) -> None:
+    _register(client)  # user id 1
+    record_download(get_connection(), 1, "6712--test-novel", "epub", "done", 1, None)
+    entry_id = list_download_history(get_connection(), 1)[0].id
+
+    response = client.delete(f"/downloads/history/{entry_id}")
+
+    assert response.status_code == 204
+    assert list_download_history(get_connection(), 1) == []
+
+
+def test_delete_history_entry_unknown_id_is_404(client: TestClient) -> None:
+    _register(client)
+
+    response = client.delete("/downloads/history/999")
+
+    assert response.status_code == 404
+
+
+def test_delete_history_entry_cannot_remove_another_users_entry(client: TestClient) -> None:
+    _register(client, "alice@example.com")  # user id 1
+    _register(client, "bob@example.com")  # user id 2, now the logged in session
+    record_download(get_connection(), 1, "6712--test-novel", "epub", "done", 1, None)
+    entry_id = list_download_history(get_connection(), 1)[0].id
+
+    response = client.delete(f"/downloads/history/{entry_id}")
+
+    assert response.status_code == 404
+    assert len(list_download_history(get_connection(), 1)) == 1
