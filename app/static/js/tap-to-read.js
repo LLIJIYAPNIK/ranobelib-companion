@@ -22,12 +22,42 @@
 // "typewriter" instead reveals the wrap's own text nodes one character at a time (walking
 // the DOM so nested tags like <em>/<a> stay intact), themed to go with PR 64's chat
 // style; a paragraph with no text at all (a bare <img>) has nothing to type, so it just
-// appears immediately - same "don't break on non-<p> content" rule as everything else
-// here.
+// appears immediately - same "don't break on non-<p> content" rule as everything here.
+//
+// PR 79: readerSettings.revealTempo (default "instant", i.e. everything above unchanged)
+// stretches a tap-triggered reveal over roughly how long the paragraph would actually take
+// to read at readerSettings.readingSpeedWpm (PR 77/78 - falls back to DEFAULT_WPM if
+// neither was ever set), instead of showing it all at once. Five tempo mechanics, all
+// timed the same way (see computeDurationMs): word-by-word, a WPM-paced version of the
+// existing typewriter effect, line-by-line, a running highlight over already-visible
+// text, and a per-word blur-to-focus dissolve. Only applies to an actual tap - the initial
+// reveal(loadRevealedCount()) restoring saved progress on page load skips it, same as
+// PR 76's autoscroll skips that call: animating a whole backlog of paragraphs right after
+// load would be a worse experience, not a better one. When active, it fully replaces
+// paragraphAnimation/typewriter for that reveal rather than layering on top of it - both
+// would otherwise fight over the same text nodes (typewriter-speed) or just be visually
+// redundant (the others).
 (() => {
   const SETTINGS_KEY = "readerSettings";
   const PROGRESS_KEY_PREFIX = "tapToReadProgress:";
   const CSS_ANIMATIONS = new Set(["slide-up", "slide-left", "fade", "blur-focus"]);
+  const TEMPO_OPTIONS = new Set([
+    "word-by-word",
+    "typewriter-speed",
+    "line-by-line",
+    "highlight-sweep",
+    "word-dissolve",
+  ]);
+  // Average adult silent-reading pace - used only when revealTempo is on but the visitor
+  // never took the PR 77 test or filled in PR 78's manual field, so tempo still does
+  // something reasonable instead of needing a measured speed as a hard prerequisite.
+  const DEFAULT_WPM = 200;
+  // Bounds on a single paragraph's stretched-reveal duration, regardless of what its own
+  // word count and readingSpeedWpm work out to - the roadmap's own concern: a very long
+  // paragraph at a slow speed shouldn't turn into an uncomfortably long pause, and a very
+  // short one at a fast speed shouldn't flicker by unreadably fast.
+  const MIN_TEMPO_DURATION_MS = 400;
+  const MAX_TEMPO_DURATION_MS = 15_000;
 
   function loadSettings() {
     try {
@@ -45,6 +75,8 @@
     CSS_ANIMATIONS.has(settings.paragraphAnimation) || settings.paragraphAnimation === "typewriter"
       ? settings.paragraphAnimation
       : "none";
+  const revealTempo = TEMPO_OPTIONS.has(settings.revealTempo) ? settings.revealTempo : "instant";
+  const readingSpeedWpm = Number(settings.readingSpeedWpm) > 0 ? Number(settings.readingSpeedWpm) : DEFAULT_WPM;
 
   const content = document.querySelector('[data-role="chapter"]');
   if (!content) return;
@@ -98,20 +130,23 @@
     return captured;
   }
 
-  function startTypewriter(captured) {
+  // `delay` is in ms/character - PR 65's own fixed-budget call site and PR 79's
+  // WPM-derived one both just compute it differently and share everything after that.
+  // `done` (PR 79 only) fires once every character has been typed back in.
+  function startTypewriter(captured, delay, done) {
     const totalChars = captured.reduce((sum, { text }) => sum + text.length, 0);
-    if (totalChars === 0) return; // nothing to type (e.g. a bare <img>) - already visible
+    if (totalChars === 0) {
+      done?.(); // nothing to type (e.g. a bare <img>) - already visible
+      return;
+    }
 
-    // A fixed-ish overall duration regardless of paragraph length feels more like a
-    // reveal animation and less like actually waiting for someone to type a long one:
-    // short paragraphs get a leisurely per-character delay, long ones a brisker one.
-    const delay = Math.min(20, Math.max(4, 900 / totalChars));
     let nodeIndex = 0;
     let charIndex = 0;
 
     const timer = setInterval(() => {
       if (nodeIndex >= captured.length) {
         clearInterval(timer);
+        done?.();
         return;
       }
       const current = captured[nodeIndex];
@@ -124,8 +159,186 @@
     }, delay);
   }
 
+  // A fixed-ish overall duration regardless of paragraph length feels more like a reveal
+  // animation and less like actually waiting for someone to type a long one: short
+  // paragraphs get a leisurely per-character delay, long ones a brisker one. Only used by
+  // paragraphAnimation === "typewriter" - PR 79's typewriter-speed tempo computes its own
+  // delay from readingSpeedWpm instead (see runTempo below).
+  function fixedTypewriterDelay(totalChars) {
+    return Math.min(20, Math.max(4, 900 / totalChars));
+  }
+
+  // PR 79: word-splitting shared by every tempo mode that reveals/highlights word by
+  // word. Walks the same text nodes prepareTypewriter() would (so nested tags like
+  // <em>/<a> keep their own words separate rather than getting merged), and replaces each
+  // one with a run of <span class="reader-content__word"> plus the original whitespace
+  // between them, so spacing survives untouched.
+  function wrapWordsInSpans(wrap) {
+    const spans = [];
+    for (const node of textNodesOf(wrap)) {
+      if (!node.nodeValue.trim()) continue; // pure whitespace between tags - leave as is
+      const fragment = document.createDocumentFragment();
+      for (const part of node.nodeValue.split(/(\s+)/)) {
+        if (part === "") continue;
+        if (/^\s+$/.test(part)) {
+          fragment.append(part);
+          continue;
+        }
+        const span = document.createElement("span");
+        span.className = "reader-content__word";
+        span.textContent = part;
+        fragment.append(span);
+        spans.push(span);
+      }
+      node.replaceWith(fragment);
+    }
+    return spans;
+  }
+
+  function wordCount(wrap) {
+    const text = wrap.textContent.trim();
+    return text ? text.split(/\s+/).length : 0;
+  }
+
+  function computeTempoDurationMs(wrap) {
+    const words = wordCount(wrap);
+    if (words === 0) return 0; // nothing to time (e.g. a bare <img>)
+    const raw = (words / readingSpeedWpm) * 60_000;
+    return Math.min(MAX_TEMPO_DURATION_MS, Math.max(MIN_TEMPO_DURATION_MS, raw));
+  }
+
+  // Reveals `spans` one at a time, `durationMs` spread evenly across all of them -
+  // shared by word-by-word and word-dissolve, which only differ in the CSS class that
+  // controls how a still-pending word looks (see app/static/css/app.css).
+  function revealSpansSequentially(spans, durationMs, pendingClass, done) {
+    if (spans.length === 0) {
+      done();
+      return;
+    }
+    const interval = durationMs / spans.length;
+    let i = 0;
+    const timer = setInterval(() => {
+      spans[i].classList.remove(pendingClass);
+      i += 1;
+      if (i >= spans.length) {
+        clearInterval(timer);
+        done();
+      }
+    }, interval);
+  }
+
+  function runWordByWord(wrap, durationMs, done) {
+    const spans = wrapWordsInSpans(wrap);
+    spans.forEach((span) => span.classList.add("reader-content__word--pending"));
+    revealSpansSequentially(spans, durationMs, "reader-content__word--pending", done);
+  }
+
+  function runWordDissolve(wrap, durationMs, done) {
+    const spans = wrapWordsInSpans(wrap);
+    spans.forEach((span) => span.classList.add("reader-content__word--dissolved"));
+    revealSpansSequentially(spans, durationMs, "reader-content__word--dissolved", done);
+  }
+
+  // Groups spans by their rendered top offset (words on the same visual line share it)
+  // instead of assuming a fixed character count per line - text wrapping depends on the
+  // reader's own font/width settings (PR 30/34), so only the actual layout can say where
+  // one line ends and the next begins. The words stay laid out (just invisible via
+  // opacity, not display: none) from the moment they're wrapped, so this measurement
+  // reflects their real final position with no extra reflow to wait for.
+  function groupSpansByLine(spans) {
+    const lines = [];
+    let lastTop = null;
+    for (const span of spans) {
+      const top = span.offsetTop;
+      if (lastTop === null || Math.abs(top - lastTop) > 2) {
+        lines.push([span]);
+        lastTop = top;
+      } else {
+        lines[lines.length - 1].push(span);
+      }
+    }
+    return lines;
+  }
+
+  function runLineByLine(wrap, durationMs, done) {
+    const spans = wrapWordsInSpans(wrap);
+    if (spans.length === 0) {
+      done();
+      return;
+    }
+    spans.forEach((span) => span.classList.add("reader-content__word--pending"));
+    const lines = groupSpansByLine(spans);
+    const interval = durationMs / lines.length;
+    let i = 0;
+    const timer = setInterval(() => {
+      for (const span of lines[i]) span.classList.remove("reader-content__word--pending");
+      i += 1;
+      if (i >= lines.length) {
+        clearInterval(timer);
+        done();
+      }
+    }, interval);
+  }
+
+  // Unlike the other tempo modes, the text itself is fully visible immediately - only a
+  // highlight sweeps across it, at reading pace, as a "you should be about here" pace-
+  // setter rather than something hiding content from the visitor.
+  function runHighlightSweep(wrap, durationMs, done) {
+    const spans = wrapWordsInSpans(wrap);
+    if (spans.length === 0) {
+      done();
+      return;
+    }
+    const interval = durationMs / spans.length;
+    let i = 0;
+    const timer = setInterval(() => {
+      spans[i - 1]?.classList.remove("reader-content__word--highlighted");
+      spans[i].classList.add("reader-content__word--highlighted");
+      i += 1;
+      if (i >= spans.length) {
+        clearInterval(timer);
+        spans[spans.length - 1].classList.remove("reader-content__word--highlighted");
+        done();
+      }
+    }, interval);
+  }
+
+  function runTypewriterSpeed(wrap, durationMs, done) {
+    const captured = prepareTypewriter(wrap);
+    const totalChars = captured.reduce((sum, { text }) => sum + text.length, 0);
+    if (totalChars === 0) {
+      done();
+      return;
+    }
+    startTypewriter(captured, durationMs / totalChars, done);
+  }
+
+  const TEMPO_RUNNERS = {
+    "word-by-word": runWordByWord,
+    "typewriter-speed": runTypewriterSpeed,
+    "line-by-line": runLineByLine,
+    "highlight-sweep": runHighlightSweep,
+    "word-dissolve": runWordDissolve,
+  };
+
   let revealedCount = 0;
   let hint = null;
+
+  // Either shows the "tap to continue" hint, or removes it for good once every paragraph
+  // in the chapter is revealed - shared tail end of both the instant reveal() below and
+  // PR 79's tempo-driven revealNextWithTempo().
+  function afterReveal() {
+    if (revealedCount >= wraps.length) {
+      hint?.remove();
+      return;
+    }
+    if (!hint) {
+      hint = document.createElement("p");
+      hint.className = "reader-content__tap-hint";
+      hint.textContent = "Тапните, чтобы читать дальше";
+    }
+    content.appendChild(hint); // keep it last, after whatever was just revealed
+  }
 
   // `scroll` is only true for a tap-triggered reveal (see the click handler below) - the
   // initial reveal(loadRevealedCount()) on page load restores possibly many paragraphs
@@ -145,7 +358,10 @@
       wrap.classList.remove("reader-content__paragraph--hidden");
       stampTime(wrap);
 
-      if (pendingTypewriter) startTypewriter(pendingTypewriter);
+      if (pendingTypewriter) {
+        const totalChars = pendingTypewriter.reduce((sum, { text }) => sum + text.length, 0);
+        startTypewriter(pendingTypewriter, fixedTypewriterDelay(totalChars));
+      }
       lastRevealed = wrap;
     }
     revealedCount = count;
@@ -154,16 +370,33 @@
       lastRevealed.scrollIntoView({ behavior: "smooth", block: "end" });
     }
 
-    if (revealedCount >= wraps.length) {
-      hint?.remove();
+    afterReveal();
+  }
+
+  // PR 79: the tap-triggered, tempo-paced counterpart to reveal() above - always exactly
+  // one new paragraph (the click handler only ever advances by one), stretched over
+  // computeTempoDurationMs() instead of appearing all at once. Falls back to the instant
+  // reveal() for a paragraph with nothing to time (e.g. a bare <img>, wordCount() === 0).
+  function revealNextWithTempo(count) {
+    const wrap = wraps[revealedCount];
+    const durationMs = computeTempoDurationMs(wrap);
+    if (durationMs === 0) {
+      reveal(count, { scroll: true });
       return;
     }
-    if (!hint) {
-      hint = document.createElement("p");
-      hint.className = "reader-content__tap-hint";
-      hint.textContent = "Тапните, чтобы читать дальше";
-    }
-    content.appendChild(hint); // keep it last, after whatever was just revealed
+
+    wrap.classList.remove("reader-content__paragraph--hidden");
+    wrap.scrollIntoView({ behavior: "smooth", block: "end" });
+
+    // stampTime() only runs once the tempo reveal is done, not before - every runner
+    // walks wrap's own text nodes (to split into words or capture for typewriter-speed),
+    // and the timestamp span's own text ("16:45") would otherwise get counted as part of
+    // the paragraph and end up revealed/typed right alongside it.
+    TEMPO_RUNNERS[revealTempo](wrap, durationMs, () => {
+      stampTime(wrap);
+      revealedCount = count;
+      afterReveal();
+    });
   }
 
   // PR 75: what a tap does once every paragraph in this chapter is already revealed -
@@ -205,6 +438,10 @@
     }
     const next = revealedCount + 1;
     localStorage.setItem(progressKey, String(next));
-    reveal(next, { scroll: true });
+    if (revealTempo === "instant") {
+      reveal(next, { scroll: true });
+    } else {
+      revealNextWithTempo(next);
+    }
   });
 })();

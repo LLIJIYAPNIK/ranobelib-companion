@@ -76,6 +76,26 @@ def test_settings_page_offers_a_paragraph_animation_choice() -> None:
     )
 
 
+def test_settings_page_offers_a_reveal_tempo_choice() -> None:
+    response = client.get("/settings")
+
+    assert response.status_code == 200
+    assert 'data-setting="revealTempo"' in response.text
+    for value in (
+        "instant",
+        "word-by-word",
+        "typewriter-speed",
+        "line-by-line",
+        "highlight-sweep",
+        "word-dissolve",
+    ):
+        assert f'<option value="{value}">' in response.text
+    # Same section as the other tap-to-read options.
+    assert response.text.index("Чтение с помощью тапа") < response.text.index(
+        'data-setting="revealTempo"'
+    )
+
+
 def test_sidebar_links_to_settings_page() -> None:
     response = client.get("/settings")
 
