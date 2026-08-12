@@ -1628,6 +1628,44 @@ a {
   box-shadow: 0 0 0 3px rgba(34, 211, 197, 0.18);
 }
 
+/* Reading-speed test (PR 77) - nested inside the "Чтение с помощью тапа" section rather
+   than getting its own top-level .reader-settings-section, since it's a sub-feature of
+   tap-to-read (its result only matters to PR 79's tempo animations, also scoped there). */
+.reader-settings-subsection__title {
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--text-secondary);
+  margin: 20px 0 8px;
+}
+
+.reading-speed-test__status {
+  color: var(--text-muted);
+  font-size: 13px;
+  margin: 10px 0 0;
+}
+
+.reading-speed-test__sample {
+  margin: 10px 0 0;
+  padding: 14px;
+  background: var(--bg-surface);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  color: var(--text-secondary);
+  line-height: 1.8;
+}
+
+.reading-speed-test__word {
+  border-radius: 3px;
+  cursor: pointer;
+  transition: background-color 0.15s ease;
+}
+
+@media (hover: hover) {
+  .reading-speed-test__word:hover {
+    background-color: rgba(34, 211, 197, 0.18);
+  }
+}
+
 .reader-settings-preview {
   margin-top: 16px;
   padding: 16px;
