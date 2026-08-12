@@ -3,22 +3,16 @@
 // overlay with zoom, a download link, and prev/next arrows cycling through every image
 // in the chapter without closing the viewer.
 //
-// Disabled entirely when tap-to-read (PR 62-65) is on: tapping anywhere in the reading
-// area there already means "reveal the next paragraph" (tap-to-read.js's own click
-// listener on .reader-content) - opening a lightbox on the same tap would conflict with
-// that mental model, so images just stay plain inline pictures in that mode, exactly as
-// the roadmap calls for.
+// PR 74 (revisits PR 66): tap-to-read (PR 62-65) tapping anywhere in the reading area
+// means "reveal the next paragraph" (tap-to-read.js's own click listener, widened to the
+// whole reading area in PR 73), which conflicts with opening a lightbox on that same tap
+// - PR 66 resolved that by disabling this script entirely whenever tap-to-read was on, so
+// images just stayed plain inline pictures in that mode. That threw out image viewing
+// altogether instead of just the conflict: a tap specifically on an image should still
+// open the lightbox, same as normal reading - it's only tap-to-read.js's own handler that
+// now excludes clicks on <img> (see the "a, button, img" check there), so the two no
+// longer compete for the same tap.
 (() => {
-  function isTapToReadEnabled() {
-    try {
-      return JSON.parse(localStorage.getItem("readerSettings") || "{}").tapToRead === true;
-    } catch {
-      return false;
-    }
-  }
-
-  if (isTapToReadEnabled()) return;
-
   const images = [...document.querySelectorAll(".reader-content img")];
   if (images.length === 0) return;
 
