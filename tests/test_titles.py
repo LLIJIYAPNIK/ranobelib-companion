@@ -109,6 +109,27 @@ def test_show_title_renders_metadata() -> None:
     assert "42" in response.text
 
 
+def test_show_title_renders_finished_notice_when_flagged() -> None:
+    # PR 75: tap-to-read.js lands here with ?finished=1 after the last paragraph of a
+    # title's last chapter.
+    title = _fake_title()
+    with patch("app.services.client.RanobeLib", return_value=_FakeClient(title)):
+        response = client.get("/titles/6712--test-novel?finished=1")
+
+    assert response.status_code == 200
+    assert 'data-role="title-finished-notice"' in response.text
+    assert "Тайтл прочитан" in response.text
+
+
+def test_show_title_omits_finished_notice_by_default() -> None:
+    title = _fake_title()
+    with patch("app.services.client.RanobeLib", return_value=_FakeClient(title)):
+        response = client.get("/titles/6712--test-novel")
+
+    assert response.status_code == 200
+    assert "Тайтл прочитан" not in response.text
+
+
 def test_show_title_renders_size_estimate_placeholder() -> None:
     # PR 43: show_title() no longer computes the estimate itself - it just renders a
     # placeholder that title-size-estimate.js fills in from the endpoint below.
