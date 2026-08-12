@@ -3,7 +3,7 @@
 from typing import Annotated
 
 from fastapi import APIRouter, Depends, Request
-from fastapi.responses import HTMLResponse
+from fastapi.responses import HTMLResponse, Response
 from ranobelib import RanobeLibError
 
 from app.auth.dependencies import get_current_user
@@ -11,7 +11,7 @@ from app.db.connection import get_connection
 from app.db.library import get_entry
 from app.db.users import User
 from app.reading_progress import reading_progress_percent
-from app.recent_titles import read_recent
+from app.recent_titles import forget, read_recent
 from app.services.client import open_client
 from app.templating import templates
 
@@ -27,6 +27,16 @@ async def home(
         "index.html",
         {"active_nav": "home", "recent": await _recent_with_progress(request, user)},
     )
+
+
+@router.post("/recent/{slug_url}/forget", response_model=None)
+async def forget_recent_title(request: Request, slug_url: str) -> Response:
+    """The "×" on a "Недавние" card (PR 69) - rewrites the cookie without this entry and
+    returns 204 so recent-titles-forget.js can just drop the card from the page, no
+    reload needed."""
+    response = Response(status_code=204)
+    forget(response, request, slug_url=slug_url)
+    return response
 
 
 async def _recent_with_progress(
