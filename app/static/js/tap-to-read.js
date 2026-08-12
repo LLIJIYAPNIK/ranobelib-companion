@@ -158,7 +158,18 @@
   content.classList.add("reader-content--tap-to-read");
   reveal(loadRevealedCount());
 
-  content.addEventListener("click", () => {
+  // PR 73: the tap zone is the whole reading area (<main class="content">, which chapter.html
+  // wraps .reader-content in), not just .reader-content itself - that element is only ever
+  // as tall as the paragraphs revealed so far and only as wide as --reader-width, so a tap
+  // beside the text column or below the last revealed paragraph (before the page has scrolled
+  // enough to fill the viewport) used to miss it entirely. Falls back to .reader-content if
+  // the expected wrapper isn't there for some reason, rather than not working at all.
+  const tapZone = content.closest("main.content") || content;
+
+  tapZone.addEventListener("click", (event) => {
+    // Links and buttons - the back-to-ToC link, prev/next chapter nav, per-chapter export
+    // links - keep their own behavior; a tap on them shouldn't also advance the reveal.
+    if (event.target.closest("a, button")) return;
     if (revealedCount >= wraps.length) return;
     const next = revealedCount + 1;
     localStorage.setItem(progressKey, String(next));
