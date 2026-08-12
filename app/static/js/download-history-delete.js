@@ -9,7 +9,10 @@
     const button = event.target.closest('[data-role="delete-history-entry"]');
     if (!button) return;
 
-    const row = button.closest("[data-entry-id]");
+    // Not `button.closest("[data-entry-id]")` (PR 70) - the button itself also carries
+    // `data-entry-id`, so that selector matched the button and stopped there instead of
+    // reaching the row, leaving the rest of the row on screen after a successful delete.
+    const row = button.closest(".downloads-history__item");
     const entryId = button.dataset.entryId;
     if (!row || !entryId) return;
 
