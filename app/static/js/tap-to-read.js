@@ -100,10 +100,32 @@
   // share reveal progress with another translation.
   const progressKey = `${PROGRESS_KEY_PREFIX}${location.pathname}${location.search}`;
 
+  // PR 83: stored as {revealed, total} (not a bare number) so the title page's table of
+  // contents (toc-tap-progress.js) can turn it into a percentage/checkmark without
+  // re-fetching or re-parsing the chapter itself - total is exactly wraps.length, which
+  // only this page ever computes. Still accepts a bare number for a progress entry saved
+  // before this change existed, just without a total to show a percentage against.
+  function readStoredProgress() {
+    const raw = localStorage.getItem(progressKey);
+    if (!raw) return null;
+    try {
+      const parsed = JSON.parse(raw);
+      if (parsed && Number.isInteger(parsed.revealed)) return parsed;
+    } catch {
+      // not JSON - fall through to the legacy bare-number format below
+    }
+    const legacy = Number(raw);
+    return Number.isInteger(legacy) && legacy >= 1 ? { revealed: legacy, total: null } : null;
+  }
+
+  function saveProgress(revealed) {
+    localStorage.setItem(progressKey, JSON.stringify({ revealed, total: wraps.length }));
+  }
+
   function loadRevealedCount() {
-    const stored = Number(localStorage.getItem(progressKey));
-    if (!Number.isInteger(stored) || stored < 1) return 1;
-    return Math.min(stored, wraps.length);
+    const stored = readStoredProgress();
+    if (!stored || stored.revealed < 1) return 1;
+    return Math.min(stored.revealed, wraps.length);
   }
 
   function stampTime(wrap) {
@@ -437,7 +459,7 @@
       return;
     }
     const next = revealedCount + 1;
-    localStorage.setItem(progressKey, String(next));
+    saveProgress(next);
     if (revealTempo === "instant") {
       reveal(next, { scroll: true });
     } else {
