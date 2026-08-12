@@ -1,12 +1,18 @@
-// Reading-speed test (PR 77): a "Скорость чтения" subsection inside "Чтение с помощью
-// тапа" settings. The visitor reads a sample paragraph at a comfortable pace for exactly
-// 60 seconds, then clicks the word they stopped at - the number of words up to and
-// including that one *is* the words-per-minute rate, since the window is exactly one
-// minute long. Saved into the same readerSettings localStorage key PR 30/63-65 already
-// use (readingSpeedWpm), for PR 78's manual field and PR 79's tempo animations to read.
+// Reading-speed test (PR 77) plus manual entry (PR 78): a "Скорость чтения" subsection
+// inside "Чтение с помощью тапа" settings. The visitor reads a sample paragraph at a
+// comfortable pace for exactly 60 seconds, then clicks the word they stopped at - the
+// number of words up to and including that one *is* the words-per-minute rate, since the
+// window is exactly one minute long. The test isn't the only way in, though - a plain
+// number field lets a visitor set or correct the value directly, for anyone who'd rather
+// not take the test at all. Both write the same readerSettings localStorage key PR
+// 30/63-65 already use (readingSpeedWpm), for PR 79's tempo animations to read later, and
+// stay in sync with each other - completing the test updates the manual field's own
+// displayed value too, not just the "Текущее значение" line.
 (() => {
   const STORAGE_KEY = "readerSettings";
   const TEST_DURATION_MS = 60_000;
+  const MIN_WPM = 50;
+  const MAX_WPM = 1000;
 
   // ~550 words - comfortably longer than even a very fast reader (500+ wpm) would get
   // through in 60 seconds, so running out of text mid-test isn't a realistic concern.
@@ -63,7 +69,8 @@
   const statusEl = root.querySelector('[data-role="reading-speed-status"]');
   const sampleEl = root.querySelector('[data-role="reading-speed-sample"]');
   const valueEl = root.querySelector('[data-role="reading-speed-value"]');
-  if (!startBtn || !statusEl || !sampleEl || !valueEl) return;
+  const manualInput = root.querySelector('[data-role="reading-speed-manual-input"]');
+  if (!startBtn || !statusEl || !sampleEl || !valueEl || !manualInput) return;
 
   function loadSettings() {
     try {
@@ -80,6 +87,9 @@
   function renderCurrentValue() {
     const wpm = loadSettings().readingSpeedWpm;
     valueEl.textContent = wpm ? `${wpm} слов/мин` : "не задано";
+    // Keeps the manual field showing the same value the test just saved (or whatever was
+    // already saved on page load) - not just the "Текущее значение" line above it.
+    manualInput.value = wpm || "";
   }
 
   function buildSample() {
@@ -129,6 +139,22 @@
   });
 
   startBtn.addEventListener("click", startTest);
+
+  // Committed on "change" (blur/Enter), not "input" on every keystroke - clamping mid-
+  // typing would fight with the cursor and make the field unusable while entering a
+  // number outside [MIN_WPM, MAX_WPM] one digit at a time.
+  manualInput.addEventListener("change", () => {
+    const parsed = Number(manualInput.value);
+    if (!Number.isFinite(parsed) || parsed <= 0) {
+      // Blank/garbage input just resets the field to whatever's still saved, rather than
+      // wiping out a previously-good value.
+      renderCurrentValue();
+      return;
+    }
+    const wpm = Math.min(MAX_WPM, Math.max(MIN_WPM, Math.round(parsed)));
+    saveWpm(wpm);
+    renderCurrentValue();
+  });
 
   renderCurrentValue();
 })();
