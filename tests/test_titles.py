@@ -1,4 +1,5 @@
 from unittest.mock import patch
+from urllib.parse import quote
 
 from fastapi.testclient import TestClient
 from ranobelib import RanobeLibError, RateLimitError, TitleNotFoundError
@@ -299,8 +300,8 @@ def test_show_title_tags_link_to_the_filtered_catalog() -> None:
         response = client.get("/titles/6712--test-novel")
 
     assert response.status_code == 200
-    assert 'href="/library/catalog?tags=1&tag_name=%D0%A0%D0%B5%D0%B8%D0%BD%D0%BA%D0%B0%D1%80%D0%BD%D0%B0%D1%86%D0%B8%D1%8F"' in response.text
-    assert 'href="/library/catalog?tags=2&tag_name=%D0%9C%D0%B0%D0%B3%D0%B8%D1%8F"' in response.text
+    assert f'href="/library/catalog?tags=1&tag_name={quote("Реинкарнация")}"' in response.text
+    assert f'href="/library/catalog?tags=2&tag_name={quote("Магия")}"' in response.text
     assert '<span class="badge badge--muted">Реинкарнация</span>' not in response.text
 
 
