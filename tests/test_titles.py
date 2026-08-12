@@ -280,6 +280,30 @@ def test_show_title_genres_link_to_the_filtered_catalog() -> None:
     assert 'href="/library/catalog?genres=8"' in response.text
 
 
+def test_show_title_tags_link_to_the_filtered_catalog() -> None:
+    # PR 86: same pattern as genre badges (PR 31), but there's no Catalog.list_tags()
+    # to resolve a display name from just an id on the catalog page - unlike genres,
+    # the tag's own already-known name has to be forwarded through the link itself
+    # (tag_name) for the catalog page's filter-chip hint to show it.
+    title = Title(
+        id=6712,
+        name="Test Novel",
+        slug="test-novel",
+        slug_url="6712--test-novel",
+        cover=Cover(),
+        age_restriction=Label(id=0, label="16+"),
+        status=Label(id=1, label="Онгоинг"),
+        tags=[Tag(id=1, name="Реинкарнация"), Tag(id=2, name="Магия")],
+    )
+    with patch("app.services.client.RanobeLib", return_value=_FakeClient(title)):
+        response = client.get("/titles/6712--test-novel")
+
+    assert response.status_code == 200
+    assert 'href="/library/catalog?tags=1&tag_name=%D0%A0%D0%B5%D0%B8%D0%BD%D0%BA%D0%B0%D1%80%D0%BD%D0%B0%D1%86%D0%B8%D1%8F"' in response.text
+    assert 'href="/library/catalog?tags=2&tag_name=%D0%9C%D0%B0%D0%B3%D0%B8%D1%8F"' in response.text
+    assert '<span class="badge badge--muted">Реинкарнация</span>' not in response.text
+
+
 def test_show_title_renders_table_of_contents() -> None:
     title = _fake_title()
     volumes = [
