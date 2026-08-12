@@ -19,10 +19,13 @@
     <button class="search-button" type="submit">Искать</button>
   </form>
 </header>
-{% if genres %}
+{% set active_filters = [] %}
+{% if genres %}{% set _ = active_filters.append("Жанр" ~ ("ы" if genres | length > 1 else "") ~ ": " ~ (selected_genre_names | join(", "))) %}{% endif %}
+{% if selected_country_name %}{% set _ = active_filters.append("Страна: " ~ selected_country_name) %}{% endif %}
+{% if active_filters %}
 <p class="content__hint content__hint--page">
-  Жанр{{ "ы" if genres | length > 1 else "" }}: {{ selected_genre_names | join(", ") }} ·
-  <a href="?query={{ query or '' }}&sort={{ sort }}">Сбросить фильтр</a>
+  {{ active_filters | join(" · ") }} ·
+  <a href="?query={{ query or '' }}&sort={{ sort }}">Сбросить фильтр{{ "ы" if active_filters | length > 1 else "" }}</a>
 </p>
 {% endif %}
 <main class="content library-tabs-content catalog-layout">
@@ -33,6 +36,7 @@
       data-query="{{ query or '' }}"
       data-sort="{{ sort }}"
       data-genres="{{ genres | join(',') }}"
+      data-country="{{ selected_country or '' }}"
       data-next-page="{{ page + 1 if has_next_page else '' }}"
     >
       {% include "_catalog_cards.html" %}
@@ -41,14 +45,15 @@
     <noscript>
       {% if has_next_page %}
       <p class="content__hint">
-        <a href="?query={{ query or '' }}&sort={{ sort }}{% for g in genres %}&genres={{ g }}{% endfor %}&page={{ page + 1 }}">Следующая страница</a>
+        <a href="?query={{ query or '' }}&sort={{ sort }}{% for g in genres %}&genres={{ g }}{% endfor %}{% if selected_country %}&country={{ selected_country }}{% endif %}&page={{ page + 1 }}">Следующая страница</a>
       </p>
       {% endif %}
     </noscript>
   </div>
-  {% if all_genres %}
+  {% if all_genres or all_countries %}
   <aside class="catalog-filters" data-role="catalog-filters" aria-label="Фильтры">
     <h2 class="catalog-filters__title">Фильтры</h2>
+    {% if all_genres %}
     <section class="catalog-filters__section">
       <h3 class="catalog-filters__section-title">Жанры{% if genres %} ({{ genres | length }}){% endif %}</h3>
       <div class="catalog-filters__options">
@@ -66,6 +71,36 @@
         {% endfor %}
       </div>
     </section>
+    {% endif %}
+    {% if all_countries %}
+    <section class="catalog-filters__section">
+      <h3 class="catalog-filters__section-title">Страна</h3>
+      <div class="catalog-filters__options">
+        <label class="catalog-filters__option">
+          <input
+            type="radio"
+            name="country"
+            value=""
+            form="catalog-search-form"
+            {% if not selected_country %}checked{% endif %}
+          >
+          <span>Любая страна</span>
+        </label>
+        {% for country in all_countries %}
+        <label class="catalog-filters__option">
+          <input
+            type="radio"
+            name="country"
+            value="{{ country.id }}"
+            form="catalog-search-form"
+            {% if country.id == selected_country %}checked{% endif %}
+          >
+          <span>{{ country.name }}</span>
+        </label>
+        {% endfor %}
+      </div>
+    </section>
+    {% endif %}
   </aside>
   {% endif %}
   <script src="{{ url_for('static', path='js/catalog-scroll.js') }}" defer></script>

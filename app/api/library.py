@@ -13,7 +13,7 @@ from app.db.connection import get_connection
 from app.db.library import LibraryEntry, add_entry, list_entries, remove_entry
 from app.db.users import User
 from app.reading_progress import reading_progress_percent
-from app.services.catalog import get_catalog, list_genres
+from app.services.catalog import get_catalog, list_countries, list_genres
 from app.services.client import get_client, open_client
 from app.templating import templates
 
@@ -31,6 +31,21 @@ CATALOG_SORT_OPTIONS = {
     "rate_avg": "По рейтингу",
     "random": "Случайно",
 }
+
+
+def _parse_country(raw: str | None) -> int | None:
+    """`country` arrives as the "Страна" radio group's raw value (see catalog.html) -
+    empty for "Любая страна" (no filter), otherwise a `Country.id`. Parsed manually here
+    instead of typing the route parameter `int | None` so an empty string means "no
+    filter" rather than a 422 from FastAPI's own int coercion; a non-numeric value (only
+    reachable via a hand-crafted URL, not this page's own markup) is likewise just
+    treated as no filter rather than erroring, same as an unrecognized genre id."""
+    if not raw:
+        return None
+    try:
+        return int(raw)
+    except ValueError:
+        return None
 
 
 @router.get("")
@@ -54,6 +69,7 @@ async def show_catalog(
     query: str | None = None,
     sort: str = DEFAULT_CATALOG_SORT,
     genres: Annotated[list[int] | None, Query()] = None,
+    country: str | None = None,
     page: Annotated[int, Query(ge=1)] = 1,
 ) -> HTMLResponse:
     """The catalog tab - unlike "Читаю", browsing it has never needed an account (see
@@ -66,17 +82,25 @@ async def show_catalog(
     resolved from `list_genres()` (SDK >=0.7.0) rather than forwarded from the caller,
     unlike PR 31's original `genre_name` workaround - there's a real endpoint for that
     now.
+
+    `country` (PR 85): unlike genres, a title only ever has one - the "Страна" section's
+    radio group (catalog.html), so this is a single value, not a repeated param. See
+    `_parse_country()` for why it's read as a raw string rather than typed `int | None`.
     """
     genres = genres or []
+    selected_country = _parse_country(country)
     all_genres = await list_genres()
+    all_countries = await list_countries()
     async with get_catalog() as catalog:
         result = await catalog.list_titles(
             page=page,
             query=query or None,
             sort=sort,
             genres=genres or None,
+            country=selected_country,
         )
     genre_names_by_id = {genre.id: genre.name for genre in all_genres}
+    country_names_by_id = {c.id: c.name for c in all_countries}
     return templates.TemplateResponse(
         request,
         "catalog.html",
@@ -92,6 +116,13 @@ async def show_catalog(
             "all_genres": all_genres,
             "genres": genres,
             "selected_genre_names": [genre_names_by_id.get(g, str(g)) for g in genres],
+            "all_countries": all_countries,
+            "selected_country": selected_country,
+            "selected_country_name": (
+                country_names_by_id.get(selected_country, str(selected_country))
+                if selected_country is not None
+                else None
+            ),
         },
     )
 
@@ -102,6 +133,7 @@ async def catalog_page_fragment(
     query: str | None = None,
     sort: str = DEFAULT_CATALOG_SORT,
     genres: Annotated[list[int] | None, Query()] = None,
+    country: str | None = None,
     page: Annotated[int, Query(ge=1)] = 1,
 ) -> Response:
     """Just the card markup, no base.html - what catalog-scroll.js fetches and appends
@@ -112,6 +144,7 @@ async def catalog_page_fragment(
             query=query or None,
             sort=sort,
             genres=genres or None,
+            country=_parse_country(country),
         )
     response = templates.TemplateResponse(request, "_catalog_cards.html", {"items": result.items})
     response.headers["X-Has-Next-Page"] = "true" if result.has_next_page else "false"

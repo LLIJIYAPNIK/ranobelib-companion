@@ -3,7 +3,7 @@ from unittest.mock import patch
 
 from fastapi.testclient import TestClient
 from ranobelib import CatalogPage
-from ranobelib.models import Cover, Genre, Label, Title
+from ranobelib.models import Country, Cover, Genre, Label, Title
 
 from app.main import app
 
@@ -28,10 +28,12 @@ class _FakeCatalog:
         page: CatalogPage | None = None,
         exc: Exception | None = None,
         genres: list[Genre] | None = None,
+        countries: list[Country] | None = None,
     ) -> None:
         self._page = page
         self._exc = exc
         self._genres = genres or []
+        self._countries = countries or []
         self.received_kwargs: dict[str, object] | None = None
 
     async def __aenter__(self) -> "_FakeCatalog":
@@ -49,6 +51,27 @@ class _FakeCatalog:
 
     async def list_genres(self) -> list[Genre]:
         return self._genres
+
+    async def list_countries(self) -> list[Country]:
+        return self._countries
+
+
+def test_show_catalog_renders_country_in_grid_data_attribute() -> None:
+    # catalog-scroll.js reads data-country off the grid the same way it already reads
+    # data-genres, to forward the filter on every infinite-scroll page fetch.
+    page = CatalogPage(items=[], page=1, has_next_page=False)
+    with patch("app.services.catalog.Catalog", return_value=_FakeCatalog(page)):
+        response = client.get("/library/catalog", params={"country": 3})
+
+    assert 'data-country="3"' in response.text
+
+
+def test_show_catalog_without_country_leaves_data_country_empty() -> None:
+    page = CatalogPage(items=[], page=1, has_next_page=False)
+    with patch("app.services.catalog.Catalog", return_value=_FakeCatalog(page)):
+        response = client.get("/library/catalog")
+
+    assert 'data-country=""' in response.text
 
 
 def test_show_catalog_renders_cards() -> None:
@@ -197,6 +220,48 @@ def test_show_catalog_without_genres_passes_none() -> None:
     assert fake.received_kwargs["genres"] is None
 
 
+def test_show_catalog_passes_country_to_the_sdk() -> None:
+    page = CatalogPage(items=[], page=1, has_next_page=False)
+    fake = _FakeCatalog(page)
+    with patch("app.services.catalog.Catalog", return_value=fake):
+        client.get("/library/catalog", params={"country": 3})
+
+    assert fake.received_kwargs["country"] == 3
+
+
+def test_show_catalog_without_country_passes_none() -> None:
+    page = CatalogPage(items=[], page=1, has_next_page=False)
+    fake = _FakeCatalog(page)
+    with patch("app.services.catalog.Catalog", return_value=fake):
+        client.get("/library/catalog")
+
+    assert fake.received_kwargs["country"] is None
+
+
+def test_show_catalog_empty_country_passes_none() -> None:
+    # The "Любая страна" radio option (catalog.html) submits country="" - same "no
+    # filter" meaning as omitting the param entirely, not a 422.
+    page = CatalogPage(items=[], page=1, has_next_page=False)
+    fake = _FakeCatalog(page)
+    with patch("app.services.catalog.Catalog", return_value=fake):
+        response = client.get("/library/catalog", params={"country": ""})
+
+    assert response.status_code == 200
+    assert fake.received_kwargs["country"] is None
+
+
+def test_show_catalog_garbage_country_passes_none_instead_of_erroring() -> None:
+    # Only reachable via a hand-crafted URL, not this page's own markup - treated as no
+    # filter rather than a 422 or 500, same as an unrecognized genre id.
+    page = CatalogPage(items=[], page=1, has_next_page=False)
+    fake = _FakeCatalog(page)
+    with patch("app.services.catalog.Catalog", return_value=fake):
+        response = client.get("/library/catalog", params={"country": "not-a-number"})
+
+    assert response.status_code == 200
+    assert fake.received_kwargs["country"] is None
+
+
 def test_show_catalog_renders_genre_checkboxes() -> None:
     page = CatalogPage(items=[], page=1, has_next_page=False)
     genres = [Genre(id=5, name="Фэнтези"), Genre(id=8, name="Романтика")]
@@ -241,6 +306,78 @@ def test_show_catalog_filters_panel_is_a_permanent_sidebar() -> None:
     assert "catalog-genres-toggle" not in response.text
 
 
+def _country_radio(html: str, value: str) -> re.Match[str] | None:
+    # Scoped to name="country" specifically - a bare `value=""` also matches the search
+    # input (value="{{ query or '' }}"), which sorts earlier in the page.
+    return re.search(rf'name="country"\s+value="{re.escape(value)}"[^>]*>', html)
+
+
+def test_show_catalog_renders_country_radios() -> None:
+    page = CatalogPage(items=[], page=1, has_next_page=False)
+    countries = [Country(id=1, name="Япония"), Country(id=2, name="Корея")]
+    with patch(
+        "app.services.catalog.Catalog", return_value=_FakeCatalog(page, countries=countries)
+    ):
+        response = client.get("/library/catalog", params={"country": 1})
+
+    assert response.status_code == 200
+    assert "<h3 class=\"catalog-filters__section-title\">Страна</h3>" in response.text
+    assert "<span>Любая страна</span>" in response.text
+    assert "<span>Япония</span>" in response.text
+    assert "<span>Корея</span>" in response.text
+
+    any_radio = _country_radio(response.text, "")
+    japan_radio = _country_radio(response.text, "1")
+    korea_radio = _country_radio(response.text, "2")
+    assert any_radio is not None and "checked" not in any_radio.group(0)
+    assert japan_radio is not None and "checked" in japan_radio.group(0)
+    assert korea_radio is not None and "checked" not in korea_radio.group(0)
+
+
+def test_show_catalog_without_country_checks_any_country() -> None:
+    page = CatalogPage(items=[], page=1, has_next_page=False)
+    countries = [Country(id=1, name="Япония")]
+    with patch(
+        "app.services.catalog.Catalog", return_value=_FakeCatalog(page, countries=countries)
+    ):
+        response = client.get("/library/catalog")
+
+    any_radio = _country_radio(response.text, "")
+    japan_radio = _country_radio(response.text, "1")
+    assert any_radio is not None and "checked" in any_radio.group(0)
+    assert japan_radio is not None and "checked" not in japan_radio.group(0)
+
+
+def test_show_catalog_renders_country_filter_chip_with_resolved_name() -> None:
+    page = CatalogPage(items=[], page=1, has_next_page=False)
+    countries = [Country(id=1, name="Япония")]
+    with patch(
+        "app.services.catalog.Catalog", return_value=_FakeCatalog(page, countries=countries)
+    ):
+        response = client.get("/library/catalog", params={"country": 1})
+
+    assert response.status_code == 200
+    assert "Страна: Япония" in response.text
+    assert "Сбросить фильтр<" in response.text  # singular - only one filter active
+
+
+def test_show_catalog_renders_combined_filter_chip_and_plural_reset_link() -> None:
+    page = CatalogPage(items=[], page=1, has_next_page=False)
+    genres = [Genre(id=5, name="Фэнтези")]
+    countries = [Country(id=1, name="Япония")]
+    with patch(
+        "app.services.catalog.Catalog",
+        return_value=_FakeCatalog(page, genres=genres, countries=countries),
+    ):
+        response = client.get("/library/catalog", params={"genres": 5, "country": 1})
+
+    assert response.status_code == 200
+    assert "Жанр: Фэнтези · Страна: Япония" in response.text
+    assert "Сбросить фильтры<" in response.text  # plural - two filters active
+    # the reset link drops both, not just one
+    assert 'href="?query=&sort=last_chapter_at"' in response.text
+
+
 def test_show_catalog_without_genres_omits_the_filter_chip() -> None:
     page = CatalogPage(items=[], page=1, has_next_page=False)
     with patch("app.services.catalog.Catalog", return_value=_FakeCatalog(page)):
@@ -257,6 +394,17 @@ def test_catalog_page_fragment_passes_genres_to_the_sdk() -> None:
         client.get("/library/catalog/page", params={"genres": [5, 8]})
 
     assert fake.received_kwargs["genres"] == [5, 8]
+
+
+def test_catalog_page_fragment_passes_country_to_the_sdk() -> None:
+    # catalog-scroll.js forwards data-country on every infinite-scroll page fetch (same
+    # as data-genres) so the filter stays applied past the first page.
+    page = CatalogPage(items=[], page=1, has_next_page=False)
+    fake = _FakeCatalog(page)
+    with patch("app.services.catalog.Catalog", return_value=fake):
+        client.get("/library/catalog/page", params={"country": 3})
+
+    assert fake.received_kwargs["country"] == 3
 
 
 def test_catalog_page_fragment_passes_sort_to_the_sdk() -> None:

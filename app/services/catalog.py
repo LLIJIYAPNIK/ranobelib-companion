@@ -1,7 +1,7 @@
 """The only place in this application allowed to construct ``Catalog(...)``."""
 
 from ranobelib import Catalog
-from ranobelib.models import Genre
+from ranobelib.models import Country, Genre
 
 from app.config import get_settings
 
@@ -24,3 +24,12 @@ async def list_genres() -> list[Genre]:
     """
     async with get_catalog() as catalog:
         return await catalog.list_genres()
+
+
+async def list_countries() -> list[Country]:
+    """Every country `Catalog.list_titles(country=...)` can filter by (PR 85's "Страна"
+    filter section), sourced from `Catalog.list_countries()` (SDK >=0.8.0) rather than a
+    hardcoded id -> name table on the web layer, same reasoning as `list_genres()`.
+    """
+    async with get_catalog() as catalog:
+        return await catalog.list_countries()
