@@ -19,62 +19,56 @@
     <button class="search-button" type="submit">Искать</button>
   </form>
 </header>
-{% if all_genres %}
-<div class="catalog-genres" data-role="catalog-genres">
-  <button
-    type="button"
-    class="catalog-genres__toggle"
-    data-role="catalog-genres-toggle"
-    aria-expanded="{{ 'true' if genres else 'false' }}"
-    aria-controls="catalog-genres-panel"
-  >Жанры{% if genres %} ({{ genres | length }}){% endif %}</button>
-  <div
-    class="catalog-genres__panel{% if genres %} catalog-genres__panel--open{% endif %}"
-    id="catalog-genres-panel"
-    data-role="catalog-genres-panel"
-  >
-    {% for genre in all_genres %}
-    <label class="catalog-genres__option">
-      <input
-        type="checkbox"
-        name="genres"
-        value="{{ genre.id }}"
-        form="catalog-search-form"
-        {% if genre.id in genres %}checked{% endif %}
-      >
-      <span>{{ genre.name }}</span>
-    </label>
-    {% endfor %}
-  </div>
-</div>
-{% endif %}
 {% if genres %}
 <p class="content__hint content__hint--page">
   Жанр{{ "ы" if genres | length > 1 else "" }}: {{ selected_genre_names | join(", ") }} ·
   <a href="?query={{ query or '' }}&sort={{ sort }}">Сбросить фильтр</a>
 </p>
 {% endif %}
-<main class="content library-tabs-content">
-  <div
-    class="title-card-grid"
-    data-role="catalog-grid"
-    data-query="{{ query or '' }}"
-    data-sort="{{ sort }}"
-    data-genres="{{ genres | join(',') }}"
-    data-next-page="{{ page + 1 if has_next_page else '' }}"
-  >
-    {% include "_catalog_cards.html" %}
+<main class="content library-tabs-content catalog-layout">
+  <div class="catalog-layout__results">
+    <div
+      class="title-card-grid"
+      data-role="catalog-grid"
+      data-query="{{ query or '' }}"
+      data-sort="{{ sort }}"
+      data-genres="{{ genres | join(',') }}"
+      data-next-page="{{ page + 1 if has_next_page else '' }}"
+    >
+      {% include "_catalog_cards.html" %}
+    </div>
+    <div class="title-card-grid__sentinel" data-role="catalog-sentinel" aria-hidden="true"></div>
+    <noscript>
+      {% if has_next_page %}
+      <p class="content__hint">
+        <a href="?query={{ query or '' }}&sort={{ sort }}{% for g in genres %}&genres={{ g }}{% endfor %}&page={{ page + 1 }}">Следующая страница</a>
+      </p>
+      {% endif %}
+    </noscript>
   </div>
-  <div class="title-card-grid__sentinel" data-role="catalog-sentinel" aria-hidden="true"></div>
-  <noscript>
-    {% if has_next_page %}
-    <p class="content__hint">
-      <a href="?query={{ query or '' }}&sort={{ sort }}{% for g in genres %}&genres={{ g }}{% endfor %}&page={{ page + 1 }}">Следующая страница</a>
-    </p>
-    {% endif %}
-  </noscript>
+  {% if all_genres %}
+  <aside class="catalog-filters" data-role="catalog-filters" aria-label="Фильтры">
+    <h2 class="catalog-filters__title">Фильтры</h2>
+    <section class="catalog-filters__section">
+      <h3 class="catalog-filters__section-title">Жанры{% if genres %} ({{ genres | length }}){% endif %}</h3>
+      <div class="catalog-filters__options">
+        {% for genre in all_genres %}
+        <label class="catalog-filters__option">
+          <input
+            type="checkbox"
+            name="genres"
+            value="{{ genre.id }}"
+            form="catalog-search-form"
+            {% if genre.id in genres %}checked{% endif %}
+          >
+          <span>{{ genre.name }}</span>
+        </label>
+        {% endfor %}
+      </div>
+    </section>
+  </aside>
+  {% endif %}
   <script src="{{ url_for('static', path='js/catalog-scroll.js') }}" defer></script>
-  <script src="{{ url_for('static', path='js/catalog-genres-toggle.js') }}" defer></script>
   <script src="{{ url_for('static', path='js/custom-dropdown.js') }}" defer></script>
 </main>
 {% endblock %}

@@ -204,7 +204,7 @@ def test_show_catalog_renders_genre_checkboxes() -> None:
         response = client.get("/library/catalog", params={"genres": 5})
 
     assert response.status_code == 200
-    assert 'data-role="catalog-genres"' in response.text
+    assert 'data-role="catalog-filters"' in response.text
     assert '<span>Фэнтези</span>' in response.text
     assert '<span>Романтика</span>' in response.text
 
@@ -225,21 +225,20 @@ def test_show_catalog_renders_genre_filter_chip_with_resolved_names() -> None:
     assert 'data-genres="5,8"' in response.text
 
 
-def test_show_catalog_genre_panel_is_a_js_animated_button_and_panel() -> None:
-    # PR 45: a native <details> can't be smoothly closed via CSS (it snaps its content to
-    # display:none instantly), so this is a button + panel with a class toggle instead
-    # (see catalog-genres-toggle.js), starting open when a genre filter is already active.
+def test_show_catalog_filters_panel_is_a_permanent_sidebar() -> None:
+    # PR 85: replaces the collapsible popup (PR 38/45) with an always-visible sidebar -
+    # no expand/collapse state, no JS required to see the options.
     page = CatalogPage(items=[], page=1, has_next_page=False)
     genres = [Genre(id=5, name="Фэнтези")]
     with patch("app.services.catalog.Catalog", return_value=_FakeCatalog(page, genres=genres)):
         response = client.get("/library/catalog", params={"genres": 5})
 
     assert response.status_code == 200
-    assert 'data-role="catalog-genres-toggle"' in response.text
-    assert 'aria-expanded="true"' in response.text
-    assert 'data-role="catalog-genres-panel"' in response.text
-    assert 'catalog-genres__panel--open' in response.text
-    assert "static/js/catalog-genres-toggle.js" in response.text
+    assert '<aside class="catalog-filters" data-role="catalog-filters"' in response.text
+    assert '<h2 class="catalog-filters__title">Фильтры</h2>' in response.text
+    assert "Жанры (1)" in response.text
+    assert "catalog-genres" not in response.text
+    assert "catalog-genres-toggle" not in response.text
 
 
 def test_show_catalog_without_genres_omits_the_filter_chip() -> None:
@@ -248,7 +247,7 @@ def test_show_catalog_without_genres_omits_the_filter_chip() -> None:
         response = client.get("/library/catalog")
 
     assert "Жанр:" not in response.text
-    assert 'data-role="catalog-genres"' not in response.text
+    assert 'data-role="catalog-filters"' not in response.text
 
 
 def test_catalog_page_fragment_passes_genres_to_the_sdk() -> None:
