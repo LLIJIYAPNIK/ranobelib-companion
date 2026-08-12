@@ -53,7 +53,19 @@ def remember(
     """Move `slug_url` to the front of the recent-titles cookie on `response`."""
     recent = [item for item in read_recent(request) if item["slug_url"] != slug_url]
     recent.insert(0, {"slug_url": slug_url, "name": name, "cover_url": cover_url})
-    payload = json.dumps(recent[:_MAX_ENTRIES], ensure_ascii=False)
+    _write_cookie(response, recent)
+
+
+def forget(response: Response, request: Request, *, slug_url: str) -> None:
+    """Remove `slug_url` from the recent-titles cookie on `response` - symmetric to
+    `remember()` (PR 69's "×" on a "Недавние" card). Not an error if it wasn't there to
+    begin with, e.g. a stale double-click."""
+    recent = [item for item in read_recent(request) if item["slug_url"] != slug_url]
+    _write_cookie(response, recent)
+
+
+def _write_cookie(response: Response, entries: list[dict[str, str | None]]) -> None:
+    payload = json.dumps(entries[:_MAX_ENTRIES], ensure_ascii=False)
     response.set_cookie(
         _COOKIE_NAME,
         # safe="" - a raw "/" (e.g. from a cover_url) is outside the charset Python's
