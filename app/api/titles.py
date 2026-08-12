@@ -50,6 +50,7 @@ async def show_title(
     request: Request,
     slug_url: str,
     current_user: Annotated[User | None, Depends(get_current_user)],
+    finished: bool = False,
 ) -> HTMLResponse:
     async with open_client(slug_url) as lib:
         title = await lib.get_info()
@@ -75,6 +76,10 @@ async def show_title(
             "export_formats": available_export_formats(),
             "in_library": library_entry is not None,
             "progress_percent": progress_percent,
+            # PR 75: tap-to-read's own "past the last paragraph of the last chapter" tap
+            # lands here with ?finished=1 - a plain query flag, not persisted state, so a
+            # reload/bookmark of this same URL won't keep showing the notice forever.
+            "finished": finished,
         },
     )
     remember(

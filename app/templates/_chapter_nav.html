@@ -1,6 +1,6 @@
 {% macro chapter_nav(prev_url, next_url, extra_class="") %}
 <div class="reader-nav__adjacent{% if extra_class %} {{ extra_class }}{% endif %}">
   {% if prev_url %}<a href="{{ prev_url }}">‹ Предыдущая глава</a>{% endif %}
-  {% if next_url %}<a href="{{ next_url }}">Следующая глава ›</a>{% endif %}
+  {% if next_url %}<a href="{{ next_url }}" data-role="next-chapter-link">Следующая глава ›</a>{% endif %}
 </div>
 {% endmacro %}
