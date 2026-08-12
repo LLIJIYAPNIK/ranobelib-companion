@@ -680,6 +680,7 @@ a {
 }
 
 .title-card {
+  position: relative;
   display: flex;
   flex-direction: column;
   gap: 8px;
@@ -736,6 +737,31 @@ a {
 
 .title-card__meta--muted {
   color: var(--text-muted);
+}
+
+.title-card__remove {
+  position: absolute;
+  top: 6px;
+  right: 6px;
+  width: 24px;
+  height: 24px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(0, 0, 0, 0.55);
+  border: none;
+  border-radius: 50%;
+  color: #fff;
+  font-size: 16px;
+  line-height: 1;
+  cursor: pointer;
+  transition: background 0.15s ease;
+}
+
+@media (hover: hover) {
+  .title-card__remove:hover {
+    background: var(--accent-orange);
+  }
 }
 
 .reading-progress {
