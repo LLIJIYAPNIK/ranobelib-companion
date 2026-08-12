@@ -759,6 +759,51 @@ a {
   box-shadow: 0 0 0 3px rgba(34, 211, 197, 0.18);
 }
 
+/* PR 85: the "Страна" section is single-select (Catalog.list_titles(country=...) takes
+   one id, not a list like genres) - a radio group, not checkboxes, so it needs its own
+   circular custom control rather than reusing the checkbox's square/checkmark one. Same
+   currentColor-free, appearance:none approach as the checkbox above, just a dot in a
+   circle instead of a checkmark in a square. */
+.catalog-filters__option input[type="radio"] {
+  appearance: none;
+  -webkit-appearance: none;
+  flex: 0 0 auto;
+  width: 16px;
+  height: 16px;
+  margin: 0;
+  position: relative;
+  border: 1px solid var(--border);
+  border-radius: 50%;
+  background: var(--bg-surface);
+  cursor: pointer;
+  transition: border-color 0.15s ease, background-color 0.15s ease, box-shadow 0.15s ease;
+}
+
+.catalog-filters__option input[type="radio"]::after {
+  content: "";
+  position: absolute;
+  inset: 3px;
+  border-radius: 50%;
+  background: var(--bg-page);
+  transform: scale(0);
+  transition: transform 0.1s ease;
+}
+
+.catalog-filters__option input[type="radio"]:checked {
+  background: var(--accent-teal);
+  border-color: var(--accent-teal);
+}
+
+.catalog-filters__option input[type="radio"]:checked::after {
+  transform: scale(1);
+}
+
+.catalog-filters__option input[type="radio"]:focus-visible {
+  outline: none;
+  border-color: var(--accent-teal);
+  box-shadow: 0 0 0 3px rgba(34, 211, 197, 0.18);
+}
+
 .title-card-grid {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
@@ -1040,6 +1085,10 @@ a {
   }
 
   .catalog-filters__option:hover input[type="checkbox"]:not(:checked) {
+    border-color: var(--accent-teal);
+  }
+
+  .catalog-filters__option:hover input[type="radio"]:not(:checked) {
     border-color: var(--accent-teal);
   }
 
