@@ -24,6 +24,11 @@
   --reader-font-size: 15px;
   --reader-line-height: 1.85;
   --reader-width: 640px;
+  /* Mobile account strip's own height (PR 71) - shared by .sidebar__account's min-height
+     and .main's padding-top below it, so the two can't drift apart into two independent
+     hardcoded numbers the way they did before (see the .sidebar__link fix in the same
+     PR for the actual cause of that drift). */
+  --mobile-account-height: 48px;
 }
 
 * {
@@ -1983,7 +1988,7 @@ a {
   }
 
   .main {
-    padding-top: 48px;
+    padding-top: var(--mobile-account-height);
     padding-bottom: 72px;
     animation: mobile-section-in 0.15s ease-out;
   }
@@ -2014,7 +2019,13 @@ a {
     z-index: 40;
   }
 
-  .sidebar__link {
+  /* Scoped to direct children (like the desktop 44x44 hit-box rule above) - PR 71: an
+     unscoped .sidebar__link here also matched the logout button and the anonymous
+     login/register links inside .sidebar__account, which aren't part of this bottom tab
+     bar at all. Their inherited min-height: 44px/padding: 12px inflated the fixed
+     top account strip's real height well past .main's hardcoded padding-top, so page
+     content started underneath it. */
+  .sidebar > .sidebar__link {
     font-size: 10px;
     gap: 0;
     padding: 12px;
@@ -2034,6 +2045,12 @@ a {
     right: 0;
     margin-top: 0;
     width: auto;
+    /* Pinned to the same value .main's padding-top compensates for (PR 71) - box-sizing
+       makes padding count toward this, so whatever the actual email/button content
+       measures out to, the strip itself never grows past what .main already leaves room
+       for underneath it. */
+    min-height: var(--mobile-account-height);
+    box-sizing: border-box;
     flex-direction: row;
     align-items: center;
     justify-content: space-between;
