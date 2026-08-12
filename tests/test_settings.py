@@ -104,3 +104,19 @@ def test_settings_page_reading_width_is_a_slider() -> None:
 
     assert response.status_code == 200
     assert 'type="range" id="width" data-setting="width"' in response.text
+
+
+def test_settings_page_offers_a_reading_speed_test() -> None:
+    response = client.get("/settings")
+
+    assert response.status_code == 200
+    assert 'data-role="reading-speed-test"' in response.text
+    assert 'data-role="reading-speed-start"' in response.text
+    assert 'data-role="reading-speed-status"' in response.text
+    assert 'data-role="reading-speed-sample"' in response.text
+    assert 'data-role="reading-speed-value"' in response.text
+    assert "Скорость чтения" in response.text
+    assert "static/js/reading-speed-test.js" in response.text
+    # Nested inside "Чтение с помощью тапа" (PR 77), not its own top-level section.
+    tap_reading_index = response.text.index("Чтение с помощью тапа")
+    assert tap_reading_index < response.text.index("Скорость чтения")

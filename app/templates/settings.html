@@ -60,6 +60,19 @@
           </select>
         </label>
       </div>
+
+      <div class="reading-speed-test" data-role="reading-speed-test">
+        <h3 class="reader-settings-subsection__title">Скорость чтения</h3>
+        <p class="content__hint">
+          Текущее значение:
+          <span data-role="reading-speed-value">не задано</span>
+        </p>
+        <button type="button" class="btn btn--secondary" data-role="reading-speed-start">
+          Пройти тест
+        </button>
+        <p class="reading-speed-test__status" data-role="reading-speed-status" hidden></p>
+        <p class="reading-speed-test__sample" data-role="reading-speed-sample" hidden></p>
+      </div>
     </section>
   </div>
   <div class="reader-settings-preview" data-role="reader-settings-preview">
@@ -71,4 +84,5 @@
 </main>
 <script src="{{ url_for('static', path='js/reader-settings.js') }}" defer></script>
 <script src="{{ url_for('static', path='js/custom-dropdown.js') }}" defer></script>
+<script src="{{ url_for('static', path='js/reading-speed-test.js') }}" defer></script>
 {% endblock %}
