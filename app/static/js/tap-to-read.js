@@ -155,6 +155,21 @@
     content.appendChild(hint); // keep it last, after whatever was just revealed
   }
 
+  // PR 75: what a tap does once every paragraph in this chapter is already revealed -
+  // move on to the next chapter, same as clicking the ordinary "Следующая глава ›" link
+  // (_chapter_nav.html tags it data-role="next-chapter-link" for exactly this), or, if
+  // this was the title's last chapter (no such link anywhere on the page), back to the
+  // title page with a "Тайтл прочитан" notice.
+  function goPastLastParagraph() {
+    const nextLink = document.querySelector('[data-role="next-chapter-link"]');
+    if (nextLink) {
+      location.href = nextLink.href;
+      return;
+    }
+    const slugUrl = content.dataset.slugUrl;
+    location.href = slugUrl ? `/titles/${slugUrl}?finished=1` : "/";
+  }
+
   content.classList.add("reader-content--tap-to-read");
   reveal(loadRevealedCount());
 
@@ -173,7 +188,10 @@
     // no longer disabling itself just because tap-to-read is on - without this exclusion
     // that same tap would also silently reveal the next paragraph behind the lightbox.
     if (event.target.closest("a, button, img")) return;
-    if (revealedCount >= wraps.length) return;
+    if (revealedCount >= wraps.length) {
+      goPastLastParagraph();
+      return;
+    }
     const next = revealedCount + 1;
     localStorage.setItem(progressKey, String(next));
     reveal(next);
