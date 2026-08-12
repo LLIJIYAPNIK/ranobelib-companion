@@ -132,3 +132,57 @@ def test_home_ignores_malformed_recent_titles_cookie() -> None:
     assert response.status_code == 200
 
     client.cookies.clear()
+
+
+def test_home_renders_a_remove_button_for_each_recent_card() -> None:
+    client.cookies.clear()
+    client.cookies.set(
+        "recent_titles",
+        quote(json.dumps([{"slug_url": "1--first-novel", "name": "First Novel"}])),
+    )
+
+    response = client.get("/")
+
+    assert 'data-role="forget-recent-title"' in response.text
+    assert 'data-slug-url="1--first-novel"' in response.text
+
+    client.cookies.clear()
+
+
+def test_forget_removes_only_the_given_title_from_the_cookie() -> None:
+    client.cookies.clear()
+    client.cookies.set(
+        "recent_titles",
+        quote(
+            json.dumps(
+                [
+                    {"slug_url": "1--first-novel", "name": "First Novel"},
+                    {"slug_url": "2--second-novel", "name": "Second Novel"},
+                ]
+            )
+        ),
+    )
+
+    response = client.post("/recent/1--first-novel/forget")
+
+    assert response.status_code == 204
+    cookie = json.loads(unquote(response.cookies.get("recent_titles")))
+    assert [item["slug_url"] for item in cookie] == ["2--second-novel"]
+
+    client.cookies.clear()
+
+
+def test_forget_unknown_title_is_not_an_error() -> None:
+    client.cookies.clear()
+    client.cookies.set(
+        "recent_titles",
+        quote(json.dumps([{"slug_url": "1--first-novel", "name": "First Novel"}])),
+    )
+
+    response = client.post("/recent/9--never-opened/forget")
+
+    assert response.status_code == 204
+    cookie = json.loads(unquote(response.cookies.get("recent_titles")))
+    assert [item["slug_url"] for item in cookie] == ["1--first-novel"]
+
+    client.cookies.clear()
