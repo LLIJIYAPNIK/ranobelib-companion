@@ -362,6 +362,53 @@ a {
   gap: 8px;
   font-size: 13px;
   color: var(--text-secondary);
+  cursor: pointer;
+}
+
+/* Same custom checkmark PR 53/59/63 already gave the genre, chapter-selection and
+   reader-settings checkboxes - "Запомнить меня" was the one remaining browser-default
+   checkbox left over from PR 36. */
+.auth-form__field--checkbox input {
+  appearance: none;
+  -webkit-appearance: none;
+  flex: 0 0 auto;
+  width: 16px;
+  height: 16px;
+  margin: 0;
+  position: relative;
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  background: var(--bg-surface);
+  cursor: pointer;
+  transition: border-color 0.15s ease, background-color 0.15s ease, box-shadow 0.15s ease;
+}
+
+.auth-form__field--checkbox input::after {
+  content: "";
+  position: absolute;
+  left: 4px;
+  top: 1px;
+  width: 4px;
+  height: 8px;
+  border: solid var(--bg-page);
+  border-width: 0 2px 2px 0;
+  transform: rotate(45deg) scale(0);
+  transition: transform 0.1s ease;
+}
+
+.auth-form__field--checkbox input:checked {
+  background: var(--accent-teal);
+  border-color: var(--accent-teal);
+}
+
+.auth-form__field--checkbox input:checked::after {
+  transform: rotate(45deg) scale(1);
+}
+
+.auth-form__field--checkbox input:focus-visible {
+  outline: none;
+  border-color: var(--accent-teal);
+  box-shadow: 0 0 0 3px rgba(34, 211, 197, 0.18);
 }
 
 .auth-form__label {
@@ -978,6 +1025,10 @@ a {
   }
 
   .reader-settings__toggle:hover:not(:checked) {
+    border-color: var(--accent-teal);
+  }
+
+  .auth-form__field--checkbox:hover input:not(:checked) {
     border-color: var(--accent-teal);
   }
 
