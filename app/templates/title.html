@@ -3,6 +3,9 @@
 {% block title %}{{ display_name }} — RanobeLib Companion{% endblock %}
 {% block content %}
 <main class="content">
+  {% if finished %}
+  <p class="content__notice content__notice--success" data-role="title-finished-notice">Тайтл прочитан</p>
+  {% endif %}
   <div class="title-hero">
     {% if cover_url %}
     <img class="title-hero__cover" src="{{ cover_url }}" alt="Обложка «{{ display_name }}»">

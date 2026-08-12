@@ -330,6 +330,16 @@ a {
   font-size: 13px;
 }
 
+/* PR 75: "Тайтл прочитан" on landing back on the title page after tapping past the last
+   paragraph of its last chapter (tap-to-read.js) - a one-off notice, not a persistent
+   status, so it gets the same plain treatment as .form-error rather than its own banner
+   component; --accent-green just tells it apart as good news instead of a problem. */
+.content__notice--success {
+  color: var(--accent-green);
+  font-size: 13px;
+  margin-bottom: 16px;
+}
+
 .auth-form {
   display: flex;
   flex-direction: column;
