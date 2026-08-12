@@ -169,7 +169,10 @@
   tapZone.addEventListener("click", (event) => {
     // Links and buttons - the back-to-ToC link, prev/next chapter nav, per-chapter export
     // links - keep their own behavior; a tap on them shouldn't also advance the reveal.
-    if (event.target.closest("a, button")) return;
+    // Images too (PR 74): image-lightbox.js opens its fullscreen viewer on the same tap,
+    // no longer disabling itself just because tap-to-read is on - without this exclusion
+    // that same tap would also silently reveal the next paragraph behind the lightbox.
+    if (event.target.closest("a, button, img")) return;
     if (revealedCount >= wraps.length) return;
     const next = revealedCount + 1;
     localStorage.setItem(progressKey, String(next));
