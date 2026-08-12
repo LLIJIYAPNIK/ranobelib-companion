@@ -1521,6 +1521,32 @@ a {
   animation: reader-reveal-blur-focus 0.45s ease both;
 }
 
+/* PR 79: revealTempo word-splitting (tap-to-read.js's wrapWordsInSpans()) - shared base
+   for word-by-word/line-by-line/word-dissolve/highlight-sweep, which only differ in which
+   modifier class(es) they add/remove as the reveal progresses. inline-block (not the
+   default inline) keeps opacity/filter transitions rendering consistently across
+   browsers; the whitespace text nodes between spans are untouched, so wrapping still
+   happens at the same points normal text would. */
+.reader-content__word {
+  display: inline-block;
+}
+
+.reader-content__word--pending {
+  opacity: 0;
+}
+
+.reader-content__word--dissolved {
+  opacity: 0;
+  filter: blur(4px);
+  transition: opacity 0.25s ease, filter 0.25s ease;
+}
+
+.reader-content__word--highlighted {
+  background-color: rgba(34, 211, 197, 0.35);
+  border-radius: 3px;
+  transition: background-color 0.15s ease;
+}
+
 .reader-settings-page {
   margin-top: 20px;
   max-width: 480px;
