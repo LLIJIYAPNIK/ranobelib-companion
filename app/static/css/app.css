@@ -391,6 +391,12 @@ a {
   color: var(--text-muted);
 }
 
+.auth-form__input:focus-visible {
+  border-color: var(--accent-teal);
+  box-shadow: 0 0 0 3px rgba(34, 211, 197, 0.18);
+  outline: none;
+}
+
 .auth-form .btn {
   width: 100%;
   justify-content: center;
