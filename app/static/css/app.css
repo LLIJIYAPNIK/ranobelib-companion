@@ -2213,16 +2213,14 @@ a {
     display: none;
   }
 
-  /* The prev/next block embedded in .reader-scroll-nav (PR 52) would otherwise also
-     match the bare .reader-nav__adjacent rule above and get pinned to the bottom of the
-     viewport too, split off from the rest of its own overlay panel - keep it a normal
-     flex child of that panel instead, same as on desktop. */
-  .reader-scroll-nav .reader-nav__adjacent {
-    position: static;
-    padding: 0;
-    background: none;
-    border-top: none;
-    z-index: auto;
+  /* PR 72: the reveal-on-scroll-up overlay (PR 52) adds more on top of an already
+     simplified mobile reader (PR 19) - chapter navigation is already always reachable
+     here via the fixed bottom bar (.reader-nav__adjacent above) and the in-flow top/
+     bottom nav, so a second, separate popup panel competing for the same space is more
+     clutter than convenience. reader-scroll-nav.js's own scroll listener still runs and
+     toggles --visible, harmlessly, since there's nothing left for it to reveal. */
+  .reader-scroll-nav {
+    display: none;
   }
 
   body.reader-page .main {
