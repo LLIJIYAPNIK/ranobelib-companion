@@ -1271,6 +1271,25 @@ a {
   flex: 1;
 }
 
+/* PR 83: tap-to-read progress (toc-tap-progress.js) - client-side only, so it starts
+   absent from the row and is only ever added once that script finds a matching
+   localStorage entry, same as the "N переводов" badge it sits next to. */
+.toc__chapter-progress {
+  flex: 0 0 auto;
+  width: 44px;
+  height: 4px;
+  border-radius: 2px;
+  background: var(--border);
+  overflow: hidden;
+}
+
+.toc__chapter-progress__fill {
+  display: block;
+  height: 100%;
+  background: var(--accent-teal);
+  border-radius: 2px;
+}
+
 .error-page {
   display: flex;
   flex-direction: column;
