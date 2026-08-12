@@ -331,6 +331,24 @@ a {
   color: var(--text-secondary);
 }
 
+/* PR 82: the "Зарегистрироваться"/"Войти" links on the auth screens had no hover
+   feedback at all, unlike the rest of the interactive UI. text-decoration-color
+   (not just color) transitions too, so the underline itself visibly recolors instead
+   of just the letters. */
+.content__hint--auth a {
+  color: var(--text-secondary);
+  text-decoration-color: var(--text-muted);
+  text-underline-offset: 2px;
+  transition: color 0.15s ease, text-decoration-color 0.15s ease;
+}
+
+@media (hover: hover) {
+  .content__hint--auth a:hover {
+    color: var(--accent-teal);
+    text-decoration-color: var(--accent-teal);
+  }
+}
+
 .form-error {
   color: var(--accent-orange);
   font-size: 13px;
