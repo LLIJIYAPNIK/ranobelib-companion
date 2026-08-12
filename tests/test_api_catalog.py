@@ -220,6 +220,59 @@ def test_show_catalog_without_genres_passes_none() -> None:
     assert fake.received_kwargs["genres"] is None
 
 
+def test_show_catalog_passes_tags_to_the_sdk() -> None:
+    page = CatalogPage(items=[], page=1, has_next_page=False)
+    fake = _FakeCatalog(page)
+    with patch("app.services.catalog.Catalog", return_value=fake):
+        client.get("/library/catalog", params={"tags": [1, 2]})
+
+    assert fake.received_kwargs["tags"] == [1, 2]
+
+
+def test_show_catalog_without_tags_passes_none() -> None:
+    page = CatalogPage(items=[], page=1, has_next_page=False)
+    fake = _FakeCatalog(page)
+    with patch("app.services.catalog.Catalog", return_value=fake):
+        client.get("/library/catalog")
+
+    assert fake.received_kwargs["tags"] is None
+
+
+def test_show_catalog_renders_tag_filter_chip_using_forwarded_name() -> None:
+    # No Catalog.list_tags() exists to resolve a name from just an id (unlike genres),
+    # so the title-page link forwards its own already-known label as tag_name.
+    page = CatalogPage(items=[], page=1, has_next_page=False)
+    fake = _FakeCatalog(page)
+    with patch("app.services.catalog.Catalog", return_value=fake):
+        response = client.get(
+            "/library/catalog", params={"tags": 7, "tag_name": "Реинкарнация"}
+        )
+
+    assert response.status_code == 200
+    assert "Тег: Реинкарнация" in response.text
+    assert "Сбросить фильтр<" in response.text  # singular - only one filter active
+
+
+def test_show_catalog_tag_without_forwarded_name_falls_back_to_the_id() -> None:
+    # Reachable by hand-editing the URL to drop tag_name, or a hypothetical future
+    # multi-tag selector - either way there's nothing to resolve a display name from.
+    page = CatalogPage(items=[], page=1, has_next_page=False)
+    fake = _FakeCatalog(page)
+    with patch("app.services.catalog.Catalog", return_value=fake):
+        response = client.get("/library/catalog", params={"tags": 7})
+
+    assert response.status_code == 200
+    assert "Тег: 7" in response.text
+
+
+def test_show_catalog_renders_tags_in_grid_data_attribute() -> None:
+    page = CatalogPage(items=[], page=1, has_next_page=False)
+    with patch("app.services.catalog.Catalog", return_value=_FakeCatalog(page)):
+        response = client.get("/library/catalog", params={"tags": [1, 2]})
+
+    assert 'data-tags="1,2"' in response.text
+
+
 def test_show_catalog_passes_country_to_the_sdk() -> None:
     page = CatalogPage(items=[], page=1, has_next_page=False)
     fake = _FakeCatalog(page)
@@ -394,6 +447,17 @@ def test_catalog_page_fragment_passes_genres_to_the_sdk() -> None:
         client.get("/library/catalog/page", params={"genres": [5, 8]})
 
     assert fake.received_kwargs["genres"] == [5, 8]
+
+
+def test_catalog_page_fragment_passes_tags_to_the_sdk() -> None:
+    # catalog-scroll.js forwards data-tags on every infinite-scroll page fetch (same as
+    # data-genres) so the filter stays applied past the first page.
+    page = CatalogPage(items=[], page=1, has_next_page=False)
+    fake = _FakeCatalog(page)
+    with patch("app.services.catalog.Catalog", return_value=fake):
+        client.get("/library/catalog/page", params={"tags": [1, 2]})
+
+    assert fake.received_kwargs["tags"] == [1, 2]
 
 
 def test_catalog_page_fragment_passes_country_to_the_sdk() -> None:
