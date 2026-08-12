@@ -1290,6 +1290,21 @@ a {
   border-radius: 2px;
 }
 
+/* PR 83: replaces the bar once a chapter's tap-to-read progress reaches 100% - same
+   teal-fill-on-dark checkmark treatment the custom checkboxes (PR 53/59/63) use for
+   their own checked state, just circular instead of a checkbox's square. */
+.toc__chapter-checkmark {
+  flex: 0 0 auto;
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  background: var(--accent-teal);
+  color: var(--bg-page);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
 .error-page {
   display: flex;
   flex-direction: column;

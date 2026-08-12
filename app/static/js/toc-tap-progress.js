@@ -5,6 +5,8 @@
 // the browser.
 (() => {
   const PROGRESS_KEY_PREFIX = "tapToReadProgress:";
+  const CHECK_ICON =
+    '<svg viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 13l4 4L19 7"/></svg>';
 
   // Keyed on pathname alone, then matched against every tapToReadProgress: entry -
   // matching against the raw key with startsWith() would be wrong here: chapter "2"'s
@@ -40,6 +42,16 @@
 
     const progress = findProgress(new URL(link.href, location.origin).pathname);
     if (!progress) continue;
+
+    if (progress.revealed >= progress.total) {
+      const check = document.createElement("span");
+      check.className = "toc__chapter-checkmark";
+      check.title = "Глава прочитана";
+      check.setAttribute("aria-label", "Глава прочитана");
+      check.innerHTML = CHECK_ICON;
+      li.appendChild(check);
+      continue;
+    }
 
     const percent = Math.round((progress.revealed / progress.total) * 100);
     const bar = document.createElement("span");
