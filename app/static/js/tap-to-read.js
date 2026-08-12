@@ -127,7 +127,13 @@
   let revealedCount = 0;
   let hint = null;
 
-  function reveal(count) {
+  // `scroll` is only true for a tap-triggered reveal (see the click handler below) - the
+  // initial reveal(loadRevealedCount()) on page load restores possibly many paragraphs
+  // at once from saved progress, and jumping the page around right after load there would
+  // fight with wherever the browser/reader itself puts the initial scroll position, not
+  // help it.
+  function reveal(count, { scroll = false } = {}) {
+    let lastRevealed = null;
     for (let i = revealedCount; i < count; i++) {
       const wrap = wraps[i];
       const pendingTypewriter =
@@ -140,8 +146,13 @@
       stampTime(wrap);
 
       if (pendingTypewriter) startTypewriter(pendingTypewriter);
+      lastRevealed = wrap;
     }
     revealedCount = count;
+
+    if (scroll && lastRevealed) {
+      lastRevealed.scrollIntoView({ behavior: "smooth", block: "end" });
+    }
 
     if (revealedCount >= wraps.length) {
       hint?.remove();
@@ -194,6 +205,6 @@
     }
     const next = revealedCount + 1;
     localStorage.setItem(progressKey, String(next));
-    reveal(next);
+    reveal(next, { scroll: true });
   });
 })();
