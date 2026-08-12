@@ -120,3 +120,16 @@ def test_settings_page_offers_a_reading_speed_test() -> None:
     # Nested inside "Чтение с помощью тапа" (PR 77), not its own top-level section.
     tap_reading_index = response.text.index("Чтение с помощью тапа")
     assert tap_reading_index < response.text.index("Скорость чтения")
+
+
+def test_settings_page_offers_manual_reading_speed_entry() -> None:
+    response = client.get("/settings")
+
+    assert response.status_code == 200
+    assert 'data-role="reading-speed-manual-input"' in response.text
+    assert 'type="number"' in response.text
+    assert 'min="50"' in response.text
+    assert 'max="1000"' in response.text
+    # Same subsection as the test (PR 77), not floating anywhere else.
+    speed_section_index = response.text.index("Скорость чтения")
+    assert speed_section_index < response.text.index('data-role="reading-speed-manual-input"')

@@ -1666,6 +1666,35 @@ a {
   }
 }
 
+/* PR 78: manual readingSpeedWpm entry, independent of the test above - same field-label
+   layout as the rest of .reader-settings__field, just its own input instead of a
+   <select>/<input type="range"> since a typed number is the whole point here. */
+.reading-speed-test__manual-field {
+  margin-top: 14px;
+  max-width: 160px;
+}
+
+.reading-speed-test__manual-field input {
+  height: 36px;
+  padding: 0 10px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--bg-surface);
+  color: var(--text-primary);
+  font-family: var(--font-mono);
+  font-size: 13px;
+}
+
+.reading-speed-test__manual-field input::placeholder {
+  color: var(--text-muted);
+}
+
+.reading-speed-test__manual-field input:focus-visible {
+  border-color: var(--accent-teal);
+  box-shadow: 0 0 0 3px rgba(34, 211, 197, 0.18);
+  outline: none;
+}
+
 .reader-settings-preview {
   margin-top: 16px;
   padding: 16px;
