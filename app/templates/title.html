@@ -27,7 +27,7 @@
       {% if title.tags %}
       <div class="title-hero__badges">
         {% for tag in title.tags %}
-        <span class="badge badge--muted">{{ tag.name }}</span>
+        <a class="badge badge--link" href="/library/catalog?tags={{ tag.id }}&tag_name={{ tag.name | urlencode }}">{{ tag.name }}</a>
         {% endfor %}
       </div>
       {% endif %}

@@ -30,6 +30,9 @@
       for (const id of grid.dataset.genres.split(",")) params.append("genres", id);
     }
     if (grid.dataset.country) params.set("country", grid.dataset.country);
+    if (grid.dataset.tags) {
+      for (const id of grid.dataset.tags.split(",")) params.append("tags", id);
+    }
 
     let response;
     try {

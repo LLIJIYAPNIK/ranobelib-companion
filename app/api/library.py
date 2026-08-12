@@ -70,6 +70,8 @@ async def show_catalog(
     sort: str = DEFAULT_CATALOG_SORT,
     genres: Annotated[list[int] | None, Query()] = None,
     country: str | None = None,
+    tags: Annotated[list[int] | None, Query()] = None,
+    tag_name: str | None = None,
     page: Annotated[int, Query(ge=1)] = 1,
 ) -> HTMLResponse:
     """The catalog tab - unlike "Читаю", browsing it has never needed an account (see
@@ -86,8 +88,17 @@ async def show_catalog(
     `country` (PR 85): unlike genres, a title only ever has one - the "Страна" section's
     radio group (catalog.html), so this is a single value, not a repeated param. See
     `_parse_country()` for why it's read as a raw string rather than typed `int | None`.
+
+    `tags` (PR 86): same shape/semantics as `genres` (`Catalog.list_titles(tags=[...])`
+    is also AND, also a list), but there's no `Catalog.list_tags()` to resolve a display
+    name from just an id the way `list_genres()` does for genres - unlike PR 31's
+    original genre_name workaround, this one can't be retired yet. `tag_name` carries the
+    clicked tag's own already-known label (title.html already has it - it's the link's
+    own text) through to the hint chip; only meaningful for the single-tag case a badge
+    click produces today, so it's ignored if more than one tag id is present.
     """
     genres = genres or []
+    tags = tags or []
     selected_country = _parse_country(country)
     all_genres = await list_genres()
     all_countries = await list_countries()
@@ -98,9 +109,13 @@ async def show_catalog(
             sort=sort,
             genres=genres or None,
             country=selected_country,
+            tags=tags or None,
         )
     genre_names_by_id = {genre.id: genre.name for genre in all_genres}
     country_names_by_id = {c.id: c.name for c in all_countries}
+    selected_tag_names = (
+        [tag_name] if len(tags) == 1 and tag_name else [str(t) for t in tags]
+    )
     return templates.TemplateResponse(
         request,
         "catalog.html",
@@ -123,6 +138,8 @@ async def show_catalog(
                 if selected_country is not None
                 else None
             ),
+            "tags": tags,
+            "selected_tag_names": selected_tag_names,
         },
     )
 
@@ -134,6 +151,7 @@ async def catalog_page_fragment(
     sort: str = DEFAULT_CATALOG_SORT,
     genres: Annotated[list[int] | None, Query()] = None,
     country: str | None = None,
+    tags: Annotated[list[int] | None, Query()] = None,
     page: Annotated[int, Query(ge=1)] = 1,
 ) -> Response:
     """Just the card markup, no base.html - what catalog-scroll.js fetches and appends
@@ -145,6 +163,7 @@ async def catalog_page_fragment(
             sort=sort,
             genres=genres or None,
             country=_parse_country(country),
+            tags=tags or None,
         )
     response = templates.TemplateResponse(request, "_catalog_cards.html", {"items": result.items})
     response.headers["X-Has-Next-Page"] = "true" if result.has_next_page else "false"
