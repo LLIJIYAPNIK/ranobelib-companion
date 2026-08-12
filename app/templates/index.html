@@ -26,7 +26,13 @@
     <div class="title-card-grid">
       {% from "_title_card.html" import title_card %}
       {% for item in recent %}
-      {{ title_card(item.slug_url, item.name, item.cover_url) }}
+      {% call title_card(item.slug_url, item.name, item.cover_url) %}
+      {% if item.progress_percent is not none %}
+      <div class="reading-progress" aria-hidden="true">
+        <div class="reading-progress__fill" style="width: {{ item.progress_percent }}%"></div>
+      </div>
+      {% endif %}
+      {% endcall %}
       {% endfor %}
     </div>
   </section>
