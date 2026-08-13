@@ -91,3 +91,14 @@ def test_profile_shows_the_registration_date(client: TestClient) -> None:
 
     assert response.status_code == 200
     assert "На сайте с" in response.text
+
+
+def test_profile_has_an_edit_link_to_settings_account(client: TestClient) -> None:
+    _register(client, "alice@example.com")
+
+    response = client.get("/profile")
+
+    assert response.status_code == 200
+    assert '<a class="btn btn--secondary" href="/settings/account">Редактировать</a>' in (
+        response.text
+    )
