@@ -77,6 +77,7 @@ def test_update_account_saves_nickname_and_bio(client: TestClient) -> None:
     assert response.status_code == 200
     assert 'value="Alice Wong"' in response.text
     assert ">Hi there</textarea>" in response.text
+    assert "Изменения сохранены" in response.text
 
 
 def test_update_account_can_change_email(client: TestClient) -> None:
@@ -105,6 +106,7 @@ def test_update_account_rejects_an_email_already_used_by_another_account(
 
     assert response.status_code == 400
     assert "уже используется другим аккаунтом" in response.text
+    assert "Изменения сохранены" not in response.text
     # Bob's own account is untouched.
     reloaded = client.get("/settings/account")
     assert 'value="bob@example.com"' in reloaded.text

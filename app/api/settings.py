@@ -85,6 +85,7 @@ async def update_account(
             "nickname": updated.nickname,
             "email": updated.email,
             "bio": updated.bio,
+            "saved": True,
         },
     )
 

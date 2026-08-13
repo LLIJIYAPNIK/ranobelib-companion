@@ -2,6 +2,9 @@
 {% block title %}Аккаунт — Настройки — RanobeLib Companion{% endblock %}
 {% block settings_content %}
   {% if current_user %}
+  {% if saved %}
+  <p class="content__notice content__notice--success">Изменения сохранены</p>
+  {% endif %}
   {% if error %}
   <p class="form-error">{{ error }}</p>
   {% endif %}
