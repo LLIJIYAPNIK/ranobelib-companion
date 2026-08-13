@@ -58,6 +58,18 @@ def update_user_account(
     return user
 
 
+def update_user_password(conn: sqlite3.Connection, user_id: int, password_hash: str) -> User:
+    """No uniqueness concerns here unlike `update_user_account` - `password_hash` isn't a
+    unique column, so there's nothing to check before writing it. Callers (see
+    app/api/settings.py) are expected to have already verified the visitor's *current*
+    password with `verify_password` before calling this."""
+    conn.execute("UPDATE users SET password_hash = ? WHERE id = ?", (password_hash, user_id))
+    conn.commit()
+    user = get_user_by_id(conn, user_id)
+    assert user is not None  # just updated
+    return user
+
+
 def get_user_by_email(conn: sqlite3.Connection, email: str) -> User | None:
     row = conn.execute(
         "SELECT id, email, password_hash, created_at, nickname, bio FROM users WHERE email = ?",

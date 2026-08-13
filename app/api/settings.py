@@ -6,8 +6,9 @@ from fastapi import APIRouter, Depends, Form, Request
 from fastapi.responses import HTMLResponse, RedirectResponse
 
 from app.auth.dependencies import get_current_user, require_current_user
+from app.auth.passwords import PasswordTooLongError, hash_password, verify_password
 from app.db.connection import get_connection
-from app.db.users import User, get_user_by_email, update_user_account
+from app.db.users import User, get_user_by_email, update_user_account, update_user_password
 from app.templating import templates
 
 router = APIRouter()
@@ -96,4 +97,39 @@ async def settings_security_page(request: Request) -> HTMLResponse:
         request,
         "settings_security.html",
         {"active_nav": "settings", "active_settings_section": "security"},
+    )
+
+
+@router.post("/settings/security", response_model=None)
+async def update_password(
+    request: Request,
+    user: Annotated[User, Depends(require_current_user)],
+    current_password: str = Form(...),
+    new_password: str = Form(...),
+    new_password_confirm: str = Form(...),
+) -> HTMLResponse:
+    error: str | None = None
+    if not verify_password(current_password, user.password_hash):
+        error = "Неверный текущий пароль"
+    elif new_password != new_password_confirm:
+        error = "Пароли не совпадают"
+    else:
+        try:
+            new_password_hash = hash_password(new_password)
+        except PasswordTooLongError:
+            error = "Пароль слишком длинный"
+
+    if error is not None:
+        return templates.TemplateResponse(
+            request,
+            "settings_security.html",
+            {"active_nav": "settings", "active_settings_section": "security", "error": error},
+            status_code=400,
+        )
+
+    update_user_password(get_connection(), user.id, new_password_hash)
+    return templates.TemplateResponse(
+        request,
+        "settings_security.html",
+        {"active_nav": "settings", "active_settings_section": "security", "saved": True},
     )
