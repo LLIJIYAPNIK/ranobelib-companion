@@ -5,6 +5,7 @@ from pathlib import Path
 from fastapi.templating import Jinja2Templates
 from starlette.requests import Request
 
+from app.auth.avatar import avatar_initials
 from app.auth.dependencies import get_current_user
 
 
@@ -18,3 +19,4 @@ templates = Jinja2Templates(
     directory=Path(__file__).parent / "templates",
     context_processors=[_inject_current_user],
 )
+templates.env.globals["avatar_initials"] = avatar_initials
