@@ -122,3 +122,16 @@ def test_update_account_allows_resubmitting_the_same_email_unchanged(
 
     assert response.status_code == 200
     assert 'value="Alice"' in response.text
+
+
+def test_saved_nickname_switches_the_sidebar_avatar_initials(client: TestClient) -> None:
+    _register(client, "alice.wong@example.com")
+    client.post(
+        "/settings/account",
+        data={"email": "alice.wong@example.com", "nickname": "Bob Carter", "bio": ""},
+    )
+
+    home = client.get("/")
+
+    assert ">BC</a>" in home.text
+    assert ">AW</a>" not in home.text
