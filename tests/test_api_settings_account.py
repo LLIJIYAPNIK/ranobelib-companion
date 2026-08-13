@@ -89,3 +89,36 @@ def test_update_account_can_change_email(client: TestClient) -> None:
 
     assert response.status_code == 200
     assert 'value="alice2@example.com"' in response.text
+
+
+def test_update_account_rejects_an_email_already_used_by_another_account(
+    client: TestClient,
+) -> None:
+    _register(client, "alice@example.com")
+    client.post("/logout")
+    _register(client, "bob@example.com")
+
+    response = client.post(
+        "/settings/account",
+        data={"email": "alice@example.com", "nickname": "", "bio": ""},
+    )
+
+    assert response.status_code == 400
+    assert "уже используется другим аккаунтом" in response.text
+    # Bob's own account is untouched.
+    reloaded = client.get("/settings/account")
+    assert 'value="bob@example.com"' in reloaded.text
+
+
+def test_update_account_allows_resubmitting_the_same_email_unchanged(
+    client: TestClient,
+) -> None:
+    _register(client, "alice@example.com")
+
+    response = client.post(
+        "/settings/account",
+        data={"email": "alice@example.com", "nickname": "Alice", "bio": ""},
+    )
+
+    assert response.status_code == 200
+    assert 'value="Alice"' in response.text

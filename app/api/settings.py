@@ -7,7 +7,7 @@ from fastapi.responses import HTMLResponse, RedirectResponse
 
 from app.auth.dependencies import get_current_user, require_current_user
 from app.db.connection import get_connection
-from app.db.users import User, update_user_account
+from app.db.users import User, get_user_by_email, update_user_account
 from app.templating import templates
 
 router = APIRouter()
@@ -57,6 +57,22 @@ async def update_account(
     bio: str = Form(default=""),
 ) -> HTMLResponse:
     conn = get_connection()
+    existing = get_user_by_email(conn, email)
+    if existing is not None and existing.id != user.id:
+        return templates.TemplateResponse(
+            request,
+            "settings_account.html",
+            {
+                "active_nav": "settings",
+                "active_settings_section": "account",
+                "nickname": nickname,
+                "email": email,
+                "bio": bio,
+                "error": "Этот email уже используется другим аккаунтом",
+            },
+            status_code=400,
+        )
+
     updated = update_user_account(
         conn, user.id, email=email, nickname=nickname.strip() or None, bio=bio.strip() or None
     )
