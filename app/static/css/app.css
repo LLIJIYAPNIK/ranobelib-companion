@@ -2415,6 +2415,28 @@ a {
     max-height: none;
   }
 
+  /* PR 89: same stack-instead-of-column reasoning as .catalog-filters above - a fixed
+     200px nav column has no room next to the content pane on a phone-width viewport, and
+     a short 3-item nav has no scrolling behavior worth keeping sticky. Turned into a
+     horizontal row (not a vertical stack) since 3 short labels fit one line and read more
+     like tabs than a menu at this width. */
+  .settings-layout {
+    flex-direction: column;
+  }
+
+  .settings-nav {
+    flex-direction: row;
+    flex-basis: auto;
+    position: static;
+    gap: 8px;
+    overflow-x: auto;
+  }
+
+  .settings-nav__link {
+    flex: 0 0 auto;
+    white-space: nowrap;
+  }
+
   .search-form {
     max-width: none;
     flex-wrap: wrap;
