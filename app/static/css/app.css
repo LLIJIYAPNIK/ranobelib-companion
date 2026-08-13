@@ -278,12 +278,17 @@ a {
   position: relative;
 }
 
+/* Opens upward on the desktop sidebar - the avatar sits at the very bottom of it (PR 88),
+   so opening downward like a typical dropdown would push the menu off the bottom of the
+   viewport. (Mobile flips this back to opening downward - see the mobile breakpoint below
+   - since there the avatar sits in a fixed header at the very *top* of the viewport, PR 71,
+   where opening upward would do the same thing in the other direction.) */
 .profile-menu__panel {
   display: none;
   flex-direction: column;
   gap: 2px;
   position: absolute;
-  top: calc(100% + 6px);
+  bottom: calc(100% + 6px);
   left: 0;
   z-index: 40;
   min-width: 180px;
@@ -2515,6 +2520,14 @@ a {
     width: 28px;
     height: 28px;
     font-size: 11px;
+  }
+
+  /* Flips the desktop rule above back to opening downward - the mobile account strip is
+     pinned to the *top* of the viewport (PR 71), not the bottom, so there's no room above
+     it either. */
+  .profile-menu__panel {
+    bottom: auto;
+    top: calc(100% + 6px);
   }
 
   .header {
