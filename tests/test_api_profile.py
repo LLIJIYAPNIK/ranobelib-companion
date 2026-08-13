@@ -84,6 +84,15 @@ def test_profile_shows_the_bio_when_set(client: TestClient) -> None:
     assert "Hello there" in response.text
 
 
+def test_profile_shows_an_empty_state_when_no_bio_is_set(client: TestClient) -> None:
+    _register(client, "alice@example.com")
+
+    response = client.get("/profile")
+
+    assert response.status_code == 200
+    assert "не рассказал о себе" in response.text
+
+
 def test_profile_shows_the_registration_date(client: TestClient) -> None:
     _register(client, "alice@example.com")
 
