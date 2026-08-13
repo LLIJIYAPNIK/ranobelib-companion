@@ -46,12 +46,14 @@ def test_settings_account_page_shows_a_locked_screen_for_anonymous_visitors() ->
     assert 'data-role="reader-settings"' not in response.text
 
 
-def test_settings_security_page_is_an_empty_placeholder_for_now() -> None:
+def test_settings_security_page_shows_a_locked_screen_for_anonymous_visitors() -> None:
+    # PR 91: the password-change form only makes sense for a logged-in visitor - see
+    # tests/test_api_settings_security.py for the form itself.
     response = client.get("/settings/security")
 
     assert response.status_code == 200
     assert _nav_link_is_active(response.text, "/settings/security")
-    assert "появятся здесь позже" in response.text
+    assert 'class="locked-feature"' in response.text
     assert 'data-role="reader-settings"' not in response.text
 
 
