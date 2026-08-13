@@ -1,8 +1,6 @@
-{% extends "base.html" %}
+{% extends "settings_layout.html" %}
 {% block title %}Настройки чтения — RanobeLib Companion{% endblock %}
-{% block content %}
-<main class="content">
-  <h1 class="toc__title">Настройки чтения</h1>
+{% block settings_content %}
   <div class="reader-settings-page" data-role="reader-settings">
     <section class="reader-settings-section">
       <h2 class="reader-settings-section__title">Типографика</h2>
@@ -103,7 +101,8 @@
       слева — пример обновляется сразу, без сохранения и перезагрузки страницы.
     </p>
   </div>
-</main>
+{% endblock %}
+{% block settings_scripts %}
 <script src="{{ url_for('static', path='js/reader-settings.js') }}" defer></script>
 <script src="{{ url_for('static', path='js/custom-dropdown.js') }}" defer></script>
 <script src="{{ url_for('static', path='js/reading-speed-test.js') }}" defer></script>

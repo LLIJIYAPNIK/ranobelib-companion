@@ -1710,8 +1710,54 @@ a {
   transition: background-color 0.15s ease;
 }
 
-.reader-settings-page {
+/* PR 89: /settings split into left-nav tabs (Чтение/Аккаунт/Безопасность) under their
+   own sub-routes, replacing the single flat page from PR 61. Same fixed-width sticky
+   sidebar language as .catalog-filters (PR 85), mirrored to the left since nothing here
+   competes for that side. */
+.settings-layout {
+  display: flex;
+  align-items: flex-start;
+  gap: 24px;
   margin-top: 20px;
+}
+
+.settings-nav {
+  flex: 0 0 200px;
+  position: sticky;
+  top: 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.settings-nav__link {
+  padding: 10px 14px;
+  border-radius: 8px;
+  font-size: 14px;
+  color: var(--text-secondary);
+  text-decoration: none;
+  transition: background-color 0.15s ease, color 0.15s ease;
+}
+
+@media (hover: hover) {
+  .settings-nav__link:hover {
+    color: var(--accent-teal);
+    background-color: rgba(34, 211, 197, 0.08);
+  }
+}
+
+.settings-nav__link--active {
+  color: var(--accent-teal);
+  background-color: rgba(34, 211, 197, 0.12);
+  font-weight: 600;
+}
+
+.settings-content {
+  flex: 1;
+  min-width: 0;
+}
+
+.reader-settings-page {
   max-width: 480px;
 }
 
@@ -2367,6 +2413,28 @@ a {
     width: 100%;
     position: static;
     max-height: none;
+  }
+
+  /* PR 89: same stack-instead-of-column reasoning as .catalog-filters above - a fixed
+     200px nav column has no room next to the content pane on a phone-width viewport, and
+     a short 3-item nav has no scrolling behavior worth keeping sticky. Turned into a
+     horizontal row (not a vertical stack) since 3 short labels fit one line and read more
+     like tabs than a menu at this width. */
+  .settings-layout {
+    flex-direction: column;
+  }
+
+  .settings-nav {
+    flex-direction: row;
+    flex-basis: auto;
+    position: static;
+    gap: 8px;
+    overflow-x: auto;
+  }
+
+  .settings-nav__link {
+    flex: 0 0 auto;
+    white-space: nowrap;
   }
 
   .search-form {
