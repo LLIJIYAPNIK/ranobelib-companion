@@ -64,17 +64,25 @@
       </a>
       <div class="sidebar__account">
         {% if current_user %}
-        {#
-          PR 88: no uploaded-avatar support yet, so this is initials-only. Temporarily
-          links straight to /settings - PR 93 replaces it with a dropdown (Профиль/
-          Читаю/Настройки/Выйти), which is also where logout moves back into the UI.
-        #}
-        <a
-          class="sidebar__avatar"
-          href="/settings"
-          title="{{ current_user.email }}"
-          aria-label="{{ current_user.email }}"
-        >{{ avatar_initials(current_user) }}</a>
+        <div class="profile-menu" data-role="profile-menu">
+          <button
+            class="sidebar__avatar"
+            type="button"
+            data-role="profile-menu-trigger"
+            aria-haspopup="true"
+            aria-expanded="false"
+            title="{{ current_user.email }}"
+            aria-label="Меню профиля"
+          >{{ avatar_initials(current_user) }}</button>
+          <div class="profile-menu__panel" data-role="profile-menu-panel">
+            <a class="profile-menu__item" href="/profile">Профиль</a>
+            <a class="profile-menu__item" href="/library">Читаю</a>
+            <a class="profile-menu__item" href="/settings">Настройки</a>
+            <form class="profile-menu__form" method="post" action="/logout">
+              <button class="profile-menu__item" type="submit">Выйти</button>
+            </form>
+          </div>
+        </div>
         {% else %}
         <a class="sidebar__link" href="/login">Войти</a>
         <a class="sidebar__link" href="/register">Регистрация</a>
@@ -92,6 +100,7 @@
   {% if current_user %}
   <script src="{{ url_for('static', path='js/download-ready.js') }}" defer></script>
   <script src="{{ url_for('static', path='js/downloads-status.js') }}" defer></script>
+  <script src="{{ url_for('static', path='js/profile-menu.js') }}" defer></script>
   {% endif %}
 </body>
 </html>
