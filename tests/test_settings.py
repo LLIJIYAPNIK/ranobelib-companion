@@ -1,8 +1,15 @@
+import re
+
 from fastapi.testclient import TestClient
 
 from app.main import app
 
 client = TestClient(app)
+
+
+def _nav_link_is_active(html: str, href: str) -> bool:
+    pattern = rf'class="settings-nav__link settings-nav__link--active"\s+href="{re.escape(href)}"'
+    return re.search(pattern, html) is not None
 
 
 def test_settings_redirects_to_the_reading_tab() -> None:
@@ -26,6 +33,24 @@ def test_settings_nav_lists_all_three_sections_and_highlights_the_current_one() 
         assert f">{label}</a>" in response.text
     # Only the current tab (Чтение) is marked active, not all three.
     assert response.text.count("settings-nav__link--active") == 1
+
+
+def test_settings_account_page_is_an_empty_placeholder_for_now() -> None:
+    response = client.get("/settings/account")
+
+    assert response.status_code == 200
+    assert _nav_link_is_active(response.text, "/settings/account")
+    assert "появятся здесь позже" in response.text
+    assert 'data-role="reader-settings"' not in response.text
+
+
+def test_settings_security_page_is_an_empty_placeholder_for_now() -> None:
+    response = client.get("/settings/security")
+
+    assert response.status_code == 200
+    assert _nav_link_is_active(response.text, "/settings/security")
+    assert "появятся здесь позже" in response.text
+    assert 'data-role="reader-settings"' not in response.text
 
 
 def test_settings_page_renders_reader_settings_panel() -> None:

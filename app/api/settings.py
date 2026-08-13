@@ -21,3 +21,21 @@ async def settings_reading_page(request: Request) -> HTMLResponse:
         "settings_reading.html",
         {"active_nav": "settings", "active_settings_section": "reading"},
     )
+
+
+@router.get("/settings/account")
+async def settings_account_page(request: Request) -> HTMLResponse:
+    return templates.TemplateResponse(
+        request,
+        "settings_account.html",
+        {"active_nav": "settings", "active_settings_section": "account"},
+    )
+
+
+@router.get("/settings/security")
+async def settings_security_page(request: Request) -> HTMLResponse:
+    return templates.TemplateResponse(
+        request,
+        "settings_security.html",
+        {"active_nav": "settings", "active_settings_section": "security"},
+    )
