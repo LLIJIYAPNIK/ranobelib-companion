@@ -473,6 +473,27 @@ a {
   justify-content: center;
 }
 
+/* PR 90: the account-details form on /settings/account - wider than .auth-form (which
+   is tuned for the narrow centered login/register screens) since it sits in the roomier
+   settings-content column, but reuses .auth-form__field/__label/__input as-is rather than
+   duplicating that styling under a new prefix. */
+.account-form {
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  gap: 16px;
+  max-width: 420px;
+  margin-top: 16px;
+}
+
+.auth-form__input--textarea {
+  height: auto;
+  min-height: 96px;
+  padding: 10px 12px;
+  font-family: inherit;
+  resize: vertical;
+}
+
 .recent__title {
   font-size: 16px;
   font-weight: 700;

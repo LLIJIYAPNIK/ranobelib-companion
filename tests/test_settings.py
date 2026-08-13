@@ -35,12 +35,14 @@ def test_settings_nav_lists_all_three_sections_and_highlights_the_current_one() 
     assert response.text.count("settings-nav__link--active") == 1
 
 
-def test_settings_account_page_is_an_empty_placeholder_for_now() -> None:
+def test_settings_account_page_shows_a_locked_screen_for_anonymous_visitors() -> None:
+    # PR 90: the account form only makes sense for a logged-in visitor - see
+    # tests/test_api_settings_account.py for the form itself.
     response = client.get("/settings/account")
 
     assert response.status_code == 200
     assert _nav_link_is_active(response.text, "/settings/account")
-    assert "появятся здесь позже" in response.text
+    assert 'class="locked-feature"' in response.text
     assert 'data-role="reader-settings"' not in response.text
 
 
