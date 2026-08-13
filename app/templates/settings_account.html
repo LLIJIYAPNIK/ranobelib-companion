@@ -1,5 +1,51 @@
 {% extends "settings_layout.html" %}
 {% block title %}Аккаунт — Настройки — RanobeLib Companion{% endblock %}
 {% block settings_content %}
-  <p class="content__hint">Настройки аккаунта появятся здесь позже.</p>
+  {% if current_user %}
+  {% if error %}
+  <p class="form-error">{{ error }}</p>
+  {% endif %}
+  <form class="account-form" method="post" action="/settings/account">
+    <div class="auth-form__field">
+      <label class="auth-form__label" for="account-nickname">Никнейм</label>
+      <input
+        class="auth-form__input"
+        id="account-nickname"
+        type="text"
+        name="nickname"
+        value="{{ nickname or '' }}"
+        maxlength="60"
+        placeholder="Необязательно"
+      >
+    </div>
+    <div class="auth-form__field">
+      <label class="auth-form__label" for="account-email">Email</label>
+      <input
+        class="auth-form__input"
+        id="account-email"
+        type="email"
+        name="email"
+        value="{{ email }}"
+        required
+      >
+    </div>
+    <div class="auth-form__field">
+      <label class="auth-form__label" for="account-bio">О себе</label>
+      <textarea
+        class="auth-form__input auth-form__input--textarea"
+        id="account-bio"
+        name="bio"
+        maxlength="280"
+        placeholder="Необязательно"
+      >{{ bio or '' }}</textarea>
+    </div>
+    <button class="btn btn--primary" type="submit">Сохранить</button>
+  </form>
+  {% else %}
+  {% from "_locked_feature.html" import locked_feature %}
+  {% call locked_feature("Аккаунт скрыт", "/login", "Войти") %}
+  <a href="/login">Войдите</a> или <a href="/register">зарегистрируйтесь</a>,
+  чтобы редактировать данные аккаунта.
+  {% endcall %}
+  {% endif %}
 {% endblock %}
