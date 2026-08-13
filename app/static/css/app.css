@@ -271,9 +271,7 @@ a {
   }
 }
 
-/* PR 93: the avatar's dropdown menu (Профиль/Читаю/Настройки/Выйти) - positioning (which
-   direction it opens) and the open/close animation are refined in later commits, this is
-   just enough to show/hide it. */
+/* PR 93: the avatar's dropdown menu (Профиль/Читаю/Настройки/Выйти). */
 .profile-menu {
   position: relative;
 }
@@ -282,9 +280,14 @@ a {
    so opening downward like a typical dropdown would push the menu off the bottom of the
    viewport. (Mobile flips this back to opening downward - see the mobile breakpoint below
    - since there the avatar sits in a fixed header at the very *top* of the viewport, PR 71,
-   where opening upward would do the same thing in the other direction.) */
+   where opening upward would do the same thing in the other direction.)
+
+   Same fade + slide-toward-the-trigger open/close animation as the custom <select>
+   dropdown (PR 54's .dropdown__listbox) - always in the DOM (opacity/pointer-events, not
+   display:none) so the transition has something to animate, sliding down into place from
+   6px above/below its resting position depending on which way it opens. */
 .profile-menu__panel {
-  display: none;
+  display: flex;
   flex-direction: column;
   gap: 2px;
   position: absolute;
@@ -297,10 +300,16 @@ a {
   border: 1px solid var(--border);
   border-radius: 8px;
   box-shadow: 0 10px 24px rgba(0, 0, 0, 0.35);
+  opacity: 0;
+  transform: translateY(6px);
+  pointer-events: none;
+  transition: opacity 0.15s ease, transform 0.15s ease;
 }
 
 .profile-menu--open .profile-menu__panel {
-  display: flex;
+  opacity: 1;
+  transform: translateY(0);
+  pointer-events: auto;
 }
 
 /* The "Выйти" item is a <button> inside its own <form> (it POSTs to /logout, unlike the
@@ -2524,10 +2533,16 @@ a {
 
   /* Flips the desktop rule above back to opening downward - the mobile account strip is
      pinned to the *top* of the viewport (PR 71), not the bottom, so there's no room above
-     it either. */
+     it either. translateY's sign flips along with it, so the panel still slides *toward*
+     its resting position (from above, not below) instead of away from it. */
   .profile-menu__panel {
     bottom: auto;
     top: calc(100% + 6px);
+    transform: translateY(-6px);
+  }
+
+  .profile-menu--open .profile-menu__panel {
+    transform: translateY(0);
   }
 
   .header {
