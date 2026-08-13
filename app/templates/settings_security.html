@@ -1,5 +1,51 @@
 {% extends "settings_layout.html" %}
 {% block title %}Безопасность — Настройки — RanobeLib Companion{% endblock %}
 {% block settings_content %}
-  <p class="content__hint">Настройки безопасности появятся здесь позже.</p>
+  {% if current_user %}
+  {% if saved %}
+  <p class="content__notice content__notice--success">Пароль изменён</p>
+  {% endif %}
+  {% if error %}
+  <p class="form-error">{{ error }}</p>
+  {% endif %}
+  <form class="settings-form" method="post" action="/settings/security">
+    <div class="auth-form__field">
+      <label class="auth-form__label" for="security-current-password">Текущий пароль</label>
+      <input
+        class="auth-form__input"
+        id="security-current-password"
+        type="password"
+        name="current_password"
+        required
+      >
+    </div>
+    <div class="auth-form__field">
+      <label class="auth-form__label" for="security-new-password">Новый пароль</label>
+      <input
+        class="auth-form__input"
+        id="security-new-password"
+        type="password"
+        name="new_password"
+        required
+      >
+    </div>
+    <div class="auth-form__field">
+      <label class="auth-form__label" for="security-new-password-confirm">Повторите новый пароль</label>
+      <input
+        class="auth-form__input"
+        id="security-new-password-confirm"
+        type="password"
+        name="new_password_confirm"
+        required
+      >
+    </div>
+    <button class="btn btn--primary" type="submit">Сохранить</button>
+  </form>
+  {% else %}
+  {% from "_locked_feature.html" import locked_feature %}
+  {% call locked_feature("Безопасность скрыта", "/login", "Войти") %}
+  <a href="/login">Войдите</a> или <a href="/register">зарегистрируйтесь</a>,
+  чтобы изменить пароль.
+  {% endcall %}
+  {% endif %}
 {% endblock %}
