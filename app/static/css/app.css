@@ -1710,8 +1710,54 @@ a {
   transition: background-color 0.15s ease;
 }
 
-.reader-settings-page {
+/* PR 89: /settings split into left-nav tabs (Чтение/Аккаунт/Безопасность) under their
+   own sub-routes, replacing the single flat page from PR 61. Same fixed-width sticky
+   sidebar language as .catalog-filters (PR 85), mirrored to the left since nothing here
+   competes for that side. */
+.settings-layout {
+  display: flex;
+  align-items: flex-start;
+  gap: 24px;
   margin-top: 20px;
+}
+
+.settings-nav {
+  flex: 0 0 200px;
+  position: sticky;
+  top: 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.settings-nav__link {
+  padding: 10px 14px;
+  border-radius: 8px;
+  font-size: 14px;
+  color: var(--text-secondary);
+  text-decoration: none;
+  transition: background-color 0.15s ease, color 0.15s ease;
+}
+
+@media (hover: hover) {
+  .settings-nav__link:hover {
+    color: var(--accent-teal);
+    background-color: rgba(34, 211, 197, 0.08);
+  }
+}
+
+.settings-nav__link--active {
+  color: var(--accent-teal);
+  background-color: rgba(34, 211, 197, 0.12);
+  font-weight: 600;
+}
+
+.settings-content {
+  flex: 1;
+  min-width: 0;
+}
+
+.reader-settings-page {
   max-width: 480px;
 }
 
