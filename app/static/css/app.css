@@ -241,21 +241,27 @@ a {
   width: 100%;
 }
 
-.sidebar__account-email {
-  font-size: 10px;
-  color: var(--text-muted);
-  max-width: 56px;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-  text-align: center;
+.sidebar__avatar {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  background: var(--accent);
+  color: var(--text-primary);
+  font-size: 13px;
+  font-weight: 600;
+  text-decoration: none;
+  transition: background-color 0.15s ease, transform 0.15s ease;
 }
 
-.sidebar__account-logout {
-  background: none;
-  border: none;
-  font-family: inherit;
-  padding: 0;
+@media (hover: hover) {
+  .sidebar__avatar:hover {
+    background: var(--accent-teal);
+    color: var(--bg-page);
+    transform: scale(1.06);
+  }
 }
 
 .main {
@@ -2306,9 +2312,10 @@ a {
     margin-top: 0;
     width: auto;
     /* Pinned to the same value .main's padding-top compensates for (PR 71) - box-sizing
-       makes padding count toward this, so whatever the actual email/button content
-       measures out to, the strip itself never grows past what .main already leaves room
-       for underneath it. */
+       makes padding count toward this, so whatever the actual content measures out to,
+       the strip itself never grows past what .main already leaves room for underneath
+       it - the smaller .sidebar__avatar size below is chosen to fit this exactly
+       (10px + 28px + 10px = 48px). */
     min-height: var(--mobile-account-height);
     box-sizing: border-box;
     flex-direction: row;
@@ -2322,10 +2329,10 @@ a {
     z-index: 40;
   }
 
-  .sidebar__account-email {
-    max-width: none;
-    flex: 1;
-    text-align: left;
+  .sidebar__avatar {
+    width: 28px;
+    height: 28px;
+    font-size: 11px;
   }
 
   .header {

@@ -64,10 +64,17 @@
       </a>
       <div class="sidebar__account">
         {% if current_user %}
-        <span class="sidebar__account-email" title="{{ current_user.email }}">{{ current_user.email }}</span>
-        <form method="post" action="/logout">
-          <button class="sidebar__link sidebar__account-logout" type="submit">Выйти</button>
-        </form>
+        {#
+          PR 88: no uploaded-avatar support yet, so this is initials-only. Temporarily
+          links straight to /settings - PR 93 replaces it with a dropdown (Профиль/
+          Читаю/Настройки/Выйти), which is also where logout moves back into the UI.
+        #}
+        <a
+          class="sidebar__avatar"
+          href="/settings"
+          title="{{ current_user.email }}"
+          aria-label="{{ current_user.email }}"
+        >{{ avatar_initials(current_user) }}</a>
         {% else %}
         <a class="sidebar__link" href="/login">Войти</a>
         <a class="sidebar__link" href="/register">Регистрация</a>
