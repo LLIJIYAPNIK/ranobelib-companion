@@ -13,6 +13,8 @@ class User:
     email: str
     password_hash: str
     created_at: str
+    nickname: str | None = None
+    bio: str | None = None
 
 
 def create_user(conn: sqlite3.Connection, email: str, password_hash: str) -> User:
@@ -32,9 +34,33 @@ def create_user(conn: sqlite3.Connection, email: str, password_hash: str) -> Use
     )
 
 
+def update_user_account(
+    conn: sqlite3.Connection,
+    user_id: int,
+    *,
+    email: str,
+    nickname: str | None,
+    bio: str | None,
+) -> User:
+    """Raises ``sqlite3.IntegrityError`` if `email` collides with a *different* account -
+    same defense-in-depth as `create_user`: callers (see app/api/settings.py) check
+    `get_user_by_email` first and turn that into a form error, this is the race-safe
+    backstop. Unlike email, `nickname` isn't unique (see PR 90 in CLAUDE.md's roadmap -
+    nothing in this app looks a user up by nickname, so uniqueness would be an
+    artificial restriction)."""
+    conn.execute(
+        "UPDATE users SET email = ?, nickname = ?, bio = ? WHERE id = ?",
+        (_normalize_email(email), nickname, bio, user_id),
+    )
+    conn.commit()
+    user = get_user_by_id(conn, user_id)
+    assert user is not None  # just updated
+    return user
+
+
 def get_user_by_email(conn: sqlite3.Connection, email: str) -> User | None:
     row = conn.execute(
-        "SELECT id, email, password_hash, created_at FROM users WHERE email = ?",
+        "SELECT id, email, password_hash, created_at, nickname, bio FROM users WHERE email = ?",
         (_normalize_email(email),),
     ).fetchone()
     return _row_to_user(row) if row is not None else None
@@ -42,7 +68,7 @@ def get_user_by_email(conn: sqlite3.Connection, email: str) -> User | None:
 
 def get_user_by_id(conn: sqlite3.Connection, user_id: int) -> User | None:
     row = conn.execute(
-        "SELECT id, email, password_hash, created_at FROM users WHERE id = ?",
+        "SELECT id, email, password_hash, created_at, nickname, bio FROM users WHERE id = ?",
         (user_id,),
     ).fetchone()
     return _row_to_user(row) if row is not None else None
@@ -54,6 +80,8 @@ def _row_to_user(row: sqlite3.Row) -> User:
         email=row["email"],
         password_hash=row["password_hash"],
         created_at=row["created_at"],
+        nickname=row["nickname"],
+        bio=row["bio"],
     )
 
 

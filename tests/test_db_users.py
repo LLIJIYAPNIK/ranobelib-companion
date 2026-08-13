@@ -3,7 +3,7 @@ import sqlite3
 import pytest
 
 from app.db.migrate import run_migrations
-from app.db.users import create_user, get_user_by_email, get_user_by_id
+from app.db.users import create_user, get_user_by_email, get_user_by_id, update_user_account
 
 
 @pytest.fixture
@@ -67,3 +67,60 @@ def test_get_user_by_id_found(conn: sqlite3.Connection) -> None:
 
 def test_get_user_by_id_missing(conn: sqlite3.Connection) -> None:
     assert get_user_by_id(conn, 999) is None
+
+
+def test_create_user_has_no_nickname_or_bio_by_default(conn: sqlite3.Connection) -> None:
+    user = create_user(conn, "alice@example.com", "hash1")
+
+    assert user.nickname is None
+    assert user.bio is None
+
+
+def test_update_user_account_sets_nickname_and_bio(conn: sqlite3.Connection) -> None:
+    user = create_user(conn, "alice@example.com", "hash1")
+
+    updated = update_user_account(
+        conn, user.id, email="alice@example.com", nickname="Alice", bio="Hello there"
+    )
+
+    assert updated.nickname == "Alice"
+    assert updated.bio == "Hello there"
+    assert get_user_by_id(conn, user.id) == updated
+
+
+def test_update_user_account_changes_email(conn: sqlite3.Connection) -> None:
+    user = create_user(conn, "alice@example.com", "hash1")
+
+    updated = update_user_account(
+        conn, user.id, email="alice2@example.com", nickname=None, bio=None
+    )
+
+    assert updated.email == "alice2@example.com"
+
+
+def test_update_user_account_normalizes_email(conn: sqlite3.Connection) -> None:
+    user = create_user(conn, "alice@example.com", "hash1")
+
+    updated = update_user_account(
+        conn, user.id, email="  Alice2@Example.COM  ", nickname=None, bio=None
+    )
+
+    assert updated.email == "alice2@example.com"
+
+
+def test_update_user_account_duplicate_email_raises(conn: sqlite3.Connection) -> None:
+    create_user(conn, "alice@example.com", "hash1")
+    bob = create_user(conn, "bob@example.com", "hash2")
+
+    with pytest.raises(sqlite3.IntegrityError):
+        update_user_account(conn, bob.id, email="alice@example.com", nickname=None, bio=None)
+
+
+def test_update_user_account_nickname_need_not_be_unique(conn: sqlite3.Connection) -> None:
+    alice = create_user(conn, "alice@example.com", "hash1")
+    bob = create_user(conn, "bob@example.com", "hash2")
+
+    update_user_account(conn, alice.id, email=alice.email, nickname="Same", bio=None)
+    updated_bob = update_user_account(conn, bob.id, email=bob.email, nickname="Same", bio=None)
+
+    assert updated_bob.nickname == "Same"
