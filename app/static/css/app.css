@@ -241,18 +241,25 @@ a {
   width: 100%;
 }
 
+/* PR 93: now a <button> (was a plain <a> to /settings) - it opens the profile-menu
+   dropdown below instead of linking directly, so it needs the usual button resets a link
+   never did (border/padding/font-family/cursor). */
 .sidebar__avatar {
   display: flex;
   align-items: center;
   justify-content: center;
   width: 36px;
   height: 36px;
+  border: none;
+  padding: 0;
   border-radius: 50%;
   background: var(--accent);
   color: var(--text-primary);
+  font-family: inherit;
   font-size: 13px;
   font-weight: 600;
   text-decoration: none;
+  cursor: pointer;
   transition: background-color 0.15s ease, transform 0.15s ease;
 }
 
@@ -262,6 +269,26 @@ a {
     color: var(--bg-page);
     transform: scale(1.06);
   }
+}
+
+/* PR 93: the avatar's dropdown menu (Профиль/Читаю/Настройки/Выйти) - positioning (which
+   direction it opens) and the open/close animation are refined in later commits, this is
+   just enough to show/hide it. */
+.profile-menu {
+  position: relative;
+}
+
+.profile-menu__panel {
+  display: none;
+  position: absolute;
+  top: calc(100% + 6px);
+  left: 0;
+  z-index: 40;
+  min-width: 180px;
+}
+
+.profile-menu--open .profile-menu__panel {
+  display: block;
 }
 
 .main {

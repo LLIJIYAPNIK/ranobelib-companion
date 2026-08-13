@@ -51,23 +51,23 @@ def test_sidebar_renders_a_text_label_next_to_each_nav_icon() -> None:
         assert f'<span class="sidebar__label">{label}</span>' in response.text
 
 
-def test_logged_in_visitor_sees_an_avatar_with_initials_linking_to_settings(
+def test_logged_in_visitor_sees_a_profile_menu_trigger_avatar(
     logged_in_client: TestClient,
 ) -> None:
     response = logged_in_client.get("/")
 
     assert response.status_code == 200
-    assert 'class="sidebar__avatar"' in response.text
-    assert 'href="/settings"' in response.text
+    assert 'data-role="profile-menu"' in response.text
+    assert 'data-role="profile-menu-trigger"' in response.text
+    assert 'aria-haspopup="true"' in response.text
+    assert 'aria-expanded="false"' in response.text
     assert 'title="alice.wong@example.com"' in response.text
-    assert ">AW</a>" in response.text
-    assert "sidebar__account-logout" not in response.text
+    assert ">AW</button>" in response.text
+    assert "static/js/profile-menu.js" in response.text
 
 
-def test_logged_in_visitor_no_longer_sees_a_direct_logout_button(
-    logged_in_client: TestClient,
-) -> None:
-    response = logged_in_client.get("/")
+def test_anonymous_visitor_gets_no_profile_menu() -> None:
+    response = client.get("/")
 
-    assert 'action="/logout"' not in response.text
-    assert ">Выйти</" not in response.text
+    assert 'data-role="profile-menu"' not in response.text
+    assert "static/js/profile-menu.js" not in response.text

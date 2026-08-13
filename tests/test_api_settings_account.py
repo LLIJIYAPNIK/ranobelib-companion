@@ -135,5 +135,5 @@ def test_saved_nickname_switches_the_sidebar_avatar_initials(client: TestClient)
 
     home = client.get("/")
 
-    assert ">BC</a>" in home.text
-    assert ">AW</a>" not in home.text
+    assert ">BC</button>" in home.text
+    assert ">AW</button>" not in home.text
