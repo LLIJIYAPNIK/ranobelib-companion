@@ -280,15 +280,53 @@ a {
 
 .profile-menu__panel {
   display: none;
+  flex-direction: column;
+  gap: 2px;
   position: absolute;
   top: calc(100% + 6px);
   left: 0;
   z-index: 40;
   min-width: 180px;
+  padding: 6px;
+  background: var(--bg-surface);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  box-shadow: 0 10px 24px rgba(0, 0, 0, 0.35);
 }
 
 .profile-menu--open .profile-menu__panel {
+  display: flex;
+}
+
+/* The "Выйти" item is a <button> inside its own <form> (it POSTs to /logout, unlike the
+   other three items' plain links) - display: contents drops the <form> from layout so
+   that button still sits directly in .profile-menu__panel's flex column/gap like its
+   siblings, instead of getting wrapped in an extra box. */
+.profile-menu__form {
+  display: contents;
+}
+
+.profile-menu__item {
   display: block;
+  width: 100%;
+  padding: 8px 10px;
+  border: none;
+  border-radius: 6px;
+  background: none;
+  color: var(--text-secondary);
+  font-family: inherit;
+  font-size: 13px;
+  text-align: left;
+  text-decoration: none;
+  cursor: pointer;
+  transition: background-color 0.1s ease, color 0.1s ease;
+}
+
+@media (hover: hover) {
+  .profile-menu__item:hover {
+    background: rgba(34, 211, 197, 0.12);
+    color: var(--text-primary);
+  }
 }
 
 .main {

@@ -71,3 +71,25 @@ def test_anonymous_visitor_gets_no_profile_menu() -> None:
 
     assert 'data-role="profile-menu"' not in response.text
     assert "static/js/profile-menu.js" not in response.text
+
+
+def test_profile_menu_links_to_profile_library_and_settings(
+    logged_in_client: TestClient,
+) -> None:
+    response = logged_in_client.get("/")
+
+    assert response.status_code == 200
+    for label, href in (
+        ("Профиль", "/profile"),
+        ("Читаю", "/library"),
+        ("Настройки", "/settings"),
+    ):
+        assert f'<a class="profile-menu__item" href="{href}">{label}</a>' in response.text
+
+
+def test_profile_menu_lets_you_log_out(logged_in_client: TestClient) -> None:
+    response = logged_in_client.get("/")
+
+    assert response.status_code == 200
+    assert '<form class="profile-menu__form" method="post" action="/logout">' in response.text
+    assert '<button class="profile-menu__item" type="submit">Выйти</button>' in response.text
