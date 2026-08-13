@@ -5,8 +5,31 @@ from app.main import app
 client = TestClient(app)
 
 
+def test_settings_redirects_to_the_reading_tab() -> None:
+    response = client.get("/settings", follow_redirects=False)
+
+    assert response.status_code == 302
+    assert response.headers["location"] == "/settings/reading"
+
+
+def test_settings_nav_lists_all_three_sections_and_highlights_the_current_one() -> None:
+    response = client.get("/settings/reading")
+
+    assert response.status_code == 200
+    assert 'class="settings-nav__link settings-nav__link--active"' in response.text
+    for label, href in (
+        ("Чтение", "/settings/reading"),
+        ("Аккаунт", "/settings/account"),
+        ("Безопасность", "/settings/security"),
+    ):
+        assert f'href="{href}"' in response.text
+        assert f">{label}</a>" in response.text
+    # Only the current tab (Чтение) is marked active, not all three.
+    assert response.text.count("settings-nav__link--active") == 1
+
+
 def test_settings_page_renders_reader_settings_panel() -> None:
-    response = client.get("/settings")
+    response = client.get("/settings/reading")
 
     assert response.status_code == 200
     assert 'data-role="reader-settings"' in response.text
@@ -24,7 +47,7 @@ def test_settings_page_renders_reader_settings_panel() -> None:
 
 
 def test_settings_page_groups_fields_into_named_sections() -> None:
-    response = client.get("/settings")
+    response = client.get("/settings/reading")
 
     assert response.status_code == 200
     assert "Типографика" in response.text
@@ -37,7 +60,7 @@ def test_settings_page_groups_fields_into_named_sections() -> None:
 
 
 def test_settings_page_offers_a_tap_to_read_toggle() -> None:
-    response = client.get("/settings")
+    response = client.get("/settings/reading")
 
     assert response.status_code == 200
     assert (
@@ -51,7 +74,7 @@ def test_settings_page_offers_a_tap_to_read_toggle() -> None:
 
 
 def test_settings_page_offers_a_paragraph_style_choice() -> None:
-    response = client.get("/settings")
+    response = client.get("/settings/reading")
 
     assert response.status_code == 200
     assert 'data-setting="paragraphStyle"' in response.text
@@ -64,7 +87,7 @@ def test_settings_page_offers_a_paragraph_style_choice() -> None:
 
 
 def test_settings_page_offers_a_paragraph_animation_choice() -> None:
-    response = client.get("/settings")
+    response = client.get("/settings/reading")
 
     assert response.status_code == 200
     assert 'data-setting="paragraphAnimation"' in response.text
@@ -77,7 +100,7 @@ def test_settings_page_offers_a_paragraph_animation_choice() -> None:
 
 
 def test_settings_page_offers_a_reveal_tempo_choice() -> None:
-    response = client.get("/settings")
+    response = client.get("/settings/reading")
 
     assert response.status_code == 200
     assert 'data-setting="revealTempo"' in response.text
@@ -97,22 +120,22 @@ def test_settings_page_offers_a_reveal_tempo_choice() -> None:
 
 
 def test_sidebar_links_to_settings_page() -> None:
-    response = client.get("/settings")
+    response = client.get("/settings/reading")
 
     assert response.status_code == 200
     assert 'href="/settings"' in response.text
-    assert 'sidebar__link--active' in response.text
+    assert "sidebar__link--active" in response.text
 
 
 def test_settings_page_offers_a_monospace_font_choice() -> None:
-    response = client.get("/settings")
+    response = client.get("/settings/reading")
 
     assert response.status_code == 200
     assert '<option value="mono">' in response.text
 
 
 def test_settings_page_font_size_is_a_slider_with_live_preview() -> None:
-    response = client.get("/settings")
+    response = client.get("/settings/reading")
 
     assert response.status_code == 200
     assert 'type="range" id="fontSize" data-setting="fontSize"' in response.text
@@ -120,14 +143,14 @@ def test_settings_page_font_size_is_a_slider_with_live_preview() -> None:
 
 
 def test_settings_page_reading_width_is_a_slider() -> None:
-    response = client.get("/settings")
+    response = client.get("/settings/reading")
 
     assert response.status_code == 200
     assert 'type="range" id="width" data-setting="width"' in response.text
 
 
 def test_settings_page_offers_a_reading_speed_test() -> None:
-    response = client.get("/settings")
+    response = client.get("/settings/reading")
 
     assert response.status_code == 200
     assert 'data-role="reading-speed-test"' in response.text
@@ -143,7 +166,7 @@ def test_settings_page_offers_a_reading_speed_test() -> None:
 
 
 def test_settings_page_offers_manual_reading_speed_entry() -> None:
-    response = client.get("/settings")
+    response = client.get("/settings/reading")
 
     assert response.status_code == 200
     assert 'data-role="reading-speed-manual-input"' in response.text
