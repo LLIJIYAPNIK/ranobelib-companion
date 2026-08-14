@@ -200,6 +200,47 @@ def test_title_size_estimate_endpoint_survives_sample_failure() -> None:
     assert response.json() == {"label": None}
 
 
+def test_title_quickview_renders_metadata_fragment() -> None:
+    title = Title(
+        id=6712,
+        name="Test Novel",
+        rus_name="Тестовый роман",
+        slug="test-novel",
+        slug_url="6712--test-novel",
+        cover=Cover(default="https://example.com/cover.jpg"),
+        age_restriction=Label(id=0, label="16+"),
+        status=Label(id=1, label="Онгоинг"),
+        summary="A short summary.",
+        genres=[Genre(id=5, name="Фэнтези")],
+    )
+    with patch("app.services.client.RanobeLib", return_value=_FakeClient(title)):
+        response = client.get("/titles/6712--test-novel/quickview")
+
+    assert response.status_code == 200
+    assert "Тестовый роман" in response.text
+    assert "A short summary." in response.text
+    assert "Фэнтези" in response.text
+    assert 'href="/titles/6712--test-novel"' in response.text
+    # It's just the metadata fragment, not the full page.
+    assert 'data-role="sidebar"' not in response.text
+    assert 'data-role="chapter-toc-form"' not in response.text
+
+
+def test_title_quickview_does_not_fetch_the_table_of_contents() -> None:
+    # PR 117: the modal only shows what get_info() already returns - no reason to also
+    # pay for get_table_of_contents() (a separate request the chapter list needs) just to
+    # render a preview that never shows chapters.
+    class _BlockingTocClient(_FakeClient):
+        async def get_table_of_contents(self) -> list[Volume]:
+            raise AssertionError("quickview must not fetch the table of contents")
+
+    title = _fake_title()
+    with patch("app.services.client.RanobeLib", return_value=_BlockingTocClient(title)):
+        response = client.get("/titles/6712--test-novel/quickview")
+
+    assert response.status_code == 200
+
+
 def test_show_title_uses_russian_name_as_the_primary_heading() -> None:
     # PR 25: rus_name (already in the SDK's Title model, no issue needed) becomes the
     # primary display name wherever the title's name is shown, with the original name

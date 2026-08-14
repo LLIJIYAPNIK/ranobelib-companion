@@ -1,5 +1,18 @@
 {% macro title_card(slug_url, name, cover_url=none) %}
 <a class="title-card" href="/titles/{{ slug_url }}">
+  <button
+    type="button"
+    class="title-card__quickview"
+    data-role="title-quickview-trigger"
+    data-slug-url="{{ slug_url }}"
+    aria-label="Быстрый просмотр «{{ name }}»"
+    title="Быстрый просмотр"
+  >
+    <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+      <path d="M1 12s4-7 11-7 11 7 11 7-4 7-11 7-11-7-11-7Z"/>
+      <circle cx="12" cy="12" r="3"/>
+    </svg>
+  </button>
   {% if cover_url %}
   <img class="title-card__cover" src="{{ cover_url }}" alt="Обложка «{{ name }}»" loading="lazy">
   {% else %}

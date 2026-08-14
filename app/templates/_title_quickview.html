@@ -1,0 +1,32 @@
+{% set display_name = title.rus_name or title.name %}
+<div class="title-quickview">
+  {% if cover_url %}
+  <img class="title-hero__cover" src="{{ cover_url }}" alt="Обложка «{{ display_name }}»">
+  {% endif %}
+  <div class="title-hero__info">
+    <h2 class="title-quickview__name">{{ display_name }}</h2>
+    {% set alt_names = [] %}
+    {% if title.name != display_name %}{% set _ = alt_names.append(title.name) %}{% endif %}
+    {% if title.eng_name and title.eng_name != display_name %}{% set _ = alt_names.append(title.eng_name) %}{% endif %}
+    {% if alt_names %}
+    <p class="title-hero__alt-name">{{ alt_names | join(" / ") }}</p>
+    {% endif %}
+    <div class="title-hero__meta">
+      <span>{{ title.status.label }}</span>
+      <span>{{ title.age_restriction.label }}</span>
+      {% if title.is_licensed %}<span>Лицензировано</span>{% endif %}
+      {% if title.chapter_count %}<span>{{ title.chapter_count }} глав</span>{% endif %}
+    </div>
+    {% if title.genres %}
+    <div class="title-hero__badges">
+      {% for genre in title.genres %}
+      <span class="badge">{{ genre.name }}</span>
+      {% endfor %}
+    </div>
+    {% endif %}
+    {% if title.summary %}
+    <p class="title-summary title-quickview__summary">{{ title.summary }}</p>
+    {% endif %}
+    <a class="btn btn--primary" href="/titles/{{ title.slug_url }}">Открыть страницу тайтла</a>
+  </div>
+</div>

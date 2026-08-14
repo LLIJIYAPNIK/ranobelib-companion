@@ -87,6 +87,19 @@ def test_show_catalog_renders_cards() -> None:
     assert "static/js/custom-dropdown.js" in response.text
 
 
+def test_show_catalog_renders_a_quickview_trigger_on_each_card() -> None:
+    # PR 117: the eye icon on every title_card() opens a quick-view modal for that title
+    # without navigating away - data-slug-url is what title-quickview.js fetches.
+    page = CatalogPage(items=[_fake_title(1, "High School DxD")], page=1, has_next_page=False)
+    with patch("app.services.catalog.Catalog", return_value=_FakeCatalog(page)):
+        response = client.get("/library/catalog")
+
+    assert response.status_code == 200
+    assert 'data-role="title-quickview-trigger"' in response.text
+    assert 'data-slug-url="1--test-novel-1"' in response.text
+    assert "static/js/title-quickview.js" in response.text
+
+
 def test_show_catalog_renders_back_to_top_button() -> None:
     # PR 102: catalog-back-to-top.js reveals this once scrolled past REVEAL_DEPTH and
     # smooth-scrolls to the top on click - starts `hidden` so it never flashes on load.
