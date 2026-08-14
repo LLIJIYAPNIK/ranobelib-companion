@@ -937,16 +937,55 @@ a {
 }
 
 .catalog-filters__section-title {
-  font-size: 12px;
-  font-weight: 600;
-  color: var(--text-secondary);
   margin: 0 0 10px;
 }
 
+/* PR 99: the section title is now a button (accordion header) instead of plain text -
+   same font styling the <h3> used to carry directly, reset to look like a heading again
+   since a <button> comes with its own UA-agent chrome by default. */
+.catalog-filters__section-toggle {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  width: 100%;
+  padding: 0;
+  border: none;
+  background: none;
+  font: inherit;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--text-secondary);
+  text-align: left;
+  cursor: pointer;
+}
+
+.catalog-filters__section-toggle::after {
+  content: "";
+  flex: 0 0 auto;
+  width: 0;
+  height: 0;
+  border-left: 4px solid transparent;
+  border-right: 4px solid transparent;
+  border-top: 5px solid var(--text-muted);
+  transform: rotate(180deg);
+  transition: transform 0.15s ease;
+}
+
+.catalog-filters__section--collapsed .catalog-filters__section-toggle::after {
+  transform: rotate(0deg);
+}
+
+/* PR 99: collapse animation - max-height is JS-driven (catalog-filters-accordion.js),
+   from 0 up to the options list's own measured scrollHeight, since the list's real
+   height varies a lot between sections (a couple of country radios vs 50+ genre
+   checkboxes) and can't be hardcoded as a single fixed value. */
 .catalog-filters__options {
   display: flex;
   flex-direction: column;
   gap: 10px;
+  overflow: hidden;
+  transition: max-height 0.2s ease;
 }
 
 .catalog-filters__option {
