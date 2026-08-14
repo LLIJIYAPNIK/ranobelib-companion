@@ -73,7 +73,7 @@
             aria-expanded="false"
             title="{{ current_user.email }}"
             aria-label="Меню профиля"
-          >{{ avatar_initials(current_user) }}</button>
+          >{% if avatar_url(current_user) %}<img class="avatar-img" src="{{ avatar_url(current_user) }}" alt="">{% else %}{{ avatar_initials(current_user) }}{% endif %}</button>
           <div class="profile-menu__panel" data-role="profile-menu-panel">
             <a class="profile-menu__item" href="/profile">Профиль</a>
             <a class="profile-menu__item" href="/library">Читаю</a>

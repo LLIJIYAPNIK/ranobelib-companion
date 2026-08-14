@@ -25,6 +25,15 @@ def avatar_initials(user: User) -> str:
     return (segments[0][0] + segments[1][0]).upper()
 
 
+def avatar_url(user: User) -> str | None:
+    """URL of the uploaded avatar image (served from Settings.avatar_dir, mounted at
+    /avatars in app/main.py), or None if the user hasn't uploaded one - templates fall
+    back to `avatar_initials()` in that case."""
+    if not user.avatar_path:
+        return None
+    return f"/avatars/{user.avatar_path}"
+
+
 _EXTENSION_BY_CONTENT_TYPE = {
     "image/jpeg": ".jpg",
     "image/png": ".png",

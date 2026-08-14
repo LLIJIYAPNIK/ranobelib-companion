@@ -263,6 +263,17 @@ a {
   transition: background-color 0.15s ease, transform 0.15s ease;
 }
 
+/* PR 96: an uploaded avatar image, shown instead of the initials text - shared by
+   .sidebar__avatar and .profile__avatar, both of which are already fixed-size flex
+   containers with border-radius: 50%, so the image just needs to fill that box. */
+.avatar-img {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  border-radius: inherit;
+}
+
 @media (hover: hover) {
   .sidebar__avatar:hover {
     background: var(--accent-teal);
