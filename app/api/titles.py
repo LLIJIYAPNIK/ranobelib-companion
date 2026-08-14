@@ -92,6 +92,25 @@ async def show_title(
     return response
 
 
+@router.get("/{slug_url}/quickview", response_model=None)
+async def title_quickview(request: Request, slug_url: str) -> HTMLResponse:
+    """PR 117: just the metadata markup, no base.html - what the "quick view" eye icon
+    on a title card (_title_card.html) fetches into its modal (title-quickview.js).
+    Reuses the exact same open_client()/get_info() call show_title() makes above - no new
+    metadata-assembly logic - just skips get_table_of_contents(), since the modal only
+    shows the summary/badges/credits already available from get_info(), not the chapter
+    list.
+    """
+    async with open_client(slug_url) as lib:
+        title = await lib.get_info()
+    cover_url = title.cover.default or title.cover.md or title.cover.thumbnail
+    return templates.TemplateResponse(
+        request,
+        "_title_quickview.html",
+        {"title": title, "cover_url": cover_url},
+    )
+
+
 @router.get("/{slug_url}/size-estimate")
 async def title_size_estimate(slug_url: str) -> dict[str, str | None]:
     """PR 43: `estimate_title_size()` samples several chapters' content, which can take
