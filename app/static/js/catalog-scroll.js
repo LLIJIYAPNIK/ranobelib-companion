@@ -29,7 +29,12 @@
     if (grid.dataset.genres) {
       for (const id of grid.dataset.genres.split(",")) params.append("genres", id);
     }
-    if (grid.dataset.country) params.set("country", grid.dataset.country);
+    // PR 100: countries is a repeated list param now (was a single value), same
+    // comma-split-and-append shape as genres/tags above - data-country itself keeps its
+    // pre-PR-100 attribute name, only its value format changed to a comma-joined list.
+    if (grid.dataset.country) {
+      for (const id of grid.dataset.country.split(",")) params.append("countries", id);
+    }
     if (grid.dataset.tags) {
       for (const id of grid.dataset.tags.split(",")) params.append("tags", id);
     }
