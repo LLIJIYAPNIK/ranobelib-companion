@@ -881,9 +881,19 @@ a {
   gap: 24px;
 }
 
+/* PR 112: without this, opening/closing .catalog-filters (which resizes this flex
+   sibling by appearing/disappearing via `hidden`, PR 98) snapped the grid straight to its
+   new width in a single frame while the panel itself already animates in/out smoothly.
+   Same duration as .catalog-filters-in below so both edges of the layout settle together.
+   Below the PR 103 mobile breakpoint the panel is pulled out of flow entirely
+   (position: fixed), so this never has anything to animate there - nothing to guard. The
+   PR 60 jank this could otherwise reintroduce on a long infinite-scrolled grid is already
+   covered by .title-card's own content-visibility: auto, which skips layout/paint for
+   off-screen cards regardless of what triggers the resize. */
 .catalog-layout__results {
   flex: 1;
   min-width: 0;
+  transition: width 0.18s ease;
 }
 
 /* PR 102: floating "back to top" button for the catalog's infinite-scroll grid (PR 15/24) -
