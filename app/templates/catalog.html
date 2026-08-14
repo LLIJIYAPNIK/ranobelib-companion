@@ -11,11 +11,13 @@
       placeholder="Поиск по каталогу…"
       value="{{ query or '' }}"
     >
-    <select name="sort" class="toc__export-format" aria-label="Сортировка">
-      {% for value, label in sort_options.items() %}
-      <option value="{{ value }}"{% if value == sort %} selected{% endif %}>{{ label }}</option>
-      {% endfor %}
-    </select>
+    <div class="catalog-sort">
+      <select name="sort" class="toc__export-format" aria-label="Сортировка">
+        {% for value, label in sort_options.items() %}
+        <option value="{{ value }}"{% if value == sort %} selected{% endif %}>{{ label }}</option>
+        {% endfor %}
+      </select>
+    </div>
     <button class="search-button" type="submit">Искать</button>
   </form>
   {% if all_genres or all_countries %}

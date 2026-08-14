@@ -1607,6 +1607,11 @@ a {
   display: none;
 }
 
+/* PR 115: nowrap everywhere this trigger is used (safe - every other dropdown's options
+   are short enough to already fit on one line: export formats, font names, "Вариант
+   перевода" choices). The catalog sort dropdown's longer labels ("По дате добавления")
+   need the width bump below too, or nowrap alone would just overflow past the border
+   instead of wrapping. */
 .dropdown__trigger {
   appearance: none;
   -webkit-appearance: none;
@@ -1615,8 +1620,21 @@ a {
   justify-content: space-between;
   gap: 10px;
   width: 100%;
+  white-space: nowrap;
   text-align: left;
   font-family: inherit;
+}
+
+/* PR 115: scoped to .catalog-sort (the wrapper around catalog.html's own sort <select>,
+   see catalog.html) rather than widening .dropdown__trigger globally - every other
+   dropdown reuses this exact same trigger/listbox/option markup
+   (custom-dropdown.js enhances every select.toc__export-format identically) and is
+   already sized fine for its own shorter labels. min-width is set for the longest
+   current sort label ("По дате добавления"); .dropdown__listbox needs no separate rule
+   since its own min-width: 100% already tracks this wrapper's width. */
+.catalog-sort .dropdown__trigger {
+  width: auto;
+  min-width: 190px;
 }
 
 .dropdown__trigger::after {
