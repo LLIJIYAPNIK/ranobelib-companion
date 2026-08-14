@@ -87,6 +87,20 @@ def test_show_catalog_renders_cards() -> None:
     assert "static/js/custom-dropdown.js" in response.text
 
 
+def test_show_catalog_renders_back_to_top_button() -> None:
+    # PR 102: catalog-back-to-top.js reveals this once scrolled past REVEAL_DEPTH and
+    # smooth-scrolls to the top on click - starts `hidden` so it never flashes on load.
+    page = CatalogPage(items=[], page=1, has_next_page=False)
+    with patch("app.services.catalog.Catalog", return_value=_FakeCatalog(page)):
+        response = client.get("/library/catalog")
+
+    assert response.status_code == 200
+    button_tag = re.search(r'<button[^>]*data-role="catalog-back-to-top"[^>]*>', response.text)
+    assert button_tag is not None
+    assert "hidden" in button_tag.group(0)
+    assert "static/js/catalog-back-to-top.js" in response.text
+
+
 def test_show_catalog_header_reveals_on_scroll_up() -> None:
     # PR 101: catalog-header-scroll.js hides/reveals .header on scroll direction - both the
     # hook it queries for and the script itself need to be on the page for that to work.
