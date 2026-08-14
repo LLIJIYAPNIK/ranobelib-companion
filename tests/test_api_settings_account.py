@@ -140,6 +140,24 @@ def test_saved_nickname_switches_the_sidebar_avatar_initials(client: TestClient)
     assert ">AW</button>" not in home.text
 
 
+def test_avatar_upload_is_a_clickable_preview_that_auto_submits(client: TestClient) -> None:
+    # PR 109: no separate file field/"Загрузить" button - the round avatar preview is
+    # itself the <label> wrapping the (visually hidden) file input, and avatar-upload.js
+    # submits the form as soon as a file is chosen.
+    _register(client, "alice@example.com")
+
+    response = client.get("/settings/account")
+
+    assert response.status_code == 200
+    assert 'data-role="avatar-upload-form"' in response.text
+    assert 'class="avatar-upload"' in response.text
+    assert 'data-role="avatar-upload-preview"' in response.text
+    assert 'class="avatar-upload__initials"' in response.text
+    assert 'data-role="avatar-upload-input"' in response.text
+    assert "static/js/avatar-upload.js" in response.text
+    assert ">Загрузить<" not in response.text
+
+
 def test_anonymous_avatar_upload_is_redirected_to_login(client: TestClient) -> None:
     response = client.post(
         "/settings/account/avatar",
