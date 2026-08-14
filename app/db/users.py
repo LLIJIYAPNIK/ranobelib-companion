@@ -15,6 +15,7 @@ class User:
     created_at: str
     nickname: str | None = None
     bio: str | None = None
+    avatar_path: str | None = None
 
 
 def create_user(conn: sqlite3.Connection, email: str, password_hash: str) -> User:
@@ -58,6 +59,16 @@ def update_user_account(
     return user
 
 
+def update_user_avatar(conn: sqlite3.Connection, user_id: int, avatar_path: str) -> User:
+    """Called after a validated image has already been written to disk (see
+    `app/auth/avatar.py`'s `save_avatar`) - this just records the resulting filename."""
+    conn.execute("UPDATE users SET avatar_path = ? WHERE id = ?", (avatar_path, user_id))
+    conn.commit()
+    user = get_user_by_id(conn, user_id)
+    assert user is not None  # just updated
+    return user
+
+
 def update_user_password(conn: sqlite3.Connection, user_id: int, password_hash: str) -> User:
     """No uniqueness concerns here unlike `update_user_account` - `password_hash` isn't a
     unique column, so there's nothing to check before writing it. Callers (see
@@ -72,7 +83,8 @@ def update_user_password(conn: sqlite3.Connection, user_id: int, password_hash: 
 
 def get_user_by_email(conn: sqlite3.Connection, email: str) -> User | None:
     row = conn.execute(
-        "SELECT id, email, password_hash, created_at, nickname, bio FROM users WHERE email = ?",
+        "SELECT id, email, password_hash, created_at, nickname, bio, avatar_path "
+        "FROM users WHERE email = ?",
         (_normalize_email(email),),
     ).fetchone()
     return _row_to_user(row) if row is not None else None
@@ -80,7 +92,8 @@ def get_user_by_email(conn: sqlite3.Connection, email: str) -> User | None:
 
 def get_user_by_id(conn: sqlite3.Connection, user_id: int) -> User | None:
     row = conn.execute(
-        "SELECT id, email, password_hash, created_at, nickname, bio FROM users WHERE id = ?",
+        "SELECT id, email, password_hash, created_at, nickname, bio, avatar_path "
+        "FROM users WHERE id = ?",
         (user_id,),
     ).fetchone()
     return _row_to_user(row) if row is not None else None
@@ -94,6 +107,7 @@ def _row_to_user(row: sqlite3.Row) -> User:
         created_at=row["created_at"],
         nickname=row["nickname"],
         bio=row["bio"],
+        avatar_path=row["avatar_path"],
     )
 
 
