@@ -83,14 +83,28 @@
         <p class="reading-speed-test__sample" data-role="reading-speed-sample" hidden></p>
         <label class="reader-settings__field reading-speed-test__manual-field">
           <span>Или укажите вручную, слов/мин</span>
-          <input
-            type="number"
-            data-role="reading-speed-manual-input"
-            min="50"
-            max="1000"
-            step="10"
-            placeholder="слов/мин"
-          >
+          <span class="reading-speed-test__stepper">
+            <button
+              type="button"
+              class="reading-speed-test__stepper-btn"
+              data-role="reading-speed-manual-decrement"
+              aria-label="Уменьшить скорость чтения"
+            >−</button>
+            <input
+              type="number"
+              data-role="reading-speed-manual-input"
+              min="50"
+              max="1000"
+              step="10"
+              placeholder="слов/мин"
+            >
+            <button
+              type="button"
+              class="reading-speed-test__stepper-btn"
+              data-role="reading-speed-manual-increment"
+              aria-label="Увеличить скорость чтения"
+            >+</button>
+          </span>
         </label>
       </div>
     </section>
