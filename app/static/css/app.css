@@ -2056,22 +2056,78 @@ a {
    <select>/<input type="range"> since a typed number is the whole point here. */
 .reading-speed-test__manual-field {
   margin-top: 14px;
-  max-width: 160px;
+  max-width: 200px;
+}
+
+/* PR 94: input flanked by custom +/- buttons instead of the native spinner. */
+.reading-speed-test__stepper {
+  display: flex;
+  align-items: stretch;
 }
 
 .reading-speed-test__manual-field input {
   height: 36px;
-  padding: 0 10px;
+  min-width: 0;
+  flex: 1 1 auto;
+  padding: 0 8px;
   border: 1px solid var(--border);
-  border-radius: 8px;
+  border-left: none;
+  border-right: none;
   background: var(--bg-surface);
   color: var(--text-primary);
   font-family: var(--font-mono);
   font-size: 13px;
+  text-align: center;
+  /* The native up/down spinner can't be restyled in any engine (same limitation PR 54 hit
+     with <select>) - hidden here, replaced with the custom +/- buttons flanking it. */
+  -moz-appearance: textfield;
+}
+
+.reading-speed-test__manual-field input::-webkit-outer-spin-button,
+.reading-speed-test__manual-field input::-webkit-inner-spin-button {
+  -webkit-appearance: none;
+  margin: 0;
 }
 
 .reading-speed-test__manual-field input::placeholder {
   color: var(--text-muted);
+}
+
+.reading-speed-test__stepper-btn {
+  flex: 0 0 auto;
+  width: 32px;
+  height: 36px;
+  border: 1px solid var(--border);
+  background: var(--bg-surface);
+  color: var(--text-secondary);
+  font-family: var(--font-mono);
+  font-size: 15px;
+  line-height: 1;
+  cursor: pointer;
+  transition: color 0.15s ease, border-color 0.15s ease, background-color 0.15s ease;
+}
+
+.reading-speed-test__stepper-btn:first-child {
+  border-radius: 8px 0 0 8px;
+}
+
+.reading-speed-test__stepper-btn:last-child {
+  border-radius: 0 8px 8px 0;
+}
+
+.reading-speed-test__stepper-btn:focus-visible {
+  position: relative;
+  z-index: 1;
+  outline: none;
+  border-color: var(--accent-teal);
+  box-shadow: 0 0 0 3px rgba(34, 211, 197, 0.18);
+}
+
+@media (hover: hover) {
+  .reading-speed-test__stepper-btn:hover {
+    color: var(--accent-teal);
+    border-color: var(--accent-teal);
+  }
 }
 
 .reading-speed-test__manual-field input:focus-visible {

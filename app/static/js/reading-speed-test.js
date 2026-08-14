@@ -70,7 +70,9 @@
   const sampleEl = root.querySelector('[data-role="reading-speed-sample"]');
   const valueEl = root.querySelector('[data-role="reading-speed-value"]');
   const manualInput = root.querySelector('[data-role="reading-speed-manual-input"]');
-  if (!startBtn || !statusEl || !sampleEl || !valueEl || !manualInput) return;
+  const manualDecrement = root.querySelector('[data-role="reading-speed-manual-decrement"]');
+  const manualIncrement = root.querySelector('[data-role="reading-speed-manual-increment"]');
+  if (!startBtn || !statusEl || !sampleEl || !valueEl || !manualInput || !manualDecrement || !manualIncrement) return;
 
   function loadSettings() {
     try {
@@ -155,6 +157,26 @@
     saveWpm(wpm);
     renderCurrentValue();
   });
+
+  // PR 94: +/- buttons standing in for the hidden native spinner. stepUp()/stepDown()
+  // read the field's own min/max/step attributes and clamp at the boundaries for us, so
+  // this doesn't duplicate MIN_WPM/MAX_WPM/step logic. An empty field is just seeded with
+  // the last saved value (or MIN_WPM) and left there for this click - stepUp() on a truly
+  // empty field starts from the field's min regardless of what's already stored, and would
+  // silently skip past that seeded value on the very first click otherwise.
+  function nudge(direction) {
+    if (!manualInput.value) {
+      manualInput.value = String(loadSettings().readingSpeedWpm || MIN_WPM);
+    } else if (direction > 0) {
+      manualInput.stepUp();
+    } else {
+      manualInput.stepDown();
+    }
+    manualInput.dispatchEvent(new Event("change"));
+  }
+
+  manualDecrement.addEventListener("click", () => nudge(-1));
+  manualIncrement.addEventListener("click", () => nudge(1));
 
   renderCurrentValue();
 })();
