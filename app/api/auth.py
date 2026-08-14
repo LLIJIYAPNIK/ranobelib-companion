@@ -29,6 +29,7 @@ async def register(
     email: str = Form(...),
     password: str = Form(...),
     password_confirm: str = Form(...),
+    nickname: str = Form(default=""),
 ) -> Response:
     conn = get_connection()
     error: str | None = None
@@ -46,11 +47,11 @@ async def register(
         return templates.TemplateResponse(
             request,
             "register.html",
-            {"error": error, "submitted_email": email},
+            {"error": error, "submitted_email": email, "submitted_nickname": nickname},
             status_code=400,
         )
 
-    user = create_user(conn, email, password_hash)
+    user = create_user(conn, email, password_hash, nickname.strip() or None)
     request.session["user_id"] = user.id
     return RedirectResponse(url="/", status_code=303)
 
