@@ -2,8 +2,8 @@
 {% block content %}
 <main class="content">
   <h1 class="toc__title">Настройки</h1>
-  <div class="settings-layout">
-    <nav class="settings-nav" aria-label="Разделы настроек">
+  <div class="settings-layout" data-role="settings-layout">
+    <nav class="settings-nav" data-role="settings-nav" aria-label="Разделы настроек">
       <a
         class="settings-nav__link{% if active_settings_section == 'account' %} settings-nav__link--active{% endif %}"
         href="/settings/account"
@@ -18,9 +18,11 @@
       >Чтение</a>
     </nav>
     <div class="settings-content">
+      <a class="settings-back" data-role="settings-back" href="/settings" hidden>← Разделы</a>
       {% block settings_content %}{% endblock %}
     </div>
   </div>
 </main>
 {% block settings_scripts %}{% endblock %}
+<script src="{{ url_for('static', path='js/settings-mobile-nav.js') }}" defer></script>
 {% endblock %}

@@ -2112,6 +2112,30 @@ a {
   min-width: 0;
 }
 
+/* PR 104: only ever shown by settings-mobile-nav.js, on mobile, in "detail" state - starts
+   `hidden` (settings_layout.html) so desktop and no-JS mobile visitors never see a back
+   link with nothing useful to go back to (the nav column/tab row is already right there). */
+.settings-back {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  margin-bottom: 16px;
+  color: var(--text-muted);
+  text-decoration: none;
+  font-size: 13px;
+  transition: color 0.15s ease;
+}
+
+.settings-back[hidden] {
+  display: none;
+}
+
+@media (hover: hover) {
+  .settings-back:hover {
+    color: var(--accent-teal);
+  }
+}
+
 .reader-settings-page {
   max-width: 480px;
 }
@@ -2878,6 +2902,33 @@ a {
   .settings-nav__link {
     flex: 0 0 auto;
     white-space: nowrap;
+  }
+
+  /* PR 104: settings-mobile-nav.js's progressive enhancement over the plain horizontal
+     tab row above - once it confirms this breakpoint and there's JS to drive the two
+     states, --mobile-js turns the nav back into a full vertical list (this now *is* the
+     "choose a section" screen, not a strip permanently pinned above the content), and
+     --mobile-detail (set right before following a nav link) swaps to showing just the
+     chosen section's content plus the back link instead. */
+  .settings-layout--mobile-js .settings-nav {
+    flex-direction: column;
+    overflow-x: visible;
+    gap: 6px;
+  }
+
+  .settings-layout--mobile-js .settings-nav__link {
+    white-space: normal;
+    padding: 14px 16px;
+    border: 1px solid var(--border);
+    border-radius: 8px;
+  }
+
+  .settings-layout--mobile-js:not(.settings-layout--mobile-detail) .settings-content {
+    display: none;
+  }
+
+  .settings-layout--mobile-js.settings-layout--mobile-detail .settings-nav {
+    display: none;
   }
 
   .search-form {
