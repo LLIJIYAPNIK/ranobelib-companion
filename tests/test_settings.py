@@ -35,6 +35,22 @@ def test_settings_nav_lists_all_three_sections_and_highlights_the_current_one() 
     assert response.text.count("settings-nav__link--active") == 1
 
 
+def test_settings_page_renders_mobile_nav_scaffolding() -> None:
+    # PR 104: settings-mobile-nav.js drives the mobile "list first, then a section with a
+    # back link" flow off these hooks - the back link starts `hidden` so desktop and
+    # no-JS mobile visitors never see it (see app.css's [hidden] override).
+    response = client.get("/settings/reading")
+
+    assert response.status_code == 200
+    assert 'data-role="settings-layout"' in response.text
+    assert 'data-role="settings-nav"' in response.text
+    back_tag = re.search(r'<a[^>]*data-role="settings-back"[^>]*>', response.text)
+    assert back_tag is not None
+    assert "hidden" in back_tag.group(0)
+    assert 'href="/settings"' in back_tag.group(0)
+    assert "static/js/settings-mobile-nav.js" in response.text
+
+
 def test_settings_account_page_shows_a_locked_screen_for_anonymous_visitors() -> None:
     # PR 90: the account form only makes sense for a logged-in visitor - see
     # tests/test_api_settings_account.py for the form itself.
