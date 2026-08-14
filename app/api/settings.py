@@ -2,13 +2,20 @@
 
 from typing import Annotated
 
-from fastapi import APIRouter, Depends, Form, Request
+from fastapi import APIRouter, Depends, File, Form, Request, UploadFile
 from fastapi.responses import HTMLResponse, RedirectResponse
 
+from app.auth.avatar import AvatarUploadError, save_avatar
 from app.auth.dependencies import get_current_user, require_current_user
 from app.auth.passwords import PasswordTooLongError, hash_password, verify_password
 from app.db.connection import get_connection
-from app.db.users import User, get_user_by_email, update_user_account, update_user_password
+from app.db.users import (
+    User,
+    get_user_by_email,
+    update_user_account,
+    update_user_avatar,
+    update_user_password,
+)
 from app.templating import templates
 
 router = APIRouter()
@@ -87,6 +94,44 @@ async def update_account(
             "email": updated.email,
             "bio": updated.bio,
             "saved": True,
+        },
+    )
+
+
+@router.post("/settings/account/avatar", response_model=None)
+async def upload_avatar(
+    request: Request,
+    user: Annotated[User, Depends(require_current_user)],
+    avatar: Annotated[UploadFile, File(...)],
+) -> HTMLResponse:
+    try:
+        avatar_path = await save_avatar(avatar, user.id)
+    except AvatarUploadError as exc:
+        return templates.TemplateResponse(
+            request,
+            "settings_account.html",
+            {
+                "active_nav": "settings",
+                "active_settings_section": "account",
+                "nickname": user.nickname,
+                "email": user.email,
+                "bio": user.bio,
+                "avatar_error": str(exc),
+            },
+            status_code=400,
+        )
+
+    update_user_avatar(get_connection(), user.id, avatar_path)
+    return templates.TemplateResponse(
+        request,
+        "settings_account.html",
+        {
+            "active_nav": "settings",
+            "active_settings_section": "account",
+            "nickname": user.nickname,
+            "email": user.email,
+            "bio": user.bio,
+            "avatar_saved": True,
         },
     )
 

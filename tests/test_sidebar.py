@@ -15,6 +15,7 @@ client = TestClient(app)
 def logged_in_client(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> Iterator[TestClient]:
     monkeypatch.setenv("DB_PATH", str(tmp_path / "test.db"))
     monkeypatch.setenv("SESSION_SECRET_KEY", "test-secret")
+    monkeypatch.setenv("AVATAR_DIR", str(tmp_path / "avatars"))
     get_settings.cache_clear()
     db_connection._connection = None
 
@@ -64,6 +65,21 @@ def test_logged_in_visitor_sees_a_profile_menu_trigger_avatar(
     assert 'title="alice.wong@example.com"' in response.text
     assert ">AW</button>" in response.text
     assert "static/js/profile-menu.js" in response.text
+
+
+def test_profile_menu_trigger_shows_the_uploaded_avatar_image_over_initials(
+    logged_in_client: TestClient,
+) -> None:
+    logged_in_client.post(
+        "/settings/account/avatar",
+        files={"avatar": ("me.png", b"\x89PNG\r\n\x1a\n" + b"\x00" * 32, "image/png")},
+    )
+
+    response = logged_in_client.get("/")
+
+    assert response.status_code == 200
+    assert '<img class="avatar-img" src="/avatars/' in response.text
+    assert ">AW</button>" not in response.text
 
 
 def test_anonymous_visitor_gets_no_profile_menu() -> None:

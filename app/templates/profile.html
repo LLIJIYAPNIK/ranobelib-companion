@@ -5,7 +5,7 @@
   <h1 class="toc__title">Профиль</h1>
   {% if current_user %}
   <div class="profile">
-    <div class="profile__avatar" aria-hidden="true">{{ avatar_initials(current_user) }}</div>
+    <div class="profile__avatar" aria-hidden="true">{% if avatar_url(current_user) %}<img class="avatar-img" src="{{ avatar_url(current_user) }}" alt="">{% else %}{{ avatar_initials(current_user) }}{% endif %}</div>
     <div class="profile__info">
       <p class="profile__name">{{ current_user.nickname or current_user.email }}</p>
       {% if current_user.bio %}

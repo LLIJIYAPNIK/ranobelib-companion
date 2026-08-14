@@ -3,7 +3,13 @@ import sqlite3
 import pytest
 
 from app.db.migrate import run_migrations
-from app.db.users import create_user, get_user_by_email, get_user_by_id, update_user_account
+from app.db.users import (
+    create_user,
+    get_user_by_email,
+    get_user_by_id,
+    update_user_account,
+    update_user_avatar,
+)
 
 
 @pytest.fixture
@@ -124,3 +130,28 @@ def test_update_user_account_nickname_need_not_be_unique(conn: sqlite3.Connectio
     updated_bob = update_user_account(conn, bob.id, email=bob.email, nickname="Same", bio=None)
 
     assert updated_bob.nickname == "Same"
+
+
+def test_create_user_has_no_avatar_by_default(conn: sqlite3.Connection) -> None:
+    user = create_user(conn, "alice@example.com", "hash1")
+
+    assert user.avatar_path is None
+
+
+def test_update_user_avatar_sets_the_path(conn: sqlite3.Connection) -> None:
+    user = create_user(conn, "alice@example.com", "hash1")
+
+    updated = update_user_avatar(conn, user.id, "1.png")
+
+    assert updated.avatar_path == "1.png"
+    assert get_user_by_id(conn, user.id) == updated
+
+
+def test_update_user_avatar_leaves_other_fields_untouched(conn: sqlite3.Connection) -> None:
+    user = create_user(conn, "alice@example.com", "hash1")
+    update_user_account(conn, user.id, email=user.email, nickname="Alice", bio="Hi")
+
+    updated = update_user_avatar(conn, user.id, "1.png")
+
+    assert updated.nickname == "Alice"
+    assert updated.bio == "Hi"

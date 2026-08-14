@@ -2,6 +2,31 @@
 {% block title %}Аккаунт — Настройки — RanobeLib Companion{% endblock %}
 {% block settings_content %}
   {% if current_user %}
+  {% if avatar_saved %}
+  <p class="content__notice content__notice--success">Аватар обновлён</p>
+  {% endif %}
+  {% if avatar_error %}
+  <p class="form-error">{{ avatar_error }}</p>
+  {% endif %}
+  <form
+    class="settings-form settings-form--avatar"
+    method="post"
+    action="/settings/account/avatar"
+    enctype="multipart/form-data"
+  >
+    <div class="auth-form__field">
+      <label class="auth-form__label" for="account-avatar">Аватар</label>
+      <input
+        class="auth-form__input"
+        id="account-avatar"
+        type="file"
+        name="avatar"
+        accept="image/png,image/jpeg,image/webp"
+        required
+      >
+    </div>
+    <button class="btn btn--secondary" type="submit">Загрузить</button>
+  </form>
   {% if saved %}
   <p class="content__notice content__notice--success">Изменения сохранены</p>
   {% endif %}

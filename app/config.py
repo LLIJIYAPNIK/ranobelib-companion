@@ -31,6 +31,11 @@ default (14 days) so unchecked behaves exactly as before PR 36.
 download's exported file (``app/jobs/store.py``'s ``sweep_expired_result_files()``, PR 50):
 normally deleted the moment a visitor actually downloads it (job page or the global
 "file ready" toast), this TTL only matters if nobody ever comes back to click it.
+
+``avatar_dir`` holds uploaded profile avatar images (PR 96) - application user data, like
+``db_path``, not part of the SDK's public response cache, so it's kept separate from
+``cache_dir``. Needs the same persistent-volume treatment in a container deployment,
+otherwise avatars vanish on every restart.
 """
 
 from __future__ import annotations
@@ -50,6 +55,7 @@ _DEFAULT_DB_PATH = ".ranobelib_companion.db"
 _DEFAULT_SESSION_MAX_AGE_SECONDS = 14 * 24 * 60 * 60  # 14 days - Starlette's own default
 _DEFAULT_SESSION_REMEMBER_MAX_AGE_SECONDS = 90 * 24 * 60 * 60  # 90 days
 _DEFAULT_DOWNLOAD_FILE_TTL_SECONDS = 30 * 60  # 30 minutes
+_DEFAULT_AVATAR_DIR = ".ranobelib_avatars"
 
 
 @dataclass(frozen=True)
@@ -61,6 +67,7 @@ class Settings:
     session_max_age: int
     session_remember_max_age: int
     download_file_ttl: float
+    avatar_dir: Path
 
 
 @lru_cache
@@ -88,4 +95,5 @@ def get_settings() -> Settings:
         download_file_ttl=float(
             os.environ.get("DOWNLOAD_FILE_TTL_SECONDS", _DEFAULT_DOWNLOAD_FILE_TTL_SECONDS)
         ),
+        avatar_dir=Path(os.environ.get("AVATAR_DIR", _DEFAULT_AVATAR_DIR)),
     )
