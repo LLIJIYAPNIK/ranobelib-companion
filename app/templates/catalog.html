@@ -17,16 +17,16 @@
       {% endfor %}
     </select>
     <button class="search-button" type="submit">Искать</button>
-    {% if all_genres or all_countries %}
-    <button
-      class="search-form__filters-toggle"
-      type="button"
-      data-role="catalog-filters-toggle"
-      aria-expanded="false"
-      aria-controls="catalog-filters-panel"
-    >Фильтры</button>
-    {% endif %}
   </form>
+  {% if all_genres or all_countries %}
+  <button
+    class="header__filters-toggle"
+    type="button"
+    data-role="catalog-filters-toggle"
+    aria-expanded="false"
+    aria-controls="catalog-filters-panel"
+  >Фильтры</button>
+  {% endif %}
 </header>
 {% set active_filters = [] %}
 {% if genres %}{% set _ = active_filters.append("Жанр" ~ ("ы" if genres | length > 1 else "") ~ ": " ~ (selected_genre_names | join(", "))) %}{% endif %}

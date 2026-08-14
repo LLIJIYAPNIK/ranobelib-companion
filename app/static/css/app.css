@@ -445,11 +445,13 @@ a {
   transition: transform 0.15s ease, box-shadow 0.15s ease;
 }
 
-/* PR 98: opens/closes .catalog-filters (see below) - pushed to the form's own right edge
-   with margin-left: auto rather than just trailing the search button with the same gap
-   everything else in the row uses, so it reads as a separate action from the search
-   itself. Only rendered when there's something to filter by (catalog.html). */
-.search-form__filters-toggle {
+/* PR 98/111: opens/closes .catalog-filters (see below) - a .header child (a sibling of
+   .search-form, not nested inside it), pushed to .header's own right edge with
+   margin-left: auto. Nesting it inside .search-form (which caps out at max-width: 480px,
+   PR 98's original placement) only pushed it to that form's right edge, stranded
+   somewhere in the middle of a wide header instead of the actual right edge of the page -
+   see PR 111. Only rendered when there's something to filter by (catalog.html). */
+.header__filters-toggle {
   height: 36px;
   padding: 0 18px;
   margin-left: auto;
@@ -1502,7 +1504,7 @@ a {
    shadowed state "stuck" until then (same issue fixed for the sidebar in PR 42). */
 @media (hover: hover) {
   .btn--secondary:hover,
-  .search-form__filters-toggle:hover {
+  .header__filters-toggle:hover {
     border-color: var(--accent-teal);
   }
 
