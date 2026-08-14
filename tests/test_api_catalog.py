@@ -383,6 +383,17 @@ def test_show_catalog_omits_the_filters_toggle_when_there_is_nothing_to_filter_b
 
     assert response.status_code == 200
     assert 'data-role="catalog-filters-toggle"' not in response.text
+    assert "catalog-filters-toggle.js" not in response.text
+
+
+def test_show_catalog_includes_the_filters_toggle_script_when_there_are_filters() -> None:
+    page = CatalogPage(items=[], page=1, has_next_page=False)
+    genres = [Genre(id=5, name="Фэнтези")]
+    with patch("app.services.catalog.Catalog", return_value=_FakeCatalog(page, genres=genres)):
+        response = client.get("/library/catalog")
+
+    assert response.status_code == 200
+    assert "static/js/catalog-filters-toggle.js" in response.text
 
 
 def _country_radio(html: str, value: str) -> re.Match[str] | None:

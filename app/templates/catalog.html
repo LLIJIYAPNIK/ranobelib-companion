@@ -121,5 +121,8 @@
   {% endif %}
   <script src="{{ url_for('static', path='js/catalog-scroll.js') }}" defer></script>
   <script src="{{ url_for('static', path='js/custom-dropdown.js') }}" defer></script>
+  {% if all_genres or all_countries %}
+  <script src="{{ url_for('static', path='js/catalog-filters-toggle.js') }}" defer></script>
+  {% endif %}
 </main>
 {% endblock %}
