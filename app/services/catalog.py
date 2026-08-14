@@ -27,9 +27,10 @@ async def list_genres() -> list[Genre]:
 
 
 async def list_countries() -> list[Country]:
-    """Every country `Catalog.list_titles(country=...)` can filter by (PR 85's "Страна"
-    filter section), sourced from `Catalog.list_countries()` (SDK >=0.8.0) rather than a
-    hardcoded id -> name table on the web layer, same reasoning as `list_genres()`.
+    """Every country `Catalog.list_titles(countries=[...])` can filter by (PR 85's
+    "Страна" filter section, checkboxes since PR 100), sourced from
+    `Catalog.list_countries()` (SDK >=0.8.0) rather than a hardcoded id -> name table on
+    the web layer, same reasoning as `list_genres()`.
     """
     async with get_catalog() as catalog:
         return await catalog.list_countries()
