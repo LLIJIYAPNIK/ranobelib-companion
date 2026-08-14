@@ -421,6 +421,25 @@ a {
   transition: transform 0.15s ease, box-shadow 0.15s ease;
 }
 
+/* PR 98: opens/closes .catalog-filters (see below) - pushed to the form's own right edge
+   with margin-left: auto rather than just trailing the search button with the same gap
+   everything else in the row uses, so it reads as a separate action from the search
+   itself. Only rendered when there's something to filter by (catalog.html). */
+.search-form__filters-toggle {
+  height: 36px;
+  padding: 0 18px;
+  margin-left: auto;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  background: transparent;
+  color: var(--text-secondary);
+  font-size: 13px;
+  font-weight: 600;
+  font-family: inherit;
+  cursor: pointer;
+  transition: color 0.15s ease, border-color 0.15s ease;
+}
+
 .content {
   flex: 1;
   padding: 24px 32px;
@@ -841,6 +860,13 @@ a {
   min-width: 0;
 }
 
+/* PR 98: fades/slides in whenever the panel goes from `hidden` to shown (same one-shot
+   entrance animation pattern as .library-tabs-content-in - toggling `hidden` restarts a
+   CSS `animation` reliably, unlike `transition`, which needs the element already
+   rendered to detect a property change). Closing needs the reverse:
+   catalog-filters-toggle.js adds --closing first to transition opacity/transform down,
+   then sets `hidden`
+   itself once that finishes - `hidden` can't be delayed via CSS alone. */
 .catalog-filters {
   flex: 0 0 240px;
   position: sticky;
@@ -851,11 +877,57 @@ a {
   background: var(--bg-surface);
   border: 1px solid var(--border);
   border-radius: 8px;
+  animation: catalog-filters-in 0.18s ease-out;
+  transition: opacity 0.15s ease, transform 0.15s ease;
+}
+
+.catalog-filters--closing {
+  opacity: 0;
+  transform: translateY(-6px);
+  pointer-events: none;
+}
+
+@keyframes catalog-filters-in {
+  from {
+    opacity: 0;
+    transform: translateY(6px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* PR 98: title + close button on one row, replacing the title's own margin-bottom. */
+.catalog-filters__header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin: 0 0 12px;
 }
 
 .catalog-filters__title {
   font-size: 15px;
-  margin: 0 0 12px;
+  margin: 0;
+}
+
+.catalog-filters__close {
+  flex: 0 0 auto;
+  background: none;
+  border: none;
+  padding: 4px;
+  color: var(--text-muted);
+  font-size: 18px;
+  line-height: 1;
+  cursor: pointer;
+  transition: color 0.15s ease;
+}
+
+@media (hover: hover) {
+  .catalog-filters__close:hover {
+    color: var(--accent-teal);
+  }
 }
 
 .catalog-filters__section + .catalog-filters__section {
@@ -1245,7 +1317,8 @@ a {
    on a touchscreen and only clears on the next unrelated tap, leaving the scaled-up/
    shadowed state "stuck" until then (same issue fixed for the sidebar in PR 42). */
 @media (hover: hover) {
-  .btn--secondary:hover {
+  .btn--secondary:hover,
+  .search-form__filters-toggle:hover {
     border-color: var(--accent-teal);
   }
 

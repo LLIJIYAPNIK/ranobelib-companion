@@ -343,20 +343,67 @@ def test_show_catalog_renders_genre_filter_chip_with_resolved_names() -> None:
     assert 'data-genres="5,8"' in response.text
 
 
-def test_show_catalog_filters_panel_is_a_permanent_sidebar() -> None:
-    # PR 85: replaces the collapsible popup (PR 38/45) with an always-visible sidebar -
-    # no expand/collapse state, no JS required to see the options.
+def test_show_catalog_filters_panel_renders_unhidden_for_the_no_js_fallback() -> None:
+    # PR 98 (revisiting PR 85): the panel is opened/closed via the "Фильтры" button in JS,
+    # but renders without a `hidden` attribute so it's still fully visible and usable
+    # without JS - the toggle script is what hides it (see catalog-filters-toggle.js).
     page = CatalogPage(items=[], page=1, has_next_page=False)
     genres = [Genre(id=5, name="Фэнтези")]
     with patch("app.services.catalog.Catalog", return_value=_FakeCatalog(page, genres=genres)):
         response = client.get("/library/catalog", params={"genres": 5})
 
     assert response.status_code == 200
-    assert '<aside class="catalog-filters" data-role="catalog-filters"' in response.text
+    aside_tag = re.search(r"<aside\b[^>]*>", response.text)
+    assert aside_tag is not None
+    assert 'class="catalog-filters"' in aside_tag.group(0)
+    assert 'data-role="catalog-filters"' in aside_tag.group(0)
+    assert 'id="catalog-filters-panel"' in aside_tag.group(0)
+    assert "hidden" not in aside_tag.group(0)
     assert '<h2 class="catalog-filters__title">Фильтры</h2>' in response.text
     assert "Жанры (1)" in response.text
     assert "catalog-genres" not in response.text
     assert "catalog-genres-toggle" not in response.text
+
+
+def test_show_catalog_renders_a_filters_toggle_button_when_there_are_filters() -> None:
+    page = CatalogPage(items=[], page=1, has_next_page=False)
+    genres = [Genre(id=5, name="Фэнтези")]
+    with patch("app.services.catalog.Catalog", return_value=_FakeCatalog(page, genres=genres)):
+        response = client.get("/library/catalog")
+
+    assert response.status_code == 200
+    assert 'data-role="catalog-filters-toggle"' in response.text
+    assert 'aria-controls="catalog-filters-panel"' in response.text
+
+
+def test_show_catalog_filters_panel_has_a_close_button() -> None:
+    page = CatalogPage(items=[], page=1, has_next_page=False)
+    genres = [Genre(id=5, name="Фэнтези")]
+    with patch("app.services.catalog.Catalog", return_value=_FakeCatalog(page, genres=genres)):
+        response = client.get("/library/catalog")
+
+    assert response.status_code == 200
+    assert 'data-role="catalog-filters-close"' in response.text
+
+
+def test_show_catalog_omits_the_filters_toggle_when_there_is_nothing_to_filter_by() -> None:
+    page = CatalogPage(items=[], page=1, has_next_page=False)
+    with patch("app.services.catalog.Catalog", return_value=_FakeCatalog(page)):
+        response = client.get("/library/catalog")
+
+    assert response.status_code == 200
+    assert 'data-role="catalog-filters-toggle"' not in response.text
+    assert "catalog-filters-toggle.js" not in response.text
+
+
+def test_show_catalog_includes_the_filters_toggle_script_when_there_are_filters() -> None:
+    page = CatalogPage(items=[], page=1, has_next_page=False)
+    genres = [Genre(id=5, name="Фэнтези")]
+    with patch("app.services.catalog.Catalog", return_value=_FakeCatalog(page, genres=genres)):
+        response = client.get("/library/catalog")
+
+    assert response.status_code == 200
+    assert "static/js/catalog-filters-toggle.js" in response.text
 
 
 def _country_radio(html: str, value: str) -> re.Match[str] | None:

@@ -17,6 +17,15 @@
       {% endfor %}
     </select>
     <button class="search-button" type="submit">Искать</button>
+    {% if all_genres or all_countries %}
+    <button
+      class="search-form__filters-toggle"
+      type="button"
+      data-role="catalog-filters-toggle"
+      aria-expanded="false"
+      aria-controls="catalog-filters-panel"
+    >Фильтры</button>
+    {% endif %}
   </form>
 </header>
 {% set active_filters = [] %}
@@ -53,8 +62,21 @@
     </noscript>
   </div>
   {% if all_genres or all_countries %}
-  <aside class="catalog-filters" data-role="catalog-filters" aria-label="Фильтры">
-    <h2 class="catalog-filters__title">Фильтры</h2>
+  <aside
+    class="catalog-filters"
+    data-role="catalog-filters"
+    id="catalog-filters-panel"
+    aria-label="Фильтры"
+  >
+    <div class="catalog-filters__header">
+      <h2 class="catalog-filters__title">Фильтры</h2>
+      <button
+        class="catalog-filters__close"
+        type="button"
+        data-role="catalog-filters-close"
+        aria-label="Закрыть фильтры"
+      >&times;</button>
+    </div>
     {% if all_genres %}
     <section class="catalog-filters__section">
       <h3 class="catalog-filters__section-title">Жанры{% if genres %} ({{ genres | length }}){% endif %}</h3>
@@ -107,5 +129,8 @@
   {% endif %}
   <script src="{{ url_for('static', path='js/catalog-scroll.js') }}" defer></script>
   <script src="{{ url_for('static', path='js/custom-dropdown.js') }}" defer></script>
+  {% if all_genres or all_countries %}
+  <script src="{{ url_for('static', path='js/catalog-filters-toggle.js') }}" defer></script>
+  {% endif %}
 </main>
 {% endblock %}
