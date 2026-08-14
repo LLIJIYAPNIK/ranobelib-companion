@@ -164,7 +164,7 @@
   // the last saved value (or MIN_WPM) and left there for this click - stepUp() on a truly
   // empty field starts from the field's min regardless of what's already stored, and would
   // silently skip past that seeded value on the very first click otherwise.
-  function nudge(direction) {
+  function nudge(direction, button) {
     if (!manualInput.value) {
       manualInput.value = String(loadSettings().readingSpeedWpm || MIN_WPM);
     } else if (direction > 0) {
@@ -173,10 +173,14 @@
       manualInput.stepDown();
     }
     manualInput.dispatchEvent(new Event("change"));
+    // Mouse clicks leave :focus-visible lit on the button in some browsers even though
+    // the click wasn't keyboard navigation - blur it so the stepper only stays highlighted
+    // for real Tab focus, not after every click.
+    button.blur();
   }
 
-  manualDecrement.addEventListener("click", () => nudge(-1));
-  manualIncrement.addEventListener("click", () => nudge(1));
+  manualDecrement.addEventListener("click", () => nudge(-1, manualDecrement));
+  manualIncrement.addEventListener("click", () => nudge(1, manualIncrement));
 
   renderCurrentValue();
 })();
