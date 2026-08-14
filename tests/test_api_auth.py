@@ -20,6 +20,7 @@ from app.config import get_settings
 def client(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> Iterator[TestClient]:
     monkeypatch.setenv("DB_PATH", str(tmp_path / "test.db"))
     monkeypatch.setenv("SESSION_SECRET_KEY", "test-secret")
+    monkeypatch.setenv("AVATAR_DIR", str(tmp_path / "avatars"))
     get_settings.cache_clear()
     db_connection._connection = None
 
@@ -46,12 +47,16 @@ def _register(
     )
 
 
-def test_register_creates_session_and_redirects_home(client: TestClient) -> None:
+def test_register_creates_a_session_and_shows_the_avatar_prompt(client: TestClient) -> None:
+    # PR 106: registering no longer redirects straight home - it lands on an intermediate
+    # "add an avatar?" screen first. The session cookie is set regardless (current_user's
+    # email shows up in the sidebar via app/templating.py's context processor).
     response = _register(client, "alice@example.com")
 
-    assert response.status_code == 200  # followed the redirect
-    assert response.history[0].status_code == 303
-    assert response.history[0].headers["location"] == "/"
+    assert response.status_code == 200
+    assert not response.history
+    assert "Хотите добавить аватар?" in response.text
+    assert 'action="/register/avatar"' in response.text
     assert "alice@example.com" in response.text
 
 
@@ -60,8 +65,7 @@ def test_register_nickname_is_optional(client: TestClient) -> None:
     # users.nickname column - registering without it must keep working exactly as before.
     response = _register(client, "alice@example.com")
 
-    assert response.status_code == 200  # followed the redirect
-    assert response.history[0].status_code == 303
+    assert response.status_code == 200
 
 
 def test_register_nickname_is_stored_on_the_account(client: TestClient) -> None:
@@ -80,6 +84,57 @@ def test_register_form_preserves_nickname_on_error(client: TestClient) -> None:
 
     assert response.status_code == 400
     assert 'value="Alice Wong"' in response.text
+
+
+def test_register_avatar_prompt_offers_a_skip_link_to_home(client: TestClient) -> None:
+    response = _register(client, "alice@example.com")
+
+    assert response.status_code == 200
+    assert '<a href="/">Пропустить</a>' in response.text
+
+
+_PNG_BYTES = b"\x89PNG\r\n\x1a\n" + b"\x00" * 32
+
+
+def test_register_avatar_upload_saves_the_file_and_redirects_home(
+    client: TestClient, tmp_path: Path
+) -> None:
+    _register(client, "alice@example.com")
+
+    response = client.post(
+        "/register/avatar", files={"avatar": ("me.png", _PNG_BYTES, "image/png")}
+    )
+
+    assert response.status_code == 200  # followed the redirect
+    assert response.history[0].status_code == 303
+    assert response.history[0].headers["location"] == "/"
+
+
+def test_register_avatar_upload_rejects_a_disallowed_content_type(
+    client: TestClient, tmp_path: Path
+) -> None:
+    _register(client, "alice@example.com")
+
+    response = client.post(
+        "/register/avatar",
+        files={"avatar": ("me.gif", b"fake-gif-bytes", "image/gif")},
+        follow_redirects=False,
+    )
+
+    assert response.status_code == 400
+    assert "Хотите добавить аватар?" in response.text
+    assert "Поддерживаются только изображения" in response.text
+
+
+def test_register_avatar_upload_requires_login(client: TestClient) -> None:
+    response = client.post(
+        "/register/avatar",
+        files={"avatar": ("me.png", _PNG_BYTES, "image/png")},
+        follow_redirects=False,
+    )
+
+    assert response.status_code == 303
+    assert response.headers["location"] == "/login"
 
 
 def test_register_duplicate_email_shows_form_error(client: TestClient) -> None:
