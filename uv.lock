@@ -979,7 +979,7 @@ requires-dist = [
     { name = "itsdangerous", specifier = ">=2.2.0" },
     { name = "jinja2", specifier = ">=3.1.6" },
     { name = "python-multipart", specifier = ">=0.0.32" },
-    { name = "ranobelib-python-sdk", specifier = ">=0.8.0" },
+    { name = "ranobelib-python-sdk", specifier = ">=0.9.0" },
     { name = "uvicorn", extras = ["standard"], specifier = ">=0.52.1" },
 ]
 
@@ -992,7 +992,7 @@ dev = [
 
 [[package]]
 name = "ranobelib-python-sdk"
-version = "0.8.0"
+version = "0.9.0"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "ebooklib" },
@@ -1001,9 +1001,9 @@ dependencies = [
     { name = "rich" },
     { name = "weasyprint" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/fc/40/76d70ccd2c7c0b71aab585edc0fdcf5ad931a445523c2828a7f0f8ba2f6b/ranobelib_python_sdk-0.8.0.tar.gz", hash = "sha256:7ab50958476aeec8030d045b8906fd82054ada5afb26b2f2ab41e3d0223c02eb", size = 33815, upload-time = "2026-08-12T16:42:52.581Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/19/f3/fb16c4f64edcf875ec698653d797ff7f73e41d5bdb2faaa3478386ea4f15/ranobelib_python_sdk-0.9.0.tar.gz", hash = "sha256:fe03ab3ec5142c2b3311314fc928cf633cbd3ba96c0ef7aca405f3c386a8f9f3", size = 33882, upload-time = "2026-08-14T11:09:09.938Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/05/ba/daaf4ef14aa46d66a02bc2b0e58a4ff6f605dd1814e3a742042854cc591b/ranobelib_python_sdk-0.8.0-py3-none-any.whl", hash = "sha256:b103c8ecba683a575bcf9dd71778d865c6733df736fe4533e02145a9bb97847b", size = 43893, upload-time = "2026-08-12T16:42:51.351Z" },
+    { url = "https://files.pythonhosted.org/packages/28/4d/0d7402ca09dca1f9b8e02796e74227eca5ca02f0ca01c03f6f2d3767d27e/ranobelib_python_sdk-0.9.0-py3-none-any.whl", hash = "sha256:a35fc85155efda7193553fc0f786ab47633f1c43ef8c508e483cc250384bd4aa", size = 44027, upload-time = "2026-08-14T11:09:08.72Z" },
 ]
 
 [[package]]
