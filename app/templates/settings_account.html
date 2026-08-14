@@ -13,19 +13,32 @@
     method="post"
     action="/settings/account/avatar"
     enctype="multipart/form-data"
+    data-role="avatar-upload-form"
   >
-    <div class="auth-form__field">
-      <label class="auth-form__label" for="account-avatar">Аватар</label>
+    <label class="avatar-upload" aria-label="Изменить аватар" data-role="avatar-upload-trigger">
+      <span class="avatar-upload__preview" data-role="avatar-upload-preview">
+        {% if avatar_url(current_user) %}
+        <img class="avatar-img" src="{{ avatar_url(current_user) }}" alt="">
+        {% else %}
+        <span class="avatar-upload__initials">{{ avatar_initials(current_user) }}</span>
+        {% endif %}
+      </span>
+      <span class="avatar-upload__overlay" aria-hidden="true">
+        <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M12 20h9"/>
+          <path d="M16.5 3.5a2.12 2.12 0 0 1 3 3L7 19l-4 1 1-4Z"/>
+        </svg>
+      </span>
       <input
-        class="auth-form__input"
+        class="avatar-upload__input"
         id="account-avatar"
         type="file"
         name="avatar"
         accept="image/png,image/jpeg,image/webp"
+        data-role="avatar-upload-input"
         required
       >
-    </div>
-    <button class="btn btn--secondary" type="submit">Загрузить</button>
+    </label>
   </form>
   {% if saved %}
   <p class="content__notice content__notice--success">Изменения сохранены</p>
@@ -76,4 +89,9 @@
   чтобы редактировать данные аккаунта.
   {% endcall %}
   {% endif %}
+{% endblock %}
+{% block settings_scripts %}
+{% if current_user %}
+<script src="{{ url_for('static', path='js/avatar-upload.js') }}" defer></script>
+{% endif %}
 {% endblock %}
