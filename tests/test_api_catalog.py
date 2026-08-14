@@ -406,6 +406,23 @@ def test_show_catalog_renders_a_filters_toggle_button_when_there_are_filters() -
     assert 'aria-controls="catalog-filters-panel"' in response.text
 
 
+def test_filters_panel_header_sits_outside_the_scrolling_body_wrapper() -> None:
+    # PR 114: .catalog-filters used to scroll as one block, carrying the panel header
+    # (title + close button) and every section's toggle out of view along with a long
+    # options list. The header must now sit outside data-role="catalog-filters-body" (the
+    # new scroll container) entirely, and every section must be inside it.
+    page = CatalogPage(items=[], page=1, has_next_page=False)
+    genres = [Genre(id=5, name="Фэнтези")]
+    with patch("app.services.catalog.Catalog", return_value=_FakeCatalog(page, genres=genres)):
+        response = client.get("/library/catalog")
+
+    assert response.status_code == 200
+    header_marker = response.text.index('class="catalog-filters__header"')
+    body_marker = response.text.index('data-role="catalog-filters-body"')
+    section_marker = response.text.index('data-role="catalog-filters-section"')
+    assert header_marker < body_marker < section_marker
+
+
 def test_filters_toggle_is_a_header_sibling_of_the_search_form_not_nested_inside_it() -> None:
     # PR 111: nested inside .search-form (max-width: 480px), margin-left: auto only
     # pushed the button to that form's own right edge, not the header's - moved it to be

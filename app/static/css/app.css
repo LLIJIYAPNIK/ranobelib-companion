@@ -956,12 +956,8 @@ a {
   position: sticky;
   top: 16px;
   max-height: calc(100vh - 32px);
-  overflow-y: auto;
-  /* PR 113: without this, scrolling past the end of the options list inside this panel
-     "spills over" into scrolling the page underneath - the standard nested-scroll-
-     container behavior browsers apply by default. Also covers the PR 103 fullscreen
-     mobile modal, which reuses this same overflow-y without overriding it. */
-  overscroll-behavior: contain;
+  display: flex;
+  flex-direction: column;
   padding: 16px;
   background: var(--bg-surface);
   border: 1px solid var(--border);
@@ -987,13 +983,32 @@ a {
   }
 }
 
-/* PR 98: title + close button on one row, replacing the title's own margin-bottom. */
+/* PR 98: title + close button on one row, replacing the title's own margin-bottom.
+   PR 114: flex: 0 0 auto keeps it at its natural height as a .catalog-filters flex-
+   column child, never shrunk to make room for .catalog-filters__body below. */
 .catalog-filters__header {
+  flex: 0 0 auto;
   display: flex;
   align-items: center;
   justify-content: space-between;
   gap: 12px;
   margin: 0 0 12px;
+}
+
+/* PR 114: the actual scrolling region - previously .catalog-filters itself scrolled as
+   one block, carrying the header (title + close button) and every section's toggle
+   button out of view along with the options list whenever a long section (50+ genres)
+   needed scrolling (see PR 113's diagnosis). Splitting the panel into a fixed header
+   above a separately-scrolling body fixes that at the header level for free (it's simply
+   outside the scrolling box, no `position: sticky` needed), and gives each
+   .catalog-filters__section-toggle below a single, uncomplicated `top: 0` scroll context
+   to stick within, stacking correctly as the visitor scrolls past one section into the
+   next - the standard "several sticky sub-headers in one long list" technique. */
+.catalog-filters__body {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  overscroll-behavior: contain;
 }
 
 .catalog-filters__title {
@@ -1031,16 +1046,26 @@ a {
 
 /* PR 99: the section title is now a button (accordion header) instead of plain text -
    same font styling the <h3> used to carry directly, reset to look like a heading again
-   since a <button> comes with its own UA-agent chrome by default. */
+   since a <button> comes with its own UA-agent chrome by default.
+   PR 114: sticky within .catalog-filters__body's own scroll (a single `top: 0` is enough -
+   there's no other sticky level competing for space inside that particular scroll
+   context, unlike .catalog-filters__header, which sits outside it entirely) so each
+   section's toggle stays reachable while its own long options list scrolls past, and
+   the next section's toggle takes over the same stuck position once it reaches the top.
+   The solid background is what makes that handoff read as one sticky header at a time,
+   not two overlapping labels. */
 .catalog-filters__section-toggle {
+  position: sticky;
+  top: 0;
+  z-index: 1;
   display: flex;
   align-items: center;
   justify-content: space-between;
   gap: 8px;
   width: 100%;
-  padding: 0;
+  padding: 6px 0;
   border: none;
-  background: none;
+  background: var(--bg-surface);
   font: inherit;
   font-size: 12px;
   font-weight: 600;
