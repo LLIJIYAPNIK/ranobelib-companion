@@ -33,21 +33,6 @@ CATALOG_SORT_OPTIONS = {
 }
 
 
-def _parse_country(raw: str | None) -> int | None:
-    """`country` arrives as the "Страна" radio group's raw value (see catalog.html) -
-    empty for "Любая страна" (no filter), otherwise a `Country.id`. Parsed manually here
-    instead of typing the route parameter `int | None` so an empty string means "no
-    filter" rather than a 422 from FastAPI's own int coercion; a non-numeric value (only
-    reachable via a hand-crafted URL, not this page's own markup) is likewise just
-    treated as no filter rather than erroring, same as an unrecognized genre id."""
-    if not raw:
-        return None
-    try:
-        return int(raw)
-    except ValueError:
-        return None
-
-
 @router.get("")
 async def show_library(
     request: Request, user: Annotated[User | None, Depends(get_current_user)]
@@ -69,7 +54,7 @@ async def show_catalog(
     query: str | None = None,
     sort: str = DEFAULT_CATALOG_SORT,
     genres: Annotated[list[int] | None, Query()] = None,
-    country: str | None = None,
+    countries: Annotated[list[int] | None, Query()] = None,
     tags: Annotated[list[int] | None, Query()] = None,
     tag_name: str | None = None,
     page: Annotated[int, Query(ge=1)] = 1,
@@ -85,9 +70,13 @@ async def show_catalog(
     unlike PR 31's original `genre_name` workaround - there's a real endpoint for that
     now.
 
-    `country` (PR 85): unlike genres, a title only ever has one - the "Страна" section's
-    radio group (catalog.html), so this is a single value, not a repeated param. See
-    `_parse_country()` for why it's read as a raw string rather than typed `int | None`.
+    `countries` (PR 85, checkboxes since PR 100): a title only ever has one country of
+    origin, but the *filter* still matches OR-style against several - same shape as
+    `genres` (a repeated `?countries=1&countries=2` param), just AND vs. OR semantics
+    once forwarded to `Catalog.list_titles(countries=[...])` (SDK >=0.9.0). Before PR 100
+    this was a single-select radio group and a single `country: int | None` SDK
+    parameter; garbage/non-numeric input now 422s the same way a garbage `genres` id
+    already did, rather than being silently swallowed.
 
     `tags` (PR 86): same shape/semantics as `genres` (`Catalog.list_titles(tags=[...])`
     is also AND, also a list), but there's no `Catalog.list_tags()` to resolve a display
@@ -98,8 +87,8 @@ async def show_catalog(
     click produces today, so it's ignored if more than one tag id is present.
     """
     genres = genres or []
+    countries = countries or []
     tags = tags or []
-    selected_country = _parse_country(country)
     all_genres = await list_genres()
     all_countries = await list_countries()
     async with get_catalog() as catalog:
@@ -108,7 +97,7 @@ async def show_catalog(
             query=query or None,
             sort=sort,
             genres=genres or None,
-            country=selected_country,
+            countries=countries or None,
             tags=tags or None,
         )
     genre_names_by_id = {genre.id: genre.name for genre in all_genres}
@@ -132,12 +121,8 @@ async def show_catalog(
             "genres": genres,
             "selected_genre_names": [genre_names_by_id.get(g, str(g)) for g in genres],
             "all_countries": all_countries,
-            "selected_country": selected_country,
-            "selected_country_name": (
-                country_names_by_id.get(selected_country, str(selected_country))
-                if selected_country is not None
-                else None
-            ),
+            "countries": countries,
+            "selected_country_names": [country_names_by_id.get(c, str(c)) for c in countries],
             "tags": tags,
             "selected_tag_names": selected_tag_names,
         },
@@ -150,7 +135,7 @@ async def catalog_page_fragment(
     query: str | None = None,
     sort: str = DEFAULT_CATALOG_SORT,
     genres: Annotated[list[int] | None, Query()] = None,
-    country: str | None = None,
+    countries: Annotated[list[int] | None, Query()] = None,
     tags: Annotated[list[int] | None, Query()] = None,
     page: Annotated[int, Query(ge=1)] = 1,
 ) -> Response:
@@ -162,7 +147,7 @@ async def catalog_page_fragment(
             query=query or None,
             sort=sort,
             genres=genres or None,
-            country=_parse_country(country),
+            countries=countries or None,
             tags=tags or None,
         )
     response = templates.TemplateResponse(request, "_catalog_cards.html", {"items": result.items})

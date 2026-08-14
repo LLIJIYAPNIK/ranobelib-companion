@@ -30,7 +30,7 @@
 </header>
 {% set active_filters = [] %}
 {% if genres %}{% set _ = active_filters.append("Жанр" ~ ("ы" if genres | length > 1 else "") ~ ": " ~ (selected_genre_names | join(", "))) %}{% endif %}
-{% if selected_country_name %}{% set _ = active_filters.append("Страна: " ~ selected_country_name) %}{% endif %}
+{% if countries %}{% set _ = active_filters.append(("Страны" if countries | length > 1 else "Страна") ~ ": " ~ (selected_country_names | join(", "))) %}{% endif %}
 {% if tags %}{% set _ = active_filters.append("Тег" ~ ("и" if tags | length > 1 else "") ~ ": " ~ (selected_tag_names | join(", "))) %}{% endif %}
 {% if active_filters %}
 <p class="content__hint content__hint--page">
@@ -46,7 +46,7 @@
       data-query="{{ query or '' }}"
       data-sort="{{ sort }}"
       data-genres="{{ genres | join(',') }}"
-      data-country="{{ selected_country or '' }}"
+      data-country="{{ countries | join(',') }}"
       data-tags="{{ tags | join(',') }}"
       data-next-page="{{ page + 1 if has_next_page else '' }}"
     >
@@ -56,7 +56,7 @@
     <noscript>
       {% if has_next_page %}
       <p class="content__hint">
-        <a href="?query={{ query or '' }}&sort={{ sort }}{% for g in genres %}&genres={{ g }}{% endfor %}{% if selected_country %}&country={{ selected_country }}{% endif %}{% for t in tags %}&tags={{ t }}{% endfor %}&page={{ page + 1 }}">Следующая страница</a>
+        <a href="?query={{ query or '' }}&sort={{ sort }}{% for g in genres %}&genres={{ g }}{% endfor %}{% for c in countries %}&countries={{ c }}{% endfor %}{% for t in tags %}&tags={{ t }}{% endfor %}&page={{ page + 1 }}">Следующая страница</a>
       </p>
       {% endif %}
     </noscript>
@@ -116,7 +116,7 @@
     <section
       class="catalog-filters__section"
       data-role="catalog-filters-section"
-      data-section-key="country"
+      data-section-key="countries"
     >
       <h3 class="catalog-filters__section-title">
         <button
@@ -124,32 +124,22 @@
           type="button"
           data-role="catalog-filters-section-toggle"
           aria-expanded="true"
-          aria-controls="catalog-filters-country-options"
-        >Страна</button>
+          aria-controls="catalog-filters-countries-options"
+        >Страны{% if countries %} ({{ countries | length }}){% endif %}</button>
       </h3>
       <div
         class="catalog-filters__options"
-        id="catalog-filters-country-options"
+        id="catalog-filters-countries-options"
         data-role="catalog-filters-section-options"
       >
-        <label class="catalog-filters__option">
-          <input
-            type="radio"
-            name="country"
-            value=""
-            form="catalog-search-form"
-            {% if not selected_country %}checked{% endif %}
-          >
-          <span>Любая страна</span>
-        </label>
         {% for country in all_countries %}
         <label class="catalog-filters__option">
           <input
-            type="radio"
-            name="country"
+            type="checkbox"
+            name="countries"
             value="{{ country.id }}"
             form="catalog-search-form"
-            {% if country.id == selected_country %}checked{% endif %}
+            {% if country.id in countries %}checked{% endif %}
           >
           <span>{{ country.name }}</span>
         </label>
