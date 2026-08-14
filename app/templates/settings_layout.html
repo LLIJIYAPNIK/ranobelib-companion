@@ -5,10 +5,6 @@
   <div class="settings-layout">
     <nav class="settings-nav" aria-label="Разделы настроек">
       <a
-        class="settings-nav__link{% if active_settings_section == 'reading' %} settings-nav__link--active{% endif %}"
-        href="/settings/reading"
-      >Чтение</a>
-      <a
         class="settings-nav__link{% if active_settings_section == 'account' %} settings-nav__link--active{% endif %}"
         href="/settings/account"
       >Аккаунт</a>
@@ -16,6 +12,10 @@
         class="settings-nav__link{% if active_settings_section == 'security' %} settings-nav__link--active{% endif %}"
         href="/settings/security"
       >Безопасность</a>
+      <a
+        class="settings-nav__link{% if active_settings_section == 'reading' %} settings-nav__link--active{% endif %}"
+        href="/settings/reading"
+      >Чтение</a>
     </nav>
     <div class="settings-content">
       {% block settings_content %}{% endblock %}
