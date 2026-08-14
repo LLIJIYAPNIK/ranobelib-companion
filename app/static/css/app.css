@@ -287,23 +287,26 @@ a {
   position: relative;
 }
 
-/* Opens upward on the desktop sidebar - the avatar sits at the very bottom of it (PR 88),
-   so opening downward like a typical dropdown would push the menu off the bottom of the
-   viewport. (Mobile flips this back to opening downward - see the mobile breakpoint below
-   - since there the avatar sits in a fixed header at the very *top* of the viewport, PR 71,
-   where opening upward would do the same thing in the other direction.)
-
-   Same fade + slide-toward-the-trigger open/close animation as the custom <select>
-   dropdown (PR 54's .dropdown__listbox) - always in the DOM (opacity/pointer-events, not
-   display:none) so the transition has something to animate, sliding down into place from
-   6px above/below its resting position depending on which way it opens. */
+/* PR 97: position (top/bottom/left) is set inline by profile-menu.js from the trigger's
+   own getBoundingClientRect() once the panel is portaled to <body> and made `position:
+   fixed` - not handled here, since `.sidebar`'s `overflow-y: auto` (its own link list's
+   scrolling) clips an absolutely/relatively-positioned descendant regardless of z-index.
+   The open/closed state also toggles a class on the panel itself (`--open` below) rather
+   than relying on a `.profile-menu--open .profile-menu__panel` descendant selector like
+   before PR 97 - once portaled, the panel is a sibling of `.profile-menu` in the DOM, not
+   its descendant, so that selector would silently stop matching and the menu would stay
+   invisible (opacity/pointer-events never flip) even though it's now positioned exactly
+   where it should be. `--above`/`--below` (toggled by that same script, based on which
+   side of the trigger has more room - upward on the desktop sidebar, downward on the
+   mobile top account strip) only control which direction the open/close slide animates
+   from - same fade + slide-toward-the-trigger animation as the custom <select> dropdown
+   (PR 54's .dropdown__listbox), always in the DOM (opacity/pointer-events, not
+   display:none) so the transition has something to animate. */
 .profile-menu__panel {
   display: flex;
   flex-direction: column;
   gap: 2px;
   position: absolute;
-  bottom: calc(100% + 6px);
-  left: 0;
   z-index: 40;
   min-width: 180px;
   padding: 6px;
@@ -312,12 +315,19 @@ a {
   border-radius: 8px;
   box-shadow: 0 10px 24px rgba(0, 0, 0, 0.35);
   opacity: 0;
-  transform: translateY(6px);
   pointer-events: none;
   transition: opacity 0.15s ease, transform 0.15s ease;
 }
 
-.profile-menu--open .profile-menu__panel {
+.profile-menu__panel--above {
+  transform: translateY(6px);
+}
+
+.profile-menu__panel--below {
+  transform: translateY(-6px);
+}
+
+.profile-menu__panel--open {
   opacity: 1;
   transform: translateY(0);
   pointer-events: auto;
@@ -2596,20 +2606,6 @@ a {
     width: 28px;
     height: 28px;
     font-size: 11px;
-  }
-
-  /* Flips the desktop rule above back to opening downward - the mobile account strip is
-     pinned to the *top* of the viewport (PR 71), not the bottom, so there's no room above
-     it either. translateY's sign flips along with it, so the panel still slides *toward*
-     its resting position (from above, not below) instead of away from it. */
-  .profile-menu__panel {
-    bottom: auto;
-    top: calc(100% + 6px);
-    transform: translateY(-6px);
-  }
-
-  .profile-menu--open .profile-menu__panel {
-    transform: translateY(0);
   }
 
   .header {
