@@ -149,8 +149,16 @@
     {% endif %}
   </aside>
   {% endif %}
+  <button
+    type="button"
+    class="back-to-top"
+    data-role="catalog-back-to-top"
+    aria-label="Наверх"
+    hidden
+  >↑</button>
   <script src="{{ url_for('static', path='js/catalog-scroll.js') }}" defer></script>
   <script src="{{ url_for('static', path='js/catalog-header-scroll.js') }}" defer></script>
+  <script src="{{ url_for('static', path='js/catalog-back-to-top.js') }}" defer></script>
   <script src="{{ url_for('static', path='js/custom-dropdown.js') }}" defer></script>
   {% if all_genres or all_countries %}
   <script src="{{ url_for('static', path='js/catalog-filters-toggle.js') }}" defer></script>

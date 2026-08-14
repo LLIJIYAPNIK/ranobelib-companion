@@ -884,6 +884,54 @@ a {
   min-width: 0;
 }
 
+/* PR 102: floating "back to top" button for the catalog's infinite-scroll grid (PR 15/24) -
+   escaping a long, still-growing card grid otherwise takes a slow manual scroll. Same
+   bottom-right corner and z-index convention as .toc__export-panel (PR 51), though the two
+   never actually share a page - this only renders in catalog.html. Visibility is toggled
+   via the `hidden` attribute (catalog-back-to-top.js), not a class - `display: flex` below
+   needs the explicit [hidden] override since it would otherwise outrank the browser's own
+   `[hidden] { display: none }` UA rule, same reasoning as .download-ready (PR 50). */
+.back-to-top {
+  position: fixed;
+  bottom: 24px;
+  right: 32px;
+  z-index: 45;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 44px;
+  height: 44px;
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  background: var(--bg-surface);
+  color: var(--text-primary);
+  font-size: 18px;
+  line-height: 1;
+  cursor: pointer;
+  box-shadow: 0 8px 20px rgba(0, 0, 0, 0.35);
+  transition: transform 0.15s ease, border-color 0.15s ease;
+}
+
+.back-to-top[hidden] {
+  display: none;
+}
+
+@media (hover: hover) {
+  .back-to-top:hover {
+    border-color: var(--accent-teal);
+    transform: translateY(-3px);
+  }
+}
+
+@media (max-width: 640px) {
+  .back-to-top {
+    /* Same 76px clearance above the fixed bottom tab bar (PR 46) already used by
+       .download-ready and .toc__export-panel on mobile. */
+    bottom: 76px;
+    right: 12px;
+  }
+}
+
 /* PR 98: fades/slides in whenever the panel goes from `hidden` to shown (same one-shot
    entrance animation pattern as .library-tabs-content-in - toggling `hidden` restarts a
    CSS `animation` reliably, unlike `transition`, which needs the element already
