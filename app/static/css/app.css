@@ -2810,23 +2810,55 @@ a {
   }
 
   /* PR 85: the sidebar layout only works with room for a fixed-width column beside the
-     grid - below the breakpoint it stacks instead, filters above results (order: -1)
-     so narrowing down what to browse doesn't require scrolling past a page of cards
-     first, and the sticky/scrolling-column behavior (only useful with a tall viewport
-     next to a taller grid) is dropped in favor of the filters panel's natural height. */
+     grid - below the breakpoint .catalog-layout__results (the grid) is the only child
+     left in flow, so this just stacks it full-width; .catalog-filters itself is pulled
+     out of flow entirely below (PR 103). */
   .catalog-layout {
     flex-direction: column;
   }
 
+  /* PR 103 (пересматривает PR 85's mobile order: -1 stacking, kept until now): a filters
+     panel merely stacked above the grid still pushed a page of cards down below the fold
+     on a phone-width viewport, especially once the genre list (50+ checkboxes, PR 38) is
+     expanded - a fullscreen takeover reads more like a normal e-commerce filter sheet and
+     needs no in-flow space of its own. The panel's own opaque background (inherited from
+     the base rule above) doubles as the backdrop - no separate overlay element needed.
+     catalog-filters-toggle.js/catalog-filters-accordion.js are unchanged: they only ever
+     toggle `hidden`/`--closing`, oblivious to how those states are styled at this width. */
   .catalog-filters {
-    order: -1;
-    flex-basis: auto;
+    position: fixed;
+    inset: 0;
+    z-index: 70;
     width: 100%;
-    position: static;
     max-height: none;
+    border: none;
+    border-radius: 0;
+    padding: 20px 16px;
+    animation: catalog-filters-in-mobile 0.22s ease-out;
   }
 
-  /* PR 89: same stack-instead-of-column reasoning as .catalog-filters above - a fixed
+  /* Slides from the right instead of the desktop entrance's fade-and-drop-down (see
+     .catalog-filters-in above) - a fullscreen sheet reads as "sliding into place" rather
+     than "fading in", per the roadmap's "выезжающая анимацией справа налево". */
+  @keyframes catalog-filters-in-mobile {
+    from {
+      opacity: 0;
+      transform: translateX(100%);
+    }
+    to {
+      opacity: 1;
+      transform: translateX(0);
+    }
+  }
+
+  /* Overrides the desktop --closing transform (translateY) with the matching reverse of
+     the slide-in above - same class, same JS-driven transition timing (0.15s, unchanged
+     in catalog-filters-toggle.js), just a different direction at this width. */
+  .catalog-filters--closing {
+    transform: translateX(100%);
+  }
+
+  /* PR 89: same stack-instead-of-column reasoning as .catalog-layout above - a fixed
      200px nav column has no room next to the content pane on a phone-width viewport, and
      a short 3-item nav has no scrolling behavior worth keeping sticky. Turned into a
      horizontal row (not a vertical stack) since 3 short labels fit one line and read more
