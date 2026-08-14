@@ -87,6 +87,20 @@ def test_show_catalog_renders_cards() -> None:
     assert "static/js/custom-dropdown.js" in response.text
 
 
+def test_show_catalog_header_reveals_on_scroll_up() -> None:
+    # PR 101: catalog-header-scroll.js hides/reveals .header on scroll direction - both the
+    # hook it queries for and the script itself need to be on the page for that to work.
+    page = CatalogPage(items=[], page=1, has_next_page=False)
+    with patch("app.services.catalog.Catalog", return_value=_FakeCatalog(page)):
+        response = client.get("/library/catalog")
+
+    assert response.status_code == 200
+    header_tag = re.search(r"<header[^>]*>", response.text)
+    assert header_tag is not None
+    assert 'data-role="catalog-scroll-header"' in header_tag.group(0)
+    assert "static/js/catalog-header-scroll.js" in response.text
+
+
 def test_show_catalog_prefers_russian_name() -> None:
     title = Title(
         id=1,
