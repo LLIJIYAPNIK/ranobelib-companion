@@ -137,3 +137,49 @@ def test_saved_nickname_switches_the_sidebar_avatar_initials(client: TestClient)
 
     assert ">BC</button>" in home.text
     assert ">AW</button>" not in home.text
+
+
+def test_anonymous_avatar_upload_is_redirected_to_login(client: TestClient) -> None:
+    response = client.post(
+        "/settings/account/avatar",
+        files={"avatar": ("me.png", b"fake-png-bytes", "image/png")},
+        follow_redirects=False,
+    )
+
+    assert response.status_code == 303
+    assert response.headers["location"] == "/login"
+
+
+def test_upload_avatar_saves_the_file_and_confirms(
+    client: TestClient, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    monkeypatch.setattr("app.auth.avatar._AVATARS_DIR", tmp_path / "avatars")
+    _register(client, "alice@example.com")
+
+    response = client.post(
+        "/settings/account/avatar",
+        files={"avatar": ("me.png", b"fake-png-bytes", "image/png")},
+    )
+
+    assert response.status_code == 200
+    assert "Аватар обновлён" in response.text
+    saved_files = list((tmp_path / "avatars").iterdir())
+    assert len(saved_files) == 1
+    assert saved_files[0].name.endswith(".png")
+    assert saved_files[0].read_bytes() == b"fake-png-bytes"
+
+
+def test_upload_avatar_rejects_a_disallowed_content_type(
+    client: TestClient, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    monkeypatch.setattr("app.auth.avatar._AVATARS_DIR", tmp_path / "avatars")
+    _register(client, "alice@example.com")
+
+    response = client.post(
+        "/settings/account/avatar",
+        files={"avatar": ("me.gif", b"fake-gif-bytes", "image/gif")},
+    )
+
+    assert response.status_code == 400
+    assert "Поддерживаются только изображения" in response.text
+    assert not (tmp_path / "avatars").exists()
