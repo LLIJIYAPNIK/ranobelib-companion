@@ -5,6 +5,11 @@
 // what turns it into something opened/closed by the toggle button instead of always
 // occupying the sidebar column.
 (() => {
+  // Matches .catalog-filters--closing's transition duration in app.css - `hidden` can't
+  // be part of a CSS transition, so this is how long JS waits before actually removing
+  // the panel from layout once the fade/slide-out animation has had time to play.
+  const CLOSE_TRANSITION_MS = 150;
+
   const toggle = document.querySelector('[data-role="catalog-filters-toggle"]');
   const panel = document.querySelector('[data-role="catalog-filters"]');
   if (!toggle || !panel) return;
@@ -17,12 +22,18 @@
 
   function open() {
     panel.hidden = false;
+    panel.classList.remove("catalog-filters--closing");
     toggle.setAttribute("aria-expanded", "true");
   }
 
   function close() {
-    panel.hidden = true;
+    if (panel.hidden) return;
+    panel.classList.add("catalog-filters--closing");
     toggle.setAttribute("aria-expanded", "false");
+    window.setTimeout(() => {
+      panel.hidden = true;
+      panel.classList.remove("catalog-filters--closing");
+    }, CLOSE_TRANSITION_MS);
   }
 
   panel.hidden = true;

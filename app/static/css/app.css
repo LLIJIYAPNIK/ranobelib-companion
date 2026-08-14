@@ -860,6 +860,13 @@ a {
   min-width: 0;
 }
 
+/* PR 98: fades/slides in whenever the panel goes from `hidden` to shown (same one-shot
+   entrance animation pattern as .library-tabs-content-in - toggling `hidden` restarts a
+   CSS `animation` reliably, unlike `transition`, which needs the element already
+   rendered to detect a property change). Closing needs the reverse:
+   catalog-filters-toggle.js adds --closing first to transition opacity/transform down,
+   then sets `hidden`
+   itself once that finishes - `hidden` can't be delayed via CSS alone. */
 .catalog-filters {
   flex: 0 0 240px;
   position: sticky;
@@ -870,6 +877,25 @@ a {
   background: var(--bg-surface);
   border: 1px solid var(--border);
   border-radius: 8px;
+  animation: catalog-filters-in 0.18s ease-out;
+  transition: opacity 0.15s ease, transform 0.15s ease;
+}
+
+.catalog-filters--closing {
+  opacity: 0;
+  transform: translateY(-6px);
+  pointer-events: none;
+}
+
+@keyframes catalog-filters-in {
+  from {
+    opacity: 0;
+    transform: translateY(6px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
 }
 
 /* PR 98: title + close button on one row, replacing the title's own margin-bottom. */
