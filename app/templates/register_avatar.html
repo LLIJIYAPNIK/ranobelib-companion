@@ -1,0 +1,35 @@
+{% extends "base.html" %}
+{% block title %}Добавить аватар — RanobeLib Companion{% endblock %}
+{% block content %}
+<header class="header">
+  <h1 class="toc__title">Хотите добавить аватар?</h1>
+</header>
+<main class="content">
+  <p class="content__hint">
+    Необязательно — можно сделать это позже в настройках аккаунта.
+  </p>
+  {% if avatar_error %}
+  <p class="form-error">{{ avatar_error }}</p>
+  {% endif %}
+  <form
+    class="settings-form settings-form--avatar"
+    method="post"
+    action="/register/avatar"
+    enctype="multipart/form-data"
+  >
+    <div class="auth-form__field">
+      <label class="auth-form__label" for="register-avatar">Аватар</label>
+      <input
+        class="auth-form__input"
+        id="register-avatar"
+        type="file"
+        name="avatar"
+        accept="image/png,image/jpeg,image/webp"
+        required
+      >
+    </div>
+    <button class="btn btn--primary" type="submit">Загрузить</button>
+  </form>
+  <p class="content__hint content__hint--auth"><a href="/">Пропустить</a></p>
+</main>
+{% endblock %}
