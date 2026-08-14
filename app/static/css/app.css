@@ -421,6 +421,25 @@ a {
   transition: transform 0.15s ease, box-shadow 0.15s ease;
 }
 
+/* PR 98: opens/closes .catalog-filters (see below) - pushed to the form's own right edge
+   with margin-left: auto rather than just trailing the search button with the same gap
+   everything else in the row uses, so it reads as a separate action from the search
+   itself. Only rendered when there's something to filter by (catalog.html). */
+.search-form__filters-toggle {
+  height: 36px;
+  padding: 0 18px;
+  margin-left: auto;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  background: transparent;
+  color: var(--text-secondary);
+  font-size: 13px;
+  font-weight: 600;
+  font-family: inherit;
+  cursor: pointer;
+  transition: color 0.15s ease, border-color 0.15s ease;
+}
+
 .content {
   flex: 1;
   padding: 24px 32px;
@@ -1245,7 +1264,8 @@ a {
    on a touchscreen and only clears on the next unrelated tap, leaving the scaled-up/
    shadowed state "stuck" until then (same issue fixed for the sidebar in PR 42). */
 @media (hover: hover) {
-  .btn--secondary:hover {
+  .btn--secondary:hover,
+  .search-form__filters-toggle:hover {
     border-color: var(--accent-teal);
   }
 

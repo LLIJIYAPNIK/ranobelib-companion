@@ -17,6 +17,15 @@
       {% endfor %}
     </select>
     <button class="search-button" type="submit">Искать</button>
+    {% if all_genres or all_countries %}
+    <button
+      class="search-form__filters-toggle"
+      type="button"
+      data-role="catalog-filters-toggle"
+      aria-expanded="false"
+      aria-controls="catalog-filters-panel"
+    >Фильтры</button>
+    {% endif %}
   </form>
 </header>
 {% set active_filters = [] %}
@@ -53,7 +62,12 @@
     </noscript>
   </div>
   {% if all_genres or all_countries %}
-  <aside class="catalog-filters" data-role="catalog-filters" aria-label="Фильтры">
+  <aside
+    class="catalog-filters"
+    data-role="catalog-filters"
+    id="catalog-filters-panel"
+    aria-label="Фильтры"
+  >
     <h2 class="catalog-filters__title">Фильтры</h2>
     {% if all_genres %}
     <section class="catalog-filters__section">
