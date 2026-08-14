@@ -150,6 +150,9 @@ def test_anonymous_avatar_upload_is_redirected_to_login(client: TestClient) -> N
     assert response.headers["location"] == "/login"
 
 
+_PNG_BYTES = b"\x89PNG\r\n\x1a\n" + b"\x00" * 32
+
+
 def test_upload_avatar_saves_the_file_and_confirms(
     client: TestClient, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
@@ -158,7 +161,7 @@ def test_upload_avatar_saves_the_file_and_confirms(
 
     response = client.post(
         "/settings/account/avatar",
-        files={"avatar": ("me.png", b"fake-png-bytes", "image/png")},
+        files={"avatar": ("me.png", _PNG_BYTES, "image/png")},
     )
 
     assert response.status_code == 200
@@ -166,7 +169,7 @@ def test_upload_avatar_saves_the_file_and_confirms(
     saved_files = list((tmp_path / "avatars").iterdir())
     assert len(saved_files) == 1
     assert saved_files[0].name.endswith(".png")
-    assert saved_files[0].read_bytes() == b"fake-png-bytes"
+    assert saved_files[0].read_bytes() == _PNG_BYTES
 
 
 def test_upload_avatar_rejects_a_disallowed_content_type(
@@ -182,4 +185,37 @@ def test_upload_avatar_rejects_a_disallowed_content_type(
 
     assert response.status_code == 400
     assert "Поддерживаются только изображения" in response.text
+    assert not (tmp_path / "avatars").exists()
+
+
+def test_upload_avatar_rejects_a_file_too_large(
+    client: TestClient, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    monkeypatch.setattr("app.auth.avatar._AVATARS_DIR", tmp_path / "avatars")
+    monkeypatch.setattr("app.auth.avatar._MAX_AVATAR_SIZE_BYTES", 1024)
+    _register(client, "alice@example.com")
+
+    response = client.post(
+        "/settings/account/avatar",
+        files={"avatar": ("me.png", _PNG_BYTES + b"\x00" * 2000, "image/png")},
+    )
+
+    assert response.status_code == 400
+    assert "слишком большой" in response.text
+    assert not (tmp_path / "avatars").exists()
+
+
+def test_upload_avatar_rejects_content_that_doesnt_match_its_claimed_type(
+    client: TestClient, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    monkeypatch.setattr("app.auth.avatar._AVATARS_DIR", tmp_path / "avatars")
+    _register(client, "alice@example.com")
+
+    response = client.post(
+        "/settings/account/avatar",
+        files={"avatar": ("me.png", b"this is not actually a png", "image/png")},
+    )
+
+    assert response.status_code == 400
+    assert "не является изображением" in response.text
     assert not (tmp_path / "avatars").exists()

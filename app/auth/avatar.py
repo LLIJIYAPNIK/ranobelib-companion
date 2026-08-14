@@ -36,20 +36,43 @@ _EXTENSION_BY_CONTENT_TYPE = {
     "image/webp": ".webp",
 }
 
+# Generous for a profile photo, small enough that reading it fully into memory (rather
+# than streaming to disk in chunks) isn't a concern.
+_MAX_AVATAR_SIZE_BYTES = 5 * 1024 * 1024
+
 
 class AvatarUploadError(Exception):
     """Raised for a rejected upload - the message is safe to show the visitor as-is."""
 
 
+def _looks_like(contents: bytes, extension: str) -> bool:
+    """Sniffs the actual bytes rather than trusting the browser-supplied content-type
+    header alone - a renamed/relabeled file (e.g. an .exe served as "image/png") would
+    otherwise sail through the content-type check above."""
+    if extension == ".jpg":
+        return contents.startswith(b"\xff\xd8\xff")
+    if extension == ".png":
+        return contents.startswith(b"\x89PNG\r\n\x1a\n")
+    if extension == ".webp":
+        return contents[:4] == b"RIFF" and contents[8:12] == b"WEBP"
+    return False
+
+
 async def save_avatar(upload: UploadFile, user_id: int) -> str:
     """Writes `upload`'s bytes to disk and returns the filename to store as
     `User.avatar_path` (e.g. "12.png"). Raises `AvatarUploadError` for anything that
-    isn't one of the allowed image types."""
+    isn't one of the allowed image types, over the size limit, or whose content doesn't
+    actually match the claimed type."""
     extension = _EXTENSION_BY_CONTENT_TYPE.get(upload.content_type or "")
     if extension is None:
         raise AvatarUploadError("Поддерживаются только изображения JPG, PNG и WEBP")
 
-    contents = await upload.read()
+    contents = await upload.read(_MAX_AVATAR_SIZE_BYTES + 1)
+    if len(contents) > _MAX_AVATAR_SIZE_BYTES:
+        raise AvatarUploadError("Файл слишком большой (максимум 5 МБ)")
+    if not _looks_like(contents, extension):
+        raise AvatarUploadError("Файл повреждён или не является изображением этого типа")
+
     _AVATARS_DIR.mkdir(parents=True, exist_ok=True)
     filename = f"{user_id}{extension}"
     (_AVATARS_DIR / filename).write_bytes(contents)
