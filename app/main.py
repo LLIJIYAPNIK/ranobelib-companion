@@ -42,6 +42,11 @@ app.add_middleware(
     same_site="lax",
 )
 app.mount("/static", StaticFiles(directory=Path(__file__).parent / "static"), name="static")
+# Uploaded avatars (PR 96) live outside app/static - user data, not an app asset, same
+# reasoning as cache_dir/db_path being kept outside the source tree. StaticFiles requires
+# the directory to exist at mount time, unlike app/static which ships with the repo.
+get_settings().avatar_dir.mkdir(parents=True, exist_ok=True)
+app.mount("/avatars", StaticFiles(directory=get_settings().avatar_dir), name="avatars")
 app.include_router(health.router)
 app.include_router(activity.router)
 app.include_router(home.router)

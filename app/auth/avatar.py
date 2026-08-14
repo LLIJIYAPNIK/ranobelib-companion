@@ -5,10 +5,10 @@ nickname field - before that, email was the only identity string available)."""
 from __future__ import annotations
 
 import re
-from pathlib import Path
 
 from fastapi import UploadFile
 
+from app.config import get_settings
 from app.db.users import User
 
 _SEGMENT_SPLIT = re.compile(r"[\s._\-+]+")
@@ -24,11 +24,6 @@ def avatar_initials(user: User) -> str:
         return segments[0][:2].upper()
     return (segments[0][0] + segments[1][0]).upper()
 
-
-# PR 96: uploaded avatar images. Not in app/config.py's Settings yet (fixed local
-# directory for now) - AVATAR_DIR becomes env-configurable once the persistent-volume
-# story for it is worked out the same way it already is for cache_dir/db_path.
-_AVATARS_DIR = Path(".ranobelib_avatars")
 
 _EXTENSION_BY_CONTENT_TYPE = {
     "image/jpeg": ".jpg",
@@ -59,10 +54,12 @@ def _looks_like(contents: bytes, extension: str) -> bool:
 
 
 async def save_avatar(upload: UploadFile, user_id: int) -> str:
-    """Writes `upload`'s bytes to disk and returns the filename to store as
-    `User.avatar_path` (e.g. "12.png"). Raises `AvatarUploadError` for anything that
-    isn't one of the allowed image types, over the size limit, or whose content doesn't
-    actually match the claimed type."""
+    """Writes `upload`'s bytes to disk (under `Settings.avatar_dir` - `AVATAR_DIR`,
+    needing the same persistent-volume treatment in a container deployment as
+    `cache_dir`/`db_path`) and returns the filename to store as `User.avatar_path` (e.g.
+    "12.png"). Raises `AvatarUploadError` for anything that isn't one of the allowed
+    image types, over the size limit, or whose content doesn't actually match the
+    claimed type."""
     extension = _EXTENSION_BY_CONTENT_TYPE.get(upload.content_type or "")
     if extension is None:
         raise AvatarUploadError("Поддерживаются только изображения JPG, PNG и WEBP")
@@ -73,7 +70,14 @@ async def save_avatar(upload: UploadFile, user_id: int) -> str:
     if not _looks_like(contents, extension):
         raise AvatarUploadError("Файл повреждён или не является изображением этого типа")
 
-    _AVATARS_DIR.mkdir(parents=True, exist_ok=True)
+    avatar_dir = get_settings().avatar_dir
+    avatar_dir.mkdir(parents=True, exist_ok=True)
     filename = f"{user_id}{extension}"
-    (_AVATARS_DIR / filename).write_bytes(contents)
+    # A previous avatar with a *different* extension (e.g. re-uploading a .jpg over an
+    # existing .png) would otherwise linger on disk forever under its own filename,
+    # unreferenced by anything once `avatar_path` is overwritten below.
+    for stale in avatar_dir.glob(f"{user_id}.*"):
+        if stale.name != filename:
+            stale.unlink()
+    (avatar_dir / filename).write_bytes(contents)
     return filename

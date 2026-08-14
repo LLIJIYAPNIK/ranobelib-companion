@@ -10,6 +10,7 @@ def test_get_settings_defaults(monkeypatch) -> None:
     monkeypatch.delenv("SESSION_SECRET_KEY", raising=False)
     monkeypatch.delenv("SESSION_MAX_AGE_SECONDS", raising=False)
     monkeypatch.delenv("SESSION_REMEMBER_MAX_AGE_SECONDS", raising=False)
+    monkeypatch.delenv("AVATAR_DIR", raising=False)
     get_settings.cache_clear()
 
     settings = get_settings()
@@ -20,6 +21,7 @@ def test_get_settings_defaults(monkeypatch) -> None:
     assert settings.session_secret_key  # generated when unset, but never empty
     assert settings.session_max_age == 14 * 24 * 60 * 60
     assert settings.session_remember_max_age == 90 * 24 * 60 * 60
+    assert str(settings.avatar_dir) == ".ranobelib_avatars"
 
 
 def test_get_settings_generates_a_different_key_per_uncached_call(monkeypatch) -> None:
@@ -41,6 +43,7 @@ def test_get_settings_reads_env(monkeypatch) -> None:
     monkeypatch.setenv("SESSION_SECRET_KEY", "test-secret")
     monkeypatch.setenv("SESSION_MAX_AGE_SECONDS", "3600")
     monkeypatch.setenv("SESSION_REMEMBER_MAX_AGE_SECONDS", "172800")
+    monkeypatch.setenv("AVATAR_DIR", "/data/ranobelib-avatars")
     get_settings.cache_clear()
 
     settings = get_settings()
@@ -51,5 +54,6 @@ def test_get_settings_reads_env(monkeypatch) -> None:
     assert settings.session_secret_key == "test-secret"
     assert settings.session_max_age == 3600
     assert settings.session_remember_max_age == 172800
+    assert settings.avatar_dir == Path("/data/ranobelib-avatars")
 
     get_settings.cache_clear()
