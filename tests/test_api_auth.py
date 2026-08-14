@@ -32,10 +32,17 @@ def client(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> Iterator[TestClie
     db_connection._connection = None
 
 
-def _register(client: TestClient, email: str, password: str = "hunter2pass") -> object:
+def _register(
+    client: TestClient, email: str, password: str = "hunter2pass", nickname: str = ""
+) -> object:
     return client.post(
         "/register",
-        data={"email": email, "password": password, "password_confirm": password},
+        data={
+            "email": email,
+            "password": password,
+            "password_confirm": password,
+            "nickname": nickname,
+        },
     )
 
 
@@ -46,6 +53,33 @@ def test_register_creates_session_and_redirects_home(client: TestClient) -> None
     assert response.history[0].status_code == 303
     assert response.history[0].headers["location"] == "/"
     assert "alice@example.com" in response.text
+
+
+def test_register_nickname_is_optional(client: TestClient) -> None:
+    # PR 105: the field mirrors PR 90's settings_account.html one, reusing the same
+    # users.nickname column - registering without it must keep working exactly as before.
+    response = _register(client, "alice@example.com")
+
+    assert response.status_code == 200  # followed the redirect
+    assert response.history[0].status_code == 303
+
+
+def test_register_nickname_is_stored_on_the_account(client: TestClient) -> None:
+    _register(client, "alice@example.com", nickname="Alice Wong")
+
+    response = client.get("/settings/account")
+
+    assert response.status_code == 200
+    assert 'value="Alice Wong"' in response.text
+
+
+def test_register_form_preserves_nickname_on_error(client: TestClient) -> None:
+    _register(client, "alice@example.com")
+
+    response = _register(client, "alice@example.com", nickname="Alice Wong")
+
+    assert response.status_code == 400
+    assert 'value="Alice Wong"' in response.text
 
 
 def test_register_duplicate_email_shows_form_error(client: TestClient) -> None:

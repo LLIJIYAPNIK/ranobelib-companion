@@ -10,6 +10,18 @@
   {% endif %}
   <form class="auth-form" method="post" action="/register">
     <div class="auth-form__field">
+      <label class="auth-form__label" for="register-nickname">Никнейм</label>
+      <input
+        class="auth-form__input"
+        id="register-nickname"
+        type="text"
+        name="nickname"
+        value="{{ submitted_nickname or '' }}"
+        maxlength="60"
+        placeholder="Необязательно"
+      >
+    </div>
+    <div class="auth-form__field">
       <label class="auth-form__label" for="register-email">Email</label>
       <input
         class="auth-form__input"

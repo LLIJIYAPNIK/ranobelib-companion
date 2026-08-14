@@ -18,20 +18,28 @@ class User:
     avatar_path: str | None = None
 
 
-def create_user(conn: sqlite3.Connection, email: str, password_hash: str) -> User:
+def create_user(
+    conn: sqlite3.Connection, email: str, password_hash: str, nickname: str | None = None
+) -> User:
     """Raises ``sqlite3.IntegrityError`` if `email` is already registered - callers
     (see app/api/auth.py) are expected to check `get_user_by_email` first and turn that
     into a form error, but the UNIQUE constraint is the actual source of truth against
-    a races between two concurrent registrations."""
+    a races between two concurrent registrations. `nickname` reuses the same column
+    `update_user_account` (PR 90) writes to - same non-unique reasoning applies here,
+    nothing looks a user up by it (PR 105 in CLAUDE.md's roadmap)."""
     email = _normalize_email(email)
     created_at = datetime.now(UTC).isoformat()
     cursor = conn.execute(
-        "INSERT INTO users (email, password_hash, created_at) VALUES (?, ?, ?)",
-        (email, password_hash, created_at),
+        "INSERT INTO users (email, password_hash, created_at, nickname) VALUES (?, ?, ?, ?)",
+        (email, password_hash, created_at, nickname),
     )
     conn.commit()
     return User(
-        id=cursor.lastrowid, email=email, password_hash=password_hash, created_at=created_at
+        id=cursor.lastrowid,
+        email=email,
+        password_hash=password_hash,
+        created_at=created_at,
+        nickname=nickname,
     )
 
 
