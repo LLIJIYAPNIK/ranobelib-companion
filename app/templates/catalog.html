@@ -78,9 +78,25 @@
       >&times;</button>
     </div>
     {% if all_genres %}
-    <section class="catalog-filters__section">
-      <h3 class="catalog-filters__section-title">Жанры{% if genres %} ({{ genres | length }}){% endif %}</h3>
-      <div class="catalog-filters__options">
+    <section
+      class="catalog-filters__section"
+      data-role="catalog-filters-section"
+      data-section-key="genres"
+    >
+      <h3 class="catalog-filters__section-title">
+        <button
+          class="catalog-filters__section-toggle"
+          type="button"
+          data-role="catalog-filters-section-toggle"
+          aria-expanded="true"
+          aria-controls="catalog-filters-genres-options"
+        >Жанры{% if genres %} ({{ genres | length }}){% endif %}</button>
+      </h3>
+      <div
+        class="catalog-filters__options"
+        id="catalog-filters-genres-options"
+        data-role="catalog-filters-section-options"
+      >
         {% for genre in all_genres %}
         <label class="catalog-filters__option">
           <input
@@ -97,9 +113,25 @@
     </section>
     {% endif %}
     {% if all_countries %}
-    <section class="catalog-filters__section">
-      <h3 class="catalog-filters__section-title">Страна</h3>
-      <div class="catalog-filters__options">
+    <section
+      class="catalog-filters__section"
+      data-role="catalog-filters-section"
+      data-section-key="country"
+    >
+      <h3 class="catalog-filters__section-title">
+        <button
+          class="catalog-filters__section-toggle"
+          type="button"
+          data-role="catalog-filters-section-toggle"
+          aria-expanded="true"
+          aria-controls="catalog-filters-country-options"
+        >Страна</button>
+      </h3>
+      <div
+        class="catalog-filters__options"
+        id="catalog-filters-country-options"
+        data-role="catalog-filters-section-options"
+      >
         <label class="catalog-filters__option">
           <input
             type="radio"
@@ -131,6 +163,7 @@
   <script src="{{ url_for('static', path='js/custom-dropdown.js') }}" defer></script>
   {% if all_genres or all_countries %}
   <script src="{{ url_for('static', path='js/catalog-filters-toggle.js') }}" defer></script>
+  <script src="{{ url_for('static', path='js/catalog-filters-accordion.js') }}" defer></script>
   {% endif %}
 </main>
 {% endblock %}

@@ -421,7 +421,8 @@ def test_show_catalog_renders_country_radios() -> None:
         response = client.get("/library/catalog", params={"country": 1})
 
     assert response.status_code == 200
-    assert "<h3 class=\"catalog-filters__section-title\">Страна</h3>" in response.text
+    assert 'data-section-key="country"' in response.text
+    assert ">Страна</button>" in response.text
     assert "<span>Любая страна</span>" in response.text
     assert "<span>Япония</span>" in response.text
     assert "<span>Корея</span>" in response.text
@@ -568,3 +569,51 @@ def test_library_tabs_active_state() -> None:
         'library-tabs__link library-tabs__link--active" href="/library/catalog"'
         in catalog_response.text
     )
+
+
+def test_show_catalog_genre_section_is_an_accordion_toggle() -> None:
+    page = CatalogPage(items=[], page=1, has_next_page=False)
+    genres = [Genre(id=5, name="Фэнтези")]
+    with patch("app.services.catalog.Catalog", return_value=_FakeCatalog(page, genres=genres)):
+        response = client.get("/library/catalog")
+
+    assert response.status_code == 200
+    assert 'data-section-key="genres"' in response.text
+    toggle = re.search(r'data-role="catalog-filters-section-toggle"[^>]*>', response.text)
+    assert toggle is not None
+    assert 'aria-expanded="true"' in toggle.group(0)
+    assert 'aria-controls="catalog-filters-genres-options"' in toggle.group(0)
+    assert 'id="catalog-filters-genres-options"' in response.text
+
+
+def test_show_catalog_country_section_is_an_accordion_toggle() -> None:
+    page = CatalogPage(items=[], page=1, has_next_page=False)
+    countries = [Country(id=1, name="Япония")]
+    with patch(
+        "app.services.catalog.Catalog", return_value=_FakeCatalog(page, countries=countries)
+    ):
+        response = client.get("/library/catalog")
+
+    assert response.status_code == 200
+    assert 'data-section-key="country"' in response.text
+    assert 'aria-controls="catalog-filters-country-options"' in response.text
+    assert 'id="catalog-filters-country-options"' in response.text
+
+
+def test_show_catalog_includes_the_accordion_script_when_there_are_filters() -> None:
+    page = CatalogPage(items=[], page=1, has_next_page=False)
+    genres = [Genre(id=5, name="Фэнтези")]
+    with patch("app.services.catalog.Catalog", return_value=_FakeCatalog(page, genres=genres)):
+        response = client.get("/library/catalog")
+
+    assert response.status_code == 200
+    assert "static/js/catalog-filters-accordion.js" in response.text
+
+
+def test_show_catalog_omits_the_accordion_script_when_there_is_nothing_to_filter_by() -> None:
+    page = CatalogPage(items=[], page=1, has_next_page=False)
+    with patch("app.services.catalog.Catalog", return_value=_FakeCatalog(page)):
+        response = client.get("/library/catalog")
+
+    assert response.status_code == 200
+    assert "catalog-filters-accordion.js" not in response.text
