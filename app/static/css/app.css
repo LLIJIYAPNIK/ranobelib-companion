@@ -92,6 +92,14 @@ a {
   height: 100vh;
   overflow-x: hidden;
   overflow-y: auto;
+  /* PR 116: overflow-y: auto above is still needed for the rare case the icon list
+     genuinely outgrows the viewport, but on ordinary short/medium windows it leaves just
+     enough overhang to paint a visible scrollbar in this 64px-wide icon-only column,
+     which has no room to spare for one. Hide the scrollbar itself (both engines' APIs)
+     rather than removing overflow-y - scrolling still works via keyboard/wheel/touch,
+     same trade-off *::-webkit-scrollbar's global thin styling elsewhere in this file
+     makes, just all the way to invisible instead of just thinner. */
+  scrollbar-width: none;
   background: var(--bg-panel);
   border-right: 1px solid var(--border);
   display: flex;
@@ -100,6 +108,10 @@ a {
   gap: 22px;
   padding: 20px 0;
   transition: width 0.2s ease, flex-basis 0.2s ease;
+}
+
+.sidebar::-webkit-scrollbar {
+  display: none;
 }
 
 .sidebar__link {
