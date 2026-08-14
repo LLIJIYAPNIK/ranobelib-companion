@@ -44,6 +44,21 @@ def test_sidebar_renders_a_collapsed_burger_toggle_by_default() -> None:
     assert "static/js/sidebar-toggle.js" in response.text
 
 
+def test_sidebar_applies_saved_expanded_state_synchronously_before_first_paint() -> None:
+    # PR 108: this must be an inline script running while the <nav> is being parsed (not
+    # the deferred sidebar-toggle.js), so the saved state is applied before the sidebar's
+    # first paint and its width transition never plays on a plain page navigation.
+    response = client.get("/")
+
+    assert response.status_code == 200
+    nav_start = response.text.index('<nav class="sidebar" data-role="sidebar">')
+    toggle_start = response.text.index('data-role="sidebar-toggle"')
+    inline_script = response.text[nav_start:toggle_start]
+    assert "<script>" in inline_script
+    assert 'localStorage.getItem("sidebarExpanded") === "1"' in inline_script
+    assert "sidebar--expanded" in inline_script
+
+
 def test_sidebar_renders_a_text_label_next_to_each_nav_icon() -> None:
     response = client.get("/")
 
