@@ -957,6 +957,11 @@ a {
   top: 16px;
   max-height: calc(100vh - 32px);
   overflow-y: auto;
+  /* PR 113: without this, scrolling past the end of the options list inside this panel
+     "spills over" into scrolling the page underneath - the standard nested-scroll-
+     container behavior browsers apply by default. Also covers the PR 103 fullscreen
+     mobile modal, which reuses this same overflow-y without overriding it. */
+  overscroll-behavior: contain;
   padding: 16px;
   background: var(--bg-surface);
   border: 1px solid var(--border);
