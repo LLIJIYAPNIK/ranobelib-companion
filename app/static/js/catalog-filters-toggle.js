@@ -9,6 +9,8 @@
   const panel = document.querySelector('[data-role="catalog-filters"]');
   if (!toggle || !panel) return;
 
+  const closeButton = panel.querySelector('[data-role="catalog-filters-close"]');
+
   function isOpen() {
     return !panel.hidden;
   }
@@ -26,4 +28,5 @@
   panel.hidden = true;
 
   toggle.addEventListener("click", () => (isOpen() ? close() : open()));
+  closeButton?.addEventListener("click", close);
 })();

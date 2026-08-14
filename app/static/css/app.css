@@ -872,9 +872,36 @@ a {
   border-radius: 8px;
 }
 
+/* PR 98: title + close button on one row, replacing the title's own margin-bottom. */
+.catalog-filters__header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin: 0 0 12px;
+}
+
 .catalog-filters__title {
   font-size: 15px;
-  margin: 0 0 12px;
+  margin: 0;
+}
+
+.catalog-filters__close {
+  flex: 0 0 auto;
+  background: none;
+  border: none;
+  padding: 4px;
+  color: var(--text-muted);
+  font-size: 18px;
+  line-height: 1;
+  cursor: pointer;
+  transition: color 0.15s ease;
+}
+
+@media (hover: hover) {
+  .catalog-filters__close:hover {
+    color: var(--accent-teal);
+  }
 }
 
 .catalog-filters__section + .catalog-filters__section {

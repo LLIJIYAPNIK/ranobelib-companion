@@ -68,7 +68,15 @@
     id="catalog-filters-panel"
     aria-label="Фильтры"
   >
-    <h2 class="catalog-filters__title">Фильтры</h2>
+    <div class="catalog-filters__header">
+      <h2 class="catalog-filters__title">Фильтры</h2>
+      <button
+        class="catalog-filters__close"
+        type="button"
+        data-role="catalog-filters-close"
+        aria-label="Закрыть фильтры"
+      >&times;</button>
+    </div>
     {% if all_genres %}
     <section class="catalog-filters__section">
       <h3 class="catalog-filters__section-title">Жанры{% if genres %} ({{ genres | length }}){% endif %}</h3>

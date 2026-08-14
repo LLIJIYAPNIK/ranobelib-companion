@@ -376,6 +376,16 @@ def test_show_catalog_renders_a_filters_toggle_button_when_there_are_filters() -
     assert 'aria-controls="catalog-filters-panel"' in response.text
 
 
+def test_show_catalog_filters_panel_has_a_close_button() -> None:
+    page = CatalogPage(items=[], page=1, has_next_page=False)
+    genres = [Genre(id=5, name="Фэнтези")]
+    with patch("app.services.catalog.Catalog", return_value=_FakeCatalog(page, genres=genres)):
+        response = client.get("/library/catalog")
+
+    assert response.status_code == 200
+    assert 'data-role="catalog-filters-close"' in response.text
+
+
 def test_show_catalog_omits_the_filters_toggle_when_there_is_nothing_to_filter_by() -> None:
     page = CatalogPage(items=[], page=1, has_next_page=False)
     with patch("app.services.catalog.Catalog", return_value=_FakeCatalog(page)):
