@@ -379,6 +379,30 @@ a {
   border-bottom: 1px solid var(--border);
 }
 
+/* PR 101: reveal-on-scroll-up for the catalog's own .header (search bar, sort, "Фильтры"
+   toggle), scoped via the data-role attribute so /library/catalog is the only page where
+   plain .header picks this up - login/register/index/library reuse the same class for a
+   static, always-in-flow header and shouldn't start sliding around. Same direction-
+   detection idea as .reader-scroll-nav (PR 52, see catalog-header-scroll.js), but inverted:
+   .reader-scroll-nav is a duplicate overlay that's hidden by default because the real nav
+   is already visible in-flow, whereas this *is* the only header, so it has to stay visible
+   without JS (and before the first scroll event) for the <noscript> pagination fallback to
+   keep working - only a --hidden modifier is ever added, never a --visible one.
+   position: sticky (not fixed) keeps it inside .main's own box instead of the viewport, so
+   it never overlaps the sidebar, matching PR 51/52's reasoning for the same choice. */
+.header[data-role="catalog-scroll-header"] {
+  position: sticky;
+  top: 0;
+  z-index: 45;
+  background: var(--bg-page);
+  transform: translateY(0);
+  transition: transform 0.25s ease;
+}
+
+.header[data-role="catalog-scroll-header"].header--hidden {
+  transform: translateY(-100%);
+}
+
 .search-form {
   flex: 1;
   max-width: 480px;

@@ -2,7 +2,7 @@
 {% block title %}Все тайтлы — RanobeLib Companion{% endblock %}
 {% block content %}
 {% include "_library_tabs.html" %}
-<header class="header">
+<header class="header" data-role="catalog-scroll-header">
   <form class="search-form" id="catalog-search-form" method="get" action="/library/catalog">
     <input
       class="search-input"
@@ -150,6 +150,7 @@
   </aside>
   {% endif %}
   <script src="{{ url_for('static', path='js/catalog-scroll.js') }}" defer></script>
+  <script src="{{ url_for('static', path='js/catalog-header-scroll.js') }}" defer></script>
   <script src="{{ url_for('static', path='js/custom-dropdown.js') }}" defer></script>
   {% if all_genres or all_countries %}
   <script src="{{ url_for('static', path='js/catalog-filters-toggle.js') }}" defer></script>
