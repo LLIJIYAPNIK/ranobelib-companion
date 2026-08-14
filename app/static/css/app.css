@@ -2068,6 +2068,15 @@ a {
   color: var(--text-primary);
   font-family: var(--font-mono);
   font-size: 13px;
+  /* PR 94: the native up/down spinner can't be restyled in any engine (same limitation
+     PR 54 hit with <select>) - hidden here, replaced with the custom +/- buttons below. */
+  -moz-appearance: textfield;
+}
+
+.reading-speed-test__manual-field input::-webkit-outer-spin-button,
+.reading-speed-test__manual-field input::-webkit-inner-spin-button {
+  -webkit-appearance: none;
+  margin: 0;
 }
 
 .reading-speed-test__manual-field input::placeholder {
