@@ -1054,6 +1054,11 @@ a {
    the next section's toggle takes over the same stuck position once it reaches the top.
    The solid background is what makes that handoff read as one sticky header at a time,
    not two overlapping labels. */
+/* PR 118: font-size bumped to match .auth-form__label's site-wide "form section label"
+   scale (13px) - this was noticeably smaller than the rest of the site's forms/settings
+   text (12px), reading as cramped next to a reference design where filter text isn't
+   smaller than the rest of the page. Padding grows with it so the row doesn't feel
+   tighter than before relative to the larger text. */
 .catalog-filters__section-toggle {
   position: sticky;
   top: 0;
@@ -1063,11 +1068,11 @@ a {
   justify-content: space-between;
   gap: 8px;
   width: 100%;
-  padding: 6px 0;
+  padding: 8px 0;
   border: none;
   background: var(--bg-surface);
   font: inherit;
-  font-size: 12px;
+  font-size: 13px;
   font-weight: 600;
   color: var(--text-secondary);
   text-align: left;
@@ -1097,16 +1102,19 @@ a {
 .catalog-filters__options {
   display: flex;
   flex-direction: column;
-  gap: 10px;
+  gap: 12px;
   overflow: hidden;
   transition: max-height 0.2s ease;
 }
 
+/* PR 118: font-size bumped to match .auth-form__input's site-wide scale (14px) - gap and
+   the checkbox/radio size (below) grow proportionally so the larger text has matching
+   breathing room instead of just being bigger inside the same tight spacing. */
 .catalog-filters__option {
   display: flex;
   align-items: center;
-  gap: 8px;
-  font-size: 13px;
+  gap: 10px;
+  font-size: 14px;
   color: var(--text-secondary);
   cursor: pointer;
 }
@@ -1118,12 +1126,14 @@ a {
    image so it inherits the same currentColor-free palette as everything else on the
    page. `:focus-visible` (not `:focus`) matches .toc__export-format's convention
    elsewhere in this file - a visible keyboard-focus ring without one on mouse click. */
+/* PR 118: 16px -> 18px, matching .catalog-filters__option's own font-size bump above -
+   the checkmark's ::after geometry below scales with it. */
 .catalog-filters__option input[type="checkbox"] {
   appearance: none;
   -webkit-appearance: none;
   flex: 0 0 auto;
-  width: 16px;
-  height: 16px;
+  width: 18px;
+  height: 18px;
   margin: 0;
   position: relative;
   border: 1px solid var(--border);
@@ -1136,10 +1146,10 @@ a {
 .catalog-filters__option input[type="checkbox"]::after {
   content: "";
   position: absolute;
-  left: 4px;
-  top: 1px;
-  width: 4px;
-  height: 8px;
+  left: 5px;
+  top: 2px;
+  width: 5px;
+  height: 9px;
   border: solid var(--bg-page);
   border-width: 0 2px 2px 0;
   transform: rotate(45deg) scale(0);
@@ -1166,12 +1176,13 @@ a {
    circular custom control rather than reusing the checkbox's square/checkmark one. Same
    currentColor-free, appearance:none approach as the checkbox above, just a dot in a
    circle instead of a checkmark in a square. */
+/* PR 118: 16px -> 18px, same bump as the checkbox above. */
 .catalog-filters__option input[type="radio"] {
   appearance: none;
   -webkit-appearance: none;
   flex: 0 0 auto;
-  width: 16px;
-  height: 16px;
+  width: 18px;
+  height: 18px;
   margin: 0;
   position: relative;
   border: 1px solid var(--border);
@@ -1184,7 +1195,7 @@ a {
 .catalog-filters__option input[type="radio"]::after {
   content: "";
   position: absolute;
-  inset: 3px;
+  inset: 4px;
   border-radius: 50%;
   background: var(--bg-page);
   transform: scale(0);
