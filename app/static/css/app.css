@@ -976,10 +976,16 @@ a {
   transform: rotate(0deg);
 }
 
+/* PR 99: collapse animation - max-height is JS-driven (catalog-filters-accordion.js),
+   from 0 up to the options list's own measured scrollHeight, since the list's real
+   height varies a lot between sections (a couple of country radios vs 50+ genre
+   checkboxes) and can't be hardcoded as a single fixed value. */
 .catalog-filters__options {
   display: flex;
   flex-direction: column;
   gap: 10px;
+  overflow: hidden;
+  transition: max-height 0.2s ease;
 }
 
 .catalog-filters__option {
