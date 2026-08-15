@@ -352,6 +352,22 @@
   let revealedCount = 0;
   let hint = null;
 
+  // PR 130: PR 76's original per-tap autoscroll used
+  // `lastRevealed.scrollIntoView({ block: "end" })` - technically scrolled, but "end"
+  // pins the *revealed paragraph's own* bottom edge exactly to the viewport's bottom
+  // edge, with zero clearance - the paragraph reads as jammed against the very bottom of
+  // the screen the instant it appears, rather than settling in with normal breathing
+  // room, and whatever's right after it in the DOM (the "Тапните, чтобы читать дальше"
+  // hint, afterReveal() below) ends up peeking into view too. Scrolling the whole
+  // document to its current bottom edge instead - not the paragraph's own edge - gives a
+  // clean, consistent landing regardless of how tall this particular paragraph happens to
+  // be. window.scrollTo() clamps to the real max scroll position on its own, so a short
+  // chapter (revealed content doesn't fill the viewport yet) never overscrolls past what's
+  // actually there.
+  function scrollToDocumentBottom() {
+    window.scrollTo({ top: document.documentElement.scrollHeight, behavior: "smooth" });
+  }
+
   // Either shows the "tap to continue" hint, or removes it for good once every paragraph
   // in the chapter is revealed - shared tail end of both the instant reveal() below and
   // PR 79's tempo-driven revealNextWithTempo().
@@ -395,7 +411,7 @@
     revealedCount = count;
 
     if (scroll && lastRevealed) {
-      lastRevealed.scrollIntoView({ behavior: "smooth", block: "end" });
+      scrollToDocumentBottom();
     }
 
     afterReveal();
@@ -414,7 +430,7 @@
     }
 
     wrap.classList.remove("reader-content__paragraph--hidden");
-    wrap.scrollIntoView({ behavior: "smooth", block: "end" });
+    scrollToDocumentBottom();
 
     // stampTime() only runs once the tempo reveal is done, not before - every runner
     // walks wrap's own text nodes (to split into words or capture for typewriter-speed),
