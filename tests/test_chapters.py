@@ -212,6 +212,17 @@ def test_read_chapter_includes_image_lightbox_script() -> None:
     assert "static/js/image-lightbox.js" in response.text
 
 
+def test_read_chapter_includes_paragraph_menu_script() -> None:
+    # PR 131: infrastructure for PR 132/133's reactions/comments - loads unconditionally,
+    # same as image-lightbox.js/reader-progress.js, regardless of reading mode.
+    chapter = Chapter(id=1, volume="1", number="5", content="<p>x</p>")
+    with patch("app.services.client.RanobeLib", return_value=_FakeClient(chapter)):
+        response = client.get("/titles/6712--test-novel/chapters/1/5")
+
+    assert response.status_code == 200
+    assert "static/js/paragraph-menu.js" in response.text
+
+
 def test_read_chapter_exposes_paragraph_key_fields_on_content() -> None:
     # paragraph-menu.js (and eventually PR 132/133) key a paragraph off
     # slug_url/volume/number/branch_id plus its own index among .reader-content's

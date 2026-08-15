@@ -2386,6 +2386,66 @@ a {
   transition: background-color 0.15s ease;
 }
 
+/* PR 131: the paragraph context menu (right-click on a paragraph opens Реакции/
+   Комментировать - both still stubs until PR 132/133). Portaled to <body> and positioned
+   from the click point with inline left/top (paragraph-menu.js), the same reason
+   .profile-menu__panel (PR 97) is portaled rather than nested where it's used: an
+   ancestor's overflow would otherwise clip it. Same fade/no-slide-direction-needed open
+   styling as that panel, just anchored at a point instead of a trigger element's rect. */
+.paragraph-menu__panel {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  position: fixed;
+  z-index: 40;
+  min-width: 180px;
+  padding: 6px;
+  background: var(--bg-surface);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  box-shadow: 0 10px 24px rgba(0, 0, 0, 0.35);
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.15s ease, transform 0.15s ease;
+  transform: scale(0.97);
+}
+
+.paragraph-menu__panel--open {
+  opacity: 1;
+  pointer-events: auto;
+  transform: scale(1);
+}
+
+.paragraph-menu__item {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  width: 100%;
+  padding: 8px 10px;
+  border: none;
+  border-radius: 6px;
+  background: none;
+  color: var(--text-secondary);
+  font-family: inherit;
+  font-size: 13px;
+  text-align: left;
+  text-decoration: none;
+  cursor: pointer;
+  transition: background-color 0.1s ease, color 0.1s ease;
+}
+
+.paragraph-menu__item:disabled {
+  color: var(--text-muted);
+  cursor: default;
+}
+
+@media (hover: hover) {
+  .paragraph-menu__item:not(:disabled):hover {
+    background: rgba(34, 211, 197, 0.12);
+    color: var(--text-primary);
+  }
+}
+
 /* PR 89: /settings split into left-nav tabs (Чтение/Аккаунт/Безопасность) under their
    own sub-routes, replacing the single flat page from PR 61. Same fixed-width sticky
    sidebar language as .catalog-filters (PR 85), mirrored to the left since nothing here
