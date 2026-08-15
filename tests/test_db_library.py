@@ -2,7 +2,16 @@ import sqlite3
 
 import pytest
 
-from app.db.library import add_entry, get_entry, list_entries, record_progress, remove_entry
+from app.db.library import (
+    add_entry,
+    get_entry,
+    get_favorite_entry,
+    list_entries,
+    record_progress,
+    remove_entry,
+    set_favorite,
+    unset_favorite,
+)
 from app.db.migrate import run_migrations
 
 
@@ -27,6 +36,7 @@ def test_add_entry_returns_a_new_entry(conn: sqlite3.Connection) -> None:
     assert entry.last_read_volume is None
     assert entry.last_read_number is None
     assert entry.last_read_at is None
+    assert entry.is_favorite is False
 
 
 def test_add_entry_is_idempotent(conn: sqlite3.Connection) -> None:
@@ -89,3 +99,69 @@ def test_record_progress_outside_library_is_a_noop(conn: sqlite3.Connection) -> 
     record_progress(conn, 1, "6712--test-novel", volume="2", number="10")
 
     assert get_entry(conn, 1, "6712--test-novel") is None
+
+
+def test_set_favorite_marks_the_entry(conn: sqlite3.Connection) -> None:
+    add_entry(conn, 1, "6712--test-novel")
+
+    set_favorite(conn, 1, "6712--test-novel")
+
+    assert get_entry(conn, 1, "6712--test-novel").is_favorite is True
+
+
+def test_set_favorite_clears_the_previous_favorite(conn: sqlite3.Connection) -> None:
+    add_entry(conn, 1, "1--first")
+    add_entry(conn, 1, "2--second")
+    set_favorite(conn, 1, "1--first")
+
+    set_favorite(conn, 1, "2--second")
+
+    assert get_entry(conn, 1, "1--first").is_favorite is False
+    assert get_entry(conn, 1, "2--second").is_favorite is True
+
+
+def test_set_favorite_does_not_affect_other_users(conn: sqlite3.Connection) -> None:
+    conn.execute(
+        "INSERT INTO users (id, email, password_hash, created_at) "
+        "VALUES (2, 'bob@example.com', 'hash', 'now')"
+    )
+    add_entry(conn, 1, "6712--test-novel")
+    add_entry(conn, 2, "6712--test-novel")
+    set_favorite(conn, 1, "6712--test-novel")
+
+    set_favorite(conn, 2, "6712--test-novel")
+
+    assert get_entry(conn, 1, "6712--test-novel").is_favorite is True
+    assert get_entry(conn, 2, "6712--test-novel").is_favorite is True
+
+
+def test_unset_favorite_clears_it(conn: sqlite3.Connection) -> None:
+    add_entry(conn, 1, "6712--test-novel")
+    set_favorite(conn, 1, "6712--test-novel")
+
+    unset_favorite(conn, 1, "6712--test-novel")
+
+    assert get_entry(conn, 1, "6712--test-novel").is_favorite is False
+
+
+def test_unset_favorite_missing_entry_does_not_raise(conn: sqlite3.Connection) -> None:
+    unset_favorite(conn, 1, "does-not-exist")  # must not raise
+
+
+def test_get_favorite_entry_returns_none_when_nothing_is_favorited(
+    conn: sqlite3.Connection,
+) -> None:
+    add_entry(conn, 1, "6712--test-novel")
+
+    assert get_favorite_entry(conn, 1) is None
+
+
+def test_get_favorite_entry_returns_the_favorited_entry(conn: sqlite3.Connection) -> None:
+    add_entry(conn, 1, "1--first")
+    add_entry(conn, 1, "2--second")
+    set_favorite(conn, 1, "2--second")
+
+    favorite = get_favorite_entry(conn, 1)
+
+    assert favorite is not None
+    assert favorite.slug_url == "2--second"

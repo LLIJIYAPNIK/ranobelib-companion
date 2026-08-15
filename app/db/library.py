@@ -1,4 +1,5 @@
-"""Access to the ``library_entries`` table (see migrations/0002_library_entries.sql).
+"""Access to the ``library_entries`` table (see migrations/0002_library_entries.sql,
+0008_library_entries_favorite.sql for ``is_favorite``).
 
 Deliberately stores only ``slug_url`` and reading progress - not the title's name/cover.
 Those are SDK response data, already cached in the SDK's own ``cache_dir``; duplicating
@@ -23,6 +24,7 @@ class LibraryEntry:
     last_read_volume: str | None
     last_read_number: str | None
     last_read_at: str | None
+    is_favorite: bool
 
 
 def add_entry(conn: sqlite3.Connection, user_id: int, slug_url: str) -> LibraryEntry:
@@ -67,6 +69,37 @@ def list_entries(conn: sqlite3.Connection, user_id: int) -> list[LibraryEntry]:
     return [_row_to_entry(row) for row in rows]
 
 
+def set_favorite(conn: sqlite3.Connection, user_id: int, slug_url: str) -> None:
+    """Marks `slug_url` as `user_id`'s one favorite title, clearing any previous favorite
+    first - exactly one favorite per user is simplest as a plain boolean flag reset on
+    every new pick, rather than a separate table just to hold a single value (see PR 123
+    in CLAUDE.md's roadmap). No-op (both UPDATEs affect 0 rows) if `slug_url` isn't
+    actually in this user's library."""
+    conn.execute("UPDATE library_entries SET is_favorite = 0 WHERE user_id = ?", (user_id,))
+    conn.execute(
+        "UPDATE library_entries SET is_favorite = 1 WHERE user_id = ? AND slug_url = ?",
+        (user_id, slug_url),
+    )
+    conn.commit()
+
+
+def unset_favorite(conn: sqlite3.Connection, user_id: int, slug_url: str) -> None:
+    """Not an error if `slug_url` wasn't the favorite (or wasn't in the library) to begin
+    with - same "no-op instead of raising" shape as `remove_entry`."""
+    conn.execute(
+        "UPDATE library_entries SET is_favorite = 0 WHERE user_id = ? AND slug_url = ?",
+        (user_id, slug_url),
+    )
+    conn.commit()
+
+
+def get_favorite_entry(conn: sqlite3.Connection, user_id: int) -> LibraryEntry | None:
+    row = conn.execute(
+        "SELECT * FROM library_entries WHERE user_id = ? AND is_favorite = 1", (user_id,)
+    ).fetchone()
+    return _row_to_entry(row) if row is not None else None
+
+
 def record_progress(
     conn: sqlite3.Connection, user_id: int, slug_url: str, volume: str, number: str
 ) -> None:
@@ -92,4 +125,5 @@ def _row_to_entry(row: sqlite3.Row) -> LibraryEntry:
         last_read_volume=row["last_read_volume"],
         last_read_number=row["last_read_number"],
         last_read_at=row["last_read_at"],
+        is_favorite=bool(row["is_favorite"]),
     )
