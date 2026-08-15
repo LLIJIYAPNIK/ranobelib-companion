@@ -181,6 +181,54 @@ def test_login_unknown_email_shows_same_form_error(client: TestClient) -> None:
     assert "Неверный email или пароль" in response.text
 
 
+# --- PR 128: email placeholders --------------------------------------------------------
+
+
+def test_login_email_field_has_a_placeholder(client: TestClient) -> None:
+    response = client.get("/login")
+
+    assert response.status_code == 200
+    assert 'placeholder="you@example.com"' in response.text
+
+
+def test_register_email_field_has_a_placeholder(client: TestClient) -> None:
+    response = client.get("/register")
+
+    assert response.status_code == 200
+    assert 'placeholder="you@example.com"' in response.text
+
+
+def test_login_placeholder_is_not_submitted_as_the_email_value(client: TestClient) -> None:
+    """A placeholder is never part of a form's submitted data - browsers only send
+    `value`. Confirms a re-rendered error form echoes what was actually typed, not the
+    placeholder text sneaking into `submitted_email`, and the placeholder itself is still
+    intact for the (still-empty) password field's neighbor."""
+    response = client.post(
+        "/login", data={"email": "alice@example.com", "password": "wrong-password"}
+    )
+
+    assert response.status_code == 400
+    assert 'value="alice@example.com"' in response.text
+    assert 'value="you@example.com"' not in response.text
+    assert 'placeholder="you@example.com"' in response.text
+
+
+def test_register_placeholder_is_not_submitted_as_the_email_value(client: TestClient) -> None:
+    response = client.post(
+        "/register",
+        data={
+            "email": "alice@example.com",
+            "password": "hunter2pass",
+            "password_confirm": "different",
+        },
+    )
+
+    assert response.status_code == 400
+    assert 'value="alice@example.com"' in response.text
+    assert 'value="you@example.com"' not in response.text
+    assert 'placeholder="you@example.com"' in response.text
+
+
 def test_login_correct_credentials_establishes_session(client: TestClient) -> None:
     _register(client, "alice@example.com", password="hunter2pass")
     client.post("/logout")
