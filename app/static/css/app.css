@@ -1412,6 +1412,10 @@ a {
   gap: 8px;
 }
 
+.title-hero__info > .btn {
+  align-self: flex-start;
+}
+
 .title-hero__name {
   font-size: 34px;
   font-weight: 800;
