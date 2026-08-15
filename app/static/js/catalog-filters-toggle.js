@@ -15,6 +15,10 @@
   if (!toggle || !panel) return;
 
   const closeButton = panel.querySelector('[data-role="catalog-filters-close"]');
+  // PR 127: shifts (desktop) or hides (mobile, see app.css) the floating "back to top"
+  // button so an open filters panel never sits on top of it - optional, since the button
+  // itself only exists on catalog.html's own long/infinite-scroll grid.
+  const backToTop = document.querySelector('[data-role="catalog-back-to-top"]');
 
   function isOpen() {
     return !panel.hidden;
@@ -24,12 +28,14 @@
     panel.hidden = false;
     panel.classList.remove("catalog-filters--closing");
     toggle.setAttribute("aria-expanded", "true");
+    backToTop?.classList.add("back-to-top--filters-open");
   }
 
   function close() {
     if (panel.hidden) return;
     panel.classList.add("catalog-filters--closing");
     toggle.setAttribute("aria-expanded", "false");
+    backToTop?.classList.remove("back-to-top--filters-open");
     window.setTimeout(() => {
       panel.hidden = true;
       panel.classList.remove("catalog-filters--closing");
