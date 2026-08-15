@@ -1,12 +1,15 @@
 """GET /profile — read-only account profile (PR 92), now a public page (PR 122).
 
 Separate from /settings/account (PR 90), which is where these same fields are actually
-edited - this page only displays them.
+edited - this page only displays them (PR 124's three show_* privacy flags included).
 
 /profile (no id) is the logged-in visitor's own shortcut - it stays gated behind login,
 since there's no "own profile" to show an anonymous visitor. /profile/{user_id} is the
 public page itself: any visitor, logged in or not, can view any registered user's
-profile by id.
+profile by id - subject to that user's own show_currently_reading/show_favorite/
+show_library flags (PR 124), which only apply to *other* visitors; the owner's own view
+of their own profile always shows everything, since that's also where they'd notice
+something is set to hidden and go fix it in /settings/account.
 """
 
 from __future__ import annotations
@@ -59,6 +62,18 @@ async def _render_profile(
     # so "Читает сейчас" only shows up once that entry genuinely has a read position.
     currently_reading = items[0] if items and items[0]["entry"].last_read_at else None
     favorite_item = next((item for item in items if item["entry"].is_favorite), None)
+
+    # PR 124: hide whichever sections the profile owner has opted out of, but only from
+    # someone else's view - computed above unconditionally so the owner's own visit is
+    # completely unaffected by their own flags.
+    if not is_own_profile:
+        if not profile_user.show_currently_reading:
+            currently_reading = None
+        if not profile_user.show_favorite:
+            favorite_item = None
+        if not profile_user.show_library:
+            items = []
+
     return templates.TemplateResponse(
         request,
         "profile.html",
