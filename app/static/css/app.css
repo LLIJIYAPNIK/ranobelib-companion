@@ -2564,6 +2564,140 @@ a {
   color: var(--text-primary);
 }
 
+/* PR 133: the "N комментариев ▾" toggle and the thread under it, both nested inside the
+   same .paragraph-reactions-host/.reader-content__paragraph-wrap the reactions strip
+   uses (paragraph-menu.js's paragraphHostFor()) - but unlike that strip, always visible
+   in both reading modes rather than a hover/focus-only overlay. Comments are a more
+   durable affordance than a decorative reaction row, so they stay in normal document
+   flow instead of the reactions strip's absolute-positioned overlay treatment. */
+.paragraph-comments {
+  margin-top: 6px;
+}
+
+.reader-content__paragraph-wrap > .paragraph-comments {
+  padding: 0 14px 10px;
+}
+
+.paragraph-comments__toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 2px 0;
+  border: none;
+  background: none;
+  color: var(--text-muted);
+  font-family: inherit;
+  font-size: 12px;
+  cursor: pointer;
+  transition: color 0.1s ease;
+}
+
+@media (hover: hover) {
+  .paragraph-comments__toggle:hover {
+    color: var(--text-primary);
+  }
+}
+
+.paragraph-comments__arrow {
+  font-size: 10px;
+}
+
+.paragraph-comments__list {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  margin-top: 8px;
+}
+
+/* Reddit-style nesting: each level of reply indents via its own .replies wrapper's
+   margin/border rather than a JS-computed depth * N inline style, so recursion in
+   renderCommentNode() doesn't need to know or pass its own depth down at all. */
+.paragraph-comment__replies {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  margin: 8px 0 0 12px;
+  padding-left: 12px;
+  border-left: 1px solid var(--border);
+}
+
+.paragraph-comment__meta {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  font-size: 12px;
+}
+
+.paragraph-comment__author {
+  color: var(--text-primary);
+  font-weight: 600;
+}
+
+.paragraph-comment__time {
+  color: var(--text-muted);
+}
+
+.paragraph-comment__body {
+  margin: 4px 0;
+  font-size: 13px;
+  color: var(--text-secondary);
+  white-space: pre-wrap;
+  overflow-wrap: break-word;
+}
+
+.paragraph-comment__reply-toggle {
+  padding: 0;
+  border: none;
+  background: none;
+  color: var(--text-muted);
+  font-family: inherit;
+  font-size: 12px;
+  text-decoration: none;
+  cursor: pointer;
+  transition: color 0.1s ease;
+}
+
+@media (hover: hover) {
+  .paragraph-comment__reply-toggle:hover {
+    color: var(--accent-teal);
+  }
+}
+
+/* PR 133: the composer shared by the menu's "Комментировать" item and every comment's
+   own "Ответить" - a plain textarea + .btn.btn--sm, sized to fit inside the same compact
+   .paragraph-menu__panel the reaction picker replaces (paragraph-menu.js's
+   buildComposer()), as well as inline under a comment when used as a reply form. */
+.paragraph-comments__composer {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  width: 240px;
+  max-width: 100%;
+  margin-top: 6px;
+}
+
+.paragraph-comments__textarea {
+  width: 100%;
+  min-height: 64px;
+  padding: 8px 10px;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  background: var(--bg-page);
+  color: var(--text-primary);
+  font-family: inherit;
+  font-size: 13px;
+  resize: vertical;
+}
+
+.paragraph-comments__textarea:focus-visible {
+  outline: none;
+  border-color: var(--accent-teal);
+}
+
+.paragraph-comments__composer .btn {
+  align-self: flex-end;
+}
+
 /* PR 89: /settings split into left-nav tabs (Чтение/Аккаунт/Безопасность) under their
    own sub-routes, replacing the single flat page from PR 61. Same fixed-width sticky
    sidebar language as .catalog-filters (PR 85), mirrored to the left since nothing here

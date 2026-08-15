@@ -17,8 +17,16 @@
 //
 // PR 132: "Реакции" opens a strip of 10 emoji in place of the two-item list - picking one
 // POSTs to /titles/{slug}/chapters/{volume}/{number}/reactions (app/api/chapters.py) and
-// refreshes the little counts strip rendered under that paragraph. "Комментировать"
-// stays a stub for PR 133.
+// refreshes the little counts strip rendered under that paragraph.
+//
+// PR 133: "Комментировать" opens a text composer the same way - it POSTs to
+// .../comments and creates a top-level comment. Every paragraph with at least one
+// comment also gets an always-visible "N комментариев ▾" toggle (unlike the reactions
+// strip, which is hover-only in the ordinary reading mode - comments are a more durable
+// affordance, not a decorative overlay); the actual thread loads lazily, only once that
+// toggle is clicked. Each comment has its own "Ответить" opening an inline reply
+// composer, nested reddit-style under its parent via CSS alone (no per-depth styling
+// computed in JS - see .paragraph-comment__replies in app.css).
 (() => {
   const GAP = 8;
 
@@ -59,25 +67,23 @@
     return el && el.parentElement === content ? el : null;
   }
 
-  function paragraphKey(index) {
-    return `${slugUrl}:${volume}:${number}:${branchId}:${index}`;
-  }
-
-  // Where a paragraph's own reactions strip lives. In tap-to-read mode `content.children
-  // [index]` is already tap-to-read.js's own generic <div> plate wrapping the real
-  // paragraph (plus PR 64's timestamp span) - the strip is just another child appended
-  // there. In the ordinary mode it's the SDK's own raw element, which can be anything the
-  // sanitizer allows - including a bare <img>, a void element that can't have children at
-  // all - so the first paragraph that actually needs a strip gets lazily wrapped in a
-  // plain <div> the same way, replacing itself in `content` with that wrapper and moving
-  // inside it. Reparenting like this doesn't disturb reader-progress.js's own
-  // IntersectionObserver (already watching the raw element by reference by the time this
-  // ever runs - script order in chapter.html puts reader-progress.js before this file -
-  // and observation survives an observed node being moved to a new parent, only an
-  // explicit unobserve() or removal from the document would stop it), nor
-  // paragraphElementFor()/tap-to-read.js's own indexing (content.children keeps the same
-  // length and order either way, just with a wrapper standing in for one entry).
-  function reactionsHostFor(index) {
+  // Where a paragraph's own reactions strip and/or comments section live - shared by
+  // both, so a paragraph that ends up with one of each still gets wrapped exactly once.
+  // In tap-to-read mode `content.children[index]` is already tap-to-read.js's own
+  // generic <div> plate wrapping the real paragraph (plus PR 64's timestamp span) - the
+  // strip/section are just more children appended there. In the ordinary mode it's the
+  // SDK's own raw element, which can be anything the sanitizer allows - including a bare
+  // <img>, a void element that can't have children at all - so the first paragraph that
+  // actually needs to host either one gets lazily wrapped in a plain <div> the same way,
+  // replacing itself in `content` with that wrapper and moving inside it. Reparenting
+  // like this doesn't disturb reader-progress.js's own IntersectionObserver (already
+  // watching the raw element by reference by the time this ever runs - script order in
+  // chapter.html puts reader-progress.js before this file - and observation survives an
+  // observed node being moved to a new parent, only an explicit unobserve() or removal
+  // from the document would stop it), nor paragraphElementFor()/tap-to-read.js's own
+  // indexing (content.children keeps the same length and order either way, just with a
+  // wrapper standing in for one entry).
+  function paragraphHostFor(index) {
     const el = content.children[index];
     if (!el) return null;
     if (el.classList.contains("reader-content__paragraph-wrap")) return el;
@@ -90,7 +96,7 @@
   }
 
   function renderStrip(index, counts, mineEmoji) {
-    const host = reactionsHostFor(index);
+    const host = paragraphHostFor(index);
     if (!host) return;
     let strip = host.querySelector(":scope > .paragraph-reactions");
     const entries = Object.entries(counts || {}).filter(([, n]) => n > 0);
@@ -172,6 +178,293 @@
     close();
   }
 
+  // --- PR 133: comments -----------------------------------------------------------
+
+  function pluralizeComments(n) {
+    const mod10 = n % 10;
+    const mod100 = n % 100;
+    if (mod10 === 1 && mod100 !== 11) return "комментарий";
+    if (mod10 >= 2 && mod10 <= 4 && !(mod100 >= 12 && mod100 <= 14)) return "комментария";
+    return "комментариев";
+  }
+
+  function formatCommentTime(iso) {
+    return new Date(iso).toLocaleString("ru-RU", {
+      day: "2-digit",
+      month: "2-digit",
+      year: "numeric",
+      hour: "2-digit",
+      minute: "2-digit",
+    });
+  }
+
+  // Per-paragraph comment state, keyed by index:
+  // - commentCountByIndex is the single source of truth for the number shown on the
+  //   toggle ("N комментариев") - set from the initial bulk fetch and refreshed after
+  //   every post, never recomputed from the tree below (whose root-level length isn't
+  //   the same "replies included" count the server reports).
+  // - commentTreeByIndex is the full nested tree, populated lazily the first time that
+  //   paragraph's "▾" is clicked (loadCommentTree below) and reused on every later
+  //   toggle, so reopening an already-loaded thread needs no request.
+  // - commentsExpandedByIndex tracks only whether the list is currently shown, for the
+  //   toggle's own arrow direction.
+  const commentCountByIndex = new Map();
+  const commentTreeByIndex = new Map();
+  const commentsExpandedByIndex = new Set();
+
+  // A reusable textarea + "Отправить" button, shared by the menu's "Комментировать"
+  // composer and every comment's own "Ответить" reply form - the only difference between
+  // them is what `onSubmit` does with the typed body.
+  function buildComposer(onSubmit, placeholder) {
+    const wrap = document.createElement("div");
+    wrap.className = "paragraph-comments__composer";
+    const textarea = document.createElement("textarea");
+    textarea.className = "paragraph-comments__textarea";
+    textarea.placeholder = placeholder;
+    textarea.rows = 3;
+    textarea.maxLength = 2000; // mirrors MAX_COMMENT_LENGTH in app/db/comments.py
+    const submit = document.createElement("button");
+    submit.type = "button";
+    submit.className = "btn btn--sm";
+    submit.textContent = "Отправить";
+    submit.addEventListener("click", async () => {
+      const body = textarea.value.trim();
+      if (!body) return;
+      submit.disabled = true;
+      try {
+        // Only clears the box on a confirmed success - a rejected/network-failed post
+        // (onSubmit returning false) leaves the typed text in place so it isn't lost,
+        // same reasoning a normal <form> submit failure wouldn't wipe the field either.
+        if (await onSubmit(body)) textarea.value = "";
+      } finally {
+        submit.disabled = false;
+      }
+    });
+    wrap.append(textarea, submit);
+    return wrap;
+  }
+
+  function renderCommentNode(index, comment) {
+    const el = document.createElement("div");
+    el.className = "paragraph-comment";
+
+    const meta = document.createElement("div");
+    meta.className = "paragraph-comment__meta";
+    const author = document.createElement("span");
+    author.className = "paragraph-comment__author";
+    author.textContent = comment.author;
+    const time = document.createElement("span");
+    time.className = "paragraph-comment__time";
+    time.textContent = formatCommentTime(comment.created_at);
+    meta.append(author, time);
+    el.append(meta);
+
+    const body = document.createElement("p");
+    body.className = "paragraph-comment__body";
+    body.textContent = comment.body;
+    el.append(body);
+
+    if (isAuthenticated) {
+      const replyToggle = document.createElement("button");
+      replyToggle.type = "button";
+      replyToggle.className = "paragraph-comment__reply-toggle";
+      replyToggle.textContent = "Ответить";
+      const replyForm = buildComposer(
+        (text) => submitComment(index, text, comment.id),
+        "Ваш ответ…"
+      );
+      replyForm.hidden = true;
+      replyToggle.addEventListener("click", () => {
+        replyForm.hidden = !replyForm.hidden;
+      });
+      el.append(replyToggle, replyForm);
+    } else {
+      const link = document.createElement("a");
+      link.className = "paragraph-comment__reply-toggle";
+      link.href = "/login";
+      link.textContent = "Войти, чтобы ответить";
+      el.append(link);
+    }
+
+    if (comment.replies.length > 0) {
+      const replies = document.createElement("div");
+      replies.className = "paragraph-comment__replies";
+      for (const reply of comment.replies) {
+        replies.append(renderCommentNode(index, reply));
+      }
+      el.append(replies);
+    }
+
+    return el;
+  }
+
+  // Everything under a paragraph's own comments toggle - created once per paragraph,
+  // found again on every later call instead of rebuilt (renderCommentsToggle mutates
+  // its label/visibility in place, toggleComments shows/hides `.list`).
+  function commentsSectionFor(index) {
+    const host = paragraphHostFor(index);
+    if (!host) return null;
+    let section = host.querySelector(":scope > .paragraph-comments");
+    if (section) return section;
+
+    section = document.createElement("div");
+    section.className = "paragraph-comments";
+    section.hidden = true; // renderCommentsToggle below reveals it once count > 0
+
+    const toggle = document.createElement("button");
+    toggle.type = "button";
+    toggle.className = "paragraph-comments__toggle";
+    toggle.setAttribute("aria-expanded", "false");
+    toggle.addEventListener("click", () => toggleComments(index));
+    section.append(toggle);
+
+    const list = document.createElement("div");
+    list.className = "paragraph-comments__list";
+    list.hidden = true;
+    section.append(list);
+
+    host.append(section);
+    return section;
+  }
+
+  // Re-renders the toggle's label/arrow from commentCountByIndex/commentsExpandedByIndex
+  // - callers update one of those two maps/sets first, then call this to reflect it.
+  function renderCommentsToggle(index) {
+    const section = commentsSectionFor(index);
+    if (!section) return;
+    const count = commentCountByIndex.get(index) ?? 0;
+    section.hidden = count <= 0; // empty state = show nothing, same as the reactions strip
+    const toggle = section.querySelector(":scope > .paragraph-comments__toggle");
+    const expanded = commentsExpandedByIndex.has(index);
+    toggle.textContent = "";
+    toggle.append(`${count} ${pluralizeComments(count)} `);
+    const arrow = document.createElement("span");
+    arrow.className = "paragraph-comments__arrow";
+    arrow.textContent = expanded ? "▴" : "▾";
+    toggle.append(arrow);
+    toggle.setAttribute("aria-expanded", expanded ? "true" : "false");
+  }
+
+  function setCommentCount(index, count) {
+    commentCountByIndex.set(index, count);
+    renderCommentsToggle(index);
+  }
+
+  function renderCommentList(index, comments) {
+    const section = commentsSectionFor(index);
+    if (!section) return;
+    const list = section.querySelector(":scope > .paragraph-comments__list");
+    list.replaceChildren();
+    for (const comment of comments) {
+      list.append(renderCommentNode(index, comment));
+    }
+  }
+
+  async function loadCommentTree(index) {
+    try {
+      const response = await fetch(
+        `/titles/${slugUrl}/chapters/${volume}/${number}/comments` +
+          `?paragraph_index=${index}&branch_id=${encodeURIComponent(branchId)}`
+      );
+      if (!response.ok) return;
+      const data = await response.json();
+      commentTreeByIndex.set(index, data.comments);
+      renderCommentList(index, data.comments);
+    } catch {
+      // Same "fails silently, the chapter itself still reads fine" reasoning as
+      // loadInitialReactions/loadInitialCommentCounts.
+    }
+  }
+
+  async function toggleComments(index) {
+    const expanded = commentsExpandedByIndex.has(index);
+    if (expanded) {
+      commentsExpandedByIndex.delete(index);
+    } else {
+      commentsExpandedByIndex.add(index);
+      if (!commentTreeByIndex.has(index)) await loadCommentTree(index);
+    }
+    const section = commentsSectionFor(index);
+    const list = section?.querySelector(":scope > .paragraph-comments__list");
+    if (list) list.hidden = !commentsExpandedByIndex.has(index);
+    renderCommentsToggle(index); // just the arrow direction - the count itself is untouched
+  }
+
+  // Returns whether the post actually went through - buildComposer's caller uses this to
+  // decide whether to clear the textarea (a rejected/network-failed post shouldn't lose
+  // what the visitor typed).
+  async function submitComment(index, body, parentCommentId) {
+    const params = new URLSearchParams({
+      paragraph_index: String(index),
+      body,
+      branch_id: branchId,
+    });
+    if (parentCommentId != null) params.set("parent_comment_id", String(parentCommentId));
+    let data;
+    try {
+      const response = await fetch(`/titles/${slugUrl}/chapters/${volume}/${number}/comments`, {
+        method: "POST",
+        headers: { "Content-Type": "application/x-www-form-urlencoded" },
+        body: params,
+      });
+      if (!response.ok) return false;
+      data = await response.json();
+    } catch {
+      return false;
+    }
+    commentTreeByIndex.set(index, data.comments);
+    commentsExpandedByIndex.add(index);
+    renderCommentList(index, data.comments);
+    const section = commentsSectionFor(index);
+    const list = section?.querySelector(":scope > .paragraph-comments__list");
+    if (list) list.hidden = false;
+    // A fresh post always carries its own authoritative count right there in the
+    // response, replies included - no reason to leave the toggle showing a stale number
+    // until the next full page load.
+    setCommentCount(index, data.count);
+    return true;
+  }
+
+  // One bulk fetch for the whole chapter on load, not one per paragraph - same reasoning
+  // as loadInitialReactions.
+  async function loadInitialCommentCounts() {
+    try {
+      const response = await fetch(
+        `/titles/${slugUrl}/chapters/${volume}/${number}/comments/counts` +
+          `?branch_id=${encodeURIComponent(branchId)}`
+      );
+      if (!response.ok) return;
+      const data = await response.json();
+      for (const [indexStr, count] of Object.entries(data.counts || {})) {
+        setCommentCount(Number(indexStr), count);
+      }
+    } catch {
+      // Same "fails silently" reasoning as loadInitialReactions.
+    }
+  }
+  loadInitialCommentCounts();
+
+  function renderCommentComposer(index) {
+    panel.replaceChildren();
+
+    const back = document.createElement("button");
+    back.type = "button";
+    back.className = "paragraph-menu__back";
+    back.textContent = "← Назад";
+    back.addEventListener("click", () => {
+      renderMenuItems(index);
+      position(lastX, lastY);
+    });
+    panel.append(back);
+
+    const composer = buildComposer(async (text) => {
+      const ok = await submitComment(index, text, null);
+      if (ok) close();
+      return ok;
+    }, "Написать комментарий…");
+    panel.append(composer);
+  }
+
   const panel = document.createElement("div");
   panel.className = "paragraph-menu__panel";
   panel.setAttribute("role", "menu");
@@ -182,22 +475,6 @@
 
   function isOpen() {
     return panel.classList.contains("paragraph-menu__panel--open");
-  }
-
-  function addStubItem(label) {
-    // PR 133 replaces this with the real feature; until then it's a visible but inert
-    // placeholder rather than either doing nothing silently or not existing.
-    const item = document.createElement("button");
-    item.type = "button";
-    item.className = "paragraph-menu__item";
-    item.setAttribute("role", "menuitem");
-    item.disabled = true;
-    item.append(label, " ");
-    const soon = document.createElement("span");
-    soon.className = "badge badge--muted";
-    soon.textContent = "скоро";
-    item.append(soon);
-    panel.append(item);
   }
 
   function addLoginItem(label) {
@@ -264,7 +541,16 @@
     });
     panel.append(reactItem);
 
-    addStubItem("Комментировать");
+    const commentItem = document.createElement("button");
+    commentItem.type = "button";
+    commentItem.className = "paragraph-menu__item";
+    commentItem.setAttribute("role", "menuitem");
+    commentItem.textContent = "Комментировать";
+    commentItem.addEventListener("click", () => {
+      renderCommentComposer(index);
+      position(lastX, lastY);
+    });
+    panel.append(commentItem);
   }
 
   function position(x, y) {
@@ -281,10 +567,6 @@
   function open(x, y, index) {
     lastX = x;
     lastY = y;
-    // Stashed on the panel for PR 133 to read once it gives "Комментировать" real
-    // behavior - this file never reads it back itself, the reaction picker above keys
-    // off `index`/`mineByIndex` directly instead.
-    panel.dataset.paragraphKey = paragraphKey(index);
     renderMenuItems(index);
     panel.classList.add("paragraph-menu__panel--open");
     position(x, y);
