@@ -1,5 +1,6 @@
 """Online chapter reading."""
 
+import sqlite3
 from typing import Annotated
 
 from fastapi import APIRouter, Depends, Form, HTTPException, Query, Request
@@ -8,6 +9,13 @@ from ranobelib.models import Volume
 
 from app.auth.dependencies import get_current_user, require_current_user
 from app.db.activity import record_chapter_read
+from app.db.comments import (
+    Comment,
+    count_comments,
+    count_comments_for_paragraph,
+    create_comment,
+    list_comments_for_paragraph,
+)
 from app.db.connection import get_connection
 from app.db.library import add_entry, record_progress
 from app.db.reactions import (
@@ -113,6 +121,100 @@ async def post_reaction(
         conn, slug_url, str(volume), number, branch_id, paragraph_index
     )
     return JSONResponse({"paragraph_index": paragraph_index, "counts": counts, "mine": mine})
+
+
+@router.get("/{volume}/{number}/comments/counts")
+async def get_comment_counts(
+    slug_url: str, volume: int, number: str, branch_id: str = Query(default="")
+) -> JSONResponse:
+    """Aggregated comment counts (replies included) for every paragraph in this chapter,
+    one query for the whole page - what renders the "N комментариев ▾" toggle under a
+    paragraph before the visitor has expanded anything. Public, same as get_reactions."""
+    counts = count_comments(get_connection(), slug_url, str(volume), number, branch_id)
+    return JSONResponse({"counts": {str(index): counts[index] for index in counts}})
+
+
+@router.get("/{volume}/{number}/comments")
+async def get_comments(
+    slug_url: str,
+    volume: int,
+    number: str,
+    paragraph_index: int = Query(...),
+    branch_id: str = Query(default=""),
+) -> JSONResponse:
+    """The full comment tree for one paragraph - fetched lazily, only once the visitor
+    actually clicks that paragraph's "▾" (paragraph-menu.js), not bundled into
+    get_comment_counts above."""
+    conn = get_connection()
+    return JSONResponse(
+        _comments_response(conn, slug_url, str(volume), number, branch_id, paragraph_index)
+    )
+
+
+@router.post("/{volume}/{number}/comments")
+async def post_comment(
+    slug_url: str,
+    volume: int,
+    number: str,
+    user: Annotated[User, Depends(require_current_user)],
+    paragraph_index: Annotated[int, Form()],
+    body: Annotated[str, Form()],
+    branch_id: Annotated[str, Form()] = "",
+    parent_comment_id: Annotated[int | None, Form()] = None,
+) -> JSONResponse:
+    """Creates a top-level comment (from PR 131's "Комментировать" menu item) or a reply
+    (from a comment's own "Ответить" button) - both go through create_comment(),
+    distinguished only by whether parent_comment_id is set. Returns the same shape
+    get_comments does, so the client can re-render a paragraph's comment section with one
+    response either way instead of needing separate code paths."""
+    conn = get_connection()
+    try:
+        create_comment(
+            conn,
+            user.id,
+            slug_url,
+            str(volume),
+            number,
+            branch_id,
+            paragraph_index,
+            body,
+            parent_comment_id,
+        )
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+    return JSONResponse(
+        _comments_response(conn, slug_url, str(volume), number, branch_id, paragraph_index)
+    )
+
+
+def _comments_response(
+    conn: sqlite3.Connection,
+    slug_url: str,
+    volume: str,
+    number: str,
+    branch_id: str,
+    paragraph_index: int,
+) -> dict:
+    comments = list_comments_for_paragraph(
+        conn, slug_url, volume, number, branch_id, paragraph_index
+    )
+    count = count_comments_for_paragraph(conn, slug_url, volume, number, branch_id, paragraph_index)
+    return {
+        "paragraph_index": paragraph_index,
+        "count": count,
+        "comments": [_comment_to_dict(comment) for comment in comments],
+    }
+
+
+def _comment_to_dict(comment: Comment) -> dict:
+    return {
+        "id": comment.id,
+        "author": comment.author,
+        "body": comment.body,
+        "created_at": comment.created_at,
+        "parent_comment_id": comment.parent_comment_id,
+        "replies": [_comment_to_dict(reply) for reply in comment.replies],
+    }
 
 
 def _adjacent_chapter_urls(

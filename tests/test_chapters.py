@@ -591,3 +591,140 @@ def test_post_reaction_reflected_by_a_later_get(logged_in_client: TestClient) ->
 
     assert same_branch == {"counts": {"0": {"🔥": 1}}, "mine": {"0": "🔥"}}
     assert other_branch == {"counts": {"2": {"👏": 1}}, "mine": {"2": "👏"}}
+
+
+def test_get_comment_counts_is_empty_for_a_chapter_with_none(
+    isolated_client: TestClient,
+) -> None:
+    response = isolated_client.get("/titles/6712--test-novel/chapters/1/5/comments/counts")
+
+    assert response.status_code == 200
+    assert response.json() == {"counts": {}}
+
+
+def test_get_comments_is_empty_for_a_paragraph_with_none(
+    isolated_client: TestClient,
+) -> None:
+    response = isolated_client.get(
+        "/titles/6712--test-novel/chapters/1/5/comments", params={"paragraph_index": "0"}
+    )
+
+    assert response.status_code == 200
+    assert response.json() == {"paragraph_index": 0, "count": 0, "comments": []}
+
+
+def test_post_comment_requires_login() -> None:
+    response = client.post(
+        "/titles/6712--test-novel/chapters/1/5/comments",
+        data={"paragraph_index": "0", "body": "hi"},
+        follow_redirects=False,
+    )
+
+    assert response.status_code == 303
+    assert response.headers["location"] == "/login"
+
+
+def test_post_comment_rejects_an_empty_body(logged_in_client: TestClient) -> None:
+    response = logged_in_client.post(
+        "/titles/6712--test-novel/chapters/1/5/comments",
+        data={"paragraph_index": "0", "body": "   "},
+    )
+
+    assert response.status_code == 400
+
+
+def test_post_comment_creates_a_root_comment(logged_in_client: TestClient) -> None:
+    response = logged_in_client.post(
+        "/titles/6712--test-novel/chapters/1/5/comments",
+        data={"paragraph_index": "0", "body": "Отличная глава!"},
+    )
+
+    assert response.status_code == 200
+    data = response.json()
+    assert data["paragraph_index"] == 0
+    assert data["count"] == 1
+    assert len(data["comments"]) == 1
+    comment = data["comments"][0]
+    assert comment["body"] == "Отличная глава!"
+    assert comment["author"] == "alice@example.com"
+    assert comment["parent_comment_id"] is None
+    assert comment["replies"] == []
+
+
+def test_post_comment_reply_nests_under_its_parent(logged_in_client: TestClient) -> None:
+    root = logged_in_client.post(
+        "/titles/6712--test-novel/chapters/1/5/comments",
+        data={"paragraph_index": "0", "body": "root"},
+    ).json()["comments"][0]
+
+    response = logged_in_client.post(
+        "/titles/6712--test-novel/chapters/1/5/comments",
+        data={
+            "paragraph_index": "0",
+            "body": "reply",
+            "parent_comment_id": str(root["id"]),
+        },
+    )
+
+    data = response.json()
+    assert data["count"] == 2
+    assert len(data["comments"]) == 1
+    assert data["comments"][0]["replies"][0]["body"] == "reply"
+
+
+def test_post_comment_rejects_a_parent_from_a_different_paragraph(
+    logged_in_client: TestClient,
+) -> None:
+    root = logged_in_client.post(
+        "/titles/6712--test-novel/chapters/1/5/comments",
+        data={"paragraph_index": "0", "body": "root"},
+    ).json()["comments"][0]
+
+    response = logged_in_client.post(
+        "/titles/6712--test-novel/chapters/1/5/comments",
+        data={
+            "paragraph_index": "3",
+            "body": "reply",
+            "parent_comment_id": str(root["id"]),
+        },
+    )
+
+    assert response.status_code == 400
+
+
+def test_get_comment_counts_reflects_posted_comments(logged_in_client: TestClient) -> None:
+    logged_in_client.post(
+        "/titles/6712--test-novel/chapters/1/5/comments",
+        data={"paragraph_index": "0", "body": "a"},
+    )
+    logged_in_client.post(
+        "/titles/6712--test-novel/chapters/1/5/comments",
+        data={"paragraph_index": "0", "body": "b"},
+    )
+    logged_in_client.post(
+        "/titles/6712--test-novel/chapters/1/5/comments",
+        data={"paragraph_index": "3", "body": "c"},
+    )
+
+    response = logged_in_client.get("/titles/6712--test-novel/chapters/1/5/comments/counts")
+
+    assert response.json() == {"counts": {"0": 2, "3": 1}}
+
+
+def test_comments_are_scoped_to_branch_id(logged_in_client: TestClient) -> None:
+    logged_in_client.post(
+        "/titles/6712--test-novel/chapters/1/5/comments",
+        data={"paragraph_index": "0", "body": "on branch 1", "branch_id": "1"},
+    )
+
+    same_branch = logged_in_client.get(
+        "/titles/6712--test-novel/chapters/1/5/comments",
+        params={"paragraph_index": "0", "branch_id": "1"},
+    ).json()
+    other_branch = logged_in_client.get(
+        "/titles/6712--test-novel/chapters/1/5/comments",
+        params={"paragraph_index": "0", "branch_id": "2"},
+    ).json()
+
+    assert same_branch["count"] == 1
+    assert other_branch["count"] == 0
