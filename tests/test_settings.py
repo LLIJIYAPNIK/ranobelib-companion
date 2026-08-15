@@ -221,3 +221,30 @@ def test_settings_page_offers_manual_reading_speed_entry() -> None:
     # Same subsection as the test (PR 77), not floating anywhere else.
     speed_section_index = response.text.index("Скорость чтения")
     assert speed_section_index < response.text.index('data-role="reading-speed-manual-input"')
+
+
+def test_reading_speed_test_runs_inside_a_modal() -> None:
+    """PR 125: the sample/status/countdown moved out of the page's own flow into a
+    dismissible modal, same pattern as .title-quickview-modal (PR 117)."""
+    response = client.get("/settings/reading")
+
+    assert response.status_code == 200
+    assert 'class="reading-speed-modal" data-role="reading-speed-modal"' in response.text
+    assert 'data-role="reading-speed-modal-close"' in response.text
+    assert 'data-role="reading-speed-timer"' in response.text
+
+    modal_index = response.text.index('data-role="reading-speed-modal"')
+    assert modal_index < response.text.index('data-role="reading-speed-status"')
+    assert modal_index < response.text.index('data-role="reading-speed-sample"')
+
+
+def test_reading_speed_manual_field_lives_outside_the_modal() -> None:
+    """The roadmap's explicit check that PR 78's manual entry isn't affected by wrapping
+    the test itself in a modal (PR 125) - the manual field markup comes before the modal
+    in the page, i.e. it's a sibling in .reading-speed-test, not nested inside it."""
+    response = client.get("/settings/reading")
+
+    assert response.status_code == 200
+    manual_index = response.text.index('data-role="reading-speed-manual-input"')
+    modal_index = response.text.index('data-role="reading-speed-modal"')
+    assert manual_index < modal_index

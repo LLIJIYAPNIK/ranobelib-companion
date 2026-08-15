@@ -8,6 +8,13 @@
 // 30/63-65 already use (readingSpeedWpm), for PR 79's tempo animations to read later, and
 // stay in sync with each other - completing the test updates the manual field's own
 // displayed value too, not just the "Текущее значение" line.
+//
+// PR 125: the test itself (sample text, status line, countdown) runs inside a modal -
+// same fixed-overlay/backdrop-click/close-button pattern as title-quickview.js's
+// .title-quickview-modal. Closing mid-test (the × or a backdrop click) has the same
+// effect as letting the 60s timer run out without ever clicking a word: the attempt just
+// doesn't count, nothing gets written to readingSpeedWpm. The manual field lives outside
+// the modal entirely and isn't touched by any of this.
 (() => {
   const STORAGE_KEY = "readerSettings";
   const TEST_DURATION_MS = 60_000;
@@ -63,16 +70,25 @@
   `;
 
   const root = document.querySelector('[data-role="reading-speed-test"]');
-  if (!root) return;
+  const modal = document.querySelector('[data-role="reading-speed-modal"]');
+  if (!root || !modal) return;
 
   const startBtn = root.querySelector('[data-role="reading-speed-start"]');
-  const statusEl = root.querySelector('[data-role="reading-speed-status"]');
-  const sampleEl = root.querySelector('[data-role="reading-speed-sample"]');
   const valueEl = root.querySelector('[data-role="reading-speed-value"]');
   const manualInput = root.querySelector('[data-role="reading-speed-manual-input"]');
   const manualDecrement = root.querySelector('[data-role="reading-speed-manual-decrement"]');
   const manualIncrement = root.querySelector('[data-role="reading-speed-manual-increment"]');
-  if (!startBtn || !statusEl || !sampleEl || !valueEl || !manualInput || !manualDecrement || !manualIncrement) return;
+
+  // The test's own markup (status/sample/countdown/close button) lives inside the modal,
+  // not root, now - it's a sibling of .reading-speed-test in the page, not a descendant.
+  const closeBtn = modal.querySelector('[data-role="reading-speed-modal-close"]');
+  const timerEl = modal.querySelector('[data-role="reading-speed-timer"]');
+  const statusEl = modal.querySelector('[data-role="reading-speed-status"]');
+  const sampleEl = modal.querySelector('[data-role="reading-speed-sample"]');
+  if (
+    !startBtn || !valueEl || !manualInput || !manualDecrement || !manualIncrement ||
+    !closeBtn || !timerEl || !statusEl || !sampleEl
+  ) return;
 
   function loadSettings() {
     try {
@@ -106,23 +122,66 @@
     });
   }
 
-  let timer = null;
+  let completionTimer = null;
+  let tickInterval = null;
+  let testEndAt = 0;
   let awaitingClick = false;
 
+  function isOpen() {
+    return modal.classList.contains("reading-speed-modal--open");
+  }
+
+  function updateTimerDisplay() {
+    const remainingSeconds = Math.max(0, Math.ceil((testEndAt - Date.now()) / 1000));
+    timerEl.textContent = `${remainingSeconds} с`;
+  }
+
   function startTest() {
-    if (timer) clearTimeout(timer);
     buildSample();
     sampleEl.hidden = false;
     statusEl.hidden = false;
-    startBtn.disabled = true;
     awaitingClick = false;
     statusEl.textContent =
       "Читайте в комфортном темпе. Через 60 секунд кликните слово, на котором остановились.";
 
-    timer = setTimeout(() => {
+    testEndAt = Date.now() + TEST_DURATION_MS;
+    updateTimerDisplay();
+    timerEl.hidden = false;
+    tickInterval = setInterval(updateTimerDisplay, 250);
+
+    completionTimer = setTimeout(() => {
       awaitingClick = true;
       statusEl.textContent = "Время вышло! Кликните слово, на котором вы остановились.";
+      clearInterval(tickInterval);
+      tickInterval = null;
+      timerEl.hidden = true;
     }, TEST_DURATION_MS);
+  }
+
+  // Tears down whatever state startTest() set up, without saving anything - the shared
+  // ending for both "time ran out and the visitor never clicked a word" and "closed the
+  // modal mid-test" (openModal() calling this before every fresh startTest() guards
+  // against a leftover timer from a previous attempt; closeModal() is the actual abort).
+  function resetTest() {
+    if (completionTimer) clearTimeout(completionTimer);
+    if (tickInterval) clearInterval(tickInterval);
+    completionTimer = null;
+    tickInterval = null;
+    awaitingClick = false;
+    sampleEl.hidden = true;
+    statusEl.hidden = true;
+    timerEl.hidden = true;
+  }
+
+  function openModal() {
+    modal.classList.add("reading-speed-modal--open");
+    resetTest();
+    startTest();
+  }
+
+  function closeModal() {
+    resetTest();
+    modal.classList.remove("reading-speed-modal--open");
   }
 
   sampleEl.addEventListener("click", (event) => {
@@ -136,11 +195,17 @@
 
     awaitingClick = false;
     sampleEl.hidden = true;
-    startBtn.disabled = false;
     statusEl.textContent = `Готово: ${wpm} слов/мин.`;
   });
 
-  startBtn.addEventListener("click", startTest);
+  startBtn.addEventListener("click", openModal);
+  closeBtn.addEventListener("click", closeModal);
+
+  // Clicking the backdrop itself (not the panel or anything inside it) closes the modal -
+  // same delegation as title-quickview.js's own overlay click handler.
+  modal.addEventListener("click", (event) => {
+    if (isOpen() && event.target === modal) closeModal();
+  });
 
   // Committed on "change" (blur/Enter), not "input" on every keystroke - clamping mid-
   // typing would fight with the cursor and make the field unusable while entering a

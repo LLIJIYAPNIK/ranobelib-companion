@@ -2567,10 +2567,6 @@ a {
 
 .reading-speed-test__sample {
   margin: 10px 0 0;
-  padding: 14px;
-  background: var(--bg-surface);
-  border: 1px solid var(--border);
-  border-radius: 8px;
   color: var(--text-secondary);
   line-height: 1.8;
 }
@@ -2585,6 +2581,74 @@ a {
   .reading-speed-test__word:hover {
     background-color: rgba(34, 211, 197, 0.18);
   }
+}
+
+/* PR 125: the test itself runs inside a modal now, rather than unfolding directly in the
+   settings page's own flow - same fixed-overlay/backdrop-click/close-button pattern as
+   .title-quickview-modal (PR 117), just with its markup already in the page rather than
+   fetched, since there's no server round-trip involved here. */
+.reading-speed-modal {
+  position: fixed;
+  inset: 0;
+  z-index: 90;
+  display: none;
+  align-items: center;
+  justify-content: center;
+  padding: 20px;
+  background: rgba(0, 0, 0, 0.6);
+}
+
+.reading-speed-modal--open {
+  display: flex;
+}
+
+.reading-speed-modal__panel {
+  position: relative;
+  width: 100%;
+  max-width: 560px;
+  max-height: 85vh;
+  overflow-y: auto;
+  padding: 24px;
+  background: var(--bg-surface);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  box-shadow: 0 20px 48px rgba(0, 0, 0, 0.4);
+}
+
+.reading-speed-modal__close {
+  position: absolute;
+  top: 12px;
+  right: 12px;
+  background: none;
+  border: none;
+  padding: 4px;
+  color: var(--text-muted);
+  font-size: 20px;
+  line-height: 1;
+  cursor: pointer;
+  transition: color 0.15s ease;
+}
+
+@media (hover: hover) {
+  .reading-speed-modal__close:hover {
+    color: var(--accent-teal);
+  }
+}
+
+/* The countdown - deliberately a small badge in the panel's corner, not a large overlay
+   on top of the sample text (see the roadmap note this PR came from: unobtrusive, not
+   distracting from actually reading). */
+.reading-speed-modal__timer {
+  position: absolute;
+  top: 12px;
+  left: 24px;
+  padding: 3px 9px;
+  border-radius: 999px;
+  background: var(--bg-page);
+  border: 1px solid var(--border);
+  color: var(--text-muted);
+  font-size: 12px;
+  font-variant-numeric: tabular-nums;
 }
 
 /* PR 78: manual readingSpeedWpm entry, independent of the test above - same field-label
