@@ -22,6 +22,7 @@ from fastapi.responses import HTMLResponse
 
 from app.api.library import library_items_for_user
 from app.auth.dependencies import get_current_user
+from app.db.comments import count_comments_by_user
 from app.db.connection import get_connection
 from app.db.users import User, get_user_by_id
 from app.templating import templates
@@ -81,6 +82,10 @@ async def _render_profile(
             "profile_user": profile_user,
             "is_own_profile": is_own_profile,
             "registered_at": _format_date(profile_user.created_at),
+            # PR 135: unlike currently_reading/favorite_item/library_items above, not
+            # gated by any show_* privacy flag - there isn't one for it, same as the
+            # avatar/nickname/bio it sits alongside.
+            "comment_count": count_comments_by_user(get_connection(), profile_user.id),
             "currently_reading": currently_reading,
             "favorite_item": favorite_item,
             "library_items": items,

@@ -5,6 +5,7 @@ import pytest
 from app.db.comments import (
     MAX_COMMENT_LENGTH,
     count_comments,
+    count_comments_by_user,
     count_comments_for_paragraph,
     create_comment,
     list_comments_for_paragraph,
@@ -131,3 +132,21 @@ def test_count_comments_groups_by_paragraph(conn: sqlite3.Connection) -> None:
 
 def test_count_comments_is_empty_for_a_chapter_with_none(conn: sqlite3.Connection) -> None:
     assert count_comments(conn, "6712--test-novel", "1", "5", "") == {}
+
+
+def test_count_comments_by_user_is_zero_for_a_user_with_none(
+    conn: sqlite3.Connection,
+) -> None:
+    assert count_comments_by_user(conn, 1) == 0
+
+
+def test_count_comments_by_user_counts_across_titles_and_paragraphs(
+    conn: sqlite3.Connection,
+) -> None:
+    create_comment(conn, 1, "6712--test-novel", "1", "5", "", 0, "a")
+    create_comment(conn, 1, "6712--test-novel", "1", "5", "", 3, "b")
+    create_comment(conn, 1, "9000--other-novel", "2", "1", "", 0, "c")
+    create_comment(conn, 2, "6712--test-novel", "1", "5", "", 0, "not alice's")
+
+    assert count_comments_by_user(conn, 1) == 3
+    assert count_comments_by_user(conn, 2) == 1

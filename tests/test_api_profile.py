@@ -17,6 +17,7 @@ from ranobelib.models import Cover, Label, Title
 
 import app.db.connection as db_connection
 from app.config import get_settings
+from app.db.comments import create_comment
 from app.db.connection import get_connection
 from app.db.library import record_progress
 from app.db.users import get_user_by_email
@@ -167,6 +168,27 @@ def test_profile_shows_the_registration_date(client: TestClient) -> None:
     assert "На сайте с" in response.text
 
 
+def test_profile_shows_zero_comments_for_a_user_with_none(client: TestClient) -> None:
+    _register(client, "alice@example.com")
+
+    response = client.get("/profile")
+
+    assert response.status_code == 200
+    assert "Комментариев: 0" in response.text
+
+
+def test_profile_shows_the_users_comment_count(client: TestClient) -> None:
+    _register(client, "alice@example.com")
+    alice_id = _user_id("alice@example.com")
+    create_comment(get_connection(), alice_id, "6712--test-novel", "1", "5", "", 0, "hi")
+    create_comment(get_connection(), alice_id, "6712--test-novel", "1", "5", "", 3, "there")
+
+    response = client.get("/profile")
+
+    assert response.status_code == 200
+    assert "Комментариев: 2" in response.text
+
+
 def test_profile_has_an_edit_link_to_settings_account(client: TestClient) -> None:
     _register(client, "alice@example.com")
 
@@ -310,6 +332,20 @@ def test_public_profile_is_the_same_for_the_owner_and_a_different_visitor(
     assert "Читает сейчас" in response.text
     assert '<h2 class="profile-section__title">Библиотека</h2>' in response.text
     assert "Том 1, глава 5" in response.text
+
+
+def test_public_profile_shows_the_owners_comment_count_to_another_visitor(
+    client: TestClient,
+) -> None:
+    _register(client, "alice@example.com")
+    alice_id = _user_id("alice@example.com")
+    create_comment(get_connection(), alice_id, "6712--test-novel", "1", "5", "", 0, "hi")
+    _register(client, "bob@example.com")  # now viewing as a different, logged-in user
+
+    response = client.get(f"/profile/{alice_id}")
+
+    assert response.status_code == 200
+    assert "Комментариев: 1" in response.text
 
 
 # --- PR 123: the "Избранное" section --------------------------------------------------

@@ -170,3 +170,13 @@ def count_comments(
         (slug_url, volume, number, branch_id),
     ).fetchall()
     return {row["paragraph_index"]: row["n"] for row in rows}
+
+
+def count_comments_by_user(conn: sqlite3.Connection, user_id: int) -> int:
+    """Every comment this user has ever posted, across every title/chapter/paragraph -
+    PR 135's profile page counter, not scoped to any one paragraph the way the two
+    functions above are."""
+    row = conn.execute(
+        "SELECT COUNT(*) AS n FROM comments WHERE user_id = ?", (user_id,)
+    ).fetchone()
+    return row["n"]

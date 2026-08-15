@@ -13,7 +13,7 @@
       {% else %}
       <p class="content__hint">Пользователь пока не рассказал о себе.</p>
       {% endif %}
-      <p class="profile__meta">На сайте с {{ registered_at }}</p>
+      <p class="profile__meta">На сайте с {{ registered_at }} · Комментариев: {{ comment_count }}</p>
       {% if is_own_profile %}
       <a class="btn btn--secondary" href="/settings/account">Редактировать</a>
       {% endif %}
