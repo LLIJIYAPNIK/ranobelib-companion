@@ -1,4 +1,6 @@
-"""Access to the ``users`` table (see migrations/0001_users.sql)."""
+"""Access to the ``users`` table (see migrations/0001_users.sql,
+0009_users_privacy_flags.sql for the ``show_*`` columns).
+"""
 
 from __future__ import annotations
 
@@ -16,6 +18,13 @@ class User:
     nickname: str | None = None
     bio: str | None = None
     avatar_path: str | None = None
+    # PR 124: what a *different*, non-owner visitor sees on this user's public /profile
+    # page (PR 122) - the owner's own view of their profile always ignores these. Default
+    # True (show everything) so PR 122's existing behavior doesn't change for anyone who
+    # has never opened the privacy settings.
+    show_currently_reading: bool = True
+    show_favorite: bool = True
+    show_library: bool = True
 
 
 def create_user(
@@ -89,10 +98,36 @@ def update_user_password(conn: sqlite3.Connection, user_id: int, password_hash: 
     return user
 
 
+def update_privacy_settings(
+    conn: sqlite3.Connection,
+    user_id: int,
+    *,
+    show_currently_reading: bool,
+    show_favorite: bool,
+    show_library: bool,
+) -> User:
+    """The three "Приватность" toggles (PR 124) - independent of each other, so all three
+    are always written together as a plain replace, not a partial update."""
+    conn.execute(
+        "UPDATE users SET show_currently_reading = ?, show_favorite = ?, show_library = ? "
+        "WHERE id = ?",
+        (show_currently_reading, show_favorite, show_library, user_id),
+    )
+    conn.commit()
+    user = get_user_by_id(conn, user_id)
+    assert user is not None  # just updated
+    return user
+
+
+_USER_COLUMNS = (
+    "id, email, password_hash, created_at, nickname, bio, avatar_path, "
+    "show_currently_reading, show_favorite, show_library"
+)
+
+
 def get_user_by_email(conn: sqlite3.Connection, email: str) -> User | None:
     row = conn.execute(
-        "SELECT id, email, password_hash, created_at, nickname, bio, avatar_path "
-        "FROM users WHERE email = ?",
+        f"SELECT {_USER_COLUMNS} FROM users WHERE email = ?",
         (_normalize_email(email),),
     ).fetchone()
     return _row_to_user(row) if row is not None else None
@@ -100,8 +135,7 @@ def get_user_by_email(conn: sqlite3.Connection, email: str) -> User | None:
 
 def get_user_by_id(conn: sqlite3.Connection, user_id: int) -> User | None:
     row = conn.execute(
-        "SELECT id, email, password_hash, created_at, nickname, bio, avatar_path "
-        "FROM users WHERE id = ?",
+        f"SELECT {_USER_COLUMNS} FROM users WHERE id = ?",
         (user_id,),
     ).fetchone()
     return _row_to_user(row) if row is not None else None
@@ -116,6 +150,9 @@ def _row_to_user(row: sqlite3.Row) -> User:
         nickname=row["nickname"],
         bio=row["bio"],
         avatar_path=row["avatar_path"],
+        show_currently_reading=bool(row["show_currently_reading"]),
+        show_favorite=bool(row["show_favorite"]),
+        show_library=bool(row["show_library"]),
     )
 
 

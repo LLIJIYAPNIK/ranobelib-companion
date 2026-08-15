@@ -1,9 +1,12 @@
 """GET /profile (PR 92) - the read-only account profile page.
 
 PR 122 turned it into a public page (GET /profile/{user_id}) with two extra sections -
-"Читает сейчас" and "Библиотека" - covered further down.
+"Читает сейчас" and "Библиотека" - covered further down. PR 124's privacy toggles
+("Приватность", settings_account.html) that gate those sections (plus PR 123's
+"Избранное") for a non-owner visitor are covered at the very end.
 """
 
+import itertools
 from collections.abc import Iterator
 from pathlib import Path
 from unittest.mock import patch
@@ -372,3 +375,97 @@ def test_public_profile_favorite_section_updates_after_a_new_favorite_is_chosen(
     ].split("</section>")[0]
     assert "1--first" not in favorite_section
     assert "2--second" in favorite_section
+
+
+# --- PR 124: privacy flags gate the three sections for non-owner visitors ------------
+
+
+def _populate_full_profile(client: TestClient, title: Title) -> None:
+    """Puts a title in the library, gives it a recorded reading position, and marks it
+    favorite - so all three sections ("Читает сейчас"/"Избранное"/"Библиотека") would
+    render for the very same title if nothing were hiding them."""
+    with patch("app.services.client.RanobeLib", return_value=_FakeClient(title)):
+        client.post(f"/library/{title.slug_url}/add")
+    record_progress(
+        get_connection(),
+        user_id=_user_id("alice@example.com"),
+        slug_url=title.slug_url,
+        volume="1",
+        number="5",
+    )
+    client.post(f"/library/{title.slug_url}/favorite")
+
+
+def _set_privacy(
+    client: TestClient, *, reading: bool, favorite: bool, library: bool
+) -> None:
+    data = {}
+    if reading:
+        data["show_currently_reading"] = "on"
+    if favorite:
+        data["show_favorite"] = "on"
+    if library:
+        data["show_library"] = "on"
+    client.post("/settings/account/privacy", data=data)
+
+
+@pytest.mark.parametrize(
+    ("show_reading", "show_favorite", "show_library"),
+    list(itertools.product([True, False], repeat=3)),
+)
+def test_privacy_flags_gate_sections_for_a_non_owner_visitor(
+    client: TestClient, show_reading: bool, show_favorite: bool, show_library: bool
+) -> None:
+    _register(client, "alice@example.com")
+    alice_id = _user_id("alice@example.com")
+    title = _fake_title()
+    _populate_full_profile(client, title)
+    _set_privacy(
+        client, reading=show_reading, favorite=show_favorite, library=show_library
+    )
+    _register(client, "bob@example.com")  # a different, logged-in visitor
+
+    with patch("app.services.client.RanobeLib", return_value=_FakeClient(title)):
+        response = client.get(f"/profile/{alice_id}")
+
+    assert response.status_code == 200
+    assert ("Читает сейчас" in response.text) is show_reading
+    assert ('<h2 class="profile-section__title">Избранное</h2>' in response.text) is (
+        show_favorite
+    )
+    assert ('<h2 class="profile-section__title">Библиотека</h2>' in response.text) is (
+        show_library
+    )
+
+
+def test_privacy_flags_do_not_affect_the_owners_own_view(client: TestClient) -> None:
+    _register(client, "alice@example.com")
+    title = _fake_title()
+    _populate_full_profile(client, title)
+    _set_privacy(client, reading=False, favorite=False, library=False)
+
+    with patch("app.services.client.RanobeLib", return_value=_FakeClient(title)):
+        response = client.get("/profile")
+
+    assert response.status_code == 200
+    assert "Читает сейчас" in response.text
+    assert '<h2 class="profile-section__title">Избранное</h2>' in response.text
+    assert '<h2 class="profile-section__title">Библиотека</h2>' in response.text
+
+
+def test_privacy_flags_default_to_showing_everything(client: TestClient) -> None:
+    """No visit to /settings/account/privacy at all - PR 122's original, unconditional
+    rendering must not change for a user who's never touched the new toggles."""
+    _register(client, "alice@example.com")
+    alice_id = _user_id("alice@example.com")
+    title = _fake_title()
+    _populate_full_profile(client, title)
+    _register(client, "bob@example.com")
+
+    with patch("app.services.client.RanobeLib", return_value=_FakeClient(title)):
+        response = client.get(f"/profile/{alice_id}")
+
+    assert response.status_code == 200
+    assert "Читает сейчас" in response.text
+    assert '<h2 class="profile-section__title">Избранное</h2>' in response.text
+    assert '<h2 class="profile-section__title">Библиотека</h2>' in response.text

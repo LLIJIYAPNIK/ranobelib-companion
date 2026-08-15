@@ -251,3 +251,77 @@ def test_reuploading_with_a_different_extension_removes_the_old_file(
 
     saved_files = list((tmp_path / "avatars").iterdir())
     assert [f.name for f in saved_files] == ["1.jpg"]
+
+
+# --- PR 124: the "Приватность" form -------------------------------------------------
+
+
+def test_privacy_checkboxes_are_all_checked_by_default(client: TestClient) -> None:
+    _register(client, "alice@example.com")
+
+    response = client.get("/settings/account")
+
+    assert response.status_code == 200
+    assert 'name="show_currently_reading" checked' in response.text
+    assert 'name="show_favorite" checked' in response.text
+    assert 'name="show_library" checked' in response.text
+
+
+def test_anonymous_privacy_post_is_redirected_to_login(client: TestClient) -> None:
+    response = client.post("/settings/account/privacy", data={}, follow_redirects=False)
+
+    assert response.status_code == 303
+    assert response.headers["location"] == "/login"
+
+
+def test_update_privacy_unchecking_all_three_saves_them_as_hidden(client: TestClient) -> None:
+    _register(client, "alice@example.com")
+
+    # An unchecked checkbox isn't sent by the browser at all - submitting with none of
+    # the three fields present is exactly what "uncheck everything" looks like on the wire.
+    response = client.post("/settings/account/privacy", data={})
+
+    assert response.status_code == 200
+    assert "Настройки приватности сохранены" in response.text
+    assert 'name="show_currently_reading" checked' not in response.text
+    assert 'name="show_favorite" checked' not in response.text
+    assert 'name="show_library" checked' not in response.text
+
+
+def test_update_privacy_flags_are_independent(client: TestClient) -> None:
+    _register(client, "alice@example.com")
+
+    response = client.post(
+        "/settings/account/privacy", data={"show_favorite": "on"}
+    )
+
+    assert response.status_code == 200
+    assert 'name="show_currently_reading" checked' not in response.text
+    assert 'name="show_favorite" checked' in response.text
+    assert 'name="show_library" checked' not in response.text
+
+
+def test_update_privacy_persists_across_page_loads(client: TestClient) -> None:
+    _register(client, "alice@example.com")
+    client.post("/settings/account/privacy", data={"show_library": "on"})
+
+    reloaded = client.get("/settings/account")
+
+    assert 'name="show_currently_reading" checked' not in reloaded.text
+    assert 'name="show_favorite" checked' not in reloaded.text
+    assert 'name="show_library" checked' in reloaded.text
+
+
+def test_saving_account_fields_does_not_reset_privacy_settings(client: TestClient) -> None:
+    _register(client, "alice@example.com")
+    client.post("/settings/account/privacy", data={})  # hide everything
+
+    client.post(
+        "/settings/account",
+        data={"email": "alice@example.com", "nickname": "Alice", "bio": ""},
+    )
+
+    reloaded = client.get("/settings/account")
+    assert 'name="show_currently_reading" checked' not in reloaded.text
+    assert 'name="show_favorite" checked' not in reloaded.text
+    assert 'name="show_library" checked' not in reloaded.text
