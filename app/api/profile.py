@@ -14,7 +14,8 @@ something is set to hidden and go fix it in /settings/account.
 
 from __future__ import annotations
 
-from datetime import datetime
+from dataclasses import dataclass
+from datetime import UTC, datetime, timedelta
 from typing import Annotated
 
 from fastapi import APIRouter, Depends, HTTPException, Request
@@ -22,12 +23,24 @@ from fastapi.responses import HTMLResponse
 
 from app.api.library import library_items_for_user
 from app.auth.dependencies import get_current_user
+from app.db.activity import daily_reading_activity
 from app.db.comments import count_comments_by_user
 from app.db.connection import get_connection
 from app.db.users import User, get_user_by_id
 from app.templating import templates
 
 router = APIRouter()
+
+_CALENDAR_WEEKS = 52
+
+
+@dataclass(frozen=True)
+class CalendarDay:
+    """One cell of the reading-activity heatmap (PR 136)."""
+
+    count: int
+    level: int  # 0 (no activity) - 4 (this user's own busiest day in the window)
+    label: str  # tooltip text: exact date + chapter count
 
 
 @router.get("/profile")
@@ -82,10 +95,11 @@ async def _render_profile(
             "profile_user": profile_user,
             "is_own_profile": is_own_profile,
             "registered_at": _format_date(profile_user.created_at),
-            # PR 135: unlike currently_reading/favorite_item/library_items above, not
-            # gated by any show_* privacy flag - there isn't one for it, same as the
-            # avatar/nickname/bio it sits alongside.
+            # PR 135/136: unlike currently_reading/favorite_item/library_items above, not
+            # gated by any show_* privacy flag - there isn't one for either, same as the
+            # avatar/nickname/bio they sit alongside.
             "comment_count": count_comments_by_user(get_connection(), profile_user.id),
+            "reading_calendar": _build_reading_calendar(profile_user.id),
             "currently_reading": currently_reading,
             "favorite_item": favorite_item,
             "library_items": items,
@@ -95,3 +109,52 @@ async def _render_profile(
 
 def _format_date(iso_timestamp: str) -> str:
     return datetime.fromisoformat(iso_timestamp).strftime("%d.%m.%Y")
+
+
+def _build_reading_calendar(user_id: int) -> list[CalendarDay]:
+    """Every day in the trailing _CALENDAR_WEEKS weeks, oldest first, padded back to the
+    most recent Sunday on/before the window's own start so the flat list can be dropped
+    straight into a `grid-auto-flow: column; grid-template-rows: repeat(7, ...)` grid
+    (app.css's .reading-calendar) and land each day in the correct weekday row - the same
+    "whole Sunday-to-Saturday weeks, partial leading week zero-filled" alignment GitHub's
+    own contribution graph uses. A day with no chapter_read events at all (including every
+    padding day, which by construction predates anything daily_reading_activity() even
+    queried for) gets level 0, same as a real day with zero chapters read - there's no
+    distinct "no data" state, an empty calendar for a user with no reading history at all
+    just means every cell is level 0, not an empty/missing grid."""
+    counts = daily_reading_activity(get_connection(), user_id, weeks=_CALENDAR_WEEKS)
+    max_count = max(counts.values(), default=0)
+
+    today = datetime.now(UTC).date()
+    start = today - timedelta(days=_CALENDAR_WEEKS * 7 - 1)
+    # date.weekday() is Monday=0..Sunday=6, so days-since-the-most-recent-Sunday is
+    # (weekday + 1) % 7.
+    grid_start = start - timedelta(days=(start.weekday() + 1) % 7)
+
+    days: list[CalendarDay] = []
+    current = grid_start
+    while current <= today:
+        count = counts.get(current.isoformat(), 0)
+        level = 0 if max_count == 0 or count == 0 else max(1, round(count / max_count * 4))
+        days.append(
+            CalendarDay(
+                count=count,
+                level=level,
+                label=f"{current.strftime('%d.%m.%Y')}: {_pluralize_chapters(count)}",
+            )
+        )
+        current += timedelta(days=1)
+    return days
+
+
+def _pluralize_chapters(n: int) -> str:
+    if n == 0:
+        return "нет прочитанных глав"
+    mod10, mod100 = n % 10, n % 100
+    if mod10 == 1 and mod100 != 11:
+        word = "глава"
+    elif 2 <= mod10 <= 4 and not (12 <= mod100 <= 14):
+        word = "главы"
+    else:
+        word = "глав"
+    return f"{n} {word}"
