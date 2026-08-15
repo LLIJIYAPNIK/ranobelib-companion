@@ -118,6 +118,21 @@ def test_settings_page_offers_a_tap_to_read_toggle() -> None:
     )
 
 
+def test_settings_page_offers_a_show_paragraph_social_toggle() -> None:
+    response = client.get("/settings/reading")
+
+    assert response.status_code == 200
+    assert (
+        'type="checkbox" class="reader-settings__toggle" data-setting="showParagraphSocial"'
+        in response.text
+    )
+    # Its own section, not tucked inside "Чтение с помощью тапа" - it applies to both
+    # reading modes, not just the tap mechanic (PR 134).
+    assert response.text.index("Реакции и комментарии") < response.text.index(
+        'data-setting="showParagraphSocial"'
+    )
+
+
 def test_settings_page_offers_a_paragraph_style_choice() -> None:
     response = client.get("/settings/reading")
 

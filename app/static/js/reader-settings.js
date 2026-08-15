@@ -22,6 +22,9 @@
     paragraphStyle: "chat",
     paragraphAnimation: "none",
     revealTempo: "instant",
+    // PR 134: read directly from this same key by app/static/js/paragraph-menu.js, same
+    // reasoning as the tap-to-read settings above.
+    showParagraphSocial: true,
   };
 
   const root = document.documentElement;
