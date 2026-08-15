@@ -2635,6 +2635,22 @@ a {
   }
 }
 
+/* The countdown - deliberately a small badge in the panel's corner, not a large overlay
+   on top of the sample text (see the roadmap note this PR came from: unobtrusive, not
+   distracting from actually reading). */
+.reading-speed-modal__timer {
+  position: absolute;
+  top: 12px;
+  left: 24px;
+  padding: 3px 9px;
+  border-radius: 999px;
+  background: var(--bg-page);
+  border: 1px solid var(--border);
+  color: var(--text-muted);
+  font-size: 12px;
+  font-variant-numeric: tabular-nums;
+}
+
 /* PR 78: manual readingSpeedWpm entry, independent of the test above - same field-label
    layout as the rest of .reader-settings__field, just its own input instead of a
    <select>/<input type="range"> since a typed number is the whole point here. */
