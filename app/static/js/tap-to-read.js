@@ -430,7 +430,7 @@
     }
 
     wrap.classList.remove("reader-content__paragraph--hidden");
-    wrap.scrollIntoView({ behavior: "smooth", block: "end" });
+    scrollToDocumentBottom();
 
     // stampTime() only runs once the tempo reveal is done, not before - every runner
     // walks wrap's own text nodes (to split into words or capture for typewriter-speed),
