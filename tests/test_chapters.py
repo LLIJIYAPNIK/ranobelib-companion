@@ -212,6 +212,60 @@ def test_read_chapter_includes_image_lightbox_script() -> None:
     assert "static/js/image-lightbox.js" in response.text
 
 
+def test_read_chapter_includes_paragraph_menu_script() -> None:
+    # PR 131: infrastructure for PR 132/133's reactions/comments - loads unconditionally,
+    # same as image-lightbox.js/reader-progress.js, regardless of reading mode.
+    chapter = Chapter(id=1, volume="1", number="5", content="<p>x</p>")
+    with patch("app.services.client.RanobeLib", return_value=_FakeClient(chapter)):
+        response = client.get("/titles/6712--test-novel/chapters/1/5")
+
+    assert response.status_code == 200
+    assert "static/js/paragraph-menu.js" in response.text
+
+
+def test_read_chapter_exposes_paragraph_key_fields_on_content() -> None:
+    # paragraph-menu.js (and eventually PR 132/133) key a paragraph off
+    # slug_url/volume/number/branch_id plus its own index among .reader-content's
+    # children - the first three of those come from these data attributes.
+    chapter = Chapter(id=1, volume="1", number="5", content="<p>x</p>")
+    with patch("app.services.client.RanobeLib", return_value=_FakeClient(chapter)):
+        response = client.get("/titles/6712--test-novel/chapters/1/5?branch_id=42")
+
+    assert response.status_code == 200
+    assert 'data-volume="1"' in response.text
+    assert 'data-number="5"' in response.text
+    assert 'data-branch-id="42"' in response.text
+
+
+def test_read_chapter_omits_branch_id_when_not_selected() -> None:
+    chapter = Chapter(id=1, volume="1", number="5", content="<p>x</p>")
+    with patch("app.services.client.RanobeLib", return_value=_FakeClient(chapter)):
+        response = client.get("/titles/6712--test-novel/chapters/1/5")
+
+    assert response.status_code == 200
+    assert 'data-branch-id=""' in response.text
+
+
+def test_read_chapter_marks_content_authenticated_when_logged_in(
+    logged_in_client: TestClient,
+) -> None:
+    # Anonymous vs. logged-in decides whether paragraph-menu.js's stub items point at
+    # /login (see _locked_feature.html elsewhere) or render as disabled stubs.
+    chapter = Chapter(id=1, volume="1", number="5", content="<p>x</p>")
+    with patch("app.services.client.RanobeLib", return_value=_FakeClient(chapter)):
+        response = logged_in_client.get("/titles/6712--test-novel/chapters/1/5")
+
+    assert 'data-authenticated="1"' in response.text
+
+
+def test_read_chapter_marks_content_not_authenticated_when_anonymous() -> None:
+    chapter = Chapter(id=1, volume="1", number="5", content="<p>x</p>")
+    with patch("app.services.client.RanobeLib", return_value=_FakeClient(chapter)):
+        response = client.get("/titles/6712--test-novel/chapters/1/5")
+
+    assert 'data-authenticated=""' in response.text
+
+
 def test_read_chapter_crosses_volume_boundary() -> None:
     chapter = Chapter(id=1, volume="1", number="3", name="Конец тома", content="<p>x</p>")
     volumes = [

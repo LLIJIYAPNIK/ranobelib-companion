@@ -44,7 +44,15 @@
     Rendered as real HTML (bypassing Jinja's autoescape), not as escaped text.
     Chapter.content is sanitized to a restricted tag/attribute set by the SDK itself.
   #}
-  <article class="reader-content" data-role="chapter" data-slug-url="{{ slug_url }}">
+  <article
+    class="reader-content"
+    data-role="chapter"
+    data-slug-url="{{ slug_url }}"
+    data-volume="{{ chapter.volume }}"
+    data-number="{{ chapter.number }}"
+    data-branch-id="{{ branch_id if branch_id is not none else '' }}"
+    data-authenticated="{{ '1' if current_user else '' }}"
+  >
     {{ chapter.content | safe }}
   </article>
   {{ chapter_nav(prev_url, next_url, extra_class="reader-nav__adjacent--bottom") }}
@@ -57,4 +65,5 @@
 <script src="{{ url_for('static', path='js/tap-to-read.js') }}" defer></script>
 <script src="{{ url_for('static', path='js/reader-progress.js') }}" defer></script>
 <script src="{{ url_for('static', path='js/image-lightbox.js') }}" defer></script>
+<script src="{{ url_for('static', path='js/paragraph-menu.js') }}" defer></script>
 {% endblock %}
