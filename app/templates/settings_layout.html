@@ -1,4 +1,20 @@
 {% extends "base.html" %}
+{% block head_extra %}
+<!-- PR 121: opts only the /settings/* pages into cross-document View Transitions - this
+     is a server-rendered MPA (full page loads between /settings/account, /settings/security,
+     /settings/reading), so without this the sidebar's active-link highlight and the whole
+     page repaint in one abrupt frame on every switch. @view-transition is a document-level
+     at-rule with no selector scoping, so it can't be added once to app.css and limited to
+     these routes from CSS alone - it's declared per-template instead, only where
+     settings_layout.html (shared by all three sub-pages) is the base. Unsupported browsers
+     (anything non-Chromium today) just ignore the unknown at-rule and keep today's plain,
+     instant navigation - no worse than before this PR. -->
+<style>
+  @view-transition {
+    navigation: auto;
+  }
+</style>
+{% endblock %}
 {% block content %}
 <main class="content">
   <h1 class="toc__title">Настройки</h1>
