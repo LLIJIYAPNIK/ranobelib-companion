@@ -37,6 +37,12 @@
 // paragraphAnimation/typewriter for that reveal rather than layering on top of it - both
 // would otherwise fight over the same text nodes (typewriter-speed) or just be visually
 // redundant (the others).
+//
+// PR 129: separately from all of the above, a *single* scroll restore runs once, right
+// after that initial reveal(loadRevealedCount()) finishes - not the per-paragraph
+// scroll/tempo machinery PR 76/79 skip for it, just a one-time jump straight to whatever
+// was last revealed, so reopening an already-started chapter doesn't strand the visitor
+// at the top of a long backlog of already-read paragraphs.
 (() => {
   const SETTINGS_KEY = "readerSettings";
   const PROGRESS_KEY_PREFIX = "tapToReadProgress:";
@@ -437,7 +443,23 @@
   }
 
   content.classList.add("reader-content--tap-to-read");
-  reveal(loadRevealedCount());
+  const initialRevealedCount = loadRevealedCount();
+  reveal(initialRevealedCount);
+
+  // PR 129: same "land where you left off" restore as reader-progress.js's non-tap
+  // mode, applied to the freshly-revealed wraps here instead of plain paragraphs.
+  // loadRevealedCount() always floors at 1 (the first paragraph reveals by default even
+  // with nothing saved), so it alone can't tell "nothing saved yet" apart from "really
+  // did save revealed: 1" - re-checking readStoredProgress() directly is what decides
+  // whether to scroll at all, so a chapter with no saved progress stays at the natural
+  // top-of-page start instead of getting a pointless nudge toward the first paragraph
+  // it's already showing. `block: "start"` plus a small upward nudge, not "center"/"end"
+  // - reading continues *downward* from here, so the restored paragraph belongs near the
+  // top of the viewport with room below it, not centered or flush at the bottom.
+  if (readStoredProgress()) {
+    wraps[initialRevealedCount - 1].scrollIntoView({ block: "start" });
+    window.scrollBy(0, -24);
+  }
 
   // PR 73: the tap zone is the whole reading area (<main class="content">, which chapter.html
   // wraps .reader-content in), not just .reader-content itself - that element is only ever
