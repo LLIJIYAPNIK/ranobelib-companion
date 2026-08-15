@@ -3,20 +3,57 @@
 {% block content %}
 <main class="content">
   <h1 class="toc__title">Профиль</h1>
-  {% if current_user %}
+  {% if profile_user %}
   <div class="profile">
-    <div class="profile__avatar" aria-hidden="true">{% if avatar_url(current_user) %}<img class="avatar-img" src="{{ avatar_url(current_user) }}" alt="">{% else %}{{ avatar_initials(current_user) }}{% endif %}</div>
+    <div class="profile__avatar" aria-hidden="true">{% if avatar_url(profile_user) %}<img class="avatar-img" src="{{ avatar_url(profile_user) }}" alt="">{% else %}{{ avatar_initials(profile_user) }}{% endif %}</div>
     <div class="profile__info">
-      <p class="profile__name">{{ current_user.nickname or current_user.email }}</p>
-      {% if current_user.bio %}
-      <p class="profile__bio">{{ current_user.bio }}</p>
+      <p class="profile__name">{{ profile_user.nickname or profile_user.email }}</p>
+      {% if profile_user.bio %}
+      <p class="profile__bio">{{ profile_user.bio }}</p>
       {% else %}
       <p class="content__hint">Пользователь пока не рассказал о себе.</p>
       {% endif %}
       <p class="profile__meta">На сайте с {{ registered_at }}</p>
+      {% if is_own_profile %}
       <a class="btn btn--secondary" href="/settings/account">Редактировать</a>
+      {% endif %}
     </div>
   </div>
+
+  {% if currently_reading %}
+  <section class="profile-section">
+    <h2 class="profile-section__title">Читает сейчас</h2>
+    <a class="profile-current-read__name" href="/titles/{{ currently_reading.entry.slug_url }}">{{ currently_reading.name or currently_reading.entry.slug_url }}</a>
+    <p class="profile-current-read__meta">
+      Том {{ currently_reading.entry.last_read_volume }}, глава {{ currently_reading.entry.last_read_number }}
+    </p>
+  </section>
+  {% endif %}
+
+  {% if library_items %}
+  <section class="profile-section">
+    <h2 class="profile-section__title">Библиотека</h2>
+    <div class="title-card-grid">
+      {% from "_title_card.html" import title_card %}
+      {% for item in library_items %}
+      {% call title_card(item.entry.slug_url, item.name or item.entry.slug_url, item.cover_url) %}
+      {% if item.entry.last_read_volume %}
+      <span class="title-card__meta">
+        Том {{ item.entry.last_read_volume }}, глава {{ item.entry.last_read_number }}
+      </span>
+      {% if item.progress_percent is not none %}
+      <div class="reading-progress" aria-hidden="true">
+        <div class="reading-progress__fill" style="width: {{ item.progress_percent }}%"></div>
+      </div>
+      {% endif %}
+      {% else %}
+      <span class="title-card__meta title-card__meta--muted">Ещё не начали читать</span>
+      {% endif %}
+      {% endcall %}
+      {% endfor %}
+    </div>
+  </section>
+  {% endif %}
   {% else %}
   {% from "_locked_feature.html" import locked_feature %}
   {% call locked_feature("Профиль скрыт", "/login", "Войти") %}
@@ -25,4 +62,5 @@
   {% endcall %}
   {% endif %}
 </main>
+<script src="{{ url_for('static', path='js/title-quickview.js') }}" defer></script>
 {% endblock %}
