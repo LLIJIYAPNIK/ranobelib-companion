@@ -27,8 +27,24 @@
 // toggle is clicked. Each comment has its own "Ответить" opening an inline reply
 // composer, nested reddit-style under its parent via CSS alone (no per-depth styling
 // computed in JS - see .paragraph-comment__replies in app.css).
+//
+// PR 134: readerSettings.showParagraphSocial (default true, like every other reading
+// setting) gates this whole file - once it's explicitly false there is nothing left for
+// a right-click to open (both PR 132's reactions and PR 133's comments are it), so
+// nothing here so much as attaches a listener rather than just hiding what would've
+// rendered. Existing reactions/comments aren't touched server-side by this - the setting
+// only ever decides whether this script fetches/renders them, never deletes anything.
 (() => {
   const GAP = 8;
+
+  function loadReaderSettings() {
+    try {
+      return JSON.parse(localStorage.getItem("readerSettings") || "{}");
+    } catch {
+      return {};
+    }
+  }
+  if (loadReaderSettings().showParagraphSocial === false) return;
 
   // Must stay in sync with ALLOWED_EMOJI in app/db/reactions.py - both lists exist
   // independently (no shared JSON between Python and JS in this codebase), so a change
