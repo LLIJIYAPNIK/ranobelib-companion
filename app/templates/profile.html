@@ -3,18 +3,20 @@
 {% block content %}
 <main class="content">
   <h1 class="toc__title">Профиль</h1>
-  {% if current_user %}
+  {% if profile_user %}
   <div class="profile">
-    <div class="profile__avatar" aria-hidden="true">{% if avatar_url(current_user) %}<img class="avatar-img" src="{{ avatar_url(current_user) }}" alt="">{% else %}{{ avatar_initials(current_user) }}{% endif %}</div>
+    <div class="profile__avatar" aria-hidden="true">{% if avatar_url(profile_user) %}<img class="avatar-img" src="{{ avatar_url(profile_user) }}" alt="">{% else %}{{ avatar_initials(profile_user) }}{% endif %}</div>
     <div class="profile__info">
-      <p class="profile__name">{{ current_user.nickname or current_user.email }}</p>
-      {% if current_user.bio %}
-      <p class="profile__bio">{{ current_user.bio }}</p>
+      <p class="profile__name">{{ profile_user.nickname or profile_user.email }}</p>
+      {% if profile_user.bio %}
+      <p class="profile__bio">{{ profile_user.bio }}</p>
       {% else %}
       <p class="content__hint">Пользователь пока не рассказал о себе.</p>
       {% endif %}
       <p class="profile__meta">На сайте с {{ registered_at }}</p>
+      {% if is_own_profile %}
       <a class="btn btn--secondary" href="/settings/account">Редактировать</a>
+      {% endif %}
     </div>
   </div>
   {% else %}
