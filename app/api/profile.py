@@ -66,6 +66,7 @@ async def _render_profile(
             "is_own_profile": is_own_profile,
             "registered_at": _format_date(profile_user.created_at),
             "currently_reading": currently_reading,
+            "library_items": items,
         },
     )
 

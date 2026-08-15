@@ -29,6 +29,31 @@
     </p>
   </section>
   {% endif %}
+
+  {% if library_items %}
+  <section class="profile-section">
+    <h2 class="profile-section__title">Библиотека</h2>
+    <div class="title-card-grid">
+      {% from "_title_card.html" import title_card %}
+      {% for item in library_items %}
+      {% call title_card(item.entry.slug_url, item.name or item.entry.slug_url, item.cover_url) %}
+      {% if item.entry.last_read_volume %}
+      <span class="title-card__meta">
+        Том {{ item.entry.last_read_volume }}, глава {{ item.entry.last_read_number }}
+      </span>
+      {% if item.progress_percent is not none %}
+      <div class="reading-progress" aria-hidden="true">
+        <div class="reading-progress__fill" style="width: {{ item.progress_percent }}%"></div>
+      </div>
+      {% endif %}
+      {% else %}
+      <span class="title-card__meta title-card__meta--muted">Ещё не начали читать</span>
+      {% endif %}
+      {% endcall %}
+      {% endfor %}
+    </div>
+  </section>
+  {% endif %}
   {% else %}
   {% from "_locked_feature.html" import locked_feature %}
   {% call locked_feature("Профиль скрыт", "/login", "Войти") %}
@@ -37,4 +62,5 @@
   {% endcall %}
   {% endif %}
 </main>
+<script src="{{ url_for('static', path='js/title-quickview.js') }}" defer></script>
 {% endblock %}
