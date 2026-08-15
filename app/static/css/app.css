@@ -314,6 +314,27 @@ a {
    from - same fade + slide-toward-the-trigger animation as the custom <select> dropdown
    (PR 54's .dropdown__listbox), always in the DOM (opacity/pointer-events, not
    display:none) so the transition has something to animate. */
+/* PR 120: while closed, the panel is still parked in its home spot inside .sidebar (the
+   JS below only portals it out to <body> on open) - `position: absolute` with no offsets
+   set here falls back to its *static* position, right below the avatar button, which
+   itself sits flush against .sidebar's bottom edge (.sidebar__account's margin-top:
+   auto). That pushes the panel's box past .sidebar's own bottom edge even while fully
+   invisible (opacity: 0 below), and .sidebar's overflow-y: auto (kept for the rare case
+   the link list itself outgrows the viewport, PR 116) still counts that as scrollable
+   overflow - scrolling the sidebar at all then visibly shifts the real icons up by that
+   same phantom amount, the "sidebar scrolls" bug. Collapse the box to nothing while it's
+   parked here - max-height alone isn't enough with box-sizing: border-box, since the used
+   height can't shrink below the border+padding sum, so those are zeroed too. profile-
+   menu.js always portals the panel to <body> (out from under this selector) and sets
+   explicit position: fixed coordinates before ever making it visible, so none of this
+   affects the actual open panel. */
+.sidebar .profile-menu__panel {
+  max-height: 0;
+  padding: 0;
+  border-width: 0;
+  overflow: hidden;
+}
+
 .profile-menu__panel {
   display: flex;
   flex-direction: column;
