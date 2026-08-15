@@ -272,7 +272,6 @@ a {
   font-weight: 600;
   text-decoration: none;
   cursor: pointer;
-  transition: background-color 0.15s ease, transform 0.15s ease;
 }
 
 /* PR 96: an uploaded avatar image, shown instead of the initials text - shared by
@@ -286,13 +285,9 @@ a {
   border-radius: inherit;
 }
 
-@media (hover: hover) {
-  .sidebar__avatar:hover {
-    background: var(--accent-teal);
-    color: var(--bg-page);
-    transform: scale(1.06);
-  }
-}
+/* PR 126: no :hover recolor here on purpose - the avatar's clickability is already
+   obvious (cursor: pointer above, plus the dropdown it opens), so repainting the
+   initials/photo on hover read as noise rather than a useful affordance. */
 
 /* PR 93: the avatar's dropdown menu (Профиль/Читаю/Настройки/Выйти). */
 .profile-menu {
