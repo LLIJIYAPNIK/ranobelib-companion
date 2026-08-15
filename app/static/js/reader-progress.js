@@ -56,6 +56,19 @@
   // away, without waiting for the visitor to scroll past anything new this visit.
   if (furthest > 0) save();
 
+  // PR 129: opening an already-started chapter should land on where the visitor left
+  // off, not back at the top - `furthest` (just loaded above) is exactly the paragraph
+  // the IntersectionObserver below would mark as read anyway on its first real
+  // intersection, so this doesn't add a second source of truth. `block: "start"` plus a
+  // small upward nudge, not "center"/"end" - reading continues *downward* from here, so
+  // the restored paragraph belongs near the top of the viewport with room below it, not
+  // centered (wastes half the screen on already-read text) or flush at the bottom (would
+  // put whatever comes right after it out of view immediately on load).
+  if (furthest > 0) {
+    paragraphs[furthest - 1].scrollIntoView({ block: "start" });
+    window.scrollBy(0, -24);
+  }
+
   const observer = new IntersectionObserver(
     (entries) => {
       let changed = false;
