@@ -399,6 +399,25 @@ def logged_in_client(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> Iterato
     db_connection._connection = None
 
 
+@pytest.fixture
+def isolated_client(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> Iterator[TestClient]:
+    """Same DB isolation as logged_in_client, without registering a session - for
+    anonymous requests that still need the schema migrated (unlike most anonymous routes
+    tested against the bare module-level `client` above, GET .../reactions reads the
+    `reactions` table regardless of login, so it needs `with TestClient(app)` to actually
+    run migrations first)."""
+    monkeypatch.setenv("DB_PATH", str(tmp_path / "test.db"))
+    monkeypatch.setenv("SESSION_SECRET_KEY", "test-secret")
+    get_settings.cache_clear()
+    db_connection._connection = None
+
+    with TestClient(app) as test_client:
+        yield test_client
+
+    get_settings.cache_clear()
+    db_connection._connection = None
+
+
 def test_read_chapter_records_progress_for_title_in_library(
     logged_in_client: TestClient,
 ) -> None:
@@ -487,3 +506,88 @@ def test_read_chapter_anonymous_does_not_touch_the_database(tmp_path: Path) -> N
         response = client.get("/titles/6712--test-novel/chapters/1/5")
 
     assert response.status_code == 200
+
+
+def test_get_reactions_is_empty_for_a_chapter_with_none(
+    isolated_client: TestClient,
+) -> None:
+    response = isolated_client.get("/titles/6712--test-novel/chapters/1/5/reactions")
+
+    assert response.status_code == 200
+    assert response.json() == {"counts": {}, "mine": {}}
+
+
+def test_get_reactions_does_not_require_login(isolated_client: TestClient) -> None:
+    # Reading who reacted what needs no account, only adding a reaction does (PR 132).
+    response = isolated_client.get("/titles/6712--test-novel/chapters/1/5/reactions")
+
+    assert response.status_code == 200
+
+
+def test_post_reaction_requires_login() -> None:
+    response = client.post(
+        "/titles/6712--test-novel/chapters/1/5/reactions",
+        data={"paragraph_index": "0", "emoji": "👍"},
+        follow_redirects=False,
+    )
+
+    assert response.status_code == 303
+    assert response.headers["location"] == "/login"
+
+
+def test_post_reaction_rejects_an_emoji_outside_the_allowed_set(
+    logged_in_client: TestClient,
+) -> None:
+    response = logged_in_client.post(
+        "/titles/6712--test-novel/chapters/1/5/reactions",
+        data={"paragraph_index": "0", "emoji": "🍕"},
+    )
+
+    assert response.status_code == 400
+
+
+def test_post_reaction_sets_it_and_reports_the_new_count(
+    logged_in_client: TestClient,
+) -> None:
+    response = logged_in_client.post(
+        "/titles/6712--test-novel/chapters/1/5/reactions",
+        data={"paragraph_index": "0", "emoji": "👍"},
+    )
+
+    assert response.status_code == 200
+    assert response.json() == {"paragraph_index": 0, "counts": {"👍": 1}, "mine": "👍"}
+
+
+def test_post_reaction_same_emoji_again_removes_it(logged_in_client: TestClient) -> None:
+    logged_in_client.post(
+        "/titles/6712--test-novel/chapters/1/5/reactions",
+        data={"paragraph_index": "0", "emoji": "👍"},
+    )
+
+    response = logged_in_client.post(
+        "/titles/6712--test-novel/chapters/1/5/reactions",
+        data={"paragraph_index": "0", "emoji": "👍"},
+    )
+
+    assert response.json() == {"paragraph_index": 0, "counts": {}, "mine": None}
+
+
+def test_post_reaction_reflected_by_a_later_get(logged_in_client: TestClient) -> None:
+    logged_in_client.post(
+        "/titles/6712--test-novel/chapters/1/5/reactions",
+        data={"paragraph_index": "0", "emoji": "🔥"},
+    )
+    logged_in_client.post(
+        "/titles/6712--test-novel/chapters/1/5/reactions",
+        data={"paragraph_index": "2", "emoji": "👏", "branch_id": "3"},
+    )
+
+    same_branch = logged_in_client.get(
+        "/titles/6712--test-novel/chapters/1/5/reactions"
+    ).json()
+    other_branch = logged_in_client.get(
+        "/titles/6712--test-novel/chapters/1/5/reactions", params={"branch_id": "3"}
+    ).json()
+
+    assert same_branch == {"counts": {"0": {"🔥": 1}}, "mine": {"0": "🔥"}}
+    assert other_branch == {"counts": {"2": {"👏": 1}}, "mine": {"2": "👏"}}

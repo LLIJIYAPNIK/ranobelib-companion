@@ -2387,9 +2387,9 @@ a {
 }
 
 /* PR 131: the paragraph context menu (right-click on a paragraph opens Реакции/
-   Комментировать - both still stubs until PR 132/133). Portaled to <body> and positioned
-   from the click point with inline left/top (paragraph-menu.js), the same reason
-   .profile-menu__panel (PR 97) is portaled rather than nested where it's used: an
+   Комментировать - Комментировать stays a stub until PR 133). Portaled to <body> and
+   positioned from the click point with inline left/top (paragraph-menu.js), the same
+   reason .profile-menu__panel (PR 97) is portaled rather than nested where it's used: an
    ancestor's overflow would otherwise clip it. Same fade/no-slide-direction-needed open
    styling as that panel, just anchored at a point instead of a trigger element's rect. */
 .paragraph-menu__panel {
@@ -2444,6 +2444,124 @@ a {
     background: rgba(34, 211, 197, 0.12);
     color: var(--text-primary);
   }
+}
+
+/* PR 132: the "← Назад" row that swaps the two-item list for the emoji picker below, and
+   back again - a plain left-aligned button styled like a lighter-weight .paragraph-menu__item. */
+.paragraph-menu__back {
+  align-self: flex-start;
+  padding: 4px 6px;
+  margin-bottom: 2px;
+  border: none;
+  background: none;
+  color: var(--text-muted);
+  font-family: inherit;
+  font-size: 12px;
+  cursor: pointer;
+}
+
+@media (hover: hover) {
+  .paragraph-menu__back:hover {
+    color: var(--text-primary);
+  }
+}
+
+/* PR 132: the 10-emoji reaction picker that replaces the menu's item list once
+   "Реакции" is clicked - a fixed 5-column grid, wide enough for all ten without the
+   panel growing much past its usual two-item width. */
+.paragraph-menu__emoji-picker {
+  display: grid;
+  grid-template-columns: repeat(5, 1fr);
+  gap: 2px;
+}
+
+.paragraph-menu__emoji {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 36px;
+  height: 36px;
+  border: 1px solid transparent;
+  border-radius: 6px;
+  background: none;
+  font-size: 18px;
+  line-height: 1;
+  cursor: pointer;
+  transition: background-color 0.1s ease, border-color 0.1s ease;
+}
+
+.paragraph-menu__emoji--active {
+  border-color: var(--accent-teal);
+  background: rgba(34, 211, 197, 0.12);
+}
+
+@media (hover: hover) {
+  .paragraph-menu__emoji:hover {
+    background: rgba(34, 211, 197, 0.12);
+  }
+}
+
+/* PR 132: the aggregated reaction counts rendered under a paragraph - one pill per emoji
+   that has at least one reaction, nothing rendered at all for a paragraph with none (same
+   "empty state = show nothing" rule PR 122's profile sections already follow).
+
+   Two hosts, one rule each for when the strip is visible:
+   - .reader-content__paragraph-wrap (tap-to-read mode, PR 62) already renders as a
+     standalone plate, so the strip just sits in its normal flow, always visible, right
+     under the timestamp (PR 64).
+   - .paragraph-reactions-host (the ordinary reading mode - paragraph-menu.js lazily wraps
+     a paragraph in one of these the first time it needs to host a strip, since the SDK's
+     own raw element underneath can be anything, including a bare <img> that can't have
+     children at all) shows it as a compact overlay on hover/focus, so it doesn't push
+     the running text around just because a paragraph happens to have reactions. */
+.paragraph-reactions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-top: 6px;
+}
+
+.reader-content__paragraph-wrap > .paragraph-reactions {
+  padding: 0 14px 10px;
+}
+
+.paragraph-reactions-host {
+  position: relative;
+}
+
+.paragraph-reactions-host > .paragraph-reactions {
+  position: absolute;
+  left: 0;
+  bottom: -8px;
+  transform: translateY(100%);
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.15s ease;
+  z-index: 1;
+}
+
+.paragraph-reactions-host:hover > .paragraph-reactions,
+.paragraph-reactions-host:focus-within > .paragraph-reactions {
+  opacity: 1;
+  pointer-events: auto;
+}
+
+.paragraph-reactions__pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 2px 8px;
+  border-radius: 999px;
+  background: var(--bg-surface);
+  border: 1px solid var(--border);
+  font-size: 12px;
+  color: var(--text-secondary);
+  white-space: nowrap;
+}
+
+.paragraph-reactions__pill--mine {
+  border-color: var(--accent-teal);
+  color: var(--text-primary);
 }
 
 /* PR 89: /settings split into left-nav tabs (Чтение/Аккаунт/Безопасность) under their
