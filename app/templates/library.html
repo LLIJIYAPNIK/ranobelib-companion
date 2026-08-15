@@ -24,10 +24,23 @@
   <h1 class="toc__title">Читаю</h1>
   {% if current_user %}
     {% if items %}
-    <div class="title-card-grid">
+    <div class="title-card-grid" data-role="library-titles">
       {% from "_title_card.html" import title_card %}
       {% for item in items %}
       {% call title_card(item.entry.slug_url, item.name or item.entry.slug_url, item.cover_url) %}
+      <button
+        type="button"
+        class="title-card__favorite{% if item.entry.is_favorite %} title-card__favorite--active{% endif %}"
+        data-role="favorite-toggle-trigger"
+        data-slug-url="{{ item.entry.slug_url }}"
+        aria-pressed="{{ 'true' if item.entry.is_favorite else 'false' }}"
+        aria-label="{{ 'Убрать из избранного' if item.entry.is_favorite else 'Добавить в избранное' }}"
+        title="{{ 'Убрать из избранного' if item.entry.is_favorite else 'Добавить в избранное' }}"
+      >
+        <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round" aria-hidden="true">
+          <path d="M12 2.5 15 9l7 1-5.2 5 1.3 7-6.1-3.4L5.9 22l1.3-7L2 10l7-1Z"/>
+        </svg>
+      </button>
       {% if item.entry.last_read_volume %}
       <span class="title-card__meta">
         Том {{ item.entry.last_read_volume }}, глава {{ item.entry.last_read_number }}
@@ -58,4 +71,5 @@
   {% endif %}
 </main>
 <script src="{{ url_for('static', path='js/title-quickview.js') }}" defer></script>
+<script src="{{ url_for('static', path='js/favorite-toggle.js') }}" defer></script>
 {% endblock %}

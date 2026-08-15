@@ -5,6 +5,7 @@ and an explicit `with TestClient(app) as client:` so app.main's lifespan (migrat
 actually runs.
 """
 
+import re
 from collections.abc import Iterator
 from pathlib import Path
 from unittest.mock import patch
@@ -432,3 +433,88 @@ def test_add_by_url_requires_login(client: TestClient) -> None:
 
     assert response.status_code == 303
     assert response.headers["location"] == "/login"
+
+
+# --- PR 123: the one favorite title -------------------------------------------------
+
+
+def test_favorite_toggle_requires_login(client: TestClient) -> None:
+    response = client.post("/library/6712--test-novel/favorite", follow_redirects=False)
+
+    assert response.status_code == 303
+    assert response.headers["location"] == "/login"
+
+
+def test_favorite_toggle_marks_a_title_favorite(client: TestClient) -> None:
+    _register(client)
+    title = _fake_title()
+    with patch("app.services.client.RanobeLib", return_value=_FakeClient(title)):
+        client.post("/library/6712--test-novel/add")
+
+    response = client.post("/library/6712--test-novel/favorite")
+
+    assert response.status_code == 200
+    assert response.json() == {"is_favorite": True}
+
+
+def test_favorite_toggle_unmarks_an_already_favorite_title(client: TestClient) -> None:
+    _register(client)
+    title = _fake_title()
+    with patch("app.services.client.RanobeLib", return_value=_FakeClient(title)):
+        client.post("/library/6712--test-novel/add")
+    client.post("/library/6712--test-novel/favorite")
+
+    response = client.post("/library/6712--test-novel/favorite")
+
+    assert response.status_code == 200
+    assert response.json() == {"is_favorite": False}
+
+
+def test_favorite_toggle_clears_the_previous_favorite(client: TestClient) -> None:
+    _register(client)
+    title_a = _fake_title(slug_url="1--first")
+    title_b = _fake_title(slug_url="2--second")
+    with patch("app.services.client.RanobeLib", return_value=_FakeClient(title_a)):
+        client.post("/library/1--first/add")
+    with patch("app.services.client.RanobeLib", return_value=_FakeClient(title_b)):
+        client.post("/library/2--second/add")
+    client.post("/library/1--first/favorite")
+
+    response = client.post("/library/2--second/favorite")
+
+    assert response.status_code == 200
+    assert response.json() == {"is_favorite": True}
+    with patch("app.services.client.RanobeLib", return_value=_FakeClient(title_a)):
+        library_response = client.get("/library")
+    # Exactly one card is favorited - "2--second", not "1--first" anymore.
+    assert library_response.text.count('aria-pressed="true"') == 1
+    favorite_slug = re.search(
+        r'data-slug-url="([^"]+)"\s+aria-pressed="true"', library_response.text
+    ).group(1)
+    assert favorite_slug == "2--second"
+
+
+def test_favorite_toggle_unknown_title_is_not_found(client: TestClient) -> None:
+    _register(client)
+
+    response = client.post("/library/does-not-exist/favorite")
+
+    assert response.status_code == 404
+
+
+def test_show_library_renders_the_favorite_star_button(client: TestClient) -> None:
+    _register(client)
+    title = _fake_title()
+    with patch("app.services.client.RanobeLib", return_value=_FakeClient(title)):
+        client.post("/library/6712--test-novel/add")
+    client.post("/library/6712--test-novel/favorite")
+
+    with patch("app.services.client.RanobeLib", return_value=_FakeClient(title)):
+        response = client.get("/library")
+
+    assert response.status_code == 200
+    assert 'class="title-card__favorite title-card__favorite--active"' in response.text
+    favorite_slug = re.search(
+        r'data-slug-url="([^"]+)"\s+aria-pressed="true"', response.text
+    ).group(1)
+    assert favorite_slug == "6712--test-novel"
