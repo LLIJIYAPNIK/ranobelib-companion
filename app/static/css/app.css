@@ -1044,7 +1044,7 @@ a {
   line-height: 1;
   cursor: pointer;
   box-shadow: 0 8px 20px rgba(0, 0, 0, 0.35);
-  transition: transform 0.15s ease, border-color 0.15s ease;
+  transition: transform 0.15s ease, border-color 0.15s ease, right 0.18s ease;
 }
 
 .back-to-top[hidden] {
@@ -1058,12 +1058,31 @@ a {
   }
 }
 
+/* PR 127: .catalog-filters (240px wide, PR 98) sits flush against the same 32px page
+   padding this button's own `right: 32px` uses, so an open panel would otherwise sit
+   right on top of it. Shifted left by the panel's own width plus .catalog-layout's 24px
+   column gap (240 + 24 = 264px) whenever catalog-filters-toggle.js opens it - `right`
+   is in the transition list above so the two move in step with the panel's own
+   open/close animation, not a jump cut. */
+@media (min-width: 641px) {
+  .back-to-top--filters-open {
+    right: 296px;
+  }
+}
+
 @media (max-width: 640px) {
   .back-to-top {
     /* Same 76px clearance above the fixed bottom tab bar (PR 46) already used by
        .download-ready and .toc__export-panel on mobile. */
     bottom: 76px;
     right: 12px;
+  }
+
+  /* On mobile .catalog-filters is a fullscreen modal (PR 103), not a side column - there's
+     no sensible "shifted" position next to it, so this button just disappears for as
+     long as the modal covers the screen instead. */
+  .back-to-top--filters-open {
+    display: none;
   }
 }
 
