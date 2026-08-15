@@ -58,6 +58,7 @@ async def _render_profile(
     # but the top entry might just be the most recently *added*, never actually opened,
     # so "Читает сейчас" only shows up once that entry genuinely has a read position.
     currently_reading = items[0] if items and items[0]["entry"].last_read_at else None
+    favorite_item = next((item for item in items if item["entry"].is_favorite), None)
     return templates.TemplateResponse(
         request,
         "profile.html",
@@ -66,6 +67,7 @@ async def _render_profile(
             "is_own_profile": is_own_profile,
             "registered_at": _format_date(profile_user.created_at),
             "currently_reading": currently_reading,
+            "favorite_item": favorite_item,
             "library_items": items,
         },
     )

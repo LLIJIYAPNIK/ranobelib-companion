@@ -1460,6 +1460,15 @@ a {
   }
 }
 
+/* PR 123: the one favorite title, singled out on the profile page's own "Избранное"
+   section - an accented frame around the whole card, same corner-radius language as the
+   card's own cover image, rather than a new component. */
+.title-card--favorite {
+  border: 2px solid var(--accent-orange);
+  border-radius: 12px;
+  padding: 8px;
+}
+
 .reading-progress {
   height: 3px;
   background: var(--border);
