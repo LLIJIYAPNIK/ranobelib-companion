@@ -7,6 +7,7 @@ from app.db.users import (
     create_user,
     get_user_by_email,
     get_user_by_id,
+    update_privacy_settings,
     update_user_account,
     update_user_avatar,
 )
@@ -152,6 +153,55 @@ def test_update_user_avatar_leaves_other_fields_untouched(conn: sqlite3.Connecti
     update_user_account(conn, user.id, email=user.email, nickname="Alice", bio="Hi")
 
     updated = update_user_avatar(conn, user.id, "1.png")
+
+    assert updated.nickname == "Alice"
+    assert updated.bio == "Hi"
+
+
+def test_create_user_shows_everything_by_default(conn: sqlite3.Connection) -> None:
+    user = create_user(conn, "alice@example.com", "hash1")
+
+    assert user.show_currently_reading is True
+    assert user.show_favorite is True
+    assert user.show_library is True
+
+
+def test_update_privacy_settings_sets_all_three_flags(conn: sqlite3.Connection) -> None:
+    user = create_user(conn, "alice@example.com", "hash1")
+
+    updated = update_privacy_settings(
+        conn,
+        user.id,
+        show_currently_reading=False,
+        show_favorite=False,
+        show_library=False,
+    )
+
+    assert updated.show_currently_reading is False
+    assert updated.show_favorite is False
+    assert updated.show_library is False
+    assert get_user_by_id(conn, user.id) == updated
+
+
+def test_update_privacy_settings_flags_are_independent(conn: sqlite3.Connection) -> None:
+    user = create_user(conn, "alice@example.com", "hash1")
+
+    updated = update_privacy_settings(
+        conn, user.id, show_currently_reading=False, show_favorite=True, show_library=True
+    )
+
+    assert updated.show_currently_reading is False
+    assert updated.show_favorite is True
+    assert updated.show_library is True
+
+
+def test_update_privacy_settings_leaves_other_fields_untouched(conn: sqlite3.Connection) -> None:
+    user = create_user(conn, "alice@example.com", "hash1")
+    update_user_account(conn, user.id, email=user.email, nickname="Alice", bio="Hi")
+
+    updated = update_privacy_settings(
+        conn, user.id, show_currently_reading=False, show_favorite=False, show_library=False
+    )
 
     assert updated.nickname == "Alice"
     assert updated.bio == "Hi"
