@@ -79,8 +79,6 @@
         <button type="button" class="btn btn--secondary" data-role="reading-speed-start">
           Пройти тест
         </button>
-        <p class="reading-speed-test__status" data-role="reading-speed-status" hidden></p>
-        <p class="reading-speed-test__sample" data-role="reading-speed-sample" hidden></p>
         <label class="reader-settings__field reading-speed-test__manual-field">
           <span>Или укажите вручную, слов/мин</span>
           <span class="reading-speed-test__stepper">
@@ -106,6 +104,14 @@
             >+</button>
           </span>
         </label>
+      </div>
+
+      <div class="reading-speed-modal" data-role="reading-speed-modal">
+        <div class="reading-speed-modal__panel" role="dialog" aria-modal="true" aria-label="Тест скорости чтения">
+          <button type="button" class="reading-speed-modal__close" data-role="reading-speed-modal-close" aria-label="Закрыть">&times;</button>
+          <p class="reading-speed-test__status" data-role="reading-speed-status" hidden></p>
+          <p class="reading-speed-test__sample" data-role="reading-speed-sample" hidden></p>
+        </div>
       </div>
     </section>
   </div>
