@@ -17,6 +17,7 @@ from typing import Annotated
 from fastapi import APIRouter, Depends, HTTPException, Request
 from fastapi.responses import HTMLResponse
 
+from app.api.library import library_items_for_user
 from app.auth.dependencies import get_current_user
 from app.db.connection import get_connection
 from app.db.users import User, get_user_by_id
@@ -33,7 +34,7 @@ async def own_profile_page(
     (PR 22/90/91) - there's nothing to redirect an anonymous visitor's *own* profile to."""
     if user is None:
         return templates.TemplateResponse(request, "profile.html", {"profile_user": None})
-    return _render_profile(request, profile_user=user, is_own_profile=True)
+    return await _render_profile(request, profile_user=user, is_own_profile=True)
 
 
 @router.get("/profile/{user_id}")
@@ -46,12 +47,17 @@ async def public_profile_page(
     if profile_user is None:
         raise HTTPException(status_code=404, detail="Пользователь не найден")
     is_own_profile = viewer is not None and viewer.id == profile_user.id
-    return _render_profile(request, profile_user=profile_user, is_own_profile=is_own_profile)
+    return await _render_profile(request, profile_user=profile_user, is_own_profile=is_own_profile)
 
 
-def _render_profile(
+async def _render_profile(
     request: Request, *, profile_user: User, is_own_profile: bool
 ) -> HTMLResponse:
+    items = await library_items_for_user(profile_user)
+    # Most recently read first (see library_items_for_user/list_entries's own ordering) -
+    # but the top entry might just be the most recently *added*, never actually opened,
+    # so "Читает сейчас" only shows up once that entry genuinely has a read position.
+    currently_reading = items[0] if items and items[0]["entry"].last_read_at else None
     return templates.TemplateResponse(
         request,
         "profile.html",
@@ -59,6 +65,7 @@ def _render_profile(
             "profile_user": profile_user,
             "is_own_profile": is_own_profile,
             "registered_at": _format_date(profile_user.created_at),
+            "currently_reading": currently_reading,
         },
     )
 

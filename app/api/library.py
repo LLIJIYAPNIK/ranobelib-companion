@@ -40,7 +40,7 @@ async def show_library(
     """Viewing the library page itself doesn't require an account - only an anonymous
     visitor can't have a personal reading list, so that's the one thing the page won't
     show them (library.html prompts them to log in/register instead of the list)."""
-    items = await _library_items(user) if user is not None else []
+    items = await library_items_for_user(user) if user is not None else []
     return templates.TemplateResponse(
         request,
         "library.html",
@@ -168,7 +168,7 @@ async def add_to_library_by_url(
         async with get_client(url) as lib:
             title = await lib.get_info()
     except ValueError:
-        items = await _library_items(user)
+        items = await library_items_for_user(user)
         return templates.TemplateResponse(
             request,
             "library.html",
@@ -215,12 +215,16 @@ def _safe_next(next_url: str | None, default: str) -> str:
     return default
 
 
-async def _library_items(user: User) -> list[dict[str, LibraryEntry | str | int | None]]:
+async def library_items_for_user(user: User) -> list[dict[str, LibraryEntry | str | int | None]]:
     """Each entry's display name/cover/reading-progress, fetched fresh through the SDK
     (cheap - cache_dir makes it a local cache hit after the first request) rather than
     stored in our own DB, which would duplicate SDK response data. A title that's gone/
     unreachable on ranobelib.me doesn't take the whole page down with it - it just renders
     with its slug_url as a fallback label instead of a name, and no cover/progress.
+
+    Public (not prefixed `_`) so app/api/profile.py (PR 122) can reuse it for the "Читает
+    сейчас"/"Библиотека" sections on a profile page, instead of re-fetching the same SDK
+    data through a second code path.
     """
     items: list[dict[str, LibraryEntry | str | int | None]] = []
     for entry in list_entries(get_connection(), user.id):

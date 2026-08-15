@@ -795,6 +795,38 @@ a {
   margin: 0 0 8px;
 }
 
+/* PR 122: "Читает сейчас"/"Библиотека" sections on /profile - same heading treatment as
+   .reader-settings-section__title, unlike .profile above these aren't capped to 480px
+   since the library grid needs the full content width. */
+.profile-section {
+  margin-top: 28px;
+}
+
+.profile-section__title {
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--text-secondary);
+  margin: 0 0 12px;
+}
+
+.profile-current-read__name {
+  font-size: 16px;
+  font-weight: 700;
+  text-decoration: none;
+}
+
+@media (hover: hover) {
+  .profile-current-read__name:hover {
+    color: var(--accent-teal);
+  }
+}
+
+.profile-current-read__meta {
+  color: var(--text-muted);
+  font-size: 13px;
+  margin: 4px 0 0;
+}
+
 .recent__title {
   font-size: 16px;
   font-weight: 700;

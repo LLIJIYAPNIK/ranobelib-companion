@@ -19,6 +19,16 @@
       {% endif %}
     </div>
   </div>
+
+  {% if currently_reading %}
+  <section class="profile-section">
+    <h2 class="profile-section__title">Читает сейчас</h2>
+    <a class="profile-current-read__name" href="/titles/{{ currently_reading.entry.slug_url }}">{{ currently_reading.name or currently_reading.entry.slug_url }}</a>
+    <p class="profile-current-read__meta">
+      Том {{ currently_reading.entry.last_read_volume }}, глава {{ currently_reading.entry.last_read_number }}
+    </p>
+  </section>
+  {% endif %}
   {% else %}
   {% from "_locked_feature.html" import locked_feature %}
   {% call locked_feature("Профиль скрыт", "/login", "Войти") %}
