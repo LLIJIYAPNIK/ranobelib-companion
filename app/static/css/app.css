@@ -1425,6 +1425,50 @@ a {
   }
 }
 
+/* PR 123: favorite-star toggle - top-right corner, only ever rendered on the "Читаю"
+   grid (library.html), which never shows .title-card__remove ("Недавние" only), so the
+   two never collide despite sharing that same corner. */
+.title-card__favorite {
+  position: absolute;
+  top: 6px;
+  right: 6px;
+  width: 24px;
+  height: 24px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(0, 0, 0, 0.55);
+  border: none;
+  border-radius: 50%;
+  color: #fff;
+  cursor: pointer;
+  transition: background 0.15s ease;
+}
+
+.title-card__favorite--active {
+  color: var(--accent-orange);
+}
+
+.title-card__favorite--active svg {
+  fill: currentColor;
+}
+
+@media (hover: hover) {
+  .title-card__favorite:hover {
+    background: var(--accent-orange);
+    color: #fff;
+  }
+}
+
+/* PR 123: the one favorite title, singled out on the profile page's own "Избранное"
+   section - an accented frame around the whole card, same corner-radius language as the
+   card's own cover image, rather than a new component. */
+.title-card--favorite {
+  border: 2px solid var(--accent-orange);
+  border-radius: 12px;
+  padding: 8px;
+}
+
 .reading-progress {
   height: 3px;
   background: var(--border);

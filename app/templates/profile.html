@@ -30,6 +30,29 @@
   </section>
   {% endif %}
 
+  {% if favorite_item %}
+  <section class="profile-section">
+    <h2 class="profile-section__title">Избранное</h2>
+    <div class="title-card-grid">
+      {% from "_title_card.html" import title_card %}
+      {% call title_card(favorite_item.entry.slug_url, favorite_item.name or favorite_item.entry.slug_url, favorite_item.cover_url, extra_class="title-card--favorite") %}
+      {% if favorite_item.entry.last_read_volume %}
+      <span class="title-card__meta">
+        Том {{ favorite_item.entry.last_read_volume }}, глава {{ favorite_item.entry.last_read_number }}
+      </span>
+      {% if favorite_item.progress_percent is not none %}
+      <div class="reading-progress" aria-hidden="true">
+        <div class="reading-progress__fill" style="width: {{ favorite_item.progress_percent }}%"></div>
+      </div>
+      {% endif %}
+      {% else %}
+      <span class="title-card__meta title-card__meta--muted">Ещё не начали читать</span>
+      {% endif %}
+      {% endcall %}
+    </div>
+  </section>
+  {% endif %}
+
   {% if library_items %}
   <section class="profile-section">
     <h2 class="profile-section__title">Библиотека</h2>

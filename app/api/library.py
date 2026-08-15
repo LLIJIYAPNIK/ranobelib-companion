@@ -4,13 +4,21 @@ from __future__ import annotations
 
 from typing import Annotated
 
-from fastapi import APIRouter, Depends, Form, Query, Request
-from fastapi.responses import HTMLResponse, RedirectResponse, Response
+from fastapi import APIRouter, Depends, Form, HTTPException, Query, Request
+from fastapi.responses import HTMLResponse, JSONResponse, RedirectResponse, Response
 from ranobelib import RanobeLibError
 
 from app.auth.dependencies import get_current_user, require_current_user
 from app.db.connection import get_connection
-from app.db.library import LibraryEntry, add_entry, list_entries, remove_entry
+from app.db.library import (
+    LibraryEntry,
+    add_entry,
+    get_entry,
+    list_entries,
+    remove_entry,
+    set_favorite,
+    unset_favorite,
+)
 from app.db.users import User
 from app.reading_progress import reading_progress_percent
 from app.services.catalog import get_catalog, list_countries, list_genres
@@ -204,6 +212,25 @@ async def remove_from_library(
 ) -> RedirectResponse:
     remove_entry(get_connection(), user.id, slug_url)
     return RedirectResponse(url=_safe_next(next, "/library"), status_code=303)
+
+
+@router.post("/{slug_url}/favorite", response_model=None)
+async def toggle_favorite(
+    slug_url: str, user: Annotated[User, Depends(require_current_user)]
+) -> Response:
+    """Star toggle on a "Читаю" card (favorite-toggle.js) - JSON in/out (unlike
+    add/remove's redirects above) so the button can flip its own state, and every other
+    card's, without a full page reload: exactly one favorite per user (see
+    app/db/library.py's set_favorite()), so setting a new one always clears the rest."""
+    conn = get_connection()
+    entry = get_entry(conn, user.id, slug_url)
+    if entry is None:
+        raise HTTPException(status_code=404, detail="Тайтл не в библиотеке")
+    if entry.is_favorite:
+        unset_favorite(conn, user.id, slug_url)
+        return JSONResponse({"is_favorite": False})
+    set_favorite(conn, user.id, slug_url)
+    return JSONResponse({"is_favorite": True})
 
 
 def _safe_next(next_url: str | None, default: str) -> str:

@@ -307,3 +307,68 @@ def test_public_profile_is_the_same_for_the_owner_and_a_different_visitor(
     assert "Читает сейчас" in response.text
     assert '<h2 class="profile-section__title">Библиотека</h2>' in response.text
     assert "Том 1, глава 5" in response.text
+
+
+# --- PR 123: the "Избранное" section --------------------------------------------------
+
+
+def test_public_profile_shows_the_favorite_section_when_one_is_set(
+    client: TestClient,
+) -> None:
+    _register(client, "alice@example.com")
+    alice_id = _user_id("alice@example.com")
+    title = _fake_title()
+
+    with patch("app.services.client.RanobeLib", return_value=_FakeClient(title)):
+        client.post("/library/6712--test-novel/add")
+    client.post("/library/6712--test-novel/favorite")
+
+    with patch("app.services.client.RanobeLib", return_value=_FakeClient(title)):
+        response = client.get(f"/profile/{alice_id}")
+
+    assert response.status_code == 200
+    assert '<h2 class="profile-section__title">Избранное</h2>' in response.text
+    assert 'class="title-card title-card--favorite"' in response.text
+    assert "Test Novel" in response.text
+
+
+def test_public_profile_omits_the_favorite_section_when_nothing_is_favorited(
+    client: TestClient,
+) -> None:
+    _register(client, "alice@example.com")
+    alice_id = _user_id("alice@example.com")
+    title = _fake_title()
+
+    with patch("app.services.client.RanobeLib", return_value=_FakeClient(title)):
+        client.post("/library/6712--test-novel/add")
+        response = client.get(f"/profile/{alice_id}")
+
+    assert response.status_code == 200
+    assert "Избранное" not in response.text
+    assert "title-card--favorite" not in response.text
+
+
+def test_public_profile_favorite_section_updates_after_a_new_favorite_is_chosen(
+    client: TestClient,
+) -> None:
+    _register(client, "alice@example.com")
+    alice_id = _user_id("alice@example.com")
+    title_a = _fake_title(slug_url="1--first")
+    title_b = _fake_title(slug_url="2--second")
+
+    with patch("app.services.client.RanobeLib", return_value=_FakeClient(title_a)):
+        client.post("/library/1--first/add")
+    with patch("app.services.client.RanobeLib", return_value=_FakeClient(title_b)):
+        client.post("/library/2--second/add")
+    client.post("/library/1--first/favorite")
+    client.post("/library/2--second/favorite")  # replaces the previous favorite
+
+    with patch("app.services.client.RanobeLib", return_value=_FakeClient(title_b)):
+        response = client.get(f"/profile/{alice_id}")
+
+    assert response.status_code == 200
+    favorite_section = response.text.split('<h2 class="profile-section__title">Избранное</h2>')[
+        1
+    ].split("</section>")[0]
+    assert "1--first" not in favorite_section
+    assert "2--second" in favorite_section

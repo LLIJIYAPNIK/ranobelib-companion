@@ -1,5 +1,5 @@
-{% macro title_card(slug_url, name, cover_url=none) %}
-<a class="title-card" href="/titles/{{ slug_url }}">
+{% macro title_card(slug_url, name, cover_url=none, extra_class="") %}
+<a class="title-card{% if extra_class %} {{ extra_class }}{% endif %}" href="/titles/{{ slug_url }}">
   <button
     type="button"
     class="title-card__quickview"
