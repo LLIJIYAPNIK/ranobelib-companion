@@ -8,6 +8,7 @@ PR 122 turned it into a public page (GET /profile/{user_id}) with two extra sect
 
 import itertools
 from collections.abc import Iterator
+from datetime import UTC, datetime
 from pathlib import Path
 from unittest.mock import patch
 
@@ -17,6 +18,7 @@ from ranobelib.models import Cover, Label, Title
 
 import app.db.connection as db_connection
 from app.config import get_settings
+from app.db.activity import record_chapter_read
 from app.db.comments import create_comment
 from app.db.connection import get_connection
 from app.db.library import record_progress
@@ -189,6 +191,35 @@ def test_profile_shows_the_users_comment_count(client: TestClient) -> None:
     assert "Комментариев: 2" in response.text
 
 
+def test_profile_shows_an_empty_reading_calendar_with_no_history(client: TestClient) -> None:
+    _register(client, "alice@example.com")
+
+    response = client.get("/profile")
+
+    assert response.status_code == 200
+    assert 'class="reading-calendar"' in response.text
+    # Every cell is level 0 - an empty history is a grid of empty cells, not a missing
+    # grid or an error.
+    assert 'reading-calendar__day--level-1' not in response.text
+    assert response.text.count('reading-calendar__day--level-0') > 300
+
+
+def test_profile_reading_calendar_marks_todays_activity(client: TestClient) -> None:
+    _register(client, "alice@example.com")
+    alice_id = _user_id("alice@example.com")
+    record_chapter_read(get_connection(), alice_id, "6712--test-novel", "1", "1")
+    record_chapter_read(get_connection(), alice_id, "6712--test-novel", "1", "2")
+
+    response = client.get("/profile")
+
+    assert response.status_code == 200
+    # The only day with any reading is automatically this user's own busiest day, so it's
+    # level 4 (intensity is relative to the user's own max, not a fixed absolute scale).
+    assert 'reading-calendar__day--level-4' in response.text
+    today = datetime.now(UTC).date().strftime("%d.%m.%Y")
+    assert f'title="{today}: 2 главы"' in response.text
+
+
 def test_profile_has_an_edit_link_to_settings_account(client: TestClient) -> None:
     _register(client, "alice@example.com")
 
@@ -306,9 +337,13 @@ def test_public_profile_omits_both_new_sections_when_the_library_is_empty(
     response = client.get(f"/profile/{alice_id}")
 
     assert response.status_code == 200
-    assert 'class="profile-section"' not in response.text
     assert "Читает сейчас" not in response.text
     assert 'class="title-card-grid"' not in response.text
+    # Unlike those two, PR 136's calendar section always renders (an empty history is a
+    # grid of empty cells, not an omitted section) - so it's the one case where
+    # class="profile-section" is expected even with nothing else on the page.
+    assert response.text.count('class="profile-section"') == 1
+    assert "Календарь чтения" in response.text
 
 
 def test_public_profile_is_the_same_for_the_owner_and_a_different_visitor(

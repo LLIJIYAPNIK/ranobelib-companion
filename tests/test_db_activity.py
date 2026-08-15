@@ -5,6 +5,7 @@ import pytest
 
 from app.db.activity import (
     ChapterReadCount,
+    daily_reading_activity,
     list_chapters_read_today,
     record_chapter_read,
     record_heartbeat,
@@ -94,3 +95,58 @@ def test_total_active_seconds_today_excludes_yesterday(conn: sqlite3.Connection)
 
 def test_total_active_seconds_today_zero_when_no_heartbeats(conn: sqlite3.Connection) -> None:
     assert total_active_seconds_today(conn, 1) == 0
+
+
+def test_daily_reading_activity_is_empty_with_no_history(conn: sqlite3.Connection) -> None:
+    assert daily_reading_activity(conn, 1) == {}
+
+
+def test_daily_reading_activity_counts_chapters_read_today(conn: sqlite3.Connection) -> None:
+    record_chapter_read(conn, 1, "6712--test-novel", "1", "1")
+    record_chapter_read(conn, 1, "6712--test-novel", "1", "2")
+
+    today = datetime.now(UTC).date().isoformat()
+    assert daily_reading_activity(conn, 1) == {today: 2}
+
+
+def test_daily_reading_activity_groups_by_calendar_day(conn: sqlite3.Connection) -> None:
+    three_days_ago = (datetime.now(UTC) - timedelta(days=3)).isoformat()
+    _insert_event(
+        conn,
+        kind="chapter_read",
+        slug_url="6712--test-novel",
+        seconds=None,
+        created_at=three_days_ago,
+    )
+    record_chapter_read(conn, 1, "6712--test-novel", "1", "5")
+
+    today = datetime.now(UTC).date().isoformat()
+    three_days_ago_date = (datetime.now(UTC).date() - timedelta(days=3)).isoformat()
+    assert daily_reading_activity(conn, 1) == {today: 1, three_days_ago_date: 1}
+
+
+def test_daily_reading_activity_excludes_events_outside_the_window(
+    conn: sqlite3.Connection,
+) -> None:
+    too_old = (datetime.now(UTC) - timedelta(weeks=53)).isoformat()
+    _insert_event(
+        conn, kind="chapter_read", slug_url="6712--test-novel", seconds=None, created_at=too_old
+    )
+
+    assert daily_reading_activity(conn, 1, weeks=52) == {}
+
+
+def test_daily_reading_activity_ignores_heartbeat_events(conn: sqlite3.Connection) -> None:
+    record_heartbeat(conn, 1, "6712--test-novel", 30)
+
+    assert daily_reading_activity(conn, 1) == {}
+
+
+def test_daily_reading_activity_is_scoped_to_the_user(conn: sqlite3.Connection) -> None:
+    conn.execute(
+        "INSERT INTO users (id, email, password_hash, created_at) "
+        "VALUES (2, 'bob@example.com', 'hash', 'now')"
+    )
+    record_chapter_read(conn, 2, "6712--test-novel", "1", "5")
+
+    assert daily_reading_activity(conn, 1) == {}

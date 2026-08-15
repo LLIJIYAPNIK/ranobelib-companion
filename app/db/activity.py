@@ -16,7 +16,7 @@ from __future__ import annotations
 
 import sqlite3
 from dataclasses import dataclass
-from datetime import UTC, datetime
+from datetime import UTC, datetime, timedelta
 
 
 @dataclass(frozen=True)
@@ -70,6 +70,24 @@ def total_active_seconds_today(conn: sqlite3.Connection, user_id: int) -> int:
         (user_id, _today_start()),
     ).fetchone()
     return row["total"]
+
+
+def daily_reading_activity(
+    conn: sqlite3.Connection, user_id: int, weeks: int = 52
+) -> dict[str, int]:
+    """Chapters read per calendar day (UTC, same boundary every other "day" query in this
+    module uses) for the trailing `weeks` weeks up to and including today - PR 136's
+    profile heatmap. A day with no chapter_read events at all is simply absent from the
+    returned dict rather than present with 0 - the caller (app/api/profile.py) fills in
+    every day of the grid it renders, including ones with no data here, from this."""
+    start = (datetime.now(UTC).date() - timedelta(days=weeks * 7 - 1)).isoformat()
+    rows = conn.execute(
+        "SELECT date(created_at) AS day, COUNT(*) AS n FROM activity_events "
+        "WHERE user_id = ? AND kind = 'chapter_read' AND created_at >= ? "
+        "GROUP BY day",
+        (user_id, start),
+    ).fetchall()
+    return {row["day"]: row["n"] for row in rows}
 
 
 def _today_start() -> str:

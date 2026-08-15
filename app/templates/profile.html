@@ -20,6 +20,22 @@
     </div>
   </div>
 
+  <section class="profile-section">
+    <h2 class="profile-section__title">Календарь чтения</h2>
+    <div
+      class="reading-calendar"
+      role="img"
+      aria-label="Календарь активности чтения за последний год"
+    >
+      {% for day in reading_calendar %}
+      <span
+        class="reading-calendar__day reading-calendar__day--level-{{ day.level }}"
+        title="{{ day.label }}"
+      ></span>
+      {% endfor %}
+    </div>
+  </section>
+
   {% if currently_reading %}
   <section class="profile-section">
     <h2 class="profile-section__title">Читает сейчас</h2>

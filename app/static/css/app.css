@@ -822,6 +822,55 @@ a {
   margin: 4px 0 0;
 }
 
+/* PR 136: the GitHub-style reading-activity heatmap on /profile - a flat sequence of day
+   cells (app/api/profile.py's _build_reading_calendar(), oldest first, padded back to
+   the most recent Sunday on/before the window's own start) auto-flowed into 7-row
+   columns, so the server never has to compute per-cell grid coordinates itself - it just
+   emits the days in order and lets grid-auto-flow: column place them. overflow-x: auto
+   rather than shrinking cells to fit - at ~53 columns the full grid is wider than a
+   phone screen, same "wide content scrolls in its own container" rule as everywhere else
+   wide in this app (catalog tables, code-adjacent content). */
+.reading-calendar {
+  display: grid;
+  grid-auto-flow: column;
+  grid-template-rows: repeat(7, 1fr);
+  gap: 3px;
+  overflow-x: auto;
+  padding-bottom: 4px;
+}
+
+.reading-calendar__day {
+  width: 11px;
+  height: 11px;
+  border-radius: 2px;
+  background: var(--bg-surface);
+  border: 1px solid var(--border);
+}
+
+/* Intensity relative to this user's own busiest day in the window (see
+   _build_reading_calendar's level calculation), not a fixed absolute scale - a light
+   reader's best day and a heavy reader's best day both land on level 4, in the site's
+   accent teal rather than GitHub's own green. */
+.reading-calendar__day--level-1 {
+  background: rgba(34, 211, 197, 0.28);
+  border-color: transparent;
+}
+
+.reading-calendar__day--level-2 {
+  background: rgba(34, 211, 197, 0.5);
+  border-color: transparent;
+}
+
+.reading-calendar__day--level-3 {
+  background: rgba(34, 211, 197, 0.75);
+  border-color: transparent;
+}
+
+.reading-calendar__day--level-4 {
+  background: var(--accent-teal);
+  border-color: transparent;
+}
+
 .recent__title {
   font-size: 16px;
   font-weight: 700;
