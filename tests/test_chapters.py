@@ -185,6 +185,22 @@ def test_read_chapter_includes_reader_progress_script() -> None:
     assert "static/js/reader-progress.js" in response.text
 
 
+def test_read_chapter_disables_browser_scroll_restoration() -> None:
+    # PR 129: without this, the browser's own auto-restore-scroll-on-reload/back-forward
+    # races against (and typically wins over) tap-to-read.js/reader-progress.js's own
+    # deferred scroll-to-saved-progress, silently undoing it.
+    chapter = Chapter(id=1, volume="1", number="5", content="<p>x</p>")
+    with patch("app.services.client.RanobeLib", return_value=_FakeClient(chapter)):
+        response = client.get("/titles/6712--test-novel/chapters/1/5")
+
+    assert response.status_code == 200
+    assert 'history.scrollRestoration = "manual";' in response.text
+    # Set in <head>, before either script tag - as early as possible in the page's life.
+    assert response.text.index("scrollRestoration") < response.text.index(
+        "static/js/tap-to-read.js"
+    )
+
+
 def test_read_chapter_includes_image_lightbox_script() -> None:
     # PR 66: the script itself checks readerSettings.tapToRead at runtime and disables
     # itself in that mode, so it loads unconditionally regardless of the setting.
