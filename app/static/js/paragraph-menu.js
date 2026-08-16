@@ -589,6 +589,12 @@
       for (const reply of comment.replies) {
         repliesDiv.append(renderCommentNode(index, reply));
       }
+      // Only the guide line itself (repliesDiv's own padding/border, not any nested
+      // reply) should toggle - event.target is repliesDiv itself exactly when the click
+      // landed on that bare strip, since every actual reply fills the rest of the width.
+      repliesDiv.addEventListener("click", (event) => {
+        if (event.target === repliesDiv) setRepliesCollapsed(!repliesDiv.hidden);
+      });
       el.append(repliesDiv);
     }
 

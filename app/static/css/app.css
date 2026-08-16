@@ -2740,6 +2740,15 @@ a {
   margin: 8px 0 0 12px;
   padding-left: 12px;
   border-left: 1px solid var(--border);
+  cursor: pointer;
+}
+
+/* PR 152: the pointer cursor above is a hover hint for the bare guide-line strip
+   (paragraph-menu.js only toggles collapse when the click lands directly on the
+   container, not on a nested reply) - reset back to normal over actual reply content,
+   which otherwise inherits the pointer and implies the whole area is clickable. */
+.paragraph-comment__replies > .paragraph-comment {
+  cursor: auto;
 }
 
 .paragraph-comment__replies[hidden] {
