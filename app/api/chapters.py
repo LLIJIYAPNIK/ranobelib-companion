@@ -209,7 +209,10 @@ def _comments_response(
 def _comment_to_dict(comment: Comment) -> dict:
     return {
         "id": comment.id,
+        "user_id": comment.user_id,
         "author": comment.author,
+        "avatar_url": comment.avatar_url,
+        "avatar_initials": comment.avatar_initials,
         "body": comment.body,
         "created_at": comment.created_at,
         "parent_comment_id": comment.parent_comment_id,
