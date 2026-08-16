@@ -315,9 +315,9 @@
     if (event.key === "Escape" && isEmojiPickerOpen()) closeEmojiPicker();
   });
 
-  // A reusable textarea + "Отправить" button, shared by the menu's "Комментировать"
-  // composer and every comment's own "Ответить" reply form - the only difference between
-  // them is what `onSubmit` does with the typed body.
+  // A reusable textarea + emoji-picker trigger + "Отправить" button, shared by the
+  // menu's "Комментировать" composer and every comment's own "Ответить" reply form - the
+  // only difference between them is what `onSubmit` does with the typed body.
   function buildComposer(onSubmit, placeholder) {
     const wrap = document.createElement("div");
     wrap.className = "paragraph-comments__composer";
@@ -326,6 +326,22 @@
     textarea.placeholder = placeholder;
     textarea.rows = 3;
     textarea.maxLength = 2000; // mirrors MAX_COMMENT_LENGTH in app/db/comments.py
+
+    const emojiToggle = document.createElement("button");
+    emojiToggle.type = "button";
+    emojiToggle.className = "paragraph-comments__emoji-toggle";
+    emojiToggle.setAttribute("aria-label", "Вставить эмодзи");
+    emojiToggle.title = "Вставить эмодзи";
+    emojiToggle.textContent = "🙂";
+    emojiToggle.addEventListener("click", (event) => {
+      event.stopPropagation();
+      if (isEmojiPickerOpen() && emojiPickerTarget === textarea) {
+        closeEmojiPicker();
+      } else {
+        openEmojiPicker(emojiToggle, textarea);
+      }
+    });
+
     const submit = document.createElement("button");
     submit.type = "button";
     submit.className = "btn btn--sm";
@@ -343,7 +359,12 @@
         submit.disabled = false;
       }
     });
-    wrap.append(textarea, submit);
+
+    const toolbar = document.createElement("div");
+    toolbar.className = "paragraph-comments__toolbar";
+    toolbar.append(emojiToggle, submit);
+
+    wrap.append(textarea, toolbar);
     return wrap;
   }
 
