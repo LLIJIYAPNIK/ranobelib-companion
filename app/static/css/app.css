@@ -2816,6 +2816,17 @@ a {
   color: var(--accent-teal);
 }
 
+/* PR 150: the GIF-as-video attachment a comment can carry - rendered <video>, not <img>
+   (app/gif_video.py converts it server-side), capped to the same width the composer
+   itself uses so it never dwarfs the surrounding thread. */
+.paragraph-comment__attachment {
+  display: block;
+  width: 100%;
+  max-width: 240px;
+  margin: 6px 0;
+  border-radius: 8px;
+}
+
 .paragraph-comment__reply-toggle {
   padding: 0;
   border: none;

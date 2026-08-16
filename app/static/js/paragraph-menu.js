@@ -493,6 +493,20 @@
     body.innerHTML = comment.body_html;
     el.append(body);
 
+    // PR 150: the GIF a comment can carry, already converted server-side (app/gif_video.py)
+    // into a silent looping mp4 - rendered as <video>, not <img>, so it behaves like one
+    // (autoplay/loop/muted/no controls) instead of like the picture it visually resembles.
+    if (comment.attachment_url && comment.attachment_kind === "gif") {
+      const video = document.createElement("video");
+      video.className = "paragraph-comment__attachment";
+      video.src = comment.attachment_url;
+      video.autoplay = true;
+      video.loop = true;
+      video.muted = true;
+      video.playsInline = true;
+      el.append(video);
+    }
+
     if (isAuthenticated) {
       const replyToggle = document.createElement("button");
       replyToggle.type = "button";
