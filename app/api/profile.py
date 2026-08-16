@@ -23,7 +23,7 @@ from fastapi.responses import HTMLResponse
 
 from app.api.library import library_items_for_user
 from app.auth.dependencies import get_current_user
-from app.db.activity import daily_reading_activity
+from app.db.activity import daily_active_seconds, daily_reading_activity
 from app.db.comments import count_comments_by_user
 from app.db.connection import get_connection
 from app.db.users import User, get_user_by_id
@@ -122,7 +122,9 @@ def _build_reading_calendar(user_id: int) -> list[CalendarDay]:
     queried for) gets level 0, same as a real day with zero chapters read - there's no
     distinct "no data" state, an empty calendar for a user with no reading history at all
     just means every cell is level 0, not an empty/missing grid."""
-    counts = daily_reading_activity(get_connection(), user_id, weeks=_CALENDAR_WEEKS)
+    conn = get_connection()
+    counts = daily_reading_activity(conn, user_id, weeks=_CALENDAR_WEEKS)
+    active_seconds = daily_active_seconds(conn, user_id, weeks=_CALENDAR_WEEKS)
     max_count = max(counts.values(), default=0)
 
     today = datetime.now(UTC).date()
@@ -134,13 +136,22 @@ def _build_reading_calendar(user_id: int) -> list[CalendarDay]:
     days: list[CalendarDay] = []
     current = grid_start
     while current <= today:
-        count = counts.get(current.isoformat(), 0)
+        day_key = current.isoformat()
+        count = counts.get(day_key, 0)
+        seconds = active_seconds.get(day_key, 0)
         level = 0 if max_count == 0 or count == 0 else max(1, round(count / max_count * 4))
         days.append(
             CalendarDay(
                 count=count,
                 level=level,
-                label=f"{current.strftime('%d.%m.%Y')}: {_pluralize_chapters(count)}",
+                # PR 140: the chapter count alone doesn't say how long that reading
+                # actually took - _format_duration() reuses the same heartbeat seconds
+                # already summed for "Активность"'s "today" stat (total_active_seconds_
+                # today()), just grouped by day instead of collapsed to one number.
+                label=(
+                    f"{current.strftime('%d.%m.%Y')}: {_pluralize_chapters(count)}, "
+                    f"{_format_duration(seconds)}"
+                ),
             )
         )
         current += timedelta(days=1)
@@ -158,3 +169,15 @@ def _pluralize_chapters(n: int) -> str:
     else:
         word = "глав"
     return f"{n} {word}"
+
+
+def _format_duration(seconds: int) -> str:
+    """Renders as e.g. '2 ч 15 мин' once there's at least an hour, otherwise just
+    '45 мин' - no leading '0 ч', and '0 мин' (not blank/omitted) for a day with chapters
+    read but no heartbeat ticks, e.g. every chapter was opened and closed faster than a
+    single heartbeat tick (see app/api/activity.py)."""
+    minutes = seconds // 60
+    hours, minutes = divmod(minutes, 60)
+    if hours > 0:
+        return f"{hours} ч {minutes} мин"
+    return f"{minutes} мин"

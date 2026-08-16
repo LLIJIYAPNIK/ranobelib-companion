@@ -5,6 +5,7 @@ import pytest
 
 from app.db.activity import (
     ChapterReadCount,
+    daily_active_seconds,
     daily_reading_activity,
     list_chapters_read_today,
     record_chapter_read,
@@ -150,3 +151,54 @@ def test_daily_reading_activity_is_scoped_to_the_user(conn: sqlite3.Connection) 
     record_chapter_read(conn, 2, "6712--test-novel", "1", "5")
 
     assert daily_reading_activity(conn, 1) == {}
+
+
+def test_daily_active_seconds_is_empty_with_no_history(conn: sqlite3.Connection) -> None:
+    assert daily_active_seconds(conn, 1) == {}
+
+
+def test_daily_active_seconds_sums_heartbeats_today(conn: sqlite3.Connection) -> None:
+    record_heartbeat(conn, 1, "6712--test-novel", 30)
+    record_heartbeat(conn, 1, "999--other-novel", 45)
+
+    today = datetime.now(UTC).date().isoformat()
+    assert daily_active_seconds(conn, 1) == {today: 75}
+
+
+def test_daily_active_seconds_groups_by_calendar_day(conn: sqlite3.Connection) -> None:
+    three_days_ago = (datetime.now(UTC) - timedelta(days=3)).isoformat()
+    _insert_event(
+        conn, kind="heartbeat", slug_url="6712--test-novel", seconds=20, created_at=three_days_ago
+    )
+    record_heartbeat(conn, 1, "6712--test-novel", 30)
+
+    today = datetime.now(UTC).date().isoformat()
+    three_days_ago_date = (datetime.now(UTC).date() - timedelta(days=3)).isoformat()
+    assert daily_active_seconds(conn, 1) == {today: 30, three_days_ago_date: 20}
+
+
+def test_daily_active_seconds_excludes_events_outside_the_window(
+    conn: sqlite3.Connection,
+) -> None:
+    too_old = (datetime.now(UTC) - timedelta(weeks=53)).isoformat()
+    _insert_event(
+        conn, kind="heartbeat", slug_url="6712--test-novel", seconds=30, created_at=too_old
+    )
+
+    assert daily_active_seconds(conn, 1, weeks=52) == {}
+
+
+def test_daily_active_seconds_ignores_chapter_read_events(conn: sqlite3.Connection) -> None:
+    record_chapter_read(conn, 1, "6712--test-novel", "1", "1")
+
+    assert daily_active_seconds(conn, 1) == {}
+
+
+def test_daily_active_seconds_is_scoped_to_the_user(conn: sqlite3.Connection) -> None:
+    conn.execute(
+        "INSERT INTO users (id, email, password_hash, created_at) "
+        "VALUES (2, 'bob@example.com', 'hash', 'now')"
+    )
+    record_heartbeat(conn, 2, "6712--test-novel", 30)
+
+    assert daily_active_seconds(conn, 1) == {}
