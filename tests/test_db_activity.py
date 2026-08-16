@@ -181,7 +181,9 @@ def test_daily_active_seconds_excludes_events_outside_the_window(
     conn: sqlite3.Connection,
 ) -> None:
     too_old = (datetime.now(UTC) - timedelta(weeks=53)).isoformat()
-    _insert_event(conn, kind="heartbeat", slug_url="6712--test-novel", seconds=30, created_at=too_old)
+    _insert_event(
+        conn, kind="heartbeat", slug_url="6712--test-novel", seconds=30, created_at=too_old
+    )
 
     assert daily_active_seconds(conn, 1, weeks=52) == {}
 
