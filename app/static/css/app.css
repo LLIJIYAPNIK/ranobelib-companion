@@ -2740,6 +2740,19 @@ a {
   margin: 8px 0 0 12px;
   padding-left: 12px;
   border-left: 1px solid var(--border);
+  cursor: pointer;
+}
+
+/* PR 152: the pointer cursor above is a hover hint for the bare guide-line strip
+   (paragraph-menu.js only toggles collapse when the click lands directly on the
+   container, not on a nested reply) - reset back to normal over actual reply content,
+   which otherwise inherits the pointer and implies the whole area is clickable. */
+.paragraph-comment__replies > .paragraph-comment {
+  cursor: auto;
+}
+
+.paragraph-comment__replies[hidden] {
+  display: none;
 }
 
 .paragraph-comment__meta {
@@ -2841,6 +2854,27 @@ a {
 
 @media (hover: hover) {
   .paragraph-comment__reply-toggle:hover {
+    color: var(--accent-teal);
+  }
+}
+
+/* PR 152: the "[–]"/"[+]" collapse trigger next to "Ответить" - same ghost-text
+   treatment as .paragraph-comment__reply-toggle, just its own class since the two
+   aren't mutually exclusive styling-wise (a comment can have both at once). */
+.paragraph-comment__collapse-toggle {
+  padding: 0;
+  margin-left: 8px;
+  border: none;
+  background: none;
+  color: var(--text-muted);
+  font-family: inherit;
+  font-size: 12px;
+  cursor: pointer;
+  transition: color 0.1s ease;
+}
+
+@media (hover: hover) {
+  .paragraph-comment__collapse-toggle:hover {
     color: var(--accent-teal);
   }
 }
