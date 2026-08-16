@@ -90,5 +90,24 @@ def daily_reading_activity(
     return {row["day"]: row["n"] for row in rows}
 
 
+def daily_active_seconds(
+    conn: sqlite3.Connection, user_id: int, weeks: int = 52
+) -> dict[str, int]:
+    """Active reading seconds (heartbeat ticks, same signal total_active_seconds_today()
+    sums for "today" alone) per calendar day, for the same trailing `weeks` weeks/UTC
+    boundary as daily_reading_activity() right above - PR 140's addition to the profile
+    heatmap's tooltip, which otherwise only ever showed a chapter count with no sense of
+    how long that reading actually took. Same "day with nothing at all is absent, not
+    present with 0" convention as daily_reading_activity()."""
+    start = (datetime.now(UTC).date() - timedelta(days=weeks * 7 - 1)).isoformat()
+    rows = conn.execute(
+        "SELECT date(created_at) AS day, SUM(seconds) AS total FROM activity_events "
+        "WHERE user_id = ? AND kind = 'heartbeat' AND created_at >= ? "
+        "GROUP BY day",
+        (user_id, start),
+    ).fetchall()
+    return {row["day"]: row["total"] for row in rows}
+
+
 def _today_start() -> str:
     return datetime.now(UTC).date().isoformat()
