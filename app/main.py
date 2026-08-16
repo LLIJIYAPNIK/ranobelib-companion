@@ -48,6 +48,14 @@ app.mount("/static", StaticFiles(directory=Path(__file__).parent / "static"), na
 # the directory to exist at mount time, unlike app/static which ships with the repo.
 get_settings().avatar_dir.mkdir(parents=True, exist_ok=True)
 app.mount("/avatars", StaticFiles(directory=get_settings().avatar_dir), name="avatars")
+# Converted GIF-as-video comment attachments (PR 150) - same "user data outside
+# app/static, directory must exist at mount time" treatment as /avatars above.
+get_settings().comment_attachment_dir.mkdir(parents=True, exist_ok=True)
+app.mount(
+    "/comment-attachments",
+    StaticFiles(directory=get_settings().comment_attachment_dir),
+    name="comment-attachments",
+)
 app.include_router(health.router)
 app.include_router(activity.router)
 app.include_router(home.router)
