@@ -2841,6 +2841,13 @@ a {
   align-self: flex-end;
 }
 
+/* PR 148: syntax hint for the subset app/markdown_render.py actually renders. */
+.paragraph-comments__hint {
+  margin: 0;
+  font-size: 11px;
+  color: var(--text-muted);
+}
+
 /* PR 89: /settings split into left-nav tabs (Чтение/Аккаунт/Безопасность) under their
    own sub-routes, replacing the single flat page from PR 61. Same fixed-width sticky
    sidebar language as .catalog-filters (PR 85), mirrored to the left since nothing here

@@ -239,6 +239,12 @@
     textarea.placeholder = placeholder;
     textarea.rows = 3;
     textarea.maxLength = 2000; // mirrors MAX_COMMENT_LENGTH in app/db/comments.py
+    // PR 148: the same minimal subset app/markdown_render.py actually renders - not a
+    // full Markdown cheatsheet, so it doesn't promise syntax (headings, code blocks,
+    // images) this feature silently drops.
+    const hint = document.createElement("p");
+    hint.className = "paragraph-comments__hint";
+    hint.textContent = "Поддерживается: **жирный**, *курсив*, ~~зачёркнутый~~, [ссылка](url), списки";
     const submit = document.createElement("button");
     submit.type = "button";
     submit.className = "btn btn--sm";
@@ -256,7 +262,7 @@
         submit.disabled = false;
       }
     });
-    wrap.append(textarea, submit);
+    wrap.append(textarea, hint, submit);
     return wrap;
   }
 
