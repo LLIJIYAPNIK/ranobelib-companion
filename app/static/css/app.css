@@ -2891,9 +2891,9 @@ a {
   gap: 8px;
 }
 
-/* PR 150: groups the emoji/GIF trigger buttons as one flex item on the toolbar's left
-   side, so .paragraph-comments__toolbar itself still only ever has two children
-   (this group, submit) regardless of how many triggers end up in it. */
+/* PR 150/151: groups the emoji/attachment trigger buttons as one flex item on the
+   toolbar's left side, so .paragraph-comments__toolbar itself still only ever has two
+   children (this group, submit) regardless of how many triggers end up in it. */
 .paragraph-comments__triggers {
   display: flex;
   align-items: center;
@@ -2901,7 +2901,7 @@ a {
 }
 
 .paragraph-comments__emoji-toggle,
-.paragraph-comments__gif-toggle {
+.paragraph-comments__attachment-toggle {
   flex: 0 0 auto;
   padding: 4px 6px;
   border: 1px solid transparent;
@@ -2913,27 +2913,20 @@ a {
   transition: background-color 0.1s ease, border-color 0.1s ease;
 }
 
-.paragraph-comments__gif-toggle {
-  font-size: 11px;
-  font-weight: 700;
-  letter-spacing: 0.02em;
-  color: var(--text-muted);
-}
-
 @media (hover: hover) {
   .paragraph-comments__emoji-toggle:hover,
-  .paragraph-comments__gif-toggle:hover {
+  .paragraph-comments__attachment-toggle:hover {
     background: rgba(34, 211, 197, 0.12);
   }
 }
 
-/* PR 150: the staged-file chip shown once a GIF is picked, before "Отправить" is
-   clicked - same reasoning as the PDF-export precedent (app/services/exports.py) for
-   never promising an action the visitor hasn't actually confirmed yet. */
-.paragraph-comments__gif-chip {
+/* PR 150/151: the staged-file chip shown once an image/video/GIF is picked, before
+   "Отправить" is clicked - same reasoning as the PDF-export precedent
+   (app/services/exports.py) for never promising an action the visitor hasn't actually
+   confirmed yet. */
+.paragraph-comments__attachment-chip {
   display: flex;
   align-items: center;
-  justify-content: space-between;
   gap: 6px;
   padding: 4px 8px;
   border: 1px solid var(--border);
@@ -2942,14 +2935,25 @@ a {
   font-size: 12px;
 }
 
-.paragraph-comments__gif-chip-name {
+/* PR 151: a real thumbnail for a staged image (GIF included) - stageAttachment() only
+   creates this element for an image/* file, a video's chip has just the name/remove. */
+.paragraph-comments__attachment-chip-thumb {
+  flex: 0 0 auto;
+  width: 28px;
+  height: 28px;
+  object-fit: cover;
+  border-radius: 4px;
+}
+
+.paragraph-comments__attachment-chip-name {
+  flex: 1 1 auto;
   overflow: hidden;
   color: var(--text-secondary);
   text-overflow: ellipsis;
   white-space: nowrap;
 }
 
-.paragraph-comments__gif-chip-remove {
+.paragraph-comments__attachment-chip-remove {
   flex: 0 0 auto;
   padding: 0 4px;
   border: none;
@@ -2961,7 +2965,7 @@ a {
 }
 
 @media (hover: hover) {
-  .paragraph-comments__gif-chip-remove:hover {
+  .paragraph-comments__attachment-chip-remove:hover {
     color: var(--text-primary);
   }
 }
