@@ -1405,12 +1405,44 @@ a {
   contain-intrinsic-size: auto 260px;
 }
 
+/* PR 141: <img> can't take generated content (::before/::after) in any browser, so the
+   darkening overlay below lives on this wrapping <span> instead (_title_card.html) -
+   its own overflow:hidden is also what stops the zoomed .title-card__cover below from
+   spilling out past the card's rounded corners. Wraps the no-cover placeholder <div>
+   the same way (_title_card.html's other branch) rather than only the <img> case, so
+   both react to hover identically instead of one silently doing nothing. */
+.title-card__cover-wrap {
+  position: relative;
+  overflow: hidden;
+  border-radius: 8px;
+}
+
+.title-card__cover-wrap::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(to top, rgba(0, 0, 0, 0.45), rgba(0, 0, 0, 0) 60%);
+  opacity: 0;
+  transition: opacity 0.2s ease;
+}
+
+@media (hover: hover) {
+  .title-card:hover .title-card__cover-wrap::after {
+    opacity: 1;
+  }
+
+  .title-card:hover .title-card__cover {
+    transform: scale(1.05);
+  }
+}
+
 .title-card__cover {
   width: 100%;
   aspect-ratio: 2 / 3;
   border-radius: 8px;
   object-fit: cover;
   background: var(--bg-surface);
+  transition: transform 0.2s ease;
 }
 
 .title-card__name {
