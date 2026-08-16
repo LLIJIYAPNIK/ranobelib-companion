@@ -1,6 +1,5 @@
 """Online chapter reading."""
 
-import secrets
 import sqlite3
 from typing import Annotated
 
@@ -9,7 +8,7 @@ from fastapi.responses import HTMLResponse, JSONResponse
 from ranobelib.models import Volume
 
 from app.auth.dependencies import get_current_user, require_current_user
-from app.config import get_settings
+from app.comment_attachment import CommentAttachmentError, save_comment_attachment
 from app.db.activity import record_chapter_read
 from app.db.comments import (
     Comment,
@@ -28,7 +27,6 @@ from app.db.reactions import (
     user_reactions,
 )
 from app.db.users import User
-from app.gif_video import GifConversionError, convert_gif_to_video, is_ffmpeg_available
 from app.markdown_render import render_comment_body
 from app.services.client import open_client
 from app.services.exports import available_export_formats
@@ -70,7 +68,6 @@ async def read_chapter(
             "next_url": next_url,
             "branch_id": branch_id,
             "export_formats": available_export_formats(),
-            "gif_attachments_available": is_ffmpeg_available(),
         },
     )
 
@@ -166,7 +163,7 @@ async def post_comment(
     body: Annotated[str, Form()] = "",
     branch_id: Annotated[str, Form()] = "",
     parent_comment_id: Annotated[int | None, Form()] = None,
-    gif: Annotated[UploadFile | None, File()] = None,
+    attachment: Annotated[UploadFile | None, File()] = None,
 ) -> JSONResponse:
     """Creates a top-level comment (from PR 131's "Комментировать" menu item) or a reply
     (from a comment's own "Ответить" button) - both go through create_comment(),
@@ -174,23 +171,18 @@ async def post_comment(
     get_comments does, so the client can re-render a paragraph's comment section with one
     response either way instead of needing separate code paths.
 
-    `gif` (PR 150) is optional - present only when the composer's GIF picker staged a
-    file. Converted before create_comment() ever runs, so a rejected/failed conversion
-    (bad file, ffmpeg unavailable, timeout) never leaves a comment behind with a dangling
-    attachment reference."""
+    `attachment` (PR 151, generalizing PR 150's GIF-only field) is optional - present only
+    when the composer's attachment picker staged a file, one button for image/video/GIF
+    alike (app/comment_attachment.py sniffs which it actually is). Processed before
+    create_comment() ever runs, so a rejected/failed upload never leaves a comment behind
+    with a dangling attachment reference."""
     attachment_path: str | None = None
     attachment_kind: str | None = None
-    if gif is not None and gif.filename:
-        contents = await gif.read()
-        dest_filename = f"{secrets.token_hex(16)}.mp4"
+    if attachment is not None and attachment.filename:
         try:
-            await convert_gif_to_video(
-                contents, get_settings().comment_attachment_dir / dest_filename
-            )
-        except GifConversionError as exc:
+            attachment_path, attachment_kind = await save_comment_attachment(attachment)
+        except CommentAttachmentError as exc:
             raise HTTPException(status_code=400, detail=str(exc)) from exc
-        attachment_path = dest_filename
-        attachment_kind = "gif"
 
     conn = get_connection()
     try:
