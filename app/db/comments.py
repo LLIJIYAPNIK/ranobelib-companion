@@ -34,7 +34,19 @@ class Comment:
     # client never needs its own copy of initials_for()'s segment-splitting logic.
     avatar_url: str | None
     avatar_initials: str
+    # PR 150: the converted (GIF -> silent looping mp4, app/gif_video.py) attachment a
+    # comment can carry - attachment_kind is "gif" for now; a bare filename under
+    # Settings.comment_attachment_dir, not a URL (attachment_url below is what callers
+    # actually render, same url_for()-style split as avatar_path/avatar_url).
+    attachment_path: str | None = None
+    attachment_kind: str | None = None
     replies: list[Comment] = field(default_factory=list)
+
+    @property
+    def attachment_url(self) -> str | None:
+        if not self.attachment_path:
+            return None
+        return f"/comment-attachments/{self.attachment_path}"
 
 
 def create_comment(
@@ -47,13 +59,18 @@ def create_comment(
     paragraph_index: int,
     body: str,
     parent_comment_id: int | None = None,
+    attachment_path: str | None = None,
+    attachment_kind: str | None = None,
 ) -> Comment:
-    """Raises ValueError for an empty/oversized body, or a `parent_comment_id` that isn't
+    """Raises ValueError for an oversized body, or a `parent_comment_id` that isn't
     actually a comment on this same paragraph (a stale or tampered form field) - the
     caller (app/api/chapters.py) turns that into a 400, the same defensive shape as
-    reactions' emoji-not-in-ALLOWED_EMOJI check."""
+    reactions' emoji-not-in-ALLOWED_EMOJI check.
+
+    An empty body is only rejected when there's no `attachment_path` either (PR 150) - a
+    comment can be just a GIF with no caption text, but never fully empty."""
     body = body.strip()
-    if not body:
+    if not body and not attachment_path:
         raise ValueError("Комментарий не может быть пустым")
     if len(body) > MAX_COMMENT_LENGTH:
         raise ValueError(f"Комментарий длиннее {MAX_COMMENT_LENGTH} символов")
@@ -71,8 +88,8 @@ def create_comment(
     cursor = conn.execute(
         "INSERT INTO comments "
         "(user_id, slug_url, volume, number, branch_id, paragraph_index, "
-        "parent_comment_id, body, created_at) "
-        "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)",
+        "parent_comment_id, body, created_at, attachment_path, attachment_kind) "
+        "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
         (
             user_id,
             slug_url,
@@ -83,6 +100,8 @@ def create_comment(
             parent_comment_id,
             body,
             created_at,
+            attachment_path,
+            attachment_kind,
         ),
     )
     conn.commit()
@@ -97,6 +116,8 @@ def create_comment(
         body=body,
         created_at=created_at,
         parent_comment_id=parent_comment_id,
+        attachment_path=attachment_path,
+        attachment_kind=attachment_kind,
         avatar_url=url_for(author_row["avatar_path"]) if author_row else None,
         avatar_initials=initials_for(author_row["nickname"], author_row["email"])
         if author_row
@@ -117,7 +138,8 @@ def list_comments_for_paragraph(
     its own to build."""
     rows = conn.execute(
         "SELECT comments.id, comments.user_id, comments.body, comments.created_at, "
-        "comments.parent_comment_id, users.nickname, users.email, users.avatar_path "
+        "comments.parent_comment_id, comments.attachment_path, comments.attachment_kind, "
+        "users.nickname, users.email, users.avatar_path "
         "FROM comments JOIN users ON users.id = comments.user_id "
         "WHERE comments.slug_url = ? AND comments.volume = ? AND comments.number = ? "
         "AND comments.branch_id = ? AND comments.paragraph_index = ? "
@@ -135,6 +157,8 @@ def list_comments_for_paragraph(
             parent_comment_id=row["parent_comment_id"],
             avatar_url=url_for(row["avatar_path"]),
             avatar_initials=initials_for(row["nickname"], row["email"]),
+            attachment_path=row["attachment_path"],
+            attachment_kind=row["attachment_kind"],
         )
         for row in rows
     }

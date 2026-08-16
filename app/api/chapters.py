@@ -1,13 +1,15 @@
 """Online chapter reading."""
 
+import secrets
 import sqlite3
 from typing import Annotated
 
-from fastapi import APIRouter, Depends, Form, HTTPException, Query, Request
+from fastapi import APIRouter, Depends, File, Form, HTTPException, Query, Request, UploadFile
 from fastapi.responses import HTMLResponse, JSONResponse
 from ranobelib.models import Volume
 
 from app.auth.dependencies import get_current_user, require_current_user
+from app.config import get_settings
 from app.db.activity import record_chapter_read
 from app.db.comments import (
     Comment,
@@ -26,6 +28,7 @@ from app.db.reactions import (
     user_reactions,
 )
 from app.db.users import User
+from app.gif_video import GifConversionError, convert_gif_to_video, is_ffmpeg_available
 from app.markdown_render import render_comment_body
 from app.services.client import open_client
 from app.services.exports import available_export_formats
@@ -67,6 +70,7 @@ async def read_chapter(
             "next_url": next_url,
             "branch_id": branch_id,
             "export_formats": available_export_formats(),
+            "gif_attachments_available": is_ffmpeg_available(),
         },
     )
 
@@ -159,15 +163,35 @@ async def post_comment(
     number: str,
     user: Annotated[User, Depends(require_current_user)],
     paragraph_index: Annotated[int, Form()],
-    body: Annotated[str, Form()],
+    body: Annotated[str, Form()] = "",
     branch_id: Annotated[str, Form()] = "",
     parent_comment_id: Annotated[int | None, Form()] = None,
+    gif: Annotated[UploadFile | None, File()] = None,
 ) -> JSONResponse:
     """Creates a top-level comment (from PR 131's "Комментировать" menu item) or a reply
     (from a comment's own "Ответить" button) - both go through create_comment(),
     distinguished only by whether parent_comment_id is set. Returns the same shape
     get_comments does, so the client can re-render a paragraph's comment section with one
-    response either way instead of needing separate code paths."""
+    response either way instead of needing separate code paths.
+
+    `gif` (PR 150) is optional - present only when the composer's GIF picker staged a
+    file. Converted before create_comment() ever runs, so a rejected/failed conversion
+    (bad file, ffmpeg unavailable, timeout) never leaves a comment behind with a dangling
+    attachment reference."""
+    attachment_path: str | None = None
+    attachment_kind: str | None = None
+    if gif is not None and gif.filename:
+        contents = await gif.read()
+        dest_filename = f"{secrets.token_hex(16)}.mp4"
+        try:
+            await convert_gif_to_video(
+                contents, get_settings().comment_attachment_dir / dest_filename
+            )
+        except GifConversionError as exc:
+            raise HTTPException(status_code=400, detail=str(exc)) from exc
+        attachment_path = dest_filename
+        attachment_kind = "gif"
+
     conn = get_connection()
     try:
         create_comment(
@@ -180,6 +204,8 @@ async def post_comment(
             paragraph_index,
             body,
             parent_comment_id,
+            attachment_path,
+            attachment_kind,
         )
     except ValueError as exc:
         raise HTTPException(status_code=400, detail=str(exc)) from exc
@@ -218,6 +244,8 @@ def _comment_to_dict(comment: Comment) -> dict:
         "body_html": render_comment_body(comment.body),
         "created_at": comment.created_at,
         "parent_comment_id": comment.parent_comment_id,
+        "attachment_url": comment.attachment_url,
+        "attachment_kind": comment.attachment_kind,
         "replies": [_comment_to_dict(reply) for reply in comment.replies],
     }
 

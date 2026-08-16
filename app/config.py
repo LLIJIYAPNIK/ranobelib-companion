@@ -36,6 +36,11 @@ normally deleted the moment a visitor actually downloads it (job page or the glo
 ``db_path``, not part of the SDK's public response cache, so it's kept separate from
 ``cache_dir``. Needs the same persistent-volume treatment in a container deployment,
 otherwise avatars vanish on every restart.
+
+``comment_attachment_dir`` holds the converted (GIF -> silent looping mp4, PR 150)
+attachments a comment can carry - same "user-generated data outside app/static, needs a
+persistent volume" treatment as ``avatar_dir``, just its own directory since a comment
+attachment isn't a profile avatar.
 """
 
 from __future__ import annotations
@@ -56,6 +61,7 @@ _DEFAULT_SESSION_MAX_AGE_SECONDS = 14 * 24 * 60 * 60  # 14 days - Starlette's ow
 _DEFAULT_SESSION_REMEMBER_MAX_AGE_SECONDS = 90 * 24 * 60 * 60  # 90 days
 _DEFAULT_DOWNLOAD_FILE_TTL_SECONDS = 30 * 60  # 30 minutes
 _DEFAULT_AVATAR_DIR = ".ranobelib_avatars"
+_DEFAULT_COMMENT_ATTACHMENT_DIR = ".ranobelib_comment_attachments"
 
 
 @dataclass(frozen=True)
@@ -68,6 +74,7 @@ class Settings:
     session_remember_max_age: int
     download_file_ttl: float
     avatar_dir: Path
+    comment_attachment_dir: Path
 
 
 @lru_cache
@@ -96,4 +103,7 @@ def get_settings() -> Settings:
             os.environ.get("DOWNLOAD_FILE_TTL_SECONDS", _DEFAULT_DOWNLOAD_FILE_TTL_SECONDS)
         ),
         avatar_dir=Path(os.environ.get("AVATAR_DIR", _DEFAULT_AVATAR_DIR)),
+        comment_attachment_dir=Path(
+            os.environ.get("COMMENT_ATTACHMENT_DIR", _DEFAULT_COMMENT_ATTACHMENT_DIR)
+        ),
     )
