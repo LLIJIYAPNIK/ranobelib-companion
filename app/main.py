@@ -14,6 +14,7 @@ from app.api import (
     exports,
     health,
     home,
+    images,
     library,
     profile,
     settings,
@@ -55,6 +56,7 @@ app.include_router(chapters.router)
 app.include_router(exports.router)
 app.include_router(downloads.router)
 app.include_router(downloads_section.router)
+app.include_router(images.router)
 app.include_router(library.router)
 app.include_router(profile.router)
 app.include_router(settings.router)
