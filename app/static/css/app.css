@@ -1789,6 +1789,16 @@ a {
   border: 1px solid var(--border);
 }
 
+/* PR 138: the "Сохранить" buttons on every /settings/* form had no focus-visible ring at
+   all, unlike the inputs/checkboxes right above them in the same forms - a keyboard user
+   tabbing through a settings form lost the focus indicator entirely on reaching the
+   submit button. Applies to every .btn site-wide (not just settings), same as the ring
+   already shared by .auth-form__input/.toc__export-format/the checkboxes. */
+.btn:focus-visible {
+  outline: none;
+  box-shadow: 0 0 0 3px rgba(34, 211, 197, 0.35);
+}
+
 /* One shared hover treatment for every button-like element in the app - previously some
    had no hover feedback at all (.btn--primary, .btn--sm, .search-button,
    .locked-feature__cta) and others changed color/border instantly with no transition
@@ -2783,6 +2793,15 @@ a {
   }
 }
 
+/* PR 138: every other interactive control on the site gets a teal focus-visible ring
+   (.auth-form__input, .toc__export-format, the checkboxes, ...) - this link and
+   .settings-back below fell through the cracks and kept the bare browser-default outline
+   until now. */
+.settings-nav__link:focus-visible {
+  outline: none;
+  box-shadow: 0 0 0 3px rgba(34, 211, 197, 0.18);
+}
+
 .settings-nav__link--active {
   color: var(--accent-teal);
   background-color: rgba(34, 211, 197, 0.12);
@@ -2818,6 +2837,51 @@ a {
   }
 }
 
+.settings-back:focus-visible {
+  outline: none;
+  color: var(--accent-teal);
+  box-shadow: 0 0 0 3px rgba(34, 211, 197, 0.18);
+  border-radius: 4px;
+}
+
+/* PR 138: /settings/account and /settings/security used to render each block (avatar,
+   profile fields, privacy toggles, password change) as a bare, boundary-less stack of
+   labels and inputs straight on the page background - no visual grouping at all, unlike
+   the panelled look .reader-settings__panel already gives the reading-settings page.
+   .settings-card gives those two pages the same panel language (same
+   background/border/radius as .reader-settings__panel and .catalog-filters) rather than
+   inventing a new one. Verified against the claude_design MCP project referenced
+   elsewhere in this file for a more developed settings concept first (see the PR 138
+   commit) - the MCP connection wasn't available in this session (no /design-login
+   consent granted), so this card treatment is a manual, point-in-time polish pass per
+   CLAUDE.md's documented fallback, not a Claude Design import; a real import should
+   still replace it if/when the concept becomes available.
+
+   Deliberately NOT applied to settings_reading.html - that page's fields already sit
+   inside .reader-settings__panel per section, so wrapping the whole section in a second,
+   outer card would just nest one box inside another instead of adding hierarchy. */
+.settings-card {
+  max-width: 640px;
+  margin-top: 28px;
+  padding: 24px;
+  background: var(--bg-surface);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+}
+
+.settings-card:first-of-type {
+  margin-top: 20px;
+}
+
+/* Fields inside a card fill its full width instead of stopping at .settings-form's own
+   420px cap (still in effect on register_avatar.html, the one page reusing .settings-form
+   outside a .settings-card) - a wide single-column field reads closer to the GitHub
+   Settings reference PR 89 already cites than a narrow column floating inside a much
+   wider card. */
+.settings-card .settings-form {
+  max-width: none;
+}
+
 .reader-settings-page {
   max-width: 480px;
 }
@@ -2826,7 +2890,13 @@ a {
    list, which stopped scaling as soon as a second, unrelated group of settings (the
    upcoming "Чтение с помощью тапа" section, PR 63-65) needed a place to live. Same
    section-heading look as .downloads-section/.downloads-section__title elsewhere in this
-   file, reused rather than invented fresh. */
+   file, reused rather than invented fresh.
+
+   Also reused as-is (PR 138) for every .settings-card heading on the account/security
+   pages - one shared title style for "the name of this group of fields" everywhere in
+   /settings/*, sized/colored a step above .auth-form__label so the hierarchy between a
+   card's own title and its fields' labels reads clearly instead of both looking like the
+   same weight of text. */
 .reader-settings-section {
   margin-top: 28px;
 }
@@ -2836,9 +2906,9 @@ a {
 }
 
 .reader-settings-section__title {
-  font-size: 14px;
+  font-size: 15px;
   font-weight: 700;
-  color: var(--text-secondary);
+  color: var(--text-primary);
   margin: 0 0 12px;
 }
 
@@ -3675,6 +3745,11 @@ a {
 
   .settings-layout--mobile-js.settings-layout--mobile-detail .settings-nav {
     display: none;
+  }
+
+  .settings-card {
+    max-width: none;
+    padding: 18px 16px;
   }
 
   .search-form {
