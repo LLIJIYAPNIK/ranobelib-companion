@@ -649,6 +649,9 @@ def test_post_comment_creates_a_root_comment(logged_in_client: TestClient) -> No
     assert comment["author"] == "alice@example.com"
     assert comment["parent_comment_id"] is None
     assert comment["replies"] == []
+    assert isinstance(comment["user_id"], int)
+    assert comment["avatar_url"] is None
+    assert comment["avatar_initials"] == "AL"
 
 
 def test_post_comment_reply_nests_under_its_parent(logged_in_client: TestClient) -> None:

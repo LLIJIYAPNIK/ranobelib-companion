@@ -38,6 +38,20 @@ def test_create_comment_returns_it_with_the_authors_nickname(conn: sqlite3.Conne
     assert comment.body == "Отличная глава!"
     assert comment.parent_comment_id is None
     assert comment.replies == []
+    assert comment.user_id == 1
+    assert comment.avatar_url is None
+    assert comment.avatar_initials == "AL"
+
+
+def test_create_comment_avatar_url_reflects_an_uploaded_avatar(
+    conn: sqlite3.Connection,
+) -> None:
+    conn.execute("UPDATE users SET avatar_path = '1.png' WHERE id = 1")
+    conn.commit()
+
+    comment = create_comment(conn, 1, "6712--test-novel", "1", "5", "", 0, "hi")
+
+    assert comment.avatar_url == "/avatars/1.png"
 
 
 def test_create_comment_falls_back_to_email_without_a_nickname(
