@@ -247,9 +247,96 @@
   const commentTreeByIndex = new Map();
   const commentsExpandedByIndex = new Set();
 
-  // A reusable textarea + "Отправить" button, shared by the menu's "Комментировать"
-  // composer and every comment's own "Ответить" reply form - the only difference between
-  // them is what `onSubmit` does with the typed body.
+  // PR 149: one shared floating emoji picker for every composer's own free-form
+  // insertion into its textarea - not the fixed 10-emoji EMOJI reaction picker above,
+  // which reacts to a whole paragraph rather than typing into anything. Same "one
+  // portaled node, position: fixed, reused by however many composers/reply forms exist
+  // on the page" approach as `panel` below, just anchored to the trigger button's own
+  // rect (getBoundingClientRect()) instead of a right-click point, and reusing that
+  // panel's exact CSS classes (.paragraph-menu__panel/__emoji-picker/__emoji) rather than
+  // inventing a second visual language for what's already the same kind of floating menu.
+  const COMMENT_EMOJI = [
+    "😀", "😁", "😂", "🤣", "😊", "😉", "😍", "😘", "😜", "🤔",
+    "😐", "😴", "😭", "😢", "😡", "🥳", "😱", "🤯", "🥰", "😎",
+    "👍", "👎", "👏", "🙏", "💪", "🤝", "👋", "✌️", "🤞", "👌",
+    "❤️", "🧡", "💛", "💚", "💙", "💜", "🖤", "💔", "💯", "🔥",
+    "🎉", "✨", "⭐", "☀️", "🌙", "☕", "🍕", "🎮",
+  ];
+
+  const emojiPicker = document.createElement("div");
+  emojiPicker.className = "paragraph-menu__panel";
+  emojiPicker.setAttribute("role", "menu");
+  const emojiGrid = document.createElement("div");
+  emojiGrid.className = "paragraph-menu__emoji-picker comment-emoji-picker__grid";
+  for (const emoji of COMMENT_EMOJI) {
+    const button = document.createElement("button");
+    button.type = "button";
+    button.className = "paragraph-menu__emoji";
+    button.setAttribute("role", "menuitem");
+    button.textContent = emoji;
+    button.addEventListener("click", (event) => {
+      event.stopPropagation();
+      insertAtCursor(emojiPickerTarget, emoji);
+      closeEmojiPicker();
+    });
+    emojiGrid.append(button);
+  }
+  emojiPicker.append(emojiGrid);
+  document.body.append(emojiPicker);
+
+  let emojiPickerTarget = null;
+
+  function isEmojiPickerOpen() {
+    return emojiPicker.classList.contains("paragraph-menu__panel--open");
+  }
+
+  function positionEmojiPicker(anchor) {
+    const rect = anchor.getBoundingClientRect();
+    emojiPicker.style.left = "0px";
+    emojiPicker.style.top = "0px";
+    const width = emojiPicker.offsetWidth;
+    const height = emojiPicker.offsetHeight;
+    const left = Math.min(rect.left, window.innerWidth - width - GAP);
+    const top = Math.min(rect.bottom + 4, window.innerHeight - height - GAP);
+    emojiPicker.style.left = `${Math.max(GAP, left)}px`;
+    emojiPicker.style.top = `${Math.max(GAP, top)}px`;
+  }
+
+  function openEmojiPicker(anchor, textarea) {
+    emojiPickerTarget = textarea;
+    emojiPicker.classList.add("paragraph-menu__panel--open");
+    positionEmojiPicker(anchor);
+  }
+
+  function closeEmojiPicker() {
+    emojiPicker.classList.remove("paragraph-menu__panel--open");
+    emojiPickerTarget = null;
+  }
+
+  // Inserts at the caret (replacing any current selection) rather than always appending
+  // to the end, so picking an emoji mid-sentence lands where the visitor was actually
+  // typing.
+  function insertAtCursor(textarea, text) {
+    if (!textarea) return;
+    const start = textarea.selectionStart ?? textarea.value.length;
+    const end = textarea.selectionEnd ?? textarea.value.length;
+    textarea.value = textarea.value.slice(0, start) + text + textarea.value.slice(end);
+    const caret = start + text.length;
+    textarea.focus();
+    textarea.setSelectionRange(caret, caret);
+  }
+
+  document.addEventListener("click", (event) => {
+    if (isEmojiPickerOpen() && !emojiPicker.contains(event.target)) closeEmojiPicker();
+  });
+
+  document.addEventListener("keydown", (event) => {
+    if (event.key === "Escape" && isEmojiPickerOpen()) closeEmojiPicker();
+  });
+
+  // A reusable textarea + emoji-picker trigger + "Отправить" button, shared by the
+  // menu's "Комментировать" composer and every comment's own "Ответить" reply form - the
+  // only difference between them is what `onSubmit` does with the typed body.
   function buildComposer(onSubmit, placeholder) {
     const wrap = document.createElement("div");
     wrap.className = "paragraph-comments__composer";
@@ -258,12 +345,28 @@
     textarea.placeholder = placeholder;
     textarea.rows = 3;
     textarea.maxLength = 2000; // mirrors MAX_COMMENT_LENGTH in app/db/comments.py
+    const emojiToggle = document.createElement("button");
+    emojiToggle.type = "button";
+    emojiToggle.className = "paragraph-comments__emoji-toggle";
+    emojiToggle.setAttribute("aria-label", "Вставить эмодзи");
+    emojiToggle.title = "Вставить эмодзи";
+    emojiToggle.textContent = "🙂";
+    emojiToggle.addEventListener("click", (event) => {
+      event.stopPropagation();
+      if (isEmojiPickerOpen() && emojiPickerTarget === textarea) {
+        closeEmojiPicker();
+      } else {
+        openEmojiPicker(emojiToggle, textarea);
+      }
+    });
+
     // PR 148: the same minimal subset app/markdown_render.py actually renders - not a
     // full Markdown cheatsheet, so it doesn't promise syntax (headings, code blocks,
     // images) this feature silently drops.
     const hint = document.createElement("p");
     hint.className = "paragraph-comments__hint";
     hint.textContent = "Поддерживается: **жирный**, *курсив*, ~~зачёркнутый~~, [ссылка](url), списки";
+
     const submit = document.createElement("button");
     submit.type = "button";
     submit.className = "btn btn--sm";
@@ -281,7 +384,12 @@
         submit.disabled = false;
       }
     });
-    wrap.append(textarea, hint, submit);
+
+    const toolbar = document.createElement("div");
+    toolbar.className = "paragraph-comments__toolbar";
+    toolbar.append(emojiToggle, submit);
+
+    wrap.append(textarea, hint, toolbar);
     return wrap;
   }
 
