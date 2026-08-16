@@ -2742,6 +2742,10 @@ a {
   border-left: 1px solid var(--border);
 }
 
+.paragraph-comment__replies[hidden] {
+  display: none;
+}
+
 .paragraph-comment__meta {
   display: flex;
   align-items: center;
@@ -2841,6 +2845,27 @@ a {
 
 @media (hover: hover) {
   .paragraph-comment__reply-toggle:hover {
+    color: var(--accent-teal);
+  }
+}
+
+/* PR 152: the "[–]"/"[+]" collapse trigger next to "Ответить" - same ghost-text
+   treatment as .paragraph-comment__reply-toggle, just its own class since the two
+   aren't mutually exclusive styling-wise (a comment can have both at once). */
+.paragraph-comment__collapse-toggle {
+  padding: 0;
+  margin-left: 8px;
+  border: none;
+  background: none;
+  color: var(--text-muted);
+  font-family: inherit;
+  font-size: 12px;
+  cursor: pointer;
+  transition: color 0.1s ease;
+}
+
+@media (hover: hover) {
+  .paragraph-comment__collapse-toggle:hover {
     color: var(--accent-teal);
   }
 }

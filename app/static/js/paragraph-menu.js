@@ -557,13 +557,39 @@
       el.append(link);
     }
 
-    if (comment.replies.length > 0) {
-      const replies = document.createElement("div");
-      replies.className = "paragraph-comment__replies";
-      for (const reply of comment.replies) {
-        replies.append(renderCommentNode(index, reply));
+    // PR 152: two equivalent triggers for the same collapse state - the "[–]"/"[+]"
+    // button next to "Ответить", and a click on the reply thread's own vertical guide
+    // line (.paragraph-comment__replies' left border/padding, the same visual element
+    // YouTube uses). Both just flip repliesDiv.hidden - commentTreeByIndex isn't touched,
+    // so re-expanding never needs a request, and a collapsed parent thread takes every
+    // nested sub-thread with it for free, since they're all inside this one DOM node.
+    let repliesDiv = null;
+    let collapseToggle = null;
+
+    function setRepliesCollapsed(collapsed) {
+      if (repliesDiv) repliesDiv.hidden = collapsed;
+      if (collapseToggle) {
+        collapseToggle.textContent = collapsed ? "[+]" : "[–]";
+        collapseToggle.setAttribute("aria-expanded", collapsed ? "false" : "true");
       }
-      el.append(replies);
+    }
+
+    if (comment.replies.length > 0) {
+      collapseToggle = document.createElement("button");
+      collapseToggle.type = "button";
+      collapseToggle.className = "paragraph-comment__collapse-toggle";
+      collapseToggle.textContent = "[–]";
+      collapseToggle.setAttribute("aria-expanded", "true");
+      collapseToggle.setAttribute("aria-label", "Свернуть ветку ответов");
+      collapseToggle.addEventListener("click", () => setRepliesCollapsed(!repliesDiv.hidden));
+      el.append(collapseToggle);
+
+      repliesDiv = document.createElement("div");
+      repliesDiv.className = "paragraph-comment__replies";
+      for (const reply of comment.replies) {
+        repliesDiv.append(renderCommentNode(index, reply));
+      }
+      el.append(repliesDiv);
     }
 
     return el;
