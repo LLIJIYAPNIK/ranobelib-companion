@@ -388,6 +388,21 @@ def test_show_title_loads_tap_to_read_progress_script() -> None:
     assert "static/js/toc-tap-progress.js" in response.text
 
 
+def test_show_title_loads_image_lightbox_script() -> None:
+    # PR 142: image-lightbox.js (PR 66/74) now also opens for .title-hero__cover, not
+    # just .reader-content img on the chapter page - nothing server-rendered to assert on
+    # beyond the script being wired into this page too.
+    title = _fake_title()
+    volumes = [
+        Volume(number="1", chapters=[Chapter(id=1, volume="1", number="1", name="Начало")])
+    ]
+    with patch("app.services.client.RanobeLib", return_value=_FakeClient(title, volumes)):
+        response = client.get("/titles/6712--test-novel")
+
+    assert response.status_code == 200
+    assert "static/js/image-lightbox.js" in response.text
+
+
 def test_show_title_renders_export_form() -> None:
     title = _fake_title()
     volumes = [
