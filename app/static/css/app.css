@@ -833,7 +833,12 @@ a {
 .reading-calendar {
   display: grid;
   grid-auto-flow: column;
-  grid-template-rows: repeat(7, 1fr);
+  /* Fixed track size, not 1fr - 1fr rows are shares of the grid container's own block
+     size, but .reading-calendar never sets a height of its own (it's sized by its
+     content), so there's nothing for "1fr" to divide and every cell fell into a single
+     tall column instead of wrapping into 7-row weeks. Matches .reading-calendar__day's
+     own explicit 11px so a row is exactly one cell tall, no more. */
+  grid-template-rows: repeat(7, 11px);
   gap: 3px;
   overflow-x: auto;
   padding-bottom: 4px;
