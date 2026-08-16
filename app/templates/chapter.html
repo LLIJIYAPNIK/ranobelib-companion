@@ -52,6 +52,7 @@
     data-number="{{ chapter.number }}"
     data-branch-id="{{ branch_id if branch_id is not none else '' }}"
     data-authenticated="{{ '1' if current_user else '' }}"
+    data-gif-attachments="{{ '1' if gif_attachments_available else '' }}"
   >
     {{ chapter.content | safe }}
   </article>

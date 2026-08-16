@@ -1,3 +1,4 @@
+import base64
 from collections.abc import Iterator
 from datetime import UTC, datetime
 from pathlib import Path
@@ -18,9 +19,17 @@ from app.config import get_settings
 from app.db.activity import list_chapters_read_today
 from app.db.connection import get_connection
 from app.db.library import add_entry, get_entry, list_entries
+from app.gif_video import is_ffmpeg_available
 from app.main import app
 
 client = TestClient(app)
+
+# The smallest possible valid GIF (1x1, transparent) - see tests/test_gif_video.py for
+# the same fixture and why it isn't generated via ffmpeg itself.
+_TINY_GIF = base64.b64decode("R0lGODlhAQABAIAAAAAAAP///ywAAAAAAQABAAACAUwAOw==")
+_requires_ffmpeg = pytest.mark.skipif(
+    not is_ffmpeg_available(), reason="ffmpeg not installed in this environment"
+)
 
 
 class _FakeClient:
@@ -266,6 +275,18 @@ def test_read_chapter_marks_content_not_authenticated_when_anonymous() -> None:
     assert 'data-authenticated=""' in response.text
 
 
+def test_read_chapter_marks_gif_attachments_available_state() -> None:
+    # data-gif-attachments mirrors app/gif_video.py's is_ffmpeg_available() - whatever
+    # this environment's actual value is, the template should reflect it exactly, not
+    # hardcode either state.
+    chapter = Chapter(id=1, volume="1", number="5", content="<p>x</p>")
+    with patch("app.services.client.RanobeLib", return_value=_FakeClient(chapter)):
+        response = client.get("/titles/6712--test-novel/chapters/1/5")
+
+    expected = "1" if is_ffmpeg_available() else ""
+    assert f'data-gif-attachments="{expected}"' in response.text
+
+
 def test_read_chapter_crosses_volume_boundary() -> None:
     chapter = Chapter(id=1, volume="1", number="3", name="Конец тома", content="<p>x</p>")
     volumes = [
@@ -381,6 +402,7 @@ def logged_in_client(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> Iterato
     needed."""
     monkeypatch.setenv("DB_PATH", str(tmp_path / "test.db"))
     monkeypatch.setenv("SESSION_SECRET_KEY", "test-secret")
+    monkeypatch.setenv("COMMENT_ATTACHMENT_DIR", str(tmp_path / "comment-attachments"))
     get_settings.cache_clear()
     db_connection._connection = None
 
@@ -671,6 +693,65 @@ def test_post_comment_body_html_renders_markdown_and_strips_dangerous_input(
     assert isinstance(comment["user_id"], int)
     assert comment["avatar_url"] is None
     assert comment["avatar_initials"] == "AL"
+
+
+def test_post_comment_without_a_gif_has_no_attachment(logged_in_client: TestClient) -> None:
+    response = logged_in_client.post(
+        "/titles/6712--test-novel/chapters/1/5/comments",
+        data={"paragraph_index": "0", "body": "just text"},
+    )
+
+    comment = response.json()["comments"][0]
+    assert comment["attachment_url"] is None
+    assert comment["attachment_kind"] is None
+
+
+def test_post_comment_rejects_a_file_that_isnt_actually_a_gif(
+    logged_in_client: TestClient,
+) -> None:
+    response = logged_in_client.post(
+        "/titles/6712--test-novel/chapters/1/5/comments",
+        data={"paragraph_index": "0", "body": "look"},
+        files={"gif": ("fake.gif", b"not actually a gif", "image/gif")},
+    )
+
+    assert response.status_code == 400
+
+
+@_requires_ffmpeg
+def test_post_comment_with_a_gif_converts_and_returns_the_attachment(
+    logged_in_client: TestClient,
+) -> None:
+    response = logged_in_client.post(
+        "/titles/6712--test-novel/chapters/1/5/comments",
+        data={"paragraph_index": "0", "body": "check this out"},
+        files={"gif": ("cat.gif", _TINY_GIF, "image/gif")},
+    )
+
+    assert response.status_code == 200
+    comment = response.json()["comments"][0]
+    assert comment["attachment_kind"] == "gif"
+    assert comment["attachment_url"].startswith("/comment-attachments/")
+    assert comment["attachment_url"].endswith(".mp4")
+
+    attachment_filename = comment["attachment_url"].rsplit("/", 1)[-1]
+    stored_file = get_settings().comment_attachment_dir / attachment_filename
+    assert stored_file.exists()
+    assert stored_file.stat().st_size > 0
+
+
+@_requires_ffmpeg
+def test_post_comment_with_a_gif_allows_an_empty_body(logged_in_client: TestClient) -> None:
+    response = logged_in_client.post(
+        "/titles/6712--test-novel/chapters/1/5/comments",
+        data={"paragraph_index": "0", "body": ""},
+        files={"gif": ("cat.gif", _TINY_GIF, "image/gif")},
+    )
+
+    assert response.status_code == 200
+    comment = response.json()["comments"][0]
+    assert comment["body"] == ""
+    assert comment["attachment_kind"] == "gif"
 
 
 def test_post_comment_reply_nests_under_its_parent(logged_in_client: TestClient) -> None:

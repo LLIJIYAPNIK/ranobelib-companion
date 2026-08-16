@@ -73,6 +73,38 @@ def test_create_comment_rejects_an_empty_body(conn: sqlite3.Connection) -> None:
         create_comment(conn, 1, "6712--test-novel", "1", "5", "", 0, "   ")
 
 
+def test_create_comment_allows_an_empty_body_when_theres_an_attachment(
+    conn: sqlite3.Connection,
+) -> None:
+    comment = create_comment(
+        conn,
+        1,
+        "6712--test-novel",
+        "1",
+        "5",
+        "",
+        0,
+        "   ",
+        attachment_path="abc123.mp4",
+        attachment_kind="gif",
+    )
+
+    assert comment.body == ""
+    assert comment.attachment_path == "abc123.mp4"
+    assert comment.attachment_kind == "gif"
+    assert comment.attachment_url == "/comment-attachments/abc123.mp4"
+
+
+def test_create_comment_without_an_attachment_has_no_attachment_url(
+    conn: sqlite3.Connection,
+) -> None:
+    comment = create_comment(conn, 1, "6712--test-novel", "1", "5", "", 0, "hi")
+
+    assert comment.attachment_path is None
+    assert comment.attachment_kind is None
+    assert comment.attachment_url is None
+
+
 def test_create_comment_rejects_a_body_over_the_length_limit(
     conn: sqlite3.Connection,
 ) -> None:
@@ -115,6 +147,26 @@ def test_list_comments_nests_replies_under_their_parent(conn: sqlite3.Connection
     assert roots[0].replies[0].body == "reply"
     assert len(roots[0].replies[0].replies) == 1
     assert roots[0].replies[0].replies[0].body == "reply to reply"
+
+
+def test_list_comments_includes_the_attachment(conn: sqlite3.Connection) -> None:
+    create_comment(
+        conn,
+        1,
+        "6712--test-novel",
+        "1",
+        "5",
+        "",
+        0,
+        "look at this",
+        attachment_path="abc123.mp4",
+        attachment_kind="gif",
+    )
+
+    roots = list_comments_for_paragraph(conn, "6712--test-novel", "1", "5", "", 0)
+
+    assert roots[0].attachment_url == "/comment-attachments/abc123.mp4"
+    assert roots[0].attachment_kind == "gif"
 
 
 def test_list_comments_is_scoped_to_paragraph_and_branch(conn: sqlite3.Connection) -> None:
