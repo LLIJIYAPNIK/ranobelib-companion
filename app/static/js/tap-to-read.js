@@ -491,7 +491,20 @@
     // Images too (PR 74): image-lightbox.js opens its fullscreen viewer on the same tap,
     // no longer disabling itself just because tap-to-read is on - without this exclusion
     // that same tap would also silently reveal the next paragraph behind the lightbox.
-    if (event.target.closest("a, button, img")) return;
+    // PR 146: the reactions/comments containers (.paragraph-reactions-host wraps a
+    // paragraph elsewhere, but in tap-to-read mode paragraph-menu.js reuses this same
+    // .reader-content__paragraph-wrap as the host, so .paragraph-reactions and
+    // .paragraph-comments end up as siblings of the paragraph text inside it) hold
+    // elements a tag/button/img check alone doesn't catch - e.g. the comment composer's
+    // <textarea>, which isn't any of those three. Excluding the whole containers instead
+    // of chasing individual tags keeps this working as PR 148-151 add more interactive
+    // pieces (emoji picker, GIF search, attachments) inside the same composer.
+    if (
+      event.target.closest(
+        "a, button, img, .paragraph-reactions, .paragraph-comments, .paragraph-reactions-host"
+      )
+    )
+      return;
     if (revealedCount >= wraps.length) {
       goPastLastParagraph();
       return;
