@@ -18,7 +18,7 @@ from ranobelib.models import Cover, Label, Title
 
 import app.db.connection as db_connection
 from app.config import get_settings
-from app.db.activity import record_chapter_read
+from app.db.activity import record_chapter_read, record_heartbeat
 from app.db.comments import create_comment
 from app.db.connection import get_connection
 from app.db.library import record_progress
@@ -217,7 +217,56 @@ def test_profile_reading_calendar_marks_todays_activity(client: TestClient) -> N
     # level 4 (intensity is relative to the user's own max, not a fixed absolute scale).
     assert 'reading-calendar__day--level-4' in response.text
     today = datetime.now(UTC).date().strftime("%d.%m.%Y")
-    assert f'title="{today}: 2 главы"' in response.text
+    # PR 140: no heartbeat recorded today, so the tooltip's time portion reads "0 мин" -
+    # always shown, not omitted, same as a real day with reading but no active-time ticks.
+    assert f'title="{today}: 2 главы, 0 мин"' in response.text
+
+
+def test_profile_reading_calendar_tooltip_shows_active_time_under_an_hour(
+    client: TestClient,
+) -> None:
+    _register(client, "alice@example.com")
+    alice_id = _user_id("alice@example.com")
+    record_chapter_read(get_connection(), alice_id, "6712--test-novel", "1", "1")
+    record_heartbeat(get_connection(), alice_id, "6712--test-novel", 1500)  # 25 min
+
+    response = client.get("/profile")
+
+    assert response.status_code == 200
+    today = datetime.now(UTC).date().strftime("%d.%m.%Y")
+    assert f'title="{today}: 1 глава, 25 мин"' in response.text
+
+
+def test_profile_reading_calendar_tooltip_shows_active_time_over_an_hour(
+    client: TestClient,
+) -> None:
+    _register(client, "alice@example.com")
+    alice_id = _user_id("alice@example.com")
+    record_chapter_read(get_connection(), alice_id, "6712--test-novel", "1", "1")
+    record_heartbeat(get_connection(), alice_id, "6712--test-novel", 5400)  # 1h 30min
+
+    response = client.get("/profile")
+
+    assert response.status_code == 200
+    today = datetime.now(UTC).date().strftime("%d.%m.%Y")
+    assert f'title="{today}: 1 глава, 1 ч 30 мин"' in response.text
+
+
+def test_profile_reading_calendar_tooltip_handles_active_time_with_no_chapters_read(
+    client: TestClient,
+) -> None:
+    """A day can have heartbeat ticks (the reader page stayed open) with zero
+    chapter_read events, e.g. every open happened the day before - the two counters are
+    independent, so the tooltip must handle either being present without the other."""
+    _register(client, "alice@example.com")
+    alice_id = _user_id("alice@example.com")
+    record_heartbeat(get_connection(), alice_id, "6712--test-novel", 600)  # 10 min
+
+    response = client.get("/profile")
+
+    assert response.status_code == 200
+    today = datetime.now(UTC).date().strftime("%d.%m.%Y")
+    assert f'title="{today}: нет прочитанных глав, 10 мин"' in response.text
 
 
 def test_profile_has_an_edit_link_to_settings_account(client: TestClient) -> None:
