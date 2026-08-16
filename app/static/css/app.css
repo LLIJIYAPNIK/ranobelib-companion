@@ -2726,6 +2726,10 @@ a {
   margin-top: 8px;
 }
 
+.paragraph-comments__list[hidden] {
+  display: none;
+}
+
 /* Reddit-style nesting: each level of reply indents via its own .replies wrapper's
    margin/border rather than a JS-computed depth * N inline style, so recursion in
    renderCommentNode() doesn't need to know or pass its own depth down at all. */
@@ -2740,26 +2744,76 @@ a {
 
 .paragraph-comment__meta {
   display: flex;
-  align-items: baseline;
+  align-items: center;
   gap: 8px;
   font-size: 12px;
+}
+
+/* PR 147: same picture-or-initials box as .sidebar__avatar (PR 88), just small enough to
+   sit inline in a 12px meta row instead of the sidebar. */
+.paragraph-comment__avatar {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex: 0 0 auto;
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  background: var(--accent);
+  color: var(--text-primary);
+  font-size: 9px;
+  font-weight: 600;
+  overflow: hidden;
 }
 
 .paragraph-comment__author {
   color: var(--text-primary);
   font-weight: 600;
+  text-decoration: none;
+}
+
+@media (hover: hover) {
+  .paragraph-comment__author:hover {
+    text-decoration: underline;
+  }
 }
 
 .paragraph-comment__time {
   color: var(--text-muted);
 }
 
+/* PR 148: body_html already brings its own block structure (<p>/<br>/<ul>/<ol> from
+   app/markdown_render.py) - no white-space: pre-wrap here anymore, that was only needed
+   to preserve line breaks in plain textContent, and would otherwise also render the
+   whitespace nh3.clean() leaves between tags. */
 .paragraph-comment__body {
   margin: 4px 0;
   font-size: 13px;
   color: var(--text-secondary);
-  white-space: pre-wrap;
   overflow-wrap: break-word;
+}
+
+.paragraph-comment__body p {
+  margin: 0 0 6px;
+}
+
+.paragraph-comment__body p:last-child {
+  margin-bottom: 0;
+}
+
+.paragraph-comment__body ul,
+.paragraph-comment__body ol {
+  margin: 0 0 6px;
+  padding-left: 20px;
+}
+
+.paragraph-comment__body ul:last-child,
+.paragraph-comment__body ol:last-child {
+  margin-bottom: 0;
+}
+
+.paragraph-comment__body a {
+  color: var(--accent-teal);
 }
 
 .paragraph-comment__reply-toggle {
@@ -2791,6 +2845,10 @@ a {
   width: 240px;
   max-width: 100%;
   margin-top: 6px;
+}
+
+.paragraph-comments__composer[hidden] {
+  display: none;
 }
 
 .paragraph-comments__textarea {
@@ -2846,6 +2904,13 @@ a {
    picker's and would otherwise grow tall instead of wide. */
 .comment-emoji-picker__grid {
   grid-template-columns: repeat(8, 1fr);
+}
+
+/* PR 148: syntax hint for the subset app/markdown_render.py actually renders. */
+.paragraph-comments__hint {
+  margin: 0;
+  font-size: 11px;
+  color: var(--text-muted);
 }
 
 /* PR 89: /settings split into left-nav tabs (Чтение/Аккаунт/Безопасность) under their

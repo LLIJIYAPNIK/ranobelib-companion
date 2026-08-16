@@ -14,9 +14,12 @@ from app.db.users import User
 _SEGMENT_SPLIT = re.compile(r"[\s._\-+]+")
 
 
-def avatar_initials(user: User) -> str:
-    """Up to two uppercase letters, e.g. "Alice Wong" -> "AW", "bob@x.com" -> "BO"."""
-    source = user.nickname or user.email.split("@", 1)[0]
+def initials_for(nickname: str | None, email: str) -> str:
+    """Up to two uppercase letters, e.g. "Alice Wong" -> "AW", "bob@x.com" -> "BO". The
+    primitive `avatar_initials()`/`avatar_url()` below build on - split out so PR 147's
+    comment authors (rendered client-side from JSON, not a `User` row) can get the same
+    picture-or-initials pairing without a full `User` object to pass in."""
+    source = nickname or email.split("@", 1)[0]
     segments = [segment for segment in _SEGMENT_SPLIT.split(source) if segment]
     if not segments:
         return "?"
@@ -25,13 +28,21 @@ def avatar_initials(user: User) -> str:
     return (segments[0][0] + segments[1][0]).upper()
 
 
-def avatar_url(user: User) -> str | None:
+def url_for(avatar_path: str | None) -> str | None:
     """URL of the uploaded avatar image (served from Settings.avatar_dir, mounted at
-    /avatars in app/main.py), or None if the user hasn't uploaded one - templates fall
-    back to `avatar_initials()` in that case."""
-    if not user.avatar_path:
+    /avatars in app/main.py), or None if there isn't one - callers fall back to
+    `initials_for()`/`avatar_initials()` in that case."""
+    if not avatar_path:
         return None
-    return f"/avatars/{user.avatar_path}"
+    return f"/avatars/{avatar_path}"
+
+
+def avatar_initials(user: User) -> str:
+    return initials_for(user.nickname, user.email)
+
+
+def avatar_url(user: User) -> str | None:
+    return url_for(user.avatar_path)
 
 
 _EXTENSION_BY_CONTENT_TYPE = {

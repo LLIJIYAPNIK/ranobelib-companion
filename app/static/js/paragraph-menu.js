@@ -214,6 +214,25 @@
     });
   }
 
+  // PR 147: the same picture-or-initials pairing base.html's Jinja templates render via
+  // avatar_url(user)/avatar_initials(user) - comment.avatar_url/avatar_initials arrive
+  // already computed by the same server-side helpers (app/auth/avatar.py), so this just
+  // picks which one to show, same as {% if avatar_url(user) %} does there.
+  function buildCommentAvatar(comment) {
+    const avatar = document.createElement("span");
+    avatar.className = "paragraph-comment__avatar";
+    if (comment.avatar_url) {
+      const img = document.createElement("img");
+      img.className = "avatar-img";
+      img.src = comment.avatar_url;
+      img.alt = "";
+      avatar.append(img);
+    } else {
+      avatar.textContent = comment.avatar_initials;
+    }
+    return avatar;
+  }
+
   // Per-paragraph comment state, keyed by index:
   // - commentCountByIndex is the single source of truth for the number shown on the
   //   toggle ("N комментариев") - set from the initial bulk fetch and refreshed after
@@ -326,7 +345,6 @@
     textarea.placeholder = placeholder;
     textarea.rows = 3;
     textarea.maxLength = 2000; // mirrors MAX_COMMENT_LENGTH in app/db/comments.py
-
     const emojiToggle = document.createElement("button");
     emojiToggle.type = "button";
     emojiToggle.className = "paragraph-comments__emoji-toggle";
@@ -341,6 +359,13 @@
         openEmojiPicker(emojiToggle, textarea);
       }
     });
+
+    // PR 148: the same minimal subset app/markdown_render.py actually renders - not a
+    // full Markdown cheatsheet, so it doesn't promise syntax (headings, code blocks,
+    // images) this feature silently drops.
+    const hint = document.createElement("p");
+    hint.className = "paragraph-comments__hint";
+    hint.textContent = "Поддерживается: **жирный**, *курсив*, ~~зачёркнутый~~, [ссылка](url), списки";
 
     const submit = document.createElement("button");
     submit.type = "button";
@@ -364,7 +389,7 @@
     toolbar.className = "paragraph-comments__toolbar";
     toolbar.append(emojiToggle, submit);
 
-    wrap.append(textarea, toolbar);
+    wrap.append(textarea, hint, toolbar);
     return wrap;
   }
 
@@ -374,18 +399,26 @@
 
     const meta = document.createElement("div");
     meta.className = "paragraph-comment__meta";
-    const author = document.createElement("span");
+    const author = document.createElement("a");
     author.className = "paragraph-comment__author";
+    author.href = `/profile/${comment.user_id}`;
     author.textContent = comment.author;
     const time = document.createElement("span");
     time.className = "paragraph-comment__time";
     time.textContent = formatCommentTime(comment.created_at);
-    meta.append(author, time);
+    meta.append(buildCommentAvatar(comment), author, time);
     el.append(meta);
 
-    const body = document.createElement("p");
+    // PR 148: comment.body_html is already-sanitized HTML from the same server-side
+    // renderer (app/markdown_render.py) for every comment, regardless of source - setting
+    // it via innerHTML rather than textContent is what actually turns Markdown into
+    // formatting; safe here specifically because nh3.clean() ran server-side on an
+    // allow-list, not because this is "just our own data". A <div>, not a <p>, since the
+    // rendered HTML brings its own block-level structure (paragraphs, <br>, lists) -
+    // nesting that inside a <p> would be invalid.
+    const body = document.createElement("div");
     body.className = "paragraph-comment__body";
-    body.textContent = comment.body;
+    body.innerHTML = comment.body_html;
     el.append(body);
 
     if (isAuthenticated) {
