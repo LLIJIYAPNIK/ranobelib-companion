@@ -2815,6 +2815,14 @@ a {
   align-self: flex-end;
 }
 
+/* PR 149: the free-insertion emoji picker reuses .paragraph-menu__panel/__emoji-picker/
+   __emoji (PR 131/132) wholesale for its look/open-close animation - this just widens the
+   grid from 5 to 8 columns, since its emoji set is much larger than the 10-item reaction
+   picker's and would otherwise grow tall instead of wide. */
+.comment-emoji-picker__grid {
+  grid-template-columns: repeat(8, 1fr);
+}
+
 /* PR 89: /settings split into left-nav tabs (Чтение/Аккаунт/Безопасность) under their
    own sub-routes, replacing the single flat page from PR 61. Same fixed-width sticky
    sidebar language as .catalog-filters (PR 85), mirrored to the left since nothing here
