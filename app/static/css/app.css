@@ -1492,6 +1492,15 @@ a {
   line-height: 1;
   cursor: pointer;
   transition: background 0.15s ease;
+  /* Bug fix: .title-card__cover-wrap (PR 141) is position:relative for its own ::after
+     overlay, which put it in the same z-index:auto positioned stacking layer as this
+     button - since it sits later in _title_card.html than .title-card__quickview, it
+     started painting (and intercepting clicks) on top of that one specifically, purely
+     because of DOM order. This button and .title-card__favorite below happen to come
+     after the wrap in the DOM so were unaffected by that particular ordering, but an
+     explicit z-index here removes the dependency on DOM order for any of the three
+     corner buttons, not just the one that broke. */
+  z-index: 1;
 }
 
 @media (hover: hover) {
@@ -1517,6 +1526,10 @@ a {
   color: #fff;
   cursor: pointer;
   transition: background 0.15s ease;
+  /* See the matching comment on .title-card__remove above - this is the one of the three
+     corner buttons that actually sits *before* .title-card__cover-wrap in the DOM
+     (_title_card.html), so it's the one that was genuinely unclickable without this. */
+  z-index: 1;
 }
 
 @media (hover: hover) {
@@ -1543,6 +1556,8 @@ a {
   color: #fff;
   cursor: pointer;
   transition: background 0.15s ease;
+  /* See the matching comment on .title-card__remove above. */
+  z-index: 1;
 }
 
 .title-card__favorite--active {
