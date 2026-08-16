@@ -3242,6 +3242,11 @@ a {
 .reader-settings-preview {
   margin-top: 16px;
   padding: 16px;
+  /* Bug fix: only the inner <p> was capped at --reader-width - the panel itself grew to
+     fill the settings column regardless, so the visible background/border rectangle
+     never actually matched the width the "Ширина области чтения" slider (PR 34) claims
+     to be previewing. */
+  max-width: var(--reader-width);
   background: var(--bg-surface);
   border: 1px solid var(--border);
   border-radius: 8px;
