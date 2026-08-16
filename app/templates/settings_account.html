@@ -2,110 +2,119 @@
 {% block title %}Аккаунт — Настройки — RanobeLib Companion{% endblock %}
 {% block settings_content %}
   {% if current_user %}
-  {% if avatar_saved %}
-  <p class="content__notice content__notice--success">Аватар обновлён</p>
-  {% endif %}
-  {% if avatar_error %}
-  <p class="form-error">{{ avatar_error }}</p>
-  {% endif %}
-  <form
-    class="settings-form settings-form--avatar"
-    method="post"
-    action="/settings/account/avatar"
-    enctype="multipart/form-data"
-    data-role="avatar-upload-form"
-  >
-    <label class="avatar-upload" aria-label="Изменить аватар" data-role="avatar-upload-trigger">
-      <span class="avatar-upload__preview" data-role="avatar-upload-preview">
-        {% if avatar_url(current_user) %}
-        <img class="avatar-img" src="{{ avatar_url(current_user) }}" alt="">
-        {% else %}
-        <span class="avatar-upload__initials">{{ avatar_initials(current_user) }}</span>
-        {% endif %}
-      </span>
-      <span class="avatar-upload__overlay" aria-hidden="true">
-        <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
-          <path d="M12 20h9"/>
-          <path d="M16.5 3.5a2.12 2.12 0 0 1 3 3L7 19l-4 1 1-4Z"/>
-        </svg>
-      </span>
-      <input
-        class="avatar-upload__input"
-        id="account-avatar"
-        type="file"
-        name="avatar"
-        accept="image/png,image/jpeg,image/webp"
-        data-role="avatar-upload-input"
-        required
-      >
-    </label>
-  </form>
-  {% if saved %}
-  <p class="content__notice content__notice--success">Изменения сохранены</p>
-  {% endif %}
-  {% if error %}
-  <p class="form-error">{{ error }}</p>
-  {% endif %}
-  <form class="settings-form" method="post" action="/settings/account">
-    <div class="auth-form__field">
-      <label class="auth-form__label" for="account-nickname">Никнейм</label>
-      <input
-        class="auth-form__input"
-        id="account-nickname"
-        type="text"
-        name="nickname"
-        value="{{ nickname or '' }}"
-        maxlength="60"
-        placeholder="Необязательно"
-      >
-    </div>
-    <div class="auth-form__field">
-      <label class="auth-form__label" for="account-email">Email</label>
-      <input
-        class="auth-form__input"
-        id="account-email"
-        type="email"
-        name="email"
-        value="{{ email }}"
-        required
-      >
-    </div>
-    <div class="auth-form__field">
-      <label class="auth-form__label" for="account-bio">О себе</label>
-      <textarea
-        class="auth-form__input auth-form__input--textarea"
-        id="account-bio"
-        name="bio"
-        maxlength="280"
-        placeholder="Необязательно"
-      >{{ bio or '' }}</textarea>
-    </div>
-    <button class="btn btn--primary" type="submit">Сохранить</button>
-  </form>
+  <section class="settings-card">
+    <h2 class="reader-settings-section__title">Аватар</h2>
+    {% if avatar_saved %}
+    <p class="content__notice content__notice--success">Аватар обновлён</p>
+    {% endif %}
+    {% if avatar_error %}
+    <p class="form-error">{{ avatar_error }}</p>
+    {% endif %}
+    <form
+      class="settings-form settings-form--avatar"
+      method="post"
+      action="/settings/account/avatar"
+      enctype="multipart/form-data"
+      data-role="avatar-upload-form"
+    >
+      <label class="avatar-upload" aria-label="Изменить аватар" data-role="avatar-upload-trigger">
+        <span class="avatar-upload__preview" data-role="avatar-upload-preview">
+          {% if avatar_url(current_user) %}
+          <img class="avatar-img" src="{{ avatar_url(current_user) }}" alt="">
+          {% else %}
+          <span class="avatar-upload__initials">{{ avatar_initials(current_user) }}</span>
+          {% endif %}
+        </span>
+        <span class="avatar-upload__overlay" aria-hidden="true">
+          <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M12 20h9"/>
+            <path d="M16.5 3.5a2.12 2.12 0 0 1 3 3L7 19l-4 1 1-4Z"/>
+          </svg>
+        </span>
+        <input
+          class="avatar-upload__input"
+          id="account-avatar"
+          type="file"
+          name="avatar"
+          accept="image/png,image/jpeg,image/webp"
+          data-role="avatar-upload-input"
+          required
+        >
+      </label>
+    </form>
+  </section>
 
-  <h2 class="reader-settings-section__title">Приватность</h2>
-  {% if privacy_saved %}
-  <p class="content__notice content__notice--success">Настройки приватности сохранены</p>
-  {% endif %}
-  <p class="content__hint">
-    Эти переключатели касаются только вашей публичной страницы профиля — сами вы всегда
-    видите свой профиль полностью, независимо от них.
-  </p>
-  <form class="settings-form" method="post" action="/settings/account/privacy">
-    <label class="auth-form__field auth-form__field--checkbox">
-      <input type="checkbox" name="show_currently_reading" {% if show_currently_reading %}checked{% endif %}>
-      <span>Показывать, что я сейчас читаю</span>
-    </label>
-    <label class="auth-form__field auth-form__field--checkbox">
-      <input type="checkbox" name="show_favorite" {% if show_favorite %}checked{% endif %}>
-      <span>Показывать избранный тайтл</span>
-    </label>
-    <label class="auth-form__field auth-form__field--checkbox">
-      <input type="checkbox" name="show_library" {% if show_library %}checked{% endif %}>
-      <span>Показывать библиотеку целиком</span>
-    </label>
-    <button class="btn btn--primary" type="submit">Сохранить</button>
-  </form>
+  <section class="settings-card">
+    <h2 class="reader-settings-section__title">Данные профиля</h2>
+    {% if saved %}
+    <p class="content__notice content__notice--success">Изменения сохранены</p>
+    {% endif %}
+    {% if error %}
+    <p class="form-error">{{ error }}</p>
+    {% endif %}
+    <form class="settings-form" method="post" action="/settings/account">
+      <div class="auth-form__field">
+        <label class="auth-form__label" for="account-nickname">Никнейм</label>
+        <input
+          class="auth-form__input"
+          id="account-nickname"
+          type="text"
+          name="nickname"
+          value="{{ nickname or '' }}"
+          maxlength="60"
+          placeholder="Необязательно"
+        >
+      </div>
+      <div class="auth-form__field">
+        <label class="auth-form__label" for="account-email">Email</label>
+        <input
+          class="auth-form__input"
+          id="account-email"
+          type="email"
+          name="email"
+          value="{{ email }}"
+          required
+        >
+      </div>
+      <div class="auth-form__field">
+        <label class="auth-form__label" for="account-bio">О себе</label>
+        <textarea
+          class="auth-form__input auth-form__input--textarea"
+          id="account-bio"
+          name="bio"
+          maxlength="280"
+          placeholder="Необязательно"
+        >{{ bio or '' }}</textarea>
+      </div>
+      <button class="btn btn--primary" type="submit">Сохранить</button>
+    </form>
+  </section>
+
+  <section class="settings-card">
+    <h2 class="reader-settings-section__title">Приватность</h2>
+    {% if privacy_saved %}
+    <p class="content__notice content__notice--success">Настройки приватности сохранены</p>
+    {% endif %}
+    <p class="content__hint">
+      Эти переключатели касаются только вашей публичной страницы профиля — сами вы всегда
+      видите свой профиль полностью, независимо от них.
+    </p>
+    <form class="settings-form" method="post" action="/settings/account/privacy">
+      <label class="auth-form__field auth-form__field--checkbox">
+        <input type="checkbox" name="show_currently_reading" {% if show_currently_reading %}checked{% endif %}>
+        <span>Показывать, что я сейчас читаю</span>
+      </label>
+      <label class="auth-form__field auth-form__field--checkbox">
+        <input type="checkbox" name="show_favorite" {% if show_favorite %}checked{% endif %}>
+        <span>Показывать избранный тайтл</span>
+      </label>
+      <label class="auth-form__field auth-form__field--checkbox">
+        <input type="checkbox" name="show_library" {% if show_library %}checked{% endif %}>
+        <span>Показывать библиотеку целиком</span>
+      </label>
+      <button class="btn btn--primary" type="submit">Сохранить</button>
+    </form>
+  </section>
   {% else %}
   {% from "_locked_feature.html" import locked_feature %}
   {% call locked_feature("Аккаунт скрыт", "/login", "Войти") %}
