@@ -15,6 +15,8 @@ import sqlite3
 from dataclasses import dataclass, field
 from datetime import UTC, datetime
 
+from app.auth.avatar import initials_for, url_for
+
 MAX_COMMENT_LENGTH = 2000
 
 
@@ -26,6 +28,12 @@ class Comment:
     body: str
     created_at: str
     parent_comment_id: int | None
+    # PR 147: the same picture-or-initials pairing avatar_url(user)/avatar_initials(user)
+    # give Jinja templates, precomputed here since comments render client-side from JSON
+    # rather than through those Jinja globals - avatar_initials is always present so the
+    # client never needs its own copy of initials_for()'s segment-splitting logic.
+    avatar_url: str | None
+    avatar_initials: str
     replies: list[Comment] = field(default_factory=list)
 
 
@@ -79,7 +87,7 @@ def create_comment(
     )
     conn.commit()
     author_row = conn.execute(
-        "SELECT nickname, email FROM users WHERE id = ?", (user_id,)
+        "SELECT nickname, email, avatar_path FROM users WHERE id = ?", (user_id,)
     ).fetchone()
     author = (author_row["nickname"] or author_row["email"]) if author_row else "?"
     return Comment(
@@ -89,6 +97,10 @@ def create_comment(
         body=body,
         created_at=created_at,
         parent_comment_id=parent_comment_id,
+        avatar_url=url_for(author_row["avatar_path"]) if author_row else None,
+        avatar_initials=initials_for(author_row["nickname"], author_row["email"])
+        if author_row
+        else "?",
     )
 
 
@@ -105,7 +117,7 @@ def list_comments_for_paragraph(
     its own to build."""
     rows = conn.execute(
         "SELECT comments.id, comments.user_id, comments.body, comments.created_at, "
-        "comments.parent_comment_id, users.nickname, users.email "
+        "comments.parent_comment_id, users.nickname, users.email, users.avatar_path "
         "FROM comments JOIN users ON users.id = comments.user_id "
         "WHERE comments.slug_url = ? AND comments.volume = ? AND comments.number = ? "
         "AND comments.branch_id = ? AND comments.paragraph_index = ? "
@@ -121,6 +133,8 @@ def list_comments_for_paragraph(
             body=row["body"],
             created_at=row["created_at"],
             parent_comment_id=row["parent_comment_id"],
+            avatar_url=url_for(row["avatar_path"]),
+            avatar_initials=initials_for(row["nickname"], row["email"]),
         )
         for row in rows
     }

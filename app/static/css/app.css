@@ -2726,6 +2726,10 @@ a {
   margin-top: 8px;
 }
 
+.paragraph-comments__list[hidden] {
+  display: none;
+}
+
 /* Reddit-style nesting: each level of reply indents via its own .replies wrapper's
    margin/border rather than a JS-computed depth * N inline style, so recursion in
    renderCommentNode() doesn't need to know or pass its own depth down at all. */
@@ -2740,14 +2744,38 @@ a {
 
 .paragraph-comment__meta {
   display: flex;
-  align-items: baseline;
+  align-items: center;
   gap: 8px;
   font-size: 12px;
+}
+
+/* PR 147: same picture-or-initials box as .sidebar__avatar (PR 88), just small enough to
+   sit inline in a 12px meta row instead of the sidebar. */
+.paragraph-comment__avatar {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex: 0 0 auto;
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  background: var(--accent);
+  color: var(--text-primary);
+  font-size: 9px;
+  font-weight: 600;
+  overflow: hidden;
 }
 
 .paragraph-comment__author {
   color: var(--text-primary);
   font-weight: 600;
+  text-decoration: none;
+}
+
+@media (hover: hover) {
+  .paragraph-comment__author:hover {
+    text-decoration: underline;
+  }
 }
 
 .paragraph-comment__time {
@@ -2817,6 +2845,10 @@ a {
   width: 240px;
   max-width: 100%;
   margin-top: 6px;
+}
+
+.paragraph-comments__composer[hidden] {
+  display: none;
 }
 
 .paragraph-comments__textarea {

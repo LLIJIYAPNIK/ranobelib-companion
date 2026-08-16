@@ -668,6 +668,9 @@ def test_post_comment_body_html_renders_markdown_and_strips_dangerous_input(
     assert "<script>" not in comment["body_html"]
     # The raw Markdown source is still stored/returned as-is - only body_html is rendered.
     assert comment["body"] == "**bold** <script>alert(1)</script>"
+    assert isinstance(comment["user_id"], int)
+    assert comment["avatar_url"] is None
+    assert comment["avatar_initials"] == "AL"
 
 
 def test_post_comment_reply_nests_under_its_parent(logged_in_client: TestClient) -> None:
