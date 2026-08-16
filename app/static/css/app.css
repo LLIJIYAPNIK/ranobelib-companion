@@ -2740,7 +2740,7 @@ a {
 
 .paragraph-comment__meta {
   display: flex;
-  align-items: baseline;
+  align-items: center;
   gap: 8px;
   font-size: 12px;
 }
@@ -2748,6 +2748,13 @@ a {
 .paragraph-comment__author {
   color: var(--text-primary);
   font-weight: 600;
+  text-decoration: none;
+}
+
+@media (hover: hover) {
+  .paragraph-comment__author:hover {
+    text-decoration: underline;
+  }
 }
 
 .paragraph-comment__time {

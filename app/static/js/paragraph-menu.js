@@ -266,8 +266,9 @@
 
     const meta = document.createElement("div");
     meta.className = "paragraph-comment__meta";
-    const author = document.createElement("span");
+    const author = document.createElement("a");
     author.className = "paragraph-comment__author";
+    author.href = `/profile/${comment.user_id}`;
     author.textContent = comment.author;
     const time = document.createElement("span");
     time.className = "paragraph-comment__time";
