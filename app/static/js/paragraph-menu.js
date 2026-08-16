@@ -275,9 +275,16 @@
     meta.append(author, time);
     el.append(meta);
 
-    const body = document.createElement("p");
+    // PR 148: comment.body_html is already-sanitized HTML from the same server-side
+    // renderer (app/markdown_render.py) for every comment, regardless of source - setting
+    // it via innerHTML rather than textContent is what actually turns Markdown into
+    // formatting; safe here specifically because nh3.clean() ran server-side on an
+    // allow-list, not because this is "just our own data". A <div>, not a <p>, since the
+    // rendered HTML brings its own block-level structure (paragraphs, <br>, lists) -
+    // nesting that inside a <p> would be invalid.
+    const body = document.createElement("div");
     body.className = "paragraph-comment__body";
-    body.textContent = comment.body;
+    body.innerHTML = comment.body_html;
     el.append(body);
 
     if (isAuthenticated) {

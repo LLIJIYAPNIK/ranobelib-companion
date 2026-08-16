@@ -26,6 +26,7 @@ from app.db.reactions import (
     user_reactions,
 )
 from app.db.users import User
+from app.markdown_render import render_comment_body
 from app.services.client import open_client
 from app.services.exports import available_export_formats
 from app.templating import templates
@@ -211,6 +212,7 @@ def _comment_to_dict(comment: Comment) -> dict:
         "id": comment.id,
         "author": comment.author,
         "body": comment.body,
+        "body_html": render_comment_body(comment.body),
         "created_at": comment.created_at,
         "parent_comment_id": comment.parent_comment_id,
         "replies": [_comment_to_dict(reply) for reply in comment.replies],
