@@ -2726,6 +2726,10 @@ a {
   margin-top: 8px;
 }
 
+.paragraph-comments__list[hidden] {
+  display: none;
+}
+
 /* Reddit-style nesting: each level of reply indents via its own .replies wrapper's
    margin/border rather than a JS-computed depth * N inline style, so recursion in
    renderCommentNode() doesn't need to know or pass its own depth down at all. */
@@ -2791,6 +2795,10 @@ a {
   width: 240px;
   max-width: 100%;
   margin-top: 6px;
+}
+
+.paragraph-comments__composer[hidden] {
+  display: none;
 }
 
 .paragraph-comments__textarea {
