@@ -467,7 +467,8 @@
     back.type = "button";
     back.className = "paragraph-menu__back";
     back.textContent = "← Назад";
-    back.addEventListener("click", () => {
+    back.addEventListener("click", (event) => {
+      event.stopPropagation();
       renderMenuItems(index);
       position(lastX, lastY);
     });
@@ -512,7 +513,8 @@
     back.type = "button";
     back.className = "paragraph-menu__back";
     back.textContent = "← Назад";
-    back.addEventListener("click", () => {
+    back.addEventListener("click", (event) => {
+      event.stopPropagation();
       renderMenuItems(index);
       position(lastX, lastY);
     });
@@ -551,7 +553,8 @@
     reactItem.className = "paragraph-menu__item";
     reactItem.setAttribute("role", "menuitem");
     reactItem.textContent = "Реакции";
-    reactItem.addEventListener("click", () => {
+    reactItem.addEventListener("click", (event) => {
+      event.stopPropagation();
       renderReactionPicker(index);
       position(lastX, lastY);
     });
@@ -562,7 +565,8 @@
     commentItem.className = "paragraph-menu__item";
     commentItem.setAttribute("role", "menuitem");
     commentItem.textContent = "Комментировать";
-    commentItem.addEventListener("click", () => {
+    commentItem.addEventListener("click", (event) => {
+      event.stopPropagation();
       renderCommentComposer(index);
       position(lastX, lastY);
     });
