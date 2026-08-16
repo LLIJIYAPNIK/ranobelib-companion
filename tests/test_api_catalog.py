@@ -98,6 +98,9 @@ def test_show_catalog_renders_a_quickview_trigger_on_each_card() -> None:
     assert 'data-role="title-quickview-trigger"' in response.text
     assert 'data-slug-url="1--test-novel-1"' in response.text
     assert "static/js/title-quickview.js" in response.text
+    # PR 142: the modal's own .title-hero__cover only exists once title-quickview.js
+    # fetches and injects it, so image-lightbox.js needs to be loaded here too.
+    assert "static/js/image-lightbox.js" in response.text
 
 
 def test_show_catalog_renders_back_to_top_button() -> None:

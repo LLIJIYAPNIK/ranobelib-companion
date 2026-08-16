@@ -12,14 +12,28 @@
 // open the lightbox, same as normal reading - it's only tap-to-read.js's own handler that
 // now excludes clicks on <img> (see the "a, button, img" check there), so the two no
 // longer compete for the same tap.
+//
+// PR 142: also opens for a title's own cover (.title-hero__cover), on the title page
+// itself (title.html) and inside the quick-view modal (_title_quickview.html, PR 117) -
+// as a one-image "gallery" (`multiple` below is already just `activeImages.length > 1`,
+// so a single cover naturally gets no counter/arrows without any extra branching). The
+// reader-content gallery above is built once, eagerly, since chapter.html renders every
+// image up front - a title cover can't be handled the same way, because the quick-view
+// modal's own cover only exists once title-quickview.js has fetched and injected that
+// fragment, well after this script's own querySelectorAll would have already run. A
+// delegated document-level click listener sidesteps that: it matches whichever
+// .title-hero__cover is under the click at the moment of the click, static or freshly
+// injected alike, rather than a list snapshotted at load. `activeImages` tracks whichever
+// gallery (the full reader-content list, or a synthetic one-element list for a cover) is
+// currently open, so render()/step() don't need to know which case they're in.
 (() => {
   const images = [...document.querySelectorAll(".reader-content img")];
-  if (images.length === 0) return;
 
   const MIN_ZOOM = 1;
   const MAX_ZOOM = 3;
   const ZOOM_STEP = 0.5;
 
+  let activeImages = images;
   let currentIndex = 0;
   let zoom = MIN_ZOOM;
 
@@ -55,19 +69,26 @@
   }
 
   function render() {
-    const src = images[currentIndex].currentSrc || images[currentIndex].src;
+    const src = activeImages[currentIndex].currentSrc || activeImages[currentIndex].src;
     imageEl.src = src;
-    imageEl.alt = images[currentIndex].alt || "";
+    imageEl.alt = activeImages[currentIndex].alt || "";
     imageEl.style.transform = `scale(${zoom})`;
-    downloadEl.href = src;
-    // A single image doesn't need "1 / 1" or arrows to get anywhere.
-    const multiple = images.length > 1;
-    counterEl.textContent = multiple ? `${currentIndex + 1} / ${images.length}` : "";
+    // PR 143: routed through a same-origin proxy (GET /images/download, app/api/
+    // images.py) rather than linking `src` directly - these images are hotlinked
+    // straight from ranobelib.me/cdnlibs.org, and the download attribute only works
+    // cross-origin if the target's own CORS headers happen to allow it, which is
+    // outside this app's control.
+    downloadEl.href = `/images/download?url=${encodeURIComponent(src)}`;
+    // A single image doesn't need "1 / 1" or arrows to get anywhere - true for a lone
+    // reader-content image same as for a title cover, which is always a one-element list.
+    const multiple = activeImages.length > 1;
+    counterEl.textContent = multiple ? `${currentIndex + 1} / ${activeImages.length}` : "";
     prevBtn.hidden = !multiple;
     nextBtn.hidden = !multiple;
   }
 
-  function open(index) {
+  function open(list, index) {
+    activeImages = list;
     currentIndex = index;
     zoom = MIN_ZOOM;
     render();
@@ -79,8 +100,8 @@
   }
 
   function step(delta) {
-    if (images.length < 2) return;
-    currentIndex = (currentIndex + delta + images.length) % images.length;
+    if (activeImages.length < 2) return;
+    currentIndex = (currentIndex + delta + activeImages.length) % activeImages.length;
     zoom = MIN_ZOOM;
     render();
   }
@@ -92,7 +113,17 @@
 
   images.forEach((img, index) => {
     img.style.cursor = "zoom-in";
-    img.addEventListener("click", () => open(index));
+    img.addEventListener("click", () => open(images, index));
+  });
+
+  // Delegated (not a per-element listener like the reader-content images above) because
+  // a title cover isn't always in the DOM yet when this script runs - see the file-top
+  // comment. cursor: zoom-in for .title-hero__cover lives in app.css rather than being
+  // set here for the same reason: this listener may fire against a cover injected long
+  // after load, so there's no single "attach time" to set an inline style at.
+  document.addEventListener("click", (event) => {
+    const cover = event.target.closest(".title-hero__cover");
+    if (cover) open([cover], 0);
   });
 
   closeBtn.addEventListener("click", close);

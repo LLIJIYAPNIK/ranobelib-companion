@@ -1616,6 +1616,12 @@ a {
   border-radius: 8px;
   object-fit: cover;
   background: var(--bg-surface);
+  /* PR 142: opens image-lightbox.js's fullscreen viewer, same as .reader-content img
+     already does - set here rather than inline via JS, since image-lightbox.js's own
+     click listener for this class is delegated and may only ever see a cover injected
+     long after load (the quick-view modal's own copy of this class, PR 117), with no
+     single "attach time" a script-set inline style could hook into. */
+  cursor: zoom-in;
 }
 
 .title-hero__info {
