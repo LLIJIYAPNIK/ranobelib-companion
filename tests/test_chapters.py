@@ -649,6 +649,25 @@ def test_post_comment_creates_a_root_comment(logged_in_client: TestClient) -> No
     assert comment["author"] == "alice@example.com"
     assert comment["parent_comment_id"] is None
     assert comment["replies"] == []
+    assert comment["body_html"] == "<p>Отличная глава!</p>\n"
+
+
+def test_post_comment_body_html_renders_markdown_and_strips_dangerous_input(
+    logged_in_client: TestClient,
+) -> None:
+    response = logged_in_client.post(
+        "/titles/6712--test-novel/chapters/1/5/comments",
+        data={
+            "paragraph_index": "0",
+            "body": "**bold** <script>alert(1)</script>",
+        },
+    )
+
+    comment = response.json()["comments"][0]
+    assert "<strong>bold</strong>" in comment["body_html"]
+    assert "<script>" not in comment["body_html"]
+    # The raw Markdown source is still stored/returned as-is - only body_html is rendered.
+    assert comment["body"] == "**bold** <script>alert(1)</script>"
     assert isinstance(comment["user_id"], int)
     assert comment["avatar_url"] is None
     assert comment["avatar_initials"] == "AL"

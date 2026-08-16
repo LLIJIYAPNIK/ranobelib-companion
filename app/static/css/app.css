@@ -2782,12 +2782,38 @@ a {
   color: var(--text-muted);
 }
 
+/* PR 148: body_html already brings its own block structure (<p>/<br>/<ul>/<ol> from
+   app/markdown_render.py) - no white-space: pre-wrap here anymore, that was only needed
+   to preserve line breaks in plain textContent, and would otherwise also render the
+   whitespace nh3.clean() leaves between tags. */
 .paragraph-comment__body {
   margin: 4px 0;
   font-size: 13px;
   color: var(--text-secondary);
-  white-space: pre-wrap;
   overflow-wrap: break-word;
+}
+
+.paragraph-comment__body p {
+  margin: 0 0 6px;
+}
+
+.paragraph-comment__body p:last-child {
+  margin-bottom: 0;
+}
+
+.paragraph-comment__body ul,
+.paragraph-comment__body ol {
+  margin: 0 0 6px;
+  padding-left: 20px;
+}
+
+.paragraph-comment__body ul:last-child,
+.paragraph-comment__body ol:last-child {
+  margin-bottom: 0;
+}
+
+.paragraph-comment__body a {
+  color: var(--accent-teal);
 }
 
 .paragraph-comment__reply-toggle {
@@ -2845,6 +2871,13 @@ a {
 
 .paragraph-comments__composer .btn {
   align-self: flex-end;
+}
+
+/* PR 148: syntax hint for the subset app/markdown_render.py actually renders. */
+.paragraph-comments__hint {
+  margin: 0;
+  font-size: 11px;
+  color: var(--text-muted);
 }
 
 /* PR 89: /settings split into left-nav tabs (Чтение/Аккаунт/Безопасность) under their

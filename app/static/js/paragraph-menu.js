@@ -258,6 +258,12 @@
     textarea.placeholder = placeholder;
     textarea.rows = 3;
     textarea.maxLength = 2000; // mirrors MAX_COMMENT_LENGTH in app/db/comments.py
+    // PR 148: the same minimal subset app/markdown_render.py actually renders - not a
+    // full Markdown cheatsheet, so it doesn't promise syntax (headings, code blocks,
+    // images) this feature silently drops.
+    const hint = document.createElement("p");
+    hint.className = "paragraph-comments__hint";
+    hint.textContent = "Поддерживается: **жирный**, *курсив*, ~~зачёркнутый~~, [ссылка](url), списки";
     const submit = document.createElement("button");
     submit.type = "button";
     submit.className = "btn btn--sm";
@@ -275,7 +281,7 @@
         submit.disabled = false;
       }
     });
-    wrap.append(textarea, submit);
+    wrap.append(textarea, hint, submit);
     return wrap;
   }
 
@@ -295,9 +301,16 @@
     meta.append(buildCommentAvatar(comment), author, time);
     el.append(meta);
 
-    const body = document.createElement("p");
+    // PR 148: comment.body_html is already-sanitized HTML from the same server-side
+    // renderer (app/markdown_render.py) for every comment, regardless of source - setting
+    // it via innerHTML rather than textContent is what actually turns Markdown into
+    // formatting; safe here specifically because nh3.clean() ran server-side on an
+    // allow-list, not because this is "just our own data". A <div>, not a <p>, since the
+    // rendered HTML brings its own block-level structure (paragraphs, <br>, lists) -
+    // nesting that inside a <p> would be invalid.
+    const body = document.createElement("div");
     body.className = "paragraph-comment__body";
-    body.textContent = comment.body;
+    body.innerHTML = comment.body_html;
     el.append(body);
 
     if (isAuthenticated) {
