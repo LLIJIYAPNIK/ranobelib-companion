@@ -506,9 +506,12 @@
     body.innerHTML = comment.body_html;
     el.append(body);
 
-    // PR 150: the GIF a comment can carry, already converted server-side (app/gif_video.py)
-    // into a silent looping mp4 - rendered as <video>, not <img>, so it behaves like one
-    // (autoplay/loop/muted/no controls) instead of like the picture it visually resembles.
+    // PR 150/151: the one attachment a comment can carry - "gif" is a plain upload
+    // converted server-side (app/gif_video.py) into a silent looping mp4, rendered the
+    // same way as one so it behaves like a video (autoplay/loop/muted/no controls)
+    // instead of like the picture it visually resembles. "image"/"video" are stored
+    // as-is (app/comment_attachment.py) and rendered plainly - <img>, or <video controls>
+    // since an intentional video upload isn't meant to be a silent background loop.
     if (comment.attachment_url && comment.attachment_kind === "gif") {
       const video = document.createElement("video");
       video.className = "paragraph-comment__attachment";
@@ -518,6 +521,18 @@
       video.muted = true;
       video.playsInline = true;
       el.append(video);
+    } else if (comment.attachment_url && comment.attachment_kind === "video") {
+      const video = document.createElement("video");
+      video.className = "paragraph-comment__attachment";
+      video.src = comment.attachment_url;
+      video.controls = true;
+      el.append(video);
+    } else if (comment.attachment_url && comment.attachment_kind === "image") {
+      const img = document.createElement("img");
+      img.className = "paragraph-comment__attachment";
+      img.src = comment.attachment_url;
+      img.alt = "";
+      el.append(img);
     }
 
     if (isAuthenticated) {
