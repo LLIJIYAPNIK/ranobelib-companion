@@ -25,8 +25,12 @@ from app.main import app
 client = TestClient(app)
 
 # The smallest possible valid GIF (1x1, transparent) - see tests/test_gif_video.py for
-# the same fixture and why it isn't generated via ffmpeg itself.
+# the same fixture and why it isn't generated via ffmpeg itself. _JPEG_BYTES/_MP4_BYTES
+# are just enough of each format's magic bytes for app/comment_attachment.py's sniffing
+# to recognize them - see tests/test_comment_attachment.py for the same fixtures.
 _TINY_GIF = base64.b64decode("R0lGODlhAQABAIAAAAAAAP///ywAAAAAAQABAAACAUwAOw==")
+_JPEG_BYTES = b"\xff\xd8\xff" + b"\x00" * 32
+_MP4_BYTES = b"\x00\x00\x00\x18ftyp" + b"\x00" * 32
 _requires_ffmpeg = pytest.mark.skipif(
     not is_ffmpeg_available(), reason="ffmpeg not installed in this environment"
 )
@@ -273,18 +277,6 @@ def test_read_chapter_marks_content_not_authenticated_when_anonymous() -> None:
         response = client.get("/titles/6712--test-novel/chapters/1/5")
 
     assert 'data-authenticated=""' in response.text
-
-
-def test_read_chapter_marks_gif_attachments_available_state() -> None:
-    # data-gif-attachments mirrors app/gif_video.py's is_ffmpeg_available() - whatever
-    # this environment's actual value is, the template should reflect it exactly, not
-    # hardcode either state.
-    chapter = Chapter(id=1, volume="1", number="5", content="<p>x</p>")
-    with patch("app.services.client.RanobeLib", return_value=_FakeClient(chapter)):
-        response = client.get("/titles/6712--test-novel/chapters/1/5")
-
-    expected = "1" if is_ffmpeg_available() else ""
-    assert f'data-gif-attachments="{expected}"' in response.text
 
 
 def test_read_chapter_crosses_volume_boundary() -> None:
@@ -706,13 +698,13 @@ def test_post_comment_without_a_gif_has_no_attachment(logged_in_client: TestClie
     assert comment["attachment_kind"] is None
 
 
-def test_post_comment_rejects_a_file_that_isnt_actually_a_gif(
+def test_post_comment_rejects_a_file_that_isnt_a_recognized_type(
     logged_in_client: TestClient,
 ) -> None:
     response = logged_in_client.post(
         "/titles/6712--test-novel/chapters/1/5/comments",
         data={"paragraph_index": "0", "body": "look"},
-        files={"gif": ("fake.gif", b"not actually a gif", "image/gif")},
+        files={"attachment": ("mystery.bin", b"not a real file", "application/octet-stream")},
     )
 
     assert response.status_code == 400
@@ -725,7 +717,7 @@ def test_post_comment_with_a_gif_converts_and_returns_the_attachment(
     response = logged_in_client.post(
         "/titles/6712--test-novel/chapters/1/5/comments",
         data={"paragraph_index": "0", "body": "check this out"},
-        files={"gif": ("cat.gif", _TINY_GIF, "image/gif")},
+        files={"attachment": ("cat.gif", _TINY_GIF, "image/gif")},
     )
 
     assert response.status_code == 200
@@ -740,12 +732,49 @@ def test_post_comment_with_a_gif_converts_and_returns_the_attachment(
     assert stored_file.stat().st_size > 0
 
 
+def test_post_comment_with_a_jpeg_attachment(logged_in_client: TestClient) -> None:
+    response = logged_in_client.post(
+        "/titles/6712--test-novel/chapters/1/5/comments",
+        data={"paragraph_index": "0", "body": "look at this"},
+        files={"attachment": ("photo.jpg", _JPEG_BYTES, "image/jpeg")},
+    )
+
+    assert response.status_code == 200
+    comment = response.json()["comments"][0]
+    assert comment["attachment_kind"] == "image"
+    assert comment["attachment_url"].endswith(".jpg")
+
+
+def test_post_comment_with_an_mp4_attachment(logged_in_client: TestClient) -> None:
+    response = logged_in_client.post(
+        "/titles/6712--test-novel/chapters/1/5/comments",
+        data={"paragraph_index": "0", "body": "watch this"},
+        files={"attachment": ("clip.mp4", _MP4_BYTES, "video/mp4")},
+    )
+
+    assert response.status_code == 200
+    comment = response.json()["comments"][0]
+    assert comment["attachment_kind"] == "video"
+    assert comment["attachment_url"].endswith(".mp4")
+
+
+def test_post_comment_rejects_an_oversized_image(logged_in_client: TestClient) -> None:
+    oversized_jpeg = _JPEG_BYTES + b"\x00" * (9 * 1024 * 1024)
+    response = logged_in_client.post(
+        "/titles/6712--test-novel/chapters/1/5/comments",
+        data={"paragraph_index": "0", "body": "big"},
+        files={"attachment": ("huge.jpg", oversized_jpeg, "image/jpeg")},
+    )
+
+    assert response.status_code == 400
+
+
 @_requires_ffmpeg
 def test_post_comment_with_a_gif_allows_an_empty_body(logged_in_client: TestClient) -> None:
     response = logged_in_client.post(
         "/titles/6712--test-novel/chapters/1/5/comments",
         data={"paragraph_index": "0", "body": ""},
-        files={"gif": ("cat.gif", _TINY_GIF, "image/gif")},
+        files={"attachment": ("cat.gif", _TINY_GIF, "image/gif")},
     )
 
     assert response.status_code == 200

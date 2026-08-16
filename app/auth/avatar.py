@@ -10,6 +10,7 @@ from fastapi import UploadFile
 
 from app.config import get_settings
 from app.db.users import User
+from app.image_sniff import looks_like_jpeg, looks_like_png, looks_like_webp
 
 _SEGMENT_SPLIT = re.compile(r"[\s._\-+]+")
 
@@ -61,15 +62,15 @@ class AvatarUploadError(Exception):
 
 
 def _looks_like(contents: bytes, extension: str) -> bool:
-    """Sniffs the actual bytes rather than trusting the browser-supplied content-type
-    header alone - a renamed/relabeled file (e.g. an .exe served as "image/png") would
-    otherwise sail through the content-type check above."""
+    """Dispatches to app/image_sniff.py by the extension the content-type check above
+    already picked, rather than trusting the browser-supplied header alone - a renamed/
+    relabeled file (e.g. an .exe served as "image/png") would otherwise sail through."""
     if extension == ".jpg":
-        return contents.startswith(b"\xff\xd8\xff")
+        return looks_like_jpeg(contents)
     if extension == ".png":
-        return contents.startswith(b"\x89PNG\r\n\x1a\n")
+        return looks_like_png(contents)
     if extension == ".webp":
-        return contents[:4] == b"RIFF" and contents[8:12] == b"WEBP"
+        return looks_like_webp(contents)
     return False
 
 

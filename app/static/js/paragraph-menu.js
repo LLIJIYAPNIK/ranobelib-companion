@@ -71,12 +71,6 @@
   const number = content.dataset.number || "";
   const branchId = content.dataset.branchId || "";
   const isAuthenticated = content.dataset.authenticated === "1";
-  // PR 150: server-side ffmpeg availability (app/gif_video.py's is_ffmpeg_available(),
-  // read_chapter() in app/api/chapters.py) - same "feature not available right now" gate
-  // as the PDF export format only showing up when WeasyPrint is installed, just decided
-  // per-request instead of once at import time. No GIF button at all when this is false,
-  // rather than a button that always fails.
-  const gifAttachmentsAvailable = content.dataset.gifAttachments === "1";
 
   // Finds the .reader-content child (paragraph plate or bare paragraph) that `target`
   // sits inside, or null if the click landed outside them entirely (e.g. the "tap to
@@ -340,10 +334,10 @@
     if (event.key === "Escape" && isEmojiPickerOpen()) closeEmojiPicker();
   });
 
-  // A reusable textarea + emoji-picker/GIF triggers + "Отправить" button, shared by the
-  // menu's "Комментировать" composer and every comment's own "Ответить" reply form - the
-  // only difference between them is what `onSubmit` does with the typed body (and, PR
-  // 150, the staged GIF file, if any).
+  // A reusable textarea + emoji-picker/attachment triggers + "Отправить" button, shared
+  // by the menu's "Комментировать" composer and every comment's own "Ответить" reply
+  // form - the only difference between them is what `onSubmit` does with the typed body
+  // (and, PR 150/151, the staged attachment file, if any).
   function buildComposer(onSubmit, placeholder) {
     const wrap = document.createElement("div");
     wrap.className = "paragraph-comments__composer";
@@ -374,62 +368,82 @@
     hint.className = "paragraph-comments__hint";
     hint.textContent = "Поддерживается: **жирный**, *курсив*, ~~зачёркнутый~~, [ссылка](url), списки";
 
-    // PR 150: staged client-side until the visitor actually hits "Отправить" - the file
-    // itself is what travels to the server (as multipart, submitComment below), this
-    // composer never does its own upload/preview request. null when nothing's staged, the
-    // steady state for the overwhelming majority of comments.
-    let stagedGif = null;
-    let gifInput = null;
-    let gifChip = null;
+    // PR 150/151: staged client-side until the visitor actually hits "Отправить" - the
+    // file itself is what travels to the server (as multipart, submitComment below), this
+    // composer never does its own upload request. null when nothing's staged, the steady
+    // state for the overwhelming majority of comments. One button for image/video/GIF
+    // alike (not a separate button per file type) - app/comment_attachment.py sniffs the
+    // actual bytes server-side to decide what to do with it.
+    let stagedAttachment = null;
+    let attachmentInput = null;
+    let attachmentChip = null;
+    let attachmentPreviewUrl = null;
 
-    function clearStagedGif() {
-      stagedGif = null;
-      if (gifInput) gifInput.value = "";
-      gifChip?.remove();
-      gifChip = null;
+    function clearStagedAttachment() {
+      stagedAttachment = null;
+      if (attachmentInput) attachmentInput.value = "";
+      attachmentChip?.remove();
+      attachmentChip = null;
+      // Revoked only after the <img> using it is gone - revoking first would leave that
+      // preview broken for the brief moment before removal takes effect.
+      if (attachmentPreviewUrl) URL.revokeObjectURL(attachmentPreviewUrl);
+      attachmentPreviewUrl = null;
     }
 
-    function stageGif(file) {
-      stagedGif = file;
-      gifChip?.remove();
-      gifChip = document.createElement("div");
-      gifChip.className = "paragraph-comments__gif-chip";
+    function stageAttachment(file) {
+      stagedAttachment = file;
+      attachmentChip?.remove();
+      if (attachmentPreviewUrl) URL.revokeObjectURL(attachmentPreviewUrl);
+      attachmentPreviewUrl = null;
+
+      attachmentChip = document.createElement("div");
+      attachmentChip.className = "paragraph-comments__attachment-chip";
+
+      // PR 151: a real thumbnail for an image (GIF included - it animates in the
+      // preview just like it will once posted), a filename is preview enough for a
+      // video (a moving preview client-side isn't worth the complexity here).
+      if (file.type.startsWith("image/")) {
+        attachmentPreviewUrl = URL.createObjectURL(file);
+        const thumb = document.createElement("img");
+        thumb.className = "paragraph-comments__attachment-chip-thumb";
+        thumb.src = attachmentPreviewUrl;
+        thumb.alt = "";
+        attachmentChip.append(thumb);
+      }
+
       const name = document.createElement("span");
-      name.className = "paragraph-comments__gif-chip-name";
+      name.className = "paragraph-comments__attachment-chip-name";
       name.textContent = file.name;
       const remove = document.createElement("button");
       remove.type = "button";
-      remove.className = "paragraph-comments__gif-chip-remove";
-      remove.setAttribute("aria-label", "Убрать GIF");
-      remove.title = "Убрать GIF";
+      remove.className = "paragraph-comments__attachment-chip-remove";
+      remove.setAttribute("aria-label", "Убрать вложение");
+      remove.title = "Убрать вложение";
       remove.textContent = "×";
-      remove.addEventListener("click", clearStagedGif);
-      gifChip.append(name, remove);
-      wrap.insertBefore(gifChip, hint);
+      remove.addEventListener("click", clearStagedAttachment);
+      attachmentChip.append(name, remove);
+      wrap.insertBefore(attachmentChip, hint);
     }
 
-    let gifToggle = null;
-    if (gifAttachmentsAvailable) {
-      gifInput = document.createElement("input");
-      gifInput.type = "file";
-      gifInput.accept = "image/gif";
-      gifInput.hidden = true;
-      gifInput.addEventListener("change", () => {
-        const file = gifInput.files?.[0];
-        if (file) stageGif(file);
-      });
+    attachmentInput = document.createElement("input");
+    attachmentInput.type = "file";
+    attachmentInput.accept = "image/*,video/*";
+    attachmentInput.hidden = true;
+    attachmentInput.addEventListener("change", () => {
+      const file = attachmentInput.files?.[0];
+      if (file) stageAttachment(file);
+    });
 
-      gifToggle = document.createElement("button");
-      gifToggle.type = "button";
-      gifToggle.className = "paragraph-comments__gif-toggle";
-      gifToggle.setAttribute("aria-label", "Прикрепить GIF");
-      gifToggle.title = "Прикрепить GIF";
-      gifToggle.textContent = "GIF";
-      gifToggle.addEventListener("click", (event) => {
-        event.stopPropagation();
-        gifInput.click();
-      });
-    }
+    const attachmentToggle = document.createElement("button");
+    attachmentToggle.type = "button";
+    attachmentToggle.className = "paragraph-comments__attachment-toggle";
+    attachmentToggle.setAttribute("aria-label", "Прикрепить файл");
+    attachmentToggle.title = "Прикрепить изображение, GIF или видео";
+    attachmentToggle.textContent = "📎";
+    attachmentToggle.addEventListener("click", (event) => {
+      event.stopPropagation();
+      attachmentInput.click();
+    });
 
     const submit = document.createElement("button");
     submit.type = "button";
@@ -437,16 +451,16 @@
     submit.textContent = "Отправить";
     submit.addEventListener("click", async () => {
       const body = textarea.value.trim();
-      if (!body && !stagedGif) return;
+      if (!body && !stagedAttachment) return;
       submit.disabled = true;
       try {
         // Only clears the box on a confirmed success - a rejected/network-failed post
-        // (onSubmit returning false) leaves the typed text (and any staged GIF) in
-        // place so neither is lost, same reasoning a normal <form> submit failure
+        // (onSubmit returning false) leaves the typed text (and any staged attachment)
+        // in place so neither is lost, same reasoning a normal <form> submit failure
         // wouldn't wipe the field either.
-        if (await onSubmit(body, stagedGif)) {
+        if (await onSubmit(body, stagedAttachment)) {
           textarea.value = "";
-          clearStagedGif();
+          clearStagedAttachment();
         }
       } finally {
         submit.disabled = false;
@@ -457,8 +471,7 @@
     toolbar.className = "paragraph-comments__toolbar";
     const triggers = document.createElement("div");
     triggers.className = "paragraph-comments__triggers";
-    triggers.append(emojiToggle);
-    if (gifToggle) triggers.append(gifToggle, gifInput);
+    triggers.append(emojiToggle, attachmentToggle, attachmentInput);
     toolbar.append(triggers, submit);
 
     wrap.append(textarea, hint, toolbar);
@@ -493,9 +506,12 @@
     body.innerHTML = comment.body_html;
     el.append(body);
 
-    // PR 150: the GIF a comment can carry, already converted server-side (app/gif_video.py)
-    // into a silent looping mp4 - rendered as <video>, not <img>, so it behaves like one
-    // (autoplay/loop/muted/no controls) instead of like the picture it visually resembles.
+    // PR 150/151: the one attachment a comment can carry - "gif" is a plain upload
+    // converted server-side (app/gif_video.py) into a silent looping mp4, rendered the
+    // same way as one so it behaves like a video (autoplay/loop/muted/no controls)
+    // instead of like the picture it visually resembles. "image"/"video" are stored
+    // as-is (app/comment_attachment.py) and rendered plainly - <img>, or <video controls>
+    // since an intentional video upload isn't meant to be a silent background loop.
     if (comment.attachment_url && comment.attachment_kind === "gif") {
       const video = document.createElement("video");
       video.className = "paragraph-comment__attachment";
@@ -505,6 +521,18 @@
       video.muted = true;
       video.playsInline = true;
       el.append(video);
+    } else if (comment.attachment_url && comment.attachment_kind === "video") {
+      const video = document.createElement("video");
+      video.className = "paragraph-comment__attachment";
+      video.src = comment.attachment_url;
+      video.controls = true;
+      el.append(video);
+    } else if (comment.attachment_url && comment.attachment_kind === "image") {
+      const img = document.createElement("img");
+      img.className = "paragraph-comment__attachment";
+      img.src = comment.attachment_url;
+      img.alt = "";
+      el.append(img);
     }
 
     if (isAuthenticated) {
@@ -513,7 +541,7 @@
       replyToggle.className = "paragraph-comment__reply-toggle";
       replyToggle.textContent = "Ответить";
       const replyForm = buildComposer(
-        (text, gifFile) => submitComment(index, text, comment.id, gifFile),
+        (text, attachmentFile) => submitComment(index, text, comment.id, attachmentFile),
         "Ваш ответ…"
       );
       replyForm.hidden = true;
@@ -634,22 +662,22 @@
   }
 
   // Returns whether the post actually went through - buildComposer's caller uses this to
-  // decide whether to clear the textarea/staged GIF (a rejected/network-failed post
-  // shouldn't lose what the visitor typed or picked).
+  // decide whether to clear the textarea/staged attachment (a rejected/network-failed
+  // post shouldn't lose what the visitor typed or picked).
   //
   // PR 150: always FormData now, even for a plain text comment with no attachment - a
   // second urlencoded-vs-multipart code path here just to avoid a FormData object for the
   // common case isn't worth carrying once the endpoint itself already accepts multipart
-  // unconditionally (it has to, for the GIF case). No Content-Type header set - the
-  // browser fills in FormData's own multipart boundary, which a hardcoded header would
-  // break.
-  async function submitComment(index, body, parentCommentId, gifFile) {
+  // unconditionally (it has to, for the attachment case). No Content-Type header set -
+  // the browser fills in FormData's own multipart boundary, which a hardcoded header
+  // would break.
+  async function submitComment(index, body, parentCommentId, attachmentFile) {
     const formData = new FormData();
     formData.set("paragraph_index", String(index));
     formData.set("body", body);
     formData.set("branch_id", branchId);
     if (parentCommentId != null) formData.set("parent_comment_id", String(parentCommentId));
-    if (gifFile) formData.set("gif", gifFile);
+    if (attachmentFile) formData.set("attachment", attachmentFile);
     let data;
     try {
       const response = await fetch(`/titles/${slugUrl}/chapters/${volume}/${number}/comments`, {
@@ -707,8 +735,8 @@
     });
     panel.append(back);
 
-    const composer = buildComposer(async (text, gifFile) => {
-      const ok = await submitComment(index, text, null, gifFile);
+    const composer = buildComposer(async (text, attachmentFile) => {
+      const ok = await submitComment(index, text, null, attachmentFile);
       if (ok) close();
       return ok;
     }, "Написать комментарий…");
