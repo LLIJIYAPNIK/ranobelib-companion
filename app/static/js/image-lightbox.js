@@ -73,7 +73,12 @@
     imageEl.src = src;
     imageEl.alt = activeImages[currentIndex].alt || "";
     imageEl.style.transform = `scale(${zoom})`;
-    downloadEl.href = src;
+    // PR 143: routed through a same-origin proxy (GET /images/download, app/api/
+    // images.py) rather than linking `src` directly - these images are hotlinked
+    // straight from ranobelib.me/cdnlibs.org, and the download attribute only works
+    // cross-origin if the target's own CORS headers happen to allow it, which is
+    // outside this app's control.
+    downloadEl.href = `/images/download?url=${encodeURIComponent(src)}`;
     // A single image doesn't need "1 / 1" or arrows to get anywhere - true for a lone
     // reader-content image same as for a title cover, which is always a one-element list.
     const multiple = activeImages.length > 1;
