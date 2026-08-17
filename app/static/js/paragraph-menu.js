@@ -111,6 +111,55 @@
     return host;
   }
 
+  // PR 156: the original chapter paragraph a menu is open for, unwrapped from whichever
+  // host may have replaced it in `content.children` - paragraphHostFor above always
+  // appends the raw element as the wrapper's *first* child before anything else
+  // (reactions strip, comments section, tap-to-read's own timestamp span) gets added, in
+  // both wrapper kinds it recognizes, so `firstElementChild` reliably isolates just the
+  // paragraph's own text from that later UI. An unwrapped paragraph (no reactions/
+  // comments attached yet) has no such wrapper to unwrap - `content.children[index]` is
+  // already the raw element in that case.
+  function paragraphContentElementFor(index) {
+    const el = content.children[index];
+    if (!el) return null;
+    const wrapped =
+      el.classList.contains("reader-content__paragraph-wrap") ||
+      el.classList.contains("paragraph-reactions-host");
+    return wrapped ? el.firstElementChild : el;
+  }
+
+  // `> `-prefixes every line, blank lines included (a bare `>`, not `> ` with trailing
+  // whitespace nh3 would just strip again) - markdown-it's blockquote rule only keeps
+  // consecutive `>`-prefixed lines together as one quote, so a blank *unprefixed* line
+  // would end the quote early instead of just separating two paragraphs inside it.
+  function quoteLines(text) {
+    return text
+      .split("\n")
+      .map((line) => (line ? `> ${line}` : ">"))
+      .join("\n");
+  }
+
+  // The rendered paragraph text, not its raw HTML - .innerText (not .textContent) so a
+  // paragraph with actual line breaks in its layout (e.g. a <ul> the SDK's sanitizer
+  // allowed through) quotes as multiple prefixed lines instead of one run-together line.
+  function quoteParagraphText(index) {
+    const el = paragraphContentElementFor(index);
+    return el ? quoteLines(el.innerText.trim()) : "";
+  }
+
+  // Appends rather than overwrites - quoting a second thing (or quoting after already
+  // typing a reply) shouldn't discard what's already in the box. `composer` is whatever
+  // buildComposer() returned; its own .textarea property is what makes this possible for
+  // a composer built once and reused across multiple later "Цитировать" clicks (the
+  // context menu's own composer never needs this - see buildComposer's own comment).
+  function insertQuote(composer, quotedText) {
+    const textarea = composer?.textarea;
+    if (!textarea || !quotedText) return;
+    const gap = textarea.value && !textarea.value.endsWith("\n\n") ? "\n\n" : "";
+    textarea.value = `${textarea.value}${gap}${quotedText}\n\n`;
+    textarea.focus();
+  }
+
   function renderStrip(index, counts, mineEmoji) {
     const host = paragraphHostFor(index);
     if (!host) return;
@@ -338,7 +387,14 @@
   // by the menu's "Комментировать" composer and every comment's own "Ответить" reply
   // form - the only difference between them is what `onSubmit` does with the typed body
   // (and, PR 150/151, the staged attachment file, if any).
-  function buildComposer(onSubmit, placeholder) {
+  // PR 156: `initialValue` pre-fills the textarea at creation time (used for the
+  // context menu's "Цитировать" - renderCommentComposer below builds a fresh composer
+  // per open, so a constructor argument is all that's needed there). `wrap.textarea` is
+  // exposed separately for the other "Цитировать" trigger, on an existing comment's own
+  // reply form - that composer is built once per comment (not rebuilt on each click), so
+  // inserting a quote into it later needs a live reference, not just a one-time initial
+  // value (see insertQuote below).
+  function buildComposer(onSubmit, placeholder, initialValue = "") {
     const wrap = document.createElement("div");
     wrap.className = "paragraph-comments__composer";
     const textarea = document.createElement("textarea");
@@ -346,6 +402,8 @@
     textarea.placeholder = placeholder;
     textarea.rows = 3;
     textarea.maxLength = 2000; // mirrors MAX_COMMENT_LENGTH in app/db/comments.py
+    textarea.value = initialValue;
+    wrap.textarea = textarea;
     const emojiToggle = document.createElement("button");
     emojiToggle.type = "button";
     emojiToggle.className = "paragraph-comments__emoji-toggle";
@@ -621,7 +679,21 @@
       replyToggle.addEventListener("click", () => {
         replyForm.hidden = !replyForm.hidden;
       });
-      el.append(replyToggle, replyForm);
+
+      // PR 156: quotes this comment's own raw Markdown (comment.body, not the rendered
+      // body_html) into the reply form, opening it if it wasn't already - "тем же образом
+      // при открытии формы ответа" per the roadmap, so unlike replyToggle above this
+      // always reveals the form rather than toggling it shut on a second click.
+      const quoteToggle = document.createElement("button");
+      quoteToggle.type = "button";
+      quoteToggle.className = "paragraph-comment__quote-toggle";
+      quoteToggle.textContent = "Цитировать";
+      quoteToggle.addEventListener("click", () => {
+        replyForm.hidden = false;
+        insertQuote(replyForm, quoteLines(comment.body));
+      });
+
+      el.append(replyToggle, quoteToggle, replyForm);
     } else {
       const link = document.createElement("a");
       link.className = "paragraph-comment__reply-toggle";
@@ -826,7 +898,9 @@
   }
   loadInitialCommentCounts();
 
-  function renderCommentComposer(index) {
+  // `quotedText` (PR 156) pre-fills the composer when opened via "Цитировать" instead of
+  // "Комментировать" - empty for the latter, same composer either way.
+  function renderCommentComposer(index, quotedText = "") {
     panel.replaceChildren();
 
     const back = document.createElement("button");
@@ -840,11 +914,15 @@
     });
     panel.append(back);
 
-    const composer = buildComposer(async (text, attachmentFile) => {
-      const ok = await submitComment(index, text, null, attachmentFile);
-      if (ok) close();
-      return ok;
-    }, "Написать комментарий…");
+    const composer = buildComposer(
+      async (text, attachmentFile) => {
+        const ok = await submitComment(index, text, null, attachmentFile);
+        if (ok) close();
+        return ok;
+      },
+      "Написать комментарий…",
+      quotedText
+    );
     panel.append(composer);
   }
 
@@ -911,6 +989,7 @@
     if (!isAuthenticated) {
       addLoginItem("Реакции");
       addLoginItem("Комментировать");
+      addLoginItem("Цитировать");
       return;
     }
 
@@ -937,6 +1016,21 @@
       position(lastX, lastY);
     });
     panel.append(commentItem);
+
+    // PR 156: opens the same composer as "Комментировать", pre-filled with the chapter
+    // paragraph's own text quoted (`> `-prefixed) - a starting point for a comment about
+    // this specific paragraph, not a separate posting flow of its own.
+    const quoteItem = document.createElement("button");
+    quoteItem.type = "button";
+    quoteItem.className = "paragraph-menu__item";
+    quoteItem.setAttribute("role", "menuitem");
+    quoteItem.textContent = "Цитировать";
+    quoteItem.addEventListener("click", (event) => {
+      event.stopPropagation();
+      renderCommentComposer(index, quoteParagraphText(index));
+      position(lastX, lastY);
+    });
+    panel.append(quoteItem);
   }
 
   function position(x, y) {

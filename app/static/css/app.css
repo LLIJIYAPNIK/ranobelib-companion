@@ -2958,6 +2958,29 @@ img.paragraph-comment__attachment {
   }
 }
 
+/* PR 156: "Цитировать" next to "Ответить" - same ghost-text treatment, own class only so
+   it can carry the same margin-left spacing .paragraph-comment__collapse-toggle already
+   uses to separate itself from "Ответить" (both classes can't share one selector here,
+   since .paragraph-comment__reply-toggle is also reused as-is for the anonymous "Войти,
+   чтобы ответить" link, which never sits next to a "Цитировать" of its own). */
+.paragraph-comment__quote-toggle {
+  padding: 0;
+  margin-left: 8px;
+  border: none;
+  background: none;
+  color: var(--text-muted);
+  font-family: inherit;
+  font-size: 12px;
+  cursor: pointer;
+  transition: color 0.1s ease;
+}
+
+@media (hover: hover) {
+  .paragraph-comment__quote-toggle:hover {
+    color: var(--accent-teal);
+  }
+}
+
 /* PR 152: the "[–]"/"[+]" collapse trigger next to "Ответить" - same ghost-text
    treatment as .paragraph-comment__reply-toggle, just its own class since the two
    aren't mutually exclusive styling-wise (a comment can have both at once). */
