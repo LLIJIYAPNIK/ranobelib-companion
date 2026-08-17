@@ -26,6 +26,14 @@
 // injected alike, rather than a list snapshotted at load. `activeImages` tracks whichever
 // gallery (the full reader-content list, or a synthetic one-element list for a cover) is
 // currently open, so render()/step() don't need to know which case they're in.
+//
+// PR 154: also opens for a comment's own image attachment (img.paragraph-comment__attachment,
+// paragraph-menu.js) - the same delegated-listener reasoning as the title cover above
+// applies even more directly here, since comment threads load lazily via fetch() well
+// after this script's own querySelectorAll has already run, and can keep loading more
+// (replies, newly posted comments) for as long as the page stays open. Scoped to `img`
+// specifically: video/gif attachments share the same class (PR 150/151) but open inline
+// with their own controls instead, not this viewer.
 (() => {
   const images = [...document.querySelectorAll(".reader-content img")];
 
@@ -68,17 +76,34 @@
     return overlay.classList.contains("image-lightbox--open");
   }
 
+  function isSameOrigin(src) {
+    try {
+      return new URL(src, window.location.href).origin === window.location.origin;
+    } catch {
+      return false;
+    }
+  }
+
   function render() {
     const src = activeImages[currentIndex].currentSrc || activeImages[currentIndex].src;
     imageEl.src = src;
     imageEl.alt = activeImages[currentIndex].alt || "";
     imageEl.style.transform = `scale(${zoom})`;
     // PR 143: routed through a same-origin proxy (GET /images/download, app/api/
-    // images.py) rather than linking `src` directly - these images are hotlinked
-    // straight from ranobelib.me/cdnlibs.org, and the download attribute only works
-    // cross-origin if the target's own CORS headers happen to allow it, which is
+    // images.py) rather than linking `src` directly - reader-content/cover images are
+    // hotlinked straight from ranobelib.me/cdnlibs.org, and the download attribute only
+    // works cross-origin if the target's own CORS headers happen to allow it, which is
     // outside this app's control.
-    downloadEl.href = `/images/download?url=${encodeURIComponent(src)}`;
+    //
+    // PR 154: a comment attachment (app/comment_attachment.py) is the opposite case -
+    // already same-origin (served from this app's own /comment-attachments/ route, not
+    // hotlinked), so `download` already works on it directly, and images.py's proxy would
+    // actively reject it: `_is_allowed_image_url` only allows ranobelib.me/cdnlibs.org,
+    // by design, to keep the endpoint from being usable as an open relay for arbitrary
+    // URLs (see that file's own docstring).
+    downloadEl.href = isSameOrigin(src)
+      ? src
+      : `/images/download?url=${encodeURIComponent(src)}`;
     // A single image doesn't need "1 / 1" or arrows to get anywhere - true for a lone
     // reader-content image same as for a title cover, which is always a one-element list.
     const multiple = activeImages.length > 1;
@@ -117,13 +142,19 @@
   });
 
   // Delegated (not a per-element listener like the reader-content images above) because
-  // a title cover isn't always in the DOM yet when this script runs - see the file-top
-  // comment. cursor: zoom-in for .title-hero__cover lives in app.css rather than being
-  // set here for the same reason: this listener may fire against a cover injected long
-  // after load, so there's no single "attach time" to set an inline style at.
+  // neither a title cover nor a comment attachment is reliably in the DOM yet when this
+  // script runs - see the file-top comment. cursor: zoom-in for both lives in app.css
+  // rather than being set here for the same reason: this listener may fire against an
+  // element injected long after load, so there's no single "attach time" to set an
+  // inline style at.
   document.addEventListener("click", (event) => {
     const cover = event.target.closest(".title-hero__cover");
-    if (cover) open([cover], 0);
+    if (cover) {
+      open([cover], 0);
+      return;
+    }
+    const attachment = event.target.closest("img.paragraph-comment__attachment");
+    if (attachment) open([attachment], 0);
   });
 
   closeBtn.addEventListener("click", close);

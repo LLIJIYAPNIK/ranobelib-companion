@@ -2850,14 +2850,34 @@ a {
 }
 
 /* PR 150: the GIF-as-video attachment a comment can carry - rendered <video>, not <img>
-   (app/gif_video.py converts it server-side), capped to the same width the composer
-   itself uses so it never dwarfs the surrounding thread. */
-.paragraph-comment__attachment {
+   (app/gif_video.py converts it server-side), capped to the same size the composer
+   itself uses so it never dwarfs the surrounding thread.
+
+   PR 154: a plain `max-width: 240px` here was losing to .reader-content img's own
+   `max-width: 100%` (PR 6) - both attachment and reader body images live under
+   .reader-content, and that rule's extra type-selector specificity (0,1,1) beat this
+   class-only one (0,1,0) regardless of source order, so attachments rendered at their
+   natural size up to the full reading column width instead of the intended cap. Scoping
+   this selector to the attachment's actual parent (0,2,0) wins outright, and a fixed
+   box + object-fit: cover (rather than a max-width alone) gives every attachment - image,
+   video, or gif - the same uniform thumbnail size regardless of its original dimensions,
+   instead of preserving whatever aspect ratio it happened to be uploaded at. */
+.paragraph-comment > .paragraph-comment__attachment {
   display: block;
-  width: 100%;
-  max-width: 240px;
+  width: 200px;
+  height: 200px;
+  object-fit: cover;
   margin: 6px 0;
   border-radius: 8px;
+}
+
+/* PR 154: cursor set here (not inline via JS) because the click listener that opens the
+   lightbox for these is delegated (image-lightbox.js) - comments load lazily after the
+   page itself, so there's no single "attach time" a script-set inline style could hook
+   into, same reasoning PR 142 already applied to .title-hero__cover. Scoped to <img>
+   only: video/gif attachments share this class but shouldn't open the image lightbox. */
+img.paragraph-comment__attachment {
+  cursor: zoom-in;
 }
 
 .paragraph-comment__reply-toggle {
