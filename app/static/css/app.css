@@ -2849,6 +2849,29 @@ a {
   color: var(--accent-teal);
 }
 
+/* PR 156: quoted text (either the chapter paragraph itself or an earlier comment,
+   inserted by paragraph-menu.js's "Цитировать" trigger) - a left rule + muted color is
+   the standard "this text isn't the commenter's own words" convention, same reasoning as
+   .paragraph-comment__replies' own left border marking nested structure a few rules down. */
+.paragraph-comment__body blockquote {
+  margin: 0 0 6px;
+  padding: 2px 0 2px 10px;
+  border-left: 2px solid var(--border);
+  color: var(--text-muted);
+}
+
+.paragraph-comment__body blockquote:last-child {
+  margin-bottom: 0;
+}
+
+.paragraph-comment__body blockquote p {
+  margin: 0 0 4px;
+}
+
+.paragraph-comment__body blockquote p:last-child {
+  margin-bottom: 0;
+}
+
 /* PR 150: the GIF-as-video attachment a comment can carry - rendered <video>, not <img>
    (app/gif_video.py converts it server-side), capped to the same size the composer
    itself uses so it never dwarfs the surrounding thread.
