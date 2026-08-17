@@ -7,6 +7,7 @@ from app.db.activity import (
     ChapterReadCount,
     daily_active_seconds,
     daily_reading_activity,
+    daily_titles_read,
     list_chapters_read_today,
     record_chapter_read,
     record_heartbeat,
@@ -202,3 +203,74 @@ def test_daily_active_seconds_is_scoped_to_the_user(conn: sqlite3.Connection) ->
     record_heartbeat(conn, 2, "6712--test-novel", 30)
 
     assert daily_active_seconds(conn, 1) == {}
+
+
+def test_daily_titles_read_is_empty_with_no_history(conn: sqlite3.Connection) -> None:
+    assert daily_titles_read(conn, 1) == {}
+
+
+def test_daily_titles_read_lists_the_one_title_read_that_day(conn: sqlite3.Connection) -> None:
+    record_chapter_read(conn, 1, "6712--test-novel", "1", "1")
+
+    today = datetime.now(UTC).date().isoformat()
+    assert daily_titles_read(conn, 1) == {today: ["6712--test-novel"]}
+
+
+def test_daily_titles_read_deduplicates_a_title_read_multiple_times(
+    conn: sqlite3.Connection,
+) -> None:
+    record_chapter_read(conn, 1, "6712--test-novel", "1", "1")
+    record_chapter_read(conn, 1, "6712--test-novel", "1", "2")
+
+    today = datetime.now(UTC).date().isoformat()
+    assert daily_titles_read(conn, 1) == {today: ["6712--test-novel"]}
+
+
+def test_daily_titles_read_orders_most_recently_read_first(conn: sqlite3.Connection) -> None:
+    record_chapter_read(conn, 1, "6712--first-novel", "1", "1")
+    record_chapter_read(conn, 1, "999--second-novel", "1", "1")
+
+    today = datetime.now(UTC).date().isoformat()
+    assert daily_titles_read(conn, 1) == {today: ["999--second-novel", "6712--first-novel"]}
+
+
+def test_daily_titles_read_groups_by_calendar_day(conn: sqlite3.Connection) -> None:
+    three_days_ago = (datetime.now(UTC) - timedelta(days=3)).isoformat()
+    _insert_event(
+        conn, kind="chapter_read", slug_url="old--novel", seconds=None, created_at=three_days_ago
+    )
+    record_chapter_read(conn, 1, "6712--test-novel", "1", "1")
+
+    today = datetime.now(UTC).date().isoformat()
+    three_days_ago_date = (datetime.now(UTC).date() - timedelta(days=3)).isoformat()
+    assert daily_titles_read(conn, 1) == {
+        today: ["6712--test-novel"],
+        three_days_ago_date: ["old--novel"],
+    }
+
+
+def test_daily_titles_read_excludes_events_outside_the_window(
+    conn: sqlite3.Connection,
+) -> None:
+    too_old = (datetime.now(UTC) - timedelta(weeks=53)).isoformat()
+    _insert_event(
+        conn, kind="chapter_read", slug_url="6712--test-novel", seconds=None, created_at=too_old
+    )
+
+    assert daily_titles_read(conn, 1, weeks=52) == {}
+
+
+def test_daily_titles_read_ignores_heartbeat_events(conn: sqlite3.Connection) -> None:
+    record_heartbeat(conn, 1, "6712--test-novel", 30)
+
+    assert daily_titles_read(conn, 1) == {}
+
+
+def test_daily_titles_read_is_scoped_to_the_user(conn: sqlite3.Connection) -> None:
+    conn.execute(
+        "INSERT INTO users (id, email, password_hash, created_at) "
+        "VALUES (2, 'bob@example.com', 'hash', 'now')"
+    )
+    record_chapter_read(conn, 2, "6712--test-novel", "1", "1")
+
+    assert daily_titles_read(conn, 1) == {}

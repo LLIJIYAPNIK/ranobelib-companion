@@ -210,7 +210,8 @@ def test_profile_reading_calendar_marks_todays_activity(client: TestClient) -> N
     record_chapter_read(get_connection(), alice_id, "6712--test-novel", "1", "1")
     record_chapter_read(get_connection(), alice_id, "6712--test-novel", "1", "2")
 
-    response = client.get("/profile")
+    with patch("app.services.client.RanobeLib", return_value=_FakeClient(_fake_title())):
+        response = client.get("/profile")
 
     assert response.status_code == 200
     # The only day with any reading is automatically this user's own busiest day, so it's
@@ -219,7 +220,8 @@ def test_profile_reading_calendar_marks_todays_activity(client: TestClient) -> N
     today = datetime.now(UTC).date().strftime("%d.%m.%Y")
     # PR 140: no heartbeat recorded today, so the tooltip's time portion reads "0 мин" -
     # always shown, not omitted, same as a real day with reading but no active-time ticks.
-    assert f'title="{today}: 2 главы, 0 мин"' in response.text
+    # PR 159: the title read that day follows on its own line.
+    assert f'title="{today}: 2 главы, 0 мин\nTest Novel"' in response.text
 
 
 def test_profile_reading_calendar_tooltip_shows_active_time_under_an_hour(
@@ -230,11 +232,12 @@ def test_profile_reading_calendar_tooltip_shows_active_time_under_an_hour(
     record_chapter_read(get_connection(), alice_id, "6712--test-novel", "1", "1")
     record_heartbeat(get_connection(), alice_id, "6712--test-novel", 1500)  # 25 min
 
-    response = client.get("/profile")
+    with patch("app.services.client.RanobeLib", return_value=_FakeClient(_fake_title())):
+        response = client.get("/profile")
 
     assert response.status_code == 200
     today = datetime.now(UTC).date().strftime("%d.%m.%Y")
-    assert f'title="{today}: 1 глава, 25 мин"' in response.text
+    assert f'title="{today}: 1 глава, 25 мин\nTest Novel"' in response.text
 
 
 def test_profile_reading_calendar_tooltip_shows_active_time_over_an_hour(
@@ -245,11 +248,64 @@ def test_profile_reading_calendar_tooltip_shows_active_time_over_an_hour(
     record_chapter_read(get_connection(), alice_id, "6712--test-novel", "1", "1")
     record_heartbeat(get_connection(), alice_id, "6712--test-novel", 5400)  # 1h 30min
 
-    response = client.get("/profile")
+    with patch("app.services.client.RanobeLib", return_value=_FakeClient(_fake_title())):
+        response = client.get("/profile")
 
     assert response.status_code == 200
     today = datetime.now(UTC).date().strftime("%d.%m.%Y")
-    assert f'title="{today}: 1 глава, 1 ч 30 мин"' in response.text
+    assert f'title="{today}: 1 глава, 1 ч 30 мин\nTest Novel"' in response.text
+
+
+def test_profile_reading_calendar_tooltip_lists_multiple_titles_read_that_day(
+    client: TestClient,
+) -> None:
+    _register(client, "alice@example.com")
+    alice_id = _user_id("alice@example.com")
+    record_chapter_read(get_connection(), alice_id, "1--first", "1", "1")
+    record_chapter_read(get_connection(), alice_id, "2--second", "1", "1")
+
+    titles = {
+        "1--first": _fake_title(slug_url="1--first").model_copy(update={"name": "First Novel"}),
+        "2--second": _fake_title(slug_url="2--second").model_copy(update={"name": "Second Novel"}),
+    }
+    with patch(
+        "app.services.client.RanobeLib",
+        side_effect=lambda url, **_: _FakeClient(titles[url]),
+    ):
+        response = client.get("/profile")
+
+    assert response.status_code == 200
+    today = datetime.now(UTC).date().strftime("%d.%m.%Y")
+    # daily_titles_read() orders most-recently-read-within-the-day first - "2--second".
+    assert f'title="{today}: 2 главы, 0 мин\nSecond Novel\nFirst Novel"' in response.text
+
+
+def test_profile_reading_calendar_tooltip_truncates_many_titles_read_in_one_day(
+    client: TestClient,
+) -> None:
+    _register(client, "alice@example.com")
+    alice_id = _user_id("alice@example.com")
+    slugs = [f"{n}--novel" for n in range(5)]
+    for slug in slugs:
+        record_chapter_read(get_connection(), alice_id, slug, "1", "1")
+
+    titles = {
+        slug: _fake_title(slug_url=slug).model_copy(update={"name": f"Novel {i}"})
+        for i, slug in enumerate(slugs)
+    }
+    with patch(
+        "app.services.client.RanobeLib",
+        side_effect=lambda url, **_: _FakeClient(titles[url]),
+    ):
+        response = client.get("/profile")
+
+    assert response.status_code == 200
+    today = datetime.now(UTC).date().strftime("%d.%m.%Y")
+    # 5 titles read, only the first _MAX_TITLES_IN_LABEL (3, most recently read first -
+    # "4--novel" was recorded last) are named, the rest collapse into "и ещё 2".
+    assert (
+        f'title="{today}: 5 глав, 0 мин\nNovel 4\nNovel 3\nNovel 2\nи ещё 2"' in response.text
+    )
 
 
 def test_profile_reading_calendar_tooltip_handles_active_time_with_no_chapters_read(
