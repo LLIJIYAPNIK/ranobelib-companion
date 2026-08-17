@@ -2644,6 +2644,19 @@ a {
 
 .paragraph-reactions-host {
   position: relative;
+  /* PR 153: unlike .reader-content__paragraph-wrap, this host doesn't zero its child's
+     own margin, so the wrapped paragraph's `.reader-content p` margin-bottom (16px) was
+     free to collapse against `.paragraph-comments`'s margin-top (6px) below - sibling
+     margins always collapse to the larger of the two, so the toggle ended up sitting a
+     fixed but unintended 16px down instead of the 6px actually specified. Zeroing the
+     wrapped element's own bottom margin (below) and owning that 16px here instead keeps
+     a bare host (no reactions/comments attached yet) visually identical to a plain
+     paragraph, while letting .paragraph-comments's margin-top apply on its own. */
+  margin-bottom: 16px;
+}
+
+.paragraph-reactions-host > :first-child {
+  margin-bottom: 0;
 }
 
 .paragraph-reactions-host > .paragraph-reactions {
@@ -2693,6 +2706,13 @@ a {
 
 .reader-content__paragraph-wrap > .paragraph-comments {
   padding: 0 14px 10px;
+}
+
+/* PR 153: gives the comments block its own breathing room before the host's margin-bottom
+   (above) closes it off, rather than butting straight up against the next paragraph the
+   way it did with no bottom spacing of its own at all. */
+.paragraph-reactions-host > .paragraph-comments {
+  padding-bottom: 12px;
 }
 
 .paragraph-comments__toggle {
