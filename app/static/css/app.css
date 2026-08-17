@@ -2880,6 +2880,43 @@ img.paragraph-comment__attachment {
   cursor: zoom-in;
 }
 
+/* PR 155: like/dislike on the comment itself - sits inline right before "Ответить"
+   (paragraph-menu.js's buildCommentReactions()), same ghost-text treatment as the reply
+   toggle it sits next to rather than the pill/badge look .paragraph-reactions__pill uses
+   for paragraph reactions (PR 132) - that strip is a hover-only overlay meant to stand
+   out over running text, this is a permanent part of a comment's own action row. */
+.paragraph-comment__reactions {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  margin-right: 8px;
+}
+
+.paragraph-comment__reaction {
+  padding: 0;
+  border: none;
+  background: none;
+  color: var(--text-muted);
+  font-family: inherit;
+  font-size: 12px;
+  cursor: pointer;
+  transition: color 0.1s ease;
+}
+
+@media (hover: hover) {
+  .paragraph-comment__reaction:hover {
+    color: var(--text-primary);
+  }
+}
+
+/* Same "active pick" treatment as .paragraph-reactions__pill--mine (PR 132) - the one
+   piece of visual language shared between the two features, since both answer the exact
+   same question ("is this my current reaction?") even though everything else about their
+   presentation differs. */
+.paragraph-comment__reaction--mine {
+  color: var(--accent-teal);
+}
+
 .paragraph-comment__reply-toggle {
   padding: 0;
   border: none;

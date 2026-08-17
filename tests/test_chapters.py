@@ -860,3 +860,145 @@ def test_comments_are_scoped_to_branch_id(logged_in_client: TestClient) -> None:
 
     assert same_branch["count"] == 1
     assert other_branch["count"] == 0
+
+
+def test_post_comment_includes_empty_reaction_counts(logged_in_client: TestClient) -> None:
+    response = logged_in_client.post(
+        "/titles/6712--test-novel/chapters/1/5/comments",
+        data={"paragraph_index": "0", "body": "hi"},
+    )
+
+    comment = response.json()["comments"][0]
+    assert comment["reactions"] == {"like": 0, "dislike": 0}
+    assert comment["my_reaction"] is None
+
+
+def test_post_comment_reaction_requires_login(logged_in_client: TestClient) -> None:
+    comment = logged_in_client.post(
+        "/titles/6712--test-novel/chapters/1/5/comments",
+        data={"paragraph_index": "0", "body": "hi"},
+    ).json()["comments"][0]
+
+    response = client.post(
+        f"/titles/6712--test-novel/chapters/1/5/comments/{comment['id']}/reactions",
+        data={"value": "1"},
+        follow_redirects=False,
+    )
+
+    assert response.status_code == 303
+    assert response.headers["location"] == "/login"
+
+
+def test_post_comment_reaction_rejects_a_value_outside_plus_minus_one(
+    logged_in_client: TestClient,
+) -> None:
+    comment = logged_in_client.post(
+        "/titles/6712--test-novel/chapters/1/5/comments",
+        data={"paragraph_index": "0", "body": "hi"},
+    ).json()["comments"][0]
+
+    response = logged_in_client.post(
+        f"/titles/6712--test-novel/chapters/1/5/comments/{comment['id']}/reactions",
+        data={"value": "2"},
+    )
+
+    assert response.status_code == 400
+
+
+def test_post_comment_reaction_rejects_a_nonexistent_comment(
+    logged_in_client: TestClient,
+) -> None:
+    response = logged_in_client.post(
+        "/titles/6712--test-novel/chapters/1/5/comments/999/reactions",
+        data={"value": "1"},
+    )
+
+    assert response.status_code == 404
+
+
+def test_post_comment_reaction_sets_it_and_reports_the_new_count(
+    logged_in_client: TestClient,
+) -> None:
+    comment = logged_in_client.post(
+        "/titles/6712--test-novel/chapters/1/5/comments",
+        data={"paragraph_index": "0", "body": "hi"},
+    ).json()["comments"][0]
+
+    response = logged_in_client.post(
+        f"/titles/6712--test-novel/chapters/1/5/comments/{comment['id']}/reactions",
+        data={"value": "1"},
+    )
+
+    assert response.status_code == 200
+    assert response.json() == {
+        "comment_id": comment["id"],
+        "counts": {"like": 1, "dislike": 0},
+        "mine": 1,
+    }
+
+
+def test_post_comment_reaction_same_value_again_removes_it(
+    logged_in_client: TestClient,
+) -> None:
+    comment = logged_in_client.post(
+        "/titles/6712--test-novel/chapters/1/5/comments",
+        data={"paragraph_index": "0", "body": "hi"},
+    ).json()["comments"][0]
+    logged_in_client.post(
+        f"/titles/6712--test-novel/chapters/1/5/comments/{comment['id']}/reactions",
+        data={"value": "1"},
+    )
+
+    response = logged_in_client.post(
+        f"/titles/6712--test-novel/chapters/1/5/comments/{comment['id']}/reactions",
+        data={"value": "1"},
+    )
+
+    assert response.json() == {
+        "comment_id": comment["id"],
+        "counts": {"like": 0, "dislike": 0},
+        "mine": None,
+    }
+
+
+def test_post_comment_reaction_opposite_value_switches_instead_of_accumulating(
+    logged_in_client: TestClient,
+) -> None:
+    comment = logged_in_client.post(
+        "/titles/6712--test-novel/chapters/1/5/comments",
+        data={"paragraph_index": "0", "body": "hi"},
+    ).json()["comments"][0]
+    logged_in_client.post(
+        f"/titles/6712--test-novel/chapters/1/5/comments/{comment['id']}/reactions",
+        data={"value": "1"},
+    )
+
+    response = logged_in_client.post(
+        f"/titles/6712--test-novel/chapters/1/5/comments/{comment['id']}/reactions",
+        data={"value": "-1"},
+    )
+
+    assert response.json() == {
+        "comment_id": comment["id"],
+        "counts": {"like": 0, "dislike": 1},
+        "mine": -1,
+    }
+
+
+def test_post_comment_reaction_reflected_by_a_later_get(logged_in_client: TestClient) -> None:
+    comment = logged_in_client.post(
+        "/titles/6712--test-novel/chapters/1/5/comments",
+        data={"paragraph_index": "0", "body": "hi"},
+    ).json()["comments"][0]
+    logged_in_client.post(
+        f"/titles/6712--test-novel/chapters/1/5/comments/{comment['id']}/reactions",
+        data={"value": "1"},
+    )
+
+    response = logged_in_client.get(
+        "/titles/6712--test-novel/chapters/1/5/comments", params={"paragraph_index": "0"}
+    )
+
+    fetched = response.json()["comments"][0]
+    assert fetched["reactions"] == {"like": 1, "dislike": 0}
+    assert fetched["my_reaction"] == 1

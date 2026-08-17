@@ -478,6 +478,77 @@
     return wrap;
   }
 
+  // PR 155: like/dislike on a comment itself - a separate feature and endpoint from
+  // pickReaction() above (which reacts to a whole paragraph via a 10-emoji palette). Same
+  // toggle-by-clicking-again/switch-by-clicking-the-other semantics, server-enforced
+  // (app/db/comment_reactions.py), mirrored here just to update the UI immediately without
+  // waiting on a second round-trip.
+  //
+  // `comment` is the exact object instance stored in commentTreeByIndex (renderCommentList
+  // passes tree entries straight through, never a copy), so mutating comment.reactions/
+  // comment.my_reaction here keeps that shared state in sync the same way pickReaction
+  // keeps mineByIndex in sync - a later unrelated re-render of this same tree (e.g. after
+  // posting a new reply) won't revert this comment's reaction display.
+  async function pickCommentReaction(comment, value, onUpdate) {
+    const body = new URLSearchParams({ value: String(value) });
+    let data;
+    try {
+      const response = await fetch(
+        `/titles/${slugUrl}/chapters/${volume}/${number}/comments/${comment.id}/reactions`,
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/x-www-form-urlencoded" },
+          body,
+        }
+      );
+      if (!response.ok) return;
+      data = await response.json();
+    } catch {
+      return;
+    }
+    comment.reactions = data.counts;
+    comment.my_reaction = data.mine;
+    onUpdate();
+  }
+
+  // Unauthenticated visitors still see the counts (reading who reacted what needs no
+  // account, same as the paragraph reactions strip) but clicking sends them to /login
+  // instead of posting - the same "action needs a session, viewing doesn't" split as the
+  // reply toggle just below, just without swapping the whole control for an <a> for it.
+  function buildCommentReactions(comment) {
+    const wrap = document.createElement("span");
+    wrap.className = "paragraph-comment__reactions";
+
+    function renderButtons() {
+      wrap.replaceChildren();
+      for (const [value, emoji, label] of [
+        [1, "👍", "Нравится"],
+        [-1, "👎", "Не нравится"],
+      ]) {
+        const btn = document.createElement("button");
+        btn.type = "button";
+        btn.className = "paragraph-comment__reaction";
+        if (comment.my_reaction === value) {
+          btn.classList.add("paragraph-comment__reaction--mine");
+        }
+        btn.setAttribute("aria-pressed", comment.my_reaction === value ? "true" : "false");
+        btn.setAttribute("aria-label", label);
+        const count = (comment.reactions?.[value === 1 ? "like" : "dislike"]) || 0;
+        btn.append(`${emoji} ${count}`);
+        btn.addEventListener("click", () => {
+          if (!isAuthenticated) {
+            window.location.href = "/login";
+            return;
+          }
+          pickCommentReaction(comment, value, renderButtons);
+        });
+        wrap.append(btn);
+      }
+    }
+    renderButtons();
+    return wrap;
+  }
+
   function renderCommentNode(index, comment) {
     const el = document.createElement("div");
     el.className = "paragraph-comment";
@@ -534,6 +605,8 @@
       img.alt = "";
       el.append(img);
     }
+
+    el.append(buildCommentReactions(comment));
 
     if (isAuthenticated) {
       const replyToggle = document.createElement("button");
