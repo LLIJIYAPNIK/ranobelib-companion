@@ -10,6 +10,16 @@ from ranobelib.models import Volume
 from app.auth.dependencies import get_current_user, require_current_user
 from app.comment_attachment import CommentAttachmentError, save_comment_attachment
 from app.db.activity import record_chapter_read
+from app.db.comment_reactions import (
+    count_reactions_for_comment,
+    toggle_comment_reaction,
+)
+from app.db.comment_reactions import (
+    count_reactions_for_paragraph as count_comment_reactions_for_paragraph,
+)
+from app.db.comment_reactions import (
+    user_reactions_for_paragraph as user_comment_reactions_for_paragraph,
+)
 from app.db.comments import (
     Comment,
     count_comments,
@@ -141,6 +151,7 @@ async def get_comments(
     slug_url: str,
     volume: int,
     number: str,
+    current_user: Annotated[User | None, Depends(get_current_user)],
     paragraph_index: int = Query(...),
     branch_id: str = Query(default=""),
 ) -> JSONResponse:
@@ -149,7 +160,9 @@ async def get_comments(
     get_comment_counts above."""
     conn = get_connection()
     return JSONResponse(
-        _comments_response(conn, slug_url, str(volume), number, branch_id, paragraph_index)
+        _comments_response(
+            conn, slug_url, str(volume), number, branch_id, paragraph_index, current_user
+        )
     )
 
 
@@ -202,8 +215,34 @@ async def post_comment(
     except ValueError as exc:
         raise HTTPException(status_code=400, detail=str(exc)) from exc
     return JSONResponse(
-        _comments_response(conn, slug_url, str(volume), number, branch_id, paragraph_index)
+        _comments_response(conn, slug_url, str(volume), number, branch_id, paragraph_index, user)
     )
+
+
+@router.post("/{volume}/{number}/comments/{comment_id}/reactions")
+async def post_comment_reaction(
+    slug_url: str,
+    volume: int,
+    number: str,
+    comment_id: int,
+    user: Annotated[User, Depends(require_current_user)],
+    value: Annotated[int, Form()],
+) -> JSONResponse:
+    """Toggles the logged-in visitor's like/dislike on one comment - PR 155, the same
+    toggle/switch semantics as post_reaction above, just keyed by comment_id (a real
+    foreign key, see app/db/comment_reactions.py) instead of a paragraph position.
+    slug_url/volume/number aren't used for the lookup itself (comment_id already names
+    the row uniquely), only kept in the URL for symmetry with this router's other
+    comment/reaction endpoints."""
+    if value not in (1, -1):
+        raise HTTPException(status_code=400, detail="Недопустимое значение реакции")
+    conn = get_connection()
+    try:
+        mine = toggle_comment_reaction(conn, user.id, comment_id, value)
+    except ValueError as exc:
+        raise HTTPException(status_code=404, detail=str(exc)) from exc
+    counts = count_reactions_for_comment(conn, comment_id)
+    return JSONResponse({"comment_id": comment_id, "counts": counts, "mine": mine})
 
 
 def _comments_response(
@@ -213,19 +252,36 @@ def _comments_response(
     number: str,
     branch_id: str,
     paragraph_index: int,
+    current_user: User | None = None,
 ) -> dict:
     comments = list_comments_for_paragraph(
         conn, slug_url, volume, number, branch_id, paragraph_index
     )
     count = count_comments_for_paragraph(conn, slug_url, volume, number, branch_id, paragraph_index)
+    reaction_counts = count_comment_reactions_for_paragraph(
+        conn, slug_url, volume, number, branch_id, paragraph_index
+    )
+    my_reactions = (
+        user_comment_reactions_for_paragraph(
+            conn, current_user.id, slug_url, volume, number, branch_id, paragraph_index
+        )
+        if current_user is not None
+        else {}
+    )
     return {
         "paragraph_index": paragraph_index,
         "count": count,
-        "comments": [_comment_to_dict(comment) for comment in comments],
+        "comments": [
+            _comment_to_dict(comment, reaction_counts, my_reactions) for comment in comments
+        ],
     }
 
 
-def _comment_to_dict(comment: Comment) -> dict:
+def _comment_to_dict(
+    comment: Comment,
+    reaction_counts: dict[int, dict[str, int]],
+    my_reactions: dict[int, int],
+) -> dict:
     return {
         "id": comment.id,
         "user_id": comment.user_id,
@@ -238,7 +294,11 @@ def _comment_to_dict(comment: Comment) -> dict:
         "parent_comment_id": comment.parent_comment_id,
         "attachment_url": comment.attachment_url,
         "attachment_kind": comment.attachment_kind,
-        "replies": [_comment_to_dict(reply) for reply in comment.replies],
+        "reactions": reaction_counts.get(comment.id, {"like": 0, "dislike": 0}),
+        "my_reaction": my_reactions.get(comment.id),
+        "replies": [
+            _comment_to_dict(reply, reaction_counts, my_reactions) for reply in comment.replies
+        ],
     }
 
 
