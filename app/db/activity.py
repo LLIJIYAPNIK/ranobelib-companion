@@ -15,6 +15,7 @@ rows (and download_history's) are written with.
 from __future__ import annotations
 
 import sqlite3
+from collections import defaultdict
 from dataclasses import dataclass
 from datetime import UTC, datetime, timedelta
 
@@ -107,6 +108,30 @@ def daily_active_seconds(
         (user_id, start),
     ).fetchall()
     return {row["day"]: row["total"] for row in rows}
+
+
+def daily_titles_read(
+    conn: sqlite3.Connection, user_id: int, weeks: int = 52
+) -> dict[str, list[str]]:
+    """Which titles (unique slug_url) were read on each calendar day, most recently read
+    within that day first - PR 159's addition to the profile heatmap tooltip, which
+    otherwise only ever said *how much* was read on a given day, never *what*. Same
+    trailing `weeks`/UTC-day boundary as daily_reading_activity() above; a day with no
+    chapter_read events at all is simply absent, same convention as that function too.
+    Display names aren't resolved here - slug_url is app data, a title's name is SDK data
+    (see app/db/library.py's own docstring on this split), so the caller
+    (app/api/profile.py) looks those up itself through app/services/client.py."""
+    start = (datetime.now(UTC).date() - timedelta(days=weeks * 7 - 1)).isoformat()
+    rows = conn.execute(
+        "SELECT date(created_at) AS day, slug_url, MAX(created_at) AS last_read "
+        "FROM activity_events WHERE user_id = ? AND kind = 'chapter_read' AND created_at >= ? "
+        "GROUP BY day, slug_url ORDER BY day, last_read DESC",
+        (user_id, start),
+    ).fetchall()
+    titles: dict[str, list[str]] = defaultdict(list)
+    for row in rows:
+        titles[row["day"]].append(row["slug_url"])
+    return dict(titles)
 
 
 def _today_start() -> str:
