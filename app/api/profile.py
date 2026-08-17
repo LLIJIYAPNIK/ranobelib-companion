@@ -20,13 +20,15 @@ from typing import Annotated
 
 from fastapi import APIRouter, Depends, HTTPException, Request
 from fastapi.responses import HTMLResponse
+from ranobelib import RanobeLibError
 
 from app.api.library import library_items_for_user
 from app.auth.dependencies import get_current_user
-from app.db.activity import daily_active_seconds, daily_reading_activity
+from app.db.activity import daily_active_seconds, daily_reading_activity, daily_titles_read
 from app.db.comments import count_comments_by_user
 from app.db.connection import get_connection
 from app.db.users import User, get_user_by_id
+from app.services.client import open_client
 from app.templating import templates
 
 router = APIRouter()
@@ -99,7 +101,7 @@ async def _render_profile(
             # gated by any show_* privacy flag - there isn't one for either, same as the
             # avatar/nickname/bio they sit alongside.
             "comment_count": count_comments_by_user(get_connection(), profile_user.id),
-            "reading_calendar": _build_reading_calendar(profile_user.id),
+            "reading_calendar": await _build_reading_calendar(profile_user.id),
             "currently_reading": currently_reading,
             "favorite_item": favorite_item,
             "library_items": items,
@@ -111,7 +113,13 @@ def _format_date(iso_timestamp: str) -> str:
     return datetime.fromisoformat(iso_timestamp).strftime("%d.%m.%Y")
 
 
-def _build_reading_calendar(user_id: int) -> list[CalendarDay]:
+# PR 159: cap on how many title names a tooltip lists by name before collapsing the rest
+# into "и ещё N" - a long-running reading binge could otherwise read a dozen titles in one
+# day, and the native `title` tooltip has no scrolling of its own to fall back on.
+_MAX_TITLES_IN_LABEL = 3
+
+
+async def _build_reading_calendar(user_id: int) -> list[CalendarDay]:
     """Every day in the trailing _CALENDAR_WEEKS weeks, oldest first, padded back to the
     most recent Sunday on/before the window's own start so the flat list can be dropped
     straight into a `grid-auto-flow: column; grid-template-rows: repeat(7, ...)` grid
@@ -125,6 +133,11 @@ def _build_reading_calendar(user_id: int) -> list[CalendarDay]:
     conn = get_connection()
     counts = daily_reading_activity(conn, user_id, weeks=_CALENDAR_WEEKS)
     active_seconds = daily_active_seconds(conn, user_id, weeks=_CALENDAR_WEEKS)
+    titles_by_day = daily_titles_read(conn, user_id, weeks=_CALENDAR_WEEKS)
+    # One lookup per unique title across the whole window, not per day it was read on -
+    # a title read on 20 different days over the year still only needs its name fetched
+    # once, reused for every one of that title's cells below.
+    title_names = await _title_names({slug for slugs in titles_by_day.values() for slug in slugs})
     max_count = max(counts.values(), default=0)
 
     today = datetime.now(UTC).date()
@@ -140,22 +153,54 @@ def _build_reading_calendar(user_id: int) -> list[CalendarDay]:
         count = counts.get(day_key, 0)
         seconds = active_seconds.get(day_key, 0)
         level = 0 if max_count == 0 or count == 0 else max(1, round(count / max_count * 4))
-        days.append(
-            CalendarDay(
-                count=count,
-                level=level,
-                # PR 140: the chapter count alone doesn't say how long that reading
-                # actually took - _format_duration() reuses the same heartbeat seconds
-                # already summed for "Активность"'s "today" stat (total_active_seconds_
-                # today()), just grouped by day instead of collapsed to one number.
-                label=(
-                    f"{current.strftime('%d.%m.%Y')}: {_pluralize_chapters(count)}, "
-                    f"{_format_duration(seconds)}"
-                ),
-            )
-        )
+        # PR 140: the chapter count alone doesn't say how long that reading actually took
+        # - _format_duration() reuses the same heartbeat seconds already summed for
+        # "Активность"'s "today" stat (total_active_seconds_today()), just grouped by day
+        # instead of collapsed to one number.
+        #
+        # PR 159: which title(s) that reading was actually on, one per line - the native
+        # `title` attribute renders `\n` as a real line break with no extra JS component
+        # needed for it.
+        label_lines = [
+            f"{current.strftime('%d.%m.%Y')}: {_pluralize_chapters(count)}, "
+            f"{_format_duration(seconds)}",
+            *_title_lines(titles_by_day.get(day_key, []), title_names),
+        ]
+        days.append(CalendarDay(count=count, level=level, label="\n".join(label_lines)))
         current += timedelta(days=1)
     return days
+
+
+async def _title_names(slugs: set[str]) -> dict[str, str]:
+    """Display name per slug_url, fetched through the SDK the same "cheap - cache_dir
+    makes it a local cache hit after the first request" way library_items_for_user()
+    (app/api/library.py) already does, rather than storing title names in this app's own
+    DB (see that function's own docstring on why not). A title that's gone/unreachable on
+    ranobelib.me by the time this renders just falls back to its own slug_url as a label,
+    the same fallback library_items_for_user() effectively lands on too - it doesn't take
+    the whole tooltip down with it."""
+    names: dict[str, str] = {}
+    for slug_url in slugs:
+        try:
+            async with open_client(slug_url) as lib:
+                title = await lib.get_info()
+                names[slug_url] = title.rus_name or title.name
+        except RanobeLibError:
+            names[slug_url] = slug_url
+    return names
+
+
+def _title_lines(slugs: list[str], title_names: dict[str, str]) -> list[str]:
+    """Up to _MAX_TITLES_IN_LABEL names, most recently read first (daily_titles_read's own
+    ordering) - `slugs` is already empty for a day with no reading, so this returns []
+    rather than a stray empty tooltip line for every padding/no-activity day."""
+    if not slugs:
+        return []
+    shown = [title_names.get(slug, slug) for slug in slugs[:_MAX_TITLES_IN_LABEL]]
+    remaining = len(slugs) - len(shown)
+    if remaining > 0:
+        shown.append(f"и ещё {remaining}")
+    return shown
 
 
 def _pluralize_chapters(n: int) -> str:
