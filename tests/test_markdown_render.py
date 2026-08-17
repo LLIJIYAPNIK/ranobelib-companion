@@ -78,3 +78,18 @@ def test_plain_text_with_no_markdown_syntax_round_trips_unescaped_for_the_reader
     html = render_comment_body("Отличная глава, спасибо!")
 
     assert "Отличная глава, спасибо!" in html
+
+
+def test_renders_a_blockquote() -> None:
+    html = render_comment_body("> quoted line")
+
+    assert "<blockquote>" in html
+    assert "quoted line" in html
+
+
+def test_renders_a_nested_blockquote() -> None:
+    html = render_comment_body("> outer\n> > inner")
+
+    assert html.count("<blockquote>") == 2
+    assert "outer" in html
+    assert "inner" in html

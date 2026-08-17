@@ -22,10 +22,13 @@ import nh3
 from markdown_it import MarkdownIt
 
 _MD = MarkdownIt("zero", {"breaks": True}).enable(
-    ["emphasis", "strikethrough", "link", "list", "newline"]
+    ["emphasis", "strikethrough", "link", "list", "newline", "blockquote"]
 )
 
-_ALLOWED_TAGS = {"p", "strong", "em", "s", "a", "br", "ul", "ol", "li"}
+# PR 156: quoting - a paragraph-menu.js "Цитировать" trigger (on a chapter paragraph or an
+# existing comment) inserts `> `-prefixed lines into the composer; nothing renders that
+# without both the markdown-it rule above and this tag in the sanitizer's allow-list below.
+_ALLOWED_TAGS = {"p", "strong", "em", "s", "a", "br", "ul", "ol", "li", "blockquote"}
 _ALLOWED_ATTRIBUTES = {"a": {"href"}}
 _ALLOWED_URL_SCHEMES = {"http", "https", "mailto"}
 
