@@ -2761,6 +2761,19 @@ a {
   padding-left: 12px;
   border-left: 1px solid var(--border);
   cursor: pointer;
+  transition: border-left-color 0.1s ease;
+}
+
+/* PR 157: the guide line's cursor: pointer above already hints it's clickable, but
+   nothing about it visually reacted to a hover before this - same border-left-color
+   highlight the other collapse/reply controls already use for their own :hover (color
+   instead, since there's no text here to recolor). (hover: hover) keeps it from getting
+   stuck highlighted on touch, where there's no real "hover" to leave, only a tap that
+   would otherwise leave the :hover state applied until the next unrelated tap. */
+@media (hover: hover) {
+  .paragraph-comment__replies:hover {
+    border-left-color: var(--accent-teal);
+  }
 }
 
 /* PR 152: the pointer cursor above is a hover hint for the bare guide-line strip
