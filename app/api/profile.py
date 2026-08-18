@@ -169,9 +169,10 @@ async def _build_reading_calendar(user_id: int) -> ReadingCalendar:
         # "Активность"'s "today" stat (total_active_seconds_today()), just grouped by day
         # instead of collapsed to one number.
         #
-        # PR 159: which title(s) that reading was actually on, one per line - the native
-        # `title` attribute renders `\n` as a real line break with no extra JS component
-        # needed for it.
+        # PR 159: which title(s) that reading was actually on, one per line - joined with
+        # "\n" and rendered as real line breaks by the tooltip's own `white-space:
+        # pre-line` (PR 160's reading-calendar-tooltip.js/app.css), same as the native
+        # `title` attribute this label used to sit in before PR 160 replaced it.
         label_lines = [
             f"{current.strftime('%d.%m.%Y')}: {_pluralize_chapters(count)}, "
             f"{_format_duration(seconds)}",
