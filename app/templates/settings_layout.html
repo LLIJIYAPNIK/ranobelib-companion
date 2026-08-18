@@ -29,6 +29,10 @@
         href="/settings/security"
       >Безопасность</a>
       <a
+        class="settings-nav__link{% if active_settings_section == 'notifications' %} settings-nav__link--active{% endif %}"
+        href="/settings/notifications"
+      >Уведомления</a>
+      <a
         class="settings-nav__link{% if active_settings_section == 'reading' %} settings-nav__link--active{% endif %}"
         href="/settings/reading"
       >Чтение</a>
