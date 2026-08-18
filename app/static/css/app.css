@@ -24,6 +24,10 @@
   --reader-font-size: 15px;
   --reader-line-height: 1.85;
   --reader-width: 640px;
+  /* PR 166: same pattern as the reader typography vars above, but independent of them -
+     a bigger reading font shouldn't force a bigger comment font and vice versa. Default
+     matches the comment body's old hardcoded 14px (PR 158). */
+  --comment-font-size: 14px;
   /* Mobile account strip's own height (PR 71) - shared by .sidebar__account's min-height
      and .main's padding-top below it, so the two can't drift apart into two independent
      hardcoded numbers the way they did before (see the .sidebar__link fix in the same
@@ -2862,7 +2866,10 @@ a {
 /* PR 158: comment text/metadata/toggles across this whole file bumped a notch (12px ->
    13px, 13px -> 14px for the body itself) - the same class of polish already done for
    the "Фильтры" panel (PR 118), and vertical gaps/margins nudged up to match rather than
-   leaving the same tight spacing under now-slightly-taller lines. */
+   leaving the same tight spacing under now-slightly-taller lines.
+   PR 166: that 13px is now 1px under --comment-font-size (settings_reading.html) rather
+   than a second hardcoded number that could drift from .paragraph-comment__body's own -
+   same reasoning as .paragraph-comment__meta below. */
 .paragraph-comments__toggle {
   display: inline-flex;
   align-items: center;
@@ -2872,7 +2879,7 @@ a {
   background: none;
   color: var(--text-muted);
   font-family: inherit;
-  font-size: 13px;
+  font-size: calc(var(--comment-font-size) - 1px);
   cursor: pointer;
   transition: color 0.1s ease;
 }
@@ -3027,7 +3034,10 @@ a {
   display: flex;
   align-items: center;
   gap: 8px;
-  font-size: 13px;
+  /* PR 166: 1px under the body's own --comment-font-size, preserving the PR 158
+     proportion (13px meta vs 14px body) at every slider value instead of just at the
+     default. */
+  font-size: calc(var(--comment-font-size) - 1px);
 }
 
 /* PR 147: same picture-or-initials box as .sidebar__avatar (PR 88), just small enough to
@@ -3069,7 +3079,7 @@ a {
    whitespace nh3.clean() leaves between tags. */
 .paragraph-comment__body {
   margin: 6px 0;
-  font-size: 14px;
+  font-size: var(--comment-font-size);
   color: var(--text-secondary);
   overflow-wrap: break-word;
 }
@@ -3219,7 +3229,7 @@ img.paragraph-comment__attachment {
   background: none;
   color: var(--text-muted);
   font-family: inherit;
-  font-size: 13px;
+  font-size: calc(var(--comment-font-size) - 1px);
   text-decoration: none;
   cursor: pointer;
   transition: color 0.1s ease;
@@ -3241,7 +3251,7 @@ img.paragraph-comment__attachment {
   background: none;
   color: var(--text-muted);
   font-family: inherit;
-  font-size: 13px;
+  font-size: calc(var(--comment-font-size) - 1px);
   cursor: pointer;
   transition: color 0.1s ease;
 }
