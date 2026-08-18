@@ -178,6 +178,30 @@ def test_notifications_page_renders_a_card_reused_from_the_panel(
     assert "static/js/notifications-page.js" in response.text
 
 
+def test_notifications_page_card_has_mark_read_and_delete_buttons(
+    client: TestClient,
+) -> None:
+    notification_id = _create_notification_for_alice(client)
+
+    response = client.get("/notifications")
+
+    assert f'data-notification-id="{notification_id}"' in response.text
+    assert 'data-role="notification-mark-read"' in response.text
+    assert 'data-role="notification-delete"' in response.text
+
+
+def test_notifications_page_card_hides_mark_read_once_already_read(
+    client: TestClient,
+) -> None:
+    notification_id = _create_notification_for_alice(client)
+    client.post(f"/notifications/{notification_id}/read")
+
+    response = client.get("/notifications")
+
+    assert 'data-role="notification-mark-read"' not in response.text
+    assert 'data-role="notification-delete"' in response.text
+
+
 def test_notifications_page_fragment_paginates(
     client: TestClient, monkeypatch: pytest.MonkeyPatch
 ) -> None:

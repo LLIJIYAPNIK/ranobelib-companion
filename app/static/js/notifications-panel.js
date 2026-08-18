@@ -119,14 +119,60 @@
     return avatar;
   }
 
+  // PR 170: same outline-icon-string-via-innerHTML pattern as paragraph-menu.js's own
+  // THUMB_ICON - one shared constant per icon rather than building each <svg> node by
+  // node through the namespaced DOM API.
+  const CHECK_ICON =
+    '<svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" ' +
+    'stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">' +
+    '<path d="M4 12.5 9.5 18 20 6"/></svg>';
+  const TRASH_ICON =
+    '<svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" ' +
+    'stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">' +
+    '<path d="M5 6h14"/><path d="M9 6V4h6v2"/><path d="M7 6l1 14h8l1-14"/></svg>';
+
+  // PR 170: mark-read/delete live outside the link now (own .notifications-panel__actions
+  // row, own outer .notifications-panel__item wrapper) - see _notification_card.html's
+  // own comment for why a <button> can no longer sit inside the <a> the way earlier PRs
+  // had it. notifications-actions.js is what actually handles their clicks (one delegated
+  // listener shared with the server-rendered cards on /notifications, PR 169) - this only
+  // builds the buttons themselves, keyed by data-notification-id on the outer wrapper.
+  function buildActions(notification) {
+    const actions = document.createElement("div");
+    actions.className = "notifications-panel__actions";
+    if (!notification.is_read) {
+      const markRead = document.createElement("button");
+      markRead.type = "button";
+      markRead.className = "notifications-panel__action";
+      markRead.dataset.role = "notification-mark-read";
+      markRead.title = "Отметить прочитанным";
+      markRead.setAttribute("aria-label", "Отметить прочитанным");
+      markRead.innerHTML = CHECK_ICON;
+      actions.append(markRead);
+    }
+    const del = document.createElement("button");
+    del.type = "button";
+    del.className = "notifications-panel__action";
+    del.dataset.role = "notification-delete";
+    del.title = "Удалить";
+    del.setAttribute("aria-label", "Удалить");
+    del.innerHTML = TRASH_ICON;
+    actions.append(del);
+    return actions;
+  }
+
   // An <a> when there's somewhere to send the visitor (comment_url), a plain <div>
   // otherwise - a notification whose comment has since been deleted (PR 172) still shows,
   // it just isn't a link to a comment that no longer exists.
   function renderNotification(notification) {
-    const item = document.createElement(notification.comment_url ? "a" : "div");
+    const item = document.createElement("div");
     item.className = "notifications-panel__item";
     if (!notification.is_read) item.classList.add("notifications-panel__item--unread");
-    if (notification.comment_url) item.href = notification.comment_url;
+    item.dataset.notificationId = notification.id;
+
+    const link = document.createElement(notification.comment_url ? "a" : "div");
+    link.className = "notifications-panel__item-link";
+    if (notification.comment_url) link.href = notification.comment_url;
 
     const body = document.createElement("span");
     body.className = "notifications-panel__body";
@@ -135,7 +181,8 @@
     time.textContent = formatTime(notification.created_at);
     body.append(buildNotificationText(notification), time);
 
-    item.append(buildAvatar(notification), body);
+    link.append(buildAvatar(notification), body);
+    item.append(link, buildActions(notification));
     return item;
   }
 

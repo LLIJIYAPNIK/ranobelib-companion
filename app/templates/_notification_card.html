@@ -1,19 +1,43 @@
 {# PR 169: the server-rendered twin of notifications-panel.js's renderNotification() (PR
    168) - same .notifications-panel__item/__avatar/__body/__text/__time classes/structure,
    reused as-is by app.css rather than a second set of styles for this page's own cards.
-   <a> when there's somewhere to send the visitor (comment_url), a plain <div> otherwise -
-   a notification whose comment has since been deleted (PR 172) still shows, it just isn't
-   a link to a comment that no longer exists. #}
+
+   PR 170: the outer element is always a <div> now (was <a>/<div> depending on
+   comment_url) - the mark-read/delete buttons below are real interactive elements, and
+   nesting a <button> inside an <a> both reads wrong semantically and would fire the
+   link's own navigation on every button click unless every handler fought it with
+   stopPropagation(). The link (when there's somewhere to send the visitor - a notification
+   whose comment has since been deleted, PR 172, has none) now only wraps the avatar+body,
+   not the actions. data-notification-id is what notifications-actions.js's delegated
+   click handler reads to know which row a click on either button belongs to. #}
 {% macro notification_card(n) %}
-{% if n.comment_url %}<a class="notifications-panel__item{% if not n.is_read %} notifications-panel__item--unread{% endif %}" href="{{ n.comment_url }}">
-{% else %}<div class="notifications-panel__item{% if not n.is_read %} notifications-panel__item--unread{% endif %}">
-{% endif %}
-  <span class="notifications-panel__avatar">
-    {% if n.actor_avatar_url %}<img class="avatar-img" src="{{ n.actor_avatar_url }}" alt="">{% else %}{{ n.actor_avatar_initials }}{% endif %}
-  </span>
-  <span class="notifications-panel__body">
-    <span class="notifications-panel__text"><strong>{{ n.actor_name }}</strong> отреагировал(а) на ваш комментарий{% if n.comment_excerpt %} «{{ n.comment_excerpt }}»{% endif %}</span>
-    <span class="notifications-panel__time">{{ n.created_at_display }}</span>
-  </span>
-{% if n.comment_url %}</a>{% else %}</div>{% endif %}
+<div class="notifications-panel__item{% if not n.is_read %} notifications-panel__item--unread{% endif %}" data-notification-id="{{ n.id }}">
+  {% if n.comment_url %}<a class="notifications-panel__item-link" href="{{ n.comment_url }}">
+  {% else %}<div class="notifications-panel__item-link">
+  {% endif %}
+    <span class="notifications-panel__avatar">
+      {% if n.actor_avatar_url %}<img class="avatar-img" src="{{ n.actor_avatar_url }}" alt="">{% else %}{{ n.actor_avatar_initials }}{% endif %}
+    </span>
+    <span class="notifications-panel__body">
+      <span class="notifications-panel__text"><strong>{{ n.actor_name }}</strong> отреагировал(а) на ваш комментарий{% if n.comment_excerpt %} «{{ n.comment_excerpt }}»{% endif %}</span>
+      <span class="notifications-panel__time">{{ n.created_at_display }}</span>
+    </span>
+  {% if n.comment_url %}</a>{% else %}</div>{% endif %}
+  <div class="notifications-panel__actions">
+    {% if not n.is_read %}
+    <button type="button" class="notifications-panel__action" data-role="notification-mark-read" title="Отметить прочитанным" aria-label="Отметить прочитанным">
+      <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+        <path d="M4 12.5 9.5 18 20 6"/>
+      </svg>
+    </button>
+    {% endif %}
+    <button type="button" class="notifications-panel__action" data-role="notification-delete" title="Удалить" aria-label="Удалить">
+      <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+        <path d="M5 6h14"/>
+        <path d="M9 6V4h6v2"/>
+        <path d="M7 6l1 14h8l1-14"/>
+      </svg>
+    </button>
+  </div>
+</div>
 {% endmacro %}
