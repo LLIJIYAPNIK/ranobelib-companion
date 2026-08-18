@@ -727,14 +727,34 @@
 
       repliesDiv = document.createElement("div");
       repliesDiv.className = "paragraph-comment__replies";
+
+      // PR 164: the guide line as its own real element, not a border drawn on repliesDiv
+      // itself - a plain border/`:hover` on the container matched anywhere in its
+      // full-width box (any reply's text, not just the line), and a nested .replies'
+      // hover bubbled up and lit every ancestor's line too, since nested boxes sit
+      // geometrically inside their parent's. A pseudo-element (::before) doesn't fix
+      // this either - real browsers don't hit-test `:hover` against a pseudo-element's
+      // own rendered box independently of its host, `::before:hover` behaves exactly
+      // like `:hover::before` (still keyed off the host's own hover state, still the
+      // same bug). A real element sitting at its own fixed position/width does get
+      // proper independent :hover matching, and each nesting level's own line sits at a
+      // different x-offset than every other level's (see app.css), so they can never
+      // geometrically overlap.
+      const line = document.createElement("span");
+      line.className = "paragraph-comment__replies-line";
+      repliesDiv.append(line);
+
       for (const reply of comment.replies) {
         repliesDiv.append(renderCommentNode(index, reply));
       }
-      // Only the guide line itself (repliesDiv's own padding/border, not any nested
-      // reply) should toggle - event.target is repliesDiv itself exactly when the click
-      // landed on that bare strip, since every actual reply fills the rest of the width.
+      // Either the line itself or the bare strip around it (repliesDiv's own padding,
+      // not any nested reply) should toggle - event.target is one of those two exactly
+      // when the click landed there, since every actual reply fills the rest of the
+      // width.
       repliesDiv.addEventListener("click", (event) => {
-        if (event.target === repliesDiv) setRepliesCollapsed(!repliesDiv.hidden);
+        if (event.target === repliesDiv || event.target === line) {
+          setRepliesCollapsed(!repliesDiv.hidden);
+        }
       });
     }
 
