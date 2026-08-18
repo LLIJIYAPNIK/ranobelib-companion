@@ -2906,7 +2906,13 @@ a {
    those two compound with nesting depth, unlike every other value touched by this PR, so
    growing them here would eat further into the remaining width on a deeply nested mobile
    thread on top of the larger font already asking for more of it. */
+/* PR 162: spans both grid columns of the parent .paragraph-comment (its own grid item,
+   auto-placed into the row below .side/.main) - without this it would auto-place into
+   just the narrow left column instead, squeezing the whole reply thread into ~28px. Its
+   own indent (margin/padding below) still reflects the pre-grid layout for now - the
+   next commit recalculates it to line up under .side specifically. */
 .paragraph-comment__replies {
+  grid-column: 1 / -1;
   display: flex;
   flex-direction: column;
   gap: 12px;
@@ -2941,14 +2947,32 @@ a {
   display: none;
 }
 
-/* PR 162: .paragraph-comment__side, appended before this - avatar + vote buttons,
-   stacked and centered. Not yet an actual grid column (the next commit does that); for
-   now this and .paragraph-comment__main just stack as two full-width blocks. */
+/* PR 162: two-column layout (Reddit/Hacker News pattern) - a narrow left column for the
+   avatar + vote buttons (.paragraph-comment__side) and a wide right column for everything
+   else (.paragraph-comment__main). --side-width is reused by .paragraph-comment__replies
+   further down so its own guide line lines up with this left column instead of the full
+   comment width. */
+.paragraph-comment {
+  --side-width: 28px;
+  display: grid;
+  grid-template-columns: var(--side-width) 1fr;
+  column-gap: 10px;
+}
+
 .paragraph-comment__side {
+  grid-column: 1;
   display: flex;
   flex-direction: column;
   align-items: center;
   gap: 6px;
+}
+
+/* min-width: 0 stops long unbreakable content (e.g. a URL in the body) from forcing the
+   grid wider than .paragraph-comment itself, which would otherwise squeeze the left
+   column off-screen on narrow viewports instead of just wrapping. */
+.paragraph-comment__main {
+  grid-column: 2;
+  min-width: 0;
 }
 
 /* PR 162: author + time only now - the avatar moved out into .paragraph-comment__side
