@@ -822,53 +822,14 @@ a {
   margin: 4px 0 0;
 }
 
-/* PR 160: GitHub-reference redesign of the heatmap below - shared cell/gap sizing so the
-   month-label row, weekday column, day grid and legend swatches all line up on the same
-   11px grid without repeating the magic numbers four times. */
-.reading-calendar-card {
-  --reading-calendar-cell: 11px;
-  --reading-calendar-gap: 3px;
-  /* Intensity relative to this user's own busiest day in the window (see
-     _build_reading_calendar's level calculation), not a fixed absolute scale - a light
-     reader's best day and a heavy reader's best day both land on level 4, in the site's
-     accent teal rather than GitHub's own green. Shared as variables (not just set
-     directly on .reading-calendar__day--level-N below) so the always-present legend
-     swatches can reuse the same colors under their own class names, instead of the
-     legend colliding with the "no level-N cell present" assertions the day grid's own
-     classes are used for elsewhere. */
-  --reading-calendar-level-1: rgba(34, 211, 197, 0.28);
-  --reading-calendar-level-2: rgba(34, 211, 197, 0.5);
-  --reading-calendar-level-3: rgba(34, 211, 197, 0.75);
-  --reading-calendar-level-4: var(--accent-teal);
-}
-
-/* Weekday column (left) + the scrollable months/day-grid stack (right) - only the latter
-   scrolls horizontally (see .reading-calendar-scroll below), so the weekday labels stay
-   put at the left edge the same way GitHub's own calendar keeps them pinned. */
-.reading-calendar-body {
-  display: flex;
-  align-items: flex-start;
-  gap: 6px;
-}
-
-.reading-calendar-weekdays {
-  display: grid;
-  grid-template-rows: repeat(7, var(--reading-calendar-cell));
-  gap: var(--reading-calendar-gap);
-  /* Lines the first row (Sunday) up with the day grid's own first row, which sits below
-     the months row + its gap inside .reading-calendar-scroll. */
-  margin-top: calc(14px + var(--reading-calendar-gap));
-  font-size: 10px;
-  line-height: var(--reading-calendar-cell);
-  color: var(--text-muted);
-  white-space: nowrap;
-}
-
 /* PR 136: the GitHub-style reading-activity heatmap on /profile - a flat sequence of day
    cells (app/api/profile.py's _build_reading_calendar(), oldest first, padded back to
    the most recent Sunday on/before the window's own start) auto-flowed into 7-row
    columns, so the server never has to compute per-cell grid coordinates itself - it just
-   emits the days in order and lets grid-auto-flow: column place them. */
+   emits the days in order and lets grid-auto-flow: column place them. overflow-x: auto
+   rather than shrinking cells to fit - at ~53 columns the full grid is wider than a
+   phone screen, same "wide content scrolls in its own container" rule as everywhere else
+   wide in this app (catalog tables, code-adjacent content). */
 .reading-calendar {
   display: grid;
   grid-auto-flow: column;
@@ -877,82 +838,10 @@ a {
      content), so there's nothing for "1fr" to divide and every cell fell into a single
      tall column instead of wrapping into 7-row weeks. Matches .reading-calendar__day's
      own explicit 11px so a row is exactly one cell tall, no more. */
-  grid-template-rows: repeat(7, var(--reading-calendar-cell));
-  gap: var(--reading-calendar-gap);
-}
-
-/* PR 160: months row + day grid scroll together as one unit (overflow-x: auto here,
-   rather than on .reading-calendar alone) so a month label never drifts out of sync with
-   the column of cells it labels. At ~53 columns the full grid is wider than a phone
-   screen, same "wide content scrolls in its own container" rule as everywhere else wide
-   in this app (catalog tables, code-adjacent content). */
-.reading-calendar-scroll {
-  display: flex;
-  flex-direction: column;
-  gap: var(--reading-calendar-gap);
+  grid-template-rows: repeat(7, 11px);
+  gap: 3px;
   overflow-x: auto;
   padding-bottom: 4px;
-}
-
-/* One label per day-grid column (app/api/profile.py's _month_labels(), empty string for
-   every column that isn't where a month starts) - a single-row grid using the exact same
-   column size/gap as .reading-calendar above it, so column N here sits directly above
-   column N of the day grid. Labels aren't clipped to their own 11px-wide cell
-   (overflow: visible is the grid default) - like GitHub's own graph, the ~3-character
-   abbreviation just overflows rightward over the next (empty) label cells. */
-.reading-calendar-months {
-  display: grid;
-  grid-auto-flow: column;
-  grid-auto-columns: var(--reading-calendar-cell);
-  gap: var(--reading-calendar-gap);
-  height: 14px;
-  font-size: 10px;
-  line-height: 14px;
-  color: var(--text-muted);
-  white-space: nowrap;
-}
-
-/* Legend for the 5 intensity levels, bottom-right of the card - its own swatch class
-   (not .reading-calendar__day--level-N) so a legend, which always shows all 5 levels
-   regardless of this user's actual data, can never be mistaken by a substring check for
-   an actual day cell reaching that level (see tests/test_api_profile.py). Same colors
-   via the --reading-calendar-level-N variables above. */
-.reading-calendar-legend {
-  display: flex;
-  align-items: center;
-  gap: 4px;
-  justify-content: flex-end;
-  margin-top: 8px;
-  font-size: 11px;
-  color: var(--text-muted);
-}
-
-.reading-calendar-legend__swatch {
-  width: var(--reading-calendar-cell);
-  height: var(--reading-calendar-cell);
-  border-radius: 2px;
-  background: var(--bg-surface);
-  border: 1px solid var(--border);
-}
-
-.reading-calendar-legend__swatch--level-1 {
-  background: var(--reading-calendar-level-1);
-  border-color: transparent;
-}
-
-.reading-calendar-legend__swatch--level-2 {
-  background: var(--reading-calendar-level-2);
-  border-color: transparent;
-}
-
-.reading-calendar-legend__swatch--level-3 {
-  background: var(--reading-calendar-level-3);
-  border-color: transparent;
-}
-
-.reading-calendar-legend__swatch--level-4 {
-  background: var(--reading-calendar-level-4);
-  border-color: transparent;
 }
 
 .reading-calendar__day {
@@ -963,51 +852,28 @@ a {
   border: 1px solid var(--border);
 }
 
+/* Intensity relative to this user's own busiest day in the window (see
+   _build_reading_calendar's level calculation), not a fixed absolute scale - a light
+   reader's best day and a heavy reader's best day both land on level 4, in the site's
+   accent teal rather than GitHub's own green. */
 .reading-calendar__day--level-1 {
-  background: var(--reading-calendar-level-1);
+  background: rgba(34, 211, 197, 0.28);
   border-color: transparent;
 }
 
 .reading-calendar__day--level-2 {
-  background: var(--reading-calendar-level-2);
+  background: rgba(34, 211, 197, 0.5);
   border-color: transparent;
 }
 
 .reading-calendar__day--level-3 {
-  background: var(--reading-calendar-level-3);
+  background: rgba(34, 211, 197, 0.75);
   border-color: transparent;
 }
 
 .reading-calendar__day--level-4 {
-  background: var(--reading-calendar-level-4);
+  background: var(--accent-teal);
   border-color: transparent;
-}
-
-/* PR 160: custom tooltip replacing the native `title` attribute (see reading-calendar-
-   tooltip.js) - same floating-panel language as .profile-menu__panel/.paragraph-menu__panel
-   (fixed position, computed from the hovered cell's own getBoundingClientRect(), fade
-   in/out rather than toggling display). white-space: pre-line renders the "\n"-joined
-   label lines (app/api/profile.py) as real line breaks without needing innerHTML. */
-.reading-calendar-tooltip {
-  position: fixed;
-  z-index: 40;
-  max-width: 240px;
-  padding: 8px 10px;
-  background: var(--bg-surface);
-  border: 1px solid var(--border);
-  border-radius: 8px;
-  box-shadow: 0 10px 24px rgba(0, 0, 0, 0.35);
-  font-size: 12px;
-  line-height: 1.5;
-  color: var(--text-secondary);
-  white-space: pre-line;
-  opacity: 0;
-  pointer-events: none;
-  transition: opacity 0.15s ease;
-}
-
-.reading-calendar-tooltip--open {
-  opacity: 1;
 }
 
 .recent__title {

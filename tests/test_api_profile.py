@@ -221,7 +221,7 @@ def test_profile_reading_calendar_marks_todays_activity(client: TestClient) -> N
     # PR 140: no heartbeat recorded today, so the tooltip's time portion reads "0 мин" -
     # always shown, not omitted, same as a real day with reading but no active-time ticks.
     # PR 159: the title read that day follows on its own line.
-    assert f'data-tooltip="{today}: 2 главы, 0 мин\nTest Novel"' in response.text
+    assert f'title="{today}: 2 главы, 0 мин\nTest Novel"' in response.text
 
 
 def test_profile_reading_calendar_tooltip_shows_active_time_under_an_hour(
@@ -237,7 +237,7 @@ def test_profile_reading_calendar_tooltip_shows_active_time_under_an_hour(
 
     assert response.status_code == 200
     today = datetime.now(UTC).date().strftime("%d.%m.%Y")
-    assert f'data-tooltip="{today}: 1 глава, 25 мин\nTest Novel"' in response.text
+    assert f'title="{today}: 1 глава, 25 мин\nTest Novel"' in response.text
 
 
 def test_profile_reading_calendar_tooltip_shows_active_time_over_an_hour(
@@ -253,7 +253,7 @@ def test_profile_reading_calendar_tooltip_shows_active_time_over_an_hour(
 
     assert response.status_code == 200
     today = datetime.now(UTC).date().strftime("%d.%m.%Y")
-    assert f'data-tooltip="{today}: 1 глава, 1 ч 30 мин\nTest Novel"' in response.text
+    assert f'title="{today}: 1 глава, 1 ч 30 мин\nTest Novel"' in response.text
 
 
 def test_profile_reading_calendar_tooltip_lists_multiple_titles_read_that_day(
@@ -277,7 +277,7 @@ def test_profile_reading_calendar_tooltip_lists_multiple_titles_read_that_day(
     assert response.status_code == 200
     today = datetime.now(UTC).date().strftime("%d.%m.%Y")
     # daily_titles_read() orders most-recently-read-within-the-day first - "2--second".
-    assert f'data-tooltip="{today}: 2 главы, 0 мин\nSecond Novel\nFirst Novel"' in response.text
+    assert f'title="{today}: 2 главы, 0 мин\nSecond Novel\nFirst Novel"' in response.text
 
 
 def test_profile_reading_calendar_tooltip_truncates_many_titles_read_in_one_day(
@@ -303,8 +303,9 @@ def test_profile_reading_calendar_tooltip_truncates_many_titles_read_in_one_day(
     today = datetime.now(UTC).date().strftime("%d.%m.%Y")
     # 5 titles read, only the first _MAX_TITLES_IN_LABEL (3, most recently read first -
     # "4--novel" was recorded last) are named, the rest collapse into "и ещё 2".
-    expected = f'data-tooltip="{today}: 5 глав, 0 мин\nNovel 4\nNovel 3\nNovel 2\nи ещё 2"'
-    assert expected in response.text
+    assert (
+        f'title="{today}: 5 глав, 0 мин\nNovel 4\nNovel 3\nNovel 2\nи ещё 2"' in response.text
+    )
 
 
 def test_profile_reading_calendar_tooltip_handles_active_time_with_no_chapters_read(
@@ -321,7 +322,7 @@ def test_profile_reading_calendar_tooltip_handles_active_time_with_no_chapters_r
 
     assert response.status_code == 200
     today = datetime.now(UTC).date().strftime("%d.%m.%Y")
-    assert f'data-tooltip="{today}: нет прочитанных глав, 10 мин"' in response.text
+    assert f'title="{today}: нет прочитанных глав, 10 мин"' in response.text
 
 
 def test_profile_has_an_edit_link_to_settings_account(client: TestClient) -> None:
@@ -444,14 +445,10 @@ def test_public_profile_omits_both_new_sections_when_the_library_is_empty(
     assert "Читает сейчас" not in response.text
     assert 'class="title-card-grid"' not in response.text
     # Unlike those two, PR 136's calendar section always renders (an empty history is a
-    # grid of empty cells, not an omitted section) - so it's the one case where the
-    # reading-calendar-card section (PR 160) is expected even with nothing else on the
-    # page.
-    assert response.text.count('class="profile-section reading-calendar-card"') == 1
-    # PR 160: the section's own header is now the data-driven "N ч M мин чтения за
-    # последний год" phrase, not a static "Календарь чтения" label - "0 мин" for a user
-    # with no reading history at all, never omitted or blank.
-    assert "чтения за последний год" in response.text
+    # grid of empty cells, not an omitted section) - so it's the one case where
+    # class="profile-section" is expected even with nothing else on the page.
+    assert response.text.count('class="profile-section"') == 1
+    assert "Календарь чтения" in response.text
 
 
 def test_public_profile_is_the_same_for_the_owner_and_a_different_visitor(
