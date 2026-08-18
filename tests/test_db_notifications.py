@@ -6,7 +6,9 @@ from app.db.comments import create_comment
 from app.db.migrate import run_migrations
 from app.db.notifications import (
     KIND_COMMENT_REACTION,
+    delete_notification,
     list_notifications_page,
+    mark_notification_read,
     notify_comment_reaction,
 )
 
@@ -126,3 +128,74 @@ def test_list_notifications_page_is_empty_with_none(conn: sqlite3.Connection) ->
 
     assert page == []
     assert has_next_page is False
+
+
+def test_mark_notification_read_flips_the_flag(conn: sqlite3.Connection) -> None:
+    comment = create_comment(conn, 1, "6712--test-novel", "1", "5", "", 0, "hi")
+    notify_comment_reaction(conn, comment.id, actor_user_id=2)
+    notification_id = _notifications(conn)[0]["id"]
+
+    result = mark_notification_read(conn, notification_id, user_id=1)
+
+    assert result is True
+    assert _notifications(conn)[0]["is_read"] == 1
+
+
+def test_mark_notification_read_is_a_noop_if_already_read(conn: sqlite3.Connection) -> None:
+    comment = create_comment(conn, 1, "6712--test-novel", "1", "5", "", 0, "hi")
+    notify_comment_reaction(conn, comment.id, actor_user_id=2)
+    notification_id = _notifications(conn)[0]["id"]
+    mark_notification_read(conn, notification_id, user_id=1)
+
+    result = mark_notification_read(conn, notification_id, user_id=1)
+
+    assert result is True
+
+
+def test_mark_notification_read_rejects_someone_elses_notification(
+    conn: sqlite3.Connection,
+) -> None:
+    comment = create_comment(conn, 1, "6712--test-novel", "1", "5", "", 0, "hi")
+    notify_comment_reaction(conn, comment.id, actor_user_id=2)
+    notification_id = _notifications(conn)[0]["id"]
+
+    result = mark_notification_read(conn, notification_id, user_id=2)
+
+    assert result is False
+    assert _notifications(conn)[0]["is_read"] == 0
+
+
+def test_mark_notification_read_reports_false_for_a_missing_id(
+    conn: sqlite3.Connection,
+) -> None:
+    assert mark_notification_read(conn, 999, user_id=1) is False
+
+
+def test_delete_notification_removes_the_row(conn: sqlite3.Connection) -> None:
+    comment = create_comment(conn, 1, "6712--test-novel", "1", "5", "", 0, "hi")
+    notify_comment_reaction(conn, comment.id, actor_user_id=2)
+    notification_id = _notifications(conn)[0]["id"]
+
+    result = delete_notification(conn, notification_id, user_id=1)
+
+    assert result is True
+    assert _notifications(conn) == []
+
+
+def test_delete_notification_rejects_someone_elses_notification(
+    conn: sqlite3.Connection,
+) -> None:
+    comment = create_comment(conn, 1, "6712--test-novel", "1", "5", "", 0, "hi")
+    notify_comment_reaction(conn, comment.id, actor_user_id=2)
+    notification_id = _notifications(conn)[0]["id"]
+
+    result = delete_notification(conn, notification_id, user_id=2)
+
+    assert result is False
+    assert len(_notifications(conn)) == 1
+
+
+def test_delete_notification_reports_false_for_a_missing_id(
+    conn: sqlite3.Connection,
+) -> None:
+    assert delete_notification(conn, 999, user_id=1) is False

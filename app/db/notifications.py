@@ -1,8 +1,9 @@
 """Access to the ``notifications`` table (migrations/0014_notifications.sql) - PR 167 added
 the generation side (notify_comment_reaction() below); PR 168 adds the read side the
-sidebar bell/panel needs; PR 169 adds paged access for the "Все уведомления" page. Mark-
-read/delete is still PR 170's - nothing here mutates ``is_read`` except the dedupe path
-inside notify_comment_reaction() itself.
+sidebar bell/panel needs; PR 169 adds paged access for the "Все уведомления" page; PR 170
+adds mark-read/delete (mark_notification_read()/delete_notification() below) - the only
+other place ``is_read`` was ever mutated before this is the dedupe path inside
+notify_comment_reaction() itself.
 
 ``kind`` is a plain string tag (not an enum/CHECK constraint) so a later notification kind
 doesn't need a migration of its own to add - the same "no schema ceremony ahead of actual
@@ -68,6 +69,32 @@ def notify_comment_reaction(
             (recipient_id, KIND_COMMENT_REACTION, comment_id, actor_user_id, created_at),
         )
     conn.commit()
+
+
+def mark_notification_read(conn: sqlite3.Connection, notification_id: int, user_id: int) -> bool:
+    """True if a row was actually updated. Scoping the UPDATE by `user_id` as well as
+    `id` means an id that exists but belongs to another user updates nothing and reports
+    back the same as an id that doesn't exist at all - the caller turns both into a 404,
+    not a 403, same reasoning as app/db/downloads.py's delete_entry(). A no-op (still
+    returns True) if the row was already read - the caller doesn't need to special-case
+    "the visitor double-clicked" or "two tabs raced" as an error."""
+    cursor = conn.execute(
+        "UPDATE notifications SET is_read = 1 WHERE id = ? AND user_id = ?",
+        (notification_id, user_id),
+    )
+    conn.commit()
+    return cursor.rowcount > 0
+
+
+def delete_notification(conn: sqlite3.Connection, notification_id: int, user_id: int) -> bool:
+    """Same ownership-scoped shape as mark_notification_read() above - a real DELETE, not
+    a soft "hidden" flag, per the roadmap's own wording."""
+    cursor = conn.execute(
+        "DELETE FROM notifications WHERE id = ? AND user_id = ?",
+        (notification_id, user_id),
+    )
+    conn.commit()
+    return cursor.rowcount > 0
 
 
 @dataclass(frozen=True)
