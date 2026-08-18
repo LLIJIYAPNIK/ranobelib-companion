@@ -2899,8 +2899,9 @@ a {
 }
 
 /* Reddit-style nesting: each level of reply indents via its own .replies wrapper's
-   margin/border rather than a JS-computed depth * N inline style, so recursion in
-   renderCommentNode() doesn't need to know or pass its own depth down at all. */
+   margin/border, not a JS-computed depth * N inline style - depth (PR 165) only ever
+   decides *whether* a level still gets this fixed per-level indent at all
+   (.paragraph-comment__replies--flat below), never its actual magnitude. */
 /* PR 162: spans both grid columns of the parent .paragraph-comment (its own grid item,
    auto-placed into the row below .side/.main) - without this it would auto-place into
    just the narrow left column instead, squeezing the whole reply thread into ~28px.
@@ -2972,6 +2973,20 @@ a {
 .paragraph-comment__replies > .paragraph-comment {
   cursor: auto;
   margin-left: calc(var(--side-width) + 10px);
+}
+
+/* PR 165: past MAX_INDENT_DEPTH levels (paragraph-menu.js), the fixed per-level
+   margin-left above compounds into most of the comment column's width, leaving deeper
+   replies' own text a few characters wide - unreadable long before any thread actually
+   gets 6+ levels deep. paragraph-menu.js tags a .replies container past that depth with
+   this modifier, which cancels the indent for its own children only (not its own
+   position, which is still offset by every shallower ancestor) - deeper threads stop
+   marching right and stay flush at the last indented level instead. The guide line
+   itself (.paragraph-comment__replies-line) still renders per level and is still its own
+   real, independently-hoverable element (PR 164) even where several of them now share
+   the same x-offset. */
+.paragraph-comment__replies--flat > .paragraph-comment {
+  margin-left: 0;
 }
 
 .paragraph-comment__replies[hidden] {
