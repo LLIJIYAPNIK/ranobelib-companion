@@ -1,0 +1,19 @@
+{# PR 169: the server-rendered twin of notifications-panel.js's renderNotification() (PR
+   168) - same .notifications-panel__item/__avatar/__body/__text/__time classes/structure,
+   reused as-is by app.css rather than a second set of styles for this page's own cards.
+   <a> when there's somewhere to send the visitor (comment_url), a plain <div> otherwise -
+   a notification whose comment has since been deleted (PR 172) still shows, it just isn't
+   a link to a comment that no longer exists. #}
+{% macro notification_card(n) %}
+{% if n.comment_url %}<a class="notifications-panel__item{% if not n.is_read %} notifications-panel__item--unread{% endif %}" href="{{ n.comment_url }}">
+{% else %}<div class="notifications-panel__item{% if not n.is_read %} notifications-panel__item--unread{% endif %}">
+{% endif %}
+  <span class="notifications-panel__avatar">
+    {% if n.actor_avatar_url %}<img class="avatar-img" src="{{ n.actor_avatar_url }}" alt="">{% else %}{{ n.actor_avatar_initials }}{% endif %}
+  </span>
+  <span class="notifications-panel__body">
+    <span class="notifications-panel__text"><strong>{{ n.actor_name }}</strong> отреагировал(а) на ваш комментарий{% if n.comment_excerpt %} «{{ n.comment_excerpt }}»{% endif %}</span>
+    <span class="notifications-panel__time">{{ n.created_at_display }}</span>
+  </span>
+{% if n.comment_url %}</a>{% else %}</div>{% endif %}
+{% endmacro %}

@@ -1,0 +1,7 @@
+{% from "_notification_card.html" import notification_card %}
+{% for n in notifications %}
+{{ notification_card(n) }}
+{% endfor %}
+{% if not notifications %}
+<p class="notifications-panel__empty" data-role="notifications-page-empty">Пока нет уведомлений</p>
+{% endif %}

@@ -1,0 +1,21 @@
+{% extends "base.html" %}
+{% block title %}Уведомления — RanobeLib Companion{% endblock %}
+{% block content %}
+<main class="content">
+  <h1 class="toc__title">Уведомления</h1>
+  <div
+    class="notifications-page__list"
+    data-role="notifications-page-list"
+    data-next-page="{{ page + 1 if has_next_page else '' }}"
+  >
+    {% include "_notification_cards.html" %}
+  </div>
+  <div class="notifications-page__sentinel" data-role="notifications-page-sentinel" aria-hidden="true"></div>
+  <noscript>
+    {% if has_next_page %}
+    <p class="content__hint"><a href="?page={{ page + 1 }}">Следующая страница</a></p>
+    {% endif %}
+  </noscript>
+</main>
+<script src="{{ url_for('static', path='js/notifications-page.js') }}" defer></script>
+{% endblock %}
