@@ -1,7 +1,7 @@
-"""Access to the ``notifications`` table (migrations/0014_notifications.sql) - PR 167,
-the data model and generation side of the notifications feature. No listing/read/delete
-API yet - that's PR 168/169/170, which read this same table once there's a UI to show it
-in.
+"""Access to the ``notifications`` table (migrations/0014_notifications.sql) - PR 167 added
+the generation side (notify_comment_reaction() below); PR 168 adds the read side the
+sidebar bell/panel needs. Mark-read/delete is still PR 170's - nothing here mutates
+``is_read`` except the dedupe path inside notify_comment_reaction() itself.
 
 ``kind`` is a plain string tag (not an enum/CHECK constraint) so a later notification kind
 doesn't need a migration of its own to add - the same "no schema ceremony ahead of actual
@@ -12,9 +12,17 @@ nullable for the same reason: a future kind might not be about a comment at all.
 from __future__ import annotations
 
 import sqlite3
+from dataclasses import dataclass
 from datetime import UTC, datetime
 
+from app.auth.avatar import initials_for, url_for
+
 KIND_COMMENT_REACTION = "comment_reaction"
+
+# PR 168: how much of the comment's own body shows in the notification card - a hint of
+# context ("отреагировали на ваш комментарий «Согласен, но...»"), not the full text (which
+# can run to MAX_COMMENT_LENGTH/app/db/comments.py's 2000 characters).
+COMMENT_EXCERPT_LENGTH = 140
 
 
 def notify_comment_reaction(
@@ -59,3 +67,90 @@ def notify_comment_reaction(
             (recipient_id, KIND_COMMENT_REACTION, comment_id, actor_user_id, created_at),
         )
     conn.commit()
+
+
+@dataclass(frozen=True)
+class Notification:
+    id: int
+    kind: str
+    is_read: bool
+    created_at: str
+    actor_name: str
+    # PR 147/comments.py's same picture-or-initials pairing - the bell panel renders one
+    # or the other exactly like every other avatar in this codebase.
+    actor_avatar_url: str | None
+    actor_avatar_initials: str
+    # Only ever set for kind == KIND_COMMENT_REACTION today - None for a comment that's
+    # since been deleted (LEFT JOIN in list_recent_notifications() below) as well as for
+    # any future kind that isn't about a comment at all.
+    comment_id: int | None
+    comment_excerpt: str | None
+    comment_url: str | None
+
+
+def count_unread_notifications(conn: sqlite3.Connection, user_id: int) -> int:
+    """What the sidebar bell's badge shows - polled the same way downloads-status.js
+    already polls its own badge (app/api/downloads_section.py's /downloads/status)."""
+    row = conn.execute(
+        "SELECT COUNT(*) AS n FROM notifications WHERE user_id = ? AND is_read = 0",
+        (user_id,),
+    ).fetchone()
+    return row["n"]
+
+
+def list_recent_notifications(
+    conn: sqlite3.Connection, user_id: int, limit: int
+) -> list[Notification]:
+    """The bell panel's own list, newest first - fetched once when it's opened, not
+    polled (only the unread count above needs to be live everywhere). LEFT JOIN comments
+    (not JOIN) so a notification survives its comment being deleted later (PR 172) -
+    comment_id/comment_excerpt/comment_url just come back None instead of the whole row
+    vanishing or the query failing."""
+    rows = conn.execute(
+        "SELECT notifications.id, notifications.kind, notifications.is_read, "
+        "notifications.created_at, "
+        "actor.nickname AS actor_nickname, actor.email AS actor_email, "
+        "actor.avatar_path AS actor_avatar_path, "
+        "comments.id AS comment_id, comments.body AS comment_body, "
+        "comments.slug_url AS comment_slug_url, comments.volume AS comment_volume, "
+        "comments.number AS comment_number, comments.branch_id AS comment_branch_id "
+        "FROM notifications "
+        "JOIN users AS actor ON actor.id = notifications.actor_user_id "
+        "LEFT JOIN comments ON comments.id = notifications.comment_id "
+        "WHERE notifications.user_id = ? "
+        "ORDER BY notifications.created_at DESC LIMIT ?",
+        (user_id, limit),
+    ).fetchall()
+    return [_row_to_notification(row) for row in rows]
+
+
+def _row_to_notification(row: sqlite3.Row) -> Notification:
+    return Notification(
+        id=row["id"],
+        kind=row["kind"],
+        is_read=bool(row["is_read"]),
+        created_at=row["created_at"],
+        actor_name=row["actor_nickname"] or row["actor_email"],
+        actor_avatar_url=url_for(row["actor_avatar_path"]),
+        actor_avatar_initials=initials_for(row["actor_nickname"], row["actor_email"]),
+        comment_id=row["comment_id"],
+        comment_excerpt=_excerpt(row["comment_body"]),
+        comment_url=_comment_url(row),
+    )
+
+
+def _excerpt(body: str | None) -> str | None:
+    if body is None:
+        return None
+    if len(body) <= COMMENT_EXCERPT_LENGTH:
+        return body
+    return body[:COMMENT_EXCERPT_LENGTH].rstrip() + "…"
+
+
+def _comment_url(row: sqlite3.Row) -> str | None:
+    if row["comment_id"] is None:
+        return None
+    url = f"/titles/{row['comment_slug_url']}/chapters/{row['comment_volume']}/{row['comment_number']}"
+    if row["comment_branch_id"]:
+        url += f"?branch_id={row['comment_branch_id']}"
+    return url

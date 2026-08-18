@@ -16,6 +16,7 @@ from app.api import (
     home,
     images,
     library,
+    notifications,
     profile,
     settings,
     titles,
@@ -66,6 +67,7 @@ app.include_router(downloads.router)
 app.include_router(downloads_section.router)
 app.include_router(images.router)
 app.include_router(library.router)
+app.include_router(notifications.router)
 app.include_router(profile.router)
 app.include_router(settings.router)
 app.include_router(titles.router)
