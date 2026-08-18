@@ -2901,23 +2901,21 @@ a {
 /* Reddit-style nesting: each level of reply indents via its own .replies wrapper's
    margin/border rather than a JS-computed depth * N inline style, so recursion in
    renderCommentNode() doesn't need to know or pass its own depth down at all. */
-/* PR 158: gap bumped along with the rest of this file's proportional spacing increase,
-   but margin-left/padding-left (the 24px-per-depth indent) deliberately left alone -
-   those two compound with nesting depth, unlike every other value touched by this PR, so
-   growing them here would eat further into the remaining width on a deeply nested mobile
-   thread on top of the larger font already asking for more of it. */
 /* PR 162: spans both grid columns of the parent .paragraph-comment (its own grid item,
    auto-placed into the row below .side/.main) - without this it would auto-place into
-   just the narrow left column instead, squeezing the whole reply thread into ~28px. Its
-   own indent (margin/padding below) still reflects the pre-grid layout for now - the
-   next commit recalculates it to line up under .side specifically. */
+   just the narrow left column instead, squeezing the whole reply thread into ~28px.
+   margin-left is 0 now (not the old fixed 12px) so the border-left guide line sits flush
+   with .paragraph-comment's own left edge - the same x-position .side already occupies
+   above it, so the line visually originates from under the avatar/vote column instead of
+   drifting off into the middle of it. padding-left pushes the nested reply's own content
+   clear of that line, past the full width .side used to need. */
 .paragraph-comment__replies {
   grid-column: 1 / -1;
   display: flex;
   flex-direction: column;
   gap: 12px;
-  margin: 8px 0 0 12px;
-  padding-left: 12px;
+  margin: 8px 0 0 0;
+  padding-left: calc(var(--side-width) + 10px);
   border-left: 1px solid var(--border);
   cursor: pointer;
   transition: border-left-color 0.1s ease;
