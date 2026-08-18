@@ -52,6 +52,7 @@ def test_logged_in_visitor_gets_the_notifications_bell_on_any_page(
     assert 'data-role="notifications-trigger"' in response.text
     assert 'data-role="notifications-panel"' in response.text
     assert "static/js/notifications-panel.js" in response.text
+    assert "static/js/notifications-actions.js" in response.text
 
 
 def test_notifications_badge_starts_hidden_with_no_unread(
