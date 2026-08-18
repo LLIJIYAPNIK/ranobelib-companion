@@ -465,6 +465,24 @@ a {
   text-align: center;
 }
 
+/* PR 169: links to notifications.html's full "Все уведомления" list. */
+.notifications-panel__footer {
+  flex: 0 0 auto;
+  padding: 10px 14px;
+  border-top: 1px solid var(--border);
+  color: var(--text-muted);
+  font-size: 12px;
+  text-align: center;
+  text-decoration: none;
+  transition: color 0.1s ease;
+}
+
+@media (hover: hover) {
+  .notifications-panel__footer:hover {
+    color: var(--accent-teal);
+  }
+}
+
 .notifications-panel__item {
   display: flex;
   gap: 10px;

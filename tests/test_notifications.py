@@ -217,3 +217,13 @@ def test_notifications_page_fragment_paginates(
     assert fragment.headers["X-Has-Next-Page"] == "false"
     assert "«first»" in fragment.text
     assert "«second»" not in fragment.text
+
+
+def test_notifications_panel_footer_links_to_the_full_page(client: TestClient) -> None:
+    _register(client, "alice@example.com")
+
+    response = client.get("/")
+
+    assert 'data-role="notifications-panel"' in response.text
+    assert 'class="notifications-panel__footer" href="/notifications"' in response.text
+    assert "Все уведомления" in response.text
