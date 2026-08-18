@@ -147,19 +147,6 @@
     return el ? quoteLines(el.innerText.trim()) : "";
   }
 
-  // Appends rather than overwrites - quoting a second thing (or quoting after already
-  // typing a reply) shouldn't discard what's already in the box. `composer` is whatever
-  // buildComposer() returned; its own .textarea property is what makes this possible for
-  // a composer built once and reused across multiple later "Цитировать" clicks (the
-  // context menu's own composer never needs this - see buildComposer's own comment).
-  function insertQuote(composer, quotedText) {
-    const textarea = composer?.textarea;
-    if (!textarea || !quotedText) return;
-    const gap = textarea.value && !textarea.value.endsWith("\n\n") ? "\n\n" : "";
-    textarea.value = `${textarea.value}${gap}${quotedText}\n\n`;
-    textarea.focus();
-  }
-
   function renderStrip(index, counts, mineEmoji) {
     const host = paragraphHostFor(index);
     if (!host) return;
@@ -387,13 +374,9 @@
   // by the menu's "Комментировать" composer and every comment's own "Ответить" reply
   // form - the only difference between them is what `onSubmit` does with the typed body
   // (and, PR 150/151, the staged attachment file, if any).
-  // PR 156: `initialValue` pre-fills the textarea at creation time (used for the
-  // context menu's "Цитировать" - renderCommentComposer below builds a fresh composer
-  // per open, so a constructor argument is all that's needed there). `wrap.textarea` is
-  // exposed separately for the other "Цитировать" trigger, on an existing comment's own
-  // reply form - that composer is built once per comment (not rebuilt on each click), so
-  // inserting a quote into it later needs a live reference, not just a one-time initial
-  // value (see insertQuote below).
+  // PR 156: `initialValue` pre-fills the textarea at creation time - used for the
+  // context menu's "Цитировать" (renderCommentComposer below builds a fresh composer per
+  // open, so a constructor argument is all that's needed there).
   function buildComposer(onSubmit, placeholder, initialValue = "") {
     const wrap = document.createElement("div");
     wrap.className = "paragraph-comments__composer";
@@ -403,7 +386,6 @@
     textarea.rows = 3;
     textarea.maxLength = 2000; // mirrors MAX_COMMENT_LENGTH in app/db/comments.py
     textarea.value = initialValue;
-    wrap.textarea = textarea;
     const emojiToggle = document.createElement("button");
     emojiToggle.type = "button";
     emojiToggle.className = "paragraph-comments__emoji-toggle";
@@ -707,20 +689,7 @@
         replyForm.hidden = !replyForm.hidden;
       });
 
-      // PR 156: quotes this comment's own raw Markdown (comment.body, not the rendered
-      // body_html) into the reply form, opening it if it wasn't already - "тем же образом
-      // при открытии формы ответа" per the roadmap, so unlike replyToggle above this
-      // always reveals the form rather than toggling it shut on a second click.
-      const quoteToggle = document.createElement("button");
-      quoteToggle.type = "button";
-      quoteToggle.className = "paragraph-comment__quote-toggle";
-      quoteToggle.textContent = "Цитировать";
-      quoteToggle.addEventListener("click", () => {
-        replyForm.hidden = false;
-        insertQuote(replyForm, quoteLines(comment.body));
-      });
-
-      main.append(replyToggle, quoteToggle, replyForm);
+      main.append(replyToggle, replyForm);
     } else {
       const link = document.createElement("a");
       link.className = "paragraph-comment__reply-toggle";
