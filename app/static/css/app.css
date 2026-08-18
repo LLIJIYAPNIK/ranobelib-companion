@@ -822,14 +822,18 @@ a {
   margin: 4px 0 0;
 }
 
+/* PR 160: shared cell/gap sizing so the month-label row and day grid line up on the same
+   11px grid without repeating the magic numbers in both places. */
+.reading-calendar-card {
+  --reading-calendar-cell: 11px;
+  --reading-calendar-gap: 3px;
+}
+
 /* PR 136: the GitHub-style reading-activity heatmap on /profile - a flat sequence of day
    cells (app/api/profile.py's _build_reading_calendar(), oldest first, padded back to
    the most recent Sunday on/before the window's own start) auto-flowed into 7-row
    columns, so the server never has to compute per-cell grid coordinates itself - it just
-   emits the days in order and lets grid-auto-flow: column place them. overflow-x: auto
-   rather than shrinking cells to fit - at ~53 columns the full grid is wider than a
-   phone screen, same "wide content scrolls in its own container" rule as everywhere else
-   wide in this app (catalog tables, code-adjacent content). */
+   emits the days in order and lets grid-auto-flow: column place them. */
 .reading-calendar {
   display: grid;
   grid-auto-flow: column;
@@ -838,10 +842,39 @@ a {
      content), so there's nothing for "1fr" to divide and every cell fell into a single
      tall column instead of wrapping into 7-row weeks. Matches .reading-calendar__day's
      own explicit 11px so a row is exactly one cell tall, no more. */
-  grid-template-rows: repeat(7, 11px);
-  gap: 3px;
+  grid-template-rows: repeat(7, var(--reading-calendar-cell));
+  gap: var(--reading-calendar-gap);
+}
+
+/* PR 160: months row + day grid scroll together as one unit (overflow-x: auto here,
+   rather than on .reading-calendar alone) so a month label never drifts out of sync with
+   the column of cells it labels. At ~53 columns the full grid is wider than a phone
+   screen, same "wide content scrolls in its own container" rule as everywhere else wide
+   in this app (catalog tables, code-adjacent content). */
+.reading-calendar-scroll {
+  display: flex;
+  flex-direction: column;
+  gap: var(--reading-calendar-gap);
   overflow-x: auto;
   padding-bottom: 4px;
+}
+
+/* One label per day-grid column (app/api/profile.py's _month_labels(), empty string for
+   every column that isn't where a month starts) - a single-row grid using the exact same
+   column size/gap as .reading-calendar below it, so column N here sits directly above
+   column N of the day grid. Labels aren't clipped to their own 11px-wide cell
+   (overflow: visible is the grid default) - like GitHub's own graph, the ~3-character
+   abbreviation just overflows rightward over the next (empty) label cells. */
+.reading-calendar-months {
+  display: grid;
+  grid-auto-flow: column;
+  grid-auto-columns: var(--reading-calendar-cell);
+  gap: var(--reading-calendar-gap);
+  height: 14px;
+  font-size: 10px;
+  line-height: 14px;
+  color: var(--text-muted);
+  white-space: nowrap;
 }
 
 .reading-calendar__day {

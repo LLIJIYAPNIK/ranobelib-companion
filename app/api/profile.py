@@ -15,7 +15,7 @@ something is set to hidden and go fix it in /settings/account.
 from __future__ import annotations
 
 from dataclasses import dataclass
-from datetime import UTC, datetime, timedelta
+from datetime import UTC, date, datetime, timedelta
 from typing import Annotated
 
 from fastapi import APIRouter, Depends, HTTPException, Request
@@ -48,10 +48,11 @@ class CalendarDay:
 @dataclass(frozen=True)
 class ReadingCalendar:
     """PR 160: the whole GitHub-style heatmap, not just its day cells - the header needs
-    the window's total active time, computed once alongside the day cells themselves in
-    _build_reading_calendar()."""
+    the window's total active time and the grid needs a month label per column, both
+    computed once alongside the day cells themselves in _build_reading_calendar()."""
 
     days: list[CalendarDay]
+    month_labels: list[str]  # one entry per column of `days` (see _month_labels())
     total_duration_label: str  # e.g. "128 ч 4 мин чтения за последний год"
 
 
@@ -184,7 +185,46 @@ async def _build_reading_calendar(user_id: int) -> ReadingCalendar:
     # section's "today" stat, spans the full year the grid itself covers.
     total_duration = _format_duration(sum(active_seconds.values()))
     total_duration_label = f"{total_duration} чтения за последний год"
-    return ReadingCalendar(days=days, total_duration_label=total_duration_label)
+    month_labels = _month_labels(grid_start, total_days=len(days))
+    return ReadingCalendar(
+        days=days, month_labels=month_labels, total_duration_label=total_duration_label
+    )
+
+
+# PR 160: Russian 3-letter month abbreviations for the labels above the grid, index 0 = Jan
+# - matches every other Russian-only label already in this module (_pluralize_chapters()
+# etc.), there's no i18n layer to plug a locale-aware formatter into here.
+_MONTH_ABBR_RU = [
+    "Янв", "Фев", "Мар", "Апр", "Май", "Июн",
+    "Июл", "Авг", "Сен", "Окт", "Ноя", "Дек",
+]
+
+# Minimum number of columns between two month labels - without this, a month that starts
+# within a column or two of the previous label's column (e.g. a short adjacent month) would
+# overlap it, since each label's text (~3 characters) is wider than a single 11px+3px cell.
+_MIN_MONTH_LABEL_GAP = 3
+
+
+def _month_labels(grid_start: date, total_days: int) -> list[str]:
+    """One entry per column of the day grid (columns run left→right, oldest first, same
+    order `days` auto-flows into via app.css's `grid-auto-flow: column`), empty unless that
+    column is where a new month starts - i.e. its first (Sunday) row falls in a different
+    month than the previous column's first row. Purely a function of `grid_start`/
+    `total_days` (calendar dates), not of any reading activity, so it renders the same
+    correct labels whether the user has a year of history or none at all."""
+    num_columns = -(-total_days // 7)  # ceil division, no partial-week columns dropped
+    labels = [""] * num_columns
+    last_labeled_col = -_MIN_MONTH_LABEL_GAP
+    prev_month: tuple[int, int] | None = None
+    for col in range(num_columns):
+        col_start = grid_start + timedelta(days=col * 7)
+        month = (col_start.year, col_start.month)
+        if month != prev_month:
+            prev_month = month
+            if col - last_labeled_col >= _MIN_MONTH_LABEL_GAP:
+                labels[col] = _MONTH_ABBR_RU[col_start.month - 1]
+                last_labeled_col = col
+    return labels
 
 
 async def _title_names(slugs: set[str]) -> dict[str, str]:
