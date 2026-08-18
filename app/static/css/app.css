@@ -827,6 +827,18 @@ a {
 .reading-calendar-card {
   --reading-calendar-cell: 11px;
   --reading-calendar-gap: 3px;
+  /* Intensity relative to this user's own busiest day in the window (see
+     _build_reading_calendar's level calculation), not a fixed absolute scale - a light
+     reader's best day and a heavy reader's best day both land on level 4, in the site's
+     accent teal rather than GitHub's own green. Shared as variables (not just set
+     directly on .reading-calendar__day--level-N below) so the always-present legend
+     swatches can reuse the same colors under their own class names, instead of the
+     legend colliding with the "no level-N cell present" assertions the day grid's own
+     classes are used for elsewhere. */
+  --reading-calendar-level-1: rgba(34, 211, 197, 0.28);
+  --reading-calendar-level-2: rgba(34, 211, 197, 0.5);
+  --reading-calendar-level-3: rgba(34, 211, 197, 0.75);
+  --reading-calendar-level-4: var(--accent-teal);
 }
 
 /* Weekday column (left) + the scrollable months/day-grid stack (right) - only the latter
@@ -899,6 +911,49 @@ a {
   white-space: nowrap;
 }
 
+/* Legend for the 5 intensity levels, bottom-right of the card - its own swatch class
+   (not .reading-calendar__day--level-N) so a legend, which always shows all 5 levels
+   regardless of this user's actual data, can never be mistaken by a substring check for
+   an actual day cell reaching that level (see tests/test_api_profile.py). Same colors
+   via the --reading-calendar-level-N variables above. */
+.reading-calendar-legend {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  justify-content: flex-end;
+  margin-top: 8px;
+  font-size: 11px;
+  color: var(--text-muted);
+}
+
+.reading-calendar-legend__swatch {
+  width: var(--reading-calendar-cell);
+  height: var(--reading-calendar-cell);
+  border-radius: 2px;
+  background: var(--bg-surface);
+  border: 1px solid var(--border);
+}
+
+.reading-calendar-legend__swatch--level-1 {
+  background: var(--reading-calendar-level-1);
+  border-color: transparent;
+}
+
+.reading-calendar-legend__swatch--level-2 {
+  background: var(--reading-calendar-level-2);
+  border-color: transparent;
+}
+
+.reading-calendar-legend__swatch--level-3 {
+  background: var(--reading-calendar-level-3);
+  border-color: transparent;
+}
+
+.reading-calendar-legend__swatch--level-4 {
+  background: var(--reading-calendar-level-4);
+  border-color: transparent;
+}
+
 .reading-calendar__day {
   width: 11px;
   height: 11px;
@@ -907,27 +962,23 @@ a {
   border: 1px solid var(--border);
 }
 
-/* Intensity relative to this user's own busiest day in the window (see
-   _build_reading_calendar's level calculation), not a fixed absolute scale - a light
-   reader's best day and a heavy reader's best day both land on level 4, in the site's
-   accent teal rather than GitHub's own green. */
 .reading-calendar__day--level-1 {
-  background: rgba(34, 211, 197, 0.28);
+  background: var(--reading-calendar-level-1);
   border-color: transparent;
 }
 
 .reading-calendar__day--level-2 {
-  background: rgba(34, 211, 197, 0.5);
+  background: var(--reading-calendar-level-2);
   border-color: transparent;
 }
 
 .reading-calendar__day--level-3 {
-  background: rgba(34, 211, 197, 0.75);
+  background: var(--reading-calendar-level-3);
   border-color: transparent;
 }
 
 .reading-calendar__day--level-4 {
-  background: var(--accent-teal);
+  background: var(--reading-calendar-level-4);
   border-color: transparent;
 }
 
