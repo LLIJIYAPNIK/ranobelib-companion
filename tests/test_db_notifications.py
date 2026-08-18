@@ -4,7 +4,11 @@ import pytest
 
 from app.db.comments import create_comment
 from app.db.migrate import run_migrations
-from app.db.notifications import KIND_COMMENT_REACTION, notify_comment_reaction
+from app.db.notifications import (
+    KIND_COMMENT_REACTION,
+    list_notifications_page,
+    notify_comment_reaction,
+)
 
 
 @pytest.fixture
@@ -85,3 +89,40 @@ def test_notify_comment_reaction_creates_a_new_row_once_the_old_one_is_read(
     notify_comment_reaction(conn, comment.id, actor_user_id=2)
 
     assert len(_notifications(conn)) == 2
+
+
+def test_list_notifications_page_paginates_newest_first(conn: sqlite3.Connection) -> None:
+    comments = [
+        create_comment(conn, 1, "6712--test-novel", "1", "5", "", 0, f"comment {i}")
+        for i in range(3)
+    ]
+    for comment in comments:
+        notify_comment_reaction(conn, comment.id, actor_user_id=2)
+
+    page, has_next_page = list_notifications_page(conn, 1, page=1, page_size=2)
+
+    assert [n.comment_id for n in page] == [comments[2].id, comments[1].id]
+    assert has_next_page is True
+
+
+def test_list_notifications_page_reports_no_next_page_on_the_last_page(
+    conn: sqlite3.Connection,
+) -> None:
+    comments = [
+        create_comment(conn, 1, "6712--test-novel", "1", "5", "", 0, f"comment {i}")
+        for i in range(3)
+    ]
+    for comment in comments:
+        notify_comment_reaction(conn, comment.id, actor_user_id=2)
+
+    page, has_next_page = list_notifications_page(conn, 1, page=2, page_size=2)
+
+    assert [n.comment_id for n in page] == [comments[0].id]
+    assert has_next_page is False
+
+
+def test_list_notifications_page_is_empty_with_none(conn: sqlite3.Connection) -> None:
+    page, has_next_page = list_notifications_page(conn, 1, page=1, page_size=2)
+
+    assert page == []
+    assert has_next_page is False

@@ -1,8 +1,9 @@
 """GET /notifications/unread-count and /notifications/recent (PR 168) - the sidebar
-bell's own two endpoints. app/db/notifications.py's own unit tests already cover
-notify_comment_reaction()'s dedupe/self-react rules in isolation; these exercise the
-whole request path end to end, including the actor/comment context the JSON responses add
-on top of the raw table."""
+bell's own two endpoints - plus GET /notifications (PR 169), the full "Все уведомления"
+page. app/db/notifications.py's own unit tests already cover notify_comment_reaction()'s
+dedupe/self-react rules and list_notifications_page()'s pagination math in isolation;
+these exercise the whole request path end to end, including the actor/comment context the
+responses add on top of the raw table."""
 
 from collections.abc import Iterator
 from pathlib import Path
@@ -129,3 +130,47 @@ def test_recent_notifications_truncates_a_long_comment_body(client: TestClient) 
     [notification] = client.get("/notifications/recent").json()["notifications"]
 
     assert notification["comment_excerpt"] == "ф" * 140 + "…"
+
+
+def test_notifications_page_requires_login(client: TestClient) -> None:
+    response = client.get("/notifications", follow_redirects=False)
+
+    assert response.status_code == 303
+    assert response.headers["location"] == "/login"
+
+
+def test_notifications_page_shows_the_empty_state_with_none(client: TestClient) -> None:
+    _register(client, "alice@example.com")
+
+    response = client.get("/notifications")
+
+    assert 'data-role="notifications-page-empty"' in response.text
+    assert "Пока нет уведомлений" in response.text
+
+
+def test_notifications_page_renders_a_card_reused_from_the_panel(
+    client: TestClient,
+) -> None:
+    _register(client, "alice@example.com")
+    comment = client.post(
+        "/titles/6712--test-novel/chapters/1/5/comments",
+        data={"paragraph_index": "0", "body": "Согласен, но с оговорками"},
+    ).json()["comments"][0]
+
+    _register(client, "bob@example.com")
+    client.post(
+        f"/titles/6712--test-novel/chapters/1/5/comments/{comment['id']}/reactions",
+        data={"value": "1"},
+    )
+
+    _login(client, "alice@example.com")
+    response = client.get("/notifications")
+
+    assert 'data-role="notifications-page-list"' in response.text
+    # Same card classes as the bell panel (PR 168) - not a second set of styles.
+    assert 'class="notifications-panel__item notifications-panel__item--unread"' in (
+        response.text
+    )
+    assert "bob@example.com" in response.text
+    assert "Согласен, но с оговорками" in response.text
+    assert 'href="/titles/6712--test-novel/chapters/1/5"' in response.text

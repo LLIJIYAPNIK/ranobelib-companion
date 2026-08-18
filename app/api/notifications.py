@@ -1,31 +1,39 @@
-"""PR 168: the sidebar bell's own two endpoints - a lightweight unread count polled on
-every page (same idea as app/api/downloads_section.py's /downloads/status) and the
-recent-list fetched once when the panel itself opens. Marking read/deleting is PR 170's;
-the full "Все уведомления" page is PR 169's - both read the same app/db/notifications.py
-this already does.
+"""PR 168 added the sidebar bell's own two JSON endpoints - a lightweight unread count
+polled on every page (same idea as app/api/downloads_section.py's /downloads/status) and
+the recent-list fetched once the panel itself opens. PR 169 adds the "Все уведомления"
+page (GET "") on top of the same app/db/notifications.py, reusing the exact same card
+markup as the panel (app/templates/_notification_card.html). Marking read/deleting is
+still PR 170's.
 """
 
 from __future__ import annotations
 
+from datetime import datetime
 from typing import Annotated, Any
 
-from fastapi import APIRouter, Depends
-from fastapi.responses import JSONResponse
+from fastapi import APIRouter, Depends, Query, Request
+from fastapi.responses import HTMLResponse, JSONResponse
 
 from app.auth.dependencies import require_current_user
 from app.db.connection import get_connection
 from app.db.notifications import (
     Notification,
     count_unread_notifications,
+    list_notifications_page,
     list_recent_notifications,
 )
 from app.db.users import User
+from app.templating import templates
 
 router = APIRouter(prefix="/notifications")
 
-# How many notifications the panel shows - PR 169's "Все уведомления" page is where
+# How many notifications the panel shows - the "Все уведомления" page below is where
 # seeing further back belongs, not a longer list crammed into this same small panel.
 RECENT_LIMIT = 20
+
+# One page of the "Все уведомления" list - deliberately more than RECENT_LIMIT (this is
+# the page that exists specifically to see further back than the panel's own short list).
+PAGE_SIZE = 30
 
 
 @router.get("/unread-count")
@@ -46,6 +54,47 @@ async def get_recent(user: Annotated[User, Depends(require_current_user)]) -> JS
             "notifications": [_to_dict(notification) for notification in notifications],
         }
     )
+
+
+@router.get("", response_model=None)
+async def show_notifications(
+    request: Request,
+    user: Annotated[User, Depends(require_current_user)],
+    page: Annotated[int, Query(ge=1)] = 1,
+) -> HTMLResponse:
+    conn = get_connection()
+    notifications, has_next_page = list_notifications_page(conn, user.id, page, PAGE_SIZE)
+    return templates.TemplateResponse(
+        request,
+        "notifications.html",
+        {
+            "notifications": [_to_template_context(n) for n in notifications],
+            "page": page,
+            "has_next_page": has_next_page,
+        },
+    )
+
+
+def _to_template_context(notification: Notification) -> dict[str, Any]:
+    """What notifications.html/_notification_cards.html render - the same fields as
+    _to_dict() below plus a server-formatted created_at, since these are plain server-
+    rendered <a>/<div> cards rather than notifications-panel.js's client-rendered ones."""
+    return {
+        "is_read": notification.is_read,
+        "actor_name": notification.actor_name,
+        "actor_avatar_url": notification.actor_avatar_url,
+        "actor_avatar_initials": notification.actor_avatar_initials,
+        "comment_excerpt": notification.comment_excerpt,
+        "comment_url": notification.comment_url,
+        "created_at_display": _format_time(notification.created_at),
+    }
+
+
+def _format_time(iso: str) -> str:
+    """Same day/month/year/hour/minute shape as notifications-panel.js's own formatTime()
+    - kept in sync by hand, same as every other piece of formatting this codebase
+    duplicates once on each side of the server/client line rather than sharing."""
+    return datetime.fromisoformat(iso).strftime("%d.%m.%Y %H:%M")
 
 
 def _to_dict(notification: Notification) -> dict[str, Any]:

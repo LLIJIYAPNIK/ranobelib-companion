@@ -1,7 +1,8 @@
 """Access to the ``notifications`` table (migrations/0014_notifications.sql) - PR 167 added
 the generation side (notify_comment_reaction() below); PR 168 adds the read side the
-sidebar bell/panel needs. Mark-read/delete is still PR 170's - nothing here mutates
-``is_read`` except the dedupe path inside notify_comment_reaction() itself.
+sidebar bell/panel needs; PR 169 adds paged access for the "Все уведомления" page. Mark-
+read/delete is still PR 170's - nothing here mutates ``is_read`` except the dedupe path
+inside notify_comment_reaction() itself.
 
 ``kind`` is a plain string tag (not an enum/CHECK constraint) so a later notification kind
 doesn't need a migration of its own to add - the same "no schema ceremony ahead of actual
@@ -102,10 +103,34 @@ def list_recent_notifications(
     conn: sqlite3.Connection, user_id: int, limit: int
 ) -> list[Notification]:
     """The bell panel's own list, newest first - fetched once when it's opened, not
-    polled (only the unread count above needs to be live everywhere). LEFT JOIN comments
-    (not JOIN) so a notification survives its comment being deleted later (PR 172) -
-    comment_id/comment_excerpt/comment_url just come back None instead of the whole row
-    vanishing or the query failing."""
+    polled (only the unread count above needs to be live everywhere)."""
+    return _list_notifications(conn, user_id, offset=0, limit=limit)
+
+
+def list_notifications_page(
+    conn: sqlite3.Connection, user_id: int, page: int, page_size: int
+) -> tuple[list[Notification], bool]:
+    """PR 169's "Все уведомления" page, one page at a time (`page` is 1-indexed, same
+    convention as app/api/library.py's own catalog pagination). Fetches one extra row
+    past `page_size` to answer "is there a next page" without a second COUNT(*) query -
+    the catalog's own has_next_page instead comes straight from the SDK's response, but
+    there's no such response to read it off here, so this table computes its own."""
+    rows = _list_notifications(conn, user_id, offset=(page - 1) * page_size, limit=page_size + 1)
+    has_next_page = len(rows) > page_size
+    return rows[:page_size], has_next_page
+
+
+def _list_notifications(
+    conn: sqlite3.Connection, user_id: int, offset: int, limit: int
+) -> list[Notification]:
+    """LEFT JOIN comments (not JOIN) so a notification survives its comment being deleted
+    later (PR 172) - comment_id/comment_excerpt/comment_url just come back None instead of
+    the whole row vanishing or the query failing.
+
+    Orders by `id DESC` as a tiebreaker after `created_at DESC` - two notifications
+    created microseconds apart (e.g. in a tight loop, as tests do) can land on the same
+    ISO timestamp, and `created_at` alone would then leave their relative order to
+    SQLite's own unspecified tie-breaking instead of "most recently inserted first"."""
     rows = conn.execute(
         "SELECT notifications.id, notifications.kind, notifications.is_read, "
         "notifications.created_at, "
@@ -118,8 +143,8 @@ def list_recent_notifications(
         "JOIN users AS actor ON actor.id = notifications.actor_user_id "
         "LEFT JOIN comments ON comments.id = notifications.comment_id "
         "WHERE notifications.user_id = ? "
-        "ORDER BY notifications.created_at DESC LIMIT ?",
-        (user_id, limit),
+        "ORDER BY notifications.created_at DESC, notifications.id DESC LIMIT ? OFFSET ?",
+        (user_id, limit, offset),
     ).fetchall()
     return [_row_to_notification(row) for row in rows]
 
