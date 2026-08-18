@@ -1,9 +1,11 @@
 """PR 168 added the sidebar bell's own two JSON endpoints - a lightweight unread count
 polled on every page (same idea as app/api/downloads_section.py's /downloads/status) and
 the recent-list fetched once the panel itself opens. PR 169 adds the "Все уведомления"
-page (GET "") on top of the same app/db/notifications.py, reusing the exact same card
-markup as the panel (app/templates/_notification_card.html). Marking read/deleting is
-still PR 170's.
+page (GET "") and its own infinite-scroll fragment (GET /page) on top of the same
+app/db/notifications.py - same server-renders-the-cards, no-client-templating shape as
+app/api/library.py's catalog/catalog_page_fragment (app/static/js/catalog-scroll.js), and
+reusing the exact same card markup as the bell panel (app/templates/_notification_card.html).
+Marking read/deleting is still PR 170's.
 """
 
 from __future__ import annotations
@@ -12,7 +14,7 @@ from datetime import datetime
 from typing import Annotated, Any
 
 from fastapi import APIRouter, Depends, Query, Request
-from fastapi.responses import HTMLResponse, JSONResponse
+from fastapi.responses import HTMLResponse, JSONResponse, Response
 
 from app.auth.dependencies import require_current_user
 from app.db.connection import get_connection
@@ -73,6 +75,26 @@ async def show_notifications(
             "has_next_page": has_next_page,
         },
     )
+
+
+@router.get("/page", response_model=None)
+async def notifications_page_fragment(
+    request: Request,
+    user: Annotated[User, Depends(require_current_user)],
+    page: Annotated[int, Query(ge=1)] = 1,
+) -> Response:
+    """Just the card markup, no base.html - what notifications-page.js fetches and
+    appends as the visitor scrolls, same shape as app/api/library.py's own
+    catalog_page_fragment."""
+    conn = get_connection()
+    notifications, has_next_page = list_notifications_page(conn, user.id, page, PAGE_SIZE)
+    response = templates.TemplateResponse(
+        request,
+        "_notification_cards.html",
+        {"notifications": [_to_template_context(n) for n in notifications]},
+    )
+    response.headers["X-Has-Next-Page"] = "true" if has_next_page else "false"
+    return response
 
 
 def _to_template_context(notification: Notification) -> dict[str, Any]:
