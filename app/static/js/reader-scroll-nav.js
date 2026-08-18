@@ -5,7 +5,8 @@
 // the original in-flow .reader-nav is already visible on its own.
 (() => {
   const nav = document.querySelector('[data-role="reader-scroll-nav"]');
-  if (!nav) return;
+  const main = document.querySelector(".main");
+  if (!nav || !main) return;
 
   const REVEAL_DELTA = 8;
   // Below this scrollY, the in-flow .reader-nav at the top of the page is still (at
@@ -14,6 +15,16 @@
 
   let lastY = window.scrollY;
   let ticking = false;
+
+  // PR 161: now that .reader-scroll-nav is `position: fixed` (not `sticky` - see
+  // app.css), it no longer automatically stays contained within .main's own box, so its
+  // left/width are tracked here from .main's live rect instead, to still never overlap
+  // the sidebar as it collapses/expands (PR 39/48/49) or the viewport resizes.
+  function positionNav() {
+    const rect = main.getBoundingClientRect();
+    nav.style.left = `${rect.left}px`;
+    nav.style.width = `${rect.width}px`;
+  }
 
   function onScroll() {
     const y = window.scrollY;
@@ -27,9 +38,12 @@
       nav.classList.remove("reader-scroll-nav--visible");
     }
 
+    positionNav();
     lastY = y;
     ticking = false;
   }
+
+  positionNav();
 
   window.addEventListener(
     "scroll",
@@ -41,4 +55,5 @@
     },
     { passive: true }
   );
+  window.addEventListener("resize", positionNav);
 })();

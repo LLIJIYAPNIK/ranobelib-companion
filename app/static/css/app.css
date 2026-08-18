@@ -2383,13 +2383,23 @@ a {
 /* Reveal-on-scroll-up overlay (PR 52) - a compact duplicate of .reader-nav's controls
    (back link, heading, prev/next) that reader-scroll-nav.js slides into view over the
    chapter text on any upward scroll, so reaching them mid-chapter doesn't take a scroll
-   all the way back to the top. `position: sticky` (not `fixed`) keeps it contained within
-   `.main`'s own box instead of the viewport, so it never overlaps the sidebar - same trick
-   PR 51 avoided for the opposite reason (there, `sticky` was the bug because the
-   containing block was too short; here `.main` spans the whole chapter, so it isn't).
-   `transform` handles the actual show/hide, layered independently on top of that. */
+   all the way back to the top.
+
+   PR 161: `position: fixed`, not the `sticky` this used to be - `sticky` never leaves
+   normal flow, so its own box (padding + line height) was permanently reserved at the
+   very top of `.main`, pushing `.reader-nav`/`.reader-content` down by that amount even
+   while `transform` hid it off-screen (translateY(-100%) only moves the already-laid-out
+   box, it doesn't collapse the space that box reserves) - an empty gap above the chapter
+   on every page load. `fixed` never reserves flow space at all, in any visibility state.
+   The tradeoff: unlike `sticky`, `fixed` doesn't automatically stay contained within
+   `.main`'s own box (that containment is what made PR 52 choose `sticky` over `fixed` in
+   the first place, to never overlap the sidebar) - reader-scroll-nav.js now tracks
+   `.main`'s live `getBoundingClientRect()` into `left`/`width` itself instead, so it
+   still lines up with `.main`'s column exactly, including through sidebar
+   expand/collapse (PR 39/48/49) and viewport resizes. `transform` still handles the
+   actual show/hide, layered independently on top of the position itself. */
 .reader-scroll-nav {
-  position: sticky;
+  position: fixed;
   top: 0;
   z-index: 50;
   display: flex;
