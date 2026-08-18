@@ -7,6 +7,7 @@ from app.db.users import (
     create_user,
     get_user_by_email,
     get_user_by_id,
+    update_notification_settings,
     update_privacy_settings,
     update_user_account,
     update_user_avatar,
@@ -205,3 +206,35 @@ def test_update_privacy_settings_leaves_other_fields_untouched(conn: sqlite3.Con
 
     assert updated.nickname == "Alice"
     assert updated.bio == "Hi"
+
+
+def test_new_user_defaults_to_notifications_enabled_and_not_do_not_disturb(
+    conn: sqlite3.Connection,
+) -> None:
+    user = create_user(conn, "alice@example.com", "hash1")
+
+    assert user.notifications_enabled is True
+    assert user.do_not_disturb is False
+
+
+def test_update_notification_settings_sets_both_flags(conn: sqlite3.Connection) -> None:
+    user = create_user(conn, "alice@example.com", "hash1")
+
+    updated = update_notification_settings(
+        conn, user.id, notifications_enabled=False, do_not_disturb=True
+    )
+
+    assert updated.notifications_enabled is False
+    assert updated.do_not_disturb is True
+    assert get_user_by_id(conn, user.id) == updated
+
+
+def test_update_notification_settings_flags_are_independent(conn: sqlite3.Connection) -> None:
+    user = create_user(conn, "alice@example.com", "hash1")
+
+    updated = update_notification_settings(
+        conn, user.id, notifications_enabled=True, do_not_disturb=True
+    )
+
+    assert updated.notifications_enabled is True
+    assert updated.do_not_disturb is True

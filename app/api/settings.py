@@ -12,6 +12,7 @@ from app.db.connection import get_connection
 from app.db.users import (
     User,
     get_user_by_email,
+    update_notification_settings,
     update_privacy_settings,
     update_user_account,
     update_user_avatar,
@@ -185,4 +186,49 @@ async def update_password(
         request,
         "settings_security.html",
         {"active_nav": "settings", "active_settings_section": "security", "saved": True},
+    )
+
+
+def _notifications_context(user: User, **extra: object) -> dict[str, object]:
+    return {
+        "active_nav": "settings",
+        "active_settings_section": "notifications",
+        "notifications_enabled": user.notifications_enabled,
+        "do_not_disturb": user.do_not_disturb,
+        **extra,
+    }
+
+
+@router.get("/settings/notifications")
+async def settings_notifications_page(
+    request: Request, user: Annotated[User | None, Depends(get_current_user)]
+) -> HTMLResponse:
+    """Viewing doesn't require an account - same locked-screen gate as the other settings
+    tabs above."""
+    context = (
+        _notifications_context(user)
+        if user is not None
+        else {"active_nav": "settings", "active_settings_section": "notifications"}
+    )
+    return templates.TemplateResponse(request, "settings_notifications.html", context)
+
+
+@router.post("/settings/notifications", response_model=None)
+async def update_notifications(
+    request: Request,
+    user: Annotated[User, Depends(require_current_user)],
+    notifications_enabled: bool = Form(default=False),
+    do_not_disturb: bool = Form(default=False),
+) -> HTMLResponse:
+    """Unchecked checkboxes aren't sent by the browser at all, so every submit carries
+    the visitor's complete intended state for both - same "always write all together"
+    shape as update_privacy/update_account above."""
+    updated = update_notification_settings(
+        get_connection(),
+        user.id,
+        notifications_enabled=notifications_enabled,
+        do_not_disturb=do_not_disturb,
+    )
+    return templates.TemplateResponse(
+        request, "settings_notifications.html", _notifications_context(updated, saved=True)
     )

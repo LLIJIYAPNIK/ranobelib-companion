@@ -1,0 +1,34 @@
+{% extends "settings_layout.html" %}
+{% block title %}Уведомления — Настройки — RanobeLib Companion{% endblock %}
+{% block settings_content %}
+  {% if current_user %}
+  <section class="settings-card">
+    <h2 class="reader-settings-section__title">Уведомления</h2>
+    {% if saved %}
+    <p class="content__notice content__notice--success">Настройки уведомлений сохранены</p>
+    {% endif %}
+    <p class="content__hint">
+      Ни один из переключателей не отключает сам сбор уведомлений — если кто-то отреагирует
+      на ваш комментарий, это всё равно будет записано, просто не покажется в колокольчике,
+      пока переключатель выключен.
+    </p>
+    <form class="settings-form" method="post" action="/settings/notifications">
+      <label class="auth-form__field auth-form__field--checkbox">
+        <input type="checkbox" name="notifications_enabled" {% if notifications_enabled %}checked{% endif %}>
+        <span>Показывать уведомления</span>
+      </label>
+      <label class="auth-form__field auth-form__field--checkbox">
+        <input type="checkbox" name="do_not_disturb" {% if do_not_disturb %}checked{% endif %}>
+        <span>Не беспокоить</span>
+      </label>
+      <button class="btn btn--primary" type="submit">Сохранить</button>
+    </form>
+  </section>
+  {% else %}
+  {% from "_locked_feature.html" import locked_feature %}
+  {% call locked_feature("Уведомления скрыты", "/login", "Войти") %}
+  <a href="/login">Войдите</a> или <a href="/register">зарегистрируйтесь</a>,
+  чтобы настроить уведомления.
+  {% endcall %}
+  {% endif %}
+{% endblock %}

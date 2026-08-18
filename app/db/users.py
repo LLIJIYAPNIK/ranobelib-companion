@@ -1,5 +1,6 @@
 """Access to the ``users`` table (see migrations/0001_users.sql,
-0009_users_privacy_flags.sql for the ``show_*`` columns).
+0009_users_privacy_flags.sql for the ``show_*`` columns,
+0015_users_notification_flags.sql for ``notifications_enabled``/``do_not_disturb``).
 """
 
 from __future__ import annotations
@@ -25,6 +26,13 @@ class User:
     show_currently_reading: bool = True
     show_favorite: bool = True
     show_library: bool = True
+    # PR 171: "Показывать уведомления" (hides the sidebar bell entirely) and
+    # "Не беспокоить" (hides it temporarily) - see update_notification_settings() below
+    # for what each one actually does (both gate visibility identically; neither pauses
+    # notify_comment_reaction() itself writing new rows). Default True/False so nobody who
+    # has never opened this settings section sees any change in behavior.
+    notifications_enabled: bool = True
+    do_not_disturb: bool = False
 
 
 def create_user(
@@ -119,9 +127,39 @@ def update_privacy_settings(
     return user
 
 
+def update_notification_settings(
+    conn: sqlite3.Connection,
+    user_id: int,
+    *,
+    notifications_enabled: bool,
+    do_not_disturb: bool,
+) -> User:
+    """The "Уведомления" settings section's two toggles (PR 171) - same "always write
+    both together, not a partial update" shape as update_privacy_settings() above.
+
+    Both flags only ever gate whether base.html renders the sidebar bell/panel -
+    notify_comment_reaction() (app/db/notifications.py) writes a row regardless of either
+    one. A reaction to someone's comment is a fact that already happened; pausing
+    generation while a visitor has either flag set would mean it's gone for good once
+    they turn the flag back off (there's no "catch up on what happened while muted" here),
+    which is worse than just not showing it live. "Показывать уведомления" and
+    "Не беспокоить" end up controlling the exact same thing today (there's no snooze
+    timer/schedule yet) - the distinction is only in the settings copy (a standing
+    preference vs. a temporary one), not in what either does."""
+    conn.execute(
+        "UPDATE users SET notifications_enabled = ?, do_not_disturb = ? WHERE id = ?",
+        (notifications_enabled, do_not_disturb, user_id),
+    )
+    conn.commit()
+    user = get_user_by_id(conn, user_id)
+    assert user is not None  # just updated
+    return user
+
+
 _USER_COLUMNS = (
     "id, email, password_hash, created_at, nickname, bio, avatar_path, "
-    "show_currently_reading, show_favorite, show_library"
+    "show_currently_reading, show_favorite, show_library, "
+    "notifications_enabled, do_not_disturb"
 )
 
 
@@ -153,6 +191,8 @@ def _row_to_user(row: sqlite3.Row) -> User:
         show_currently_reading=bool(row["show_currently_reading"]),
         show_favorite=bool(row["show_favorite"]),
         show_library=bool(row["show_library"]),
+        notifications_enabled=bool(row["notifications_enabled"]),
+        do_not_disturb=bool(row["do_not_disturb"]),
     )
 
 
