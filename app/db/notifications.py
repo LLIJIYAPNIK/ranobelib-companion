@@ -150,7 +150,8 @@ def _excerpt(body: str | None) -> str | None:
 def _comment_url(row: sqlite3.Row) -> str | None:
     if row["comment_id"] is None:
         return None
-    url = f"/titles/{row['comment_slug_url']}/chapters/{row['comment_volume']}/{row['comment_number']}"
+    slug, volume, number = row["comment_slug_url"], row["comment_volume"], row["comment_number"]
+    url = f"/titles/{slug}/chapters/{volume}/{number}"
     if row["comment_branch_id"]:
         url += f"?branch_id={row['comment_branch_id']}"
     return url
