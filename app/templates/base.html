@@ -72,7 +72,7 @@
         </svg>
         <span class="sidebar__label">Настройки</span>
       </a>
-      {% if current_user %}
+      {% if current_user and current_user.notifications_enabled and not current_user.do_not_disturb %}
       <button
         class="sidebar__link"
         type="button"

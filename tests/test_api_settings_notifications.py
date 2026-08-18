@@ -1,4 +1,5 @@
-"""GET/POST /settings/notifications (PR 171) - "Показывать уведомления"/"Не беспокоить"."""
+"""GET/POST /settings/notifications (PR 171) - "Показывать уведомления"/"Не беспокоить",
+plus the sidebar bell (base.html, PR 168) actually respecting them."""
 
 from collections.abc import Iterator
 from pathlib import Path
@@ -84,6 +85,36 @@ def test_unchecking_notifications_enabled_persists(client: TestClient) -> None:
     response = client.get("/settings/notifications")
 
     assert '<input type="checkbox" name="notifications_enabled" >' in response.text
+
+
+def test_bell_is_visible_by_default(client: TestClient) -> None:
+    _register(client, "alice@example.com")
+
+    response = client.get("/")
+
+    assert 'data-role="notifications-trigger"' in response.text
+
+
+def test_bell_is_hidden_when_notifications_disabled(client: TestClient) -> None:
+    _register(client, "alice@example.com")
+
+    client.post("/settings/notifications", data={})  # both unchecked
+
+    response = client.get("/")
+
+    assert 'data-role="notifications-trigger"' not in response.text
+
+
+def test_bell_is_hidden_during_do_not_disturb(client: TestClient) -> None:
+    _register(client, "alice@example.com")
+
+    client.post(
+        "/settings/notifications", data={"notifications_enabled": "on", "do_not_disturb": "on"}
+    )
+
+    response = client.get("/")
+
+    assert 'data-role="notifications-trigger"' not in response.text
 
 
 def test_notifications_nav_link_sits_between_security_and_reading(client: TestClient) -> None:
