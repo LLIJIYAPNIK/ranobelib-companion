@@ -822,8 +822,9 @@ a {
   margin: 4px 0 0;
 }
 
-/* PR 160: shared cell/gap sizing so the month-label row and day grid line up on the same
-   11px grid without repeating the magic numbers in both places. */
+/* PR 160: GitHub-reference redesign of the heatmap below - shared cell/gap sizing so the
+   month-label row, weekday column, day grid and legend swatches all line up on the same
+   11px grid without repeating the magic numbers four times. */
 .reading-calendar-card {
   --reading-calendar-cell: 11px;
   --reading-calendar-gap: 3px;
@@ -895,7 +896,7 @@ a {
 
 /* One label per day-grid column (app/api/profile.py's _month_labels(), empty string for
    every column that isn't where a month starts) - a single-row grid using the exact same
-   column size/gap as .reading-calendar below it, so column N here sits directly above
+   column size/gap as .reading-calendar above it, so column N here sits directly above
    column N of the day grid. Labels aren't clipped to their own 11px-wide cell
    (overflow: visible is the grid default) - like GitHub's own graph, the ~3-character
    abbreviation just overflows rightward over the next (empty) label cells. */
