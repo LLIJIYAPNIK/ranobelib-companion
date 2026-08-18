@@ -25,8 +25,9 @@
 // strip, which is hover-only in the ordinary reading mode - comments are a more durable
 // affordance, not a decorative overlay); the actual thread loads lazily, only once that
 // toggle is clicked. Each comment has its own "Ответить" opening an inline reply
-// composer, nested reddit-style under its parent via CSS alone (no per-depth styling
-// computed in JS - see .paragraph-comment__replies in app.css).
+// composer, nested reddit-style under its parent via CSS (see .paragraph-comment__replies
+// in app.css). PR 165: renderCommentNode() does track its own depth now, just to cap how
+// far the indent grows - see MAX_INDENT_DEPTH above.
 //
 // PR 134: readerSettings.showParagraphSocial (default true, like every other reading
 // setting) gates this whole file - once it's explicitly false there is nothing left for
@@ -36,6 +37,18 @@
 // only ever decides whether this script fetches/renders them, never deletes anything.
 (() => {
   const GAP = 8;
+
+  // PR 165: revisits PR 133's original choice not to thread a depth counter through
+  // renderCommentNode() at all ("recursion ... doesn't need to know or pass its own depth
+  // down at all") - true as long as indentation only ever cost a fixed per-level
+  // margin-left, but a real thread nests deep enough (see the PR 165 screenshot) that the
+  // cumulative indent from .paragraph-comment__replies > .paragraph-comment (app.css)
+  // eats nearly the whole comment column, leaving the text itself a few characters wide.
+  // MAX_INDENT_DEPTH caps how many levels keep marching right; renderCommentNode() below
+  // tags any .paragraph-comment__replies past it with a modifier class that freezes
+  // margin-left at 0 for its own children (app.css), so deeper threads stay flush at the
+  // last indented level instead of running off the edge of the column.
+  const MAX_INDENT_DEPTH = 6;
 
   function loadReaderSettings() {
     try {
@@ -610,7 +623,7 @@
   // (everything else) - the split that will become the left/right columns once the next
   // commit turns .paragraph-comment into an actual grid. For now these are just two
   // stacked blocks; the visual "column" doesn't exist yet.
-  function renderCommentNode(index, comment) {
+  function renderCommentNode(index, comment, depth = 0) {
     const el = document.createElement("div");
     el.className = "paragraph-comment";
 
@@ -727,6 +740,9 @@
 
       repliesDiv = document.createElement("div");
       repliesDiv.className = "paragraph-comment__replies";
+      if (depth + 1 > MAX_INDENT_DEPTH) {
+        repliesDiv.classList.add("paragraph-comment__replies--flat");
+      }
 
       // PR 164: the guide line as its own real element, not a border drawn on repliesDiv
       // itself - a plain border/`:hover` on the container matched anywhere in its
@@ -745,7 +761,7 @@
       repliesDiv.append(line);
 
       for (const reply of comment.replies) {
-        repliesDiv.append(renderCommentNode(index, reply));
+        repliesDiv.append(renderCommentNode(index, reply, depth + 1));
       }
       // Either the line itself or the bare strip around it (repliesDiv's own padding,
       // not any nested reply) should toggle - event.target is one of those two exactly
