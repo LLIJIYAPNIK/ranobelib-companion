@@ -2910,14 +2910,40 @@ a {
    drifting off into the middle of it. padding-left pushes the nested reply's own content
    clear of that line, past the full width .side used to need. */
 .paragraph-comment__replies {
+  position: relative;
   grid-column: 1 / -1;
   display: flex;
   flex-direction: column;
   gap: 12px;
   margin: 8px 0 0 0;
-  padding-left: calc(var(--side-width) + 10px);
-  border-left: 1px solid var(--border);
   cursor: pointer;
+}
+
+/* PR 164: the guide line as its own real element (paragraph-menu.js's
+   .paragraph-comment__replies-line, the first child of every .paragraph-comment__replies)
+   rather than a border-left drawn directly on the container (as it used to be) - that
+   older approach made `:hover` match anywhere in the flex container's full-width box
+   (any reply's text, not just the line), and made a nested .replies' own hover bubble up
+   and light up every ancestor's line too, since nested boxes are geometrically inside
+   their parent's. A CSS pseudo-element (::before) doesn't fix this: real browsers don't
+   hit-test `:hover` against a pseudo-element's own rendered box independently of its
+   host - `::before:hover` behaves exactly like `:hover::before`, still keyed off the
+   *host's* hover state, still the same bug. A real element gets proper independent
+   :hover matching against its own box. `left`/`top` on an absolutely positioned element
+   resolve against the *padding* box of its containing block - the indent below is on
+   each reply's own margin-left now, not .paragraph-comment__replies' own padding-left
+   like before, so this line's `left: 0` actually lands at the container's bare left edge
+   (the empty gutter) instead of at the padding edge, which is exactly where the replies
+   themselves already start. Every level's own line sits at a different x-offset than
+   every other level's (each is offset by its own ancestors' cumulative indent), so they
+   never geometrically overlap and hovering one can never register as hovering another. */
+.paragraph-comment__replies-line {
+  position: absolute;
+  left: 0;
+  top: 0;
+  bottom: 0;
+  width: calc(var(--side-width) + 10px);
+  border-left: 1px solid var(--border);
   transition: border-left-color 0.1s ease;
 }
 
@@ -2926,9 +2952,11 @@ a {
    highlight the other collapse/reply controls already use for their own :hover (color
    instead, since there's no text here to recolor). (hover: hover) keeps it from getting
    stuck highlighted on touch, where there's no real "hover" to leave, only a tap that
-   would otherwise leave the :hover state applied until the next unrelated tap. */
+   would otherwise leave the :hover state applied until the next unrelated tap.
+   PR 164: targets .paragraph-comment__replies-line specifically now, not the whole
+   .paragraph-comment__replies box - see that element's own comment above. */
 @media (hover: hover) {
-  .paragraph-comment__replies:hover {
+  .paragraph-comment__replies-line:hover {
     border-left-color: var(--accent-teal);
   }
 }
@@ -2936,9 +2964,14 @@ a {
 /* PR 152: the pointer cursor above is a hover hint for the bare guide-line strip
    (paragraph-menu.js only toggles collapse when the click lands directly on the
    container, not on a nested reply) - reset back to normal over actual reply content,
-   which otherwise inherits the pointer and implies the whole area is clickable. */
+   which otherwise inherits the pointer and implies the whole area is clickable.
+   PR 164: margin-left (the indent past the guide line) moved here from
+   .paragraph-comment__replies' own padding-left, so that container has no padding of its
+   own for its guide line's `left: 0` to land inside of - see that element's own comment
+   above. */
 .paragraph-comment__replies > .paragraph-comment {
   cursor: auto;
+  margin-left: calc(var(--side-width) + 10px);
 }
 
 .paragraph-comment__replies[hidden] {
