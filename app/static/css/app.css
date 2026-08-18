@@ -396,6 +396,75 @@ a {
   }
 }
 
+/* PR 168: the sidebar bell's flyout - notifications-panel.js portals it to <body> on
+   open, same position: fixed mechanics as .profile-menu__panel (PR 97) above, so it needs
+   the same "collapse to nothing while parked inside .sidebar" treatment to avoid that same
+   .sidebar overflow-y: auto scroll bug (see .sidebar .profile-menu__panel's own comment). */
+.sidebar .notifications-panel {
+  max-height: 0;
+  padding: 0;
+  border-width: 0;
+  overflow: hidden;
+}
+
+/* Deliberately wider than .catalog-filters' 240px (PR 85) - a notification row needs
+   room for an avatar plus a line or two of text plus a timestamp, where a filter
+   checkbox only needs its own label - but still a small capped-width side panel, not a
+   centered modal (.title-quickview-modal) or a full-bleed one. Opens flush against the
+   sidebar's own right edge (notifications-panel.js's position()), not below/above the
+   trigger like .profile-menu__panel - it's the sidebar's own flyout, not a dropdown tied
+   to one icon's position. */
+.notifications-panel {
+  display: flex;
+  flex-direction: column;
+  position: absolute;
+  z-index: 40;
+  width: 340px;
+  max-width: calc(100vw - 32px);
+  max-height: min(480px, calc(100vh - 32px));
+  background: var(--bg-surface);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  box-shadow: 0 10px 24px rgba(0, 0, 0, 0.35);
+  opacity: 0;
+  pointer-events: none;
+  transform: translateX(-6px);
+  transition: opacity 0.15s ease, transform 0.15s ease;
+}
+
+.notifications-panel--open {
+  opacity: 1;
+  pointer-events: auto;
+  transform: translateX(0);
+}
+
+.notifications-panel__header {
+  flex: 0 0 auto;
+  padding: 12px 14px;
+  border-bottom: 1px solid var(--border);
+}
+
+.notifications-panel__title {
+  margin: 0;
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--text-primary);
+}
+
+.notifications-panel__list {
+  display: flex;
+  flex-direction: column;
+  overflow-y: auto;
+}
+
+.notifications-panel__empty {
+  margin: 0;
+  padding: 20px 14px;
+  color: var(--text-muted);
+  font-size: 13px;
+  text-align: center;
+}
+
 .main {
   flex: 1;
   min-width: 0;

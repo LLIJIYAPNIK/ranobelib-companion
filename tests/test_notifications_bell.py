@@ -50,6 +50,7 @@ def test_logged_in_visitor_gets_the_notifications_bell_on_any_page(
     response = logged_in_client.get("/")
 
     assert 'data-role="notifications-trigger"' in response.text
+    assert 'data-role="notifications-panel"' in response.text
     assert "static/js/notifications-panel.js" in response.text
 
 

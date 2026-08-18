@@ -89,6 +89,14 @@
         <span class="sidebar__label">Уведомления</span>
         <span class="sidebar__badge" data-role="notifications-badge" hidden>0</span>
       </button>
+      <div class="notifications-panel" data-role="notifications-panel">
+        <div class="notifications-panel__header">
+          <h2 class="notifications-panel__title">Уведомления</h2>
+        </div>
+        <div class="notifications-panel__list" data-role="notifications-list">
+          <p class="notifications-panel__empty" data-role="notifications-empty" hidden>Пока нет уведомлений</p>
+        </div>
+      </div>
       {% endif %}
       <div class="sidebar__account">
         {% if current_user %}
