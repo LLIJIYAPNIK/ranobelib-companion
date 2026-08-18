@@ -3081,7 +3081,14 @@ img.paragraph-comment__attachment {
   margin-right: 8px;
 }
 
+/* PR 162: outline SVG icon (`stroke: currentColor`, no fill at rest) + count - replaces
+   the plain 👍/👎 emoji-and-number text this used to be. The dislike button reuses the
+   exact same "thumbs up" SVG path (paragraph-menu.js's THUMB_ICON) flipped vertically
+   below, rather than carrying a second, mirrored path. */
 .paragraph-comment__reaction {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
   padding: 0;
   border: none;
   background: none;
@@ -3092,18 +3099,27 @@ img.paragraph-comment__attachment {
   transition: color 0.1s ease;
 }
 
+.paragraph-comment__reaction--down .paragraph-comment__reaction-icon svg {
+  transform: scaleY(-1);
+}
+
 @media (hover: hover) {
   .paragraph-comment__reaction:hover {
-    color: var(--text-primary);
+    color: var(--accent-teal);
   }
 }
 
-/* Same "active pick" treatment as .paragraph-reactions__pill--mine (PR 132) - the one
-   piece of visual language shared between the two features, since both answer the exact
-   same question ("is this my current reaction?") even though everything else about their
-   presentation differs. */
+/* Same "active pick" question as .paragraph-reactions__pill--mine (PR 132) answers for
+   paragraph reactions, just a different presentation: the outline stays teal (`color`,
+   inherited by the SVG's `stroke: currentColor`) and the icon itself gets a solid fill -
+   replaces PR 155's original "just recolor the text" treatment now that there's an icon
+   to fill instead of only a number to recolor. */
 .paragraph-comment__reaction--mine {
   color: var(--accent-teal);
+}
+
+.paragraph-comment__reaction--mine .paragraph-comment__reaction-icon svg {
+  fill: var(--text-primary);
 }
 
 .paragraph-comment__reply-toggle {

@@ -569,6 +569,16 @@
     onUpdate();
   }
 
+  // PR 162: outline thumb icon (Feather-style, same viewBox/stroke convention as the
+  // rest of the app's inline SVGs - see toc-tap-progress.js/base.html) - one shared path
+  // for both buttons, the dislike button just flips it vertically via CSS
+  // (.paragraph-comment__reaction--down) rather than carrying a second, mirrored path.
+  const THUMB_ICON =
+    '<svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" ' +
+    'stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">' +
+    '<path d="M14 9V5a3 3 0 0 0-3-3l-4 9v11h11.28a2 2 0 0 0 2-1.7l1.38-9a2 2 0 0 0-2-2.3z"/>' +
+    '<path d="M7 22H4a2 2 0 0 1-2-2v-7a2 2 0 0 1 2-2h3"/></svg>';
+
   // Unauthenticated visitors still see the counts (reading who reacted what needs no
   // account, same as the paragraph reactions strip) but clicking sends them to /login
   // instead of posting - the same "action needs a session, viewing doesn't" split as the
@@ -579,20 +589,27 @@
 
     function renderButtons() {
       wrap.replaceChildren();
-      for (const [value, emoji, label] of [
-        [1, "👍", "Нравится"],
-        [-1, "👎", "Не нравится"],
+      for (const [value, modifier, label] of [
+        [1, null, "Нравится"],
+        [-1, "paragraph-comment__reaction--down", "Не нравится"],
       ]) {
         const btn = document.createElement("button");
         btn.type = "button";
         btn.className = "paragraph-comment__reaction";
+        if (modifier) btn.classList.add(modifier);
         if (comment.my_reaction === value) {
           btn.classList.add("paragraph-comment__reaction--mine");
         }
         btn.setAttribute("aria-pressed", comment.my_reaction === value ? "true" : "false");
         btn.setAttribute("aria-label", label);
+        const icon = document.createElement("span");
+        icon.className = "paragraph-comment__reaction-icon";
+        icon.innerHTML = THUMB_ICON;
         const count = (comment.reactions?.[value === 1 ? "like" : "dislike"]) || 0;
-        btn.append(`${emoji} ${count}`);
+        const countEl = document.createElement("span");
+        countEl.className = "paragraph-comment__reaction-count";
+        countEl.textContent = String(count);
+        btn.append(icon, countEl);
         btn.addEventListener("click", () => {
           if (!isAuthenticated) {
             window.location.href = "/login";
