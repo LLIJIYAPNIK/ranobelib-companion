@@ -444,10 +444,14 @@ def test_public_profile_omits_both_new_sections_when_the_library_is_empty(
     assert "Читает сейчас" not in response.text
     assert 'class="title-card-grid"' not in response.text
     # Unlike those two, PR 136's calendar section always renders (an empty history is a
-    # grid of empty cells, not an omitted section) - so it's the one case where
-    # class="profile-section" is expected even with nothing else on the page.
-    assert response.text.count('class="profile-section"') == 1
-    assert "Календарь чтения" in response.text
+    # grid of empty cells, not an omitted section) - so it's the one case where the
+    # reading-calendar-card section (PR 160) is expected even with nothing else on the
+    # page.
+    assert response.text.count('class="profile-section reading-calendar-card"') == 1
+    # PR 160: the section's own header is now the data-driven "N ч M мин чтения за
+    # последний год" phrase, not a static "Календарь чтения" label - "0 мин" for a user
+    # with no reading history at all, never omitted or blank.
+    assert "чтения за последний год" in response.text
 
 
 def test_public_profile_is_the_same_for_the_owner_and_a_different_visitor(
