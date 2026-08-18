@@ -45,6 +45,16 @@ class CalendarDay:
     label: str  # tooltip text: exact date + chapter count
 
 
+@dataclass(frozen=True)
+class ReadingCalendar:
+    """PR 160: the whole GitHub-style heatmap, not just its day cells - the header needs
+    the window's total active time, computed once alongside the day cells themselves in
+    _build_reading_calendar()."""
+
+    days: list[CalendarDay]
+    total_duration_label: str  # e.g. "128 ч 4 мин чтения за последний год"
+
+
 @router.get("/profile")
 async def own_profile_page(
     request: Request, user: Annotated[User | None, Depends(get_current_user)]
@@ -119,7 +129,7 @@ def _format_date(iso_timestamp: str) -> str:
 _MAX_TITLES_IN_LABEL = 3
 
 
-async def _build_reading_calendar(user_id: int) -> list[CalendarDay]:
+async def _build_reading_calendar(user_id: int) -> ReadingCalendar:
     """Every day in the trailing _CALENDAR_WEEKS weeks, oldest first, padded back to the
     most recent Sunday on/before the window's own start so the flat list can be dropped
     straight into a `grid-auto-flow: column; grid-template-rows: repeat(7, ...)` grid
@@ -168,7 +178,13 @@ async def _build_reading_calendar(user_id: int) -> list[CalendarDay]:
         ]
         days.append(CalendarDay(count=count, level=level, label="\n".join(label_lines)))
         current += timedelta(days=1)
-    return days
+
+    # PR 160: total across the whole window, not just today's total_active_seconds_today()
+    # - the calendar's own header ("N ч чтения за последний год"), unlike the "Активность"
+    # section's "today" stat, spans the full year the grid itself covers.
+    total_duration = _format_duration(sum(active_seconds.values()))
+    total_duration_label = f"{total_duration} чтения за последний год"
+    return ReadingCalendar(days=days, total_duration_label=total_duration_label)
 
 
 async def _title_names(slugs: set[str]) -> dict[str, str]:
