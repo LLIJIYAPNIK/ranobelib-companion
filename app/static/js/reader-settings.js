@@ -25,6 +25,10 @@
     // PR 134: read directly from this same key by app/static/js/paragraph-menu.js, same
     // reasoning as the tap-to-read settings above.
     showParagraphSocial: true,
+    // PR 166: its own CSS custom property (--comment-font-size, applied below),
+    // deliberately independent of fontSize above - a bigger reading font shouldn't force
+    // a bigger comment font and vice versa.
+    commentFontSize: "14",
   };
 
   const root = document.documentElement;
@@ -45,6 +49,7 @@
     root.style.setProperty("--reader-font-size", `${settings.fontSize}px`);
     root.style.setProperty("--reader-line-height", settings.lineHeight);
     root.style.setProperty("--reader-width", `${settings.width}px`);
+    root.style.setProperty("--comment-font-size", `${settings.commentFontSize}px`);
   }
 
   let settings = load();
