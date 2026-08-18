@@ -178,6 +178,30 @@ def test_notifications_page_renders_a_card_reused_from_the_panel(
     assert "static/js/notifications-page.js" in response.text
 
 
+def test_notifications_page_card_has_mark_read_and_delete_buttons(
+    client: TestClient,
+) -> None:
+    notification_id = _create_notification_for_alice(client)
+
+    response = client.get("/notifications")
+
+    assert f'data-notification-id="{notification_id}"' in response.text
+    assert 'data-role="notification-mark-read"' in response.text
+    assert 'data-role="notification-delete"' in response.text
+
+
+def test_notifications_page_card_hides_mark_read_once_already_read(
+    client: TestClient,
+) -> None:
+    notification_id = _create_notification_for_alice(client)
+    client.post(f"/notifications/{notification_id}/read")
+
+    response = client.get("/notifications")
+
+    assert 'data-role="notification-mark-read"' not in response.text
+    assert 'data-role="notification-delete"' in response.text
+
+
 def test_notifications_page_fragment_paginates(
     client: TestClient, monkeypatch: pytest.MonkeyPatch
 ) -> None:
@@ -227,3 +251,92 @@ def test_notifications_panel_footer_links_to_the_full_page(client: TestClient) -
     assert 'data-role="notifications-panel"' in response.text
     assert 'class="notifications-panel__footer" href="/notifications"' in response.text
     assert "Все уведомления" in response.text
+
+
+def _create_notification_for_alice(client: TestClient) -> int:
+    """Alice's comment gets a reaction from Bob, leaving Alice with exactly one unread
+    notification - logs back in as Alice and returns its id."""
+    _register(client, "alice@example.com")
+    comment = client.post(
+        "/titles/6712--test-novel/chapters/1/5/comments",
+        data={"paragraph_index": "0", "body": "hi"},
+    ).json()["comments"][0]
+
+    _register(client, "bob@example.com")
+    client.post(
+        f"/titles/6712--test-novel/chapters/1/5/comments/{comment['id']}/reactions",
+        data={"value": "1"},
+    )
+
+    _login(client, "alice@example.com")
+    [notification] = client.get("/notifications/recent").json()["notifications"]
+    return notification["id"]
+
+
+def test_mark_read_requires_login(client: TestClient) -> None:
+    response = client.post("/notifications/1/read", follow_redirects=False)
+
+    assert response.status_code == 303
+    assert response.headers["location"] == "/login"
+
+
+def test_mark_read_flips_the_flag_and_reports_the_new_unread_count(
+    client: TestClient,
+) -> None:
+    notification_id = _create_notification_for_alice(client)
+
+    response = client.post(f"/notifications/{notification_id}/read")
+
+    assert response.json() == {"unread_count": 0}
+    [notification] = client.get("/notifications/recent").json()["notifications"]
+    assert notification["is_read"] is True
+
+
+def test_mark_read_404s_for_a_missing_notification(client: TestClient) -> None:
+    _register(client, "alice@example.com")
+
+    response = client.post("/notifications/999/read")
+
+    assert response.status_code == 404
+
+
+def test_mark_read_404s_for_someone_elses_notification(client: TestClient) -> None:
+    notification_id = _create_notification_for_alice(client)
+    _register(client, "carol@example.com")
+
+    response = client.post(f"/notifications/{notification_id}/read")
+
+    assert response.status_code == 404
+
+
+def test_delete_requires_login(client: TestClient) -> None:
+    response = client.delete("/notifications/1", follow_redirects=False)
+
+    assert response.status_code == 303
+    assert response.headers["location"] == "/login"
+
+
+def test_delete_removes_it_and_reports_the_new_unread_count(client: TestClient) -> None:
+    notification_id = _create_notification_for_alice(client)
+
+    response = client.delete(f"/notifications/{notification_id}")
+
+    assert response.json() == {"unread_count": 0}
+    assert client.get("/notifications/recent").json()["notifications"] == []
+
+
+def test_delete_404s_for_a_missing_notification(client: TestClient) -> None:
+    _register(client, "alice@example.com")
+
+    response = client.delete("/notifications/999")
+
+    assert response.status_code == 404
+
+
+def test_delete_404s_for_someone_elses_notification(client: TestClient) -> None:
+    notification_id = _create_notification_for_alice(client)
+    _register(client, "carol@example.com")
+
+    response = client.delete(f"/notifications/{notification_id}")
+
+    assert response.status_code == 404

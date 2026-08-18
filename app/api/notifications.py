@@ -5,7 +5,9 @@ page (GET "") and its own infinite-scroll fragment (GET /page) on top of the sam
 app/db/notifications.py - same server-renders-the-cards, no-client-templating shape as
 app/api/library.py's catalog/catalog_page_fragment (app/static/js/catalog-scroll.js), and
 reusing the exact same card markup as the bell panel (app/templates/_notification_card.html).
-Marking read/deleting is still PR 170's.
+PR 170 adds mark-read/delete (POST .../read, DELETE ...) - both return the fresh
+unread_count in the response body so notifications-actions.js can update the bell's badge
+without a page reload.
 """
 
 from __future__ import annotations
@@ -13,7 +15,7 @@ from __future__ import annotations
 from datetime import datetime
 from typing import Annotated, Any
 
-from fastapi import APIRouter, Depends, Query, Request
+from fastapi import APIRouter, Depends, HTTPException, Query, Request
 from fastapi.responses import HTMLResponse, JSONResponse, Response
 
 from app.auth.dependencies import require_current_user
@@ -21,8 +23,10 @@ from app.db.connection import get_connection
 from app.db.notifications import (
     Notification,
     count_unread_notifications,
+    delete_notification,
     list_notifications_page,
     list_recent_notifications,
+    mark_notification_read,
 )
 from app.db.users import User
 from app.templating import templates
@@ -97,11 +101,32 @@ async def notifications_page_fragment(
     return response
 
 
+@router.post("/{notification_id}/read")
+async def mark_read(
+    notification_id: int, user: Annotated[User, Depends(require_current_user)]
+) -> JSONResponse:
+    conn = get_connection()
+    if not mark_notification_read(conn, notification_id, user.id):
+        raise HTTPException(status_code=404, detail="Уведомление не найдено")
+    return JSONResponse({"unread_count": count_unread_notifications(conn, user.id)})
+
+
+@router.delete("/{notification_id}")
+async def delete(
+    notification_id: int, user: Annotated[User, Depends(require_current_user)]
+) -> JSONResponse:
+    conn = get_connection()
+    if not delete_notification(conn, notification_id, user.id):
+        raise HTTPException(status_code=404, detail="Уведомление не найдено")
+    return JSONResponse({"unread_count": count_unread_notifications(conn, user.id)})
+
+
 def _to_template_context(notification: Notification) -> dict[str, Any]:
     """What notifications.html/_notification_cards.html render - the same fields as
     _to_dict() below plus a server-formatted created_at, since these are plain server-
     rendered <a>/<div> cards rather than notifications-panel.js's client-rendered ones."""
     return {
+        "id": notification.id,
         "is_read": notification.is_read,
         "actor_name": notification.actor_name,
         "actor_avatar_url": notification.actor_avatar_url,
