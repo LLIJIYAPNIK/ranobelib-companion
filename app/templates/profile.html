@@ -21,13 +21,13 @@
   </div>
 
   <section class="profile-section">
-    <h2 class="profile-section__title">Календарь чтения</h2>
+    <h2 class="profile-section__title">{{ reading_calendar.total_duration_label }}</h2>
     <div
       class="reading-calendar"
       role="img"
       aria-label="Календарь активности чтения за последний год"
     >
-      {% for day in reading_calendar %}
+      {% for day in reading_calendar.days %}
       <span
         class="reading-calendar__day reading-calendar__day--level-{{ day.level }}"
         title="{{ day.label }}"
