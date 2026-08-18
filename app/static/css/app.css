@@ -982,6 +982,33 @@ a {
   border-color: transparent;
 }
 
+/* PR 160: custom tooltip replacing the native `title` attribute (see reading-calendar-
+   tooltip.js) - same floating-panel language as .profile-menu__panel/.paragraph-menu__panel
+   (fixed position, computed from the hovered cell's own getBoundingClientRect(), fade
+   in/out rather than toggling display). white-space: pre-line renders the "\n"-joined
+   label lines (app/api/profile.py) as real line breaks without needing innerHTML. */
+.reading-calendar-tooltip {
+  position: fixed;
+  z-index: 40;
+  max-width: 240px;
+  padding: 8px 10px;
+  background: var(--bg-surface);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  box-shadow: 0 10px 24px rgba(0, 0, 0, 0.35);
+  font-size: 12px;
+  line-height: 1.5;
+  color: var(--text-secondary);
+  white-space: pre-line;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.15s ease;
+}
+
+.reading-calendar-tooltip--open {
+  opacity: 1;
+}
+
 .recent__title {
   font-size: 16px;
   font-weight: 700;

@@ -36,13 +36,14 @@
         </div>
         <div
           class="reading-calendar"
+          data-role="reading-calendar"
           role="img"
           aria-label="Календарь активности чтения за последний год"
         >
           {% for day in reading_calendar.days %}
           <span
             class="reading-calendar__day reading-calendar__day--level-{{ day.level }}"
-            title="{{ day.label }}"
+            data-tooltip="{{ day.label }}"
           ></span>
           {% endfor %}
         </div>
@@ -57,6 +58,7 @@
       <span class="reading-calendar-legend__swatch reading-calendar-legend__swatch--level-4"></span>
       <span>Больше</span>
     </div>
+    <div class="reading-calendar-tooltip" data-role="reading-calendar-tooltip" role="tooltip"></div>
   </section>
 
   {% if currently_reading %}
@@ -126,4 +128,5 @@
 </main>
 <script src="{{ url_for('static', path='js/title-quickview.js') }}" defer></script>
 <script src="{{ url_for('static', path='js/image-lightbox.js') }}" defer></script>
+<script src="{{ url_for('static', path='js/reading-calendar-tooltip.js') }}" defer></script>
 {% endblock %}
