@@ -624,9 +624,21 @@
     return wrap;
   }
 
+  // PR 162: .paragraph-comment__side (avatar + vote buttons) vs .paragraph-comment__main
+  // (everything else) - the split that will become the left/right columns once the next
+  // commit turns .paragraph-comment into an actual grid. For now these are just two
+  // stacked blocks; the visual "column" doesn't exist yet.
   function renderCommentNode(index, comment) {
     const el = document.createElement("div");
     el.className = "paragraph-comment";
+
+    const side = document.createElement("div");
+    side.className = "paragraph-comment__side";
+    side.append(buildCommentAvatar(comment), buildCommentReactions(comment));
+    el.append(side);
+
+    const main = document.createElement("div");
+    main.className = "paragraph-comment__main";
 
     const meta = document.createElement("div");
     meta.className = "paragraph-comment__meta";
@@ -637,8 +649,8 @@
     const time = document.createElement("span");
     time.className = "paragraph-comment__time";
     time.textContent = formatCommentTime(comment.created_at);
-    meta.append(buildCommentAvatar(comment), author, time);
-    el.append(meta);
+    meta.append(author, time);
+    main.append(meta);
 
     // PR 148: comment.body_html is already-sanitized HTML from the same server-side
     // renderer (app/markdown_render.py) for every comment, regardless of source - setting
@@ -650,7 +662,7 @@
     const body = document.createElement("div");
     body.className = "paragraph-comment__body";
     body.innerHTML = comment.body_html;
-    el.append(body);
+    main.append(body);
 
     // PR 150/151: the one attachment a comment can carry - "gif" is a plain upload
     // converted server-side (app/gif_video.py) into a silent looping mp4, rendered the
@@ -666,22 +678,20 @@
       video.loop = true;
       video.muted = true;
       video.playsInline = true;
-      el.append(video);
+      main.append(video);
     } else if (comment.attachment_url && comment.attachment_kind === "video") {
       const video = document.createElement("video");
       video.className = "paragraph-comment__attachment";
       video.src = comment.attachment_url;
       video.controls = true;
-      el.append(video);
+      main.append(video);
     } else if (comment.attachment_url && comment.attachment_kind === "image") {
       const img = document.createElement("img");
       img.className = "paragraph-comment__attachment";
       img.src = comment.attachment_url;
       img.alt = "";
-      el.append(img);
+      main.append(img);
     }
-
-    el.append(buildCommentReactions(comment));
 
     if (isAuthenticated) {
       const replyToggle = document.createElement("button");
@@ -710,13 +720,13 @@
         insertQuote(replyForm, quoteLines(comment.body));
       });
 
-      el.append(replyToggle, quoteToggle, replyForm);
+      main.append(replyToggle, quoteToggle, replyForm);
     } else {
       const link = document.createElement("a");
       link.className = "paragraph-comment__reply-toggle";
       link.href = "/login";
       link.textContent = "Войти, чтобы ответить";
-      el.append(link);
+      main.append(link);
     }
 
     // PR 152: two equivalent triggers for the same collapse state - the "[–]"/"[+]"
@@ -744,7 +754,7 @@
       collapseToggle.setAttribute("aria-expanded", "true");
       collapseToggle.setAttribute("aria-label", "Свернуть ветку ответов");
       collapseToggle.addEventListener("click", () => setRepliesCollapsed(!repliesDiv.hidden));
-      el.append(collapseToggle);
+      main.append(collapseToggle);
 
       repliesDiv = document.createElement("div");
       repliesDiv.className = "paragraph-comment__replies";
@@ -757,8 +767,10 @@
       repliesDiv.addEventListener("click", (event) => {
         if (event.target === repliesDiv) setRepliesCollapsed(!repliesDiv.hidden);
       });
-      el.append(repliesDiv);
     }
+
+    el.append(main);
+    if (repliesDiv) el.append(repliesDiv);
 
     return el;
   }
