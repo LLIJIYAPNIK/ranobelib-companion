@@ -29,6 +29,7 @@ from app.db.comments import (
 )
 from app.db.connection import get_connection
 from app.db.library import add_entry, record_progress
+from app.db.notifications import notify_comment_reaction
 from app.db.reactions import (
     ALLOWED_EMOJI,
     count_reactions,
@@ -233,7 +234,12 @@ async def post_comment_reaction(
     foreign key, see app/db/comment_reactions.py) instead of a paragraph position.
     slug_url/volume/number aren't used for the lookup itself (comment_id already names
     the row uniquely), only kept in the URL for symmetry with this router's other
-    comment/reaction endpoints."""
+    comment/reaction endpoints.
+
+    PR 167: notifies the comment's author only when a reaction is actually *set* (`mine`
+    is not None) - undoing one (clicking the same button again) isn't a new event worth
+    telling anyone about. notify_comment_reaction() itself handles the "don't notify
+    yourself" and dedupe-while-unread cases."""
     if value not in (1, -1):
         raise HTTPException(status_code=400, detail="Недопустимое значение реакции")
     conn = get_connection()
@@ -241,6 +247,8 @@ async def post_comment_reaction(
         mine = toggle_comment_reaction(conn, user.id, comment_id, value)
     except ValueError as exc:
         raise HTTPException(status_code=404, detail=str(exc)) from exc
+    if mine is not None:
+        notify_comment_reaction(conn, comment_id, user.id)
     counts = count_reactions_for_comment(conn, comment_id)
     return JSONResponse({"comment_id": comment_id, "counts": counts, "mine": mine})
 
