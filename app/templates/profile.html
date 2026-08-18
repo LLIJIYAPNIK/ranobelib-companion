@@ -22,23 +22,30 @@
 
   <section class="profile-section reading-calendar-card">
     <h2 class="profile-section__title">{{ reading_calendar.total_duration_label }}</h2>
-    <div class="reading-calendar-scroll">
-      <div class="reading-calendar-months" aria-hidden="true">
-        {% for month in reading_calendar.month_labels %}
-        <span>{{ month }}</span>
+    <div class="reading-calendar-body">
+      <div class="reading-calendar-weekdays" aria-hidden="true">
+        {% for weekday in ["", "Пн", "", "Ср", "", "Пт", ""] %}
+        <span>{{ weekday }}</span>
         {% endfor %}
       </div>
-      <div
-        class="reading-calendar"
-        role="img"
-        aria-label="Календарь активности чтения за последний год"
-      >
-        {% for day in reading_calendar.days %}
-        <span
-          class="reading-calendar__day reading-calendar__day--level-{{ day.level }}"
-          title="{{ day.label }}"
-        ></span>
-        {% endfor %}
+      <div class="reading-calendar-scroll">
+        <div class="reading-calendar-months" aria-hidden="true">
+          {% for month in reading_calendar.month_labels %}
+          <span>{{ month }}</span>
+          {% endfor %}
+        </div>
+        <div
+          class="reading-calendar"
+          role="img"
+          aria-label="Календарь активности чтения за последний год"
+        >
+          {% for day in reading_calendar.days %}
+          <span
+            class="reading-calendar__day reading-calendar__day--level-{{ day.level }}"
+            title="{{ day.label }}"
+          ></span>
+          {% endfor %}
+        </div>
       </div>
     </div>
   </section>
