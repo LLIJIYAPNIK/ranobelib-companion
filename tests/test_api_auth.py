@@ -93,6 +93,25 @@ def test_register_avatar_prompt_offers_a_skip_link_to_home(client: TestClient) -
     assert '<a href="/">Пропустить</a>' in response.text
 
 
+def test_register_avatar_prompt_is_a_clickable_preview_that_auto_submits(
+    client: TestClient,
+) -> None:
+    # PR 174: revisits PR 106's original plain file field/"Загрузить" button - now the
+    # same round avatar-preview widget PR 109 already gave /settings/account, reusing its
+    # avatar-upload.js rather than a second implementation of the same thing. "Пропустить"
+    # itself is untouched (see the test above).
+    response = _register(client, "alice@example.com")
+
+    assert response.status_code == 200
+    assert 'data-role="avatar-upload-form"' in response.text
+    assert 'class="avatar-upload"' in response.text
+    assert 'data-role="avatar-upload-preview"' in response.text
+    assert 'class="avatar-upload__initials"' in response.text
+    assert 'data-role="avatar-upload-input"' in response.text
+    assert "static/js/avatar-upload.js" in response.text
+    assert ">Загрузить<" not in response.text
+
+
 _PNG_BYTES = b"\x89PNG\r\n\x1a\n" + b"\x00" * 32
 
 
