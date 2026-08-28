@@ -25,6 +25,8 @@ from app.db.comments import (
     count_comments,
     count_comments_for_paragraph,
     create_comment,
+    delete_comment,
+    edit_comment,
     list_comments_for_paragraph,
 )
 from app.db.connection import get_connection
@@ -220,6 +222,48 @@ async def post_comment(
     )
 
 
+@router.patch("/{volume}/{number}/comments/{comment_id}")
+async def patch_comment(
+    slug_url: str,
+    volume: int,
+    number: str,
+    comment_id: int,
+    user: Annotated[User, Depends(require_current_user)],
+    body: Annotated[str, Form()] = "",
+) -> JSONResponse:
+    """Overwrites a comment's own body - "Изменить" on a comment's own
+    .paragraph-comment__body (paragraph-menu.js), never anyone else's: edit_comment()
+    scopes the UPDATE by user_id, so a 404 here means either the comment doesn't exist or
+    it isn't this visitor's, indistinguishable on purpose (same reasoning as PR 170's
+    notification mark-read/delete). slug_url/volume/number in the URL are kept only for
+    symmetry with this router's other comment endpoints - the paragraph to re-render is
+    looked up from the comment's own stored key below, not trusted from the client."""
+    conn = get_connection()
+    try:
+        updated = edit_comment(conn, comment_id, user.id, body)
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+    if not updated:
+        raise HTTPException(status_code=404, detail="Комментарий не найден")
+    return JSONResponse(_comment_paragraph_response(conn, comment_id, user))
+
+
+@router.delete("/{volume}/{number}/comments/{comment_id}")
+async def delete_comment_route(
+    slug_url: str,
+    volume: int,
+    number: str,
+    comment_id: int,
+    user: Annotated[User, Depends(require_current_user)],
+) -> JSONResponse:
+    """Soft-deletes a comment - "Удалить" on a comment's own actions, same ownership/404
+    shape as patch_comment above."""
+    conn = get_connection()
+    if not delete_comment(conn, comment_id, user.id):
+        raise HTTPException(status_code=404, detail="Комментарий не найден")
+    return JSONResponse(_comment_paragraph_response(conn, comment_id, user))
+
+
 @router.post("/{volume}/{number}/comments/{comment_id}/reactions")
 async def post_comment_reaction(
     slug_url: str,
@@ -285,6 +329,29 @@ def _comments_response(
     }
 
 
+def _comment_paragraph_response(
+    conn: sqlite3.Connection, comment_id: int, current_user: User
+) -> dict:
+    """Rebuilds the same shape _comments_response returns, for the one paragraph a just-
+    edited/deleted comment belongs to - looked up from the comment's own stored key rather
+    than trusting slug_url/volume/number/branch_id from the request, so a mismatched path
+    can never be used to fetch another paragraph's thread."""
+    row = conn.execute(
+        "SELECT slug_url, volume, number, branch_id, paragraph_index "
+        "FROM comments WHERE id = ?",
+        (comment_id,),
+    ).fetchone()
+    return _comments_response(
+        conn,
+        row["slug_url"],
+        row["volume"],
+        row["number"],
+        row["branch_id"],
+        row["paragraph_index"],
+        current_user,
+    )
+
+
 def _comment_to_dict(
     comment: Comment,
     reaction_counts: dict[int, dict[str, int]],
@@ -297,8 +364,13 @@ def _comment_to_dict(
         "avatar_url": comment.avatar_url,
         "avatar_initials": comment.avatar_initials,
         "body": comment.body,
+        # delete_comment() already blanks the stored body, but rendering straight from it
+        # (rather than a hardcoded "" here) keeps this the single place body -> HTML ever
+        # happens, same as every other comment.
         "body_html": render_comment_body(comment.body),
         "created_at": comment.created_at,
+        "updated_at": comment.updated_at,
+        "is_deleted": comment.is_deleted,
         "parent_comment_id": comment.parent_comment_id,
         "attachment_url": comment.attachment_url,
         "attachment_kind": comment.attachment_kind,
