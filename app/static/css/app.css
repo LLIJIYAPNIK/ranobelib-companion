@@ -1144,8 +1144,9 @@ a {
   white-space: nowrap;
 }
 
-/* Legend for the 5 intensity levels, bottom-right of the card - its own swatch class
-   (not .reading-calendar__day--level-N) so a legend, which always shows all 5 levels
+/* Legend for the 5 intensity levels, bottom-left of the card, flush with the weekday
+   column/day grid above it (.reading-calendar-weekdays) - its own swatch class (not
+   .reading-calendar__day--level-N) so a legend, which always shows all 5 levels
    regardless of this user's actual data, can never be mistaken by a substring check for
    an actual day cell reaching that level (see tests/test_api_profile.py). Same colors
    via the --reading-calendar-level-N variables above. */
@@ -1153,7 +1154,7 @@ a {
   display: flex;
   align-items: center;
   gap: 4px;
-  justify-content: flex-end;
+  justify-content: flex-start;
   margin-top: 8px;
   font-size: 11px;
   color: var(--text-muted);
