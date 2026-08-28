@@ -124,6 +124,25 @@ def test_profile_shows_the_uploaded_avatar_image_over_initials(client: TestClien
     assert ">AW</div>" not in response.text
 
 
+def test_public_profile_shows_the_owners_uploaded_avatar_image(client: TestClient) -> None:
+    # PR 173: image-lightbox.js opens for .profile__avatar img regardless of whether the
+    # visitor is the profile's own owner - both views render from the same profile.html,
+    # so there's nothing in the markup itself that could differ between them, but this
+    # nails that down rather than just assuming it from the shared template.
+    _register(client, "alice.wong@example.com")
+    client.post(
+        "/settings/account/avatar",
+        files={"avatar": ("me.png", b"\x89PNG\r\n\x1a\n" + b"\x00" * 32, "image/png")},
+    )
+    alice_id = _user_id("alice.wong@example.com")
+    _register(client, "bob@example.com")  # switches the session to Bob
+
+    response = client.get(f"/profile/{alice_id}")
+
+    assert response.status_code == 200
+    assert '<img class="avatar-img" src="/avatars/' in response.text
+
+
 def test_profile_prefers_the_nickname_over_the_email(client: TestClient) -> None:
     _register(client, "alice.wong@example.com")
     client.post(
