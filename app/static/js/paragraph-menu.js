@@ -658,6 +658,16 @@
     time.className = "paragraph-comment__time";
     time.textContent = formatCommentTime(comment.created_at);
     meta.append(author, time);
+    // PR 172: "(изменено)" next to the timestamp once edit_comment() has overwritten the
+    // body - never shown for a deleted comment (delete_comment() also sets updated_at, but
+    // there's no edit to call out once the whole body is gone), same "edited" convention as
+    // most forums/social apps.
+    if (comment.updated_at && !comment.is_deleted) {
+      const edited = document.createElement("span");
+      edited.className = "paragraph-comment__edited";
+      edited.textContent = "(изменено)";
+      meta.append(edited);
+    }
     main.append(meta);
 
     // PR 148: comment.body_html is already-sanitized HTML from the same server-side

@@ -3282,6 +3282,12 @@ a {
   color: var(--text-muted);
 }
 
+/* PR 172: the "edited" mark - same muted, unemphasized treatment as the timestamp it sits
+   next to, not a call to attention. */
+.paragraph-comment__edited {
+  color: var(--text-muted);
+}
+
 /* PR 148: body_html already brings its own block structure (<p>/<br>/<ul>/<ol> from
    app/markdown_render.py) - no white-space: pre-wrap here anymore, that was only needed
    to preserve line breaks in plain textContent, and would otherwise also render the
