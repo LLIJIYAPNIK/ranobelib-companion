@@ -84,6 +84,12 @@
   const number = content.dataset.number || "";
   const branchId = content.dataset.branchId || "";
   const isAuthenticated = content.dataset.authenticated === "1";
+  // PR 172: compared against comment.user_id to decide whether "Изменить"/"Удалить" show
+  // on a given comment - "" (logged out) never matches a real id, so those never render
+  // for an anonymous visitor either. The real ownership check still happens server-side
+  // (app/db/comments.py's edit_comment()/delete_comment() scope their UPDATE by user_id) -
+  // this only decides what the UI offers to click.
+  const currentUserId = content.dataset.userId ? Number(content.dataset.userId) : null;
 
   // Finds the .reader-content child (paragraph plate or bare paragraph) that `target`
   // sits inside, or null if the click landed outside them entirely (e.g. the "tap to
@@ -390,7 +396,10 @@
   // PR 156: `initialValue` pre-fills the textarea at creation time - used for the
   // context menu's "Цитировать" (renderCommentComposer below builds a fresh composer per
   // open, so a constructor argument is all that's needed there).
-  function buildComposer(onSubmit, placeholder, initialValue = "") {
+  // PR 172: `allowAttachment: false` (used for "Изменить") hides the attachment picker -
+  // editComment() only ever overwrites `body`, so a staged file there would silently be
+  // discarded rather than actually changing the comment's attachment.
+  function buildComposer(onSubmit, placeholder, initialValue = "", { allowAttachment = true } = {}) {
     const wrap = document.createElement("div");
     wrap.className = "paragraph-comments__composer";
     const textarea = document.createElement("textarea");
@@ -478,25 +487,28 @@
       wrap.insertBefore(attachmentChip, hint);
     }
 
-    attachmentInput = document.createElement("input");
-    attachmentInput.type = "file";
-    attachmentInput.accept = "image/*,video/*";
-    attachmentInput.hidden = true;
-    attachmentInput.addEventListener("change", () => {
-      const file = attachmentInput.files?.[0];
-      if (file) stageAttachment(file);
-    });
+    let attachmentToggle = null;
+    if (allowAttachment) {
+      attachmentInput = document.createElement("input");
+      attachmentInput.type = "file";
+      attachmentInput.accept = "image/*,video/*";
+      attachmentInput.hidden = true;
+      attachmentInput.addEventListener("change", () => {
+        const file = attachmentInput.files?.[0];
+        if (file) stageAttachment(file);
+      });
 
-    const attachmentToggle = document.createElement("button");
-    attachmentToggle.type = "button";
-    attachmentToggle.className = "paragraph-comments__attachment-toggle";
-    attachmentToggle.setAttribute("aria-label", "Прикрепить файл");
-    attachmentToggle.title = "Прикрепить изображение, GIF или видео";
-    attachmentToggle.textContent = "📎";
-    attachmentToggle.addEventListener("click", (event) => {
-      event.stopPropagation();
-      attachmentInput.click();
-    });
+      attachmentToggle = document.createElement("button");
+      attachmentToggle.type = "button";
+      attachmentToggle.className = "paragraph-comments__attachment-toggle";
+      attachmentToggle.setAttribute("aria-label", "Прикрепить файл");
+      attachmentToggle.title = "Прикрепить изображение, GIF или видео";
+      attachmentToggle.textContent = "📎";
+      attachmentToggle.addEventListener("click", (event) => {
+        event.stopPropagation();
+        attachmentInput.click();
+      });
+    }
 
     const submit = document.createElement("button");
     submit.type = "button";
@@ -524,7 +536,8 @@
     toolbar.className = "paragraph-comments__toolbar";
     const triggers = document.createElement("div");
     triggers.className = "paragraph-comments__triggers";
-    triggers.append(emojiToggle, attachmentToggle, attachmentInput);
+    triggers.append(emojiToggle);
+    if (allowAttachment) triggers.append(attachmentToggle, attachmentInput);
     toolbar.append(triggers, submit);
 
     wrap.append(textarea, hint, toolbar);
@@ -686,6 +699,46 @@
       img.src = comment.attachment_url;
       img.alt = "";
       main.append(img);
+    }
+
+    // PR 172: "Изменить"/"Удалить" - only on the visitor's own, non-deleted comments.
+    // Hiding these client-side is purely a UI nicety: the real check is server-side
+    // (edit_comment()/delete_comment() scope their UPDATE by user_id), so this can't be
+    // bypassed into actually editing/deleting someone else's comment even if someone
+    // forced these buttons to render.
+    if (isAuthenticated && currentUserId === comment.user_id && !comment.is_deleted) {
+      const editToggle = document.createElement("button");
+      editToggle.type = "button";
+      editToggle.className = "paragraph-comment__edit-toggle";
+      editToggle.textContent = "Изменить";
+      const editForm = buildComposer(
+        (text) => editComment(index, comment.id, text),
+        "Текст комментария…",
+        comment.body,
+        { allowAttachment: false }
+      );
+      editForm.hidden = true;
+      // "Изменить" swaps .paragraph-comment__body itself for the composer in place (not
+      // shown alongside it, unlike "Ответить"'s reply form below the original text) -
+      // matches the roadmap's "turns .paragraph-comment__body back into a composer".
+      // Clicking again while editing cancels back to the plain body without saving.
+      editToggle.addEventListener("click", () => {
+        const entering = editForm.hidden;
+        body.hidden = entering;
+        editForm.hidden = !entering;
+        editToggle.textContent = entering ? "Отмена" : "Изменить";
+      });
+      body.after(editForm);
+
+      const deleteToggle = document.createElement("button");
+      deleteToggle.type = "button";
+      deleteToggle.className = "paragraph-comment__delete-toggle";
+      deleteToggle.textContent = "Удалить";
+      deleteToggle.addEventListener("click", () => {
+        if (window.confirm("Удалить комментарий?")) removeComment(index, comment.id);
+      });
+
+      main.append(editToggle, deleteToggle);
     }
 
     if (isAuthenticated) {
@@ -900,16 +953,62 @@
     } catch {
       return false;
     }
+    applyCommentTreeResponse(index, data);
+    return true;
+  }
+
+  // Shared tail of submitComment/editComment/removeComment below - all three POST/PATCH/
+  // DELETE endpoints return the exact same {count, comments} shape (app/api/chapters.py's
+  // _comments_response()), so re-rendering from it is identical regardless of which one
+  // just ran.
+  function applyCommentTreeResponse(index, data) {
     commentTreeByIndex.set(index, data.comments);
     commentsExpandedByIndex.add(index);
     renderCommentList(index, data.comments);
     const section = commentsSectionFor(index);
     const list = section?.querySelector(":scope > .paragraph-comments__list");
     if (list) list.hidden = false;
-    // A fresh post always carries its own authoritative count right there in the
-    // response, replies included - no reason to leave the toggle showing a stale number
-    // until the next full page load.
+    // The response always carries its own authoritative count right there, replies
+    // included - no reason to leave the toggle showing a stale number until the next full
+    // page load.
     setCommentCount(index, data.count);
+  }
+
+  // PR 172: "Изменить" on a comment's own body - returns whether it went through, same
+  // "leave the composer's text in place on failure" contract as submitComment above.
+  async function editComment(index, commentId, body) {
+    const formData = new FormData();
+    formData.set("body", body);
+    let data;
+    try {
+      const response = await fetch(
+        `/titles/${slugUrl}/chapters/${volume}/${number}/comments/${commentId}`,
+        { method: "PATCH", body: formData }
+      );
+      if (!response.ok) return false;
+      data = await response.json();
+    } catch {
+      return false;
+    }
+    applyCommentTreeResponse(index, data);
+    return true;
+  }
+
+  // PR 172: "Удалить" on a comment's own body - the confirm() prompt lives at the call
+  // site (renderCommentNode), not here, so this stays a plain "do the delete" action.
+  async function removeComment(index, commentId) {
+    let data;
+    try {
+      const response = await fetch(
+        `/titles/${slugUrl}/chapters/${volume}/${number}/comments/${commentId}`,
+        { method: "DELETE" }
+      );
+      if (!response.ok) return false;
+      data = await response.json();
+    } catch {
+      return false;
+    }
+    applyCommentTreeResponse(index, data);
     return true;
   }
 
