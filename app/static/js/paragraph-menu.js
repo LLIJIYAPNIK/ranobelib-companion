@@ -166,10 +166,39 @@
     return el ? quoteLines(el.innerText.trim()) : "";
   }
 
+  // PR 180: in the ordinary reading mode (.paragraph-reactions-host), the strip anchors
+  // against a dedicated zero-height element placed right after the paragraph's own text -
+  // not against the host as a whole. .paragraph-comments (commentsSectionFor below) is a
+  // normal-flow sibling of that same host, so anchoring the strip's `position: absolute`
+  // to the host's own bottom edge instead would drag it down by the comments block's
+  // height once a paragraph has both (see this PR's own diagnosis). The anchor has no
+  // content of its own, so it naturally collapses to zero height and sits exactly where
+  // the paragraph's own bottom edge is, comments or not.
+  function reactionsAnchorFor(host) {
+    let anchor = host.querySelector(":scope > .paragraph-reactions-anchor");
+    if (!anchor) {
+      anchor = document.createElement("div");
+      anchor.className = "paragraph-reactions-anchor";
+      // Always right after the paragraph's own raw element (host's first child, see
+      // paragraphHostFor's own comment) regardless of whether .paragraph-comments has
+      // already been appended by the time this runs - host.append() always adds that one
+      // at the end, so inserting this anchor at index 1 keeps it between the two either
+      // way.
+      host.insertBefore(anchor, host.children[1] || null);
+    }
+    return anchor;
+  }
+
   function renderStrip(index, counts, mineEmoji) {
     const host = paragraphHostFor(index);
     if (!host) return;
-    let strip = host.querySelector(":scope > .paragraph-reactions");
+    // Tap-to-read's .reader-content__paragraph-wrap strip was never absolutely
+    // positioned in the first place (PR 64 - normal flow, right under the timestamp), so
+    // it doesn't need an anchor at all - only .paragraph-reactions-host does.
+    const ordinary = host.classList.contains("paragraph-reactions-host");
+    let strip = ordinary
+      ? host.querySelector(":scope > .paragraph-reactions-anchor > .paragraph-reactions")
+      : host.querySelector(":scope > .paragraph-reactions");
     const entries = Object.entries(counts || {}).filter(([, n]) => n > 0);
     if (entries.length === 0) {
       strip?.remove();
@@ -178,7 +207,7 @@
     if (!strip) {
       strip = document.createElement("div");
       strip.className = "paragraph-reactions";
-      host.append(strip);
+      (ordinary ? reactionsAnchorFor(host) : host).append(strip);
     }
     strip.replaceChildren();
     for (const [emoji, n] of entries) {

@@ -3036,9 +3036,21 @@ a {
   margin-bottom: 0;
 }
 
-.paragraph-reactions-host > .paragraph-reactions {
+/* PR 180: a zero-height positioning context of its own, inserted right after the
+   paragraph's own text (paragraph-menu.js's reactionsAnchorFor()) - not the whole host,
+   which .paragraph-comments (a normal-flow sibling below) would otherwise stretch,
+   dragging the strip's `bottom: -8px` down along with it whenever a paragraph has both. */
+.paragraph-reactions-anchor {
+  position: relative;
+}
+
+.paragraph-reactions-anchor > .paragraph-reactions {
   position: absolute;
-  left: 0;
+  /* Right-aligned, not left: correctly anchoring this to right after the paragraph text
+     (above) puts it in the exact same row .paragraph-comments__toggle ("N комментариев")
+     occupies when a paragraph has both - that button is left-aligned, so anchoring the
+     strip from the right instead keeps the two from landing on the same pixels. */
+  right: 0;
   bottom: -8px;
   transform: translateY(100%);
   opacity: 0;
@@ -3047,8 +3059,8 @@ a {
   z-index: 1;
 }
 
-.paragraph-reactions-host:hover > .paragraph-reactions,
-.paragraph-reactions-host:focus-within > .paragraph-reactions {
+.paragraph-reactions-host:hover > .paragraph-reactions-anchor > .paragraph-reactions,
+.paragraph-reactions-host:focus-within > .paragraph-reactions-anchor > .paragraph-reactions {
   opacity: 1;
   pointer-events: auto;
 }
