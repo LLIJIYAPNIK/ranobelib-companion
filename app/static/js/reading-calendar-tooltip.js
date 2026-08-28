@@ -79,6 +79,14 @@
     else show(cell);
   });
 
+  // A tooltip opened by tap (above) has no hover to lose when the visitor's attention
+  // moves elsewhere - same click-outside-closes pattern as profile-menu.js's own panel.
+  // The cell's own click handler above already returns early for anything outside a
+  // `.reading-calendar__day`, so this only ever fires for a genuinely outside click.
+  document.addEventListener("click", (event) => {
+    if (activeCell && !calendar.contains(event.target)) hide();
+  });
+
   // A hovered cell's own on-screen position goes stale on scroll/resize (the tooltip
   // isn't re-measured continuously) - closing it here matches how the other floating
   // panels in this app (profile-menu.js) react to the same layout changes.
