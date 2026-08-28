@@ -41,14 +41,42 @@
     tooltip.classList.remove("reading-calendar-tooltip--open");
   }
 
-  calendar.addEventListener("mouseover", (event) => {
+  // pointerover/pointerout, not mouseover/mouseout: a tap dispatches a native
+  // `pointerover` too (pointerType "touch"), but browsers additionally synthesize a
+  // legacy `mouseover` right before their synthesized `click` for touch/compat reasons -
+  // if that legacy event opened the tooltip, this same cell's click handler below would
+  // immediately read it as already-open and toggle it back closed on every single tap.
+  // Checking pointerType here (mouse only) keeps this handler out of the tap's own
+  // opening path entirely, since only PointerEvent carries pointerType - the synthesized
+  // MouseEvent never reaches this listener at all.
+  calendar.addEventListener("pointerover", (event) => {
+    if (event.pointerType !== "mouse") return;
     const cell = event.target.closest(".reading-calendar__day");
     if (cell && cell !== activeCell) show(cell);
   });
 
-  calendar.addEventListener("mouseout", (event) => {
+  calendar.addEventListener("pointerout", (event) => {
+    if (event.pointerType !== "mouse") return;
     const cell = event.target.closest(".reading-calendar__day");
     if (cell && !cell.contains(event.relatedTarget)) hide();
+  });
+
+  // Touch's own tap has no hover ahead of it, so it needs this click handler as its only
+  // way to reach show()/hide() - reusing the exact same functions, not a second
+  // implementation of the same positioning. On mouse, pointerover above already handles
+  // open/close, so this stays a no-op there (see that handler's own comment on why a
+  // pointer-type-unaware click handler would fight it).
+  let lastPointerType = "mouse";
+  calendar.addEventListener("pointerdown", (event) => {
+    lastPointerType = event.pointerType;
+  });
+
+  calendar.addEventListener("click", (event) => {
+    if (lastPointerType === "mouse") return;
+    const cell = event.target.closest(".reading-calendar__day");
+    if (!cell) return;
+    if (cell === activeCell) hide();
+    else show(cell);
   });
 
   // A hovered cell's own on-screen position goes stale on scroll/resize (the tooltip
