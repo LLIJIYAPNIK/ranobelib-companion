@@ -669,13 +669,12 @@
     const el = document.createElement("div");
     el.className = "paragraph-comment";
 
+    // PR 183: just the avatar now - the vote buttons that used to sit below it moved into
+    // .paragraph-comment__actions (see below), so this narrow column no longer needs to
+    // fit anything but a 20x20 picture.
     const side = document.createElement("div");
     side.className = "paragraph-comment__side";
     side.append(buildCommentAvatar(comment));
-    // PR 172: no vote buttons on a deleted comment - there's no content left to vote on,
-    // and delete_comment() doesn't touch comment_reactions rows anyway (they just become
-    // unreachable once nothing links to them from the UI).
-    if (!comment.is_deleted) side.append(buildCommentReactions(comment));
     el.append(side);
 
     const main = document.createElement("div");
@@ -762,6 +761,15 @@
     // did, which is exactly how it ended up glued to "Удалить").
     const actions = document.createElement("div");
     actions.className = "paragraph-comment__actions";
+
+    // PR 183: vote buttons first in the row, ahead of "Ответить"/"Изменить"/"Удалить" -
+    // moved out of the narrow .paragraph-comment__side column (28px was a cramped tap
+    // target, worse still under a few levels of reply indent), now a compact icon+count
+    // pair among the row's other buttons instead. No vote buttons on a deleted comment -
+    // there's no content left to vote on, and delete_comment() doesn't touch
+    // comment_reactions rows anyway (they just become unreachable once nothing links to
+    // them from the UI).
+    if (!comment.is_deleted) actions.append(buildCommentReactions(comment));
 
     // PR 172: "Изменить"/"Удалить" - only on the visitor's own, non-deleted comments.
     // Hiding these client-side is purely a UI nicety: the real check is server-side
