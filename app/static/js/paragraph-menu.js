@@ -755,6 +755,14 @@
       main.append(img);
     }
 
+    // PR 181: one shared flex container for the whole "Ответить"/"Изменить"/"Удалить"
+    // row instead of each button setting its own margin-left - a gap on the container
+    // guarantees spacing between every pair of buttons, rather than relying on each new
+    // button remembering to add its own (see this PR's own diagnosis: .reply-toggle never
+    // did, which is exactly how it ended up glued to "Удалить").
+    const actions = document.createElement("div");
+    actions.className = "paragraph-comment__actions";
+
     // PR 172: "Изменить"/"Удалить" - only on the visitor's own, non-deleted comments.
     // Hiding these client-side is purely a UI nicety: the real check is server-side
     // (edit_comment()/delete_comment() scope their UPDATE by user_id), so this can't be
@@ -792,15 +800,16 @@
         if (window.confirm("Удалить комментарий?")) removeComment(index, comment.id);
       });
 
-      main.append(editToggle, deleteToggle);
+      actions.append(editToggle, deleteToggle);
     }
 
+    let replyForm = null;
     if (isAuthenticated) {
       const replyToggle = document.createElement("button");
       replyToggle.type = "button";
       replyToggle.className = "paragraph-comment__reply-toggle";
       replyToggle.textContent = "Ответить";
-      const replyForm = buildComposer(
+      replyForm = buildComposer(
         (text, attachmentFile) => submitComment(index, text, comment.id, attachmentFile),
         "Ваш ответ…"
       );
@@ -809,14 +818,19 @@
         replyForm.hidden = !replyForm.hidden;
       });
 
-      main.append(replyToggle, replyForm);
+      actions.append(replyToggle);
     } else {
       const link = document.createElement("a");
       link.className = "paragraph-comment__reply-toggle";
       link.href = "/login";
       link.textContent = "Войти, чтобы ответить";
-      main.append(link);
+      actions.append(link);
     }
+
+    main.append(actions);
+    // Not part of `actions` itself - a whole composer form, not a button in the row, so
+    // it renders on its own line right below the row instead of squeezed inside it.
+    if (replyForm) main.append(replyForm);
 
     // PR 152: two equivalent triggers for the same collapse state - the "[–]"/"[+]"
     // button next to "Ответить", and a click on the reply thread's own vertical guide
