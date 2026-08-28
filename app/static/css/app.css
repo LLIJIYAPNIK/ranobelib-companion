@@ -3242,12 +3242,14 @@ a {
 }
 
 /* PR 162: two-column layout (Reddit/Hacker News pattern) - a narrow left column for the
-   avatar + vote buttons (.paragraph-comment__side) and a wide right column for everything
-   else (.paragraph-comment__main). --side-width is reused by .paragraph-comment__replies
+   avatar (.paragraph-comment__side) and a wide right column for everything else
+   (.paragraph-comment__main). --side-width is reused by .paragraph-comment__replies
    further down so its own guide line lines up with this left column instead of the full
-   comment width. */
+   comment width. PR 183: 20px, not 28px - the vote buttons that used to share this
+   column with the avatar moved into .paragraph-comment__actions, so it only has to fit
+   the 20x20 avatar now. */
 .paragraph-comment {
-  --side-width: 28px;
+  --side-width: 20px;
   display: grid;
   grid-template-columns: var(--side-width) 1fr;
   column-gap: 10px;
@@ -3255,10 +3257,6 @@ a {
 
 .paragraph-comment__side {
   grid-column: 1;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 6px;
 }
 
 /* min-width: 0 stops long unbreakable content (e.g. a URL in the body) from forcing the
@@ -3420,30 +3418,30 @@ img.paragraph-comment__attachment {
   cursor: zoom-in;
 }
 
-/* PR 155/162: like/dislike on the comment itself - stacked vertically under the avatar
-   in .paragraph-comment__side now, not inline next to "Ответить" anymore. Not the pill/
-   badge look .paragraph-reactions__pill uses for paragraph reactions (PR 132) - that
-   strip is a hover-only overlay meant to stand out over running text, this is a
-   permanent part of a comment's own layout, closer to Reddit/Hacker News's vote column. */
+/* PR 155/162/183: like/dislike on the comment itself - a compact icon+count pair in
+   .paragraph-comment__actions, first in the row ahead of "Ответить" (PR 183 moved it out
+   of the narrow .paragraph-comment__side vote column, which left the buttons a cramped
+   tap target, worse yet under a few levels of reply indent). Not the pill/badge look
+   .paragraph-reactions__pill uses for paragraph reactions (PR 132) - that strip is a
+   hover-only overlay meant to stand out over running text, this is a permanent part of a
+   comment's own layout, closer to Reddit/Hacker News's vote buttons. */
 .paragraph-comment__reactions {
   display: flex;
-  flex-direction: column;
   align-items: center;
-  gap: 4px;
+  gap: 8px;
 }
 
 /* PR 162: outline SVG icon (`stroke: currentColor`, no fill at rest) + count - replaces
    the plain 👍/👎 emoji-and-number text this used to be. The dislike button reuses the
    exact same "thumbs up" SVG path (paragraph-menu.js's THUMB_ICON) flipped vertically
    below, rather than carrying a second, mirrored path. */
-/* PR 162: icon-above-count, not side-by-side - fits the narrow vote column
-   .paragraph-comment__side now holds this in, rather than the wider space it had sitting
-   inline next to "Ответить" before this PR. */
+/* PR 183: icon beside the count, not above it - .paragraph-comment__actions is a
+   horizontal row of same-height buttons now, not the narrow vertical vote column this
+   used to sit in (PR 162). */
 .paragraph-comment__reaction {
   display: flex;
-  flex-direction: column;
   align-items: center;
-  gap: 2px;
+  gap: 3px;
   padding: 3px;
   border: none;
   background: none;
