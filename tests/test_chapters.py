@@ -873,6 +873,160 @@ def test_post_comment_includes_empty_reaction_counts(logged_in_client: TestClien
     assert comment["my_reaction"] is None
 
 
+def test_patch_comment_requires_login() -> None:
+    response = client.patch(
+        "/titles/6712--test-novel/chapters/1/5/comments/1",
+        data={"body": "updated"},
+        follow_redirects=False,
+    )
+
+    assert response.status_code == 303
+    assert response.headers["location"] == "/login"
+
+
+def test_patch_comment_overwrites_the_body(logged_in_client: TestClient) -> None:
+    comment = logged_in_client.post(
+        "/titles/6712--test-novel/chapters/1/5/comments",
+        data={"paragraph_index": "0", "body": "original"},
+    ).json()["comments"][0]
+
+    response = logged_in_client.patch(
+        f"/titles/6712--test-novel/chapters/1/5/comments/{comment['id']}",
+        data={"body": "updated"},
+    )
+
+    data = response.json()
+    assert data["comments"][0]["body"] == "updated"
+    assert data["comments"][0]["body_html"] == "<p>updated</p>\n"
+    assert data["comments"][0]["updated_at"] is not None
+
+
+def test_patch_comment_rejects_an_empty_body(logged_in_client: TestClient) -> None:
+    comment = logged_in_client.post(
+        "/titles/6712--test-novel/chapters/1/5/comments",
+        data={"paragraph_index": "0", "body": "original"},
+    ).json()["comments"][0]
+
+    response = logged_in_client.patch(
+        f"/titles/6712--test-novel/chapters/1/5/comments/{comment['id']}",
+        data={"body": "   "},
+    )
+
+    assert response.status_code == 400
+
+
+def test_patch_comment_rejects_a_nonexistent_comment(logged_in_client: TestClient) -> None:
+    response = logged_in_client.patch(
+        "/titles/6712--test-novel/chapters/1/5/comments/999", data={"body": "updated"}
+    )
+
+    assert response.status_code == 404
+
+
+def test_patch_comment_rejects_someone_elses_comment(logged_in_client: TestClient) -> None:
+    comment = logged_in_client.post(
+        "/titles/6712--test-novel/chapters/1/5/comments",
+        data={"paragraph_index": "0", "body": "alice's"},
+    ).json()["comments"][0]
+
+    logged_in_client.post(
+        "/register",
+        data={
+            "email": "bob@example.com",
+            "password": "hunter2pass",
+            "password_confirm": "hunter2pass",
+        },
+    )  # switches the session to Bob
+
+    response = logged_in_client.patch(
+        f"/titles/6712--test-novel/chapters/1/5/comments/{comment['id']}",
+        data={"body": "hijacked"},
+    )
+
+    assert response.status_code == 404
+    logged_in_client.post("/login", data={"email": "alice@example.com", "password": "hunter2pass"})
+    unchanged = logged_in_client.get(
+        "/titles/6712--test-novel/chapters/1/5/comments", params={"paragraph_index": "0"}
+    ).json()
+    assert unchanged["comments"][0]["body"] == "alice's"
+
+
+def test_delete_comment_requires_login() -> None:
+    response = client.delete(
+        "/titles/6712--test-novel/chapters/1/5/comments/1", follow_redirects=False
+    )
+
+    assert response.status_code == 303
+    assert response.headers["location"] == "/login"
+
+
+def test_delete_comment_marks_it_deleted_and_clears_the_body(
+    logged_in_client: TestClient,
+) -> None:
+    comment = logged_in_client.post(
+        "/titles/6712--test-novel/chapters/1/5/comments",
+        data={"paragraph_index": "0", "body": "goodbye"},
+    ).json()["comments"][0]
+
+    response = logged_in_client.delete(
+        f"/titles/6712--test-novel/chapters/1/5/comments/{comment['id']}"
+    )
+
+    data = response.json()
+    assert data["comments"][0]["is_deleted"] is True
+    assert data["comments"][0]["body"] == ""
+    assert data["comments"][0]["body_html"] == ""
+    assert data["comments"][0]["attachment_url"] is None
+
+
+def test_delete_comment_rejects_a_nonexistent_comment(logged_in_client: TestClient) -> None:
+    response = logged_in_client.delete("/titles/6712--test-novel/chapters/1/5/comments/999")
+
+    assert response.status_code == 404
+
+
+def test_delete_comment_rejects_someone_elses_comment(logged_in_client: TestClient) -> None:
+    comment = logged_in_client.post(
+        "/titles/6712--test-novel/chapters/1/5/comments",
+        data={"paragraph_index": "0", "body": "alice's"},
+    ).json()["comments"][0]
+
+    logged_in_client.post(
+        "/register",
+        data={
+            "email": "bob@example.com",
+            "password": "hunter2pass",
+            "password_confirm": "hunter2pass",
+        },
+    )  # switches the session to Bob
+
+    response = logged_in_client.delete(
+        f"/titles/6712--test-novel/chapters/1/5/comments/{comment['id']}"
+    )
+
+    assert response.status_code == 404
+
+
+def test_delete_comment_keeps_its_replies_visible(logged_in_client: TestClient) -> None:
+    root = logged_in_client.post(
+        "/titles/6712--test-novel/chapters/1/5/comments",
+        data={"paragraph_index": "0", "body": "root"},
+    ).json()["comments"][0]
+    logged_in_client.post(
+        "/titles/6712--test-novel/chapters/1/5/comments",
+        data={"paragraph_index": "0", "body": "reply", "parent_comment_id": str(root["id"])},
+    )
+
+    response = logged_in_client.delete(
+        f"/titles/6712--test-novel/chapters/1/5/comments/{root['id']}"
+    )
+
+    data = response.json()
+    assert data["count"] == 2
+    assert data["comments"][0]["is_deleted"] is True
+    assert data["comments"][0]["replies"][0]["body"] == "reply"
+
+
 def test_post_comment_reaction_requires_login(logged_in_client: TestClient) -> None:
     comment = logged_in_client.post(
         "/titles/6712--test-novel/chapters/1/5/comments",

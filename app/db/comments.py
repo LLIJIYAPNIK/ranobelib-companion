@@ -40,6 +40,15 @@ class Comment:
     # actually render, same url_for()-style split as avatar_path/avatar_url).
     attachment_path: str | None = None
     attachment_kind: str | None = None
+    # PR 172: set once the comment's body has been overwritten by edit_comment() - renders
+    # as the "(изменено)" mark next to .paragraph-comment__time. Left unset (None) by
+    # create_comment() itself; a comment is never "edited" the moment it's created.
+    updated_at: str | None = None
+    # PR 172: soft-delete flag - delete_comment() sets this and clears body/attachment
+    # rather than removing the row, so replies (parent_comment_id) never point at a
+    # vanished comment. The client renders a "Комментарий удалён" placeholder instead of
+    # this comment's own (now-empty) body/attachment.
+    is_deleted: bool = False
     replies: list[Comment] = field(default_factory=list)
 
     @property
@@ -125,6 +134,61 @@ def create_comment(
     )
 
 
+def edit_comment(conn: sqlite3.Connection, comment_id: int, user_id: int, body: str) -> bool:
+    """Overwrites a comment's own body in place. True if a row was actually updated - the
+    UPDATE is scoped by both `id` and `user_id`, the same ownership-scoped shape as
+    app/db/notifications.py's mark_notification_read()/delete_notification(), so editing
+    someone else's comment id updates nothing and the caller turns that into a 404, never a
+    403 that would confirm the id exists. Also excludes an already soft-deleted comment
+    (delete_comment() below) - there's nothing left to edit once it's gone.
+
+    Raises ValueError for an oversized body, or an empty one when the comment has no
+    attachment to fall back on being "just a picture" - same rule create_comment() applies
+    when the comment is first posted."""
+    body = body.strip()
+    if len(body) > MAX_COMMENT_LENGTH:
+        raise ValueError(f"Комментарий длиннее {MAX_COMMENT_LENGTH} символов")
+    if not body:
+        row = conn.execute(
+            "SELECT attachment_path FROM comments WHERE id = ?", (comment_id,)
+        ).fetchone()
+        if row is None or not row["attachment_path"]:
+            raise ValueError("Комментарий не может быть пустым")
+
+    updated_at = datetime.now(UTC).isoformat()
+    cursor = conn.execute(
+        "UPDATE comments SET body = ?, updated_at = ? "
+        "WHERE id = ? AND user_id = ? AND is_deleted = 0",
+        (body, updated_at, comment_id, user_id),
+    )
+    conn.commit()
+    return cursor.rowcount > 0
+
+
+def delete_comment(conn: sqlite3.Connection, comment_id: int, user_id: int) -> bool:
+    """Soft-deletes a comment: True if a row was actually updated, same ownership-scoped
+    UPDATE...WHERE id = ? AND user_id = ? shape as edit_comment() above.
+
+    Deliberately never a hard DELETE, and deliberately leaves any reply rows alone - the
+    roadmap calls out that a hard delete would force a choice about the comment's existing
+    replies (orphan them, or cascade-delete a whole subtree over one deleted root). Flipping
+    `is_deleted` instead sidesteps that choice entirely: the row - and the thread structure
+    depending on its id via parent_comment_id - stays exactly where it is, and body/
+    attachment are cleared (not just hidden behind the flag) so no content survives for a
+    client that forgets to check it before rendering. The client (paragraph-menu.js) renders
+    a "Комментарий удалён" placeholder in its place while still showing any replies
+    underneath, same as most forums/Reddit."""
+    updated_at = datetime.now(UTC).isoformat()
+    cursor = conn.execute(
+        "UPDATE comments SET is_deleted = 1, body = '', attachment_path = NULL, "
+        "attachment_kind = NULL, updated_at = ? "
+        "WHERE id = ? AND user_id = ? AND is_deleted = 0",
+        (updated_at, comment_id, user_id),
+    )
+    conn.commit()
+    return cursor.rowcount > 0
+
+
 def list_comments_for_paragraph(
     conn: sqlite3.Connection,
     slug_url: str,
@@ -139,6 +203,7 @@ def list_comments_for_paragraph(
     rows = conn.execute(
         "SELECT comments.id, comments.user_id, comments.body, comments.created_at, "
         "comments.parent_comment_id, comments.attachment_path, comments.attachment_kind, "
+        "comments.updated_at, comments.is_deleted, "
         "users.nickname, users.email, users.avatar_path "
         "FROM comments JOIN users ON users.id = comments.user_id "
         "WHERE comments.slug_url = ? AND comments.volume = ? AND comments.number = ? "
@@ -159,6 +224,8 @@ def list_comments_for_paragraph(
             avatar_initials=initials_for(row["nickname"], row["email"]),
             attachment_path=row["attachment_path"],
             attachment_kind=row["attachment_kind"],
+            updated_at=row["updated_at"],
+            is_deleted=bool(row["is_deleted"]),
         )
         for row in rows
     }

@@ -1,0 +1,2 @@
+ALTER TABLE comments ADD COLUMN updated_at TEXT;
+ALTER TABLE comments ADD COLUMN is_deleted INTEGER NOT NULL DEFAULT 0;

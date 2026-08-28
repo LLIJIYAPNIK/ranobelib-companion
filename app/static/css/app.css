@@ -3282,6 +3282,12 @@ a {
   color: var(--text-muted);
 }
 
+/* PR 172: the "edited" mark - same muted, unemphasized treatment as the timestamp it sits
+   next to, not a call to attention. */
+.paragraph-comment__edited {
+  color: var(--text-muted);
+}
+
 /* PR 148: body_html already brings its own block structure (<p>/<br>/<ul>/<ol> from
    app/markdown_render.py) - no white-space: pre-wrap here anymore, that was only needed
    to preserve line breaks in plain textContent, and would otherwise also render the
@@ -3299,6 +3305,14 @@ a {
 
 .paragraph-comment__body p:last-child {
   margin-bottom: 0;
+}
+
+/* PR 172: the "Комментарий удалён" placeholder delete_comment() leaves behind - muted and
+   italic, the same "this isn't real content" signal .paragraph-comment__body blockquote
+   already uses for quoted text below. */
+.paragraph-comment__body--deleted {
+  color: var(--text-muted);
+  font-style: italic;
 }
 
 .paragraph-comment__body ul,
@@ -3447,6 +3461,34 @@ img.paragraph-comment__attachment {
 @media (hover: hover) {
   .paragraph-comment__reply-toggle:hover {
     color: var(--accent-teal);
+  }
+}
+
+/* PR 172: "Изменить"/"Удалить" on the visitor's own comment - same ghost-text treatment
+   as .paragraph-comment__reply-toggle (they sit in the same row), separate classes only so
+   "Удалить" can get its own hover color below. */
+.paragraph-comment__edit-toggle,
+.paragraph-comment__delete-toggle {
+  padding: 0;
+  margin-left: 10px;
+  border: none;
+  background: none;
+  color: var(--text-muted);
+  font-family: inherit;
+  font-size: calc(var(--comment-font-size) - 1px);
+  cursor: pointer;
+  transition: color 0.1s ease;
+}
+
+@media (hover: hover) {
+  .paragraph-comment__edit-toggle:hover {
+    color: var(--accent-teal);
+  }
+
+  /* A destructive action gets the same warning color .downloads-history__delete already
+     uses for one, not teal like every other hover here. */
+  .paragraph-comment__delete-toggle:hover {
+    color: var(--accent-orange);
   }
 }
 
