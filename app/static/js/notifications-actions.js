@@ -19,6 +19,8 @@
 // surface. Revisit if a future notification kind makes volume a real problem.
 (() => {
   const badge = document.querySelector('[data-role="notifications-badge"]');
+  const panelList = document.querySelector('[data-role="notifications-list"]');
+  const panelEmpty = document.querySelector('[data-role="notifications-empty"]');
 
   function applyUnreadCount(count) {
     if (!badge) return;
@@ -39,6 +41,7 @@
     event.preventDefault();
 
     const id = item.dataset.notificationId;
+    const inPanel = Boolean(panelList && panelList.contains(item));
     let response;
     try {
       response = markReadBtn
@@ -51,11 +54,24 @@
     const data = await response.json();
     applyUnreadCount(data.unread_count);
 
-    if (markReadBtn) {
+    // The bell panel only ever lists unread notifications (PR 179, app/db/notifications.py's
+    // list_recent_notifications()) - marking one read there has to remove the card, not
+    // just drop the --unread modifier and its button, or the panel would show a card the
+    // server would never have sent it in the first place on the next open. The full
+    // /notifications page (_notification_card.html) keeps the old in-place behavior: it's
+    // a history, a read notification still belongs there. Delete already removed the card
+    // outright on both surfaces before this PR - only mark-read's panel behavior changes.
+    if (markReadBtn && inPanel) {
+      item.remove();
+    } else if (markReadBtn) {
       item.classList.remove("notifications-panel__item--unread");
       markReadBtn.remove();
     } else {
       item.remove();
+    }
+
+    if (inPanel && panelEmpty) {
+      panelEmpty.hidden = panelList.querySelector(".notifications-panel__item") !== null;
     }
   });
 })();
