@@ -3478,6 +3478,21 @@ img.paragraph-comment__attachment {
   fill: var(--text-primary);
 }
 
+/* PR 181: the whole "Ответить"/"Изменить"/"Удалить" row as one flex container instead
+   of each button setting its own margin-left - a shared gap guarantees spacing between
+   every pair of buttons, rather than relying on each one to remember to add its own (see
+   this PR's own diagnosis: .reply-toggle never did, which is exactly how it ended up
+   glued to "Удалить"). inline-flex, not flex: .paragraph-comment__collapse-toggle
+   (PR 152) still renders as `main`'s own next sibling for now, not this container's own
+   child (PR 182 moves it into .paragraph-comment__meta instead, not in here) - staying
+   inline keeps it sitting on the same visual row as this container via its own
+   margin-left, same as it always has. */
+.paragraph-comment__actions {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+}
+
 .paragraph-comment__reply-toggle {
   padding: 0;
   border: none;
@@ -3497,12 +3512,10 @@ img.paragraph-comment__attachment {
 }
 
 /* PR 172: "Изменить"/"Удалить" on the visitor's own comment - same ghost-text treatment
-   as .paragraph-comment__reply-toggle (they sit in the same row), separate classes only so
-   "Удалить" can get its own hover color below. */
+   as .paragraph-comment__reply-toggle (they sit in the same row, PR 181's .actions). */
 .paragraph-comment__edit-toggle,
 .paragraph-comment__delete-toggle {
   padding: 0;
-  margin-left: 10px;
   border: none;
   background: none;
   color: var(--text-muted);
