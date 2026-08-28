@@ -978,6 +978,14 @@ a {
   font-weight: 600;
 }
 
+/* PR 173: opens image-lightbox.js's fullscreen viewer, same reasoning as
+   .title-hero__cover/img.paragraph-comment__attachment above - only the uploaded-avatar
+   <img> gets the cursor, never .profile__avatar itself, so the plain initials text (no
+   <img> at all, profile.html) doesn't look clickable when there's nothing to click open. */
+.profile__avatar img {
+  cursor: zoom-in;
+}
+
 .profile__info {
   display: flex;
   flex-direction: column;
