@@ -3307,6 +3307,14 @@ a {
   margin-bottom: 0;
 }
 
+/* PR 172: the "Комментарий удалён" placeholder delete_comment() leaves behind - muted and
+   italic, the same "this isn't real content" signal .paragraph-comment__body blockquote
+   already uses for quoted text below. */
+.paragraph-comment__body--deleted {
+  color: var(--text-muted);
+  font-style: italic;
+}
+
 .paragraph-comment__body ul,
 .paragraph-comment__body ol {
   margin: 0 0 8px;

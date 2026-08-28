@@ -642,7 +642,11 @@
 
     const side = document.createElement("div");
     side.className = "paragraph-comment__side";
-    side.append(buildCommentAvatar(comment), buildCommentReactions(comment));
+    side.append(buildCommentAvatar(comment));
+    // PR 172: no vote buttons on a deleted comment - there's no content left to vote on,
+    // and delete_comment() doesn't touch comment_reactions rows anyway (they just become
+    // unreachable once nothing links to them from the UI).
+    if (!comment.is_deleted) side.append(buildCommentReactions(comment));
     el.append(side);
 
     const main = document.createElement("div");
@@ -677,9 +681,18 @@
     // allow-list, not because this is "just our own data". A <div>, not a <p>, since the
     // rendered HTML brings its own block-level structure (paragraphs, <br>, lists) -
     // nesting that inside a <p> would be invalid.
+    //
+    // PR 172: a deleted comment's own body_html is just whatever render_comment_body("")
+    // produces (empty) - rendered as a fixed placeholder here instead, so nothing about
+    // deletion depends on the server happening to send an empty string.
     const body = document.createElement("div");
     body.className = "paragraph-comment__body";
-    body.innerHTML = comment.body_html;
+    if (comment.is_deleted) {
+      body.classList.add("paragraph-comment__body--deleted");
+      body.textContent = "Комментарий удалён";
+    } else {
+      body.innerHTML = comment.body_html;
+    }
     main.append(body);
 
     // PR 150/151: the one attachment a comment can carry - "gif" is a plain upload
@@ -688,6 +701,8 @@
     // instead of like the picture it visually resembles. "image"/"video" are stored
     // as-is (app/comment_attachment.py) and rendered plainly - <img>, or <video controls>
     // since an intentional video upload isn't meant to be a silent background loop.
+    // delete_comment() clears attachment_url server-side, so these simply don't fire for a
+    // deleted comment - no explicit is_deleted check needed here.
     if (comment.attachment_url && comment.attachment_kind === "gif") {
       const video = document.createElement("video");
       video.className = "paragraph-comment__attachment";
