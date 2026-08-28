@@ -833,11 +833,12 @@
     if (replyForm) main.append(replyForm);
 
     // PR 152: two equivalent triggers for the same collapse state - the "[–]"/"[+]"
-    // button next to "Ответить", and a click on the reply thread's own vertical guide
-    // line (.paragraph-comment__replies' left border/padding, the same visual element
-    // YouTube uses). Both just flip repliesDiv.hidden - commentTreeByIndex isn't touched,
-    // so re-expanding never needs a request, and a collapsed parent thread takes every
-    // nested sub-thread with it for free, since they're all inside this one DOM node.
+    // button in the comment's own header (PR 182 - moved out of the actions row below
+    // it, see that PR's own diagnosis), and a click on the reply thread's own vertical
+    // guide line (.paragraph-comment__replies' left border/padding, the same visual
+    // element YouTube uses). Both just flip repliesDiv.hidden - commentTreeByIndex isn't
+    // touched, so re-expanding never needs a request, and a collapsed parent thread takes
+    // every nested sub-thread with it for free, since they're all inside this one DOM node.
     let repliesDiv = null;
     let collapseToggle = null;
 
@@ -857,7 +858,11 @@
       collapseToggle.setAttribute("aria-expanded", "true");
       collapseToggle.setAttribute("aria-label", "Свернуть ветку ответов");
       collapseToggle.addEventListener("click", () => setRepliesCollapsed(!repliesDiv.hidden));
-      main.append(collapseToggle);
+      // PR 182: collapsing is an action on the whole reply thread, not on the comment
+      // itself the way "Ответить"/"Изменить"/"Удалить" (.paragraph-comment__actions) are -
+      // sits in the header next to the author/timestamp instead, Reddit/HN-style (see
+      // PR 162's own comment on the two-column layout this app already follows).
+      meta.append(collapseToggle);
 
       repliesDiv = document.createElement("div");
       repliesDiv.className = "paragraph-comment__replies";

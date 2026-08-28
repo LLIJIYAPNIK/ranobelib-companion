@@ -3482,11 +3482,9 @@ img.paragraph-comment__attachment {
    of each button setting its own margin-left - a shared gap guarantees spacing between
    every pair of buttons, rather than relying on each one to remember to add its own (see
    this PR's own diagnosis: .reply-toggle never did, which is exactly how it ended up
-   glued to "Удалить"). inline-flex, not flex: .paragraph-comment__collapse-toggle
-   (PR 152) still renders as `main`'s own next sibling for now, not this container's own
-   child (PR 182 moves it into .paragraph-comment__meta instead, not in here) - staying
-   inline keeps it sitting on the same visual row as this container via its own
-   margin-left, same as it always has. */
+   glued to "Удалить"). .paragraph-comment__collapse-toggle (PR 152) used to be this row's
+   own last child too, but PR 182 moved it into .paragraph-comment__meta instead - it's a
+   thread-level action, not a per-comment one like the three that stayed here. */
 .paragraph-comment__actions {
   display: inline-flex;
   align-items: center;
@@ -3537,12 +3535,13 @@ img.paragraph-comment__attachment {
   }
 }
 
-/* PR 152: the "[–]"/"[+]" collapse trigger next to "Ответить" - same ghost-text
-   treatment as .paragraph-comment__reply-toggle, just its own class since the two
-   aren't mutually exclusive styling-wise (a comment can have both at once). */
+/* PR 152: the "[–]"/"[+]" collapse trigger - same ghost-text treatment as
+   .paragraph-comment__reply-toggle. PR 182 moved it into .paragraph-comment__meta
+   (next to the author/timestamp) instead of the actions row below - no margin-left of
+   its own needed here any more, meta's own `gap` already spaces every child evenly,
+   this one included. */
 .paragraph-comment__collapse-toggle {
   padding: 0;
-  margin-left: 10px;
   border: none;
   background: none;
   color: var(--text-muted);
