@@ -500,7 +500,7 @@ a {
    own comment on why a <button> can't nest inside it). */
 .notifications-panel__item {
   display: flex;
-  align-items: flex-start;
+  align-items: center;
   gap: 4px;
   padding: 10px 14px;
   transition: background-color 0.1s ease;
