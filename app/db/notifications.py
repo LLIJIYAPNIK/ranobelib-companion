@@ -130,8 +130,13 @@ def list_recent_notifications(
     conn: sqlite3.Connection, user_id: int, limit: int
 ) -> list[Notification]:
     """The bell panel's own list, newest first - fetched once when it's opened, not
-    polled (only the unread count above needs to be live everywhere)."""
-    return _list_notifications(conn, user_id, offset=0, limit=limit)
+    polled (only the unread count above needs to be live everywhere).
+
+    Unread only: the panel is a quick "what's new" popover, not a history - once
+    something's been read (PR 170) it belongs on the full `/notifications` page
+    (list_notifications_page() below), not lingering here mixed in with what's still
+    unread (PR 179)."""
+    return _list_notifications(conn, user_id, offset=0, limit=limit, unread_only=True)
 
 
 def list_notifications_page(
@@ -141,14 +146,18 @@ def list_notifications_page(
     convention as app/api/library.py's own catalog pagination). Fetches one extra row
     past `page_size` to answer "is there a next page" without a second COUNT(*) query -
     the catalog's own has_next_page instead comes straight from the SDK's response, but
-    there's no such response to read it off here, so this table computes its own."""
+    there's no such response to read it off here, so this table computes its own.
+
+    Full history, read and unread both - unlike the bell panel above (PR 179), this page
+    is where a read notification keeps living, distinguished only by the
+    `.notifications-panel__item--unread` CSS modifier."""
     rows = _list_notifications(conn, user_id, offset=(page - 1) * page_size, limit=page_size + 1)
     has_next_page = len(rows) > page_size
     return rows[:page_size], has_next_page
 
 
 def _list_notifications(
-    conn: sqlite3.Connection, user_id: int, offset: int, limit: int
+    conn: sqlite3.Connection, user_id: int, offset: int, limit: int, unread_only: bool = False
 ) -> list[Notification]:
     """LEFT JOIN comments (not JOIN) so a notification survives its comment being deleted
     later (PR 172) - comment_id/comment_excerpt/comment_url just come back None instead of
@@ -158,6 +167,7 @@ def _list_notifications(
     created microseconds apart (e.g. in a tight loop, as tests do) can land on the same
     ISO timestamp, and `created_at` alone would then leave their relative order to
     SQLite's own unspecified tie-breaking instead of "most recently inserted first"."""
+    unread_clause = "AND notifications.is_read = 0 " if unread_only else ""
     rows = conn.execute(
         "SELECT notifications.id, notifications.kind, notifications.is_read, "
         "notifications.created_at, "
@@ -169,8 +179,8 @@ def _list_notifications(
         "FROM notifications "
         "JOIN users AS actor ON actor.id = notifications.actor_user_id "
         "LEFT JOIN comments ON comments.id = notifications.comment_id "
-        "WHERE notifications.user_id = ? "
-        "ORDER BY notifications.created_at DESC, notifications.id DESC LIMIT ? OFFSET ?",
+        "WHERE notifications.user_id = ? " + unread_clause + "ORDER BY "
+        "notifications.created_at DESC, notifications.id DESC LIMIT ? OFFSET ?",
         (user_id, limit, offset),
     ).fetchall()
     return [_row_to_notification(row) for row in rows]

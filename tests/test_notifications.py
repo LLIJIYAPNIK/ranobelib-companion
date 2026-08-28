@@ -288,8 +288,51 @@ def test_mark_read_flips_the_flag_and_reports_the_new_unread_count(
     response = client.post(f"/notifications/{notification_id}/read")
 
     assert response.json() == {"unread_count": 0}
-    [notification] = client.get("/notifications/recent").json()["notifications"]
-    assert notification["is_read"] is True
+    # The bell panel only ever lists unread notifications (PR 179) - once read, it drops
+    # out of /recent entirely rather than sticking around flagged as read. The full
+    # /notifications page still shows it (test_notifications_page_card_hides_mark_read_
+    # once_already_read below covers that side).
+    assert client.get("/notifications/recent").json()["notifications"] == []
+
+
+def test_recent_notifications_excludes_read_ones_but_the_full_page_keeps_both(
+    client: TestClient,
+) -> None:
+    """PR 179: the bell panel (/recent) is a "what's new" popover - a read notification
+    has no business lingering there once /notifications (the full history) is where it
+    belongs. Two notifications, one marked read, is what actually exercises the filter -
+    unlike the single-notification test above, an empty /recent alone can't tell "filtered
+    out" apart from "there was only ever one and it's gone"."""
+    _register(client, "alice@example.com")
+    # Different paragraphs (not just different bodies) - the comments endpoint returns
+    # the whole paragraph's thread, and a second comment on the *same* paragraph would
+    # make `["comments"][0]` keep returning the first one instead of the new one.
+    read_comment, unread_comment = (
+        client.post(
+            "/titles/6712--test-novel/chapters/1/5/comments",
+            data={"paragraph_index": str(index), "body": body},
+        ).json()["comments"][0]
+        for index, body in enumerate(("read me", "leave me unread"))
+    )
+
+    _register(client, "bob@example.com")
+    for comment in (read_comment, unread_comment):
+        client.post(
+            f"/titles/6712--test-novel/chapters/1/5/comments/{comment['id']}/reactions",
+            data={"value": "1"},
+        )
+
+    _login(client, "alice@example.com")
+    notifications = client.get("/notifications/recent").json()["notifications"]
+    by_excerpt = {n["comment_excerpt"]: n["id"] for n in notifications}
+    client.post(f"/notifications/{by_excerpt['read me']}/read")
+
+    recent = client.get("/notifications/recent").json()["notifications"]
+    assert [n["comment_excerpt"] for n in recent] == ["leave me unread"]
+
+    full_page = client.get("/notifications").text
+    assert "read me" in full_page
+    assert "leave me unread" in full_page
 
 
 def test_mark_read_404s_for_a_missing_notification(client: TestClient) -> None:
