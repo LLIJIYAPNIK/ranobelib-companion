@@ -34,6 +34,14 @@
 // (replies, newly posted comments) for as long as the page stays open. Scoped to `img`
 // specifically: video/gif attachments share the same class (PR 150/151) but open inline
 // with their own controls instead, not this viewer.
+//
+// PR 173: also opens for a profile's own avatar (.profile__avatar img, profile.html) -
+// delegated for the same reason as the two cases above (a public profile's avatar isn't
+// eagerly known at load either, and this same template renders both the owner's and any
+// other visitor's view). Scoped to `.profile__avatar img` rather than the wrapper div
+// itself: profile.html renders plain initials text with no `<img>` at all when the user
+// has no uploaded avatar, so the selector already excludes that case with no extra check
+// needed here - same reasoning as the attachment case just above.
 (() => {
   const images = [...document.querySelectorAll(".reader-content img")];
 
@@ -154,7 +162,12 @@
       return;
     }
     const attachment = event.target.closest("img.paragraph-comment__attachment");
-    if (attachment) open([attachment], 0);
+    if (attachment) {
+      open([attachment], 0);
+      return;
+    }
+    const avatar = event.target.closest(".profile__avatar img");
+    if (avatar) open([avatar], 0);
   });
 
   closeBtn.addEventListener("click", close);
