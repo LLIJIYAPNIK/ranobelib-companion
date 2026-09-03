@@ -42,6 +42,7 @@ app.add_middleware(
     remember_max_age=get_settings().session_remember_max_age,
     session_cookie="session",
     same_site="lax",
+    https_only=get_settings().is_production,
 )
 app.mount("/static", StaticFiles(directory=Path(__file__).parent / "static"), name="static")
 # Uploaded avatars (PR 96) live outside app/static - user data, not an app asset, same
