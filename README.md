@@ -1,8 +1,30 @@
 # ranobelib-companion
 
-Web UI for reading and downloading ranobe, built on top of
-[`ranobelib-python-sdk`](https://pypi.org/project/ranobelib-python-sdk/). See `CLAUDE.md`
-for architecture/roadmap and `TASK.md` for the full spec.
+[![License: MIT](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
+[![Python 3.12+](https://img.shields.io/badge/python-3.12%2B-blue.svg)](pyproject.toml)
+
+A web UI for reading and downloading [ranobelib.me](https://ranobelib.me) light novels,
+built on top of [`ranobelib-python-sdk`](https://pypi.org/project/ranobelib-python-sdk/).
+This repo is a thin FastAPI/Jinja2 layer around that SDK - all API access, caching,
+content parsing and epub/fb2/txt/pdf generation live there, not here.
+
+## Features
+
+- Read chapters online, with optional tap-to-read paging and adjustable reading speed
+- Download a single chapter, a volume, or a whole title in the background with live
+  progress, in whichever formats the SDK supports on the server (no hardcoded list)
+- Personal library, reading activity/calendar, and download history for signed-in users
+- Catalog browsing with filters (genres, tags, country, authors/artists/translators as
+  the underlying SDK grows to support them)
+- Paragraph-level reactions and comments, with notifications for replies/votes
+- Own email/password accounts - unrelated to and never integrated with a ranobelib.me
+  login
+
+## Not affiliated with ranobelib.me
+
+This is an independent, unofficial companion site. It talks to ranobelib.me only
+through its public API (via the SDK), is strictly read-only, and does not implement or
+emulate logging into a ranobelib.me account.
 
 ## Development
 
@@ -12,7 +34,8 @@ uv run uvicorn app.main:app --reload
 ```
 
 No environment variables are required for local development - unset settings fall back
-to sane defaults under the project directory (see `app/config.py`).
+to sane defaults under the project directory (see `app/config.py`). See `CLAUDE.md` for
+architecture/roadmap and `TASK.md` for the full spec.
 
 ## Deploying
 
