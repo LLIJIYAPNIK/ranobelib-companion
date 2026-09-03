@@ -26,6 +26,7 @@ from app.config import get_settings
 from app.db.connection import get_connection
 from app.db.migrate import run_migrations
 from app.exceptions import register_exception_handlers
+from app.security_headers import install_security_headers
 
 
 @asynccontextmanager
@@ -35,6 +36,7 @@ async def lifespan(app: FastAPI) -> AsyncIterator[None]:
 
 
 app = FastAPI(title="ranobelib-companion", lifespan=lifespan)
+install_security_headers(app)
 app.add_middleware(
     RememberMeSessionMiddleware,
     secret_key=get_settings().session_secret_key,

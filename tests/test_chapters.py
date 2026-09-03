@@ -207,9 +207,12 @@ def test_read_chapter_disables_browser_scroll_restoration() -> None:
         response = client.get("/titles/6712--test-novel/chapters/1/5")
 
     assert response.status_code == 200
-    assert 'history.scrollRestoration = "manual";' in response.text
+    # PR 189 moved the disabling script from inline to its own file (script-src 'self',
+    # no 'unsafe-inline') - the localStorage-style content check now lives on that static
+    # file directly, see test_security_headers.py.
+    assert "static/js/scroll-restoration.js" in response.text
     # Set in <head>, before either script tag - as early as possible in the page's life.
-    assert response.text.index("scrollRestoration") < response.text.index(
+    assert response.text.index("scroll-restoration.js") < response.text.index(
         "static/js/tap-to-read.js"
     )
 
