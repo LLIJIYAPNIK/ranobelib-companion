@@ -10,14 +10,15 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from psycopg import Connection
+from psycopg import AsyncConnection
 
 _MIGRATIONS_DIR = Path(__file__).parent / "migrations"
 
 
-def run_migrations(conn: Connection) -> None:
-    conn.execute("CREATE TABLE IF NOT EXISTS schema_migrations (filename TEXT PRIMARY KEY)")
-    applied = {row["filename"] for row in conn.execute("SELECT filename FROM schema_migrations")}
+async def run_migrations(conn: AsyncConnection) -> None:
+    await conn.execute("CREATE TABLE IF NOT EXISTS schema_migrations (filename TEXT PRIMARY KEY)")
+    cursor = await conn.execute("SELECT filename FROM schema_migrations")
+    applied = {row["filename"] for row in await cursor.fetchall()}
 
     for path in sorted(_MIGRATIONS_DIR.glob("*.sql")):
         if path.name in applied:
@@ -26,5 +27,5 @@ def run_migrations(conn: Connection) -> None:
         # protocol, which - unlike a parameterized execute() - allows several ;-separated
         # statements in one call, the closest equivalent to sqlite3's own
         # conn.executescript() (a method that has no Postgres-driver analogue at all).
-        conn.execute(path.read_text(encoding="utf-8"))
-        conn.execute("INSERT INTO schema_migrations (filename) VALUES (%s)", (path.name,))
+        await conn.execute(path.read_text(encoding="utf-8"))
+        await conn.execute("INSERT INTO schema_migrations (filename) VALUES (%s)", (path.name,))
