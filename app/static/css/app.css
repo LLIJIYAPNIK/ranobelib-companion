@@ -783,6 +783,12 @@ a {
   gap: 6px;
 }
 
+.auth-form__hint {
+  color: var(--text-secondary);
+  font-size: 12px;
+  margin: 0;
+}
+
 .auth-form__field--checkbox {
   flex-direction: row;
   align-items: center;
