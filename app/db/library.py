@@ -10,9 +10,11 @@ Callers needing a title's display info re-fetch it through ``app/services/client
 
 from __future__ import annotations
 
-import sqlite3
 from dataclasses import dataclass
 from datetime import UTC, datetime
+from typing import Any
+
+from psycopg import Connection
 
 
 @dataclass(frozen=True)
@@ -27,81 +29,77 @@ class LibraryEntry:
     is_favorite: bool
 
 
-def add_entry(conn: sqlite3.Connection, user_id: int, slug_url: str) -> LibraryEntry:
+def add_entry(conn: Connection, user_id: int, slug_url: str) -> LibraryEntry:
     """Idempotent - adding a title that's already in the library just returns the
     existing row instead of raising, since a repeat click of "add" isn't an error."""
     conn.execute(
-        "INSERT OR IGNORE INTO library_entries (user_id, slug_url, added_at) "
-        "VALUES (?, ?, ?)",
+        "INSERT INTO library_entries (user_id, slug_url, added_at) "
+        "VALUES (%s, %s, %s) ON CONFLICT DO NOTHING",
         (user_id, slug_url, datetime.now(UTC).isoformat()),
     )
-    conn.commit()
     entry = get_entry(conn, user_id, slug_url)
     assert entry is not None  # just inserted (or already existed)
     return entry
 
 
-def remove_entry(conn: sqlite3.Connection, user_id: int, slug_url: str) -> None:
+def remove_entry(conn: Connection, user_id: int, slug_url: str) -> None:
     """Not an error if the title wasn't in the library to begin with."""
     conn.execute(
-        "DELETE FROM library_entries WHERE user_id = ? AND slug_url = ?",
+        "DELETE FROM library_entries WHERE user_id = %s AND slug_url = %s",
         (user_id, slug_url),
     )
-    conn.commit()
 
 
-def get_entry(conn: sqlite3.Connection, user_id: int, slug_url: str) -> LibraryEntry | None:
+def get_entry(conn: Connection, user_id: int, slug_url: str) -> LibraryEntry | None:
     row = conn.execute(
-        "SELECT * FROM library_entries WHERE user_id = ? AND slug_url = ?",
+        "SELECT * FROM library_entries WHERE user_id = %s AND slug_url = %s",
         (user_id, slug_url),
     ).fetchone()
     return _row_to_entry(row) if row is not None else None
 
 
-def list_entries(conn: sqlite3.Connection, user_id: int) -> list[LibraryEntry]:
+def list_entries(conn: Connection, user_id: int) -> list[LibraryEntry]:
     """Most recently read first, falling back to most recently added for titles that
     haven't been opened yet."""
     rows = conn.execute(
-        "SELECT * FROM library_entries WHERE user_id = ? "
+        "SELECT * FROM library_entries WHERE user_id = %s "
         "ORDER BY COALESCE(last_read_at, added_at) DESC",
         (user_id,),
     ).fetchall()
     return [_row_to_entry(row) for row in rows]
 
 
-def set_favorite(conn: sqlite3.Connection, user_id: int, slug_url: str) -> None:
+def set_favorite(conn: Connection, user_id: int, slug_url: str) -> None:
     """Marks `slug_url` as `user_id`'s one favorite title, clearing any previous favorite
     first - exactly one favorite per user is simplest as a plain boolean flag reset on
     every new pick, rather than a separate table just to hold a single value (see PR 123
     in CLAUDE.md's roadmap). No-op (both UPDATEs affect 0 rows) if `slug_url` isn't
     actually in this user's library."""
-    conn.execute("UPDATE library_entries SET is_favorite = 0 WHERE user_id = ?", (user_id,))
+    conn.execute("UPDATE library_entries SET is_favorite = 0 WHERE user_id = %s", (user_id,))
     conn.execute(
-        "UPDATE library_entries SET is_favorite = 1 WHERE user_id = ? AND slug_url = ?",
+        "UPDATE library_entries SET is_favorite = 1 WHERE user_id = %s AND slug_url = %s",
         (user_id, slug_url),
     )
-    conn.commit()
 
 
-def unset_favorite(conn: sqlite3.Connection, user_id: int, slug_url: str) -> None:
+def unset_favorite(conn: Connection, user_id: int, slug_url: str) -> None:
     """Not an error if `slug_url` wasn't the favorite (or wasn't in the library) to begin
     with - same "no-op instead of raising" shape as `remove_entry`."""
     conn.execute(
-        "UPDATE library_entries SET is_favorite = 0 WHERE user_id = ? AND slug_url = ?",
+        "UPDATE library_entries SET is_favorite = 0 WHERE user_id = %s AND slug_url = %s",
         (user_id, slug_url),
     )
-    conn.commit()
 
 
-def get_favorite_entry(conn: sqlite3.Connection, user_id: int) -> LibraryEntry | None:
+def get_favorite_entry(conn: Connection, user_id: int) -> LibraryEntry | None:
     row = conn.execute(
-        "SELECT * FROM library_entries WHERE user_id = ? AND is_favorite = 1", (user_id,)
+        "SELECT * FROM library_entries WHERE user_id = %s AND is_favorite = 1", (user_id,)
     ).fetchone()
     return _row_to_entry(row) if row is not None else None
 
 
 def record_progress(
-    conn: sqlite3.Connection, user_id: int, slug_url: str, volume: str, number: str
+    conn: Connection, user_id: int, slug_url: str, volume: str, number: str
 ) -> None:
     """Only updates an existing row - no-op if `slug_url` isn't in this user's library.
     In practice the chapter-read route (PR 35) calls `add_entry()` right before this, so
@@ -109,14 +107,13 @@ def record_progress(
     an upsert so other callers without that guarantee can't silently create entries."""
     conn.execute(
         "UPDATE library_entries "
-        "SET last_read_volume = ?, last_read_number = ?, last_read_at = ? "
-        "WHERE user_id = ? AND slug_url = ?",
+        "SET last_read_volume = %s, last_read_number = %s, last_read_at = %s "
+        "WHERE user_id = %s AND slug_url = %s",
         (volume, number, datetime.now(UTC).isoformat(), user_id, slug_url),
     )
-    conn.commit()
 
 
-def _row_to_entry(row: sqlite3.Row) -> LibraryEntry:
+def _row_to_entry(row: dict[str, Any]) -> LibraryEntry:
     return LibraryEntry(
         id=row["id"],
         user_id=row["user_id"],

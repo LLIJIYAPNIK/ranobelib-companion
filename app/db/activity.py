@@ -14,10 +14,11 @@ rows (and download_history's) are written with.
 
 from __future__ import annotations
 
-import sqlite3
 from collections import defaultdict
 from dataclasses import dataclass
 from datetime import UTC, datetime, timedelta
+
+from psycopg import Connection
 
 
 @dataclass(frozen=True)
@@ -27,33 +28,31 @@ class ChapterReadCount:
 
 
 def record_chapter_read(
-    conn: sqlite3.Connection, user_id: int, slug_url: str, volume: str, number: str
+    conn: Connection, user_id: int, slug_url: str, volume: str, number: str
 ) -> None:
     """One row per chapter open - re-reading the same chapter later the same day counts
     again, same as a "recently played" list would. No dedup: this is an activity feed,
     not a read/unread flag (that's `library.last_read_*`, PR 14)."""
     conn.execute(
         "INSERT INTO activity_events (user_id, kind, slug_url, volume, number, created_at) "
-        "VALUES (?, 'chapter_read', ?, ?, ?, ?)",
+        "VALUES (%s, 'chapter_read', %s, %s, %s, %s)",
         (user_id, slug_url, volume, number, datetime.now(UTC).isoformat()),
     )
-    conn.commit()
 
 
-def record_heartbeat(conn: sqlite3.Connection, user_id: int, slug_url: str, seconds: int) -> None:
+def record_heartbeat(conn: Connection, user_id: int, slug_url: str, seconds: int) -> None:
     conn.execute(
         "INSERT INTO activity_events (user_id, kind, slug_url, seconds, created_at) "
-        "VALUES (?, 'heartbeat', ?, ?, ?)",
+        "VALUES (%s, 'heartbeat', %s, %s, %s)",
         (user_id, slug_url, seconds, datetime.now(UTC).isoformat()),
     )
-    conn.commit()
 
 
-def list_chapters_read_today(conn: sqlite3.Connection, user_id: int) -> list[ChapterReadCount]:
+def list_chapters_read_today(conn: Connection, user_id: int) -> list[ChapterReadCount]:
     """Titles read today, most recently read first."""
     rows = conn.execute(
         "SELECT slug_url, COUNT(*) AS chapters_read FROM activity_events "
-        "WHERE user_id = ? AND kind = 'chapter_read' AND created_at >= ? "
+        "WHERE user_id = %s AND kind = 'chapter_read' AND created_at >= %s "
         "GROUP BY slug_url ORDER BY MAX(created_at) DESC",
         (user_id, _today_start()),
     ).fetchall()
@@ -63,19 +62,17 @@ def list_chapters_read_today(conn: sqlite3.Connection, user_id: int) -> list[Cha
     ]
 
 
-def total_active_seconds_today(conn: sqlite3.Connection, user_id: int) -> int:
+def total_active_seconds_today(conn: Connection, user_id: int) -> int:
     """Sum of heartbeat ticks today - the "активное время чтения" stat."""
     row = conn.execute(
         "SELECT COALESCE(SUM(seconds), 0) AS total FROM activity_events "
-        "WHERE user_id = ? AND kind = 'heartbeat' AND created_at >= ?",
+        "WHERE user_id = %s AND kind = 'heartbeat' AND created_at >= %s",
         (user_id, _today_start()),
     ).fetchone()
     return row["total"]
 
 
-def daily_reading_activity(
-    conn: sqlite3.Connection, user_id: int, weeks: int = 52
-) -> dict[str, int]:
+def daily_reading_activity(conn: Connection, user_id: int, weeks: int = 52) -> dict[str, int]:
     """Chapters read per calendar day (UTC, same boundary every other "day" query in this
     module uses) for the trailing `weeks` weeks up to and including today - PR 136's
     profile heatmap. A day with no chapter_read events at all is simply absent from the
@@ -83,17 +80,21 @@ def daily_reading_activity(
     every day of the grid it renders, including ones with no data here, from this."""
     start = (datetime.now(UTC).date() - timedelta(days=weeks * 7 - 1)).isoformat()
     rows = conn.execute(
-        "SELECT date(created_at) AS day, COUNT(*) AS n FROM activity_events "
-        "WHERE user_id = ? AND kind = 'chapter_read' AND created_at >= ? "
+        # LEFT(created_at, 10) rather than SQLite's date(created_at): created_at is stored
+        # as an ISO-8601 TEXT column (see CLAUDE.md's PR 191 entry on what did/didn't get
+        # rewritten to native types), and Postgres has no date(text) function to call on
+        # it directly the way SQLite does - but since every timestamp is written with
+        # datetime.isoformat(), its first 10 characters are always exactly its YYYY-MM-DD
+        # date, identical to what date() used to return.
+        "SELECT LEFT(created_at, 10) AS day, COUNT(*) AS n FROM activity_events "
+        "WHERE user_id = %s AND kind = 'chapter_read' AND created_at >= %s "
         "GROUP BY day",
         (user_id, start),
     ).fetchall()
     return {row["day"]: row["n"] for row in rows}
 
 
-def daily_active_seconds(
-    conn: sqlite3.Connection, user_id: int, weeks: int = 52
-) -> dict[str, int]:
+def daily_active_seconds(conn: Connection, user_id: int, weeks: int = 52) -> dict[str, int]:
     """Active reading seconds (heartbeat ticks, same signal total_active_seconds_today()
     sums for "today" alone) per calendar day, for the same trailing `weeks` weeks/UTC
     boundary as daily_reading_activity() right above - PR 140's addition to the profile
@@ -102,8 +103,8 @@ def daily_active_seconds(
     present with 0" convention as daily_reading_activity()."""
     start = (datetime.now(UTC).date() - timedelta(days=weeks * 7 - 1)).isoformat()
     rows = conn.execute(
-        "SELECT date(created_at) AS day, SUM(seconds) AS total FROM activity_events "
-        "WHERE user_id = ? AND kind = 'heartbeat' AND created_at >= ? "
+        "SELECT LEFT(created_at, 10) AS day, SUM(seconds) AS total FROM activity_events "
+        "WHERE user_id = %s AND kind = 'heartbeat' AND created_at >= %s "
         "GROUP BY day",
         (user_id, start),
     ).fetchall()
@@ -111,7 +112,7 @@ def daily_active_seconds(
 
 
 def daily_titles_read(
-    conn: sqlite3.Connection, user_id: int, weeks: int = 52
+    conn: Connection, user_id: int, weeks: int = 52
 ) -> dict[str, list[str]]:
     """Which titles (unique slug_url) were read on each calendar day, most recently read
     within that day first - PR 159's addition to the profile heatmap tooltip, which
@@ -123,8 +124,8 @@ def daily_titles_read(
     (app/api/profile.py) looks those up itself through app/services/client.py."""
     start = (datetime.now(UTC).date() - timedelta(days=weeks * 7 - 1)).isoformat()
     rows = conn.execute(
-        "SELECT date(created_at) AS day, slug_url, MAX(created_at) AS last_read "
-        "FROM activity_events WHERE user_id = ? AND kind = 'chapter_read' AND created_at >= ? "
+        "SELECT LEFT(created_at, 10) AS day, slug_url, MAX(created_at) AS last_read "
+        "FROM activity_events WHERE user_id = %s AND kind = 'chapter_read' AND created_at >= %s "
         "GROUP BY day, slug_url ORDER BY day, last_read DESC",
         (user_id, start),
     ).fetchall()

@@ -1,10 +1,10 @@
 """Online chapter reading."""
 
-import sqlite3
 from typing import Annotated
 
 from fastapi import APIRouter, Depends, File, Form, HTTPException, Query, Request, UploadFile
 from fastapi.responses import HTMLResponse, JSONResponse
+from psycopg import Connection
 from ranobelib.models import Volume
 
 from app.auth.dependencies import get_current_user, require_current_user
@@ -298,7 +298,7 @@ async def post_comment_reaction(
 
 
 def _comments_response(
-    conn: sqlite3.Connection,
+    conn: Connection,
     slug_url: str,
     volume: str,
     number: str,
@@ -330,7 +330,7 @@ def _comments_response(
 
 
 def _comment_paragraph_response(
-    conn: sqlite3.Connection, comment_id: int, current_user: User
+    conn: Connection, comment_id: int, current_user: User
 ) -> dict:
     """Rebuilds the same shape _comments_response returns, for the one paragraph a just-
     edited/deleted comment belongs to - looked up from the comment's own stored key rather
@@ -338,7 +338,7 @@ def _comment_paragraph_response(
     can never be used to fetch another paragraph's thread."""
     row = conn.execute(
         "SELECT slug_url, volume, number, branch_id, paragraph_index "
-        "FROM comments WHERE id = ?",
+        "FROM comments WHERE id = %s",
         (comment_id,),
     ).fetchone()
     return _comments_response(

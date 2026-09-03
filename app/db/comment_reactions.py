@@ -15,60 +15,59 @@ the same value removes it, the opposite value replaces it, never a second row.
 
 from __future__ import annotations
 
-import sqlite3
 from collections import defaultdict
 from datetime import UTC, datetime
+
+from psycopg import Connection
 
 LIKE = 1
 DISLIKE = -1
 
 
 def toggle_comment_reaction(
-    conn: sqlite3.Connection, user_id: int, comment_id: int, value: int
+    conn: Connection, user_id: int, comment_id: int, value: int
 ) -> int | None:
     """Sets `value` as this user's one reaction to the comment, replacing whatever they
     had there before - or, if `value` is already their active reaction, removes it instead
     (clicking the same button again is "undo", not a second vote). Returns the resulting
     state: the value now active, or None if the reaction was removed.
 
-    Raises ValueError if `comment_id` doesn't name an actual comment - there's no
-    ``PRAGMA foreign_keys = ON`` here (see app/db/connection.py), so this is checked
-    explicitly, the same defensive shape create_comment() already uses for a stale/
-    tampered `parent_comment_id`."""
-    comment = conn.execute("SELECT 1 FROM comments WHERE id = ?", (comment_id,)).fetchone()
+    Raises ValueError if `comment_id` doesn't name an actual comment - there's no foreign
+    key enforcement failure to rely on here either way (an explicit check keeps the error
+    the same shape it'd need if the FK were ever dropped), the same defensive shape
+    create_comment() already uses for a stale/tampered `parent_comment_id`."""
+    comment = conn.execute("SELECT 1 FROM comments WHERE id = %s", (comment_id,)).fetchone()
     if comment is None:
         raise ValueError("Комментарий не найден")
 
     existing = conn.execute(
-        "SELECT value FROM comment_reactions WHERE comment_id = ? AND user_id = ?",
+        "SELECT value FROM comment_reactions WHERE comment_id = %s AND user_id = %s",
         (comment_id, user_id),
     ).fetchone()
 
     if existing is not None and existing["value"] == value:
         conn.execute(
-            "DELETE FROM comment_reactions WHERE comment_id = ? AND user_id = ?",
+            "DELETE FROM comment_reactions WHERE comment_id = %s AND user_id = %s",
             (comment_id, user_id),
         )
-        conn.commit()
         return None
 
     conn.execute(
         "INSERT INTO comment_reactions (comment_id, user_id, value, created_at) "
-        "VALUES (?, ?, ?, ?) "
+        "VALUES (%s, %s, %s, %s) "
         "ON CONFLICT(comment_id, user_id) "
         "DO UPDATE SET value = excluded.value, created_at = excluded.created_at",
         (comment_id, user_id, value, datetime.now(UTC).isoformat()),
     )
-    conn.commit()
     return value
 
 
-def count_reactions_for_comment(conn: sqlite3.Connection, comment_id: int) -> dict[str, int]:
+def count_reactions_for_comment(conn: Connection, comment_id: int) -> dict[str, int]:
     """Like/dislike counts for one comment - what the toggle endpoint returns so the
     client can refresh just the comment it touched, without refetching the whole thread."""
     rows = conn.execute(
         "SELECT value, COUNT(*) AS n FROM comment_reactions "
-        "WHERE comment_id = ? GROUP BY value",
+        "WHERE comment_id = %s GROUP BY value",
         (comment_id,),
     ).fetchall()
     counts = {"like": 0, "dislike": 0}
@@ -78,7 +77,7 @@ def count_reactions_for_comment(conn: sqlite3.Connection, comment_id: int) -> di
 
 
 def count_reactions_for_paragraph(
-    conn: sqlite3.Connection,
+    conn: Connection,
     slug_url: str,
     volume: str,
     number: str,
@@ -92,8 +91,8 @@ def count_reactions_for_paragraph(
         "SELECT comment_reactions.comment_id, comment_reactions.value, COUNT(*) AS n "
         "FROM comment_reactions "
         "JOIN comments ON comments.id = comment_reactions.comment_id "
-        "WHERE comments.slug_url = ? AND comments.volume = ? AND comments.number = ? "
-        "AND comments.branch_id = ? AND comments.paragraph_index = ? "
+        "WHERE comments.slug_url = %s AND comments.volume = %s AND comments.number = %s "
+        "AND comments.branch_id = %s AND comments.paragraph_index = %s "
         "GROUP BY comment_reactions.comment_id, comment_reactions.value",
         (slug_url, volume, number, branch_id, paragraph_index),
     ).fetchall()
@@ -104,7 +103,7 @@ def count_reactions_for_paragraph(
 
 
 def user_reactions_for_paragraph(
-    conn: sqlite3.Connection,
+    conn: Connection,
     user_id: int,
     slug_url: str,
     volume: str,
@@ -119,9 +118,9 @@ def user_reactions_for_paragraph(
         "SELECT comment_reactions.comment_id, comment_reactions.value "
         "FROM comment_reactions "
         "JOIN comments ON comments.id = comment_reactions.comment_id "
-        "WHERE comment_reactions.user_id = ? AND comments.slug_url = ? "
-        "AND comments.volume = ? AND comments.number = ? AND comments.branch_id = ? "
-        "AND comments.paragraph_index = ?",
+        "WHERE comment_reactions.user_id = %s AND comments.slug_url = %s "
+        "AND comments.volume = %s AND comments.number = %s AND comments.branch_id = %s "
+        "AND comments.paragraph_index = %s",
         (user_id, slug_url, volume, number, branch_id, paragraph_index),
     ).fetchall()
     return {row["comment_id"]: row["value"] for row in rows}
