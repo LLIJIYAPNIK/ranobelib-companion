@@ -90,7 +90,9 @@ def _get_job_or_404(slug_url: str, job_id: str, current_user: User | None) -> Do
         # job_id, as before - only a job tied to an account is scoped to its owner, defense
         # in depth on top of the job_id's own unguessability (see roadmap PR 190).
         if current_user is None or job.user_id != current_user.id:
-            raise HTTPException(status_code=403, detail="Эта задача принадлежит другому пользователю")
+            raise HTTPException(
+                status_code=403, detail="Эта задача принадлежит другому пользователю"
+            )
     return job
 
 
