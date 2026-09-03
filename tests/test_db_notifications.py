@@ -1,5 +1,6 @@
-import sqlite3
+from typing import Any
 
+import psycopg
 import pytest
 
 from app.db.comments import create_comment
@@ -11,29 +12,28 @@ from app.db.notifications import (
     mark_notification_read,
     notify_comment_reaction,
 )
+from tests.db_reset import fresh_connection
 
 
 @pytest.fixture
-def conn() -> sqlite3.Connection:
-    connection = sqlite3.connect(":memory:")
-    connection.row_factory = sqlite3.Row
+def conn() -> psycopg.Connection:
+    connection = fresh_connection()
     run_migrations(connection)
     for user_id, email in ((1, "alice@example.com"), (2, "bob@example.com")):
         connection.execute(
             "INSERT INTO users (id, email, password_hash, created_at) "
-            "VALUES (?, ?, 'hash', 'now')",
+            "VALUES (%s, %s, 'hash', 'now')",
             (user_id, email),
         )
-    connection.commit()
     return connection
 
 
-def _notifications(conn: sqlite3.Connection) -> list[sqlite3.Row]:
+def _notifications(conn: psycopg.Connection) -> list[dict[str, Any]]:
     return conn.execute("SELECT * FROM notifications").fetchall()
 
 
 def test_notify_comment_reaction_creates_a_row_for_the_author(
-    conn: sqlite3.Connection,
+    conn: psycopg.Connection,
 ) -> None:
     comment = create_comment(conn, 1, "6712--test-novel", "1", "5", "", 0, "hi")
 
@@ -49,7 +49,7 @@ def test_notify_comment_reaction_creates_a_row_for_the_author(
 
 
 def test_notify_comment_reaction_skips_reacting_to_your_own_comment(
-    conn: sqlite3.Connection,
+    conn: psycopg.Connection,
 ) -> None:
     comment = create_comment(conn, 1, "6712--test-novel", "1", "5", "", 0, "hi")
 
@@ -59,7 +59,7 @@ def test_notify_comment_reaction_skips_reacting_to_your_own_comment(
 
 
 def test_notify_comment_reaction_is_a_noop_for_a_missing_comment(
-    conn: sqlite3.Connection,
+    conn: psycopg.Connection,
 ) -> None:
     notify_comment_reaction(conn, 999, actor_user_id=2)
 
@@ -67,7 +67,7 @@ def test_notify_comment_reaction_is_a_noop_for_a_missing_comment(
 
 
 def test_notify_comment_reaction_updates_instead_of_duplicating_while_unread(
-    conn: sqlite3.Connection,
+    conn: psycopg.Connection,
 ) -> None:
     comment = create_comment(conn, 1, "6712--test-novel", "1", "5", "", 0, "hi")
 
@@ -81,19 +81,18 @@ def test_notify_comment_reaction_updates_instead_of_duplicating_while_unread(
 
 
 def test_notify_comment_reaction_creates_a_new_row_once_the_old_one_is_read(
-    conn: sqlite3.Connection,
+    conn: psycopg.Connection,
 ) -> None:
     comment = create_comment(conn, 1, "6712--test-novel", "1", "5", "", 0, "hi")
     notify_comment_reaction(conn, comment.id, actor_user_id=2)
     conn.execute("UPDATE notifications SET is_read = 1")
-    conn.commit()
 
     notify_comment_reaction(conn, comment.id, actor_user_id=2)
 
     assert len(_notifications(conn)) == 2
 
 
-def test_list_notifications_page_paginates_newest_first(conn: sqlite3.Connection) -> None:
+def test_list_notifications_page_paginates_newest_first(conn: psycopg.Connection) -> None:
     comments = [
         create_comment(conn, 1, "6712--test-novel", "1", "5", "", 0, f"comment {i}")
         for i in range(3)
@@ -108,7 +107,7 @@ def test_list_notifications_page_paginates_newest_first(conn: sqlite3.Connection
 
 
 def test_list_notifications_page_reports_no_next_page_on_the_last_page(
-    conn: sqlite3.Connection,
+    conn: psycopg.Connection,
 ) -> None:
     comments = [
         create_comment(conn, 1, "6712--test-novel", "1", "5", "", 0, f"comment {i}")
@@ -123,14 +122,14 @@ def test_list_notifications_page_reports_no_next_page_on_the_last_page(
     assert has_next_page is False
 
 
-def test_list_notifications_page_is_empty_with_none(conn: sqlite3.Connection) -> None:
+def test_list_notifications_page_is_empty_with_none(conn: psycopg.Connection) -> None:
     page, has_next_page = list_notifications_page(conn, 1, page=1, page_size=2)
 
     assert page == []
     assert has_next_page is False
 
 
-def test_mark_notification_read_flips_the_flag(conn: sqlite3.Connection) -> None:
+def test_mark_notification_read_flips_the_flag(conn: psycopg.Connection) -> None:
     comment = create_comment(conn, 1, "6712--test-novel", "1", "5", "", 0, "hi")
     notify_comment_reaction(conn, comment.id, actor_user_id=2)
     notification_id = _notifications(conn)[0]["id"]
@@ -141,7 +140,7 @@ def test_mark_notification_read_flips_the_flag(conn: sqlite3.Connection) -> None
     assert _notifications(conn)[0]["is_read"] == 1
 
 
-def test_mark_notification_read_is_a_noop_if_already_read(conn: sqlite3.Connection) -> None:
+def test_mark_notification_read_is_a_noop_if_already_read(conn: psycopg.Connection) -> None:
     comment = create_comment(conn, 1, "6712--test-novel", "1", "5", "", 0, "hi")
     notify_comment_reaction(conn, comment.id, actor_user_id=2)
     notification_id = _notifications(conn)[0]["id"]
@@ -153,7 +152,7 @@ def test_mark_notification_read_is_a_noop_if_already_read(conn: sqlite3.Connecti
 
 
 def test_mark_notification_read_rejects_someone_elses_notification(
-    conn: sqlite3.Connection,
+    conn: psycopg.Connection,
 ) -> None:
     comment = create_comment(conn, 1, "6712--test-novel", "1", "5", "", 0, "hi")
     notify_comment_reaction(conn, comment.id, actor_user_id=2)
@@ -166,12 +165,12 @@ def test_mark_notification_read_rejects_someone_elses_notification(
 
 
 def test_mark_notification_read_reports_false_for_a_missing_id(
-    conn: sqlite3.Connection,
+    conn: psycopg.Connection,
 ) -> None:
     assert mark_notification_read(conn, 999, user_id=1) is False
 
 
-def test_delete_notification_removes_the_row(conn: sqlite3.Connection) -> None:
+def test_delete_notification_removes_the_row(conn: psycopg.Connection) -> None:
     comment = create_comment(conn, 1, "6712--test-novel", "1", "5", "", 0, "hi")
     notify_comment_reaction(conn, comment.id, actor_user_id=2)
     notification_id = _notifications(conn)[0]["id"]
@@ -183,7 +182,7 @@ def test_delete_notification_removes_the_row(conn: sqlite3.Connection) -> None:
 
 
 def test_delete_notification_rejects_someone_elses_notification(
-    conn: sqlite3.Connection,
+    conn: psycopg.Connection,
 ) -> None:
     comment = create_comment(conn, 1, "6712--test-novel", "1", "5", "", 0, "hi")
     notify_comment_reaction(conn, comment.id, actor_user_id=2)
@@ -196,6 +195,6 @@ def test_delete_notification_rejects_someone_elses_notification(
 
 
 def test_delete_notification_reports_false_for_a_missing_id(
-    conn: sqlite3.Connection,
+    conn: psycopg.Connection,
 ) -> None:
     assert delete_notification(conn, 999, user_id=1) is False

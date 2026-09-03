@@ -1,6 +1,6 @@
-import sqlite3
 from datetime import UTC, datetime, timedelta
 
+import psycopg
 import pytest
 
 from app.db.activity import (
@@ -14,40 +14,38 @@ from app.db.activity import (
     total_active_seconds_today,
 )
 from app.db.migrate import run_migrations
+from tests.db_reset import fresh_connection
 
 
 @pytest.fixture
-def conn() -> sqlite3.Connection:
-    connection = sqlite3.connect(":memory:")
-    connection.row_factory = sqlite3.Row
+def conn() -> psycopg.Connection:
+    connection = fresh_connection()
     run_migrations(connection)
     connection.execute(
         "INSERT INTO users (id, email, password_hash, created_at) "
         "VALUES (1, 'alice@example.com', 'hash', 'now')"
     )
-    connection.commit()
     return connection
 
 
 def _insert_event(
-    conn: sqlite3.Connection, *, kind: str, slug_url: str, seconds: int | None, created_at: str
+    conn: psycopg.Connection, *, kind: str, slug_url: str, seconds: int | None, created_at: str
 ) -> None:
     conn.execute(
         "INSERT INTO activity_events (user_id, kind, slug_url, seconds, created_at) "
-        "VALUES (1, ?, ?, ?, ?)",
+        "VALUES (1, %s, %s, %s, %s)",
         (kind, slug_url, seconds, created_at),
     )
-    conn.commit()
 
 
-def test_record_chapter_read_counts_towards_today(conn: sqlite3.Connection) -> None:
+def test_record_chapter_read_counts_towards_today(conn: psycopg.Connection) -> None:
     record_chapter_read(conn, 1, "6712--test-novel", "1", "5")
 
     counts = list_chapters_read_today(conn, 1)
     assert counts == [ChapterReadCount(slug_url="6712--test-novel", chapters_read=1)]
 
 
-def test_list_chapters_read_today_groups_by_title(conn: sqlite3.Connection) -> None:
+def test_list_chapters_read_today_groups_by_title(conn: psycopg.Connection) -> None:
     record_chapter_read(conn, 1, "6712--test-novel", "1", "5")
     record_chapter_read(conn, 1, "6712--test-novel", "1", "6")
     record_chapter_read(conn, 1, "999--other-novel", "1", "1")
@@ -56,7 +54,7 @@ def test_list_chapters_read_today_groups_by_title(conn: sqlite3.Connection) -> N
     assert counts == {"6712--test-novel": 2, "999--other-novel": 1}
 
 
-def test_list_chapters_read_today_excludes_yesterday(conn: sqlite3.Connection) -> None:
+def test_list_chapters_read_today_excludes_yesterday(conn: psycopg.Connection) -> None:
     yesterday = (datetime.now(UTC) - timedelta(days=1)).isoformat()
     _insert_event(
         conn, kind="chapter_read", slug_url="old--novel", seconds=None, created_at=yesterday
@@ -65,7 +63,7 @@ def test_list_chapters_read_today_excludes_yesterday(conn: sqlite3.Connection) -
     assert list_chapters_read_today(conn, 1) == []
 
 
-def test_list_chapters_read_today_excludes_other_users(conn: sqlite3.Connection) -> None:
+def test_list_chapters_read_today_excludes_other_users(conn: psycopg.Connection) -> None:
     conn.execute(
         "INSERT INTO users (id, email, password_hash, created_at) "
         "VALUES (2, 'bob@example.com', 'hash', 'now')"
@@ -75,35 +73,35 @@ def test_list_chapters_read_today_excludes_other_users(conn: sqlite3.Connection)
     assert list_chapters_read_today(conn, 1) == []
 
 
-def test_list_chapters_read_today_ignores_heartbeat_events(conn: sqlite3.Connection) -> None:
+def test_list_chapters_read_today_ignores_heartbeat_events(conn: psycopg.Connection) -> None:
     record_heartbeat(conn, 1, "6712--test-novel", 30)
 
     assert list_chapters_read_today(conn, 1) == []
 
 
-def test_total_active_seconds_today_sums_heartbeats(conn: sqlite3.Connection) -> None:
+def test_total_active_seconds_today_sums_heartbeats(conn: psycopg.Connection) -> None:
     record_heartbeat(conn, 1, "6712--test-novel", 30)
     record_heartbeat(conn, 1, "999--other-novel", 45)
 
     assert total_active_seconds_today(conn, 1) == 75
 
 
-def test_total_active_seconds_today_excludes_yesterday(conn: sqlite3.Connection) -> None:
+def test_total_active_seconds_today_excludes_yesterday(conn: psycopg.Connection) -> None:
     yesterday = (datetime.now(UTC) - timedelta(days=1)).isoformat()
     _insert_event(conn, kind="heartbeat", slug_url="old--novel", seconds=999, created_at=yesterday)
 
     assert total_active_seconds_today(conn, 1) == 0
 
 
-def test_total_active_seconds_today_zero_when_no_heartbeats(conn: sqlite3.Connection) -> None:
+def test_total_active_seconds_today_zero_when_no_heartbeats(conn: psycopg.Connection) -> None:
     assert total_active_seconds_today(conn, 1) == 0
 
 
-def test_daily_reading_activity_is_empty_with_no_history(conn: sqlite3.Connection) -> None:
+def test_daily_reading_activity_is_empty_with_no_history(conn: psycopg.Connection) -> None:
     assert daily_reading_activity(conn, 1) == {}
 
 
-def test_daily_reading_activity_counts_chapters_read_today(conn: sqlite3.Connection) -> None:
+def test_daily_reading_activity_counts_chapters_read_today(conn: psycopg.Connection) -> None:
     record_chapter_read(conn, 1, "6712--test-novel", "1", "1")
     record_chapter_read(conn, 1, "6712--test-novel", "1", "2")
 
@@ -111,7 +109,7 @@ def test_daily_reading_activity_counts_chapters_read_today(conn: sqlite3.Connect
     assert daily_reading_activity(conn, 1) == {today: 2}
 
 
-def test_daily_reading_activity_groups_by_calendar_day(conn: sqlite3.Connection) -> None:
+def test_daily_reading_activity_groups_by_calendar_day(conn: psycopg.Connection) -> None:
     three_days_ago = (datetime.now(UTC) - timedelta(days=3)).isoformat()
     _insert_event(
         conn,
@@ -128,7 +126,7 @@ def test_daily_reading_activity_groups_by_calendar_day(conn: sqlite3.Connection)
 
 
 def test_daily_reading_activity_excludes_events_outside_the_window(
-    conn: sqlite3.Connection,
+    conn: psycopg.Connection,
 ) -> None:
     too_old = (datetime.now(UTC) - timedelta(weeks=53)).isoformat()
     _insert_event(
@@ -138,13 +136,13 @@ def test_daily_reading_activity_excludes_events_outside_the_window(
     assert daily_reading_activity(conn, 1, weeks=52) == {}
 
 
-def test_daily_reading_activity_ignores_heartbeat_events(conn: sqlite3.Connection) -> None:
+def test_daily_reading_activity_ignores_heartbeat_events(conn: psycopg.Connection) -> None:
     record_heartbeat(conn, 1, "6712--test-novel", 30)
 
     assert daily_reading_activity(conn, 1) == {}
 
 
-def test_daily_reading_activity_is_scoped_to_the_user(conn: sqlite3.Connection) -> None:
+def test_daily_reading_activity_is_scoped_to_the_user(conn: psycopg.Connection) -> None:
     conn.execute(
         "INSERT INTO users (id, email, password_hash, created_at) "
         "VALUES (2, 'bob@example.com', 'hash', 'now')"
@@ -154,11 +152,11 @@ def test_daily_reading_activity_is_scoped_to_the_user(conn: sqlite3.Connection) 
     assert daily_reading_activity(conn, 1) == {}
 
 
-def test_daily_active_seconds_is_empty_with_no_history(conn: sqlite3.Connection) -> None:
+def test_daily_active_seconds_is_empty_with_no_history(conn: psycopg.Connection) -> None:
     assert daily_active_seconds(conn, 1) == {}
 
 
-def test_daily_active_seconds_sums_heartbeats_today(conn: sqlite3.Connection) -> None:
+def test_daily_active_seconds_sums_heartbeats_today(conn: psycopg.Connection) -> None:
     record_heartbeat(conn, 1, "6712--test-novel", 30)
     record_heartbeat(conn, 1, "999--other-novel", 45)
 
@@ -166,7 +164,7 @@ def test_daily_active_seconds_sums_heartbeats_today(conn: sqlite3.Connection) ->
     assert daily_active_seconds(conn, 1) == {today: 75}
 
 
-def test_daily_active_seconds_groups_by_calendar_day(conn: sqlite3.Connection) -> None:
+def test_daily_active_seconds_groups_by_calendar_day(conn: psycopg.Connection) -> None:
     three_days_ago = (datetime.now(UTC) - timedelta(days=3)).isoformat()
     _insert_event(
         conn, kind="heartbeat", slug_url="6712--test-novel", seconds=20, created_at=three_days_ago
@@ -179,7 +177,7 @@ def test_daily_active_seconds_groups_by_calendar_day(conn: sqlite3.Connection) -
 
 
 def test_daily_active_seconds_excludes_events_outside_the_window(
-    conn: sqlite3.Connection,
+    conn: psycopg.Connection,
 ) -> None:
     too_old = (datetime.now(UTC) - timedelta(weeks=53)).isoformat()
     _insert_event(
@@ -189,13 +187,13 @@ def test_daily_active_seconds_excludes_events_outside_the_window(
     assert daily_active_seconds(conn, 1, weeks=52) == {}
 
 
-def test_daily_active_seconds_ignores_chapter_read_events(conn: sqlite3.Connection) -> None:
+def test_daily_active_seconds_ignores_chapter_read_events(conn: psycopg.Connection) -> None:
     record_chapter_read(conn, 1, "6712--test-novel", "1", "1")
 
     assert daily_active_seconds(conn, 1) == {}
 
 
-def test_daily_active_seconds_is_scoped_to_the_user(conn: sqlite3.Connection) -> None:
+def test_daily_active_seconds_is_scoped_to_the_user(conn: psycopg.Connection) -> None:
     conn.execute(
         "INSERT INTO users (id, email, password_hash, created_at) "
         "VALUES (2, 'bob@example.com', 'hash', 'now')"
@@ -205,11 +203,11 @@ def test_daily_active_seconds_is_scoped_to_the_user(conn: sqlite3.Connection) ->
     assert daily_active_seconds(conn, 1) == {}
 
 
-def test_daily_titles_read_is_empty_with_no_history(conn: sqlite3.Connection) -> None:
+def test_daily_titles_read_is_empty_with_no_history(conn: psycopg.Connection) -> None:
     assert daily_titles_read(conn, 1) == {}
 
 
-def test_daily_titles_read_lists_the_one_title_read_that_day(conn: sqlite3.Connection) -> None:
+def test_daily_titles_read_lists_the_one_title_read_that_day(conn: psycopg.Connection) -> None:
     record_chapter_read(conn, 1, "6712--test-novel", "1", "1")
 
     today = datetime.now(UTC).date().isoformat()
@@ -217,7 +215,7 @@ def test_daily_titles_read_lists_the_one_title_read_that_day(conn: sqlite3.Conne
 
 
 def test_daily_titles_read_deduplicates_a_title_read_multiple_times(
-    conn: sqlite3.Connection,
+    conn: psycopg.Connection,
 ) -> None:
     record_chapter_read(conn, 1, "6712--test-novel", "1", "1")
     record_chapter_read(conn, 1, "6712--test-novel", "1", "2")
@@ -226,7 +224,7 @@ def test_daily_titles_read_deduplicates_a_title_read_multiple_times(
     assert daily_titles_read(conn, 1) == {today: ["6712--test-novel"]}
 
 
-def test_daily_titles_read_orders_most_recently_read_first(conn: sqlite3.Connection) -> None:
+def test_daily_titles_read_orders_most_recently_read_first(conn: psycopg.Connection) -> None:
     record_chapter_read(conn, 1, "6712--first-novel", "1", "1")
     record_chapter_read(conn, 1, "999--second-novel", "1", "1")
 
@@ -234,7 +232,7 @@ def test_daily_titles_read_orders_most_recently_read_first(conn: sqlite3.Connect
     assert daily_titles_read(conn, 1) == {today: ["999--second-novel", "6712--first-novel"]}
 
 
-def test_daily_titles_read_groups_by_calendar_day(conn: sqlite3.Connection) -> None:
+def test_daily_titles_read_groups_by_calendar_day(conn: psycopg.Connection) -> None:
     three_days_ago = (datetime.now(UTC) - timedelta(days=3)).isoformat()
     _insert_event(
         conn, kind="chapter_read", slug_url="old--novel", seconds=None, created_at=three_days_ago
@@ -250,7 +248,7 @@ def test_daily_titles_read_groups_by_calendar_day(conn: sqlite3.Connection) -> N
 
 
 def test_daily_titles_read_excludes_events_outside_the_window(
-    conn: sqlite3.Connection,
+    conn: psycopg.Connection,
 ) -> None:
     too_old = (datetime.now(UTC) - timedelta(weeks=53)).isoformat()
     _insert_event(
@@ -260,13 +258,13 @@ def test_daily_titles_read_excludes_events_outside_the_window(
     assert daily_titles_read(conn, 1, weeks=52) == {}
 
 
-def test_daily_titles_read_ignores_heartbeat_events(conn: sqlite3.Connection) -> None:
+def test_daily_titles_read_ignores_heartbeat_events(conn: psycopg.Connection) -> None:
     record_heartbeat(conn, 1, "6712--test-novel", 30)
 
     assert daily_titles_read(conn, 1) == {}
 
 
-def test_daily_titles_read_is_scoped_to_the_user(conn: sqlite3.Connection) -> None:
+def test_daily_titles_read_is_scoped_to_the_user(conn: psycopg.Connection) -> None:
     conn.execute(
         "INSERT INTO users (id, email, password_hash, created_at) "
         "VALUES (2, 'bob@example.com', 'hash', 'now')"

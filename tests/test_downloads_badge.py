@@ -3,26 +3,24 @@ in visitors like the download-ready banner (PR 50), driven by the same downloads
 poll the "Загрузки"/"Активность" sections already use (PR 17/18), not a second one."""
 
 from collections.abc import Iterator
-from pathlib import Path
 
 import pytest
 from fastapi.testclient import TestClient
 
-import app.db.connection as db_connection
 import app.jobs.store as job_store
 from app.config import get_settings
 from app.jobs.store import create_job
 from app.main import app
+from tests.db_reset import reset_app_database
 
 client = TestClient(app)
 
 
 @pytest.fixture
-def logged_in_client(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> Iterator[TestClient]:
-    monkeypatch.setenv("DB_PATH", str(tmp_path / "test.db"))
+def logged_in_client(monkeypatch: pytest.MonkeyPatch) -> Iterator[TestClient]:
     monkeypatch.setenv("SESSION_SECRET_KEY", "test-secret")
+    reset_app_database(monkeypatch)
     get_settings.cache_clear()
-    db_connection._connection = None
     monkeypatch.setattr(job_store, "_jobs", {})
 
     with TestClient(app) as test_client:
@@ -37,7 +35,6 @@ def logged_in_client(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> Iterato
         yield test_client
 
     get_settings.cache_clear()
-    db_connection._connection = None
 
 
 def test_anonymous_visitor_gets_no_downloads_badge() -> None:

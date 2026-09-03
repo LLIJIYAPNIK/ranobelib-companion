@@ -7,21 +7,19 @@ path end to end, including the actor/comment context the responses add on top of
 table."""
 
 from collections.abc import Iterator
-from pathlib import Path
 
 import pytest
 from fastapi.testclient import TestClient
 
-import app.db.connection as db_connection
 from app.config import get_settings
+from tests.db_reset import reset_app_database
 
 
 @pytest.fixture
-def client(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> Iterator[TestClient]:
-    monkeypatch.setenv("DB_PATH", str(tmp_path / "test.db"))
+def client(monkeypatch: pytest.MonkeyPatch) -> Iterator[TestClient]:
     monkeypatch.setenv("SESSION_SECRET_KEY", "test-secret")
+    reset_app_database(monkeypatch)
     get_settings.cache_clear()
-    db_connection._connection = None
 
     from app.main import app
 
@@ -29,7 +27,6 @@ def client(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> Iterator[TestClie
         yield test_client
 
     get_settings.cache_clear()
-    db_connection._connection = None
 
 
 def _register(client: TestClient, email: str, password: str = "hunter2pass") -> None:

@@ -1,5 +1,4 @@
-import sqlite3
-
+import psycopg
 import pytest
 
 from app.db.migrate import run_migrations
@@ -9,31 +8,30 @@ from app.db.reactions import (
     toggle_reaction,
     user_reactions,
 )
+from tests.db_reset import fresh_connection
 
 
 @pytest.fixture
-def conn() -> sqlite3.Connection:
-    connection = sqlite3.connect(":memory:")
-    connection.row_factory = sqlite3.Row
+def conn() -> psycopg.Connection:
+    connection = fresh_connection()
     run_migrations(connection)
     for user_id, email in ((1, "alice@example.com"), (2, "bob@example.com")):
         connection.execute(
             "INSERT INTO users (id, email, password_hash, created_at) "
-            "VALUES (?, ?, 'hash', 'now')",
+            "VALUES (%s, %s, 'hash', 'now')",
             (user_id, email),
         )
-    connection.commit()
     return connection
 
 
-def test_toggle_reaction_sets_it(conn: sqlite3.Connection) -> None:
+def test_toggle_reaction_sets_it(conn: psycopg.Connection) -> None:
     result = toggle_reaction(conn, 1, "6712--test-novel", "1", "5", "", 0, "👍")
 
     assert result == "👍"
     assert count_reactions_for_paragraph(conn, "6712--test-novel", "1", "5", "", 0) == {"👍": 1}
 
 
-def test_toggle_reaction_same_emoji_again_removes_it(conn: sqlite3.Connection) -> None:
+def test_toggle_reaction_same_emoji_again_removes_it(conn: psycopg.Connection) -> None:
     toggle_reaction(conn, 1, "6712--test-novel", "1", "5", "", 0, "👍")
 
     result = toggle_reaction(conn, 1, "6712--test-novel", "1", "5", "", 0, "👍")
@@ -43,7 +41,7 @@ def test_toggle_reaction_same_emoji_again_removes_it(conn: sqlite3.Connection) -
 
 
 def test_toggle_reaction_different_emoji_switches_instead_of_accumulating(
-    conn: sqlite3.Connection,
+    conn: psycopg.Connection,
 ) -> None:
     toggle_reaction(conn, 1, "6712--test-novel", "1", "5", "", 0, "👍")
 
@@ -53,7 +51,7 @@ def test_toggle_reaction_different_emoji_switches_instead_of_accumulating(
     assert count_reactions_for_paragraph(conn, "6712--test-novel", "1", "5", "", 0) == {"🔥": 1}
 
 
-def test_count_reactions_groups_by_paragraph_and_emoji(conn: sqlite3.Connection) -> None:
+def test_count_reactions_groups_by_paragraph_and_emoji(conn: psycopg.Connection) -> None:
     toggle_reaction(conn, 1, "6712--test-novel", "1", "5", "", 0, "👍")
     toggle_reaction(conn, 2, "6712--test-novel", "1", "5", "", 0, "👍")
     toggle_reaction(conn, 2, "6712--test-novel", "1", "5", "", 3, "🔥")
@@ -63,14 +61,14 @@ def test_count_reactions_groups_by_paragraph_and_emoji(conn: sqlite3.Connection)
     assert counts == {0: {"👍": 2}, 3: {"🔥": 1}}
 
 
-def test_count_reactions_is_scoped_to_branch_id(conn: sqlite3.Connection) -> None:
+def test_count_reactions_is_scoped_to_branch_id(conn: psycopg.Connection) -> None:
     toggle_reaction(conn, 1, "6712--test-novel", "1", "5", "1", 0, "👍")
 
     assert count_reactions(conn, "6712--test-novel", "1", "5", "2") == {}
     assert count_reactions(conn, "6712--test-novel", "1", "5", "1") == {0: {"👍": 1}}
 
 
-def test_user_reactions_reports_each_users_own_pick(conn: sqlite3.Connection) -> None:
+def test_user_reactions_reports_each_users_own_pick(conn: psycopg.Connection) -> None:
     toggle_reaction(conn, 1, "6712--test-novel", "1", "5", "", 0, "👍")
     toggle_reaction(conn, 1, "6712--test-novel", "1", "5", "", 2, "🔥")
     toggle_reaction(conn, 2, "6712--test-novel", "1", "5", "", 0, "😂")
@@ -79,7 +77,7 @@ def test_user_reactions_reports_each_users_own_pick(conn: sqlite3.Connection) ->
     assert user_reactions(conn, 2, "6712--test-novel", "1", "5", "") == {0: "😂"}
 
 
-def test_reactions_do_not_leak_across_chapters(conn: sqlite3.Connection) -> None:
+def test_reactions_do_not_leak_across_chapters(conn: psycopg.Connection) -> None:
     toggle_reaction(conn, 1, "6712--test-novel", "1", "5", "", 0, "👍")
 
     assert count_reactions(conn, "6712--test-novel", "1", "6", "") == {}

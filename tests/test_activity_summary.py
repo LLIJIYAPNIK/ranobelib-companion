@@ -3,7 +3,6 @@
 that lands with the UI in the next commit."""
 
 from collections.abc import Iterator
-from pathlib import Path
 from unittest.mock import patch
 
 import pytest
@@ -11,7 +10,6 @@ from fastapi.testclient import TestClient
 from ranobelib import TitleNotFoundError
 from ranobelib.models import Cover, Label, Title
 
-import app.db.connection as db_connection
 import app.jobs.store as job_store
 from app.api.activity import build_activity_summary
 from app.config import get_settings
@@ -20,14 +18,14 @@ from app.db.connection import get_connection
 from app.db.downloads import record_download
 from app.db.users import User, get_user_by_email
 from app.jobs.store import create_job
+from tests.db_reset import reset_app_database
 
 
 @pytest.fixture
-def user(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> Iterator[User]:
-    monkeypatch.setenv("DB_PATH", str(tmp_path / "test.db"))
+def user(monkeypatch: pytest.MonkeyPatch) -> Iterator[User]:
     monkeypatch.setenv("SESSION_SECRET_KEY", "test-secret")
+    reset_app_database(monkeypatch)
     get_settings.cache_clear()
-    db_connection._connection = None
     monkeypatch.setattr(job_store, "_jobs", {})
 
     from app.main import app
@@ -44,7 +42,6 @@ def user(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> Iterator[User]:
         yield get_user_by_email(get_connection(), "alice@example.com")
 
     get_settings.cache_clear()
-    db_connection._connection = None
 
 
 def _fake_title(name: str = "Test Novel", cover: Cover | None = None) -> Title:

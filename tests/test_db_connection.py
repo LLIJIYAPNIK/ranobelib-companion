@@ -1,37 +1,36 @@
 """app/db/connection.py - see PR 67 in CLAUDE.md's roadmap: a single process-wide
 sqlite3.Connection shared across threads used to crash under concurrent access (the
 "Загрузки" page's /downloads/status and /downloads/ready polling, PR 17/50/56, hitting it
-from FastAPI's thread pool at the same time another thread was using it directly)."""
+from FastAPI's thread pool at the same time another thread was using it directly). PR 191
+moved the underlying store to Postgres (see app/db/connection.py's own docstring) - the
+per-thread-connection design this file tests didn't change, only what backs each one."""
 
 from __future__ import annotations
 
 import threading
-from pathlib import Path
+from collections.abc import Iterator
 
 import pytest
 
-import app.db.connection as db_connection
 from app.config import get_settings
 from app.db.connection import get_connection
 from app.db.migrate import run_migrations
+from tests.db_reset import reset_app_database
 
 
 @pytest.fixture
-def db(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
-    monkeypatch.setenv("DB_PATH", str(tmp_path / "test.db"))
+def db(monkeypatch: pytest.MonkeyPatch) -> Iterator[None]:
+    reset_app_database(monkeypatch)
     get_settings.cache_clear()
-    db_connection._connection = None
     run_migrations(get_connection())
     get_connection().execute(
         "INSERT INTO users (id, email, password_hash, created_at) "
         "VALUES (1, 'alice@example.com', 'hash', 'now')"
     )
-    get_connection().commit()
 
     yield
 
     get_settings.cache_clear()
-    db_connection._connection = None
 
 
 def test_get_connection_reuses_the_same_object_within_a_thread(db: None) -> None:
@@ -86,7 +85,6 @@ def test_get_connection_survives_concurrent_use_from_many_threads(db: None) -> N
                     "(user_id, slug_url, fmt, status, chapter_count, error, finished_at) "
                     "VALUES (1, 'x', 'epub', 'done', 1, NULL, 'now')"
                 )
-                conn.commit()
         except Exception as exc:
             errors.append(exc)
 

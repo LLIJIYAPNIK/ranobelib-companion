@@ -14,13 +14,13 @@ from ranobelib import (
 )
 from ranobelib.models import Chapter, ChapterBranch, ChapterUser, Team, Volume
 
-import app.db.connection as db_connection
 from app.config import get_settings
 from app.db.activity import list_chapters_read_today
 from app.db.connection import get_connection
 from app.db.library import add_entry, get_entry, list_entries
 from app.gif_video import is_ffmpeg_available
 from app.main import app
+from tests.db_reset import reset_app_database
 
 client = TestClient(app)
 
@@ -393,13 +393,11 @@ def test_read_chapter_passes_no_branch_id_by_default() -> None:
 @pytest.fixture
 def logged_in_client(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> Iterator[TestClient]:
     """Isolated DB + an authenticated session - see tests/test_api_auth.py for why the
-    isolation dance (own DB file, reset connection singleton, `with TestClient`) is
-    needed."""
-    monkeypatch.setenv("DB_PATH", str(tmp_path / "test.db"))
+    isolation dance (wipe the shared test database, `with TestClient`) is needed."""
     monkeypatch.setenv("SESSION_SECRET_KEY", "test-secret")
     monkeypatch.setenv("COMMENT_ATTACHMENT_DIR", str(tmp_path / "comment-attachments"))
+    reset_app_database(monkeypatch)
     get_settings.cache_clear()
-    db_connection._connection = None
 
     with TestClient(app) as test_client:
         test_client.post(
@@ -413,26 +411,23 @@ def logged_in_client(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> Iterato
         yield test_client
 
     get_settings.cache_clear()
-    db_connection._connection = None
 
 
 @pytest.fixture
-def isolated_client(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> Iterator[TestClient]:
+def isolated_client(monkeypatch: pytest.MonkeyPatch) -> Iterator[TestClient]:
     """Same DB isolation as logged_in_client, without registering a session - for
     anonymous requests that still need the schema migrated (unlike most anonymous routes
     tested against the bare module-level `client` above, GET .../reactions reads the
     `reactions` table regardless of login, so it needs `with TestClient(app)` to actually
     run migrations first)."""
-    monkeypatch.setenv("DB_PATH", str(tmp_path / "test.db"))
     monkeypatch.setenv("SESSION_SECRET_KEY", "test-secret")
+    reset_app_database(monkeypatch)
     get_settings.cache_clear()
-    db_connection._connection = None
 
     with TestClient(app) as test_client:
         yield test_client
 
     get_settings.cache_clear()
-    db_connection._connection = None
 
 
 def test_read_chapter_records_progress_for_title_in_library(

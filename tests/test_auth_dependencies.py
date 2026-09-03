@@ -1,5 +1,4 @@
-import sqlite3
-
+import psycopg
 import pytest
 from fastapi import HTTPException
 from starlette.requests import Request
@@ -7,6 +6,7 @@ from starlette.requests import Request
 from app.auth.dependencies import get_current_user, require_current_user
 from app.db.migrate import run_migrations
 from app.db.users import create_user
+from tests.db_reset import fresh_connection
 
 
 def _request_with_session(session: dict) -> Request:
@@ -17,19 +17,18 @@ def _request_with_session(session: dict) -> Request:
 
 
 @pytest.fixture
-def conn(monkeypatch) -> sqlite3.Connection:
-    connection = sqlite3.connect(":memory:")
-    connection.row_factory = sqlite3.Row
+def conn(monkeypatch) -> psycopg.Connection:
+    connection = fresh_connection()
     run_migrations(connection)
     monkeypatch.setattr("app.auth.dependencies.get_connection", lambda: connection)
     return connection
 
 
-def test_get_current_user_no_session_returns_none(conn: sqlite3.Connection) -> None:
+def test_get_current_user_no_session_returns_none(conn: psycopg.Connection) -> None:
     assert get_current_user(_request_with_session({})) is None
 
 
-def test_get_current_user_valid_session_returns_user(conn: sqlite3.Connection) -> None:
+def test_get_current_user_valid_session_returns_user(conn: psycopg.Connection) -> None:
     user = create_user(conn, "alice@example.com", "hash1")
 
     found = get_current_user(_request_with_session({"user_id": user.id}))
@@ -37,7 +36,7 @@ def test_get_current_user_valid_session_returns_user(conn: sqlite3.Connection) -
     assert found == user
 
 
-def test_get_current_user_stale_user_id_returns_none(conn: sqlite3.Connection) -> None:
+def test_get_current_user_stale_user_id_returns_none(conn: psycopg.Connection) -> None:
     assert get_current_user(_request_with_session({"user_id": 999})) is None
 
 

@@ -12,13 +12,13 @@ from ranobelib import MultipleTitleTranslationsError
 from ranobelib.exceptions import AmbiguousChapter
 from ranobelib.models import Chapter, ChapterBranch, ChapterUser, Team, Volume
 
-import app.db.connection as db_connection
 import app.jobs.store as job_store
 from app.config import get_settings
 from app.db.connection import get_connection
 from app.db.downloads import list_download_history
 from app.jobs.store import create_job, get_job
 from app.main import app
+from tests.db_reset import reset_app_database
 
 client = TestClient(app, follow_redirects=False)
 
@@ -98,12 +98,11 @@ def _wait_until_terminal(job_id: str, timeout: float = 2.0) -> None:
 
 
 @pytest.fixture
-def logged_in_client(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> Iterator[TestClient]:
+def logged_in_client(monkeypatch: pytest.MonkeyPatch) -> Iterator[TestClient]:
     """Isolated DB + an authenticated session - see tests/test_api_auth.py."""
-    monkeypatch.setenv("DB_PATH", str(tmp_path / "test.db"))
     monkeypatch.setenv("SESSION_SECRET_KEY", "test-secret")
+    reset_app_database(monkeypatch)
     get_settings.cache_clear()
-    db_connection._connection = None
 
     with TestClient(app, follow_redirects=False) as test_client:
         test_client.post(
@@ -117,7 +116,6 @@ def logged_in_client(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> Iterato
         yield test_client
 
     get_settings.cache_clear()
-    db_connection._connection = None
 
 
 def test_start_download_requires_login() -> None:

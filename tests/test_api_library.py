@@ -1,13 +1,12 @@
 """End-to-end add/remove-from-library through the real ASGI app.
 
-Same isolation strategy as tests/test_api_auth.py: a fresh on-disk SQLite file per test
-and an explicit `with TestClient(app) as client:` so app.main's lifespan (migrations)
-actually runs.
+Same isolation strategy as tests/test_api_auth.py: the shared test Postgres database is
+wiped and re-migrated per test (see tests/db_reset.py), with an explicit
+`with TestClient(app) as client:` so app.main's lifespan (migrations) actually runs.
 """
 
 import re
 from collections.abc import Iterator
-from pathlib import Path
 from unittest.mock import patch
 
 import pytest
@@ -15,18 +14,17 @@ from fastapi.testclient import TestClient
 from ranobelib import TitleNotFoundError
 from ranobelib.models import Chapter, Cover, Label, Title, Volume
 
-import app.db.connection as db_connection
 from app.config import get_settings
 from app.db.connection import get_connection
 from app.db.library import record_progress
+from tests.db_reset import reset_app_database
 
 
 @pytest.fixture
-def client(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> Iterator[TestClient]:
-    monkeypatch.setenv("DB_PATH", str(tmp_path / "test.db"))
+def client(monkeypatch: pytest.MonkeyPatch) -> Iterator[TestClient]:
     monkeypatch.setenv("SESSION_SECRET_KEY", "test-secret")
+    reset_app_database(monkeypatch)
     get_settings.cache_clear()
-    db_connection._connection = None
 
     from app.main import app
 
@@ -34,7 +32,6 @@ def client(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> Iterator[TestClie
         yield test_client
 
     get_settings.cache_clear()
-    db_connection._connection = None
 
 
 def _register(client: TestClient, email: str = "alice@example.com") -> None:

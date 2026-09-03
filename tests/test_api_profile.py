@@ -16,22 +16,21 @@ import pytest
 from fastapi.testclient import TestClient
 from ranobelib.models import Cover, Label, Title
 
-import app.db.connection as db_connection
 from app.config import get_settings
 from app.db.activity import record_chapter_read, record_heartbeat
 from app.db.comments import create_comment
 from app.db.connection import get_connection
 from app.db.library import record_progress
 from app.db.users import get_user_by_email
+from tests.db_reset import reset_app_database
 
 
 @pytest.fixture
 def client(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> Iterator[TestClient]:
-    monkeypatch.setenv("DB_PATH", str(tmp_path / "test.db"))
     monkeypatch.setenv("SESSION_SECRET_KEY", "test-secret")
     monkeypatch.setenv("AVATAR_DIR", str(tmp_path / "avatars"))
+    reset_app_database(monkeypatch)
     get_settings.cache_clear()
-    db_connection._connection = None
 
     from app.main import app
 
@@ -39,7 +38,6 @@ def client(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> Iterator[TestClie
         yield test_client
 
     get_settings.cache_clear()
-    db_connection._connection = None
 
 
 def _register(client: TestClient, email: str, password: str = "hunter2pass") -> None:

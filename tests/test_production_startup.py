@@ -81,12 +81,16 @@ with TestClient(app) as client:
 def _register_and_get_cookie_flag(
     env_overrides: dict[str, str], tmp_path: Path
 ) -> subprocess.CompletedProcess[str]:
+    from tests.db_reset import TEST_DATABASE_URL, wipe_schema
+
+    wipe_schema()  # this test runs the app in a subprocess - see wipe_schema()'s docstring
+
     env = os.environ.copy()
     env.pop("ENVIRONMENT", None)
     env.update(
         {
             "SESSION_SECRET_KEY": "test-secret",
-            "DB_PATH": str(tmp_path / "test.db"),
+            "DATABASE_URL": TEST_DATABASE_URL,
             "AVATAR_DIR": str(tmp_path / "avatars"),
             "COMMENT_ATTACHMENT_DIR": str(tmp_path / "comment-attachments"),
         }

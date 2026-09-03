@@ -7,20 +7,19 @@ from pathlib import Path
 import pytest
 from fastapi.testclient import TestClient
 
-import app.db.connection as db_connection
 import app.jobs.store as job_store
 from app.config import get_settings
 from app.db.connection import get_connection
 from app.db.downloads import list_download_history, record_download
 from app.jobs.store import create_job, delete_result_file
+from tests.db_reset import reset_app_database
 
 
 @pytest.fixture
-def client(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> Iterator[TestClient]:
-    monkeypatch.setenv("DB_PATH", str(tmp_path / "test.db"))
+def client(monkeypatch: pytest.MonkeyPatch) -> Iterator[TestClient]:
     monkeypatch.setenv("SESSION_SECRET_KEY", "test-secret")
+    reset_app_database(monkeypatch)
     get_settings.cache_clear()
-    db_connection._connection = None
     # _jobs is a process-wide dict (see app/jobs/store.py) - reset it too, otherwise a
     # job from an earlier test (whose isolated DB also happened to hand out user_id=1)
     # would leak into this one.
@@ -32,7 +31,6 @@ def client(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> Iterator[TestClie
         yield test_client
 
     get_settings.cache_clear()
-    db_connection._connection = None
 
 
 def _register(client: TestClient, email: str = "alice@example.com") -> None:

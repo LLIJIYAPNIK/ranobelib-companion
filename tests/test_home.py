@@ -1,6 +1,5 @@
 from collections.abc import Iterator
 from json import dumps
-from pathlib import Path
 from unittest.mock import patch
 from urllib.parse import quote
 
@@ -62,25 +61,24 @@ class _FakeClient:
 
 
 @pytest.fixture
-def db_client(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> Iterator[TestClient]:
+def db_client(monkeypatch: pytest.MonkeyPatch) -> Iterator[TestClient]:
     """PR 68's progress lookup needs a real logged-in user with a library entry, so
     unlike the plain `client` above this needs the app's DB - same isolation strategy as
-    tests/test_api_library.py: a fresh on-disk SQLite file per test and an explicit
-    `with TestClient(app) as client:` so app.main's lifespan (migrations) actually runs."""
-    monkeypatch.setenv("DB_PATH", str(tmp_path / "test.db"))
+    tests/test_api_library.py: the shared test Postgres database is wiped and re-migrated
+    per test, with an explicit `with TestClient(app) as client:` so app.main's lifespan
+    (migrations) actually runs."""
     monkeypatch.setenv("SESSION_SECRET_KEY", "test-secret")
 
-    import app.db.connection as db_connection
     from app.config import get_settings
+    from tests.db_reset import reset_app_database
 
+    reset_app_database(monkeypatch)
     get_settings.cache_clear()
-    db_connection._connection = None
 
     with TestClient(app) as test_client:
         yield test_client
 
     get_settings.cache_clear()
-    db_connection._connection = None
 
 
 def _register(test_client: TestClient, email: str = "alice@example.com") -> None:

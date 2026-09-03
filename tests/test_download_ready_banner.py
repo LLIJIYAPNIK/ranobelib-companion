@@ -2,24 +2,22 @@
 in visitors, since GET /downloads/ready (what it polls) requires an account."""
 
 from collections.abc import Iterator
-from pathlib import Path
 
 import pytest
 from fastapi.testclient import TestClient
 
-import app.db.connection as db_connection
 from app.config import get_settings
 from app.main import app
+from tests.db_reset import reset_app_database
 
 client = TestClient(app)
 
 
 @pytest.fixture
-def logged_in_client(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> Iterator[TestClient]:
-    monkeypatch.setenv("DB_PATH", str(tmp_path / "test.db"))
+def logged_in_client(monkeypatch: pytest.MonkeyPatch) -> Iterator[TestClient]:
     monkeypatch.setenv("SESSION_SECRET_KEY", "test-secret")
+    reset_app_database(monkeypatch)
     get_settings.cache_clear()
-    db_connection._connection = None
 
     with TestClient(app) as test_client:
         test_client.post(
@@ -33,7 +31,6 @@ def logged_in_client(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> Iterato
         yield test_client
 
     get_settings.cache_clear()
-    db_connection._connection = None
 
 
 def test_anonymous_visitor_gets_no_download_ready_banner() -> None:
