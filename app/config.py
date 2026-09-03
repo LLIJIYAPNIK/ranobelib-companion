@@ -19,7 +19,17 @@ deployment.
 ``session_secret_key`` signs the session cookie (see ``SessionMiddleware`` in
 ``app/main.py``). Without an explicit value, a random key is generated per process
 start, which invalidates every session on restart - fine for local dev, not for a real
-deployment, so an unset value is logged as a warning rather than passed silently.
+deployment. When ``is_production`` is set this is upgraded from a logged warning to a
+startup ``RuntimeError``, since a forgotten environment variable shouldn't silently
+degrade into "everyone gets logged out on every deploy" in production.
+
+``environment``/``is_production`` (``ENVIRONMENT`` env var, ``"production"`` or
+otherwise) gates production-only behavior that would get in the way of local
+development - currently: requiring ``SESSION_SECRET_KEY`` outright instead of just
+warning, and setting the session cookie's ``Secure`` flag (``https_only`` on
+``RememberMeSessionMiddleware`` in ``app/main.py``), which would break a plain
+``http://localhost`` dev server if it applied unconditionally. Unset or any value other
+than ``"production"`` keeps today's development behavior.
 
 ``session_max_age``/``session_remember_max_age`` are the two session-cookie lifetimes
 (in seconds) used by ``RememberMeSessionMiddleware`` (``app/auth/session_middleware.py``,
@@ -75,18 +85,26 @@ class Settings:
     download_file_ttl: float
     avatar_dir: Path
     comment_attachment_dir: Path
+    is_production: bool
 
 
 @lru_cache
 def get_settings() -> Settings:
+    is_production = os.environ.get("ENVIRONMENT") == "production"
     session_secret_key = os.environ.get("SESSION_SECRET_KEY")
     if not session_secret_key:
+        if is_production:
+            raise RuntimeError(
+                "SESSION_SECRET_KEY is required when ENVIRONMENT=production - without "
+                "it, every deploy/restart would silently log everyone out."
+            )
         session_secret_key = secrets.token_hex(32)
         logger.warning(
             "SESSION_SECRET_KEY not set - using a random per-process key, which logs "
             "everyone out on every restart. Set it explicitly in production."
         )
     return Settings(
+        is_production=is_production,
         cache_dir=Path(os.environ.get("CACHE_DIR", _DEFAULT_CACHE_DIR)),
         cache_ttl=float(os.environ.get("CACHE_TTL_SECONDS", _DEFAULT_CACHE_TTL_SECONDS)),
         db_path=Path(os.environ.get("DB_PATH", _DEFAULT_DB_PATH)),
