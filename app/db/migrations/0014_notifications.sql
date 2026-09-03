@@ -1,5 +1,5 @@
 CREATE TABLE notifications (
-    id INTEGER PRIMARY KEY,
+    id INTEGER GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
     user_id INTEGER NOT NULL REFERENCES users(id),
     kind TEXT NOT NULL,
     comment_id INTEGER REFERENCES comments(id),

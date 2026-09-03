@@ -1,5 +1,5 @@
 CREATE TABLE comment_reactions (
-    id INTEGER PRIMARY KEY,
+    id INTEGER GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
     comment_id INTEGER NOT NULL REFERENCES comments(id),
     user_id INTEGER NOT NULL REFERENCES users(id),
     value INTEGER NOT NULL,
