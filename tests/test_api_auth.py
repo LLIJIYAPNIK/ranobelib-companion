@@ -179,6 +179,58 @@ def test_register_password_mismatch_shows_form_error(client: TestClient) -> None
     assert "не совпадают" in response.text
 
 
+# --- PR 184: minimum password strength on registration ---------------------------------
+
+
+def test_register_weak_password_shows_form_error(client: TestClient) -> None:
+    response = client.post(
+        "/register",
+        data={
+            "email": "alice@example.com",
+            "password": "short1",
+            "password_confirm": "short1",
+        },
+    )
+
+    assert response.status_code == 400
+    assert "слишком просто" in response.text
+
+
+def test_register_blocklisted_password_shows_form_error(client: TestClient) -> None:
+    response = client.post(
+        "/register",
+        data={
+            "email": "alice@example.com",
+            "password": "password",
+            "password_confirm": "password",
+        },
+    )
+
+    assert response.status_code == 400
+    assert "слишком просто" in response.text
+
+
+def test_register_eight_char_password_is_accepted(client: TestClient) -> None:
+    response = _register(client, "alice@example.com", password="eightchr")
+
+    assert response.status_code == 200
+    assert not response.history
+
+
+def test_register_seven_char_password_is_rejected(client: TestClient) -> None:
+    response = client.post(
+        "/register",
+        data={
+            "email": "alice@example.com",
+            "password": "sevench",
+            "password_confirm": "sevench",
+        },
+    )
+
+    assert response.status_code == 400
+    assert "слишком просто" in response.text
+
+
 def test_login_wrong_password_shows_form_error(client: TestClient) -> None:
     _register(client, "alice@example.com", password="hunter2pass")
     client.post("/logout")
