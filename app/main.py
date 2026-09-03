@@ -1,8 +1,10 @@
+import asyncio
+import sys
 from collections.abc import AsyncIterator
 from contextlib import asynccontextmanager
 from pathlib import Path
 
-from fastapi import FastAPI
+from fastapi import Depends, FastAPI
 from fastapi.staticfiles import StaticFiles
 
 from app.api import (
@@ -21,21 +23,42 @@ from app.api import (
     settings,
     titles,
 )
+from app.auth.dependencies import get_current_user
 from app.auth.session_middleware import RememberMeSessionMiddleware
 from app.config import get_settings
-from app.db.connection import get_connection
+from app.db import connection as db_connection
 from app.db.migrate import run_migrations
 from app.exceptions import register_exception_handlers
 from app.security_headers import install_security_headers
 
+if sys.platform == "win32":
+    # psycopg's async mode refuses to run on Windows' default ProactorEventLoop (see
+    # app/db/connection.py) - must be set before uvicorn (or asyncio.run(), e.g. in tests)
+    # creates its own event loop, so this has to happen at import time, here, rather than
+    # inside lifespan() below. app/gif_video.py's ffmpeg subprocess call was rewritten
+    # (PR 191's async follow-up) specifically so nothing else in the app still needs the
+    # ProactorEventLoop this replaces.
+    asyncio.set_event_loop_policy(asyncio.WindowsSelectorEventLoopPolicy())
+
 
 @asynccontextmanager
 async def lifespan(app: FastAPI) -> AsyncIterator[None]:
-    run_migrations(get_connection())
+    await db_connection.open_pool()
+    async with db_connection.connection() as conn:
+        await run_migrations(conn)
     yield
+    await db_connection.close_pool()
 
 
-app = FastAPI(title="ranobelib-companion", lifespan=lifespan)
+app = FastAPI(
+    title="ranobelib-companion",
+    lifespan=lifespan,
+    # Runs get_current_user() for every request (not just routes that declare it
+    # themselves) so app/templating.py's Jinja context processor - which can't itself
+    # await a database call the way a FastAPI dependency can - always finds a resolved
+    # current_user cached on request.state by the time a template renders.
+    dependencies=[Depends(get_current_user)],
+)
 install_security_headers(app)
 app.add_middleware(
     RememberMeSessionMiddleware,

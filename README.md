@@ -41,6 +41,12 @@ uv sync
 uv run uvicorn app.main:app --reload
 ```
 
+**On Windows**, use `uv run python run_windows.py` instead - `psycopg`'s async mode (see
+`app/db/connection.py`) can't run under the `ProactorEventLoop` uvicorn's own CLI picks by
+default on Windows, so `uvicorn app.main:app` alone fails to start there. Not needed on
+Linux/macOS (where this app is actually deployed), and `run_windows.py` doesn't support
+`--reload` - restart it by hand after an edit.
+
 Every other setting falls back to a sane default under the project directory (see
 `app/config.py`) - only `DATABASE_URL` needs a real server behind it, and its own default
 (`postgresql://postgres:postgres@localhost:5432/ranobelib_companion`) already matches the
