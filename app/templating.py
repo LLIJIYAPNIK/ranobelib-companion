@@ -6,13 +6,18 @@ from fastapi.templating import Jinja2Templates
 from starlette.requests import Request
 
 from app.auth.avatar import avatar_initials, avatar_url
-from app.auth.dependencies import get_current_user
 
 
 def _inject_current_user(request: Request) -> dict:
     """Makes `current_user` available in every template without every route handler
-    having to pass it explicitly - Starlette runs context processors on each render."""
-    return {"current_user": get_current_user(request)}
+    having to pass it explicitly - Starlette runs context processors on each render.
+
+    Reads it back from `request.state`, already resolved by `get_current_user()`
+    (app/auth/dependencies.py) - registered as an app-level dependency (see app/main.py)
+    specifically so it runs for every request and caches its result there, since this
+    context processor is a plain sync function and can't itself await the database call
+    `get_current_user()` needs."""
+    return {"current_user": request.state.current_user}
 
 
 templates = Jinja2Templates(
