@@ -48,6 +48,18 @@ async def register(
     password_confirm: str = Form(...),
     nickname: str = Form(default=""),
 ) -> Response:
+    if is_rate_limited(f"register:{_client_ip(request)}:{email}"):
+        return templates.TemplateResponse(
+            request,
+            "register.html",
+            {
+                "error": _RATE_LIMIT_MESSAGE,
+                "submitted_email": email,
+                "submitted_nickname": nickname,
+            },
+            status_code=429,
+        )
+
     conn = get_connection()
     error: str | None = None
     if password != password_confirm:

@@ -402,6 +402,16 @@ def test_login_rate_limit_is_scoped_per_email(client: TestClient) -> None:
     assert response.status_code == 400  # not 429 - a different email isn't limited yet
 
 
+def test_register_is_rate_limited_after_repeated_attempts(client: TestClient) -> None:
+    for _ in range(5):
+        _register(client, "alice@example.com")  # 1st succeeds, rest fail (duplicate email)
+
+    response = _register(client, "alice@example.com")
+
+    assert response.status_code == 429
+    assert "Слишком много попыток" in response.text
+
+
 def test_logout_clears_session(client: TestClient) -> None:
     _register(client, "alice@example.com")
 
