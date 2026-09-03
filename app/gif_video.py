@@ -15,10 +15,12 @@ whether the composer even shows the GIF button (``read_chapter()`` in
 
 from __future__ import annotations
 
-import asyncio
 import shutil
+import subprocess
 import tempfile
 from pathlib import Path
+
+from starlette.concurrency import run_in_threadpool
 
 # Generous for a GIF, small enough that reading it fully into memory (rather than
 # streaming to disk in chunks) isn't a concern - same reasoning as
@@ -72,31 +74,35 @@ async def convert_gif_to_video(contents: bytes, dest_path: Path) -> None:
     with tempfile.TemporaryDirectory() as tmp:
         src_path = Path(tmp) / "input.gif"
         src_path.write_bytes(contents)
-        proc = await asyncio.create_subprocess_exec(
-            "ffmpeg",
-            "-y",
-            "-i",
-            str(src_path),
-            "-movflags",
-            "faststart",
-            "-pix_fmt",
-            "yuv420p",
-            "-vf",
-            _SCALE_FILTER,
-            "-an",
-            str(dest_path),
-            stdout=asyncio.subprocess.PIPE,
-            stderr=asyncio.subprocess.PIPE,
+        # A blocking subprocess.run() in a worker thread, not asyncio.create_subprocess_exec
+        # - the latter needs ProactorEventLoop on Windows, which conflicts with psycopg's
+        # async mode (needs SelectorEventLoop, see app/main.py's event loop policy).
+        await run_in_threadpool(_run_ffmpeg, src_path, dest_path)
+
+
+def _run_ffmpeg(src_path: Path, dest_path: Path) -> None:
+    try:
+        result = subprocess.run(
+            [
+                "ffmpeg",
+                "-y",
+                "-i",
+                str(src_path),
+                "-movflags",
+                "faststart",
+                "-pix_fmt",
+                "yuv420p",
+                "-vf",
+                _SCALE_FILTER,
+                "-an",
+                str(dest_path),
+            ],
+            capture_output=True,
+            timeout=_CONVERSION_TIMEOUT_SECONDS,
         )
-        try:
-            _, stderr = await asyncio.wait_for(
-                proc.communicate(), timeout=_CONVERSION_TIMEOUT_SECONDS
-            )
-        except TimeoutError:
-            proc.kill()
-            await proc.wait()
-            dest_path.unlink(missing_ok=True)
-            raise GifConversionError("Обработка GIF заняла слишком много времени") from None
-        if proc.returncode != 0:
-            dest_path.unlink(missing_ok=True)
-            raise GifConversionError("Не удалось обработать GIF") from None
+    except subprocess.TimeoutExpired:
+        dest_path.unlink(missing_ok=True)
+        raise GifConversionError("Обработка GIF заняла слишком много времени") from None
+    if result.returncode != 0:
+        dest_path.unlink(missing_ok=True)
+        raise GifConversionError("Не удалось обработать GIF") from None
