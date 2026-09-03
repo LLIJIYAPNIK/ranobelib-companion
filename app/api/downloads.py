@@ -7,7 +7,7 @@ from fastapi import APIRouter, Depends, Form, HTTPException, Request
 from fastapi.responses import FileResponse, HTMLResponse, JSONResponse, RedirectResponse
 from starlette.background import BackgroundTask
 
-from app.auth.dependencies import require_current_user
+from app.auth.dependencies import get_current_user, require_current_user
 from app.db.users import User
 from app.jobs.download import run_download_job
 from app.jobs.eta import estimate_remaining_seconds
@@ -36,8 +36,13 @@ async def start_download(
 
 
 @router.get("/{job_id}")
-async def show_download_status(request: Request, slug_url: str, job_id: str) -> HTMLResponse:
-    job = _get_job_or_404(slug_url, job_id)
+async def show_download_status(
+    request: Request,
+    slug_url: str,
+    job_id: str,
+    current_user: Annotated[User | None, Depends(get_current_user)],
+) -> HTMLResponse:
+    job = _get_job_or_404(slug_url, job_id, current_user)
     max_branches = max((len(chapter.branches) for chapter in job.ambiguous_chapters), default=0)
     return templates.TemplateResponse(
         request,
@@ -47,14 +52,22 @@ async def show_download_status(request: Request, slug_url: str, job_id: str) -> 
 
 
 @router.get("/{job_id}/status")
-async def download_status(slug_url: str, job_id: str) -> JSONResponse:
-    job = _get_job_or_404(slug_url, job_id)
+async def download_status(
+    slug_url: str,
+    job_id: str,
+    current_user: Annotated[User | None, Depends(get_current_user)],
+) -> JSONResponse:
+    job = _get_job_or_404(slug_url, job_id, current_user)
     return JSONResponse(_job_status_payload(job))
 
 
 @router.get("/{job_id}/file")
-async def download_result_file(slug_url: str, job_id: str) -> FileResponse:
-    job = _get_job_or_404(slug_url, job_id)
+async def download_result_file(
+    slug_url: str,
+    job_id: str,
+    current_user: Annotated[User | None, Depends(get_current_user)],
+) -> FileResponse:
+    job = _get_job_or_404(slug_url, job_id, current_user)
     if job.status != "done":
         raise HTTPException(status_code=404, detail="Файл ещё не готов")
     if job.result_path is None:
@@ -68,10 +81,18 @@ async def download_result_file(slug_url: str, job_id: str) -> FileResponse:
     )
 
 
-def _get_job_or_404(slug_url: str, job_id: str) -> DownloadJob:
+def _get_job_or_404(slug_url: str, job_id: str, current_user: User | None) -> DownloadJob:
     job = get_job(job_id)
     if job is None or job.slug_url != slug_url:
         raise HTTPException(status_code=404, detail="Задача не найдена")
+    if job.user_id is not None:
+        # An anonymous download (job.user_id is None) stays open to anyone who has the
+        # job_id, as before - only a job tied to an account is scoped to its owner, defense
+        # in depth on top of the job_id's own unguessability (see roadmap PR 190).
+        if current_user is None or job.user_id != current_user.id:
+            raise HTTPException(
+                status_code=403, detail="Эта задача принадлежит другому пользователю"
+            )
     return job
 
 

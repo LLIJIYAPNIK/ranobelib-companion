@@ -347,7 +347,7 @@ def test_start_download_needs_translation_end_to_end(logged_in_client: TestClien
     assert job.status == "needs_translation"
     assert len(job.ambiguous_chapters) == 1
 
-    status_response = client.get(f"/titles/6712--test-novel/download/{job_id}")
+    status_response = logged_in_client.get(f"/titles/6712--test-novel/download/{job_id}")
     assert "выберите один" in status_response.text
 
 
@@ -389,6 +389,102 @@ def test_download_delivered_via_global_toast_after_leaving_job_page(
     assert ready_after.json() == []
     repeat = logged_in_client.get(file_url)
     assert repeat.status_code == 404
+
+
+def _second_logged_in_client() -> TestClient:
+    """A second session in the same process/DB as `logged_in_client` (registers "bob" as
+    a distinct user_id) - its own TestClient instance so it gets its own session cookie
+    jar, independent from `logged_in_client`'s."""
+    from app.main import app as fastapi_app
+
+    other = TestClient(fastapi_app, follow_redirects=False)
+    other.post(
+        "/register",
+        data={
+            "email": "bob@example.com",
+            "password": "hunter2pass",
+            "password_confirm": "hunter2pass",
+        },
+    )
+    return other
+
+
+def test_show_download_status_rejects_job_owned_by_other_user(
+    logged_in_client: TestClient,
+) -> None:
+    job = create_job("6712--test-novel", "epub", user_id=1)  # alice
+
+    bob = _second_logged_in_client()
+    response = bob.get(f"/titles/6712--test-novel/download/{job.id}")
+
+    assert response.status_code == 403
+
+
+def test_download_status_rejects_job_owned_by_other_user(
+    logged_in_client: TestClient,
+) -> None:
+    job = create_job("6712--test-novel", "epub", user_id=1)  # alice
+
+    bob = _second_logged_in_client()
+    response = bob.get(f"/titles/6712--test-novel/download/{job.id}/status")
+
+    assert response.status_code == 403
+
+
+def test_download_result_file_rejects_job_owned_by_other_user(
+    logged_in_client: TestClient,
+) -> None:
+    job = create_job("6712--test-novel", "epub", user_id=1)  # alice
+    job.status = "done"
+    fd, path = tempfile.mkstemp(suffix=".epub")
+    os.close(fd)
+    with open(path, "w", encoding="utf-8") as f:
+        f.write("exported content")
+    job.result_path = Path(path)
+
+    bob = _second_logged_in_client()
+    response = bob.get(f"/titles/6712--test-novel/download/{job.id}/file")
+
+    assert response.status_code == 403
+    # rejected before the file could be handed out - still there, and still fetchable by
+    # the actual owner.
+    assert job.result_path is not None
+    os.remove(job.result_path)
+
+
+def test_download_status_rejects_anonymous_visitor_for_owned_job(
+    logged_in_client: TestClient,
+) -> None:
+    job = create_job("6712--test-novel", "epub", user_id=1)  # alice
+
+    anonymous = TestClient(app, follow_redirects=False)
+    response = anonymous.get(f"/titles/6712--test-novel/download/{job.id}/status")
+
+    assert response.status_code == 403
+
+
+def test_download_status_owner_still_sees_their_own_job(
+    logged_in_client: TestClient,
+) -> None:
+    job = create_job("6712--test-novel", "epub", user_id=1)  # alice
+    job.status = "running"
+    job.completed = 1
+    job.total = 4
+
+    response = logged_in_client.get(f"/titles/6712--test-novel/download/{job.id}/status")
+
+    assert response.status_code == 200
+
+
+def test_download_status_anonymous_job_accessible_to_anyone(
+    logged_in_client: TestClient,
+) -> None:
+    job = create_job("6712--test-novel", "epub")  # no user_id - anonymous download
+
+    bob = _second_logged_in_client()
+    response = bob.get(f"/titles/6712--test-novel/download/{job.id}/status")
+
+    assert response.status_code == 200
 
 
 def test_start_download_records_history_for_logged_in_user(
