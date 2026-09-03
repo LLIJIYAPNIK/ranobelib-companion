@@ -15,166 +15,170 @@ from tests.db_reset import fresh_connection
 
 
 @pytest.fixture
-def conn() -> psycopg.Connection:
-    connection = fresh_connection()
-    run_migrations(connection)
+async def conn() -> psycopg.AsyncConnection:
+    connection = await fresh_connection()
+    await run_migrations(connection)
     return connection
 
 
-def test_run_migrations_is_idempotent(conn: psycopg.Connection) -> None:
-    run_migrations(conn)  # applied again by the fixture's own call - must not raise
+async def test_run_migrations_is_idempotent(conn: psycopg.AsyncConnection) -> None:
+    await run_migrations(conn)  # applied again by the fixture's own call - must not raise
 
-    tables = {
-        row["table_name"]
-        for row in conn.execute(
-            "SELECT table_name FROM information_schema.tables WHERE table_schema = 'public'"
-        )
-    }
+    cursor = await conn.execute(
+        "SELECT table_name FROM information_schema.tables WHERE table_schema = 'public'"
+    )
+    tables = {row["table_name"] for row in await cursor.fetchall()}
     assert "users" in tables
 
 
-def test_create_user_returns_the_stored_user(conn: psycopg.Connection) -> None:
-    user = create_user(conn, "alice@example.com", "hashed-password")
+async def test_create_user_returns_the_stored_user(conn: psycopg.AsyncConnection) -> None:
+    user = await create_user(conn, "alice@example.com", "hashed-password")
 
     assert user.id is not None
     assert user.email == "alice@example.com"
     assert user.password_hash == "hashed-password"
 
 
-def test_create_user_normalizes_email(conn: psycopg.Connection) -> None:
-    user = create_user(conn, "  Alice@Example.COM  ", "hashed-password")
+async def test_create_user_normalizes_email(conn: psycopg.AsyncConnection) -> None:
+    user = await create_user(conn, "  Alice@Example.COM  ", "hashed-password")
 
     assert user.email == "alice@example.com"
 
 
-def test_create_user_duplicate_email_raises(conn: psycopg.Connection) -> None:
-    create_user(conn, "alice@example.com", "hash1")
+async def test_create_user_duplicate_email_raises(conn: psycopg.AsyncConnection) -> None:
+    await create_user(conn, "alice@example.com", "hash1")
 
     with pytest.raises(psycopg.errors.UniqueViolation):
-        create_user(conn, "alice@example.com", "hash2")
+        await create_user(conn, "alice@example.com", "hash2")
 
 
-def test_create_user_duplicate_email_case_insensitive(conn: psycopg.Connection) -> None:
-    create_user(conn, "alice@example.com", "hash1")
+async def test_create_user_duplicate_email_case_insensitive(conn: psycopg.AsyncConnection) -> None:
+    await create_user(conn, "alice@example.com", "hash1")
 
     with pytest.raises(psycopg.errors.UniqueViolation):
-        create_user(conn, "ALICE@EXAMPLE.COM", "hash2")
+        await create_user(conn, "ALICE@EXAMPLE.COM", "hash2")
 
 
-def test_get_user_by_email_found(conn: psycopg.Connection) -> None:
-    created = create_user(conn, "alice@example.com", "hash1")
+async def test_get_user_by_email_found(conn: psycopg.AsyncConnection) -> None:
+    created = await create_user(conn, "alice@example.com", "hash1")
 
-    assert get_user_by_email(conn, "Alice@Example.com") == created
-
-
-def test_get_user_by_email_missing(conn: psycopg.Connection) -> None:
-    assert get_user_by_email(conn, "nobody@example.com") is None
+    assert await get_user_by_email(conn, "Alice@Example.com") == created
 
 
-def test_get_user_by_id_found(conn: psycopg.Connection) -> None:
-    created = create_user(conn, "alice@example.com", "hash1")
-
-    assert get_user_by_id(conn, created.id) == created
+async def test_get_user_by_email_missing(conn: psycopg.AsyncConnection) -> None:
+    assert await get_user_by_email(conn, "nobody@example.com") is None
 
 
-def test_get_user_by_id_missing(conn: psycopg.Connection) -> None:
-    assert get_user_by_id(conn, 999) is None
+async def test_get_user_by_id_found(conn: psycopg.AsyncConnection) -> None:
+    created = await create_user(conn, "alice@example.com", "hash1")
+
+    assert await get_user_by_id(conn, created.id) == created
 
 
-def test_create_user_has_no_nickname_or_bio_by_default(conn: psycopg.Connection) -> None:
-    user = create_user(conn, "alice@example.com", "hash1")
+async def test_get_user_by_id_missing(conn: psycopg.AsyncConnection) -> None:
+    assert await get_user_by_id(conn, 999) is None
+
+
+async def test_create_user_has_no_nickname_or_bio_by_default(conn: psycopg.AsyncConnection) -> None:
+    user = await create_user(conn, "alice@example.com", "hash1")
 
     assert user.nickname is None
     assert user.bio is None
 
 
-def test_update_user_account_sets_nickname_and_bio(conn: psycopg.Connection) -> None:
-    user = create_user(conn, "alice@example.com", "hash1")
+async def test_update_user_account_sets_nickname_and_bio(conn: psycopg.AsyncConnection) -> None:
+    user = await create_user(conn, "alice@example.com", "hash1")
 
-    updated = update_user_account(
+    updated = await update_user_account(
         conn, user.id, email="alice@example.com", nickname="Alice", bio="Hello there"
     )
 
     assert updated.nickname == "Alice"
     assert updated.bio == "Hello there"
-    assert get_user_by_id(conn, user.id) == updated
+    assert await get_user_by_id(conn, user.id) == updated
 
 
-def test_update_user_account_changes_email(conn: psycopg.Connection) -> None:
-    user = create_user(conn, "alice@example.com", "hash1")
+async def test_update_user_account_changes_email(conn: psycopg.AsyncConnection) -> None:
+    user = await create_user(conn, "alice@example.com", "hash1")
 
-    updated = update_user_account(
+    updated = await update_user_account(
         conn, user.id, email="alice2@example.com", nickname=None, bio=None
     )
 
     assert updated.email == "alice2@example.com"
 
 
-def test_update_user_account_normalizes_email(conn: psycopg.Connection) -> None:
-    user = create_user(conn, "alice@example.com", "hash1")
+async def test_update_user_account_normalizes_email(conn: psycopg.AsyncConnection) -> None:
+    user = await create_user(conn, "alice@example.com", "hash1")
 
-    updated = update_user_account(
+    updated = await update_user_account(
         conn, user.id, email="  Alice2@Example.COM  ", nickname=None, bio=None
     )
 
     assert updated.email == "alice2@example.com"
 
 
-def test_update_user_account_duplicate_email_raises(conn: psycopg.Connection) -> None:
-    create_user(conn, "alice@example.com", "hash1")
-    bob = create_user(conn, "bob@example.com", "hash2")
+async def test_update_user_account_duplicate_email_raises(conn: psycopg.AsyncConnection) -> None:
+    await create_user(conn, "alice@example.com", "hash1")
+    bob = await create_user(conn, "bob@example.com", "hash2")
 
     with pytest.raises(psycopg.errors.UniqueViolation):
-        update_user_account(conn, bob.id, email="alice@example.com", nickname=None, bio=None)
+        await update_user_account(conn, bob.id, email="alice@example.com", nickname=None, bio=None)
 
 
-def test_update_user_account_nickname_need_not_be_unique(conn: psycopg.Connection) -> None:
-    alice = create_user(conn, "alice@example.com", "hash1")
-    bob = create_user(conn, "bob@example.com", "hash2")
+async def test_update_user_account_nickname_need_not_be_unique(
+    conn: psycopg.AsyncConnection,
+) -> None:
+    alice = await create_user(conn, "alice@example.com", "hash1")
+    bob = await create_user(conn, "bob@example.com", "hash2")
 
-    update_user_account(conn, alice.id, email=alice.email, nickname="Same", bio=None)
-    updated_bob = update_user_account(conn, bob.id, email=bob.email, nickname="Same", bio=None)
+    await update_user_account(conn, alice.id, email=alice.email, nickname="Same", bio=None)
+    updated_bob = await update_user_account(
+        conn, bob.id, email=bob.email, nickname="Same", bio=None
+    )
 
     assert updated_bob.nickname == "Same"
 
 
-def test_create_user_has_no_avatar_by_default(conn: psycopg.Connection) -> None:
-    user = create_user(conn, "alice@example.com", "hash1")
+async def test_create_user_has_no_avatar_by_default(conn: psycopg.AsyncConnection) -> None:
+    user = await create_user(conn, "alice@example.com", "hash1")
 
     assert user.avatar_path is None
 
 
-def test_update_user_avatar_sets_the_path(conn: psycopg.Connection) -> None:
-    user = create_user(conn, "alice@example.com", "hash1")
+async def test_update_user_avatar_sets_the_path(conn: psycopg.AsyncConnection) -> None:
+    user = await create_user(conn, "alice@example.com", "hash1")
 
-    updated = update_user_avatar(conn, user.id, "1.png")
+    updated = await update_user_avatar(conn, user.id, "1.png")
 
     assert updated.avatar_path == "1.png"
-    assert get_user_by_id(conn, user.id) == updated
+    assert await get_user_by_id(conn, user.id) == updated
 
 
-def test_update_user_avatar_leaves_other_fields_untouched(conn: psycopg.Connection) -> None:
-    user = create_user(conn, "alice@example.com", "hash1")
-    update_user_account(conn, user.id, email=user.email, nickname="Alice", bio="Hi")
+async def test_update_user_avatar_leaves_other_fields_untouched(
+    conn: psycopg.AsyncConnection,
+) -> None:
+    user = await create_user(conn, "alice@example.com", "hash1")
+    await update_user_account(conn, user.id, email=user.email, nickname="Alice", bio="Hi")
 
-    updated = update_user_avatar(conn, user.id, "1.png")
+    updated = await update_user_avatar(conn, user.id, "1.png")
 
     assert updated.nickname == "Alice"
     assert updated.bio == "Hi"
 
 
-def test_create_user_shows_everything_by_default(conn: psycopg.Connection) -> None:
-    user = create_user(conn, "alice@example.com", "hash1")
+async def test_create_user_shows_everything_by_default(conn: psycopg.AsyncConnection) -> None:
+    user = await create_user(conn, "alice@example.com", "hash1")
 
     assert user.show_currently_reading is True
     assert user.show_favorite is True
     assert user.show_library is True
 
 
-def test_update_privacy_settings_sets_all_three_flags(conn: psycopg.Connection) -> None:
-    user = create_user(conn, "alice@example.com", "hash1")
+async def test_update_privacy_settings_sets_all_three_flags(conn: psycopg.AsyncConnection) -> None:
+    user = await create_user(conn, "alice@example.com", "hash1")
 
-    updated = update_privacy_settings(
+    updated = await update_privacy_settings(
         conn,
         user.id,
         show_currently_reading=False,
@@ -185,13 +189,13 @@ def test_update_privacy_settings_sets_all_three_flags(conn: psycopg.Connection) 
     assert updated.show_currently_reading is False
     assert updated.show_favorite is False
     assert updated.show_library is False
-    assert get_user_by_id(conn, user.id) == updated
+    assert await get_user_by_id(conn, user.id) == updated
 
 
-def test_update_privacy_settings_flags_are_independent(conn: psycopg.Connection) -> None:
-    user = create_user(conn, "alice@example.com", "hash1")
+async def test_update_privacy_settings_flags_are_independent(conn: psycopg.AsyncConnection) -> None:
+    user = await create_user(conn, "alice@example.com", "hash1")
 
-    updated = update_privacy_settings(
+    updated = await update_privacy_settings(
         conn, user.id, show_currently_reading=False, show_favorite=True, show_library=True
     )
 
@@ -200,11 +204,13 @@ def test_update_privacy_settings_flags_are_independent(conn: psycopg.Connection)
     assert updated.show_library is True
 
 
-def test_update_privacy_settings_leaves_other_fields_untouched(conn: psycopg.Connection) -> None:
-    user = create_user(conn, "alice@example.com", "hash1")
-    update_user_account(conn, user.id, email=user.email, nickname="Alice", bio="Hi")
+async def test_update_privacy_settings_leaves_other_fields_untouched(
+    conn: psycopg.AsyncConnection,
+) -> None:
+    user = await create_user(conn, "alice@example.com", "hash1")
+    await update_user_account(conn, user.id, email=user.email, nickname="Alice", bio="Hi")
 
-    updated = update_privacy_settings(
+    updated = await update_privacy_settings(
         conn, user.id, show_currently_reading=False, show_favorite=False, show_library=False
     )
 
@@ -212,31 +218,33 @@ def test_update_privacy_settings_leaves_other_fields_untouched(conn: psycopg.Con
     assert updated.bio == "Hi"
 
 
-def test_new_user_defaults_to_notifications_enabled_and_not_do_not_disturb(
-    conn: psycopg.Connection,
+async def test_new_user_defaults_to_notifications_enabled_and_not_do_not_disturb(
+    conn: psycopg.AsyncConnection,
 ) -> None:
-    user = create_user(conn, "alice@example.com", "hash1")
+    user = await create_user(conn, "alice@example.com", "hash1")
 
     assert user.notifications_enabled is True
     assert user.do_not_disturb is False
 
 
-def test_update_notification_settings_sets_both_flags(conn: psycopg.Connection) -> None:
-    user = create_user(conn, "alice@example.com", "hash1")
+async def test_update_notification_settings_sets_both_flags(conn: psycopg.AsyncConnection) -> None:
+    user = await create_user(conn, "alice@example.com", "hash1")
 
-    updated = update_notification_settings(
+    updated = await update_notification_settings(
         conn, user.id, notifications_enabled=False, do_not_disturb=True
     )
 
     assert updated.notifications_enabled is False
     assert updated.do_not_disturb is True
-    assert get_user_by_id(conn, user.id) == updated
+    assert await get_user_by_id(conn, user.id) == updated
 
 
-def test_update_notification_settings_flags_are_independent(conn: psycopg.Connection) -> None:
-    user = create_user(conn, "alice@example.com", "hash1")
+async def test_update_notification_settings_flags_are_independent(
+    conn: psycopg.AsyncConnection,
+) -> None:
+    user = await create_user(conn, "alice@example.com", "hash1")
 
-    updated = update_notification_settings(
+    updated = await update_notification_settings(
         conn, user.id, notifications_enabled=True, do_not_disturb=True
     )
 

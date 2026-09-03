@@ -11,8 +11,11 @@ service container, and local runs need one too (e.g. ``docker run`` - see README
 
 from __future__ import annotations
 
+import asyncio
 import os
-import threading
+import selectors
+import sys
+from collections.abc import Coroutine
 
 import psycopg
 import pytest
@@ -25,37 +28,53 @@ TEST_DATABASE_URL = os.environ.get(
 )
 
 
-def fresh_connection() -> psycopg.Connection:
+def run_async[T](coro: Coroutine[object, object, T]) -> T:
+    """`asyncio.run()`, but always on a Selector-based event loop on Windows - same
+    requirement as app/main.py's own `WindowsSelectorEventLoopPolicy` (psycopg's async
+    mode refuses to run on Windows' default ProactorEventLoop), set as a side effect of
+    importing app.main there. Callers here can't rely on that import having already
+    happened - tests/test_production_startup.py deliberately never imports app.main in
+    this process (see its own module docstring) - so this sets the loop explicitly
+    instead of assuming some *other* test module already did."""
+    if sys.platform == "win32":
+
+        def _selector_loop() -> asyncio.SelectorEventLoop:
+            return asyncio.SelectorEventLoop(selectors.SelectSelector())
+
+        return asyncio.run(coro, loop_factory=_selector_loop)
+    return asyncio.run(coro)
+
+
+async def fresh_connection() -> psycopg.AsyncConnection:
     """A connection to the shared test database with a completely empty (freshly wiped,
     not yet migrated) schema - the Postgres equivalent of ``sqlite3.connect(":memory:")``,
     for tests that call ``app/db/*.py`` functions directly rather than going through the
     app's own connection pool. ``autocommit`` matches ``get_connection()``'s own setting
     (see its docstring on why) so a caught error - e.g. ``create_user()``'s documented
     ``UniqueViolation`` - doesn't leave the connection unusable for the rest of the test."""
-    conn = psycopg.connect(TEST_DATABASE_URL, row_factory=dict_row, autocommit=True)
-    wipe_schema()
+    conn = await psycopg.AsyncConnection.connect(
+        TEST_DATABASE_URL, row_factory=dict_row, autocommit=True
+    )
+    await wipe_schema()
     return conn
 
 
-def wipe_schema() -> None:
+async def wipe_schema() -> None:
     """Drops and recreates the shared test database's ``public`` schema - per-test
     isolation, the closest equivalent to a brand-new SQLite file. Also force-closes and
-    drops ``app.db.connection``'s pool (see its own docstring on why ``get_connection()``
-    checks a connection out and never returns it - by design for a long-lived production
-    process's small, fixed set of worker threads). Left alone, a session with hundreds of
-    tests each opening their own short-lived ``TestClient`` - each spinning up its own
-    throwaway anyio worker threads - would check out a handful of connections every time
-    and never give them back, eventually exhausting the pool's ``max_size`` partway
-    through the run. ``ConnectionPool.close()`` forcibly reclaims every connection it
-    handed out, checked-out or not, so each test starts from a clean, empty pool instead
-    of accumulating the whole session's worth of leaked threads."""
+    drops ``app.db.connection``'s pool: every checkout from it is released back through an
+    ``async with`` block (whether via the ``get_connection()`` FastAPI dependency or
+    ``connection()``'s own direct use), so nothing actually leaks the way the old
+    per-thread sync connection could - this reset exists so a stale pool bound to a
+    previous test's event loop is never reused by pytest-asyncio's next one, since a
+    psycopg ``AsyncConnectionPool`` (unlike a plain connection) keeps background tasks
+    tied to the loop it was opened under."""
     if db_connection._pool is not None:
-        db_connection._pool.close()
+        await db_connection._pool.close()
     db_connection._pool = None
-    db_connection._local = threading.local()
-    with psycopg.connect(TEST_DATABASE_URL, autocommit=True) as conn:
-        conn.execute("DROP SCHEMA public CASCADE")
-        conn.execute("CREATE SCHEMA public")
+    async with await psycopg.AsyncConnection.connect(TEST_DATABASE_URL, autocommit=True) as conn:
+        await conn.execute("DROP SCHEMA public CASCADE")
+        await conn.execute("CREATE SCHEMA public")
 
 
 def reset_app_database(monkeypatch: pytest.MonkeyPatch) -> None:
@@ -66,9 +85,26 @@ def reset_app_database(monkeypatch: pytest.MonkeyPatch) -> None:
     ``app/db/*.py`` functions directly. Replaces the old
     ``monkeypatch.setenv("DB_PATH", str(tmp_path / "test.db"))`` pattern.
 
+    Stays a plain sync function (bridging into ``wipe_schema()`` via ``run_async()``)
+    rather than becoming ``async def`` itself, so every one of this repo's existing sync
+    pytest fixtures can keep calling it exactly as before, unchanged - the event loop
+    ``run_async()`` opens and closes here is entirely separate from (and finished well
+    before) the one `TestClient`'s own portal spins up next.
+
     A test that instead runs the app in a *subprocess* (see
     tests/test_production_startup.py) has no `monkeypatch` for this process's env to
-    patch - call ``wipe_schema()`` directly and pass ``DATABASE_URL=TEST_DATABASE_URL``
-    into the subprocess's own environment instead."""
+    patch - call ``run_async(wipe_schema())`` directly and pass
+    ``DATABASE_URL=TEST_DATABASE_URL`` into the subprocess's own environment instead."""
     monkeypatch.setenv("DATABASE_URL", TEST_DATABASE_URL)
-    wipe_schema()
+    run_async(wipe_schema())
+
+
+async def areset_app_database(monkeypatch: pytest.MonkeyPatch) -> None:
+    """Same as ``reset_app_database()`` above, ``await``ed directly instead of bridged
+    through ``run_async()`` - for a fixture that's itself ``async def`` (because it also
+    needs to ``async with connection()`` for its own setup, say), where nesting
+    ``run_async()``'s own ``asyncio.run()`` inside the event loop already running that
+    fixture would raise ``RuntimeError: asyncio.run() cannot be called from a running
+    event loop``."""
+    monkeypatch.setenv("DATABASE_URL", TEST_DATABASE_URL)
+    await wipe_schema()

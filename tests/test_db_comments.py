@@ -16,14 +16,14 @@ from tests.db_reset import fresh_connection
 
 
 @pytest.fixture
-def conn() -> psycopg.Connection:
-    connection = fresh_connection()
-    run_migrations(connection)
+async def conn() -> psycopg.AsyncConnection:
+    connection = await fresh_connection()
+    await run_migrations(connection)
     for user_id, email, nickname in (
         (1, "alice@example.com", "Alice"),
         (2, "bob@example.com", None),
     ):
-        connection.execute(
+        await connection.execute(
             "INSERT INTO users (id, email, password_hash, created_at, nickname) "
             "VALUES (%s, %s, 'hash', 'now', %s)",
             (user_id, email, nickname),
@@ -31,8 +31,10 @@ def conn() -> psycopg.Connection:
     return connection
 
 
-def test_create_comment_returns_it_with_the_authors_nickname(conn: psycopg.Connection) -> None:
-    comment = create_comment(conn, 1, "6712--test-novel", "1", "5", "", 0, "Отличная глава!")
+async def test_create_comment_returns_it_with_the_authors_nickname(
+    conn: psycopg.AsyncConnection,
+) -> None:
+    comment = await create_comment(conn, 1, "6712--test-novel", "1", "5", "", 0, "Отличная глава!")
 
     assert comment.author == "Alice"
     assert comment.body == "Отличная глава!"
@@ -43,39 +45,39 @@ def test_create_comment_returns_it_with_the_authors_nickname(conn: psycopg.Conne
     assert comment.avatar_initials == "AL"
 
 
-def test_create_comment_avatar_url_reflects_an_uploaded_avatar(
-    conn: psycopg.Connection,
+async def test_create_comment_avatar_url_reflects_an_uploaded_avatar(
+    conn: psycopg.AsyncConnection,
 ) -> None:
-    conn.execute("UPDATE users SET avatar_path = '1.png' WHERE id = 1")
+    await conn.execute("UPDATE users SET avatar_path = '1.png' WHERE id = 1")
 
-    comment = create_comment(conn, 1, "6712--test-novel", "1", "5", "", 0, "hi")
+    comment = await create_comment(conn, 1, "6712--test-novel", "1", "5", "", 0, "hi")
 
     assert comment.avatar_url == "/avatars/1.png"
 
 
-def test_create_comment_falls_back_to_email_without_a_nickname(
-    conn: psycopg.Connection,
+async def test_create_comment_falls_back_to_email_without_a_nickname(
+    conn: psycopg.AsyncConnection,
 ) -> None:
-    comment = create_comment(conn, 2, "6712--test-novel", "1", "5", "", 0, "Согласен")
+    comment = await create_comment(conn, 2, "6712--test-novel", "1", "5", "", 0, "Согласен")
 
     assert comment.author == "bob@example.com"
 
 
-def test_create_comment_strips_the_body(conn: psycopg.Connection) -> None:
-    comment = create_comment(conn, 1, "6712--test-novel", "1", "5", "", 0, "  hi  ")
+async def test_create_comment_strips_the_body(conn: psycopg.AsyncConnection) -> None:
+    comment = await create_comment(conn, 1, "6712--test-novel", "1", "5", "", 0, "  hi  ")
 
     assert comment.body == "hi"
 
 
-def test_create_comment_rejects_an_empty_body(conn: psycopg.Connection) -> None:
+async def test_create_comment_rejects_an_empty_body(conn: psycopg.AsyncConnection) -> None:
     with pytest.raises(ValueError):
-        create_comment(conn, 1, "6712--test-novel", "1", "5", "", 0, "   ")
+        await create_comment(conn, 1, "6712--test-novel", "1", "5", "", 0, "   ")
 
 
-def test_create_comment_allows_an_empty_body_when_theres_an_attachment(
-    conn: psycopg.Connection,
+async def test_create_comment_allows_an_empty_body_when_theres_an_attachment(
+    conn: psycopg.AsyncConnection,
 ) -> None:
-    comment = create_comment(
+    comment = await create_comment(
         conn,
         1,
         "6712--test-novel",
@@ -94,51 +96,55 @@ def test_create_comment_allows_an_empty_body_when_theres_an_attachment(
     assert comment.attachment_url == "/comment-attachments/abc123.mp4"
 
 
-def test_create_comment_without_an_attachment_has_no_attachment_url(
-    conn: psycopg.Connection,
+async def test_create_comment_without_an_attachment_has_no_attachment_url(
+    conn: psycopg.AsyncConnection,
 ) -> None:
-    comment = create_comment(conn, 1, "6712--test-novel", "1", "5", "", 0, "hi")
+    comment = await create_comment(conn, 1, "6712--test-novel", "1", "5", "", 0, "hi")
 
     assert comment.attachment_path is None
     assert comment.attachment_kind is None
     assert comment.attachment_url is None
 
 
-def test_create_comment_rejects_a_body_over_the_length_limit(
-    conn: psycopg.Connection,
+async def test_create_comment_rejects_a_body_over_the_length_limit(
+    conn: psycopg.AsyncConnection,
 ) -> None:
     with pytest.raises(ValueError):
-        create_comment(conn, 1, "6712--test-novel", "1", "5", "", 0, "x" * (MAX_COMMENT_LENGTH + 1))
+        await create_comment(
+            conn, 1, "6712--test-novel", "1", "5", "", 0, "x" * (MAX_COMMENT_LENGTH + 1)
+        )
 
 
-def test_create_comment_rejects_a_parent_from_a_different_paragraph(
-    conn: psycopg.Connection,
+async def test_create_comment_rejects_a_parent_from_a_different_paragraph(
+    conn: psycopg.AsyncConnection,
 ) -> None:
-    root = create_comment(conn, 1, "6712--test-novel", "1", "5", "", 0, "root")
+    root = await create_comment(conn, 1, "6712--test-novel", "1", "5", "", 0, "root")
 
     with pytest.raises(ValueError):
-        create_comment(
+        await create_comment(
             conn, 2, "6712--test-novel", "1", "5", "", 3, "reply", parent_comment_id=root.id
         )
 
 
-def test_create_comment_rejects_a_nonexistent_parent(conn: psycopg.Connection) -> None:
+async def test_create_comment_rejects_a_nonexistent_parent(conn: psycopg.AsyncConnection) -> None:
     with pytest.raises(ValueError):
-        create_comment(
+        await create_comment(
             conn, 1, "6712--test-novel", "1", "5", "", 0, "reply", parent_comment_id=999
         )
 
 
-def test_list_comments_nests_replies_under_their_parent(conn: psycopg.Connection) -> None:
-    root = create_comment(conn, 1, "6712--test-novel", "1", "5", "", 0, "root")
-    reply = create_comment(
+async def test_list_comments_nests_replies_under_their_parent(
+    conn: psycopg.AsyncConnection,
+) -> None:
+    root = await create_comment(conn, 1, "6712--test-novel", "1", "5", "", 0, "root")
+    reply = await create_comment(
         conn, 2, "6712--test-novel", "1", "5", "", 0, "reply", parent_comment_id=root.id
     )
-    create_comment(
+    await create_comment(
         conn, 1, "6712--test-novel", "1", "5", "", 0, "reply to reply", parent_comment_id=reply.id
     )
 
-    roots = list_comments_for_paragraph(conn, "6712--test-novel", "1", "5", "", 0)
+    roots = await list_comments_for_paragraph(conn, "6712--test-novel", "1", "5", "", 0)
 
     assert len(roots) == 1
     assert roots[0].body == "root"
@@ -148,8 +154,8 @@ def test_list_comments_nests_replies_under_their_parent(conn: psycopg.Connection
     assert roots[0].replies[0].replies[0].body == "reply to reply"
 
 
-def test_list_comments_includes_the_attachment(conn: psycopg.Connection) -> None:
-    create_comment(
+async def test_list_comments_includes_the_attachment(conn: psycopg.AsyncConnection) -> None:
+    await create_comment(
         conn,
         1,
         "6712--test-novel",
@@ -162,108 +168,112 @@ def test_list_comments_includes_the_attachment(conn: psycopg.Connection) -> None
         attachment_kind="gif",
     )
 
-    roots = list_comments_for_paragraph(conn, "6712--test-novel", "1", "5", "", 0)
+    roots = await list_comments_for_paragraph(conn, "6712--test-novel", "1", "5", "", 0)
 
     assert roots[0].attachment_url == "/comment-attachments/abc123.mp4"
     assert roots[0].attachment_kind == "gif"
 
 
-def test_list_comments_is_scoped_to_paragraph_and_branch(conn: psycopg.Connection) -> None:
-    create_comment(conn, 1, "6712--test-novel", "1", "5", "", 0, "here")
-    create_comment(conn, 1, "6712--test-novel", "1", "5", "", 3, "elsewhere")
-    create_comment(conn, 1, "6712--test-novel", "1", "5", "9", 0, "other branch")
+async def test_list_comments_is_scoped_to_paragraph_and_branch(
+    conn: psycopg.AsyncConnection,
+) -> None:
+    await create_comment(conn, 1, "6712--test-novel", "1", "5", "", 0, "here")
+    await create_comment(conn, 1, "6712--test-novel", "1", "5", "", 3, "elsewhere")
+    await create_comment(conn, 1, "6712--test-novel", "1", "5", "9", 0, "other branch")
 
-    roots = list_comments_for_paragraph(conn, "6712--test-novel", "1", "5", "", 0)
+    roots = await list_comments_for_paragraph(conn, "6712--test-novel", "1", "5", "", 0)
 
     assert [c.body for c in roots] == ["here"]
 
 
-def test_count_comments_for_paragraph_includes_replies(conn: psycopg.Connection) -> None:
-    root = create_comment(conn, 1, "6712--test-novel", "1", "5", "", 0, "root")
-    create_comment(
+async def test_count_comments_for_paragraph_includes_replies(conn: psycopg.AsyncConnection) -> None:
+    root = await create_comment(conn, 1, "6712--test-novel", "1", "5", "", 0, "root")
+    await create_comment(
         conn, 2, "6712--test-novel", "1", "5", "", 0, "reply", parent_comment_id=root.id
     )
 
-    assert count_comments_for_paragraph(conn, "6712--test-novel", "1", "5", "", 0) == 2
+    assert await count_comments_for_paragraph(conn, "6712--test-novel", "1", "5", "", 0) == 2
 
 
-def test_count_comments_groups_by_paragraph(conn: psycopg.Connection) -> None:
-    create_comment(conn, 1, "6712--test-novel", "1", "5", "", 0, "a")
-    create_comment(conn, 1, "6712--test-novel", "1", "5", "", 0, "b")
-    create_comment(conn, 1, "6712--test-novel", "1", "5", "", 3, "c")
+async def test_count_comments_groups_by_paragraph(conn: psycopg.AsyncConnection) -> None:
+    await create_comment(conn, 1, "6712--test-novel", "1", "5", "", 0, "a")
+    await create_comment(conn, 1, "6712--test-novel", "1", "5", "", 0, "b")
+    await create_comment(conn, 1, "6712--test-novel", "1", "5", "", 3, "c")
 
-    assert count_comments(conn, "6712--test-novel", "1", "5", "") == {0: 2, 3: 1}
-
-
-def test_count_comments_is_empty_for_a_chapter_with_none(conn: psycopg.Connection) -> None:
-    assert count_comments(conn, "6712--test-novel", "1", "5", "") == {}
+    assert await count_comments(conn, "6712--test-novel", "1", "5", "") == {0: 2, 3: 1}
 
 
-def test_count_comments_by_user_is_zero_for_a_user_with_none(
-    conn: psycopg.Connection,
+async def test_count_comments_is_empty_for_a_chapter_with_none(
+    conn: psycopg.AsyncConnection,
 ) -> None:
-    assert count_comments_by_user(conn, 1) == 0
+    assert await count_comments(conn, "6712--test-novel", "1", "5", "") == {}
 
 
-def test_count_comments_by_user_counts_across_titles_and_paragraphs(
-    conn: psycopg.Connection,
+async def test_count_comments_by_user_is_zero_for_a_user_with_none(
+    conn: psycopg.AsyncConnection,
 ) -> None:
-    create_comment(conn, 1, "6712--test-novel", "1", "5", "", 0, "a")
-    create_comment(conn, 1, "6712--test-novel", "1", "5", "", 3, "b")
-    create_comment(conn, 1, "9000--other-novel", "2", "1", "", 0, "c")
-    create_comment(conn, 2, "6712--test-novel", "1", "5", "", 0, "not alice's")
-
-    assert count_comments_by_user(conn, 1) == 3
-    assert count_comments_by_user(conn, 2) == 1
+    assert await count_comments_by_user(conn, 1) == 0
 
 
-def test_edit_comment_overwrites_the_body(conn: psycopg.Connection) -> None:
-    comment = create_comment(conn, 1, "6712--test-novel", "1", "5", "", 0, "original")
+async def test_count_comments_by_user_counts_across_titles_and_paragraphs(
+    conn: psycopg.AsyncConnection,
+) -> None:
+    await create_comment(conn, 1, "6712--test-novel", "1", "5", "", 0, "a")
+    await create_comment(conn, 1, "6712--test-novel", "1", "5", "", 3, "b")
+    await create_comment(conn, 1, "9000--other-novel", "2", "1", "", 0, "c")
+    await create_comment(conn, 2, "6712--test-novel", "1", "5", "", 0, "not alice's")
 
-    assert edit_comment(conn, comment.id, 1, "updated") is True
+    assert await count_comments_by_user(conn, 1) == 3
+    assert await count_comments_by_user(conn, 2) == 1
 
-    roots = list_comments_for_paragraph(conn, "6712--test-novel", "1", "5", "", 0)
+
+async def test_edit_comment_overwrites_the_body(conn: psycopg.AsyncConnection) -> None:
+    comment = await create_comment(conn, 1, "6712--test-novel", "1", "5", "", 0, "original")
+
+    assert await edit_comment(conn, comment.id, 1, "updated") is True
+
+    roots = await list_comments_for_paragraph(conn, "6712--test-novel", "1", "5", "", 0)
     assert roots[0].body == "updated"
     assert roots[0].updated_at is not None
 
 
-def test_edit_comment_strips_the_body(conn: psycopg.Connection) -> None:
-    comment = create_comment(conn, 1, "6712--test-novel", "1", "5", "", 0, "original")
+async def test_edit_comment_strips_the_body(conn: psycopg.AsyncConnection) -> None:
+    comment = await create_comment(conn, 1, "6712--test-novel", "1", "5", "", 0, "original")
 
-    edit_comment(conn, comment.id, 1, "  updated  ")
+    await edit_comment(conn, comment.id, 1, "  updated  ")
 
-    roots = list_comments_for_paragraph(conn, "6712--test-novel", "1", "5", "", 0)
+    roots = await list_comments_for_paragraph(conn, "6712--test-novel", "1", "5", "", 0)
     assert roots[0].body == "updated"
 
 
-def test_edit_comment_rejects_someone_elses_comment(conn: psycopg.Connection) -> None:
-    comment = create_comment(conn, 1, "6712--test-novel", "1", "5", "", 0, "original")
+async def test_edit_comment_rejects_someone_elses_comment(conn: psycopg.AsyncConnection) -> None:
+    comment = await create_comment(conn, 1, "6712--test-novel", "1", "5", "", 0, "original")
 
-    assert edit_comment(conn, comment.id, 2, "hijacked") is False
+    assert await edit_comment(conn, comment.id, 2, "hijacked") is False
 
-    roots = list_comments_for_paragraph(conn, "6712--test-novel", "1", "5", "", 0)
+    roots = await list_comments_for_paragraph(conn, "6712--test-novel", "1", "5", "", 0)
     assert roots[0].body == "original"
 
 
-def test_edit_comment_reports_false_for_a_nonexistent_comment(
-    conn: psycopg.Connection,
+async def test_edit_comment_reports_false_for_a_nonexistent_comment(
+    conn: psycopg.AsyncConnection,
 ) -> None:
-    assert edit_comment(conn, 999, 1, "updated") is False
+    assert await edit_comment(conn, 999, 1, "updated") is False
 
 
-def test_edit_comment_rejects_an_empty_body_without_an_attachment(
-    conn: psycopg.Connection,
+async def test_edit_comment_rejects_an_empty_body_without_an_attachment(
+    conn: psycopg.AsyncConnection,
 ) -> None:
-    comment = create_comment(conn, 1, "6712--test-novel", "1", "5", "", 0, "original")
+    comment = await create_comment(conn, 1, "6712--test-novel", "1", "5", "", 0, "original")
 
     with pytest.raises(ValueError):
-        edit_comment(conn, comment.id, 1, "   ")
+        await edit_comment(conn, comment.id, 1, "   ")
 
 
-def test_edit_comment_allows_an_empty_body_when_theres_an_attachment(
-    conn: psycopg.Connection,
+async def test_edit_comment_allows_an_empty_body_when_theres_an_attachment(
+    conn: psycopg.AsyncConnection,
 ) -> None:
-    comment = create_comment(
+    comment = await create_comment(
         conn,
         1,
         "6712--test-novel",
@@ -276,30 +286,32 @@ def test_edit_comment_allows_an_empty_body_when_theres_an_attachment(
         attachment_kind="gif",
     )
 
-    assert edit_comment(conn, comment.id, 1, "   ") is True
+    assert await edit_comment(conn, comment.id, 1, "   ") is True
 
-    roots = list_comments_for_paragraph(conn, "6712--test-novel", "1", "5", "", 0)
+    roots = await list_comments_for_paragraph(conn, "6712--test-novel", "1", "5", "", 0)
     assert roots[0].body == ""
 
 
-def test_edit_comment_rejects_a_body_over_the_length_limit(
-    conn: psycopg.Connection,
+async def test_edit_comment_rejects_a_body_over_the_length_limit(
+    conn: psycopg.AsyncConnection,
 ) -> None:
-    comment = create_comment(conn, 1, "6712--test-novel", "1", "5", "", 0, "original")
+    comment = await create_comment(conn, 1, "6712--test-novel", "1", "5", "", 0, "original")
 
     with pytest.raises(ValueError):
-        edit_comment(conn, comment.id, 1, "x" * (MAX_COMMENT_LENGTH + 1))
+        await edit_comment(conn, comment.id, 1, "x" * (MAX_COMMENT_LENGTH + 1))
 
 
-def test_edit_comment_rejects_an_already_deleted_comment(conn: psycopg.Connection) -> None:
-    comment = create_comment(conn, 1, "6712--test-novel", "1", "5", "", 0, "original")
-    delete_comment(conn, comment.id, 1)
+async def test_edit_comment_rejects_an_already_deleted_comment(
+    conn: psycopg.AsyncConnection,
+) -> None:
+    comment = await create_comment(conn, 1, "6712--test-novel", "1", "5", "", 0, "original")
+    await delete_comment(conn, comment.id, 1)
 
-    assert edit_comment(conn, comment.id, 1, "resurrected") is False
+    assert await edit_comment(conn, comment.id, 1, "resurrected") is False
 
 
-def test_delete_comment_blanks_the_body_and_attachment(conn: psycopg.Connection) -> None:
-    comment = create_comment(
+async def test_delete_comment_blanks_the_body_and_attachment(conn: psycopg.AsyncConnection) -> None:
+    comment = await create_comment(
         conn,
         1,
         "6712--test-novel",
@@ -312,40 +324,40 @@ def test_delete_comment_blanks_the_body_and_attachment(conn: psycopg.Connection)
         attachment_kind="gif",
     )
 
-    assert delete_comment(conn, comment.id, 1) is True
+    assert await delete_comment(conn, comment.id, 1) is True
 
-    roots = list_comments_for_paragraph(conn, "6712--test-novel", "1", "5", "", 0)
+    roots = await list_comments_for_paragraph(conn, "6712--test-novel", "1", "5", "", 0)
     assert roots[0].is_deleted is True
     assert roots[0].body == ""
     assert roots[0].attachment_url is None
     assert roots[0].updated_at is not None
 
 
-def test_delete_comment_rejects_someone_elses_comment(conn: psycopg.Connection) -> None:
-    comment = create_comment(conn, 1, "6712--test-novel", "1", "5", "", 0, "goodbye")
+async def test_delete_comment_rejects_someone_elses_comment(conn: psycopg.AsyncConnection) -> None:
+    comment = await create_comment(conn, 1, "6712--test-novel", "1", "5", "", 0, "goodbye")
 
-    assert delete_comment(conn, comment.id, 2) is False
+    assert await delete_comment(conn, comment.id, 2) is False
 
-    roots = list_comments_for_paragraph(conn, "6712--test-novel", "1", "5", "", 0)
+    roots = await list_comments_for_paragraph(conn, "6712--test-novel", "1", "5", "", 0)
     assert roots[0].is_deleted is False
     assert roots[0].body == "goodbye"
 
 
-def test_delete_comment_reports_false_for_a_nonexistent_comment(
-    conn: psycopg.Connection,
+async def test_delete_comment_reports_false_for_a_nonexistent_comment(
+    conn: psycopg.AsyncConnection,
 ) -> None:
-    assert delete_comment(conn, 999, 1) is False
+    assert await delete_comment(conn, 999, 1) is False
 
 
-def test_delete_comment_keeps_its_replies_in_the_tree(conn: psycopg.Connection) -> None:
-    root = create_comment(conn, 1, "6712--test-novel", "1", "5", "", 0, "root")
-    create_comment(
+async def test_delete_comment_keeps_its_replies_in_the_tree(conn: psycopg.AsyncConnection) -> None:
+    root = await create_comment(conn, 1, "6712--test-novel", "1", "5", "", 0, "root")
+    await create_comment(
         conn, 2, "6712--test-novel", "1", "5", "", 0, "reply", parent_comment_id=root.id
     )
 
-    delete_comment(conn, root.id, 1)
+    await delete_comment(conn, root.id, 1)
 
-    roots = list_comments_for_paragraph(conn, "6712--test-novel", "1", "5", "", 0)
+    roots = await list_comments_for_paragraph(conn, "6712--test-novel", "1", "5", "", 0)
     assert roots[0].is_deleted is True
     assert len(roots[0].replies) == 1
     assert roots[0].replies[0].body == "reply"

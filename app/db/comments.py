@@ -14,7 +14,7 @@ from __future__ import annotations
 from dataclasses import dataclass, field
 from datetime import UTC, datetime
 
-from psycopg import Connection
+from psycopg import AsyncConnection
 
 from app.auth.avatar import initials_for, url_for
 
@@ -59,8 +59,8 @@ class Comment:
         return f"/comment-attachments/{self.attachment_path}"
 
 
-def create_comment(
-    conn: Connection,
+async def create_comment(
+    conn: AsyncConnection,
     user_id: int,
     slug_url: str,
     volume: str,
@@ -86,16 +86,17 @@ def create_comment(
         raise ValueError(f"Комментарий длиннее {MAX_COMMENT_LENGTH} символов")
 
     if parent_comment_id is not None:
-        parent = conn.execute(
+        cursor = await conn.execute(
             "SELECT 1 FROM comments WHERE id = %s AND slug_url = %s AND volume = %s "
             "AND number = %s AND branch_id = %s AND paragraph_index = %s",
             (parent_comment_id, slug_url, volume, number, branch_id, paragraph_index),
-        ).fetchone()
+        )
+        parent = await cursor.fetchone()
         if parent is None:
             raise ValueError("Комментарий, на который вы отвечаете, не найден")
 
     created_at = datetime.now(UTC).isoformat()
-    row = conn.execute(
+    cursor = await conn.execute(
         "INSERT INTO comments "
         "(user_id, slug_url, volume, number, branch_id, paragraph_index, "
         "parent_comment_id, body, created_at, attachment_path, attachment_kind) "
@@ -113,11 +114,13 @@ def create_comment(
             attachment_path,
             attachment_kind,
         ),
-    ).fetchone()
+    )
+    row = await cursor.fetchone()
     assert row is not None  # just inserted
-    author_row = conn.execute(
+    cursor = await conn.execute(
         "SELECT nickname, email, avatar_path FROM users WHERE id = %s", (user_id,)
-    ).fetchone()
+    )
+    author_row = await cursor.fetchone()
     author = (author_row["nickname"] or author_row["email"]) if author_row else "?"
     return Comment(
         id=row["id"],
@@ -135,7 +138,7 @@ def create_comment(
     )
 
 
-def edit_comment(conn: Connection, comment_id: int, user_id: int, body: str) -> bool:
+async def edit_comment(conn: AsyncConnection, comment_id: int, user_id: int, body: str) -> bool:
     """Overwrites a comment's own body in place. True if a row was actually updated - the
     UPDATE is scoped by both `id` and `user_id`, the same ownership-scoped shape as
     app/db/notifications.py's mark_notification_read()/delete_notification(), so editing
@@ -150,14 +153,15 @@ def edit_comment(conn: Connection, comment_id: int, user_id: int, body: str) -> 
     if len(body) > MAX_COMMENT_LENGTH:
         raise ValueError(f"Комментарий длиннее {MAX_COMMENT_LENGTH} символов")
     if not body:
-        row = conn.execute(
+        cursor = await conn.execute(
             "SELECT attachment_path FROM comments WHERE id = %s", (comment_id,)
-        ).fetchone()
+        )
+        row = await cursor.fetchone()
         if row is None or not row["attachment_path"]:
             raise ValueError("Комментарий не может быть пустым")
 
     updated_at = datetime.now(UTC).isoformat()
-    cursor = conn.execute(
+    cursor = await conn.execute(
         "UPDATE comments SET body = %s, updated_at = %s "
         "WHERE id = %s AND user_id = %s AND is_deleted = 0",
         (body, updated_at, comment_id, user_id),
@@ -165,7 +169,7 @@ def edit_comment(conn: Connection, comment_id: int, user_id: int, body: str) -> 
     return cursor.rowcount > 0
 
 
-def delete_comment(conn: Connection, comment_id: int, user_id: int) -> bool:
+async def delete_comment(conn: AsyncConnection, comment_id: int, user_id: int) -> bool:
     """Soft-deletes a comment: True if a row was actually updated, same ownership-scoped
     UPDATE...WHERE id = %s AND user_id = %s shape as edit_comment() above.
 
@@ -179,7 +183,7 @@ def delete_comment(conn: Connection, comment_id: int, user_id: int) -> bool:
     a "Комментарий удалён" placeholder in its place while still showing any replies
     underneath, same as most forums/Reddit."""
     updated_at = datetime.now(UTC).isoformat()
-    cursor = conn.execute(
+    cursor = await conn.execute(
         "UPDATE comments SET is_deleted = 1, body = '', attachment_path = NULL, "
         "attachment_kind = NULL, updated_at = %s "
         "WHERE id = %s AND user_id = %s AND is_deleted = 0",
@@ -188,8 +192,8 @@ def delete_comment(conn: Connection, comment_id: int, user_id: int) -> bool:
     return cursor.rowcount > 0
 
 
-def list_comments_for_paragraph(
-    conn: Connection,
+async def list_comments_for_paragraph(
+    conn: AsyncConnection,
     slug_url: str,
     volume: str,
     number: str,
@@ -199,7 +203,7 @@ def list_comments_for_paragraph(
     """Root comments with their replies already nested inside (reddit-style), not a flat
     list - the client renders exactly this shape with indentation by depth, no tree of
     its own to build."""
-    rows = conn.execute(
+    cursor = await conn.execute(
         "SELECT comments.id, comments.user_id, comments.body, comments.created_at, "
         "comments.parent_comment_id, comments.attachment_path, comments.attachment_kind, "
         "comments.updated_at, comments.is_deleted, "
@@ -209,7 +213,8 @@ def list_comments_for_paragraph(
         "AND comments.branch_id = %s AND comments.paragraph_index = %s "
         "ORDER BY comments.created_at ASC",
         (slug_url, volume, number, branch_id, paragraph_index),
-    ).fetchall()
+    )
+    rows = await cursor.fetchall()
 
     nodes: dict[int, Comment] = {
         row["id"]: Comment(
@@ -243,8 +248,8 @@ def list_comments_for_paragraph(
     return roots
 
 
-def count_comments_for_paragraph(
-    conn: Connection,
+async def count_comments_for_paragraph(
+    conn: AsyncConnection,
     slug_url: str,
     volume: str,
     number: str,
@@ -252,35 +257,38 @@ def count_comments_for_paragraph(
     paragraph_index: int,
 ) -> int:
     """Every comment under this paragraph, replies included - what "N комментариев" counts."""
-    row = conn.execute(
+    cursor = await conn.execute(
         "SELECT COUNT(*) AS n FROM comments "
         "WHERE slug_url = %s AND volume = %s AND number = %s AND branch_id = %s "
         "AND paragraph_index = %s",
         (slug_url, volume, number, branch_id, paragraph_index),
-    ).fetchone()
+    )
+    row = await cursor.fetchone()
     return row["n"]
 
 
-def count_comments(
-    conn: Connection, slug_url: str, volume: str, number: str, branch_id: str
+async def count_comments(
+    conn: AsyncConnection, slug_url: str, volume: str, number: str, branch_id: str
 ) -> dict[int, int]:
     """Aggregated comment counts per paragraph for the whole chapter in one query - same
     "one bulk fetch on load, not one per paragraph" reasoning as
     app/db/reactions.py's count_reactions()."""
-    rows = conn.execute(
+    cursor = await conn.execute(
         "SELECT paragraph_index, COUNT(*) AS n FROM comments "
         "WHERE slug_url = %s AND volume = %s AND number = %s AND branch_id = %s "
         "GROUP BY paragraph_index",
         (slug_url, volume, number, branch_id),
-    ).fetchall()
+    )
+    rows = await cursor.fetchall()
     return {row["paragraph_index"]: row["n"] for row in rows}
 
 
-def count_comments_by_user(conn: Connection, user_id: int) -> int:
+async def count_comments_by_user(conn: AsyncConnection, user_id: int) -> int:
     """Every comment this user has ever posted, across every title/chapter/paragraph -
     PR 135's profile page counter, not scoped to any one paragraph the way the two
     functions above are."""
-    row = conn.execute(
+    cursor = await conn.execute(
         "SELECT COUNT(*) AS n FROM comments WHERE user_id = %s", (user_id,)
-    ).fetchone()
+    )
+    row = await cursor.fetchone()
     return row["n"]
