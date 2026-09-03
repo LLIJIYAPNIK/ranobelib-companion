@@ -243,6 +243,58 @@ def test_show_downloads_offers_download_link_for_a_ready_job(client: TestClient)
     assert f'href="/titles/6712--test-novel/download/{job.id}/file"' in response.text
 
 
+def test_show_downloads_history_title_link_downloads_the_file_while_its_ready(
+    client: TestClient,
+) -> None:
+    # PR 186: the title-name link at the head of the row was always `/titles/{slug}`,
+    # even while the "Скачать" button next to it pointed at the ready file - the most
+    # visible click target in the row silently ignored a still-downloadable file.
+    _register(client)  # user id 1
+    job = create_job("6712--test-novel", "epub", user_id=1)
+    job.status = "done"
+    job.result_path = Path("/tmp/whatever.epub")
+    record_download(
+        get_connection(), 1, "6712--test-novel", "epub", "done", 1, None, job_id=job.id
+    )
+
+    response = client.get("/downloads")
+
+    assert response.status_code == 200
+    file_href = f'href="/titles/6712--test-novel/download/{job.id}/file"'
+    assert response.text.count(file_href) == 2  # both the title link and "Скачать"
+    assert '>/titles/6712--test-novel<' not in response.text
+
+
+def test_show_downloads_history_title_link_falls_back_once_the_file_is_gone(
+    client: TestClient,
+) -> None:
+    _register(client)  # user id 1
+    job = create_job("6712--test-novel", "epub", user_id=1)
+    job.status = "done"
+    job.result_path = Path("/tmp/whatever.epub")
+    record_download(
+        get_connection(), 1, "6712--test-novel", "epub", "done", 1, None, job_id=job.id
+    )
+    delete_result_file(job)
+
+    response = client.get("/downloads")
+
+    assert response.status_code == 200
+    assert 'class="downloads-history__link" href="/titles/6712--test-novel"' in response.text
+
+
+def test_show_downloads_history_title_link_for_an_error_row_goes_to_the_title_page(
+    client: TestClient,
+) -> None:
+    _register(client)  # user id 1
+    record_download(get_connection(), 1, "6712--test-novel", "epub", "error", None, "Опа")
+
+    response = client.get("/downloads")
+
+    assert response.status_code == 200
+    assert 'class="downloads-history__link" href="/titles/6712--test-novel"' in response.text
+
+
 def test_show_downloads_omits_download_link_once_the_file_is_gone(client: TestClient) -> None:
     _register(client)  # user id 1
     job = create_job("6712--test-novel", "epub", user_id=1)

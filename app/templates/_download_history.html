@@ -2,7 +2,7 @@
 <ul class="downloads-history">
   {% for entry in entries %}
   <li class="downloads-history__item" data-entry-id="{{ entry.id }}">
-    <a class="downloads-history__link" href="/titles/{{ entry.slug_url }}">{{ entry.slug_url }}</a>
+    <a class="downloads-history__link" href="{{ ready_files[entry.id] if entry.id in ready_files else '/titles/' ~ entry.slug_url }}">{{ entry.slug_url }}</a>
     <span class="downloads-history__fmt">{{ entry.fmt | upper }}</span>
     <span class="downloads-history__status{% if entry.status == 'error' %} downloads-history__status--error{% endif %}">
       {% if entry.status == "done" %}Готово{% if entry.chapter_count %} · {{ entry.chapter_count }} глав{% endif %}
