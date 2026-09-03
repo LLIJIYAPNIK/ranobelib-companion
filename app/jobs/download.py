@@ -17,10 +17,10 @@ from ranobelib import (
 )
 from ranobelib.models import Volume
 
-from app.db.connection import get_connection
+from app.db.connection import connection
 from app.db.downloads import record_download
 from app.exceptions import build_error_response
-from app.jobs.models import DownloadJob
+from app.jobs.models import DownloadJob, JobStatus
 from app.services.client import open_client
 from app.services.exports import temp_export_path
 
@@ -96,8 +96,15 @@ async def run_download_job(
             with temp_export_path(job.fmt) as path:
                 await lib.export(chapters, fmt=job.fmt, path=path)
         job.result_path = Path(path)
+        # Writes the history row (if any - see _record_history()'s own docstring) before
+        # job.status ever reports "done" to an external poller (GET .../status): otherwise
+        # a client that saw "done" and immediately loaded GET /downloads could find the
+        # job's own history entry not there yet - _record_history() now checks a
+        # connection out of a real network pool, an actual await point a synchronous
+        # sqlite3/psycopg write never had, unlike setting `job.status` itself, which is
+        # just an in-memory attribute write with no such gap.
+        await _record_history(job, "done", chapter_count=len(chapters))
         job.status = "done"
-        _record_history(job, chapter_count=len(chapters))
     except MultipleTitleTranslationsError as exc:
         # Not a terminal state - the retry form on download_status.html re-POSTs with a
         # translation_index, so no history entry yet.
@@ -119,24 +126,24 @@ async def run_download_job(
             exc.total,
             exc_info=exc,
         )
-        job.status = "error"
         detail = (
             build_error_response(cause).content["detail"]
             if isinstance(cause, RanobeLibError)
             else "Внутренняя ошибка, попробуйте позже"
         )
         job.error = f"{detail} (скачано {exc.completed} из {exc.total} глав)"
-        _record_history(job, chapter_count=exc.completed)
+        await _record_history(job, "error", chapter_count=exc.completed)
+        job.status = "error"
     except RanobeLibError as exc:
         logger.warning("%s downloading %s", type(exc).__name__, job.slug_url, exc_info=exc)
-        job.status = "error"
         job.error = build_error_response(exc).content["detail"]
-        _record_history(job)
+        await _record_history(job, "error")
+        job.status = "error"
     except Exception:
         logger.exception("Unexpected error downloading %s", job.slug_url)
-        job.status = "error"
         job.error = "Внутренняя ошибка, попробуйте позже"
-        _record_history(job)
+        await _record_history(job, "error")
+        job.status = "error"
 
 
 async def _download_title_riding_out_rate_limits(
@@ -196,22 +203,37 @@ def _rate_limit_delay(exc: RateLimitError) -> float:
     return _RATE_LIMIT_FALLBACK_BACKOFF if exc.retry_after is None else exc.retry_after
 
 
-def _record_history(job: DownloadJob, chapter_count: int | None = None) -> None:
+async def _record_history(
+    job: DownloadJob, status: JobStatus, chapter_count: int | None = None
+) -> None:
     """Called exactly once, at each point `job` reaches a terminal state (done or error) -
     also where `finished_at` gets set, the basis for sweep_expired_result_files() cleaning
     up an exported file nobody came back to download. The history write itself is a no-op
     for an anonymous download (no user_id, see create_job()), but the file it produced
-    still needs sweeping regardless."""
+    still needs sweeping regardless.
+
+    Takes the terminal `status` as an explicit parameter rather than reading `job.status`
+    - callers await this *before* setting `job.status` themselves, so a poller can never
+    observe a terminal `job.status` before the history row it implies actually exists (see
+    each call site's own comment on why that ordering matters now that this write goes
+    over a real connection pool instead of a synchronous, gap-free call).
+
+    Checks out its own connection via `connection()` rather than a route's own
+    `Depends(get_connection)` - this whole function runs inside a background
+    ``asyncio.create_task()`` (see app/api/downloads.py's `start_download()`) that outlives
+    the request that started it, so there's no FastAPI request/dependency scope left to
+    resolve one from by the time this runs."""
     job.finished_at = time.monotonic()
     if job.user_id is None:
         return
-    record_download(
-        get_connection(),
-        job.user_id,
-        job.slug_url,
-        job.fmt,
-        job.status,
-        chapter_count,
-        job.error,
-        job_id=job.id,
-    )
+    async with connection() as conn:
+        await record_download(
+            conn,
+            job.user_id,
+            job.slug_url,
+            job.fmt,
+            status,
+            chapter_count,
+            job.error,
+            job_id=job.id,
+        )
