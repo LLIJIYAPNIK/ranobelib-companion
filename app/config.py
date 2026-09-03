@@ -11,10 +11,10 @@ It's set in hours rather than days so a chapter newly published on ranobelib.me 
 visible on this site within a reasonable window without anyone having to trigger a
 manual ``refresh=True``.
 
-``db_path`` is the application's own SQLite database (accounts, personal library,
-activity) - separate from ``cache_dir``, which only holds the SDK's public response
-cache. Needs the same persistent-volume treatment as ``cache_dir`` in a container
-deployment.
+``database_url`` is the connection string for the application's own Postgres database
+(accounts, personal library, activity) - separate from ``cache_dir``, which only holds the
+SDK's public response cache. Standard ``postgresql://user:password@host:port/dbname``
+format (see ``DATABASE_URL`` in most hosting providers/PR 192's docker-compose).
 
 ``session_secret_key`` signs the session cookie (see ``SessionMiddleware`` in
 ``app/main.py``). Without an explicit value, a random key is generated per process
@@ -66,7 +66,7 @@ logger = logging.getLogger(__name__)
 
 _DEFAULT_CACHE_DIR = ".ranobelib_cache"
 _DEFAULT_CACHE_TTL_SECONDS = 6 * 60 * 60  # 6 hours
-_DEFAULT_DB_PATH = ".ranobelib_companion.db"
+_DEFAULT_DATABASE_URL = "postgresql://postgres:postgres@localhost:5432/ranobelib_companion"
 _DEFAULT_SESSION_MAX_AGE_SECONDS = 14 * 24 * 60 * 60  # 14 days - Starlette's own default
 _DEFAULT_SESSION_REMEMBER_MAX_AGE_SECONDS = 90 * 24 * 60 * 60  # 90 days
 _DEFAULT_DOWNLOAD_FILE_TTL_SECONDS = 30 * 60  # 30 minutes
@@ -78,7 +78,7 @@ _DEFAULT_COMMENT_ATTACHMENT_DIR = ".ranobelib_comment_attachments"
 class Settings:
     cache_dir: Path
     cache_ttl: float
-    db_path: Path
+    database_url: str
     session_secret_key: str
     session_max_age: int
     session_remember_max_age: int
@@ -107,7 +107,7 @@ def get_settings() -> Settings:
         is_production=is_production,
         cache_dir=Path(os.environ.get("CACHE_DIR", _DEFAULT_CACHE_DIR)),
         cache_ttl=float(os.environ.get("CACHE_TTL_SECONDS", _DEFAULT_CACHE_TTL_SECONDS)),
-        db_path=Path(os.environ.get("DB_PATH", _DEFAULT_DB_PATH)),
+        database_url=os.environ.get("DATABASE_URL", _DEFAULT_DATABASE_URL),
         session_secret_key=session_secret_key,
         session_max_age=int(
             os.environ.get("SESSION_MAX_AGE_SECONDS", _DEFAULT_SESSION_MAX_AGE_SECONDS)
