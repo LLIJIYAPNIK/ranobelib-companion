@@ -2,6 +2,7 @@
 
 from fastapi.testclient import TestClient
 
+from app.config import get_settings
 from app.main import app
 
 client = TestClient(app)
@@ -49,3 +50,27 @@ def test_csp_denies_framing() -> None:
 
     csp = response.headers["Content-Security-Policy"]
     assert "frame-ancestors 'none'" in csp
+
+
+def test_hsts_absent_outside_production(monkeypatch) -> None:
+    monkeypatch.delenv("ENVIRONMENT", raising=False)
+    get_settings.cache_clear()
+
+    response = client.get("/health")
+
+    assert "Strict-Transport-Security" not in response.headers
+
+    get_settings.cache_clear()
+
+
+def test_hsts_present_in_production(monkeypatch) -> None:
+    monkeypatch.setenv("ENVIRONMENT", "production")
+    monkeypatch.setenv("SESSION_SECRET_KEY", "test-secret")
+    get_settings.cache_clear()
+
+    response = client.get("/health")
+
+    assert response.headers["Strict-Transport-Security"] == "max-age=63072000; includeSubDomains"
+
+    monkeypatch.delenv("ENVIRONMENT", raising=False)
+    get_settings.cache_clear()

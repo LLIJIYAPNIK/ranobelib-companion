@@ -26,6 +26,11 @@ cover and chapter-content images are hotlinked straight from those domains (SDK/
 read-only, see CLAUDE.md "Что явно не делать" - this app never re-hosts them), the same
 two hosts already trusted by the image-download proxy's own allowlist
 (``app/api/images.py``'s ``_ALLOWED_HOSTS``).
+
+``Strict-Transport-Security`` is gated on ``Settings.is_production`` (PR 187) - sending
+it unconditionally would tell a browser to force HTTPS for this host, which permanently
+breaks a plain ``http://localhost`` dev server until the browser's HSTS cache for it
+expires.
 """
 
 from __future__ import annotations
@@ -35,6 +40,8 @@ from collections.abc import Awaitable, Callable
 from fastapi import FastAPI
 from starlette.requests import Request
 from starlette.responses import Response
+
+from app.config import get_settings
 
 _CONTENT_SECURITY_POLICY = (
     "default-src 'self'; "
@@ -46,6 +53,8 @@ _CONTENT_SECURITY_POLICY = (
     "form-action 'self'; "
     "frame-ancestors 'none'"
 )
+
+_HSTS_VALUE = "max-age=63072000; includeSubDomains"
 
 
 def install_security_headers(app: FastAPI) -> None:
@@ -60,4 +69,6 @@ def install_security_headers(app: FastAPI) -> None:
         response.headers["Referrer-Policy"] = "strict-origin-when-cross-origin"
         response.headers["X-Frame-Options"] = "DENY"
         response.headers["Content-Security-Policy"] = _CONTENT_SECURITY_POLICY
+        if get_settings().is_production:
+            response.headers["Strict-Transport-Security"] = _HSTS_VALUE
         return response
