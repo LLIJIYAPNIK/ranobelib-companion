@@ -20,12 +20,19 @@ from app.auth.passwords import (
     validate_password_strength,
     verify_password,
 )
+from app.auth.rate_limit import is_rate_limited
 from app.auth.session_middleware import REMEMBER_ME_KEY
 from app.db.connection import get_connection
 from app.db.users import User, create_user, get_user_by_email, update_user_avatar
 from app.templating import templates
 
 router = APIRouter()
+
+_RATE_LIMIT_MESSAGE = "Слишком много попыток, попробуйте позже"
+
+
+def _client_ip(request: Request) -> str:
+    return request.client.host if request.client is not None else "unknown"
 
 
 @router.get("/register")
@@ -41,6 +48,18 @@ async def register(
     password_confirm: str = Form(...),
     nickname: str = Form(default=""),
 ) -> Response:
+    if is_rate_limited(f"register:{_client_ip(request)}:{email}"):
+        return templates.TemplateResponse(
+            request,
+            "register.html",
+            {
+                "error": _RATE_LIMIT_MESSAGE,
+                "submitted_email": email,
+                "submitted_nickname": nickname,
+            },
+            status_code=429,
+        )
+
     conn = get_connection()
     error: str | None = None
     if password != password_confirm:
@@ -104,6 +123,14 @@ async def login(
     password: str = Form(...),
     remember_me: bool = Form(default=False),
 ) -> Response:
+    if is_rate_limited(f"login:{_client_ip(request)}:{email}"):
+        return templates.TemplateResponse(
+            request,
+            "login.html",
+            {"error": _RATE_LIMIT_MESSAGE, "submitted_email": email},
+            status_code=429,
+        )
+
     user = get_user_by_email(get_connection(), email)
     # Same message either way - not confirming/denying whether an email is registered.
     if user is None or not verify_password(password, user.password_hash):
