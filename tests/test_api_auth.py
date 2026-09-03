@@ -349,6 +349,59 @@ def test_login_with_remember_me_extends_the_session_lifetime(client: TestClient)
     )
 
 
+# --- PR 188: rate limiting on /login and /register --------------------------------------
+
+
+def test_login_is_rate_limited_after_repeated_wrong_passwords(client: TestClient) -> None:
+    _register(client, "alice@example.com", password="hunter2pass")
+    client.post("/logout")
+
+    for _ in range(5):
+        response = client.post(
+            "/login", data={"email": "alice@example.com", "password": "wrong-password"}
+        )
+        assert response.status_code == 400
+
+    response = client.post(
+        "/login", data={"email": "alice@example.com", "password": "wrong-password"}
+    )
+
+    assert response.status_code == 429
+    assert "Слишком много попыток" in response.text
+
+
+def test_login_succeeds_after_a_few_failed_attempts_while_under_the_limit(
+    client: TestClient,
+) -> None:
+    _register(client, "alice@example.com", password="hunter2pass")
+    client.post("/logout")
+
+    for _ in range(2):
+        client.post(
+            "/login", data={"email": "alice@example.com", "password": "wrong-password"}
+        )
+
+    response = client.post(
+        "/login", data={"email": "alice@example.com", "password": "hunter2pass"}
+    )
+
+    assert response.status_code == 200
+    assert "alice@example.com" in response.text
+
+
+def test_login_rate_limit_is_scoped_per_email(client: TestClient) -> None:
+    for _ in range(6):
+        client.post(
+            "/login", data={"email": "alice@example.com", "password": "wrong-password"}
+        )
+
+    response = client.post(
+        "/login", data={"email": "bob@example.com", "password": "wrong-password"}
+    )
+
+    assert response.status_code == 400  # not 429 - a different email isn't limited yet
+
+
 def test_logout_clears_session(client: TestClient) -> None:
     _register(client, "alice@example.com")
 
