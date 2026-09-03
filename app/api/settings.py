@@ -7,7 +7,13 @@ from fastapi.responses import HTMLResponse, RedirectResponse
 
 from app.auth.avatar import AvatarUploadError, save_avatar
 from app.auth.dependencies import get_current_user, require_current_user
-from app.auth.passwords import PasswordTooLongError, hash_password, verify_password
+from app.auth.passwords import (
+    PasswordTooLongError,
+    PasswordTooWeakError,
+    hash_password,
+    validate_password_strength,
+    verify_password,
+)
 from app.db.connection import get_connection
 from app.db.users import (
     User,
@@ -169,7 +175,10 @@ async def update_password(
         error = "Пароли не совпадают"
     else:
         try:
+            validate_password_strength(new_password, user.email)
             new_password_hash = hash_password(new_password)
+        except PasswordTooWeakError:
+            error = "Пароль слишком простой или короткий (минимум 8 символов)"
         except PasswordTooLongError:
             error = "Пароль слишком длинный"
 

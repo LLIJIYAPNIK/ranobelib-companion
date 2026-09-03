@@ -130,6 +130,31 @@ def test_update_password_rejects_a_wrong_current_password(client: TestClient) ->
     assert "alice@example.com" in login_with_old_password.text
 
 
+def test_update_password_rejects_a_weak_new_password(client: TestClient) -> None:
+    _register(client, "alice@example.com", password="hunter2pass")
+
+    response = client.post(
+        "/settings/security",
+        data={
+            "current_password": "hunter2pass",
+            "new_password": "short1",
+            "new_password_confirm": "short1",
+        },
+    )
+
+    assert response.status_code == 400
+    assert "слишком просто" in response.text
+    assert "Пароль изменён" not in response.text
+
+    # The old password still works - nothing was changed.
+    client.post("/logout")
+    login_with_old_password = client.post(
+        "/login", data={"email": "alice@example.com", "password": "hunter2pass"}
+    )
+    assert login_with_old_password.status_code == 200
+    assert "alice@example.com" in login_with_old_password.text
+
+
 def test_update_password_rejects_a_mismatched_confirmation(client: TestClient) -> None:
     _register(client, "alice@example.com", password="hunter2pass")
 

@@ -13,7 +13,13 @@ from fastapi.responses import HTMLResponse, RedirectResponse, Response
 
 from app.auth.avatar import AvatarUploadError, save_avatar
 from app.auth.dependencies import require_current_user
-from app.auth.passwords import PasswordTooLongError, hash_password, verify_password
+from app.auth.passwords import (
+    PasswordTooLongError,
+    PasswordTooWeakError,
+    hash_password,
+    validate_password_strength,
+    verify_password,
+)
 from app.auth.session_middleware import REMEMBER_ME_KEY
 from app.db.connection import get_connection
 from app.db.users import User, create_user, get_user_by_email, update_user_avatar
@@ -43,7 +49,10 @@ async def register(
         error = "Этот email уже зарегистрирован"
     else:
         try:
+            validate_password_strength(password, email)
             password_hash = hash_password(password)
+        except PasswordTooWeakError:
+            error = "Пароль слишком простой или короткий (минимум 8 символов)"
         except PasswordTooLongError:
             error = "Пароль слишком длинный"
 
