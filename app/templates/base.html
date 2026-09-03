@@ -10,15 +10,7 @@
 <body class="{% block body_class %}{% endblock %}">
   <div class="app-shell">
     <nav class="sidebar" data-role="sidebar">
-      <script>
-        // PR 108: applied synchronously during parsing, before the sidebar is first
-        // painted, so the width/flex-basis transition (app.css .sidebar) never plays on
-        // a plain page navigation - only sidebar-toggle.js's later click handler should
-        // ever animate it. Deferred scripts run too late to avoid that flash-then-expand.
-        if (localStorage.getItem("sidebarExpanded") === "1") {
-          document.currentScript.parentElement.classList.add("sidebar--expanded");
-        }
-      </script>
+      <script src="{{ url_for('static', path='js/sidebar-expand-init.js') }}"></script>
       <button
         class="sidebar__toggle"
         type="button"

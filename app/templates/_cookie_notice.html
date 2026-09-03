@@ -2,10 +2,4 @@
   <p class="cookie-notice__text">Сайт использует cookie для входа и истории просмотров.</p>
   <button class="btn btn--sm cookie-notice__dismiss" type="button" data-role="cookie-notice-dismiss">Понятно</button>
 </div>
-<script>
-  // Same synchronous-inline-before-first-paint trick as the sidebarExpanded script
-  // above, so a visitor who already dismissed the banner never sees it flash in.
-  if (localStorage.getItem("cookieNoticeDismissed") === "1") {
-    document.querySelector('[data-role="cookie-notice"]').hidden = true;
-  }
-</script>
+<script src="{{ url_for('static', path='js/cookie-notice-init.js') }}"></script>

@@ -64,7 +64,14 @@ def test_cookie_notice_is_not_hidden_by_default_server_side() -> None:
     assert '<div class="cookie-notice" data-role="cookie-notice">' in response.text
 
 
-def test_cookie_notice_inline_script_checks_local_storage_not_a_cookie() -> None:
+def test_cookie_notice_init_script_checks_local_storage_not_a_cookie() -> None:
+    # PR 189 moved this from an inline <script> to its own static file (script-src
+    # 'self', no 'unsafe-inline') - the page just references it now.
     response = client.get("/")
 
-    assert 'localStorage.getItem("cookieNoticeDismissed")' in response.text
+    assert "static/js/cookie-notice-init.js" in response.text
+
+    init_script = (
+        Path(__file__).parent.parent / "app" / "static" / "js" / "cookie-notice-init.js"
+    ).read_text(encoding="utf-8")
+    assert 'localStorage.getItem("cookieNoticeDismissed")' in init_script
