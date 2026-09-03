@@ -9,7 +9,7 @@ from fastapi.testclient import TestClient
 
 import app.jobs.store as job_store
 from app.config import get_settings
-from app.db.connection import get_connection
+from app.db.connection import connection
 from app.db.downloads import list_download_history, record_download
 from app.jobs.store import create_job, delete_result_file
 from tests.db_reset import reset_app_database
@@ -203,9 +203,10 @@ def test_show_downloads_lists_active_job_with_progress(client: TestClient) -> No
     assert "static/js/downloads-status.js" in response.text
 
 
-def test_show_downloads_lists_history(client: TestClient) -> None:
+async def test_show_downloads_lists_history(client: TestClient) -> None:
     _register(client)  # user id 1
-    record_download(get_connection(), 1, "6712--test-novel", "epub", "done", 42, None)
+    async with connection() as conn:
+        await record_download(conn, 1, "6712--test-novel", "epub", "done", 42, None)
 
     response = client.get("/downloads")
 
@@ -215,25 +216,27 @@ def test_show_downloads_lists_history(client: TestClient) -> None:
     assert "42 глав" in response.text
 
 
-def test_show_downloads_history_shows_error(client: TestClient) -> None:
+async def test_show_downloads_history_shows_error(client: TestClient) -> None:
     _register(client)  # user id 1
-    record_download(get_connection(), 1, "6712--test-novel", "epub", "error", None, "Опа")
+    async with connection() as conn:
+        await record_download(conn, 1, "6712--test-novel", "epub", "error", None, "Опа")
 
     response = client.get("/downloads")
 
     assert "Опа" in response.text
 
 
-def test_show_downloads_offers_download_link_for_a_ready_job(client: TestClient) -> None:
+async def test_show_downloads_offers_download_link_for_a_ready_job(client: TestClient) -> None:
     # PR 58: even if the visitor closed the "file ready" toast (PR 50) without clicking
     # through, the file is still on disk and this page should still offer it.
     _register(client)  # user id 1
     job = create_job("6712--test-novel", "epub", user_id=1)
     job.status = "done"
     job.result_path = Path("/tmp/whatever.epub")
-    record_download(
-        get_connection(), 1, "6712--test-novel", "epub", "done", 1, None, job_id=job.id
-    )
+    async with connection() as conn:
+        await record_download(
+            conn, 1, "6712--test-novel", "epub", "done", 1, None, job_id=job.id
+        )
 
     response = client.get("/downloads")
 
@@ -241,7 +244,7 @@ def test_show_downloads_offers_download_link_for_a_ready_job(client: TestClient)
     assert f'href="/titles/6712--test-novel/download/{job.id}/file"' in response.text
 
 
-def test_show_downloads_history_title_link_downloads_the_file_while_its_ready(
+async def test_show_downloads_history_title_link_downloads_the_file_while_its_ready(
     client: TestClient,
 ) -> None:
     # PR 186: the title-name link at the head of the row was always `/titles/{slug}`,
@@ -251,9 +254,10 @@ def test_show_downloads_history_title_link_downloads_the_file_while_its_ready(
     job = create_job("6712--test-novel", "epub", user_id=1)
     job.status = "done"
     job.result_path = Path("/tmp/whatever.epub")
-    record_download(
-        get_connection(), 1, "6712--test-novel", "epub", "done", 1, None, job_id=job.id
-    )
+    async with connection() as conn:
+        await record_download(
+            conn, 1, "6712--test-novel", "epub", "done", 1, None, job_id=job.id
+        )
 
     response = client.get("/downloads")
 
@@ -263,16 +267,17 @@ def test_show_downloads_history_title_link_downloads_the_file_while_its_ready(
     assert '>/titles/6712--test-novel<' not in response.text
 
 
-def test_show_downloads_history_title_link_falls_back_once_the_file_is_gone(
+async def test_show_downloads_history_title_link_falls_back_once_the_file_is_gone(
     client: TestClient,
 ) -> None:
     _register(client)  # user id 1
     job = create_job("6712--test-novel", "epub", user_id=1)
     job.status = "done"
     job.result_path = Path("/tmp/whatever.epub")
-    record_download(
-        get_connection(), 1, "6712--test-novel", "epub", "done", 1, None, job_id=job.id
-    )
+    async with connection() as conn:
+        await record_download(
+            conn, 1, "6712--test-novel", "epub", "done", 1, None, job_id=job.id
+        )
     delete_result_file(job)
 
     response = client.get("/downloads")
@@ -281,11 +286,12 @@ def test_show_downloads_history_title_link_falls_back_once_the_file_is_gone(
     assert 'class="downloads-history__link" href="/titles/6712--test-novel"' in response.text
 
 
-def test_show_downloads_history_title_link_for_an_error_row_goes_to_the_title_page(
+async def test_show_downloads_history_title_link_for_an_error_row_goes_to_the_title_page(
     client: TestClient,
 ) -> None:
     _register(client)  # user id 1
-    record_download(get_connection(), 1, "6712--test-novel", "epub", "error", None, "Опа")
+    async with connection() as conn:
+        await record_download(conn, 1, "6712--test-novel", "epub", "error", None, "Опа")
 
     response = client.get("/downloads")
 
@@ -293,14 +299,17 @@ def test_show_downloads_history_title_link_for_an_error_row_goes_to_the_title_pa
     assert 'class="downloads-history__link" href="/titles/6712--test-novel"' in response.text
 
 
-def test_show_downloads_omits_download_link_once_the_file_is_gone(client: TestClient) -> None:
+async def test_show_downloads_omits_download_link_once_the_file_is_gone(
+    client: TestClient,
+) -> None:
     _register(client)  # user id 1
     job = create_job("6712--test-novel", "epub", user_id=1)
     job.status = "done"
     job.result_path = Path("/tmp/whatever.epub")
-    record_download(
-        get_connection(), 1, "6712--test-novel", "epub", "done", 1, None, job_id=job.id
-    )
+    async with connection() as conn:
+        await record_download(
+            conn, 1, "6712--test-novel", "epub", "done", 1, None, job_id=job.id
+        )
     delete_result_file(job)
 
     response = client.get("/downloads")
@@ -308,13 +317,14 @@ def test_show_downloads_omits_download_link_once_the_file_is_gone(client: TestCl
     assert f"/download/{job.id}/file" not in response.text
 
 
-def test_show_downloads_omits_download_link_for_a_row_with_no_job_id(
+async def test_show_downloads_omits_download_link_for_a_row_with_no_job_id(
     client: TestClient,
 ) -> None:
     # A history row written before PR 58 (or an anonymous download - see record_download())
     # has no job_id to look up, so it must not render a broken/absent link.
     _register(client)  # user id 1
-    record_download(get_connection(), 1, "6712--test-novel", "epub", "done", 1, None)
+    async with connection() as conn:
+        await record_download(conn, 1, "6712--test-novel", "epub", "done", 1, None)
 
     response = client.get("/downloads")
 
@@ -329,15 +339,17 @@ def test_delete_history_entry_requires_login(client: TestClient) -> None:
     assert response.headers["location"] == "/login"
 
 
-def test_delete_history_entry_removes_own_entry(client: TestClient) -> None:
+async def test_delete_history_entry_removes_own_entry(client: TestClient) -> None:
     _register(client)  # user id 1
-    record_download(get_connection(), 1, "6712--test-novel", "epub", "done", 1, None)
-    entry_id = list_download_history(get_connection(), 1)[0].id
+    async with connection() as conn:
+        await record_download(conn, 1, "6712--test-novel", "epub", "done", 1, None)
+        entry_id = (await list_download_history(conn, 1))[0].id
 
     response = client.delete(f"/downloads/history/{entry_id}")
 
     assert response.status_code == 204
-    assert list_download_history(get_connection(), 1) == []
+    async with connection() as conn:
+        assert await list_download_history(conn, 1) == []
 
 
 def test_delete_history_entry_unknown_id_is_404(client: TestClient) -> None:
@@ -348,13 +360,17 @@ def test_delete_history_entry_unknown_id_is_404(client: TestClient) -> None:
     assert response.status_code == 404
 
 
-def test_delete_history_entry_cannot_remove_another_users_entry(client: TestClient) -> None:
+async def test_delete_history_entry_cannot_remove_another_users_entry(
+    client: TestClient,
+) -> None:
     _register(client, "alice@example.com")  # user id 1
     _register(client, "bob@example.com")  # user id 2, now the logged in session
-    record_download(get_connection(), 1, "6712--test-novel", "epub", "done", 1, None)
-    entry_id = list_download_history(get_connection(), 1)[0].id
+    async with connection() as conn:
+        await record_download(conn, 1, "6712--test-novel", "epub", "done", 1, None)
+        entry_id = (await list_download_history(conn, 1))[0].id
 
     response = client.delete(f"/downloads/history/{entry_id}")
 
     assert response.status_code == 404
-    assert len(list_download_history(get_connection(), 1)) == 1
+    async with connection() as conn:
+        assert len(await list_download_history(conn, 1)) == 1

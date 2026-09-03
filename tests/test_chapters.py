@@ -16,7 +16,7 @@ from ranobelib.models import Chapter, ChapterBranch, ChapterUser, Team, Volume
 
 from app.config import get_settings
 from app.db.activity import list_chapters_read_today
-from app.db.connection import get_connection
+from app.db.connection import connection
 from app.db.library import add_entry, get_entry, list_entries
 from app.gif_video import is_ffmpeg_available
 from app.main import app
@@ -430,48 +430,54 @@ def isolated_client(monkeypatch: pytest.MonkeyPatch) -> Iterator[TestClient]:
     get_settings.cache_clear()
 
 
-def test_read_chapter_records_progress_for_title_in_library(
+async def test_read_chapter_records_progress_for_title_in_library(
     logged_in_client: TestClient,
 ) -> None:
-    add_entry(get_connection(), user_id=1, slug_url="6712--test-novel")
+    async with connection() as conn:
+        await add_entry(conn, user_id=1, slug_url="6712--test-novel")
     chapter = Chapter(id=1, volume="1", number="5", content="<p>x</p>")
     with patch("app.services.client.RanobeLib", return_value=_FakeClient(chapter)):
         logged_in_client.get("/titles/6712--test-novel/chapters/1/5")
 
-    entry = get_entry(get_connection(), user_id=1, slug_url="6712--test-novel")
+    async with connection() as conn:
+        entry = await get_entry(conn, user_id=1, slug_url="6712--test-novel")
     assert entry.last_read_volume == "1"
     assert entry.last_read_number == "5"
 
 
-def test_read_chapter_adds_title_to_library_if_missing(logged_in_client: TestClient) -> None:
+async def test_read_chapter_adds_title_to_library_if_missing(
+    logged_in_client: TestClient,
+) -> None:
     chapter = Chapter(id=1, volume="1", number="5", content="<p>x</p>")
     with patch("app.services.client.RanobeLib", return_value=_FakeClient(chapter)):
         response = logged_in_client.get("/titles/6712--test-novel/chapters/1/5")
 
     assert response.status_code == 200
-    entry = get_entry(get_connection(), user_id=1, slug_url="6712--test-novel")
+    async with connection() as conn:
+        entry = await get_entry(conn, user_id=1, slug_url="6712--test-novel")
     assert entry is not None
     assert entry.last_read_volume == "1"
     assert entry.last_read_number == "5"
 
 
-def test_read_chapter_twice_does_not_duplicate_or_reset_the_library_entry(
+async def test_read_chapter_twice_does_not_duplicate_or_reset_the_library_entry(
     logged_in_client: TestClient,
 ) -> None:
     chapter_one = Chapter(id=1, volume="1", number="1", content="<p>x</p>")
     with patch("app.services.client.RanobeLib", return_value=_FakeClient(chapter_one)):
         logged_in_client.get("/titles/6712--test-novel/chapters/1/1")
-    first_added_at = get_entry(
-        get_connection(), user_id=1, slug_url="6712--test-novel"
-    ).added_at
+    async with connection() as conn:
+        first_entry = await get_entry(conn, user_id=1, slug_url="6712--test-novel")
+    first_added_at = first_entry.added_at
 
     chapter_two = Chapter(id=2, volume="1", number="2", content="<p>x</p>")
     with patch("app.services.client.RanobeLib", return_value=_FakeClient(chapter_two)):
         logged_in_client.get("/titles/6712--test-novel/chapters/1/2")
 
-    entries = [
-        e for e in list_entries(get_connection(), user_id=1) if e.slug_url == "6712--test-novel"
-    ]
+    async with connection() as conn:
+        entries = [
+            e for e in await list_entries(conn, user_id=1) if e.slug_url == "6712--test-novel"
+        ]
     assert len(entries) == 1
     assert entries[0].added_at == first_added_at
     assert entries[0].last_read_number == "2"
@@ -496,7 +502,7 @@ def test_read_chapter_omits_heartbeat_script_when_anonymous() -> None:
     assert "static/js/activity-heartbeat.js" not in response.text
 
 
-def test_read_chapter_records_activity_even_outside_the_library(
+async def test_read_chapter_records_activity_even_outside_the_library(
     logged_in_client: TestClient,
 ) -> None:
     # Deliberately not added to the library first - unlike record_progress, the activity
@@ -505,7 +511,8 @@ def test_read_chapter_records_activity_even_outside_the_library(
     with patch("app.services.client.RanobeLib", return_value=_FakeClient(chapter)):
         logged_in_client.get("/titles/6712--test-novel/chapters/1/5")
 
-    counts = list_chapters_read_today(get_connection(), user_id=1)
+    async with connection() as conn:
+        counts = await list_chapters_read_today(conn, user_id=1)
     assert [c.slug_url for c in counts] == ["6712--test-novel"]
     assert counts[0].chapters_read == 1
 

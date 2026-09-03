@@ -17,6 +17,7 @@ from typing import Annotated, Any
 
 from fastapi import APIRouter, Depends, HTTPException, Query, Request
 from fastapi.responses import HTMLResponse, JSONResponse, Response
+from psycopg import AsyncConnection
 
 from app.auth.dependencies import require_current_user
 from app.db.connection import get_connection
@@ -45,18 +46,20 @@ PAGE_SIZE = 30
 @router.get("/unread-count")
 async def get_unread_count(
     user: Annotated[User, Depends(require_current_user)],
+    conn: Annotated[AsyncConnection, Depends(get_connection)],
 ) -> JSONResponse:
-    conn = get_connection()
-    return JSONResponse({"unread_count": count_unread_notifications(conn, user.id)})
+    return JSONResponse({"unread_count": await count_unread_notifications(conn, user.id)})
 
 
 @router.get("/recent")
-async def get_recent(user: Annotated[User, Depends(require_current_user)]) -> JSONResponse:
-    conn = get_connection()
-    notifications = list_recent_notifications(conn, user.id, limit=RECENT_LIMIT)
+async def get_recent(
+    user: Annotated[User, Depends(require_current_user)],
+    conn: Annotated[AsyncConnection, Depends(get_connection)],
+) -> JSONResponse:
+    notifications = await list_recent_notifications(conn, user.id, limit=RECENT_LIMIT)
     return JSONResponse(
         {
-            "unread_count": count_unread_notifications(conn, user.id),
+            "unread_count": await count_unread_notifications(conn, user.id),
             "notifications": [_to_dict(notification) for notification in notifications],
         }
     )
@@ -66,10 +69,10 @@ async def get_recent(user: Annotated[User, Depends(require_current_user)]) -> JS
 async def show_notifications(
     request: Request,
     user: Annotated[User, Depends(require_current_user)],
+    conn: Annotated[AsyncConnection, Depends(get_connection)],
     page: Annotated[int, Query(ge=1)] = 1,
 ) -> HTMLResponse:
-    conn = get_connection()
-    notifications, has_next_page = list_notifications_page(conn, user.id, page, PAGE_SIZE)
+    notifications, has_next_page = await list_notifications_page(conn, user.id, page, PAGE_SIZE)
     return templates.TemplateResponse(
         request,
         "notifications.html",
@@ -85,13 +88,13 @@ async def show_notifications(
 async def notifications_page_fragment(
     request: Request,
     user: Annotated[User, Depends(require_current_user)],
+    conn: Annotated[AsyncConnection, Depends(get_connection)],
     page: Annotated[int, Query(ge=1)] = 1,
 ) -> Response:
     """Just the card markup, no base.html - what notifications-page.js fetches and
     appends as the visitor scrolls, same shape as app/api/library.py's own
     catalog_page_fragment."""
-    conn = get_connection()
-    notifications, has_next_page = list_notifications_page(conn, user.id, page, PAGE_SIZE)
+    notifications, has_next_page = await list_notifications_page(conn, user.id, page, PAGE_SIZE)
     response = templates.TemplateResponse(
         request,
         "_notification_cards.html",
@@ -103,22 +106,24 @@ async def notifications_page_fragment(
 
 @router.post("/{notification_id}/read")
 async def mark_read(
-    notification_id: int, user: Annotated[User, Depends(require_current_user)]
+    notification_id: int,
+    user: Annotated[User, Depends(require_current_user)],
+    conn: Annotated[AsyncConnection, Depends(get_connection)],
 ) -> JSONResponse:
-    conn = get_connection()
-    if not mark_notification_read(conn, notification_id, user.id):
+    if not await mark_notification_read(conn, notification_id, user.id):
         raise HTTPException(status_code=404, detail="Уведомление не найдено")
-    return JSONResponse({"unread_count": count_unread_notifications(conn, user.id)})
+    return JSONResponse({"unread_count": await count_unread_notifications(conn, user.id)})
 
 
 @router.delete("/{notification_id}")
 async def delete(
-    notification_id: int, user: Annotated[User, Depends(require_current_user)]
+    notification_id: int,
+    user: Annotated[User, Depends(require_current_user)],
+    conn: Annotated[AsyncConnection, Depends(get_connection)],
 ) -> JSONResponse:
-    conn = get_connection()
-    if not delete_notification(conn, notification_id, user.id):
+    if not await delete_notification(conn, notification_id, user.id):
         raise HTTPException(status_code=404, detail="Уведомление не найдено")
-    return JSONResponse({"unread_count": count_unread_notifications(conn, user.id)})
+    return JSONResponse({"unread_count": await count_unread_notifications(conn, user.id)})
 
 
 def _to_template_context(notification: Notification) -> dict[str, Any]:

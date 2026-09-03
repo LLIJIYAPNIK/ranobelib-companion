@@ -15,7 +15,7 @@ from ranobelib import TitleNotFoundError
 from ranobelib.models import Chapter, Cover, Label, Title, Volume
 
 from app.config import get_settings
-from app.db.connection import get_connection
+from app.db.connection import connection
 from app.db.library import record_progress
 from tests.db_reset import reset_app_database
 
@@ -155,7 +155,7 @@ def test_reading_a_chapter_auto_adds_title_and_the_page_reflects_it(
     assert "Убрать из библиотеки" in title_page.text
 
 
-def test_title_page_shows_reading_progress_for_library_entry(client: TestClient) -> None:
+async def test_title_page_shows_reading_progress_for_library_entry(client: TestClient) -> None:
     _register(client)
     title = _fake_title()
     volumes = [
@@ -168,9 +168,10 @@ def test_title_page_shows_reading_progress_for_library_entry(client: TestClient)
     with patch("app.services.client.RanobeLib", return_value=_FakeClient(title, volumes)):
         client.post("/library/6712--test-novel/add")
 
-    record_progress(
-        get_connection(), user_id=1, slug_url="6712--test-novel", volume="1", number="3"
-    )
+    async with connection() as conn:
+        await record_progress(
+            conn, user_id=1, slug_url="6712--test-novel", volume="1", number="3"
+        )
 
     with patch("app.services.client.RanobeLib", return_value=_FakeClient(title, volumes)):
         response = client.get("/titles/6712--test-novel")
@@ -282,7 +283,7 @@ def test_show_library_empty_state(client: TestClient) -> None:
     assert "Пока пусто" in response.text
 
 
-def test_show_library_lists_added_titles_with_progress(client: TestClient) -> None:
+async def test_show_library_lists_added_titles_with_progress(client: TestClient) -> None:
     _register(client)
     title = _fake_title()
 
@@ -291,9 +292,10 @@ def test_show_library_lists_added_titles_with_progress(client: TestClient) -> No
 
     # Progress recording itself is covered by tests/test_chapters.py - here just check
     # the library page reflects it once it's there.
-    record_progress(
-        get_connection(), user_id=1, slug_url="6712--test-novel", volume="1", number="5"
-    )
+    async with connection() as conn:
+        await record_progress(
+            conn, user_id=1, slug_url="6712--test-novel", volume="1", number="5"
+        )
 
     with patch("app.services.client.RanobeLib", return_value=_FakeClient(title)):
         response = client.get("/library")
@@ -303,7 +305,7 @@ def test_show_library_lists_added_titles_with_progress(client: TestClient) -> No
     assert "Том 1, глава 5" in response.text
 
 
-def test_show_library_renders_reading_progress_bar(client: TestClient) -> None:
+async def test_show_library_renders_reading_progress_bar(client: TestClient) -> None:
     _register(client)
     title = _fake_title()
     volumes = [
@@ -316,9 +318,10 @@ def test_show_library_renders_reading_progress_bar(client: TestClient) -> None:
     with patch("app.services.client.RanobeLib", return_value=_FakeClient(title, volumes)):
         client.post("/library/6712--test-novel/add")
 
-    record_progress(
-        get_connection(), user_id=1, slug_url="6712--test-novel", volume="1", number="2"
-    )
+    async with connection() as conn:
+        await record_progress(
+            conn, user_id=1, slug_url="6712--test-novel", volume="1", number="2"
+        )
 
     with patch("app.services.client.RanobeLib", return_value=_FakeClient(title, volumes)):
         response = client.get("/library")

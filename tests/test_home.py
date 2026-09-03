@@ -128,10 +128,10 @@ def test_home_omits_progress_when_never_read(db_client: TestClient) -> None:
     assert 'class="reading-progress"' not in response.text
 
 
-def test_home_shows_progress_bar_for_logged_in_user_with_recorded_progress(
+async def test_home_shows_progress_bar_for_logged_in_user_with_recorded_progress(
     db_client: TestClient,
 ) -> None:
-    from app.db.connection import get_connection
+    from app.db.connection import connection
     from app.db.library import record_progress
 
     _register(db_client)
@@ -147,9 +147,10 @@ def test_home_shows_progress_bar_for_logged_in_user_with_recorded_progress(
     with patch("app.services.client.RanobeLib", return_value=_FakeClient(title, volumes)):
         db_client.post("/library/6712--test-novel/add")
 
-    record_progress(
-        get_connection(), user_id=1, slug_url="6712--test-novel", volume="1", number="3"
-    )
+    async with connection() as conn:
+        await record_progress(
+            conn, user_id=1, slug_url="6712--test-novel", volume="1", number="3"
+        )
 
     with patch("app.services.client.RanobeLib", return_value=_FakeClient(title, volumes)):
         response = db_client.get("/")

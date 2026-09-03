@@ -10,7 +10,7 @@ from ranobelib.models import Cover, Label, Title
 import app.jobs.store as job_store
 from app.config import get_settings
 from app.db.activity import record_chapter_read, record_heartbeat
-from app.db.connection import get_connection
+from app.db.connection import connection
 from app.db.downloads import record_download
 from app.jobs.store import create_job
 from tests.db_reset import reset_app_database
@@ -85,10 +85,11 @@ def test_show_activity_empty_state(client: TestClient) -> None:
     assert "Сегодня ничего не скачивали" in response.text
 
 
-def test_show_activity_shows_chapters_read_today(client: TestClient) -> None:
+async def test_show_activity_shows_chapters_read_today(client: TestClient) -> None:
     _register(client)  # user id 1
-    record_chapter_read(get_connection(), 1, "6712--test-novel", "1", "5")
-    record_chapter_read(get_connection(), 1, "6712--test-novel", "1", "6")
+    async with connection() as conn:
+        await record_chapter_read(conn, 1, "6712--test-novel", "1", "5")
+        await record_chapter_read(conn, 1, "6712--test-novel", "1", "6")
 
     with patch("app.services.client.RanobeLib", return_value=_FakeClient(_fake_title())):
         response = client.get("/activity")
@@ -98,9 +99,10 @@ def test_show_activity_shows_chapters_read_today(client: TestClient) -> None:
     assert "2 глав сегодня" in response.text
 
 
-def test_show_activity_prefers_russian_name(client: TestClient) -> None:
+async def test_show_activity_prefers_russian_name(client: TestClient) -> None:
     _register(client)  # user id 1
-    record_chapter_read(get_connection(), 1, "6712--test-novel", "1", "5")
+    async with connection() as conn:
+        await record_chapter_read(conn, 1, "6712--test-novel", "1", "5")
     title = Title(
         id=6712,
         name="Test Novel",
@@ -120,9 +122,10 @@ def test_show_activity_prefers_russian_name(client: TestClient) -> None:
     assert "Test Novel" not in response.text
 
 
-def test_show_activity_shows_active_time(client: TestClient) -> None:
+async def test_show_activity_shows_active_time(client: TestClient) -> None:
     _register(client)  # user id 1
-    record_heartbeat(get_connection(), 1, "6712--test-novel", 90 * 60)
+    async with connection() as conn:
+        await record_heartbeat(conn, 1, "6712--test-novel", 90 * 60)
 
     response = client.get("/activity")
 
@@ -144,9 +147,10 @@ def test_show_activity_shows_active_job(client: TestClient) -> None:
     assert "static/js/downloads-status.js" in response.text
 
 
-def test_show_activity_shows_downloads_today(client: TestClient) -> None:
+async def test_show_activity_shows_downloads_today(client: TestClient) -> None:
     _register(client)  # user id 1
-    record_download(get_connection(), 1, "6712--test-novel", "epub", "done", 42, None)
+    async with connection() as conn:
+        await record_download(conn, 1, "6712--test-novel", "epub", "done", 42, None)
 
     response = client.get("/activity")
 

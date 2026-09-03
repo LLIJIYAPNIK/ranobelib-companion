@@ -7,7 +7,7 @@ from fastapi.responses import HTMLResponse, RedirectResponse, Response
 from ranobelib import RanobeLibError
 
 from app.auth.dependencies import get_current_user
-from app.db.connection import get_connection
+from app.db.connection import connection
 from app.db.library import get_entry
 from app.db.users import User
 from app.reading_progress import reading_progress_percent
@@ -58,7 +58,11 @@ async def show_title(
     cover_url = title.cover.default or title.cover.md or title.cover.thumbnail
     library_entry = None
     if current_user is not None:
-        library_entry = get_entry(get_connection(), current_user.id, title.slug_url)
+        # conn is checked out here, not taken as a route-level Depends(get_connection)
+        # parameter, so an anonymous visitor never checks one out of the pool at all (see
+        # get_current_user()'s own docstring for the same reasoning).
+        async with connection() as conn:
+            library_entry = await get_entry(conn, current_user.id, title.slug_url)
     progress_percent = (
         reading_progress_percent(
             volumes, library_entry.last_read_volume, library_entry.last_read_number

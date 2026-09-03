@@ -14,7 +14,7 @@ from ranobelib.models import Chapter, ChapterBranch, ChapterUser, Team, Volume
 
 import app.jobs.store as job_store
 from app.config import get_settings
-from app.db.connection import get_connection
+from app.db.connection import connection
 from app.db.downloads import list_download_history
 from app.jobs.store import create_job, get_job
 from app.main import app
@@ -485,7 +485,7 @@ def test_download_status_anonymous_job_accessible_to_anyone(
     assert response.status_code == 200
 
 
-def test_start_download_records_history_for_logged_in_user(
+async def test_start_download_records_history_for_logged_in_user(
     logged_in_client: TestClient,
 ) -> None:
     volumes = [Volume(number="1", chapters=[Chapter(id=1, volume="1", number="1")])]
@@ -498,7 +498,8 @@ def test_start_download_records_history_for_logged_in_user(
 
     os.remove(get_job(job_id).result_path)
 
-    entries = list_download_history(get_connection(), user_id=1)
+    async with connection() as conn:
+        entries = await list_download_history(conn, user_id=1)
     assert len(entries) == 1
     assert entries[0].slug_url == "6712--test-novel"
     assert entries[0].fmt == "epub"

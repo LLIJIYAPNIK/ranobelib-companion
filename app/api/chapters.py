@@ -4,7 +4,7 @@ from typing import Annotated
 
 from fastapi import APIRouter, Depends, File, Form, HTTPException, Query, Request, UploadFile
 from fastapi.responses import HTMLResponse, JSONResponse
-from psycopg import Connection
+from psycopg import AsyncConnection
 from ranobelib.models import Volume
 
 from app.auth.dependencies import get_current_user, require_current_user
@@ -29,7 +29,7 @@ from app.db.comments import (
     edit_comment,
     list_comments_for_paragraph,
 )
-from app.db.connection import get_connection
+from app.db.connection import connection, get_connection
 from app.db.library import add_entry, record_progress
 from app.db.notifications import notify_comment_reaction
 from app.db.reactions import (
@@ -64,12 +64,16 @@ async def read_chapter(
         # PR 35: opening any chapter adds the title to the library if it isn't there
         # yet, same as clicking "Добавить в библиотеку" - add_entry() is idempotent
         # (INSERT OR IGNORE), so repeat opens don't duplicate the entry or touch its
-        # added_at (see app/db/library.py).
-        add_entry(get_connection(), current_user.id, slug_url)
-        record_progress(get_connection(), current_user.id, slug_url, str(volume), number)
-        # Unlike record_progress, this always writes - it's an activity feed entry, not a
-        # library-membership check (see app/db/activity.py).
-        record_chapter_read(get_connection(), current_user.id, slug_url, str(volume), number)
+        # added_at (see app/db/library.py). conn is checked out here, not taken as a
+        # Depends(get_connection) parameter, so an anonymous request - this whole branch
+        # - never checks a connection out of the pool at all (see get_current_user()'s
+        # own docstring for the same reasoning).
+        async with connection() as conn:
+            await add_entry(conn, current_user.id, slug_url)
+            await record_progress(conn, current_user.id, slug_url, str(volume), number)
+            # Unlike record_progress, this always writes - it's an activity feed entry,
+            # not a library-membership check (see app/db/activity.py).
+            await record_chapter_read(conn, current_user.id, slug_url, str(volume), number)
     prev_url, next_url = _adjacent_chapter_urls(slug_url, volumes, str(volume), number)
     return templates.TemplateResponse(
         request,
@@ -91,6 +95,7 @@ async def get_reactions(
     volume: int,
     number: str,
     current_user: Annotated[User | None, Depends(get_current_user)],
+    conn: Annotated[AsyncConnection, Depends(get_connection)],
     branch_id: str = Query(default=""),
 ) -> JSONResponse:
     """Aggregated reaction counts for every paragraph in this chapter, plus - for a
@@ -98,10 +103,9 @@ async def get_reactions(
     the picker in paragraph-menu.js can highlight it. Public (no login required) the same
     way the chapter's own text is: reading who reacted what needs no account, only adding
     a reaction does (see post_reaction below)."""
-    conn = get_connection()
-    counts = count_reactions(conn, slug_url, str(volume), number, branch_id)
+    counts = await count_reactions(conn, slug_url, str(volume), number, branch_id)
     mine = (
-        user_reactions(conn, current_user.id, slug_url, str(volume), number, branch_id)
+        await user_reactions(conn, current_user.id, slug_url, str(volume), number, branch_id)
         if current_user is not None
         else {}
     )
@@ -119,6 +123,7 @@ async def post_reaction(
     volume: int,
     number: str,
     user: Annotated[User, Depends(require_current_user)],
+    conn: Annotated[AsyncConnection, Depends(get_connection)],
     paragraph_index: Annotated[int, Form()],
     emoji: Annotated[str, Form()],
     branch_id: Annotated[str, Form()] = "",
@@ -128,11 +133,10 @@ async def post_reaction(
     rather than the optional get_current_user."""
     if emoji not in ALLOWED_EMOJI:
         raise HTTPException(status_code=400, detail="Недопустимая реакция")
-    conn = get_connection()
-    mine = toggle_reaction(
+    mine = await toggle_reaction(
         conn, user.id, slug_url, str(volume), number, branch_id, paragraph_index, emoji
     )
-    counts = count_reactions_for_paragraph(
+    counts = await count_reactions_for_paragraph(
         conn, slug_url, str(volume), number, branch_id, paragraph_index
     )
     return JSONResponse({"paragraph_index": paragraph_index, "counts": counts, "mine": mine})
@@ -140,12 +144,16 @@ async def post_reaction(
 
 @router.get("/{volume}/{number}/comments/counts")
 async def get_comment_counts(
-    slug_url: str, volume: int, number: str, branch_id: str = Query(default="")
+    slug_url: str,
+    volume: int,
+    number: str,
+    conn: Annotated[AsyncConnection, Depends(get_connection)],
+    branch_id: str = Query(default=""),
 ) -> JSONResponse:
     """Aggregated comment counts (replies included) for every paragraph in this chapter,
     one query for the whole page - what renders the "N комментариев ▾" toggle under a
     paragraph before the visitor has expanded anything. Public, same as get_reactions."""
-    counts = count_comments(get_connection(), slug_url, str(volume), number, branch_id)
+    counts = await count_comments(conn, slug_url, str(volume), number, branch_id)
     return JSONResponse({"counts": {str(index): counts[index] for index in counts}})
 
 
@@ -155,15 +163,15 @@ async def get_comments(
     volume: int,
     number: str,
     current_user: Annotated[User | None, Depends(get_current_user)],
+    conn: Annotated[AsyncConnection, Depends(get_connection)],
     paragraph_index: int = Query(...),
     branch_id: str = Query(default=""),
 ) -> JSONResponse:
     """The full comment tree for one paragraph - fetched lazily, only once the visitor
     actually clicks that paragraph's "▾" (paragraph-menu.js), not bundled into
     get_comment_counts above."""
-    conn = get_connection()
     return JSONResponse(
-        _comments_response(
+        await _comments_response(
             conn, slug_url, str(volume), number, branch_id, paragraph_index, current_user
         )
     )
@@ -175,6 +183,7 @@ async def post_comment(
     volume: int,
     number: str,
     user: Annotated[User, Depends(require_current_user)],
+    conn: Annotated[AsyncConnection, Depends(get_connection)],
     paragraph_index: Annotated[int, Form()],
     body: Annotated[str, Form()] = "",
     branch_id: Annotated[str, Form()] = "",
@@ -200,9 +209,8 @@ async def post_comment(
         except CommentAttachmentError as exc:
             raise HTTPException(status_code=400, detail=str(exc)) from exc
 
-    conn = get_connection()
     try:
-        create_comment(
+        await create_comment(
             conn,
             user.id,
             slug_url,
@@ -218,7 +226,9 @@ async def post_comment(
     except ValueError as exc:
         raise HTTPException(status_code=400, detail=str(exc)) from exc
     return JSONResponse(
-        _comments_response(conn, slug_url, str(volume), number, branch_id, paragraph_index, user)
+        await _comments_response(
+            conn, slug_url, str(volume), number, branch_id, paragraph_index, user
+        )
     )
 
 
@@ -229,6 +239,7 @@ async def patch_comment(
     number: str,
     comment_id: int,
     user: Annotated[User, Depends(require_current_user)],
+    conn: Annotated[AsyncConnection, Depends(get_connection)],
     body: Annotated[str, Form()] = "",
 ) -> JSONResponse:
     """Overwrites a comment's own body - "Изменить" on a comment's own
@@ -238,14 +249,13 @@ async def patch_comment(
     notification mark-read/delete). slug_url/volume/number in the URL are kept only for
     symmetry with this router's other comment endpoints - the paragraph to re-render is
     looked up from the comment's own stored key below, not trusted from the client."""
-    conn = get_connection()
     try:
-        updated = edit_comment(conn, comment_id, user.id, body)
+        updated = await edit_comment(conn, comment_id, user.id, body)
     except ValueError as exc:
         raise HTTPException(status_code=400, detail=str(exc)) from exc
     if not updated:
         raise HTTPException(status_code=404, detail="Комментарий не найден")
-    return JSONResponse(_comment_paragraph_response(conn, comment_id, user))
+    return JSONResponse(await _comment_paragraph_response(conn, comment_id, user))
 
 
 @router.delete("/{volume}/{number}/comments/{comment_id}")
@@ -255,13 +265,13 @@ async def delete_comment_route(
     number: str,
     comment_id: int,
     user: Annotated[User, Depends(require_current_user)],
+    conn: Annotated[AsyncConnection, Depends(get_connection)],
 ) -> JSONResponse:
     """Soft-deletes a comment - "Удалить" on a comment's own actions, same ownership/404
     shape as patch_comment above."""
-    conn = get_connection()
-    if not delete_comment(conn, comment_id, user.id):
+    if not await delete_comment(conn, comment_id, user.id):
         raise HTTPException(status_code=404, detail="Комментарий не найден")
-    return JSONResponse(_comment_paragraph_response(conn, comment_id, user))
+    return JSONResponse(await _comment_paragraph_response(conn, comment_id, user))
 
 
 @router.post("/{volume}/{number}/comments/{comment_id}/reactions")
@@ -271,6 +281,7 @@ async def post_comment_reaction(
     number: str,
     comment_id: int,
     user: Annotated[User, Depends(require_current_user)],
+    conn: Annotated[AsyncConnection, Depends(get_connection)],
     value: Annotated[int, Form()],
 ) -> JSONResponse:
     """Toggles the logged-in visitor's like/dislike on one comment - PR 155, the same
@@ -286,19 +297,18 @@ async def post_comment_reaction(
     yourself" and dedupe-while-unread cases."""
     if value not in (1, -1):
         raise HTTPException(status_code=400, detail="Недопустимое значение реакции")
-    conn = get_connection()
     try:
-        mine = toggle_comment_reaction(conn, user.id, comment_id, value)
+        mine = await toggle_comment_reaction(conn, user.id, comment_id, value)
     except ValueError as exc:
         raise HTTPException(status_code=404, detail=str(exc)) from exc
     if mine is not None:
-        notify_comment_reaction(conn, comment_id, user.id)
-    counts = count_reactions_for_comment(conn, comment_id)
+        await notify_comment_reaction(conn, comment_id, user.id)
+    counts = await count_reactions_for_comment(conn, comment_id)
     return JSONResponse({"comment_id": comment_id, "counts": counts, "mine": mine})
 
 
-def _comments_response(
-    conn: Connection,
+async def _comments_response(
+    conn: AsyncConnection,
     slug_url: str,
     volume: str,
     number: str,
@@ -306,15 +316,17 @@ def _comments_response(
     paragraph_index: int,
     current_user: User | None = None,
 ) -> dict:
-    comments = list_comments_for_paragraph(
+    comments = await list_comments_for_paragraph(
         conn, slug_url, volume, number, branch_id, paragraph_index
     )
-    count = count_comments_for_paragraph(conn, slug_url, volume, number, branch_id, paragraph_index)
-    reaction_counts = count_comment_reactions_for_paragraph(
+    count = await count_comments_for_paragraph(
+        conn, slug_url, volume, number, branch_id, paragraph_index
+    )
+    reaction_counts = await count_comment_reactions_for_paragraph(
         conn, slug_url, volume, number, branch_id, paragraph_index
     )
     my_reactions = (
-        user_comment_reactions_for_paragraph(
+        await user_comment_reactions_for_paragraph(
             conn, current_user.id, slug_url, volume, number, branch_id, paragraph_index
         )
         if current_user is not None
@@ -329,19 +341,20 @@ def _comments_response(
     }
 
 
-def _comment_paragraph_response(
-    conn: Connection, comment_id: int, current_user: User
+async def _comment_paragraph_response(
+    conn: AsyncConnection, comment_id: int, current_user: User
 ) -> dict:
     """Rebuilds the same shape _comments_response returns, for the one paragraph a just-
     edited/deleted comment belongs to - looked up from the comment's own stored key rather
     than trusting slug_url/volume/number/branch_id from the request, so a mismatched path
     can never be used to fetch another paragraph's thread."""
-    row = conn.execute(
+    cursor = await conn.execute(
         "SELECT slug_url, volume, number, branch_id, paragraph_index "
         "FROM comments WHERE id = %s",
         (comment_id,),
-    ).fetchone()
-    return _comments_response(
+    )
+    row = await cursor.fetchone()
+    return await _comments_response(
         conn,
         row["slug_url"],
         row["volume"],

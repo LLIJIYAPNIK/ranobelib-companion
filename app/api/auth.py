@@ -10,6 +10,7 @@ from typing import Annotated
 
 from fastapi import APIRouter, Depends, File, Form, Request, UploadFile
 from fastapi.responses import HTMLResponse, RedirectResponse, Response
+from psycopg import AsyncConnection
 
 from app.auth.avatar import AvatarUploadError, save_avatar
 from app.auth.dependencies import require_current_user
@@ -43,6 +44,7 @@ async def show_register(request: Request) -> HTMLResponse:
 @router.post("/register", response_model=None)
 async def register(
     request: Request,
+    conn: Annotated[AsyncConnection, Depends(get_connection)],
     email: str = Form(...),
     password: str = Form(...),
     password_confirm: str = Form(...),
@@ -60,11 +62,10 @@ async def register(
             status_code=429,
         )
 
-    conn = get_connection()
     error: str | None = None
     if password != password_confirm:
         error = "Пароли не совпадают"
-    elif get_user_by_email(conn, email) is not None:
+    elif await get_user_by_email(conn, email) is not None:
         error = "Этот email уже зарегистрирован"
     else:
         try:
@@ -83,11 +84,14 @@ async def register(
             status_code=400,
         )
 
-    user = create_user(conn, email, password_hash, nickname.strip() or None)
+    user = await create_user(conn, email, password_hash, nickname.strip() or None)
     request.session["user_id"] = user.id
-    # PR 106: one more screen before home, offering an avatar upload - the session cookie
-    # above already makes `current_user` (see app/templating.py's context processor) resolve
-    # for this same response, so the sidebar reflects the new account immediately.
+    # PR 106: one more screen before home, offering an avatar upload. `current_user` (see
+    # app/templating.py's context processor) is resolved once up front by an app-level
+    # dependency (app/main.py), before this route body - and therefore this session write
+    # - ever runs, so it has to be refreshed explicitly here too for the sidebar to reflect
+    # the new account immediately rather than on the next request.
+    request.state.current_user = user
     return templates.TemplateResponse(request, "register_avatar.html", {})
 
 
@@ -95,6 +99,7 @@ async def register(
 async def register_avatar(
     request: Request,
     user: Annotated[User, Depends(require_current_user)],
+    conn: Annotated[AsyncConnection, Depends(get_connection)],
     avatar: Annotated[UploadFile, File(...)],
 ) -> Response:
     """Same save_avatar/update_user_avatar pair as /settings/account/avatar (PR 96) - just
@@ -107,7 +112,7 @@ async def register_avatar(
             request, "register_avatar.html", {"avatar_error": str(exc)}, status_code=400
         )
 
-    update_user_avatar(get_connection(), user.id, avatar_path)
+    await update_user_avatar(conn, user.id, avatar_path)
     return RedirectResponse(url="/", status_code=303)
 
 
@@ -119,6 +124,7 @@ async def show_login(request: Request) -> HTMLResponse:
 @router.post("/login", response_model=None)
 async def login(
     request: Request,
+    conn: Annotated[AsyncConnection, Depends(get_connection)],
     email: str = Form(...),
     password: str = Form(...),
     remember_me: bool = Form(default=False),
@@ -131,7 +137,7 @@ async def login(
             status_code=429,
         )
 
-    user = get_user_by_email(get_connection(), email)
+    user = await get_user_by_email(conn, email)
     # Same message either way - not confirming/denying whether an email is registered.
     if user is None or not verify_password(password, user.password_hash):
         return templates.TemplateResponse(

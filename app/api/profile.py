@@ -20,13 +20,14 @@ from typing import Annotated
 
 from fastapi import APIRouter, Depends, HTTPException, Request
 from fastapi.responses import HTMLResponse
+from psycopg import AsyncConnection
 from ranobelib import RanobeLibError
 
 from app.api.library import library_items_for_user
 from app.auth.dependencies import get_current_user
 from app.db.activity import daily_active_seconds, daily_reading_activity, daily_titles_read
 from app.db.comments import count_comments_by_user
-from app.db.connection import get_connection
+from app.db.connection import connection, get_connection
 from app.db.users import User, get_user_by_id
 from app.services.client import open_client
 from app.templating import templates
@@ -58,13 +59,18 @@ class ReadingCalendar:
 
 @router.get("/profile")
 async def own_profile_page(
-    request: Request, user: Annotated[User | None, Depends(get_current_user)]
+    request: Request,
+    user: Annotated[User | None, Depends(get_current_user)],
 ) -> HTMLResponse:
     """Same locked-screen gate as /library, /downloads, /activity and /settings/*
-    (PR 22/90/91) - there's nothing to redirect an anonymous visitor's *own* profile to."""
+    (PR 22/90/91) - there's nothing to redirect an anonymous visitor's *own* profile to.
+    conn is checked out below, not taken as a route-level Depends(get_connection)
+    parameter, so an anonymous visitor - the branch right below - never checks one out of
+    the pool at all (see get_current_user()'s own docstring for the same reasoning)."""
     if user is None:
         return templates.TemplateResponse(request, "profile.html", {"profile_user": None})
-    return await _render_profile(request, profile_user=user, is_own_profile=True)
+    async with connection() as conn:
+        return await _render_profile(request, profile_user=user, is_own_profile=True, conn=conn)
 
 
 @router.get("/profile/{user_id}")
@@ -72,18 +78,21 @@ async def public_profile_page(
     request: Request,
     user_id: int,
     viewer: Annotated[User | None, Depends(get_current_user)],
+    conn: Annotated[AsyncConnection, Depends(get_connection)],
 ) -> HTMLResponse:
-    profile_user = get_user_by_id(get_connection(), user_id)
+    profile_user = await get_user_by_id(conn, user_id)
     if profile_user is None:
         raise HTTPException(status_code=404, detail="Пользователь не найден")
     is_own_profile = viewer is not None and viewer.id == profile_user.id
-    return await _render_profile(request, profile_user=profile_user, is_own_profile=is_own_profile)
+    return await _render_profile(
+        request, profile_user=profile_user, is_own_profile=is_own_profile, conn=conn
+    )
 
 
 async def _render_profile(
-    request: Request, *, profile_user: User, is_own_profile: bool
+    request: Request, *, profile_user: User, is_own_profile: bool, conn: AsyncConnection
 ) -> HTMLResponse:
-    items = await library_items_for_user(profile_user)
+    items = await library_items_for_user(profile_user, conn)
     # Most recently read first (see library_items_for_user/list_entries's own ordering) -
     # but the top entry might just be the most recently *added*, never actually opened,
     # so "Читает сейчас" only shows up once that entry genuinely has a read position.
@@ -111,8 +120,8 @@ async def _render_profile(
             # PR 135/136: unlike currently_reading/favorite_item/library_items above, not
             # gated by any show_* privacy flag - there isn't one for either, same as the
             # avatar/nickname/bio they sit alongside.
-            "comment_count": count_comments_by_user(get_connection(), profile_user.id),
-            "reading_calendar": await _build_reading_calendar(profile_user.id),
+            "comment_count": await count_comments_by_user(conn, profile_user.id),
+            "reading_calendar": await _build_reading_calendar(profile_user.id, conn),
             "currently_reading": currently_reading,
             "favorite_item": favorite_item,
             "library_items": items,
@@ -130,7 +139,7 @@ def _format_date(iso_timestamp: str) -> str:
 _MAX_TITLES_IN_LABEL = 3
 
 
-async def _build_reading_calendar(user_id: int) -> ReadingCalendar:
+async def _build_reading_calendar(user_id: int, conn: AsyncConnection) -> ReadingCalendar:
     """Every day in the trailing _CALENDAR_WEEKS weeks, oldest first, padded back to the
     most recent Sunday on/before the window's own start so the flat list can be dropped
     straight into a `grid-auto-flow: column; grid-template-rows: repeat(7, ...)` grid
@@ -141,10 +150,9 @@ async def _build_reading_calendar(user_id: int) -> ReadingCalendar:
     queried for) gets level 0, same as a real day with zero chapters read - there's no
     distinct "no data" state, an empty calendar for a user with no reading history at all
     just means every cell is level 0, not an empty/missing grid."""
-    conn = get_connection()
-    counts = daily_reading_activity(conn, user_id, weeks=_CALENDAR_WEEKS)
-    active_seconds = daily_active_seconds(conn, user_id, weeks=_CALENDAR_WEEKS)
-    titles_by_day = daily_titles_read(conn, user_id, weeks=_CALENDAR_WEEKS)
+    counts = await daily_reading_activity(conn, user_id, weeks=_CALENDAR_WEEKS)
+    active_seconds = await daily_active_seconds(conn, user_id, weeks=_CALENDAR_WEEKS)
+    titles_by_day = await daily_titles_read(conn, user_id, weeks=_CALENDAR_WEEKS)
     # One lookup per unique title across the whole window, not per day it was read on -
     # a title read on 20 different days over the year still only needs its name fetched
     # once, reused for every one of that title's cells below.

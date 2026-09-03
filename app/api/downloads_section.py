@@ -6,11 +6,12 @@ from typing import Annotated, Any
 
 from fastapi import APIRouter, Depends, HTTPException, Request
 from fastapi.responses import HTMLResponse, JSONResponse, Response
+from psycopg import AsyncConnection
 
 from app.auth.dependencies import get_current_user, require_current_user
 from app.config import get_settings
-from app.db.connection import get_connection
-from app.db.downloads import delete_entry, list_download_history
+from app.db.connection import connection, get_connection
+from app.db.downloads import DownloadHistoryEntry, delete_entry, list_download_history
 from app.db.users import User
 from app.jobs.eta import estimate_remaining_seconds
 from app.jobs.models import DownloadJob
@@ -27,25 +28,30 @@ router = APIRouter(prefix="/downloads")
 
 @router.get("")
 async def show_downloads(
-    request: Request, user: Annotated[User | None, Depends(get_current_user)]
+    request: Request,
+    user: Annotated[User | None, Depends(get_current_user)],
 ) -> HTMLResponse:
     """Viewing the page itself doesn't require an account - same locked-screen gate as
     /library (PR 22): an anonymous visitor just can't have any downloads of their own, so
     that's the one thing the page won't show them (downloads.html prompts them to log in/
     register instead of the lists). Starting/tracking an actual download still requires
     login wherever it spends ranobelib.me API quota - see require_current_user below and
-    on POST /titles/{slug_url}/download."""
-    active_jobs = list_active_jobs_for_user(user.id) if user is not None else []
-    history = list_download_history(get_connection(), user.id) if user is not None else []
-    ready_files = (
-        {
+    on POST /titles/{slug_url}/download. conn is checked out below, not taken as a
+    route-level Depends(get_connection) parameter, so an anonymous visitor never checks
+    one out of the pool at all (see get_current_user()'s own docstring for the same
+    reasoning)."""
+    active_jobs = []
+    history: list[DownloadHistoryEntry] = []
+    ready_files: dict[int, str] = {}
+    if user is not None:
+        active_jobs = list_active_jobs_for_user(user.id)
+        async with connection() as conn:
+            history = await list_download_history(conn, user.id)
+        ready_files = {
             entry.id: url
             for entry in history
             if (url := ready_file_url(entry.job_id, user.id)) is not None
         }
-        if user is not None
-        else {}
-    )
     return templates.TemplateResponse(
         request,
         "downloads.html",
@@ -82,8 +88,9 @@ async def list_downloads_ready(
 async def delete_download_history_entry(
     entry_id: int,
     user: Annotated[User, Depends(require_current_user)],
+    conn: Annotated[AsyncConnection, Depends(get_connection)],
 ) -> Response:
-    if not delete_entry(get_connection(), entry_id, user.id):
+    if not await delete_entry(conn, entry_id, user.id):
         raise HTTPException(status_code=404, detail="Запись не найдена")
     return Response(status_code=204)
 
