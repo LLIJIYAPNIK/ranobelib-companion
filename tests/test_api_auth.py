@@ -163,6 +163,24 @@ def test_register_duplicate_email_shows_form_error(client: TestClient) -> None:
     assert "уже зарегистрирован" in response.text
 
 
+def test_register_duplicate_nickname_shows_form_error(client: TestClient) -> None:
+    _register(client, "alice@example.com", nickname="Nick")
+
+    response = _register(client, "bob@example.com", nickname="Nick")
+
+    assert response.status_code == 400
+    assert "никнейм уже занят" in response.text
+
+
+def test_register_duplicate_nickname_is_case_insensitive(client: TestClient) -> None:
+    _register(client, "alice@example.com", nickname="Nick")
+
+    response = _register(client, "bob@example.com", nickname="nick")
+
+    assert response.status_code == 400
+    assert "никнейм уже занят" in response.text
+
+
 def test_register_password_mismatch_shows_form_error(client: TestClient) -> None:
     response = client.post(
         "/register",
@@ -242,9 +260,7 @@ def test_login_wrong_password_shows_form_error(client: TestClient) -> None:
 
 
 def test_login_unknown_email_shows_same_form_error(client: TestClient) -> None:
-    response = client.post(
-        "/login", data={"email": "nobody@example.com", "password": "whatever"}
-    )
+    response = client.post("/login", data={"email": "nobody@example.com", "password": "whatever"})
 
     assert response.status_code == 400
     assert "Неверный email или пароль" in response.text
@@ -302,9 +318,7 @@ def test_login_correct_credentials_establishes_session(client: TestClient) -> No
     _register(client, "alice@example.com", password="hunter2pass")
     client.post("/logout")
 
-    response = client.post(
-        "/login", data={"email": "alice@example.com", "password": "hunter2pass"}
-    )
+    response = client.post("/login", data={"email": "alice@example.com", "password": "hunter2pass"})
 
     assert response.status_code == 200
     assert response.history[0].status_code == 303
@@ -342,9 +356,7 @@ def test_login_with_remember_me_extends_the_session_lifetime(client: TestClient)
     )
 
     assert response.status_code == 303
-    assert (
-        f"Max-Age={get_settings().session_remember_max_age}" in response.headers["set-cookie"]
-    )
+    assert f"Max-Age={get_settings().session_remember_max_age}" in response.headers["set-cookie"]
 
 
 # --- PR 188: rate limiting on /login and /register --------------------------------------
@@ -375,13 +387,9 @@ def test_login_succeeds_after_a_few_failed_attempts_while_under_the_limit(
     client.post("/logout")
 
     for _ in range(2):
-        client.post(
-            "/login", data={"email": "alice@example.com", "password": "wrong-password"}
-        )
+        client.post("/login", data={"email": "alice@example.com", "password": "wrong-password"})
 
-    response = client.post(
-        "/login", data={"email": "alice@example.com", "password": "hunter2pass"}
-    )
+    response = client.post("/login", data={"email": "alice@example.com", "password": "hunter2pass"})
 
     assert response.status_code == 200
     assert "alice@example.com" in response.text
@@ -389,9 +397,7 @@ def test_login_succeeds_after_a_few_failed_attempts_while_under_the_limit(
 
 def test_login_rate_limit_is_scoped_per_email(client: TestClient) -> None:
     for _ in range(6):
-        client.post(
-            "/login", data={"email": "alice@example.com", "password": "wrong-password"}
-        )
+        client.post("/login", data={"email": "alice@example.com", "password": "wrong-password"})
 
     response = client.post(
         "/login", data={"email": "bob@example.com", "password": "wrong-password"}

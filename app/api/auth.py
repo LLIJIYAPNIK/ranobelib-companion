@@ -8,6 +8,7 @@ from __future__ import annotations
 
 from typing import Annotated
 
+import psycopg
 from fastapi import APIRouter, Depends, File, Form, Request, UploadFile
 from fastapi.responses import HTMLResponse, RedirectResponse, Response
 from psycopg import AsyncConnection
@@ -24,7 +25,13 @@ from app.auth.passwords import (
 from app.auth.rate_limit import is_rate_limited
 from app.auth.session_middleware import REMEMBER_ME_KEY
 from app.db.connection import get_connection
-from app.db.users import User, create_user, get_user_by_email, update_user_avatar
+from app.db.users import (
+    User,
+    create_user,
+    get_user_by_email,
+    get_user_by_nickname,
+    update_user_avatar,
+)
 from app.templating import templates
 
 router = APIRouter()
@@ -62,11 +69,17 @@ async def register(
             status_code=429,
         )
 
+    nickname_clean = nickname.strip() or None
+
     error: str | None = None
     if password != password_confirm:
         error = "Пароли не совпадают"
     elif await get_user_by_email(conn, email) is not None:
         error = "Этот email уже зарегистрирован"
+    elif (
+        nickname_clean is not None and await get_user_by_nickname(conn, nickname_clean) is not None
+    ):
+        error = "Этот никнейм уже занят"
     else:
         try:
             validate_password_strength(password, email)
@@ -84,7 +97,24 @@ async def register(
             status_code=400,
         )
 
-    user = await create_user(conn, email, password_hash, nickname.strip() or None)
+    try:
+        user = await create_user(conn, email, password_hash, nickname_clean)
+    except psycopg.errors.UniqueViolation as exc:
+        # Race-safe backstop behind the pre-check above (see migrations/
+        # 0017_users_nickname_unique.sql and create_user()'s own docstring) - two
+        # registrations for the same nickname landing concurrently.
+        if exc.diag.constraint_name == "users_nickname_lower_unique":
+            return templates.TemplateResponse(
+                request,
+                "register.html",
+                {
+                    "error": "Этот никнейм уже занят",
+                    "submitted_email": email,
+                    "submitted_nickname": nickname,
+                },
+                status_code=400,
+            )
+        raise
     request.session["user_id"] = user.id
     # PR 106: one more screen before home, offering an avatar upload. `current_user` (see
     # app/templating.py's context processor) is resolved once up front by an app-level
