@@ -1,8 +1,12 @@
+import asyncio
+
 import psycopg
 import pytest
+from psycopg.rows import dict_row
 
 from app.db.migrate import run_migrations
 from app.db.users import (
+    User,
     create_user,
     get_user_by_email,
     get_user_by_id,
@@ -12,7 +16,7 @@ from app.db.users import (
     update_user_account,
     update_user_avatar,
 )
-from tests.db_reset import fresh_connection
+from tests.db_reset import TEST_DATABASE_URL, fresh_connection
 
 
 @pytest.fixture
@@ -95,6 +99,32 @@ async def test_create_user_duplicate_nickname_raises(conn: psycopg.AsyncConnecti
 
     with pytest.raises(psycopg.errors.UniqueViolation):
         await create_user(conn, "bob@example.com", "hash2", "Nick")
+
+
+async def test_create_user_nickname_race_exactly_one_succeeds(
+    conn: psycopg.AsyncConnection,
+) -> None:
+    # Real concurrency (two separate connections, not two sequential calls on one) - the
+    # unique index must be the actual source of truth, not just the pre-check both
+    # registration routes run before calling create_user(). `conn` (already migrated by
+    # the fixture) is one of the two; a second connection to the same test database
+    # stands in for the second, concurrent registration request.
+    conn2 = await psycopg.AsyncConnection.connect(
+        TEST_DATABASE_URL, row_factory=dict_row, autocommit=True
+    )
+    try:
+        results = await asyncio.gather(
+            create_user(conn, "alice@example.com", "hash1", "Same"),
+            create_user(conn2, "bob@example.com", "hash2", "Same"),
+            return_exceptions=True,
+        )
+        successes = [r for r in results if isinstance(r, User)]
+        failures = [r for r in results if isinstance(r, BaseException)]
+        assert len(successes) == 1
+        assert len(failures) == 1
+        assert isinstance(failures[0], psycopg.errors.UniqueViolation)
+    finally:
+        await conn2.close()
 
 
 async def test_get_user_by_nickname_found(conn: psycopg.AsyncConnection) -> None:
