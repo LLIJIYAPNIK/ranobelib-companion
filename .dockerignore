@@ -1,0 +1,22 @@
+.git
+.gitignore
+.github
+.venv
+.idea
+__pycache__
+*.py[cod]
+*.egg-info
+.pytest_cache
+.ruff_cache
+.mypy_cache
+dist
+build
+
+# secrets and dev-only local state - never bake these into an image layer
+.env
+.env.*
+!.env.example
+.ranobelib_cache/
+.ranobelib_avatars/
+.ranobelib_comment_attachments/
+.ranobelib_companion.db
