@@ -1,0 +1,32 @@
+services:
+  db:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    env_file: .env
+    volumes:
+      - db_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  app:
+    build: .
+    restart: unless-stopped
+    env_file: .env
+    ports:
+      - "8000:8000"
+    depends_on:
+      db:
+        condition: service_healthy
+    volumes:
+      - cache_data:/app/.ranobelib_cache
+      - avatar_data:/app/.ranobelib_avatars
+      - comment_attachment_data:/app/.ranobelib_comment_attachments
+
+volumes:
+  db_data:
+  cache_data:
+  avatar_data:
+  comment_attachment_data:
