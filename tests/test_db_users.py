@@ -101,6 +101,21 @@ async def test_create_user_duplicate_nickname_raises(conn: psycopg.AsyncConnecti
         await create_user(conn, "bob@example.com", "hash2", "Nick")
 
 
+async def test_create_user_duplicate_nickname_case_insensitive(
+    conn: psycopg.AsyncConnection,
+) -> None:
+    await create_user(conn, "alice@example.com", "hash1", "Nick")
+
+    with pytest.raises(psycopg.errors.UniqueViolation):
+        await create_user(conn, "bob@example.com", "hash2", "nick")
+
+
+async def test_get_user_by_nickname_case_insensitive(conn: psycopg.AsyncConnection) -> None:
+    created = await create_user(conn, "alice@example.com", "hash1", "Nick")
+
+    assert await get_user_by_nickname(conn, "nick") == created
+
+
 async def test_create_user_nickname_race_exactly_one_succeeds(
     conn: psycopg.AsyncConnection,
 ) -> None:
