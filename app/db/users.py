@@ -40,12 +40,13 @@ class User:
 async def create_user(
     conn: AsyncConnection, email: str, password_hash: str, nickname: str | None = None
 ) -> User:
-    """Raises ``psycopg.errors.UniqueViolation`` if `email` is already registered - callers
-    (see app/api/auth.py) are expected to check `get_user_by_email` first and turn that
-    into a form error, but the UNIQUE constraint is the actual source of truth against
-    a races between two concurrent registrations. `nickname` reuses the same column
-    `update_user_account` (PR 90) writes to - same non-unique reasoning applies here,
-    nothing looks a user up by it (PR 105 in CLAUDE.md's roadmap)."""
+    """Raises ``psycopg.errors.UniqueViolation`` if `email` is already registered, or if
+    `nickname` (case-insensitively, see migrations/0017_users_nickname_unique.sql) is
+    already taken by another account - callers (see app/api/auth.py) are expected to check
+    `get_user_by_email`/`get_user_by_nickname` first and turn that into a form error, but
+    the UNIQUE constraints are the actual source of truth against a race between two
+    concurrent registrations. A `nickname` of ``None`` (not set) never collides with
+    another ``None`` - the index is a partial one, ``WHERE nickname IS NOT NULL``."""
     email = _normalize_email(email)
     created_at = datetime.now(UTC).isoformat()
     cursor = await conn.execute(
@@ -72,12 +73,10 @@ async def update_user_account(
     nickname: str | None,
     bio: str | None,
 ) -> User:
-    """Raises ``psycopg.errors.UniqueViolation`` if `email` collides with a *different*
-    account - same defense-in-depth as `create_user`: callers (see app/api/settings.py)
-    check `get_user_by_email` first and turn that into a form error, this is the race-safe
-    backstop. Unlike email, `nickname` isn't unique (see PR 90 in CLAUDE.md's roadmap -
-    nothing in this app looks a user up by nickname, so uniqueness would be an
-    artificial restriction)."""
+    """Raises ``psycopg.errors.UniqueViolation`` if `email` or `nickname` collides with a
+    *different* account - same defense-in-depth as `create_user`: callers (see
+    app/api/settings.py) check `get_user_by_email`/`get_user_by_nickname` first and turn
+    that into a form error, this is the race-safe backstop."""
     await conn.execute(
         "UPDATE users SET email = %s, nickname = %s, bio = %s WHERE id = %s",
         (_normalize_email(email), nickname, bio, user_id),
@@ -171,6 +170,18 @@ async def get_user_by_email(conn: AsyncConnection, email: str) -> User | None:
     cursor = await conn.execute(
         f"SELECT {_USER_COLUMNS} FROM users WHERE email = %s",
         (_normalize_email(email),),
+    )
+    row = await cursor.fetchone()
+    return _row_to_user(row) if row is not None else None
+
+
+async def get_user_by_nickname(conn: AsyncConnection, nickname: str) -> User | None:
+    """Case-insensitive, matching the partial unique index (0017) this backs - two
+    accounts can't hold "Nick" and "nick" any more than they could hold the exact same
+    string."""
+    cursor = await conn.execute(
+        f"SELECT {_USER_COLUMNS} FROM users WHERE LOWER(nickname) = LOWER(%s)",
+        (nickname,),
     )
     row = await cursor.fetchone()
     return _row_to_user(row) if row is not None else None
