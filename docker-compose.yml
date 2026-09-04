@@ -17,7 +17,10 @@ services:
     restart: unless-stopped
     env_file: .env
     ports:
-      - "8000:8000"
+      # PR 195: nginx (127.0.0.1:80/443 on the host) is the only intended public entry
+      # point once deployed - binding this to loopback only, rather than all interfaces,
+      # closes the direct unauthenticated/TLS-less bypass of it.
+      - "127.0.0.1:8000:8000"
     depends_on:
       db:
         condition: service_healthy
