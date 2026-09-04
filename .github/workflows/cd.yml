@@ -5,7 +5,7 @@ on:
     branches: [main]
 
 env:
-  IMAGE: ghcr.io/lliyapnik/ranobelib-companion
+  IMAGE: ghcr.io/llijiyapnik/ranobelib-companion
 
 jobs:
   build-and-push:

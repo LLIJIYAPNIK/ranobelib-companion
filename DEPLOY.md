@@ -79,7 +79,7 @@ Development section.
    calls `run_migrations()` every time it boots) - no separate migration step.
 
    This builds the image locally the first time. Once CD (below) has pushed at least one
-   image to `ghcr.io/lliyapnik/ranobelib-companion`, later `docker compose pull` calls
+   image to `ghcr.io/llijiyapnik/ranobelib-companion`, later `docker compose pull` calls
    will need to authenticate to it - a brand-new GHCR package is created **private** by
    default even though this repository is public. Either switch its visibility to Public
    (the package's own page on GitHub → Package settings → Change visibility), or run
@@ -118,7 +118,7 @@ Development section.
 
 `.github/workflows/cd.yml` builds and pushes an image to GitHub Container Registry on
 every push to `main` (i.e. every merged PR, after CI already passed on it) as
-`ghcr.io/lliyapnik/ranobelib-companion:latest`, using the workflow's own `GITHUB_TOKEN` -
+`ghcr.io/llijiyapnik/ranobelib-companion:latest`, using the workflow's own `GITHUB_TOKEN` -
 no separate registry credential to provision. It then SSHes into the server and runs
 `docker compose pull && docker compose up -d` in `~/ranobelib-companion` - an ordinary
 merge to `main` deploys itself, no manual step needed. Migrations run automatically on
