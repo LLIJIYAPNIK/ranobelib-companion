@@ -101,6 +101,18 @@ async def test_create_user_duplicate_nickname_raises(conn: psycopg.AsyncConnecti
         await create_user(conn, "bob@example.com", "hash2", "Nick")
 
 
+async def test_create_user_multiple_users_without_nickname_ok(
+    conn: psycopg.AsyncConnection,
+) -> None:
+    # The unique index is partial (WHERE nickname IS NOT NULL) precisely so this keeps
+    # working - most accounts never set one at all.
+    alice = await create_user(conn, "alice@example.com", "hash1")
+    bob = await create_user(conn, "bob@example.com", "hash2")
+
+    assert alice.nickname is None
+    assert bob.nickname is None
+
+
 async def test_create_user_duplicate_nickname_case_insensitive(
     conn: psycopg.AsyncConnection,
 ) -> None:
