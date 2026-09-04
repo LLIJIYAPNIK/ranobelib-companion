@@ -7,11 +7,12 @@ from typing import Annotated
 
 from fastapi import APIRouter, Depends, Form, Request
 from fastapi.responses import HTMLResponse, Response
+from psycopg import AsyncConnection
 from ranobelib import RanobeLibError
 
 from app.auth.dependencies import get_current_user, require_current_user
 from app.db.activity import list_chapters_read_today, record_heartbeat, total_active_seconds_today
-from app.db.connection import get_connection
+from app.db.connection import connection, get_connection
 from app.db.downloads import DownloadHistoryEntry, list_download_history_today
 from app.db.users import User
 from app.jobs.models import DownloadJob
@@ -44,29 +45,35 @@ class ActivitySummary:
     downloads_today: list[DownloadHistoryEntry]
 
 
-async def build_activity_summary(user: User) -> ActivitySummary:
+async def build_activity_summary(user: User, conn: AsyncConnection) -> ActivitySummary:
     """Everything the "Активность" page (see the upcoming GET /activity route) shows for
     today - "today" meaning the UTC calendar date, matching app/db/activity.py."""
-    conn = get_connection()
-    read_today = await _read_today_items(user)
+    read_today = await _read_today_items(user, conn)
     return ActivitySummary(
         read_today=read_today,
         chapters_read_today=sum(item.chapters_read for item in read_today),
-        active_time_label=_format_active_time(total_active_seconds_today(conn, user.id)),
+        active_time_label=_format_active_time(await total_active_seconds_today(conn, user.id)),
         active_jobs=list_active_jobs_for_user(user.id),
-        downloads_today=list_download_history_today(conn, user.id),
+        downloads_today=await list_download_history_today(conn, user.id),
     )
 
 
 @router.get("")
 async def show_activity(
-    request: Request, user: Annotated[User | None, Depends(get_current_user)]
+    request: Request,
+    user: Annotated[User | None, Depends(get_current_user)],
 ) -> HTMLResponse:
     """Same locked-screen gate as /library and /downloads (PR 22): viewing the page
     itself doesn't require an account - build_activity_summary() (which resolves each
     read title's name/cover through the SDK) only runs for a logged-in user, so this
-    doesn't spend ranobelib.me API quota just to render for an anonymous visitor."""
-    summary = await build_activity_summary(user) if user is not None else None
+    doesn't spend ranobelib.me API quota just to render for an anonymous visitor. conn is
+    checked out below, not taken as a route-level Depends(get_connection) parameter, so an
+    anonymous visitor never checks one out of the pool at all (see get_current_user()'s
+    own docstring for the same reasoning)."""
+    summary = None
+    if user is not None:
+        async with connection() as conn:
+            summary = await build_activity_summary(user, conn)
     return templates.TemplateResponse(
         request, "activity.html", {"active_nav": "activity", "summary": summary}
     )
@@ -75,14 +82,15 @@ async def show_activity(
 @router.post("/heartbeat", status_code=204)
 async def heartbeat(
     user: Annotated[User, Depends(require_current_user)],
+    conn: Annotated[AsyncConnection, Depends(get_connection)],
     slug_url: Annotated[str, Form()],
     seconds: Annotated[int, Form(gt=0, le=_MAX_HEARTBEAT_SECONDS)],
 ) -> Response:
-    record_heartbeat(get_connection(), user.id, slug_url, seconds)
+    await record_heartbeat(conn, user.id, slug_url, seconds)
     return Response(status_code=204)
 
 
-async def _read_today_items(user: User) -> list[ReadToday]:
+async def _read_today_items(user: User, conn: AsyncConnection) -> list[ReadToday]:
     """Each read-today title's display name/cover, fetched fresh through the SDK - same
     approach as `_library_items()` in app/api/library.py, for the same reason (avoid a
     second cache of SDK response data, see CLAUDE.md, "Архитектура"). A title that's
@@ -90,7 +98,7 @@ async def _read_today_items(user: User) -> list[ReadToday]:
     label and no cover.
     """
     items: list[ReadToday] = []
-    for count in list_chapters_read_today(get_connection(), user.id):
+    for count in await list_chapters_read_today(conn, user.id):
         name: str | None = None
         cover_url: str | None = None
         try:

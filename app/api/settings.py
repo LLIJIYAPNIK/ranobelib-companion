@@ -4,6 +4,7 @@ from typing import Annotated
 
 from fastapi import APIRouter, Depends, File, Form, Request, UploadFile
 from fastapi.responses import HTMLResponse, RedirectResponse
+from psycopg import AsyncConnection
 
 from app.auth.avatar import AvatarUploadError, save_avatar
 from app.auth.dependencies import get_current_user, require_current_user
@@ -82,12 +83,12 @@ async def settings_account_page(
 async def update_account(
     request: Request,
     user: Annotated[User, Depends(require_current_user)],
+    conn: Annotated[AsyncConnection, Depends(get_connection)],
     email: str = Form(...),
     nickname: str = Form(default=""),
     bio: str = Form(default=""),
 ) -> HTMLResponse:
-    conn = get_connection()
-    existing = get_user_by_email(conn, email)
+    existing = await get_user_by_email(conn, email)
     if existing is not None and existing.id != user.id:
         context = _account_context(
             user,
@@ -100,7 +101,7 @@ async def update_account(
             request, "settings_account.html", context, status_code=400
         )
 
-    updated = update_user_account(
+    updated = await update_user_account(
         conn, user.id, email=email, nickname=nickname.strip() or None, bio=bio.strip() or None
     )
     return templates.TemplateResponse(
@@ -112,6 +113,7 @@ async def update_account(
 async def upload_avatar(
     request: Request,
     user: Annotated[User, Depends(require_current_user)],
+    conn: Annotated[AsyncConnection, Depends(get_connection)],
     avatar: Annotated[UploadFile, File(...)],
 ) -> HTMLResponse:
     try:
@@ -122,7 +124,7 @@ async def upload_avatar(
             request, "settings_account.html", context, status_code=400
         )
 
-    update_user_avatar(get_connection(), user.id, avatar_path)
+    await update_user_avatar(conn, user.id, avatar_path)
     return templates.TemplateResponse(
         request, "settings_account.html", _account_context(user, avatar_saved=True)
     )
@@ -132,6 +134,7 @@ async def upload_avatar(
 async def update_privacy(
     request: Request,
     user: Annotated[User, Depends(require_current_user)],
+    conn: Annotated[AsyncConnection, Depends(get_connection)],
     show_currently_reading: bool = Form(default=False),
     show_favorite: bool = Form(default=False),
     show_library: bool = Form(default=False),
@@ -139,8 +142,8 @@ async def update_privacy(
     """Unchecked checkboxes simply aren't sent by the browser at all, so every submit of
     this form carries the visitor's complete intended state for all three - no partial
     update, matching update_privacy_settings()'s own "always write all three" shape."""
-    updated = update_privacy_settings(
-        get_connection(),
+    updated = await update_privacy_settings(
+        conn,
         user.id,
         show_currently_reading=show_currently_reading,
         show_favorite=show_favorite,
@@ -164,6 +167,7 @@ async def settings_security_page(request: Request) -> HTMLResponse:
 async def update_password(
     request: Request,
     user: Annotated[User, Depends(require_current_user)],
+    conn: Annotated[AsyncConnection, Depends(get_connection)],
     current_password: str = Form(...),
     new_password: str = Form(...),
     new_password_confirm: str = Form(...),
@@ -190,7 +194,7 @@ async def update_password(
             status_code=400,
         )
 
-    update_user_password(get_connection(), user.id, new_password_hash)
+    await update_user_password(conn, user.id, new_password_hash)
     return templates.TemplateResponse(
         request,
         "settings_security.html",
@@ -226,14 +230,15 @@ async def settings_notifications_page(
 async def update_notifications(
     request: Request,
     user: Annotated[User, Depends(require_current_user)],
+    conn: Annotated[AsyncConnection, Depends(get_connection)],
     notifications_enabled: bool = Form(default=False),
     do_not_disturb: bool = Form(default=False),
 ) -> HTMLResponse:
     """Unchecked checkboxes aren't sent by the browser at all, so every submit carries
     the visitor's complete intended state for both - same "always write all together"
     shape as update_privacy/update_account above."""
-    updated = update_notification_settings(
-        get_connection(),
+    updated = await update_notification_settings(
+        conn,
         user.id,
         notifications_enabled=notifications_enabled,
         do_not_disturb=do_not_disturb,

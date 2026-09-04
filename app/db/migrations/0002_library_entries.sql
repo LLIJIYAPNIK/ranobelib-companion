@@ -1,5 +1,5 @@
 CREATE TABLE library_entries (
-    id INTEGER PRIMARY KEY,
+    id INTEGER GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
     user_id INTEGER NOT NULL REFERENCES users(id),
     slug_url TEXT NOT NULL,
     added_at TEXT NOT NULL,

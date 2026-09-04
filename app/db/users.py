@@ -5,9 +5,11 @@
 
 from __future__ import annotations
 
-import sqlite3
 from dataclasses import dataclass
 from datetime import UTC, datetime
+from typing import Any
+
+from psycopg import AsyncConnection
 
 
 @dataclass(frozen=True)
@@ -35,10 +37,10 @@ class User:
     do_not_disturb: bool = False
 
 
-def create_user(
-    conn: sqlite3.Connection, email: str, password_hash: str, nickname: str | None = None
+async def create_user(
+    conn: AsyncConnection, email: str, password_hash: str, nickname: str | None = None
 ) -> User:
-    """Raises ``sqlite3.IntegrityError`` if `email` is already registered - callers
+    """Raises ``psycopg.errors.UniqueViolation`` if `email` is already registered - callers
     (see app/api/auth.py) are expected to check `get_user_by_email` first and turn that
     into a form error, but the UNIQUE constraint is the actual source of truth against
     a races between two concurrent registrations. `nickname` reuses the same column
@@ -46,13 +48,15 @@ def create_user(
     nothing looks a user up by it (PR 105 in CLAUDE.md's roadmap)."""
     email = _normalize_email(email)
     created_at = datetime.now(UTC).isoformat()
-    cursor = conn.execute(
-        "INSERT INTO users (email, password_hash, created_at, nickname) VALUES (?, ?, ?, ?)",
+    cursor = await conn.execute(
+        "INSERT INTO users (email, password_hash, created_at, nickname) "
+        "VALUES (%s, %s, %s, %s) RETURNING id",
         (email, password_hash, created_at, nickname),
     )
-    conn.commit()
+    row = await cursor.fetchone()
+    assert row is not None  # just inserted
     return User(
-        id=cursor.lastrowid,
+        id=row["id"],
         email=email,
         password_hash=password_hash,
         created_at=created_at,
@@ -60,54 +64,53 @@ def create_user(
     )
 
 
-def update_user_account(
-    conn: sqlite3.Connection,
+async def update_user_account(
+    conn: AsyncConnection,
     user_id: int,
     *,
     email: str,
     nickname: str | None,
     bio: str | None,
 ) -> User:
-    """Raises ``sqlite3.IntegrityError`` if `email` collides with a *different* account -
-    same defense-in-depth as `create_user`: callers (see app/api/settings.py) check
-    `get_user_by_email` first and turn that into a form error, this is the race-safe
+    """Raises ``psycopg.errors.UniqueViolation`` if `email` collides with a *different*
+    account - same defense-in-depth as `create_user`: callers (see app/api/settings.py)
+    check `get_user_by_email` first and turn that into a form error, this is the race-safe
     backstop. Unlike email, `nickname` isn't unique (see PR 90 in CLAUDE.md's roadmap -
     nothing in this app looks a user up by nickname, so uniqueness would be an
     artificial restriction)."""
-    conn.execute(
-        "UPDATE users SET email = ?, nickname = ?, bio = ? WHERE id = ?",
+    await conn.execute(
+        "UPDATE users SET email = %s, nickname = %s, bio = %s WHERE id = %s",
         (_normalize_email(email), nickname, bio, user_id),
     )
-    conn.commit()
-    user = get_user_by_id(conn, user_id)
+    user = await get_user_by_id(conn, user_id)
     assert user is not None  # just updated
     return user
 
 
-def update_user_avatar(conn: sqlite3.Connection, user_id: int, avatar_path: str) -> User:
+async def update_user_avatar(conn: AsyncConnection, user_id: int, avatar_path: str) -> User:
     """Called after a validated image has already been written to disk (see
     `app/auth/avatar.py`'s `save_avatar`) - this just records the resulting filename."""
-    conn.execute("UPDATE users SET avatar_path = ? WHERE id = ?", (avatar_path, user_id))
-    conn.commit()
-    user = get_user_by_id(conn, user_id)
+    await conn.execute("UPDATE users SET avatar_path = %s WHERE id = %s", (avatar_path, user_id))
+    user = await get_user_by_id(conn, user_id)
     assert user is not None  # just updated
     return user
 
 
-def update_user_password(conn: sqlite3.Connection, user_id: int, password_hash: str) -> User:
+async def update_user_password(conn: AsyncConnection, user_id: int, password_hash: str) -> User:
     """No uniqueness concerns here unlike `update_user_account` - `password_hash` isn't a
     unique column, so there's nothing to check before writing it. Callers (see
     app/api/settings.py) are expected to have already verified the visitor's *current*
     password with `verify_password` before calling this."""
-    conn.execute("UPDATE users SET password_hash = ? WHERE id = ?", (password_hash, user_id))
-    conn.commit()
-    user = get_user_by_id(conn, user_id)
+    await conn.execute(
+        "UPDATE users SET password_hash = %s WHERE id = %s", (password_hash, user_id)
+    )
+    user = await get_user_by_id(conn, user_id)
     assert user is not None  # just updated
     return user
 
 
-def update_privacy_settings(
-    conn: sqlite3.Connection,
+async def update_privacy_settings(
+    conn: AsyncConnection,
     user_id: int,
     *,
     show_currently_reading: bool,
@@ -116,19 +119,21 @@ def update_privacy_settings(
 ) -> User:
     """The three "Приватность" toggles (PR 124) - independent of each other, so all three
     are always written together as a plain replace, not a partial update."""
-    conn.execute(
-        "UPDATE users SET show_currently_reading = ?, show_favorite = ?, show_library = ? "
-        "WHERE id = ?",
-        (show_currently_reading, show_favorite, show_library, user_id),
+    await conn.execute(
+        "UPDATE users SET show_currently_reading = %s, show_favorite = %s, show_library = %s "
+        "WHERE id = %s",
+        # cast bool -> int: the column is INTEGER (0/1), not a native Postgres BOOLEAN -
+        # see CLAUDE.md's PR 191 entry on why that stayed as-is - and unlike SQLite,
+        # Postgres won't implicitly coerce a bound `True`/`False` into one.
+        (int(show_currently_reading), int(show_favorite), int(show_library), user_id),
     )
-    conn.commit()
-    user = get_user_by_id(conn, user_id)
+    user = await get_user_by_id(conn, user_id)
     assert user is not None  # just updated
     return user
 
 
-def update_notification_settings(
-    conn: sqlite3.Connection,
+async def update_notification_settings(
+    conn: AsyncConnection,
     user_id: int,
     *,
     notifications_enabled: bool,
@@ -146,12 +151,11 @@ def update_notification_settings(
     "Не беспокоить" end up controlling the exact same thing today (there's no snooze
     timer/schedule yet) - the distinction is only in the settings copy (a standing
     preference vs. a temporary one), not in what either does."""
-    conn.execute(
-        "UPDATE users SET notifications_enabled = ?, do_not_disturb = ? WHERE id = ?",
-        (notifications_enabled, do_not_disturb, user_id),
+    await conn.execute(
+        "UPDATE users SET notifications_enabled = %s, do_not_disturb = %s WHERE id = %s",
+        (int(notifications_enabled), int(do_not_disturb), user_id),
     )
-    conn.commit()
-    user = get_user_by_id(conn, user_id)
+    user = await get_user_by_id(conn, user_id)
     assert user is not None  # just updated
     return user
 
@@ -163,23 +167,25 @@ _USER_COLUMNS = (
 )
 
 
-def get_user_by_email(conn: sqlite3.Connection, email: str) -> User | None:
-    row = conn.execute(
-        f"SELECT {_USER_COLUMNS} FROM users WHERE email = ?",
+async def get_user_by_email(conn: AsyncConnection, email: str) -> User | None:
+    cursor = await conn.execute(
+        f"SELECT {_USER_COLUMNS} FROM users WHERE email = %s",
         (_normalize_email(email),),
-    ).fetchone()
+    )
+    row = await cursor.fetchone()
     return _row_to_user(row) if row is not None else None
 
 
-def get_user_by_id(conn: sqlite3.Connection, user_id: int) -> User | None:
-    row = conn.execute(
-        f"SELECT {_USER_COLUMNS} FROM users WHERE id = ?",
+async def get_user_by_id(conn: AsyncConnection, user_id: int) -> User | None:
+    cursor = await conn.execute(
+        f"SELECT {_USER_COLUMNS} FROM users WHERE id = %s",
         (user_id,),
-    ).fetchone()
+    )
+    row = await cursor.fetchone()
     return _row_to_user(row) if row is not None else None
 
 
-def _row_to_user(row: sqlite3.Row) -> User:
+def _row_to_user(row: dict[str, Any]) -> User:
     return User(
         id=row["id"],
         email=row["email"],

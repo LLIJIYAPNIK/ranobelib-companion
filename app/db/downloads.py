@@ -8,9 +8,11 @@ permanent per-user record.
 
 from __future__ import annotations
 
-import sqlite3
 from dataclasses import dataclass
 from datetime import UTC, datetime
+from typing import Any
+
+from psycopg import AsyncConnection
 
 
 @dataclass(frozen=True)
@@ -26,8 +28,8 @@ class DownloadHistoryEntry:
     job_id: str | None
 
 
-def record_download(
-    conn: sqlite3.Connection,
+async def record_download(
+    conn: AsyncConnection,
     user_id: int,
     slug_url: str,
     fmt: str,
@@ -41,10 +43,10 @@ def record_download(
     exported file is still on disk waiting to be picked up. It's optional (defaults to
     None) because a job's in-memory id is meaningless past a process restart, but the
     history row itself is permanent - an old row just won't offer the button."""
-    conn.execute(
+    await conn.execute(
         "INSERT INTO download_history "
         "(user_id, slug_url, fmt, status, chapter_count, error, finished_at, job_id) "
-        "VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
+        "VALUES (%s, %s, %s, %s, %s, %s, %s, %s)",
         (
             user_id,
             slug_url,
@@ -56,52 +58,52 @@ def record_download(
             job_id,
         ),
     )
-    conn.commit()
 
 
-def delete_entry(conn: sqlite3.Connection, entry_id: int, user_id: int) -> bool:
+async def delete_entry(conn: AsyncConnection, entry_id: int, user_id: int) -> bool:
     """True if a row was actually deleted. Scoping the DELETE by `user_id` as well as
     `id` means an id that exists but belongs to another user deletes nothing and reports
     back the same as an id that doesn't exist at all - the caller turns both into a 404,
     not a 403, so a visitor can't use this to probe which entry ids belong to someone
     else (same reasoning as `_get_job_or_404` in app/api/downloads.py)."""
-    cursor = conn.execute(
-        "DELETE FROM download_history WHERE id = ? AND user_id = ?",
+    cursor = await conn.execute(
+        "DELETE FROM download_history WHERE id = %s AND user_id = %s",
         (entry_id, user_id),
     )
-    conn.commit()
     return cursor.rowcount > 0
 
 
-def list_download_history(
-    conn: sqlite3.Connection, user_id: int, limit: int = 20
+async def list_download_history(
+    conn: AsyncConnection, user_id: int, limit: int = 20
 ) -> list[DownloadHistoryEntry]:
     """Most recently finished first."""
-    rows = conn.execute(
-        "SELECT * FROM download_history WHERE user_id = ? "
-        "ORDER BY finished_at DESC, id DESC LIMIT ?",
+    cursor = await conn.execute(
+        "SELECT * FROM download_history WHERE user_id = %s "
+        "ORDER BY finished_at DESC, id DESC LIMIT %s",
         (user_id, limit),
-    ).fetchall()
+    )
+    rows = await cursor.fetchall()
     return [_row_to_entry(row) for row in rows]
 
 
-def list_download_history_today(
-    conn: sqlite3.Connection, user_id: int
+async def list_download_history_today(
+    conn: AsyncConnection, user_id: int
 ) -> list[DownloadHistoryEntry]:
     """Today's finished downloads (UTC calendar date) - the "скачано сегодня" part of the
     Активность section (see app/api/activity.py). Includes both "done" and "error"
     entries, same as `list_download_history()` - a failed download still happened today.
     """
     today = datetime.now(UTC).date().isoformat()
-    rows = conn.execute(
-        "SELECT * FROM download_history WHERE user_id = ? AND finished_at >= ? "
+    cursor = await conn.execute(
+        "SELECT * FROM download_history WHERE user_id = %s AND finished_at >= %s "
         "ORDER BY finished_at DESC, id DESC",
         (user_id, today),
-    ).fetchall()
+    )
+    rows = await cursor.fetchall()
     return [_row_to_entry(row) for row in rows]
 
 
-def _row_to_entry(row: sqlite3.Row) -> DownloadHistoryEntry:
+def _row_to_entry(row: dict[str, Any]) -> DownloadHistoryEntry:
     return DownloadHistoryEntry(
         id=row["id"],
         user_id=row["user_id"],

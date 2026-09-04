@@ -7,7 +7,7 @@ from fastapi.responses import HTMLResponse, Response
 from ranobelib import RanobeLibError
 
 from app.auth.dependencies import get_current_user
-from app.db.connection import get_connection
+from app.db.connection import connection
 from app.db.library import get_entry
 from app.db.users import User
 from app.reading_progress import reading_progress_percent
@@ -20,7 +20,8 @@ router = APIRouter()
 
 @router.get("/")
 async def home(
-    request: Request, user: Annotated[User | None, Depends(get_current_user)]
+    request: Request,
+    user: Annotated[User | None, Depends(get_current_user)],
 ) -> HTMLResponse:
     return templates.TemplateResponse(
         request,
@@ -49,24 +50,27 @@ async def _recent_with_progress(
     `LibraryEntry` with recorded progress: an anonymous visitor has no `LibraryEntry` to
     match against at all, and a title only ever opened from the description page (never
     read) has no recorded position either. Neither case is a reason to start a parallel
-    progress store on top of the one PR 27 already reads from `db/library.py`.
+    progress store on top of the one PR 27 already reads from `db/library.py`. conn is
+    checked out here, not taken as a route-level Depends(get_connection) parameter, so an
+    anonymous request never checks one out of the pool at all (see get_current_user()'s
+    own docstring for the same reasoning).
     """
     recent = read_recent(request)
     if user is None:
         return [dict(item, progress_percent=None) for item in recent]
-    conn = get_connection()
     result: list[dict[str, str | int | None]] = []
-    for item in recent:
-        progress_percent = None
-        entry = get_entry(conn, user.id, item["slug_url"])
-        if entry is not None and entry.last_read_volume is not None:
-            try:
-                async with open_client(item["slug_url"]) as lib:
-                    volumes = await lib.get_table_of_contents()
-                progress_percent = reading_progress_percent(
-                    volumes, entry.last_read_volume, entry.last_read_number
-                )
-            except RanobeLibError:
-                pass
-        result.append(dict(item, progress_percent=progress_percent))
+    async with connection() as conn:
+        for item in recent:
+            progress_percent = None
+            entry = await get_entry(conn, user.id, item["slug_url"])
+            if entry is not None and entry.last_read_volume is not None:
+                try:
+                    async with open_client(item["slug_url"]) as lib:
+                        volumes = await lib.get_table_of_contents()
+                    progress_percent = reading_progress_percent(
+                        volumes, entry.last_read_volume, entry.last_read_number
+                    )
+                except RanobeLibError:
+                    pass
+            result.append(dict(item, progress_percent=progress_percent))
     return result

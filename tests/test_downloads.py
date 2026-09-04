@@ -12,13 +12,13 @@ from ranobelib import MultipleTitleTranslationsError
 from ranobelib.exceptions import AmbiguousChapter
 from ranobelib.models import Chapter, ChapterBranch, ChapterUser, Team, Volume
 
-import app.db.connection as db_connection
 import app.jobs.store as job_store
 from app.config import get_settings
-from app.db.connection import get_connection
+from app.db.connection import connection
 from app.db.downloads import list_download_history
 from app.jobs.store import create_job, get_job
 from app.main import app
+from tests.db_reset import reset_app_database
 
 client = TestClient(app, follow_redirects=False)
 
@@ -98,12 +98,11 @@ def _wait_until_terminal(job_id: str, timeout: float = 2.0) -> None:
 
 
 @pytest.fixture
-def logged_in_client(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> Iterator[TestClient]:
+def logged_in_client(monkeypatch: pytest.MonkeyPatch) -> Iterator[TestClient]:
     """Isolated DB + an authenticated session - see tests/test_api_auth.py."""
-    monkeypatch.setenv("DB_PATH", str(tmp_path / "test.db"))
     monkeypatch.setenv("SESSION_SECRET_KEY", "test-secret")
+    reset_app_database(monkeypatch)
     get_settings.cache_clear()
-    db_connection._connection = None
 
     with TestClient(app, follow_redirects=False) as test_client:
         test_client.post(
@@ -117,7 +116,6 @@ def logged_in_client(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> Iterato
         yield test_client
 
     get_settings.cache_clear()
-    db_connection._connection = None
 
 
 def test_start_download_requires_login() -> None:
@@ -487,7 +485,7 @@ def test_download_status_anonymous_job_accessible_to_anyone(
     assert response.status_code == 200
 
 
-def test_start_download_records_history_for_logged_in_user(
+async def test_start_download_records_history_for_logged_in_user(
     logged_in_client: TestClient,
 ) -> None:
     volumes = [Volume(number="1", chapters=[Chapter(id=1, volume="1", number="1")])]
@@ -500,7 +498,8 @@ def test_start_download_records_history_for_logged_in_user(
 
     os.remove(get_job(job_id).result_path)
 
-    entries = list_download_history(get_connection(), user_id=1)
+    async with connection() as conn:
+        entries = await list_download_history(conn, user_id=1)
     assert len(entries) == 1
     assert entries[0].slug_url == "6712--test-novel"
     assert entries[0].fmt == "epub"

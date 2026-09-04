@@ -6,10 +6,11 @@ from typing import Annotated
 
 from fastapi import APIRouter, Depends, Form, HTTPException, Query, Request
 from fastapi.responses import HTMLResponse, JSONResponse, RedirectResponse, Response
+from psycopg import AsyncConnection
 from ranobelib import RanobeLibError
 
 from app.auth.dependencies import get_current_user, require_current_user
-from app.db.connection import get_connection
+from app.db.connection import connection, get_connection
 from app.db.library import (
     LibraryEntry,
     add_entry,
@@ -43,12 +44,19 @@ CATALOG_SORT_OPTIONS = {
 
 @router.get("")
 async def show_library(
-    request: Request, user: Annotated[User | None, Depends(get_current_user)]
+    request: Request,
+    user: Annotated[User | None, Depends(get_current_user)],
 ) -> HTMLResponse:
     """Viewing the library page itself doesn't require an account - only an anonymous
     visitor can't have a personal reading list, so that's the one thing the page won't
-    show them (library.html prompts them to log in/register instead of the list)."""
-    items = await library_items_for_user(user) if user is not None else []
+    show them (library.html prompts them to log in/register instead of the list). conn is
+    checked out below, not taken as a route-level Depends(get_connection) parameter, so an
+    anonymous visitor never checks one out of the pool at all (see get_current_user()'s
+    own docstring for the same reasoning)."""
+    items = []
+    if user is not None:
+        async with connection() as conn:
+            items = await library_items_for_user(user, conn)
     return templates.TemplateResponse(
         request,
         "library.html",
@@ -167,6 +175,7 @@ async def catalog_page_fragment(
 async def add_to_library_by_url(
     request: Request,
     user: Annotated[User, Depends(require_current_user)],
+    conn: Annotated[AsyncConnection, Depends(get_connection)],
     url: Annotated[str, Form()],
 ) -> Response:
     """The library page's own "paste a link" form - same URL resolution as `open_title`
@@ -176,7 +185,7 @@ async def add_to_library_by_url(
         async with get_client(url) as lib:
             title = await lib.get_info()
     except ValueError:
-        items = await library_items_for_user(user)
+        items = await library_items_for_user(user, conn)
         return templates.TemplateResponse(
             request,
             "library.html",
@@ -188,7 +197,7 @@ async def add_to_library_by_url(
             },
             status_code=400,
         )
-    add_entry(get_connection(), user.id, title.slug_url)
+    await add_entry(conn, user.id, title.slug_url)
     return RedirectResponse(url=f"/titles/{title.slug_url}", status_code=303)
 
 
@@ -196,11 +205,12 @@ async def add_to_library_by_url(
 async def add_to_library(
     slug_url: str,
     user: Annotated[User, Depends(require_current_user)],
+    conn: Annotated[AsyncConnection, Depends(get_connection)],
     next: Annotated[str | None, Form()] = None,
 ) -> RedirectResponse:
     async with open_client(slug_url) as lib:
         await lib.get_info()  # 404s via the usual TitleNotFoundError mapping if bogus
-    add_entry(get_connection(), user.id, slug_url)
+    await add_entry(conn, user.id, slug_url)
     return RedirectResponse(url=_safe_next(next, f"/titles/{slug_url}"), status_code=303)
 
 
@@ -208,28 +218,30 @@ async def add_to_library(
 async def remove_from_library(
     slug_url: str,
     user: Annotated[User, Depends(require_current_user)],
+    conn: Annotated[AsyncConnection, Depends(get_connection)],
     next: Annotated[str | None, Form()] = None,
 ) -> RedirectResponse:
-    remove_entry(get_connection(), user.id, slug_url)
+    await remove_entry(conn, user.id, slug_url)
     return RedirectResponse(url=_safe_next(next, "/library"), status_code=303)
 
 
 @router.post("/{slug_url}/favorite", response_model=None)
 async def toggle_favorite(
-    slug_url: str, user: Annotated[User, Depends(require_current_user)]
+    slug_url: str,
+    user: Annotated[User, Depends(require_current_user)],
+    conn: Annotated[AsyncConnection, Depends(get_connection)],
 ) -> Response:
     """Star toggle on a "Читаю" card (favorite-toggle.js) - JSON in/out (unlike
     add/remove's redirects above) so the button can flip its own state, and every other
     card's, without a full page reload: exactly one favorite per user (see
     app/db/library.py's set_favorite()), so setting a new one always clears the rest."""
-    conn = get_connection()
-    entry = get_entry(conn, user.id, slug_url)
+    entry = await get_entry(conn, user.id, slug_url)
     if entry is None:
         raise HTTPException(status_code=404, detail="Тайтл не в библиотеке")
     if entry.is_favorite:
-        unset_favorite(conn, user.id, slug_url)
+        await unset_favorite(conn, user.id, slug_url)
         return JSONResponse({"is_favorite": False})
-    set_favorite(conn, user.id, slug_url)
+    await set_favorite(conn, user.id, slug_url)
     return JSONResponse({"is_favorite": True})
 
 
@@ -242,7 +254,9 @@ def _safe_next(next_url: str | None, default: str) -> str:
     return default
 
 
-async def library_items_for_user(user: User) -> list[dict[str, LibraryEntry | str | int | None]]:
+async def library_items_for_user(
+    user: User, conn: AsyncConnection
+) -> list[dict[str, LibraryEntry | str | int | None]]:
     """Each entry's display name/cover/reading-progress, fetched fresh through the SDK
     (cheap - cache_dir makes it a local cache hit after the first request) rather than
     stored in our own DB, which would duplicate SDK response data. A title that's gone/
@@ -254,7 +268,7 @@ async def library_items_for_user(user: User) -> list[dict[str, LibraryEntry | st
     data through a second code path.
     """
     items: list[dict[str, LibraryEntry | str | int | None]] = []
-    for entry in list_entries(get_connection(), user.id):
+    for entry in await list_entries(conn, user.id):
         name: str | None = None
         cover_url: str | None = None
         progress_percent: int | None = None

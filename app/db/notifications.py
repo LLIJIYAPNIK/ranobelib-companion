@@ -13,9 +13,11 @@ nullable for the same reason: a future kind might not be about a comment at all.
 
 from __future__ import annotations
 
-import sqlite3
 from dataclasses import dataclass
 from datetime import UTC, datetime
+from typing import Any
+
+from psycopg import AsyncConnection
 
 from app.auth.avatar import initials_for, url_for
 
@@ -27,8 +29,8 @@ KIND_COMMENT_REACTION = "comment_reaction"
 COMMENT_EXCERPT_LENGTH = 140
 
 
-def notify_comment_reaction(
-    conn: sqlite3.Connection, comment_id: int, actor_user_id: int
+async def notify_comment_reaction(
+    conn: AsyncConnection, comment_id: int, actor_user_id: int
 ) -> None:
     """Records that `actor_user_id` reacted to `comment_id`, for that comment's author to
     see - a no-op if the comment doesn't exist, or if the author is reacting to their own
@@ -40,9 +42,8 @@ def notify_comment_reaction(
     refreshed in place instead of inserting a second one. A notification the author has
     already read gets a new row on the next reaction, same as any other unread-until-seen
     notification feed - that one's already been seen, this is a new event."""
-    comment = conn.execute(
-        "SELECT user_id FROM comments WHERE id = ?", (comment_id,)
-    ).fetchone()
+    cursor = await conn.execute("SELECT user_id FROM comments WHERE id = %s", (comment_id,))
+    comment = await cursor.fetchone()
     if comment is None:
         return
     recipient_id = comment["user_id"]
@@ -50,50 +51,50 @@ def notify_comment_reaction(
         return
 
     created_at = datetime.now(UTC).isoformat()
-    existing = conn.execute(
+    cursor = await conn.execute(
         "SELECT id FROM notifications "
-        "WHERE user_id = ? AND kind = ? AND comment_id = ? AND actor_user_id = ? "
+        "WHERE user_id = %s AND kind = %s AND comment_id = %s AND actor_user_id = %s "
         "AND is_read = 0",
         (recipient_id, KIND_COMMENT_REACTION, comment_id, actor_user_id),
-    ).fetchone()
+    )
+    existing = await cursor.fetchone()
     if existing is not None:
-        conn.execute(
-            "UPDATE notifications SET created_at = ? WHERE id = ?",
+        await conn.execute(
+            "UPDATE notifications SET created_at = %s WHERE id = %s",
             (created_at, existing["id"]),
         )
     else:
-        conn.execute(
+        await conn.execute(
             "INSERT INTO notifications "
             "(user_id, kind, comment_id, actor_user_id, is_read, created_at) "
-            "VALUES (?, ?, ?, ?, 0, ?)",
+            "VALUES (%s, %s, %s, %s, 0, %s)",
             (recipient_id, KIND_COMMENT_REACTION, comment_id, actor_user_id, created_at),
         )
-    conn.commit()
 
 
-def mark_notification_read(conn: sqlite3.Connection, notification_id: int, user_id: int) -> bool:
+async def mark_notification_read(
+    conn: AsyncConnection, notification_id: int, user_id: int
+) -> bool:
     """True if a row was actually updated. Scoping the UPDATE by `user_id` as well as
     `id` means an id that exists but belongs to another user updates nothing and reports
     back the same as an id that doesn't exist at all - the caller turns both into a 404,
     not a 403, same reasoning as app/db/downloads.py's delete_entry(). A no-op (still
     returns True) if the row was already read - the caller doesn't need to special-case
     "the visitor double-clicked" or "two tabs raced" as an error."""
-    cursor = conn.execute(
-        "UPDATE notifications SET is_read = 1 WHERE id = ? AND user_id = ?",
+    cursor = await conn.execute(
+        "UPDATE notifications SET is_read = 1 WHERE id = %s AND user_id = %s",
         (notification_id, user_id),
     )
-    conn.commit()
     return cursor.rowcount > 0
 
 
-def delete_notification(conn: sqlite3.Connection, notification_id: int, user_id: int) -> bool:
+async def delete_notification(conn: AsyncConnection, notification_id: int, user_id: int) -> bool:
     """Same ownership-scoped shape as mark_notification_read() above - a real DELETE, not
     a soft "hidden" flag, per the roadmap's own wording."""
-    cursor = conn.execute(
-        "DELETE FROM notifications WHERE id = ? AND user_id = ?",
+    cursor = await conn.execute(
+        "DELETE FROM notifications WHERE id = %s AND user_id = %s",
         (notification_id, user_id),
     )
-    conn.commit()
     return cursor.rowcount > 0
 
 
@@ -116,18 +117,19 @@ class Notification:
     comment_url: str | None
 
 
-def count_unread_notifications(conn: sqlite3.Connection, user_id: int) -> int:
+async def count_unread_notifications(conn: AsyncConnection, user_id: int) -> int:
     """What the sidebar bell's badge shows - polled the same way downloads-status.js
     already polls its own badge (app/api/downloads_section.py's /downloads/status)."""
-    row = conn.execute(
-        "SELECT COUNT(*) AS n FROM notifications WHERE user_id = ? AND is_read = 0",
+    cursor = await conn.execute(
+        "SELECT COUNT(*) AS n FROM notifications WHERE user_id = %s AND is_read = 0",
         (user_id,),
-    ).fetchone()
+    )
+    row = await cursor.fetchone()
     return row["n"]
 
 
-def list_recent_notifications(
-    conn: sqlite3.Connection, user_id: int, limit: int
+async def list_recent_notifications(
+    conn: AsyncConnection, user_id: int, limit: int
 ) -> list[Notification]:
     """The bell panel's own list, newest first - fetched once when it's opened, not
     polled (only the unread count above needs to be live everywhere).
@@ -136,11 +138,11 @@ def list_recent_notifications(
     something's been read (PR 170) it belongs on the full `/notifications` page
     (list_notifications_page() below), not lingering here mixed in with what's still
     unread (PR 179)."""
-    return _list_notifications(conn, user_id, offset=0, limit=limit, unread_only=True)
+    return await _list_notifications(conn, user_id, offset=0, limit=limit, unread_only=True)
 
 
-def list_notifications_page(
-    conn: sqlite3.Connection, user_id: int, page: int, page_size: int
+async def list_notifications_page(
+    conn: AsyncConnection, user_id: int, page: int, page_size: int
 ) -> tuple[list[Notification], bool]:
     """PR 169's "Все уведомления" page, one page at a time (`page` is 1-indexed, same
     convention as app/api/library.py's own catalog pagination). Fetches one extra row
@@ -151,13 +153,15 @@ def list_notifications_page(
     Full history, read and unread both - unlike the bell panel above (PR 179), this page
     is where a read notification keeps living, distinguished only by the
     `.notifications-panel__item--unread` CSS modifier."""
-    rows = _list_notifications(conn, user_id, offset=(page - 1) * page_size, limit=page_size + 1)
+    rows = await _list_notifications(
+        conn, user_id, offset=(page - 1) * page_size, limit=page_size + 1
+    )
     has_next_page = len(rows) > page_size
     return rows[:page_size], has_next_page
 
 
-def _list_notifications(
-    conn: sqlite3.Connection, user_id: int, offset: int, limit: int, unread_only: bool = False
+async def _list_notifications(
+    conn: AsyncConnection, user_id: int, offset: int, limit: int, unread_only: bool = False
 ) -> list[Notification]:
     """LEFT JOIN comments (not JOIN) so a notification survives its comment being deleted
     later (PR 172) - comment_id/comment_excerpt/comment_url just come back None instead of
@@ -166,9 +170,9 @@ def _list_notifications(
     Orders by `id DESC` as a tiebreaker after `created_at DESC` - two notifications
     created microseconds apart (e.g. in a tight loop, as tests do) can land on the same
     ISO timestamp, and `created_at` alone would then leave their relative order to
-    SQLite's own unspecified tie-breaking instead of "most recently inserted first"."""
+    Postgres's own unspecified tie-breaking instead of "most recently inserted first"."""
     unread_clause = "AND notifications.is_read = 0 " if unread_only else ""
-    rows = conn.execute(
+    cursor = await conn.execute(
         "SELECT notifications.id, notifications.kind, notifications.is_read, "
         "notifications.created_at, "
         "actor.nickname AS actor_nickname, actor.email AS actor_email, "
@@ -179,14 +183,15 @@ def _list_notifications(
         "FROM notifications "
         "JOIN users AS actor ON actor.id = notifications.actor_user_id "
         "LEFT JOIN comments ON comments.id = notifications.comment_id "
-        "WHERE notifications.user_id = ? " + unread_clause + "ORDER BY "
-        "notifications.created_at DESC, notifications.id DESC LIMIT ? OFFSET ?",
+        "WHERE notifications.user_id = %s " + unread_clause + "ORDER BY "
+        "notifications.created_at DESC, notifications.id DESC LIMIT %s OFFSET %s",
         (user_id, limit, offset),
-    ).fetchall()
+    )
+    rows = await cursor.fetchall()
     return [_row_to_notification(row) for row in rows]
 
 
-def _row_to_notification(row: sqlite3.Row) -> Notification:
+def _row_to_notification(row: dict[str, Any]) -> Notification:
     return Notification(
         id=row["id"],
         kind=row["kind"],
@@ -209,7 +214,7 @@ def _excerpt(body: str | None) -> str | None:
     return body[:COMMENT_EXCERPT_LENGTH].rstrip() + "…"
 
 
-def _comment_url(row: sqlite3.Row) -> str | None:
+def _comment_url(row: dict[str, Any]) -> str | None:
     if row["comment_id"] is None:
         return None
     slug, volume, number = row["comment_slug_url"], row["comment_volume"], row["comment_number"]

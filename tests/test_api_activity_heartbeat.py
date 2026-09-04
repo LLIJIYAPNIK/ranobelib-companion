@@ -2,23 +2,21 @@
 chapter page stays open and visible (see app/api/activity.py)."""
 
 from collections.abc import Iterator
-from pathlib import Path
 
 import pytest
 from fastapi.testclient import TestClient
 
-import app.db.connection as db_connection
 from app.config import get_settings
 from app.db.activity import total_active_seconds_today
-from app.db.connection import get_connection
+from app.db.connection import connection
+from tests.db_reset import reset_app_database
 
 
 @pytest.fixture
-def client(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> Iterator[TestClient]:
-    monkeypatch.setenv("DB_PATH", str(tmp_path / "test.db"))
+def client(monkeypatch: pytest.MonkeyPatch) -> Iterator[TestClient]:
     monkeypatch.setenv("SESSION_SECRET_KEY", "test-secret")
+    reset_app_database(monkeypatch)
     get_settings.cache_clear()
-    db_connection._connection = None
 
     from app.main import app
 
@@ -26,7 +24,6 @@ def client(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> Iterator[TestClie
         yield test_client
 
     get_settings.cache_clear()
-    db_connection._connection = None
 
 
 def _register(client: TestClient, email: str = "alice@example.com") -> None:
@@ -47,7 +44,7 @@ def test_heartbeat_requires_login(client: TestClient) -> None:
     assert response.headers["location"] == "/login"
 
 
-def test_heartbeat_records_seconds(client: TestClient) -> None:
+async def test_heartbeat_records_seconds(client: TestClient) -> None:
     _register(client)  # user id 1
 
     response = client.post(
@@ -55,19 +52,21 @@ def test_heartbeat_records_seconds(client: TestClient) -> None:
     )
 
     assert response.status_code == 204
-    assert total_active_seconds_today(get_connection(), 1) == 30
+    async with connection() as conn:
+        assert await total_active_seconds_today(conn, 1) == 30
 
 
-def test_heartbeat_accumulates_across_ticks(client: TestClient) -> None:
+async def test_heartbeat_accumulates_across_ticks(client: TestClient) -> None:
     _register(client)  # user id 1
 
     client.post("/activity/heartbeat", data={"slug_url": "6712--test-novel", "seconds": "30"})
     client.post("/activity/heartbeat", data={"slug_url": "6712--test-novel", "seconds": "30"})
 
-    assert total_active_seconds_today(get_connection(), 1) == 60
+    async with connection() as conn:
+        assert await total_active_seconds_today(conn, 1) == 60
 
 
-def test_heartbeat_rejects_seconds_above_the_interval_clamp(client: TestClient) -> None:
+async def test_heartbeat_rejects_seconds_above_the_interval_clamp(client: TestClient) -> None:
     _register(client)  # user id 1
 
     response = client.post(
@@ -75,7 +74,8 @@ def test_heartbeat_rejects_seconds_above_the_interval_clamp(client: TestClient) 
     )
 
     assert response.status_code == 422
-    assert total_active_seconds_today(get_connection(), 1) == 0
+    async with connection() as conn:
+        assert await total_active_seconds_today(conn, 1) == 0
 
 
 def test_heartbeat_rejects_non_positive_seconds(client: TestClient) -> None:

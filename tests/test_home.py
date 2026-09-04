@@ -1,6 +1,5 @@
 from collections.abc import Iterator
 from json import dumps
-from pathlib import Path
 from unittest.mock import patch
 from urllib.parse import quote
 
@@ -62,25 +61,24 @@ class _FakeClient:
 
 
 @pytest.fixture
-def db_client(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> Iterator[TestClient]:
+def db_client(monkeypatch: pytest.MonkeyPatch) -> Iterator[TestClient]:
     """PR 68's progress lookup needs a real logged-in user with a library entry, so
     unlike the plain `client` above this needs the app's DB - same isolation strategy as
-    tests/test_api_library.py: a fresh on-disk SQLite file per test and an explicit
-    `with TestClient(app) as client:` so app.main's lifespan (migrations) actually runs."""
-    monkeypatch.setenv("DB_PATH", str(tmp_path / "test.db"))
+    tests/test_api_library.py: the shared test Postgres database is wiped and re-migrated
+    per test, with an explicit `with TestClient(app) as client:` so app.main's lifespan
+    (migrations) actually runs."""
     monkeypatch.setenv("SESSION_SECRET_KEY", "test-secret")
 
-    import app.db.connection as db_connection
     from app.config import get_settings
+    from tests.db_reset import reset_app_database
 
+    reset_app_database(monkeypatch)
     get_settings.cache_clear()
-    db_connection._connection = None
 
     with TestClient(app) as test_client:
         yield test_client
 
     get_settings.cache_clear()
-    db_connection._connection = None
 
 
 def _register(test_client: TestClient, email: str = "alice@example.com") -> None:
@@ -130,10 +128,10 @@ def test_home_omits_progress_when_never_read(db_client: TestClient) -> None:
     assert 'class="reading-progress"' not in response.text
 
 
-def test_home_shows_progress_bar_for_logged_in_user_with_recorded_progress(
+async def test_home_shows_progress_bar_for_logged_in_user_with_recorded_progress(
     db_client: TestClient,
 ) -> None:
-    from app.db.connection import get_connection
+    from app.db.connection import connection
     from app.db.library import record_progress
 
     _register(db_client)
@@ -149,9 +147,10 @@ def test_home_shows_progress_bar_for_logged_in_user_with_recorded_progress(
     with patch("app.services.client.RanobeLib", return_value=_FakeClient(title, volumes)):
         db_client.post("/library/6712--test-novel/add")
 
-    record_progress(
-        get_connection(), user_id=1, slug_url="6712--test-novel", volume="1", number="3"
-    )
+    async with connection() as conn:
+        await record_progress(
+            conn, user_id=1, slug_url="6712--test-novel", volume="1", number="3"
+        )
 
     with patch("app.services.client.RanobeLib", return_value=_FakeClient(title, volumes)):
         response = db_client.get("/")

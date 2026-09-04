@@ -1,3 +1,4 @@
+import contextlib
 import os
 from datetime import UTC, datetime
 
@@ -348,11 +349,21 @@ async def test_run_download_job_records_its_own_job_id_in_history(
     monkeypatch.setattr("app.jobs.download.open_client", lambda slug_url: fake)
     recorded: dict[str, object] = {}
 
-    def fake_record_download(*args: object, **kwargs: object) -> None:
+    async def fake_record_download(*args: object, **kwargs: object) -> None:
         recorded["args"] = args
         recorded["kwargs"] = kwargs
 
     monkeypatch.setattr("app.jobs.download.record_download", fake_record_download)
+
+    @contextlib.asynccontextmanager
+    async def fake_connection():
+        # _record_history() checks a real connection out of app.db.connection's pool
+        # before ever calling record_download() (now patched above) - nothing here
+        # needs a real database, so this stands in for a pool this bare unit test (no
+        # TestClient/lifespan, see this file's own lack of one) never opened.
+        yield None
+
+    monkeypatch.setattr("app.jobs.download.connection", fake_connection)
 
     job = _job(user_id=1)
     await run_download_job(job)
