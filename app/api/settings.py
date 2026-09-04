@@ -2,6 +2,7 @@
 
 from typing import Annotated
 
+import psycopg
 from fastapi import APIRouter, Depends, File, Form, Request, UploadFile
 from fastapi.responses import HTMLResponse, RedirectResponse
 from psycopg import AsyncConnection
@@ -19,6 +20,7 @@ from app.db.connection import get_connection
 from app.db.users import (
     User,
     get_user_by_email,
+    get_user_by_nickname,
     update_notification_settings,
     update_privacy_settings,
     update_user_account,
@@ -88,22 +90,43 @@ async def update_account(
     nickname: str = Form(default=""),
     bio: str = Form(default=""),
 ) -> HTMLResponse:
-    existing = await get_user_by_email(conn, email)
-    if existing is not None and existing.id != user.id:
-        context = _account_context(
-            user,
-            nickname=nickname,
-            email=email,
-            bio=bio,
-            error="Этот email уже используется другим аккаунтом",
-        )
+    nickname_clean = nickname.strip() or None
+
+    existing_email = await get_user_by_email(conn, email)
+    existing_nickname = (
+        await get_user_by_nickname(conn, nickname_clean) if nickname_clean is not None else None
+    )
+    error: str | None = None
+    if existing_email is not None and existing_email.id != user.id:
+        error = "Этот email уже используется другим аккаунтом"
+    elif existing_nickname is not None and existing_nickname.id != user.id:
+        error = "Этот никнейм уже занят"
+
+    if error is not None:
+        context = _account_context(user, nickname=nickname, email=email, bio=bio, error=error)
         return templates.TemplateResponse(
             request, "settings_account.html", context, status_code=400
         )
 
-    updated = await update_user_account(
-        conn, user.id, email=email, nickname=nickname.strip() or None, bio=bio.strip() or None
-    )
+    try:
+        updated = await update_user_account(
+            conn, user.id, email=email, nickname=nickname_clean, bio=bio.strip() or None
+        )
+    except psycopg.errors.UniqueViolation as exc:
+        # Race-safe backstop behind the pre-check above - see create_user()'s docstring
+        # (app/db/users.py) for why the pre-check alone can't be trusted.
+        if exc.diag.constraint_name == "users_nickname_lower_unique":
+            context = _account_context(
+                user,
+                nickname=nickname,
+                email=email,
+                bio=bio,
+                error="Этот никнейм уже занят",
+            )
+            return templates.TemplateResponse(
+                request, "settings_account.html", context, status_code=400
+            )
+        raise
     return templates.TemplateResponse(
         request, "settings_account.html", _account_context(updated, saved=True)
     )

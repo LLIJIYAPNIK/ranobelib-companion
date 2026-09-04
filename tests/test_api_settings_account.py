@@ -111,6 +111,47 @@ def test_update_account_rejects_an_email_already_used_by_another_account(
     assert 'value="bob@example.com"' in reloaded.text
 
 
+def test_update_account_rejects_a_nickname_already_used_by_another_account(
+    client: TestClient,
+) -> None:
+    _register(client, "alice@example.com")
+    client.post(
+        "/settings/account",
+        data={"email": "alice@example.com", "nickname": "Nick", "bio": ""},
+    )
+    client.post("/logout")
+    _register(client, "bob@example.com")
+
+    response = client.post(
+        "/settings/account",
+        data={"email": "bob@example.com", "nickname": "nick", "bio": ""},
+    )
+
+    assert response.status_code == 400
+    assert "никнейм уже занят" in response.text
+    # Bob's own account is untouched.
+    reloaded = client.get("/settings/account")
+    assert 'value="nick"' not in reloaded.text
+
+
+def test_update_account_allows_resubmitting_own_nickname_unchanged(
+    client: TestClient,
+) -> None:
+    _register(client, "alice@example.com")
+    client.post(
+        "/settings/account",
+        data={"email": "alice@example.com", "nickname": "Nick", "bio": ""},
+    )
+
+    response = client.post(
+        "/settings/account",
+        data={"email": "alice@example.com", "nickname": "Nick", "bio": "Updated"},
+    )
+
+    assert response.status_code == 200
+    assert ">Updated</textarea>" in response.text
+
+
 def test_update_account_allows_resubmitting_the_same_email_unchanged(
     client: TestClient,
 ) -> None:
@@ -239,13 +280,9 @@ def test_reuploading_with_a_different_extension_removes_the_old_file(
     client: TestClient, tmp_path: Path
 ) -> None:
     _register(client, "alice@example.com")
-    client.post(
-        "/settings/account/avatar", files={"avatar": ("me.png", _PNG_BYTES, "image/png")}
-    )
+    client.post("/settings/account/avatar", files={"avatar": ("me.png", _PNG_BYTES, "image/png")})
 
-    client.post(
-        "/settings/account/avatar", files={"avatar": ("me.jpg", _JPEG_BYTES, "image/jpeg")}
-    )
+    client.post("/settings/account/avatar", files={"avatar": ("me.jpg", _JPEG_BYTES, "image/jpeg")})
 
     saved_files = list((tmp_path / "avatars").iterdir())
     assert [f.name for f in saved_files] == ["1.jpg"]
@@ -289,9 +326,7 @@ def test_update_privacy_unchecking_all_three_saves_them_as_hidden(client: TestCl
 def test_update_privacy_flags_are_independent(client: TestClient) -> None:
     _register(client, "alice@example.com")
 
-    response = client.post(
-        "/settings/account/privacy", data={"show_favorite": "on"}
-    )
+    response = client.post("/settings/account/privacy", data={"show_favorite": "on"})
 
     assert response.status_code == 200
     assert 'name="show_currently_reading" checked' not in response.text
