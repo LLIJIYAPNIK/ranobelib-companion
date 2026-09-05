@@ -28,6 +28,7 @@ from app.auth.dependencies import get_current_user
 from app.db.activity import daily_active_seconds, daily_reading_activity, daily_titles_read
 from app.db.comments import count_comments_by_user
 from app.db.connection import connection, get_connection
+from app.db.friendships import get_relationship
 from app.db.users import User, get_user_by_id
 from app.services.client import open_client
 from app.templating import templates
@@ -70,7 +71,9 @@ async def own_profile_page(
     if user is None:
         return templates.TemplateResponse(request, "profile.html", {"profile_user": None})
     async with connection() as conn:
-        return await _render_profile(request, profile_user=user, is_own_profile=True, conn=conn)
+        return await _render_profile(
+            request, profile_user=user, is_own_profile=True, viewer_id=user.id, conn=conn
+        )
 
 
 @router.get("/profile/{user_id}")
@@ -85,12 +88,21 @@ async def public_profile_page(
         raise HTTPException(status_code=404, detail="Пользователь не найден")
     is_own_profile = viewer is not None and viewer.id == profile_user.id
     return await _render_profile(
-        request, profile_user=profile_user, is_own_profile=is_own_profile, conn=conn
+        request,
+        profile_user=profile_user,
+        is_own_profile=is_own_profile,
+        viewer_id=viewer.id if viewer is not None else None,
+        conn=conn,
     )
 
 
 async def _render_profile(
-    request: Request, *, profile_user: User, is_own_profile: bool, conn: AsyncConnection
+    request: Request,
+    *,
+    profile_user: User,
+    is_own_profile: bool,
+    viewer_id: int | None,
+    conn: AsyncConnection,
 ) -> HTMLResponse:
     items = await library_items_for_user(profile_user, conn)
     # Most recently read first (see library_items_for_user/list_entries's own ordering) -
@@ -110,12 +122,20 @@ async def _render_profile(
         if not profile_user.show_library:
             items = []
 
+    # PR 199: which of the "Добавить в друзья" button's states to show - only meaningful
+    # for a logged-in visitor looking at someone else's profile; None otherwise (an
+    # anonymous visitor, or your own profile, has no friend-request UI at all).
+    friend_state = None
+    if viewer_id is not None and not is_own_profile:
+        friend_state = await _friend_button_state(conn, viewer_id, profile_user.id)
+
     return templates.TemplateResponse(
         request,
         "profile.html",
         {
             "profile_user": profile_user,
             "is_own_profile": is_own_profile,
+            "friend_state": friend_state,
             "registered_at": _format_date(profile_user.created_at),
             # PR 135/136: unlike currently_reading/favorite_item/library_items above, not
             # gated by any show_* privacy flag - there isn't one for either, same as the
@@ -127,6 +147,19 @@ async def _render_profile(
             "library_items": items,
         },
     )
+
+
+async def _friend_button_state(conn: AsyncConnection, viewer_id: int, profile_user_id: int) -> str:
+    """One of "none"/"outgoing"/"incoming"/"friends" - see profile.html for what each one
+    renders. Not itself part of app/db/friendships.py since this is purely a presentation
+    concern (which of the button's states to show), the same kind of computation-on-top-of-
+    raw-data _build_reading_calendar() above already does for its own raw inputs."""
+    relationship = await get_relationship(conn, viewer_id, profile_user_id)
+    if relationship is None:
+        return "none"
+    if relationship.status == "accepted":
+        return "friends"
+    return "outgoing" if relationship.requester_id == viewer_id else "incoming"
 
 
 def _format_date(iso_timestamp: str) -> str:

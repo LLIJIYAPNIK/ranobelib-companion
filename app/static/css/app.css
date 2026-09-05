@@ -1028,6 +1028,14 @@ a {
   margin: 0 0 8px;
 }
 
+/* PR 199: "Принять заявку"/"Отклонить" side by side under an incoming friend request on
+   someone else's profile - the other three friend_state branches only ever render one
+   form, so they don't need a row wrapper of their own. */
+.profile__friend-actions {
+  display: flex;
+  gap: 8px;
+}
+
 /* PR 122: "Читает сейчас"/"Библиотека" sections on /profile - same heading treatment as
    .reader-settings-section__title, unlike .profile above these aren't capped to 480px
    since the library grid needs the full content width. */
