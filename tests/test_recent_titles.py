@@ -1,13 +1,23 @@
+import base64
 import json
 from unittest.mock import patch
-from urllib.parse import quote, unquote
 
 from fastapi.testclient import TestClient
 from ranobelib.models import Cover, Label, Title, Volume
 
 from app.main import app
+from app.recent_titles import _MAX_NAME_LENGTH
 
 client = TestClient(app)
+
+
+def _encode_cookie(entries: list[dict[str, object]]) -> str:
+    payload = json.dumps(entries, ensure_ascii=False, separators=(",", ":")).encode("utf-8")
+    return base64.urlsafe_b64encode(payload).decode("ascii")
+
+
+def _decode_cookie(cookie: str) -> list[dict[str, object]]:
+    return json.loads(base64.urlsafe_b64decode(cookie.encode("ascii")))
 
 
 def _fake_title(slug_url: str, name: str, cover: Cover | None = None) -> Title:
@@ -50,7 +60,7 @@ def test_show_title_sets_recent_titles_cookie() -> None:
 
     cookie = response.cookies.get("recent_titles")
     assert cookie is not None
-    assert json.loads(unquote(cookie)) == [
+    assert _decode_cookie(cookie) == [
         {"slug_url": "1--first-novel", "name": "First Novel", "cover_url": None}
     ]
 
@@ -63,7 +73,7 @@ def test_show_title_stores_cover_url_in_recent_titles_cookie() -> None:
     with patch("app.services.client.RanobeLib", return_value=_FakeClient(title)):
         response = client.get("/titles/1--first-novel")
 
-    cookie = json.loads(unquote(response.cookies.get("recent_titles")))
+    cookie = _decode_cookie(response.cookies.get("recent_titles"))
     assert cookie[0]["cover_url"] == "https://example.com/cover.jpg"
 
 
@@ -79,15 +89,32 @@ def test_show_title_moves_reopened_title_to_front() -> None:
     with patch("app.services.client.RanobeLib", return_value=_FakeClient(first)):
         response = client.get("/titles/1--first-novel")
 
-    cookie = json.loads(unquote(response.cookies.get("recent_titles")))
+    cookie = _decode_cookie(response.cookies.get("recent_titles"))
     assert [item["slug_url"] for item in cookie] == ["1--first-novel", "2--second-novel"]
+
+
+def test_show_title_truncates_long_names_in_recent_titles_cookie() -> None:
+    # Regression test for #205: nginx returned 502 ("upstream sent too big header") on
+    # titles with long Cyrillic names because the old percent-encoded cookie could blow
+    # past nginx's default response-header buffer. A single title name long enough to
+    # threaten that on its own must be capped when stored, not just the entry count.
+    client.cookies.clear()
+    long_name = "Очень длинное название новеллы, " * 10
+    assert len(long_name) > _MAX_NAME_LENGTH
+    title = _fake_title("1--first-novel", long_name)
+    with patch("app.services.client.RanobeLib", return_value=_FakeClient(title)):
+        response = client.get("/titles/1--first-novel")
+
+    cookie = _decode_cookie(response.cookies.get("recent_titles"))
+    assert len(cookie[0]["name"]) <= _MAX_NAME_LENGTH
+    assert cookie[0]["name"].endswith("…")
 
 
 def test_home_lists_recent_titles_from_cookie() -> None:
     client.cookies.clear()
     client.cookies.set(
         "recent_titles",
-        quote(json.dumps([{"slug_url": "1--first-novel", "name": "First Novel"}])),
+        _encode_cookie([{"slug_url": "1--first-novel", "name": "First Novel"}]),
     )
 
     response = client.get("/")
@@ -103,16 +130,14 @@ def test_home_renders_cover_when_present_in_cookie() -> None:
     client.cookies.clear()
     client.cookies.set(
         "recent_titles",
-        quote(
-            json.dumps(
-                [
-                    {
-                        "slug_url": "1--first-novel",
-                        "name": "First Novel",
-                        "cover_url": "https://example.com/cover.jpg",
-                    }
-                ]
-            )
+        _encode_cookie(
+            [
+                {
+                    "slug_url": "1--first-novel",
+                    "name": "First Novel",
+                    "cover_url": "https://example.com/cover.jpg",
+                }
+            ]
         ),
     )
 
@@ -125,7 +150,7 @@ def test_home_renders_cover_when_present_in_cookie() -> None:
 
 def test_home_ignores_malformed_recent_titles_cookie() -> None:
     client.cookies.clear()
-    client.cookies.set("recent_titles", "not-json")
+    client.cookies.set("recent_titles", "not-valid-base64!!")
 
     response = client.get("/")
 
@@ -138,7 +163,7 @@ def test_home_renders_a_remove_button_for_each_recent_card() -> None:
     client.cookies.clear()
     client.cookies.set(
         "recent_titles",
-        quote(json.dumps([{"slug_url": "1--first-novel", "name": "First Novel"}])),
+        _encode_cookie([{"slug_url": "1--first-novel", "name": "First Novel"}]),
     )
 
     response = client.get("/")
@@ -153,20 +178,18 @@ def test_forget_removes_only_the_given_title_from_the_cookie() -> None:
     client.cookies.clear()
     client.cookies.set(
         "recent_titles",
-        quote(
-            json.dumps(
-                [
-                    {"slug_url": "1--first-novel", "name": "First Novel"},
-                    {"slug_url": "2--second-novel", "name": "Second Novel"},
-                ]
-            )
+        _encode_cookie(
+            [
+                {"slug_url": "1--first-novel", "name": "First Novel"},
+                {"slug_url": "2--second-novel", "name": "Second Novel"},
+            ]
         ),
     )
 
     response = client.post("/recent/1--first-novel/forget")
 
     assert response.status_code == 204
-    cookie = json.loads(unquote(response.cookies.get("recent_titles")))
+    cookie = _decode_cookie(response.cookies.get("recent_titles"))
     assert [item["slug_url"] for item in cookie] == ["2--second-novel"]
 
     client.cookies.clear()
@@ -176,13 +199,13 @@ def test_forget_unknown_title_is_not_an_error() -> None:
     client.cookies.clear()
     client.cookies.set(
         "recent_titles",
-        quote(json.dumps([{"slug_url": "1--first-novel", "name": "First Novel"}])),
+        _encode_cookie([{"slug_url": "1--first-novel", "name": "First Novel"}]),
     )
 
     response = client.post("/recent/9--never-opened/forget")
 
     assert response.status_code == 204
-    cookie = json.loads(unquote(response.cookies.get("recent_titles")))
+    cookie = _decode_cookie(response.cookies.get("recent_titles"))
     assert [item["slug_url"] for item in cookie] == ["1--first-novel"]
 
     client.cookies.clear()
