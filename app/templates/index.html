@@ -44,6 +44,18 @@
       {% endfor %}
     </div>
   </section>
+  {% else %}
+  <div class="home-empty" data-role="home-empty">
+    <p class="home-empty__text">
+      Здесь появятся недавно открытые тайтлы — вставьте ссылку на тайтл ranobelib.me
+      в поле поиска выше, чтобы начать.
+    </p>
+    <p class="home-empty__text home-empty__text--muted">
+      Сайт — веб-интерфейс поверх публичного API RanobeLib (SDK
+      ranobelib-python-sdk), а не самостоятельный источник контента: все тайтлы и
+      главы загружаются напрямую с ranobelib.me.
+    </p>
+  </div>
   {% endif %}
 </main>
 <script src="{{ url_for('static', path='js/recent-titles-forget.js') }}" defer></script>

@@ -1255,6 +1255,37 @@ a {
   margin: 24px 0 12px;
 }
 
+/* Meaningful empty state for a first-time visitor / fresh account with no "Недавние"
+   entries yet (PR 198) - explains what the page is for and, separately, that this site
+   is a thin layer over the public RanobeLib API rather than its own content source
+   (same distinction CLAUDE.md already draws for developers, just also said out loud to
+   visitors here). Same card language as .locked-feature, left-aligned rather than
+   centered since this replaces a left-aligned section, not a full-page state. */
+.home-empty {
+  max-width: 480px;
+  margin-top: 8px;
+  padding: 24px;
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  background: var(--bg-surface);
+}
+
+.home-empty__text {
+  margin: 0 0 12px;
+  font-size: 14px;
+  line-height: 1.6;
+  color: var(--text-secondary);
+}
+
+.home-empty__text:last-child {
+  margin-bottom: 0;
+}
+
+.home-empty__text--muted {
+  font-size: 13px;
+  color: var(--text-muted);
+}
+
 /* Personal-feature-needs-an-account state (originally "Читаю" locked for anonymous
    visitors - Claude Design import "RanobeLib Library Locked", see CLAUDE.md, "Дизайн"),
    generalized for reuse by "Загрузки" (PR 17) too. */
