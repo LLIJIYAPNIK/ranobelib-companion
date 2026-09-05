@@ -4928,25 +4928,25 @@ img.paragraph-comment__attachment {
 /* Cookie notice banner (PR 185) - a plain informational bar, not a blocking consent
    modal: both cookies this site sets (the session cookie and the anonymous
    recent_titles history) are strictly functional, so this only has to inform, not gate
-   the rest of the page behind an opt-in click. Spans the full viewport width, so it
-   sits on top of .sidebar's bottom edge on desktop rather than beside it - the sidebar
-   itself is `position: sticky`, not fixed, so it doesn't fight this for the same
-   corner. */
+   the rest of the page behind an opt-in click. Compact corner card (PR 197) instead of
+   a full-width bottom strip - same visual language as .download-ready__toast (PR 50),
+   just anchored to the bottom-right corner instead of the top-right one, so it doesn't
+   collide with that toast if both happen to be visible at once. */
 .cookie-notice {
   position: fixed;
-  left: 0;
-  right: 0;
-  bottom: 0;
+  right: 16px;
+  bottom: 16px;
   z-index: 70;
   display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 16px;
-  flex-wrap: wrap;
-  padding: 12px 20px;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 10px;
+  max-width: 320px;
+  padding: 12px 14px;
   background: var(--bg-surface);
-  border-top: 1px solid var(--border);
-  box-shadow: 0 -8px 20px rgba(0, 0, 0, 0.25);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  box-shadow: 0 8px 20px rgba(0, 0, 0, 0.35);
 }
 
 .cookie-notice[hidden] {
@@ -4963,6 +4963,7 @@ img.paragraph-comment__attachment {
   .cookie-notice {
     /* Same 76px clearance above the fixed bottom tab bar as .download-ready/
        .toc__export-panel (PR 51) use on mobile. */
+    right: 12px;
     bottom: 76px;
   }
 }
