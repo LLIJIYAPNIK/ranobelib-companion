@@ -1,6 +1,6 @@
 """End-to-end friend requests/relationships (PR 199) through the real ASGI app - the
-"Добавить в друзья" button states on the public profile page, and the three POST actions
-(request/accept/remove) it drives.
+"Добавить в друзья" button states on the public profile page, the /friends list page, and
+the three POST actions (request/accept/remove) both surfaces use.
 
 Same isolation strategy as tests/test_api_profile.py: the shared test Postgres database is
 wiped and re-migrated per test, and `_register()` on an already-logged-in client switches
@@ -161,6 +161,37 @@ async def test_request_requires_login(client: TestClient) -> None:
 
     assert response.status_code == 303
     assert response.headers["location"] == "/login"
+
+
+async def test_friends_page_requires_login_shows_locked_state(client: TestClient) -> None:
+    response = client.get("/friends")
+
+    assert response.status_code == 200
+    assert "Друзья скрыты" in response.text
+
+
+async def test_friends_page_lists_incoming_outgoing_and_accepted(client: TestClient) -> None:
+    _register(client, "alice@example.com")
+    alice_id = await _user_id("alice@example.com")
+    _register(client, "bob@example.com")
+    bob_id = await _user_id("bob@example.com")
+    _register(client, "carol@example.com")
+    client.post(f"/friends/{bob_id}/request")  # Carol -> Bob, pending
+    _register(client, "dave@example.com")
+    dave_id = await _user_id("dave@example.com")
+    client.post(f"/friends/{bob_id}/request")  # Dave -> Bob, then accepted below
+
+    client.post("/logout")
+    client.post("/login", data={"email": "bob@example.com", "password": "hunter2pass"})
+    client.post(f"/friends/{alice_id}/request")  # Bob -> Alice, pending (outgoing for Bob)
+    client.post(f"/friends/{dave_id}/accept")  # Bob accepts Dave -> now friends
+
+    response = client.get("/friends")
+
+    assert response.status_code == 200
+    assert "carol@example.com" in response.text  # incoming request row
+    assert "alice@example.com" in response.text  # outgoing request row
+    assert "dave@example.com" in response.text  # accepted friend row
 
 
 async def test_sending_a_friend_request_notifies_the_recipient(client: TestClient) -> None:

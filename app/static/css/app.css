@@ -598,6 +598,73 @@ a {
   color: var(--text-muted);
 }
 
+/* PR 199: /friends - a plain vertical list of user rows (incoming/outgoing requests,
+   accepted friends), same visual language as .notifications-panel__item above (avatar +
+   name row, hover tint) but its own classes rather than reusing those directly - this
+   list's rows carry labeled text action buttons (.btn), not the notification list's
+   icon-only mark-read/delete pair, and have no unread/read distinction of their own. */
+.friend-list {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  max-width: 640px;
+}
+
+.friend-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 12px;
+  border-radius: 8px;
+  transition: background-color 0.1s ease;
+}
+
+@media (hover: hover) {
+  .friend-row:hover {
+    background: rgba(34, 211, 197, 0.08);
+  }
+}
+
+.friend-row__link {
+  display: flex;
+  align-items: center;
+  flex: 1;
+  min-width: 0;
+  gap: 10px;
+  color: inherit;
+  text-decoration: none;
+}
+
+.friend-row__avatar {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex: 0 0 auto;
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  background: var(--accent);
+  color: var(--text-primary);
+  font-size: 12px;
+  font-weight: 600;
+  overflow: hidden;
+}
+
+.friend-row__name {
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--text-primary);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.friend-row__actions {
+  display: flex;
+  flex: 0 0 auto;
+  gap: 8px;
+}
+
 /* PR 169: "Все уведомления" (notifications.html) - a plain vertical list of the same
    .notifications-panel__item cards the bell's flyout uses (see _notification_card.html),
    just laid out full-width in the page column instead of inside a 340px popover, and
@@ -2343,6 +2410,15 @@ a {
   font-size: 11px;
   font-weight: 600;
   background: var(--accent);
+}
+
+/* PR 199: .btn--sm's own `background` above otherwise wins over .btn--secondary's
+   `transparent` (both single-class selectors, .btn--sm just happens to come second in the
+   file) - the friend-row action buttons (friends.html) are the first place this codebase
+   combines the two, so the collision was never visible before. Two classes here beats
+   .btn--sm's one regardless of source order. */
+.btn--sm.btn--secondary {
+  background: transparent;
 }
 
 .toc {

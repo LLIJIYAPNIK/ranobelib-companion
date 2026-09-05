@@ -1,23 +1,65 @@
-"""Friend requests and relationships (PR 199) - the three POST actions the "Добавить в
-друзья" button on profile.html (app/api/profile.py) posts to. The button's own state
-(which of the three actions to even show) is computed in profile.py, not here.
+"""Friend requests and relationships (PR 199) - the /friends list page plus the three
+POST actions both that page and the "Добавить в друзья" button on profile.html
+(app/api/profile.py) post to. The button's own state (which of the three actions to even
+show) is computed in profile.py, not here - this module only owns the actions themselves
+and the page that lists them all together.
 """
 
 from __future__ import annotations
 
 from typing import Annotated
 
-from fastapi import APIRouter, Depends, Form, HTTPException
-from fastapi.responses import RedirectResponse
+from fastapi import APIRouter, Depends, Form, HTTPException, Request
+from fastapi.responses import HTMLResponse, RedirectResponse
 from psycopg import AsyncConnection
 
-from app.auth.dependencies import require_current_user
-from app.db.connection import get_connection
-from app.db.friendships import accept_request, remove_relationship, send_request
+from app.auth.dependencies import get_current_user, require_current_user
+from app.db.connection import connection, get_connection
+from app.db.friendships import (
+    FriendEntry,
+    FriendRequestEntry,
+    accept_request,
+    list_friends,
+    list_incoming_requests,
+    list_outgoing_requests,
+    remove_relationship,
+    send_request,
+)
 from app.db.notifications import notify_friend_accept, notify_friend_request
 from app.db.users import User, get_user_by_id
+from app.templating import templates
 
 router = APIRouter(prefix="/friends")
+
+
+@router.get("")
+async def show_friends(
+    request: Request,
+    user: Annotated[User | None, Depends(get_current_user)],
+) -> HTMLResponse:
+    """Same locked-screen gate as /library, /downloads, /activity (PR 22) - viewing the
+    page itself doesn't require an account. conn is checked out below, not taken as a
+    route-level Depends(get_connection) parameter, so an anonymous visitor never checks
+    one out of the pool at all (see get_current_user()'s own docstring for the same
+    reasoning)."""
+    incoming: list[FriendRequestEntry] = []
+    outgoing: list[FriendRequestEntry] = []
+    friends: list[FriendEntry] = []
+    if user is not None:
+        async with connection() as conn:
+            incoming = await list_incoming_requests(conn, user.id)
+            outgoing = await list_outgoing_requests(conn, user.id)
+            friends = await list_friends(conn, user.id)
+    return templates.TemplateResponse(
+        request,
+        "friends.html",
+        {
+            "active_nav": "friends",
+            "incoming_requests": incoming,
+            "outgoing_requests": outgoing,
+            "friends": friends,
+        },
+    )
 
 
 @router.post("/{other_user_id}/request")
