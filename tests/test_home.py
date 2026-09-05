@@ -20,6 +20,29 @@ def test_home_renders_search_form() -> None:
     assert 'name="url"' in response.text
 
 
+def test_home_shows_empty_state_when_no_recent_titles() -> None:
+    """PR 198: a first-time visitor (no recent_titles cookie at all) sees an explanation
+    of the page instead of a blank space under the search field."""
+    response = client.get("/")
+
+    assert response.status_code == 200
+    assert 'data-role="home-empty"' in response.text
+    assert "RanobeLib" in response.text
+    assert 'data-role="recent-titles"' not in response.text
+
+
+def test_home_omits_empty_state_when_recent_titles_exist() -> None:
+    payload = dumps([{"slug_url": "6712--test-novel", "name": "Test Novel"}]).encode("utf-8")
+    test_client = TestClient(app)
+    test_client.cookies.set("recent_titles", urlsafe_b64encode(payload).decode("ascii"))
+
+    response = test_client.get("/")
+
+    assert response.status_code == 200
+    assert 'data-role="recent-titles"' in response.text
+    assert 'data-role="home-empty"' not in response.text
+
+
 def _set_recent_cookie(test_client: TestClient, slug_url: str, name: str) -> None:
     payload = dumps([{"slug_url": slug_url, "name": name}]).encode("utf-8")
     test_client.cookies.set("recent_titles", urlsafe_b64encode(payload).decode("ascii"))

@@ -20,31 +20,47 @@
   <p class="form-error">{{ error }}</p>
   {% endif %}
 
-  {% if recent %}
-  <section>
-    <h2 class="recent__title">Недавние</h2>
-    <div class="title-card-grid" data-role="recent-titles">
-      {% from "_title_card.html" import title_card %}
-      {% for item in recent %}
-      {% call title_card(item.slug_url, item.name, item.cover_url) %}
-      <button
-        type="button"
-        class="title-card__remove"
-        data-role="forget-recent-title"
-        data-slug-url="{{ item.slug_url }}"
-        aria-label="Убрать «{{ item.name }}» из недавних"
-        title="Убрать из недавних"
-      >×</button>
-      {% if item.progress_percent is not none %}
-      <div class="reading-progress" aria-hidden="true">
-        <div class="reading-progress__fill" style="width: {{ item.progress_percent }}%"></div>
+  <div class="home-columns">
+    <div class="home-columns__primary">
+      {% if recent %}
+      <section>
+        <h2 class="recent__title">Недавние</h2>
+        <div class="title-card-grid" data-role="recent-titles">
+          {% from "_title_card.html" import title_card %}
+          {% for item in recent %}
+          {% call title_card(item.slug_url, item.name, item.cover_url) %}
+          <button
+            type="button"
+            class="title-card__remove"
+            data-role="forget-recent-title"
+            data-slug-url="{{ item.slug_url }}"
+            aria-label="Убрать «{{ item.name }}» из недавних"
+            title="Убрать из недавних"
+          >×</button>
+          {% if item.progress_percent is not none %}
+          <div class="reading-progress" aria-hidden="true">
+            <div class="reading-progress__fill" style="width: {{ item.progress_percent }}%"></div>
+          </div>
+          {% endif %}
+          {% endcall %}
+          {% endfor %}
+        </div>
+      </section>
+      {% else %}
+      <div class="home-empty" data-role="home-empty">
+        <p class="home-empty__text">
+          Здесь появятся недавно открытые тайтлы — вставьте ссылку на тайтл ranobelib.me
+          в поле поиска выше, чтобы начать.
+        </p>
+        <p class="home-empty__text home-empty__text--muted">
+          Сайт — веб-интерфейс поверх публичного API RanobeLib (SDK
+          ranobelib-python-sdk), а не самостоятельный источник контента: все тайтлы и
+          главы загружаются напрямую с ranobelib.me.
+        </p>
       </div>
       {% endif %}
-      {% endcall %}
-      {% endfor %}
     </div>
-  </section>
-  {% endif %}
+  </div>
 </main>
 <script src="{{ url_for('static', path='js/recent-titles-forget.js') }}" defer></script>
 <script src="{{ url_for('static', path='js/title-quickview.js') }}" defer></script>
