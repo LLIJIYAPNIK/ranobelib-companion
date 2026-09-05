@@ -101,6 +101,19 @@ Development section.
    and the HTTP→HTTPS redirect - the tracked `deploy/webnovells.ru.conf` in the repo
    stays the pre-TLS bootstrap version on purpose (see the comment at its top).
 
+   **This `cp` is a one-time step for the first deploy only.** Once certbot has run, never
+   re-run this `cp` (or otherwise overwrite `/etc/nginx/sites-available/webnovells.ru.conf`
+   with the tracked file again) - it would silently discard the 443/TLS block certbot
+   added, since the tracked copy still has none. Without a matching `server_name
+   webnovells.ru` block on port 443, nginx falls back to whichever other HTTPS site on
+   this server happens to be configured first (this has actually happened on this VPS,
+   which also hosts other sites - `https://webnovells.ru` briefly served a different
+   site's content until the 443 block was restored with `sudo certbot --nginx -d
+   webnovells.ru --redirect`, run again with **option 1, "reinstall existing
+   certificate"** - the certificate itself was still valid, only the nginx config needed
+   redoing). See "Changing the nginx config after the first deploy" below for how to
+   apply a change to `deploy/webnovells.ru.conf` safely instead.
+
 5. Lock down the firewall:
 
    ```
@@ -145,3 +158,29 @@ To redeploy by hand instead (e.g. while debugging, or before those secrets exist
 git pull
 docker compose up -d --build
 ```
+
+## Changing the nginx config after the first deploy
+
+Neither CD nor `docker compose up` ever touches nginx - it runs on the host, outside
+Docker, and a PR that changes `deploy/webnovells.ru.conf` only updates the copy tracked in
+the repo. Applying the change on the server is a manual step, and **it is not a plain
+`cp`** once TLS is set up (see the warning in step 4 above): the deployed
+`/etc/nginx/sites-available/webnovells.ru.conf` has certbot's 443/TLS block that the
+tracked file deliberately doesn't carry, and a `cp` would delete it.
+
+Instead, after `git pull` on the server:
+
+1. `diff /etc/nginx/sites-available/webnovells.ru.conf deploy/webnovells.ru.conf` to see
+   exactly what changed - it should be additions/edits inside the existing `listen 80`
+   server block (e.g. a new `proxy_*` directive), not anything touching `listen 443`,
+   `ssl_certificate`, or the redirect block, all of which are certbot's and aren't in the
+   tracked file at all.
+2. Apply just that diff to the deployed file by hand (a text editor over SSH, or `patch`),
+   leaving certbot's 443 block untouched.
+3. `sudo nginx -t && sudo systemctl reload nginx`.
+
+If the 443 block is ever lost anyway (accidental `cp`, manual edit gone wrong), it doesn't
+need a new certificate - `sudo certbot certificates` will still show the existing
+`webnovells.ru` one as valid, and `sudo certbot --nginx -d webnovells.ru --redirect` (then
+choosing **"reinstall existing certificate"** when asked) rebuilds just the nginx config
+around it.
