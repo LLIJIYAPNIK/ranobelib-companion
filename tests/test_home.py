@@ -1,7 +1,7 @@
+from base64 import urlsafe_b64encode
 from collections.abc import Iterator
 from json import dumps
 from unittest.mock import patch
-from urllib.parse import quote
 
 import pytest
 from fastapi.testclient import TestClient
@@ -21,10 +21,8 @@ def test_home_renders_search_form() -> None:
 
 
 def _set_recent_cookie(test_client: TestClient, slug_url: str, name: str) -> None:
-    test_client.cookies.set(
-        "recent_titles",
-        quote(dumps([{"slug_url": slug_url, "name": name}])),
-    )
+    payload = dumps([{"slug_url": slug_url, "name": name}]).encode("utf-8")
+    test_client.cookies.set("recent_titles", urlsafe_b64encode(payload).decode("ascii"))
 
 
 def _fake_title(slug_url: str = "6712--test-novel", name: str = "Test Novel") -> Title:
