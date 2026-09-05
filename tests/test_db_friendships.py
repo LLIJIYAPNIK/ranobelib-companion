@@ -1,5 +1,8 @@
+import asyncio
+
 import psycopg
 import pytest
+from psycopg.rows import dict_row
 
 from app.db.friendships import (
     accept_request,
@@ -11,7 +14,7 @@ from app.db.friendships import (
     send_request,
 )
 from app.db.migrate import run_migrations
-from tests.db_reset import fresh_connection
+from tests.db_reset import TEST_DATABASE_URL, fresh_connection
 
 
 @pytest.fixture
@@ -71,6 +74,41 @@ async def test_send_request_against_an_accepted_friendship_is_a_noop(
 
     assert created is False
     assert friendship.status == "accepted"
+
+
+async def test_send_request_race_between_mutual_requests_leaves_exactly_one_row(
+    conn: psycopg.AsyncConnection,
+) -> None:
+    """PR 199's own race test: A -> B and B -> A landing at (near) the same instant must
+    not create two rows or leave the table in a contradictory state - idx_friendships_pair
+    (migrations/0018_friendships.sql) is the actual backstop send_request() falls back to
+    when its own pre-check loses the race.
+
+    Real concurrency (two separate connections, not two sequential calls on one) - same
+    pattern as tests/test_db_users.py's own test_create_user_nickname_race_exactly_one_
+    succeeds(): `conn` (already migrated by the fixture) is one side, a second connection
+    to the same test database stands in for the other, concurrent request."""
+    conn2 = await psycopg.AsyncConnection.connect(
+        TEST_DATABASE_URL, row_factory=dict_row, autocommit=True
+    )
+    try:
+        results = await asyncio.gather(
+            send_request(conn, requester_id=1, addressee_id=2),
+            send_request(conn2, requester_id=2, addressee_id=1),
+        )
+    finally:
+        await conn2.close()
+
+    cursor = await conn.execute(
+        "SELECT COUNT(*) AS n FROM friendships "
+        "WHERE (requester_id = 1 AND addressee_id = 2) OR (requester_id = 2 AND addressee_id = 1)"
+    )
+    assert (await cursor.fetchone())["n"] == 1
+    # Exactly one side's call actually created the row - the other observed it already
+    # existed, whichever order they actually landed in.
+    created_flags = [created for _, created in results]
+    assert sorted(created_flags) == [False, True]
+    assert results[0][0].id == results[1][0].id
 
 
 async def test_send_request_rejects_a_self_request(conn: psycopg.AsyncConnection) -> None:
