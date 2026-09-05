@@ -7,10 +7,14 @@ from app.db.comments import create_comment
 from app.db.migrate import run_migrations
 from app.db.notifications import (
     KIND_COMMENT_REACTION,
+    KIND_FRIEND_ACCEPT,
+    KIND_FRIEND_REQUEST,
     delete_notification,
     list_notifications_page,
     mark_notification_read,
     notify_comment_reaction,
+    notify_friend_accept,
+    notify_friend_request,
 )
 from tests.db_reset import fresh_connection
 
@@ -89,6 +93,46 @@ async def test_notify_comment_reaction_creates_a_new_row_once_the_old_one_is_rea
     await conn.execute("UPDATE notifications SET is_read = 1")
 
     await notify_comment_reaction(conn, comment.id, actor_user_id=2)
+
+    assert len(await _notifications(conn)) == 2
+
+
+async def test_notify_friend_request_creates_a_row_for_the_recipient(
+    conn: psycopg.AsyncConnection,
+) -> None:
+    await notify_friend_request(conn, recipient_id=1, actor_user_id=2)
+
+    rows = await _notifications(conn)
+    assert len(rows) == 1
+    assert rows[0]["user_id"] == 1
+    assert rows[0]["actor_user_id"] == 2
+    assert rows[0]["kind"] == KIND_FRIEND_REQUEST
+    assert rows[0]["comment_id"] is None
+    assert rows[0]["is_read"] == 0
+
+
+async def test_notify_friend_accept_creates_a_row_for_the_recipient(
+    conn: psycopg.AsyncConnection,
+) -> None:
+    await notify_friend_accept(conn, recipient_id=1, actor_user_id=2)
+
+    rows = await _notifications(conn)
+    assert len(rows) == 1
+    assert rows[0]["user_id"] == 1
+    assert rows[0]["actor_user_id"] == 2
+    assert rows[0]["kind"] == KIND_FRIEND_ACCEPT
+    assert rows[0]["comment_id"] is None
+
+
+async def test_notify_friend_request_does_not_dedupe_like_comment_reactions_do(
+    conn: psycopg.AsyncConnection,
+) -> None:
+    """Unlike notify_comment_reaction(), a repeat call always inserts a fresh row - callers
+    (app/api/friendships.py) are responsible for only calling this once per actually-new
+    request, since the friendships table itself already prevents the underlying event from
+    happening twice."""
+    await notify_friend_request(conn, recipient_id=1, actor_user_id=2)
+    await notify_friend_request(conn, recipient_id=1, actor_user_id=2)
 
     assert len(await _notifications(conn)) == 2
 

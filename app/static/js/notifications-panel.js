@@ -82,10 +82,9 @@
     });
   }
 
-  // Only kind today (app/db/notifications.py's KIND_COMMENT_REACTION) - a future kind
-  // adds its own branch here rather than a generic "kind -> template string" table, same
-  // reasoning as paragraph-menu.js keeping each attachment kind's rendering as its own
-  // explicit branch instead of a lookup table.
+  // One explicit branch per kind (app/db/notifications.py's KIND_* constants) rather than
+  // a generic "kind -> template string" table, same reasoning as paragraph-menu.js keeping
+  // each attachment kind's rendering as its own explicit branch instead of a lookup table.
   function buildNotificationText(notification) {
     const text = document.createElement("span");
     text.className = "notifications-panel__text";
@@ -97,8 +96,22 @@
       if (notification.comment_excerpt) {
         text.append(` «${notification.comment_excerpt}»`);
       }
+    } else if (notification.kind === "friend_request") {
+      text.append(" отправил(а) вам заявку в друзья");
+    } else if (notification.kind === "friend_accept") {
+      text.append(" принял(а) вашу заявку в друзья");
     }
     return text;
+  }
+
+  // PR 199: friend_request/friend_accept aren't about a comment at all (comment_url is
+  // always null for them) - they link to the actor's own profile instead.
+  function linkUrlFor(notification) {
+    if (notification.comment_url) return notification.comment_url;
+    if (notification.kind === "friend_request" || notification.kind === "friend_accept") {
+      return `/profile/${notification.actor_user_id}`;
+    }
+    return null;
   }
 
   // Same picture-or-initials pairing as paragraph-menu.js's buildCommentAvatar() -
@@ -161,7 +174,7 @@
     return actions;
   }
 
-  // An <a> when there's somewhere to send the visitor (comment_url), a plain <div>
+  // An <a> when there's somewhere to send the visitor (linkUrlFor() above), a plain <div>
   // otherwise - a notification whose comment has since been deleted (PR 172) still shows,
   // it just isn't a link to a comment that no longer exists.
   function renderNotification(notification) {
@@ -170,9 +183,10 @@
     if (!notification.is_read) item.classList.add("notifications-panel__item--unread");
     item.dataset.notificationId = notification.id;
 
-    const link = document.createElement(notification.comment_url ? "a" : "div");
+    const linkUrl = linkUrlFor(notification);
+    const link = document.createElement(linkUrl ? "a" : "div");
     link.className = "notifications-panel__item-link";
-    if (notification.comment_url) link.href = notification.comment_url;
+    if (linkUrl) link.href = linkUrl;
 
     const body = document.createElement("span");
     body.className = "notifications-panel__body";

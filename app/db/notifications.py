@@ -22,6 +22,13 @@ from psycopg import AsyncConnection
 from app.auth.avatar import initials_for, url_for
 
 KIND_COMMENT_REACTION = "comment_reaction"
+# PR 199: friend requests/acceptances (app/db/friendships.py) - both inserted only from the
+# code path that actually created the underlying row (a new pending request, or a request
+# just accepted), never on send_request()'s idempotent "already existed" path - unlike
+# KIND_COMMENT_REACTION above, neither needs its own unread-dedupe merge, since the
+# friendships table itself already prevents the same event from happening twice.
+KIND_FRIEND_REQUEST = "friend_request"
+KIND_FRIEND_ACCEPT = "friend_accept"
 
 # PR 168: how much of the comment's own body shows in the notification card - a hint of
 # context ("отреагировали на ваш комментарий «Согласен, но...»"), not the full text (which
@@ -72,6 +79,33 @@ async def notify_comment_reaction(
         )
 
 
+async def notify_friend_request(
+    conn: AsyncConnection, recipient_id: int, actor_user_id: int
+) -> None:
+    """Tells `recipient_id` that `actor_user_id` just sent them a friend request - call
+    only when `friendships.send_request()` actually created a new pending row, never on
+    its idempotent "a relationship already existed" path (see KIND_FRIEND_REQUEST above)."""
+    await _insert_notification(conn, recipient_id, KIND_FRIEND_REQUEST, actor_user_id)
+
+
+async def notify_friend_accept(
+    conn: AsyncConnection, recipient_id: int, actor_user_id: int
+) -> None:
+    """Tells `recipient_id` (the original requester) that `actor_user_id` accepted their
+    friend request."""
+    await _insert_notification(conn, recipient_id, KIND_FRIEND_ACCEPT, actor_user_id)
+
+
+async def _insert_notification(
+    conn: AsyncConnection, recipient_id: int, kind: str, actor_user_id: int
+) -> None:
+    await conn.execute(
+        "INSERT INTO notifications (user_id, kind, comment_id, actor_user_id, is_read, created_at) "
+        "VALUES (%s, %s, NULL, %s, 0, %s)",
+        (recipient_id, kind, actor_user_id, datetime.now(UTC).isoformat()),
+    )
+
+
 async def mark_notification_read(
     conn: AsyncConnection, notification_id: int, user_id: int
 ) -> bool:
@@ -105,6 +139,9 @@ class Notification:
     is_read: bool
     created_at: str
     actor_name: str
+    # PR 199: who to link to for a kind that isn't about a comment (friend_request/
+    # friend_accept) - _comment_url() below already covers the comment_id case.
+    actor_user_id: int
     # PR 147/comments.py's same picture-or-initials pairing - the bell panel renders one
     # or the other exactly like every other avatar in this codebase.
     actor_avatar_url: str | None
@@ -174,7 +211,7 @@ async def _list_notifications(
     unread_clause = "AND notifications.is_read = 0 " if unread_only else ""
     cursor = await conn.execute(
         "SELECT notifications.id, notifications.kind, notifications.is_read, "
-        "notifications.created_at, "
+        "notifications.created_at, notifications.actor_user_id, "
         "actor.nickname AS actor_nickname, actor.email AS actor_email, "
         "actor.avatar_path AS actor_avatar_path, "
         "comments.id AS comment_id, comments.body AS comment_body, "
@@ -198,6 +235,7 @@ def _row_to_notification(row: dict[str, Any]) -> Notification:
         is_read=bool(row["is_read"]),
         created_at=row["created_at"],
         actor_name=row["actor_nickname"] or row["actor_email"],
+        actor_user_id=row["actor_user_id"],
         actor_avatar_url=url_for(row["actor_avatar_path"]),
         actor_avatar_initials=initials_for(row["actor_nickname"], row["actor_email"]),
         comment_id=row["comment_id"],
