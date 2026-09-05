@@ -1255,6 +1255,20 @@ a {
   margin: 24px 0 12px;
 }
 
+/* PR 198: the left column of the home page's future two-column layout (right column -
+   friends activity - arrives in PR 200) - .home-columns__primary alone still spans the
+   full width today since there's no sibling yet. */
+.home-columns {
+  display: flex;
+  align-items: flex-start;
+  gap: 32px;
+}
+
+.home-columns__primary {
+  flex: 1;
+  min-width: 0;
+}
+
 /* Meaningful empty state for a first-time visitor / fresh account with no "Недавние"
    entries yet (PR 198) - explains what the page is for and, separately, that this site
    is a thin layer over the public RanobeLib API rather than its own content source
