@@ -4963,6 +4963,7 @@ img.paragraph-comment__attachment {
   .cookie-notice {
     /* Same 76px clearance above the fixed bottom tab bar as .download-ready/
        .toc__export-panel (PR 51) use on mobile. */
+    right: 12px;
     bottom: 76px;
   }
 }
