@@ -9,20 +9,30 @@
    stopPropagation(). The link (when there's somewhere to send the visitor - a notification
    whose comment has since been deleted, PR 172, has none) now only wraps the avatar+body,
    not the actions. data-notification-id is what notifications-actions.js's delegated
-   click handler reads to know which row a click on either button belongs to. #}
+   click handler reads to know which row a click on either button belongs to.
+
+   PR 199: friend_request/friend_accept aren't about a comment at all (comment_url is
+   always None for them) - they link to the actor's own profile instead. #}
 {% macro notification_card(n) %}
+{% set link_url = n.comment_url or (("/profile/" ~ n.actor_user_id) if n.kind in ("friend_request", "friend_accept") else none) %}
 <div class="notifications-panel__item{% if not n.is_read %} notifications-panel__item--unread{% endif %}" data-notification-id="{{ n.id }}">
-  {% if n.comment_url %}<a class="notifications-panel__item-link" href="{{ n.comment_url }}">
+  {% if link_url %}<a class="notifications-panel__item-link" href="{{ link_url }}">
   {% else %}<div class="notifications-panel__item-link">
   {% endif %}
     <span class="notifications-panel__avatar">
       {% if n.actor_avatar_url %}<img class="avatar-img" src="{{ n.actor_avatar_url }}" alt="">{% else %}{{ n.actor_avatar_initials }}{% endif %}
     </span>
     <span class="notifications-panel__body">
-      <span class="notifications-panel__text"><strong>{{ n.actor_name }}</strong> отреагировал(а) на ваш комментарий{% if n.comment_excerpt %} «{{ n.comment_excerpt }}»{% endif %}</span>
+      <span class="notifications-panel__text">
+        <strong>{{ n.actor_name }}</strong>
+        {% if n.kind == "friend_request" %}отправил(а) вам заявку в друзья
+        {% elif n.kind == "friend_accept" %}принял(а) вашу заявку в друзья
+        {% else %}отреагировал(а) на ваш комментарий{% if n.comment_excerpt %} «{{ n.comment_excerpt }}»{% endif %}
+        {% endif %}
+      </span>
       <span class="notifications-panel__time">{{ n.created_at_display }}</span>
     </span>
-  {% if n.comment_url %}</a>{% else %}</div>{% endif %}
+  {% if link_url %}</a>{% else %}</div>{% endif %}
   <div class="notifications-panel__actions">
     {% if not n.is_read %}
     <button type="button" class="notifications-panel__action" data-role="notification-mark-read" title="Отметить прочитанным" aria-label="Отметить прочитанным">

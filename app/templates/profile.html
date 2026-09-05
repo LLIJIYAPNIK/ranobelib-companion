@@ -16,6 +16,29 @@
       <p class="profile__meta">На сайте с {{ registered_at }} · Комментариев: {{ comment_count }}</p>
       {% if is_own_profile %}
       <a class="btn btn--secondary" href="/settings/account">Редактировать</a>
+      {% elif friend_state == "none" %}
+      <form method="post" action="/friends/{{ profile_user.id }}/request">
+        <input type="hidden" name="next" value="/profile/{{ profile_user.id }}">
+        <button class="btn btn--secondary" type="submit">Добавить в друзья</button>
+      </form>
+      {% elif friend_state == "outgoing" %}
+      <form method="post" action="/friends/{{ profile_user.id }}/remove">
+        <input type="hidden" name="next" value="/profile/{{ profile_user.id }}">
+        <button class="btn btn--secondary" type="submit" title="Нажмите, чтобы отменить заявку">Заявка отправлена</button>
+      </form>
+      {% elif friend_state == "incoming" %}
+      <div class="profile__friend-actions">
+        <form method="post" action="/friends/{{ profile_user.id }}/accept">
+          <input type="hidden" name="next" value="/profile/{{ profile_user.id }}">
+          <button class="btn" type="submit">Принять заявку</button>
+        </form>
+        <form method="post" action="/friends/{{ profile_user.id }}/remove">
+          <input type="hidden" name="next" value="/profile/{{ profile_user.id }}">
+          <button class="btn btn--secondary" type="submit">Отклонить</button>
+        </form>
+      </div>
+      {% elif friend_state == "friends" %}
+      <p class="content__hint">Вы в друзьях</p>
       {% endif %}
     </div>
   </div>

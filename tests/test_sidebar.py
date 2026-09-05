@@ -64,8 +64,15 @@ def test_sidebar_renders_a_text_label_next_to_each_nav_icon() -> None:
     response = client.get("/")
 
     assert response.status_code == 200
-    for label in ("Главная", "Библиотека", "Загрузки", "Активность", "Настройки"):
+    for label in ("Главная", "Библиотека", "Загрузки", "Активность", "Друзья", "Настройки"):
         assert f'<span class="sidebar__label">{label}</span>' in response.text
+
+
+def test_sidebar_friends_link_points_at_the_friends_page() -> None:
+    response = client.get("/")
+
+    assert response.status_code == 200
+    assert 'href="/friends"' in response.text
 
 
 def test_logged_in_visitor_sees_a_profile_menu_trigger_avatar(

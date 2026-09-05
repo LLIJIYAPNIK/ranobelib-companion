@@ -14,6 +14,7 @@ from app.api import (
     downloads,
     downloads_section,
     exports,
+    friendships,
     health,
     home,
     images,
@@ -91,6 +92,7 @@ app.include_router(chapters.router)
 app.include_router(exports.router)
 app.include_router(downloads.router)
 app.include_router(downloads_section.router)
+app.include_router(friendships.router)
 app.include_router(images.router)
 app.include_router(library.router)
 app.include_router(notifications.router)

@@ -57,6 +57,15 @@
         </svg>
         <span class="sidebar__label">Активность</span>
       </a>
+      <a class="sidebar__link{% if active_nav == 'friends' %} sidebar__link--active{% endif %}" href="/friends" title="Друзья" aria-label="Друзья">
+        <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+          <path d="M9 11a3 3 0 1 0 0-6 3 3 0 0 0 0 6Z"/>
+          <path d="M3 20c0-3.3 2.7-6 6-6s6 2.7 6 6"/>
+          <path d="M16 8.5a2.5 2.5 0 1 0 0-5 2.5 2.5 0 0 0 0 5Z"/>
+          <path d="M15.5 14c2.5.3 4.5 2.5 4.5 5.3"/>
+        </svg>
+        <span class="sidebar__label">Друзья</span>
+      </a>
       <a class="sidebar__link{% if active_nav == 'settings' %} sidebar__link--active{% endif %}" href="/settings" title="Настройки" aria-label="Настройки">
         <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
           <circle cx="12" cy="12" r="3"/>

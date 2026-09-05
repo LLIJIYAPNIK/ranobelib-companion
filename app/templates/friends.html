@@ -1,0 +1,77 @@
+{% extends "base.html" %}
+{% block title %}Друзья — RanobeLib Companion{% endblock %}
+{% block content %}
+{% macro friend_row(entry) %}
+<div class="friend-row">
+  <a class="friend-row__link" href="/profile/{{ entry.user.id }}">
+    <span class="friend-row__avatar">
+      {% if entry.user.avatar_url %}<img class="avatar-img" src="{{ entry.user.avatar_url }}" alt="">{% else %}{{ entry.user.avatar_initials }}{% endif %}
+    </span>
+    <span class="friend-row__name">{{ entry.user.display_name }}</span>
+  </a>
+  <div class="friend-row__actions">
+    {{ caller() }}
+  </div>
+</div>
+{% endmacro %}
+<main class="content">
+  <h1 class="toc__title">Друзья</h1>
+  {% if current_user %}
+  {% if incoming_requests %}
+  <section class="profile-section">
+    <h2 class="profile-section__title">Заявки в друзья</h2>
+    <div class="friend-list">
+      {% for req in incoming_requests %}
+      {% call friend_row(req) %}
+      <form method="post" action="/friends/{{ req.user.id }}/accept">
+        <button class="btn btn--sm" type="submit">Принять</button>
+      </form>
+      <form method="post" action="/friends/{{ req.user.id }}/remove">
+        <button class="btn btn--secondary btn--sm" type="submit">Отклонить</button>
+      </form>
+      {% endcall %}
+      {% endfor %}
+    </div>
+  </section>
+  {% endif %}
+
+  {% if outgoing_requests %}
+  <section class="profile-section">
+    <h2 class="profile-section__title">Отправленные заявки</h2>
+    <div class="friend-list">
+      {% for req in outgoing_requests %}
+      {% call friend_row(req) %}
+      <form method="post" action="/friends/{{ req.user.id }}/remove">
+        <button class="btn btn--secondary btn--sm" type="submit">Отменить</button>
+      </form>
+      {% endcall %}
+      {% endfor %}
+    </div>
+  </section>
+  {% endif %}
+
+  <section class="profile-section">
+    <h2 class="profile-section__title">Друзья</h2>
+    {% if friends %}
+    <div class="friend-list">
+      {% for friend in friends %}
+      {% call friend_row(friend) %}
+      <form method="post" action="/friends/{{ friend.user.id }}/remove">
+        <button class="btn btn--secondary btn--sm" type="submit">Удалить</button>
+      </form>
+      {% endcall %}
+      {% endfor %}
+    </div>
+    {% else %}
+    <p class="content__hint">Пока нет друзей.</p>
+    {% endif %}
+  </section>
+  {% else %}
+  {% from "_locked_feature.html" import locked_feature %}
+  {% call locked_feature("Друзья скрыты", "/login", "Войти") %}
+  <a href="/login">Войдите</a> или <a href="/register">зарегистрируйтесь</a>,
+  чтобы видеть список друзей.
+  {% endcall %}
+  {% endif %}
+</main>
+{% endblock %}

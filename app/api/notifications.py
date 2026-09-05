@@ -132,8 +132,10 @@ def _to_template_context(notification: Notification) -> dict[str, Any]:
     rendered <a>/<div> cards rather than notifications-panel.js's client-rendered ones."""
     return {
         "id": notification.id,
+        "kind": notification.kind,
         "is_read": notification.is_read,
         "actor_name": notification.actor_name,
+        "actor_user_id": notification.actor_user_id,
         "actor_avatar_url": notification.actor_avatar_url,
         "actor_avatar_initials": notification.actor_avatar_initials,
         "comment_excerpt": notification.comment_excerpt,
@@ -156,6 +158,7 @@ def _to_dict(notification: Notification) -> dict[str, Any]:
         "is_read": notification.is_read,
         "created_at": notification.created_at,
         "actor_name": notification.actor_name,
+        "actor_user_id": notification.actor_user_id,
         "actor_avatar_url": notification.actor_avatar_url,
         "actor_avatar_initials": notification.actor_avatar_initials,
         "comment_id": notification.comment_id,
