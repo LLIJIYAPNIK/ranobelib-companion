@@ -89,10 +89,21 @@ a {
 
 .sidebar {
   width: 64px;
-  flex: 0 0 64px;
-  align-self: flex-start;
-  position: sticky;
+  /* PR 207: was position: sticky, which can only ever stay pinned to top: 0 within the
+     bounds of its own containing block (.app-shell) - once scrolling gets close enough
+     to .app-shell's own bottom edge that a full 100vh-tall sidebar sitting at top: 0
+     would poke past it, the browser has to slide the sidebar UP to keep it inside
+     .app-shell instead, which is what read as a "lifted" sidebar with empty space
+     opening up underneath it (reproduced by forcing extra height below .app-shell - a
+     production page can hit the same imbalance from subpixel/zoom rounding a sticky
+     element's clamp is sensitive to, even when nothing else on the page looks unusual).
+     position: fixed sidesteps this whole class of bug - it's anchored to the viewport
+     itself, never to any ancestor's box, so there's no containing-block edge for it to
+     ever need to stay inside of. The width this used to reserve via flexbox is now
+     reserved explicitly on .main's own margin-left below instead. */
+  position: fixed;
   top: 0;
+  left: 0;
   height: 100vh;
   overflow-x: hidden;
   overflow-y: auto;
@@ -111,7 +122,8 @@ a {
   align-items: center;
   gap: 22px;
   padding: 20px 0;
-  transition: width 0.2s ease, flex-basis 0.2s ease;
+  z-index: 40;
+  transition: width 0.2s ease;
 }
 
 .sidebar::-webkit-scrollbar {
@@ -183,8 +195,14 @@ a {
 @media (min-width: 641px) {
   .sidebar--expanded {
     width: 200px;
-    flex: 0 0 200px;
     align-items: stretch;
+  }
+
+  /* PR 207: .sidebar is position: fixed now (no longer a flex item .main can just make
+     room for automatically) - .main reserves the matching width itself instead, on
+     both sides of the expand/collapse toggle. */
+  .sidebar--expanded ~ .main {
+    margin-left: 200px;
   }
 
   .sidebar--expanded .sidebar__link {
@@ -688,6 +706,11 @@ a {
   min-width: 0;
   display: flex;
   flex-direction: column;
+  /* PR 207: matches .sidebar's own (fixed, no longer flex-participating) width - see its
+     own comment. Overridden back to 0 on the mobile breakpoint below, where .sidebar
+     becomes a bottom tab bar instead of a side rail. */
+  margin-left: 64px;
+  transition: margin-left 0.2s ease;
 }
 
 .header {
@@ -4759,6 +4782,7 @@ img.paragraph-comment__attachment {
   }
 
   .main {
+    margin-left: 0;
     padding-top: var(--mobile-account-height);
     padding-bottom: 72px;
     animation: mobile-section-in 0.15s ease-out;
