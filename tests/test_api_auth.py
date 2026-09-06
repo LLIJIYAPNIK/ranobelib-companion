@@ -283,6 +283,23 @@ def test_register_email_field_has_a_placeholder(client: TestClient) -> None:
     assert 'placeholder="you@example.com"' in response.text
 
 
+# --- PR 210: mobile autofocus doesn't pop the on-screen keyboard -----------------------
+
+
+def test_login_disables_mobile_autofocus(client: TestClient) -> None:
+    response = client.get("/login")
+
+    assert response.status_code == 200
+    assert "static/js/disable-mobile-autofocus.js" in response.text
+
+
+def test_register_disables_mobile_autofocus(client: TestClient) -> None:
+    response = client.get("/register")
+
+    assert response.status_code == 200
+    assert "static/js/disable-mobile-autofocus.js" in response.text
+
+
 def test_login_placeholder_is_not_submitted_as_the_email_value(client: TestClient) -> None:
     """A placeholder is never part of a form's submitted data - browsers only send
     `value`. Confirms a re-rendered error form echoes what was actually typed, not the

@@ -18,6 +18,9 @@ def test_home_renders_search_form() -> None:
     assert response.status_code == 200
     assert 'action="/titles/open"' in response.text
     assert 'name="url"' in response.text
+    # PR 210: the search field's autofocus is blurred back off on mobile, so its keyboard
+    # doesn't pop the instant the page loads.
+    assert "static/js/disable-mobile-autofocus.js" in response.text
 
 
 def test_home_shows_empty_state_when_no_recent_titles() -> None:
