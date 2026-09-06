@@ -38,6 +38,7 @@
     </label>
     <button class="btn btn--primary" type="submit">Войти</button>
   </form>
+  <script src="{{ url_for('static', path='js/disable-mobile-autofocus.js') }}"></script>
   <p class="content__hint content__hint--auth">Ещё нет аккаунта? <a href="/register">Зарегистрироваться</a>.</p>
 </main>
 {% endblock %}
