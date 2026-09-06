@@ -42,6 +42,15 @@
 // itself: profile.html renders plain initials text with no `<img>` at all when the user
 // has no uploaded avatar, so the selector already excludes that case with no extra check
 // needed here - same reasoning as the attachment case just above.
+//
+// PR 204: zooming in used to have no way to look at anything but the exact center of the
+// image - `transform: scale()` alone, with no counterpart translate and no drag handling
+// of any kind. Panning is now `offsetX`/`offsetY`, applied as a translate() alongside the
+// existing scale() (see applyTransform()), driven by pointerdown/pointermove/pointerup on
+// .image-lightbox__image itself - Pointer Events unify mouse/touch/pen, so one set of
+// listeners covers a mouse drag and a finger drag alike, unlike separate mouse*/touch*
+// handlers would. Only active once zoom > MIN_ZOOM - at MIN_ZOOM the image already fits
+// the viewport entirely, so there's nothing to pan to.
 (() => {
   const images = [...document.querySelectorAll(".reader-content img")];
 
@@ -52,6 +61,8 @@
   let activeImages = images;
   let currentIndex = 0;
   let zoom = MIN_ZOOM;
+  let offsetX = 0;
+  let offsetY = 0;
 
   const overlay = document.createElement("div");
   overlay.className = "image-lightbox";
@@ -72,6 +83,8 @@
   document.body.appendChild(overlay);
 
   const imageEl = overlay.querySelector(".image-lightbox__image");
+  const viewportEl = overlay.querySelector(".image-lightbox__viewport");
+  imageEl.draggable = false; // suppress the native drag-ghost image, our own drag replaces it
   const counterEl = overlay.querySelector(".image-lightbox__counter");
   const downloadEl = overlay.querySelector(".image-lightbox__download");
   const prevBtn = overlay.querySelector(".image-lightbox__nav--prev");
@@ -92,11 +105,31 @@
     }
   }
 
+  // PR 204: how far offsetX/offsetY may go on each axis before the image's own edge would
+  // pull inward from the viewport edge and expose empty background - half the difference
+  // between the image's current scaled size and the viewport's, since transform-origin is
+  // center center (translating by the max moves that edge exactly flush with the
+  // viewport's). clientWidth/clientHeight (unlike getBoundingClientRect()) reflect the
+  // pre-transform layout box, so multiplying by `zoom` gives the current visual size
+  // without the current translate() throwing off the measurement.
+  function clampOffset() {
+    const maxOffsetX = Math.max(0, (imageEl.clientWidth * zoom - viewportEl.clientWidth) / 2);
+    const maxOffsetY = Math.max(0, (imageEl.clientHeight * zoom - viewportEl.clientHeight) / 2);
+    offsetX = Math.min(maxOffsetX, Math.max(-maxOffsetX, offsetX));
+    offsetY = Math.min(maxOffsetY, Math.max(-maxOffsetY, offsetY));
+  }
+
+  function applyTransform() {
+    clampOffset();
+    imageEl.style.transform = `translate(${offsetX}px, ${offsetY}px) scale(${zoom})`;
+    imageEl.classList.toggle("image-lightbox__image--zoomed", zoom > MIN_ZOOM);
+  }
+
   function render() {
     const src = activeImages[currentIndex].currentSrc || activeImages[currentIndex].src;
     imageEl.src = src;
     imageEl.alt = activeImages[currentIndex].alt || "";
-    imageEl.style.transform = `scale(${zoom})`;
+    applyTransform();
     // PR 143: routed through a same-origin proxy (GET /images/download, app/api/
     // images.py) rather than linking `src` directly - reader-content/cover images are
     // hotlinked straight from ranobelib.me/cdnlibs.org, and the download attribute only
@@ -124,6 +157,8 @@
     activeImages = list;
     currentIndex = index;
     zoom = MIN_ZOOM;
+    offsetX = 0;
+    offsetY = 0;
     render();
     overlay.classList.add("image-lightbox--open");
   }
@@ -136,13 +171,69 @@
     if (activeImages.length < 2) return;
     currentIndex = (currentIndex + delta + activeImages.length) % activeImages.length;
     zoom = MIN_ZOOM;
+    offsetX = 0;
+    offsetY = 0;
     render();
   }
 
   function zoomBy(delta) {
     zoom = Math.min(MAX_ZOOM, Math.max(MIN_ZOOM, zoom + delta));
+    if (zoom === MIN_ZOOM) {
+      offsetX = 0;
+      offsetY = 0;
+    }
     render();
   }
+
+  // PR 204: Pointer Events (not separate mouse*/touch* listeners) so one drag
+  // implementation covers a mouse drag and a finger drag alike. setPointerCapture() keeps
+  // delivering move/up events to imageEl even once the pointer strays outside it mid-drag
+  // (a fast drag easily outruns the image's own bounds), and touch-action: none (app.css)
+  // stops the browser's own default touch-scroll/pinch from competing with this for the
+  // same gesture.
+  let dragPointerId = null;
+  let dragStartClientX = 0;
+  let dragStartClientY = 0;
+  let dragStartOffsetX = 0;
+  let dragStartOffsetY = 0;
+  // A drag that ends past the image's own edge (easy at high zoom, panning near a corner)
+  // releases over the backdrop, not the image - the click that follows a mouseup fires
+  // with whichever element the pointer is actually over as its target, regardless of
+  // setPointerCapture() (that only redirects pointer events, not the separate click
+  // event), so without this guard the overlay's own "click the backdrop to close" handler
+  // below would close the lightbox right as the drag finishes. Set on any real pointer
+  // movement during a drag, consumed (and cleared) by the very next click - so it only
+  // ever swallows the one click that belongs to the drag that just ended.
+  let didDrag = false;
+
+  imageEl.addEventListener("pointerdown", (event) => {
+    if (zoom <= MIN_ZOOM) return;
+    dragPointerId = event.pointerId;
+    dragStartClientX = event.clientX;
+    dragStartClientY = event.clientY;
+    dragStartOffsetX = offsetX;
+    dragStartOffsetY = offsetY;
+    imageEl.setPointerCapture(event.pointerId);
+    imageEl.classList.add("image-lightbox__image--dragging");
+    event.preventDefault();
+  });
+
+  imageEl.addEventListener("pointermove", (event) => {
+    if (dragPointerId !== event.pointerId) return;
+    didDrag = true;
+    offsetX = dragStartOffsetX + (event.clientX - dragStartClientX);
+    offsetY = dragStartOffsetY + (event.clientY - dragStartClientY);
+    applyTransform();
+  });
+
+  function endDrag(event) {
+    if (dragPointerId !== event.pointerId) return;
+    dragPointerId = null;
+    imageEl.classList.remove("image-lightbox__image--dragging");
+  }
+
+  imageEl.addEventListener("pointerup", endDrag);
+  imageEl.addEventListener("pointercancel", endDrag);
 
   images.forEach((img, index) => {
     img.style.cursor = "zoom-in";
@@ -171,8 +262,14 @@
   });
 
   closeBtn.addEventListener("click", close);
-  // Clicking the backdrop itself (not any child control) also closes it.
+  // Clicking the backdrop itself (not any child control) also closes it - unless this
+  // click is the tail end of a pan that happened to release over the backdrop (see
+  // didDrag's own comment above).
   overlay.addEventListener("click", (event) => {
+    if (didDrag) {
+      didDrag = false;
+      return;
+    }
     if (event.target === overlay) close();
   });
   prevBtn.addEventListener("click", () => step(-1));

@@ -5249,7 +5249,10 @@ img.paragraph-comment__attachment {
 .image-lightbox__viewport {
   max-width: 90vw;
   max-height: 80vh;
-  overflow: auto;
+  /* PR 204: panning past MIN_ZOOM is now our own translate()/drag, not the browser's
+     native scroll - `auto` here would let both move the image at once, fighting the
+     clamped range image-lightbox.js's own clampOffset() computes. */
+  overflow: hidden;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -5261,6 +5264,20 @@ img.paragraph-comment__attachment {
   border-radius: 6px;
   transform-origin: center center;
   transition: transform 0.15s ease;
+  /* PR 204: stops the browser's own default touch-scroll/pinch from competing with
+     image-lightbox.js's own pointer-based drag for the same gesture. */
+  touch-action: none;
+}
+
+.image-lightbox__image--zoomed {
+  cursor: grab;
+}
+
+.image-lightbox__image--zoomed.image-lightbox__image--dragging {
+  cursor: grabbing;
+  /* No easing while actively dragging - the image must track the pointer exactly, not
+     glide toward it a beat behind. */
+  transition: none;
 }
 
 .image-lightbox__close,
