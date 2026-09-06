@@ -37,6 +37,11 @@ router = APIRouter()
 
 _CALENDAR_WEEKS = 52
 
+# PR 201: how many friends the profile page's own "Друзья" section previews before
+# pointing at the full list (GET /profile/{user_id}/friends) instead of listing everyone
+# right there - same idea as PR 159's _MAX_TITLES_IN_LABEL, just for this section.
+_FRIEND_PREVIEW_LIMIT = 6
+
 
 @dataclass(frozen=True)
 class CalendarDay:
@@ -129,6 +134,10 @@ async def _render_profile(
     if viewer_id is not None and not is_own_profile:
         friend_state = await _friend_button_state(conn, viewer_id, profile_user.id)
 
+    # PR 201: no show_friends privacy flag exists yet (that's PR 202) - the list is shown
+    # unconditionally, same as comment_count/reading_calendar below, until that flag lands.
+    friends = await list_friends(conn, profile_user.id)
+
     return templates.TemplateResponse(
         request,
         "profile.html",
@@ -145,6 +154,8 @@ async def _render_profile(
             "currently_reading": currently_reading,
             "favorite_item": favorite_item,
             "library_items": items,
+            "friend_preview": friends[:_FRIEND_PREVIEW_LIMIT],
+            "friend_count": len(friends),
         },
     )
 
