@@ -7,6 +7,14 @@
 // listens for "input"/"change" on it (app/static/js/reader-settings.js) keeps working
 // completely unmodified. Without this script, the plain <select> stays visible and fully
 // functional - the safe no-JS fallback used throughout this app.
+//
+// PR 203: title.html's own two <select class="toc__export-format"> elements now only
+// exist once title-content-load.js has fetched and injected the title page's real content
+// (GET /titles/{slug}/data), after this script's own initial scan below has already run
+// and found nothing there - enhanceAll() is exposed on window so that call site can run it
+// again once those selects actually exist. The `:not(.dropdown__native)` guard (enhance()
+// marks an element with that class once done) is what makes a second, wider scan safe -
+// it only ever touches an element once, whichever pass first finds it.
 (() => {
   let counter = 0;
 
@@ -187,5 +195,10 @@
     syncSelected();
   }
 
-  document.querySelectorAll("select.toc__export-format").forEach(enhance);
+  function enhanceAll() {
+    document.querySelectorAll("select.toc__export-format:not(.dropdown__native)").forEach(enhance);
+  }
+
+  window.enhanceCustomDropdowns = enhanceAll;
+  enhanceAll();
 })();
