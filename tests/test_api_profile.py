@@ -799,3 +799,116 @@ async def test_profile_friends_page_404s_for_an_unknown_user(client: TestClient)
     response = client.get("/profile/999/friends")
 
     assert response.status_code == 404
+
+
+# --- PR 202: show_friends gates both the profile section and the full list page --------
+
+
+def _hide_friends(client: TestClient) -> None:
+    client.post(
+        "/settings/account/privacy",
+        data={
+            "show_currently_reading": "on",
+            "show_favorite": "on",
+            "show_library": "on",
+            "show_friends_activity_home": "on",
+            # show_friends deliberately omitted - an unchecked checkbox
+        },
+    )
+
+
+async def test_profile_hides_the_friends_section_from_others_when_opted_out(
+    client: TestClient,
+) -> None:
+    _register(client, "alice@example.com")
+    alice_id = await _user_id("alice@example.com")
+    _register(client, "bob@example.com")
+    bob_id = await _user_id("bob@example.com")
+    await _befriend(alice_id, bob_id)
+
+    client.post("/logout")
+    client.post("/login", data={"email": "alice@example.com", "password": "hunter2pass"})
+    _hide_friends(client)
+
+    client.post("/logout")
+    client.post("/login", data={"email": "bob@example.com", "password": "hunter2pass"})
+    response = client.get(f"/profile/{alice_id}")
+
+    assert response.status_code == 200
+    assert '<h2 class="profile-section__title">Друзья' not in response.text
+
+
+async def test_profile_still_shows_the_friends_section_to_its_own_owner(
+    client: TestClient,
+) -> None:
+    _register(client, "alice@example.com")
+    alice_id = await _user_id("alice@example.com")
+    _register(client, "bob@example.com")
+    bob_id = await _user_id("bob@example.com")
+    await _befriend(alice_id, bob_id)
+
+    client.post("/logout")
+    client.post("/login", data={"email": "alice@example.com", "password": "hunter2pass"})
+    _hide_friends(client)
+
+    response = client.get("/profile")
+
+    assert response.status_code == 200
+    assert '<h2 class="profile-section__title">Друзья (1)</h2>' in response.text
+
+
+async def test_profile_friends_page_hides_the_list_from_others_when_opted_out(
+    client: TestClient,
+) -> None:
+    _register(client, "alice@example.com")
+    alice_id = await _user_id("alice@example.com")
+    _register(client, "bob@example.com")
+    bob_id = await _user_id("bob@example.com")
+    await _befriend(alice_id, bob_id)
+
+    client.post("/logout")
+    client.post("/login", data={"email": "alice@example.com", "password": "hunter2pass"})
+    _hide_friends(client)
+
+    client.post("/logout")
+    client.post("/login", data={"email": "bob@example.com", "password": "hunter2pass"})
+    response = client.get(f"/profile/{alice_id}/friends")
+
+    assert response.status_code == 200
+    # Bob's own email legitimately appears in the page header regardless (he's the logged-
+    # in viewer) - what must actually be absent is his row in the friend list itself.
+    assert 'friend-row__name">bob@example.com</span>' not in response.text
+    assert "Пока нет друзей." in response.text
+
+
+async def test_profile_friends_page_still_shows_the_list_to_its_own_owner(
+    client: TestClient,
+) -> None:
+    _register(client, "alice@example.com")
+    alice_id = await _user_id("alice@example.com")
+    _register(client, "bob@example.com")
+    bob_id = await _user_id("bob@example.com")
+    await _befriend(alice_id, bob_id)
+
+    client.post("/logout")
+    client.post("/login", data={"email": "alice@example.com", "password": "hunter2pass"})
+    _hide_friends(client)
+
+    response = client.get(f"/profile/{alice_id}/friends")
+
+    assert response.status_code == 200
+    assert "bob@example.com" in response.text
+
+
+async def test_profile_friends_page_hides_the_list_from_an_anonymous_visitor_when_opted_out(
+    client: TestClient,
+) -> None:
+    _register(client, "alice@example.com")
+    alice_id = await _user_id("alice@example.com")
+    _hide_friends(client)
+
+    client.post("/logout")
+    response = client.get(f"/profile/{alice_id}/friends")
+
+    assert response.status_code == 200
+    assert "Пока нет друзей." in response.text
