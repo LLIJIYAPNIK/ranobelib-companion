@@ -273,7 +273,13 @@ async def test_home_hides_a_friends_currently_reading_when_they_opted_out(
         await add_entry(conn, alice_id, "6712--test-novel")
         await record_progress(conn, alice_id, "6712--test-novel", volume="1", number="3")
         await update_privacy_settings(
-            conn, alice_id, show_currently_reading=False, show_favorite=True, show_library=True
+            conn,
+            alice_id,
+            show_currently_reading=False,
+            show_favorite=True,
+            show_library=True,
+            show_friends_activity_home=True,
+            show_friends=True,
         )
 
     _login_as_bob(db_client)

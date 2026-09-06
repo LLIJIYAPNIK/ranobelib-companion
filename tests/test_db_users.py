@@ -251,9 +251,11 @@ async def test_create_user_shows_everything_by_default(conn: psycopg.AsyncConnec
     assert user.show_currently_reading is True
     assert user.show_favorite is True
     assert user.show_library is True
+    assert user.show_friends_activity_home is True
+    assert user.show_friends is True
 
 
-async def test_update_privacy_settings_sets_all_three_flags(conn: psycopg.AsyncConnection) -> None:
+async def test_update_privacy_settings_sets_all_five_flags(conn: psycopg.AsyncConnection) -> None:
     user = await create_user(conn, "alice@example.com", "hash1")
 
     updated = await update_privacy_settings(
@@ -262,11 +264,15 @@ async def test_update_privacy_settings_sets_all_three_flags(conn: psycopg.AsyncC
         show_currently_reading=False,
         show_favorite=False,
         show_library=False,
+        show_friends_activity_home=False,
+        show_friends=False,
     )
 
     assert updated.show_currently_reading is False
     assert updated.show_favorite is False
     assert updated.show_library is False
+    assert updated.show_friends_activity_home is False
+    assert updated.show_friends is False
     assert await get_user_by_id(conn, user.id) == updated
 
 
@@ -274,12 +280,20 @@ async def test_update_privacy_settings_flags_are_independent(conn: psycopg.Async
     user = await create_user(conn, "alice@example.com", "hash1")
 
     updated = await update_privacy_settings(
-        conn, user.id, show_currently_reading=False, show_favorite=True, show_library=True
+        conn,
+        user.id,
+        show_currently_reading=False,
+        show_favorite=True,
+        show_library=True,
+        show_friends_activity_home=False,
+        show_friends=True,
     )
 
     assert updated.show_currently_reading is False
     assert updated.show_favorite is True
     assert updated.show_library is True
+    assert updated.show_friends_activity_home is False
+    assert updated.show_friends is True
 
 
 async def test_update_privacy_settings_leaves_other_fields_untouched(
@@ -289,7 +303,13 @@ async def test_update_privacy_settings_leaves_other_fields_untouched(
     await update_user_account(conn, user.id, email=user.email, nickname="Alice", bio="Hi")
 
     updated = await update_privacy_settings(
-        conn, user.id, show_currently_reading=False, show_favorite=False, show_library=False
+        conn,
+        user.id,
+        show_currently_reading=False,
+        show_favorite=False,
+        show_library=False,
+        show_friends_activity_home=False,
+        show_friends=False,
     )
 
     assert updated.nickname == "Alice"
