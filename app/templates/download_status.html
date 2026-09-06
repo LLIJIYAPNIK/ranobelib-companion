@@ -14,16 +14,6 @@
       У {{ job.ambiguous_chapters | length }} глав несколько переводов — выберите один
       вариант перевода для всего тайтла.
     </p>
-    <ul class="download-status__ambiguous">
-      {% for chapter in job.ambiguous_chapters %}
-      <li class="download-status__ambiguous-item">
-        <span class="download-status__ambiguous-chapter">Том {{ chapter.volume }}, глава {{ chapter.number }}</span>
-        <span class="download-status__ambiguous-branches">
-          {% for branch in chapter.branches %}{{ loop.index }}) {% if branch.teams %}{{ branch.teams | map(attribute="name") | join(", ") }}{% else %}{{ branch.user.username }}{% endif %}{% if not loop.last %} · {% endif %}{% endfor %}
-        </span>
-      </li>
-      {% endfor %}
-    </ul>
     <form method="post" action="/titles/{{ slug_url }}/download" class="download-status__retry">
       <input type="hidden" name="fmt" value="{{ job.fmt }}">
       <select name="translation_index" class="toc__export-format" aria-label="Вариант перевода">
@@ -34,6 +24,16 @@
       <button type="submit" class="btn btn--primary">Скачать с этим переводом</button>
     </form>
     <script src="{{ url_for('static', path='js/custom-dropdown.js') }}" defer></script>
+    <ul class="download-status__ambiguous">
+      {% for chapter in job.ambiguous_chapters %}
+      <li class="download-status__ambiguous-item">
+        <span class="download-status__ambiguous-chapter">Том {{ chapter.volume }}, глава {{ chapter.number }}</span>
+        <span class="download-status__ambiguous-branches">
+          {% for branch in chapter.branches %}{{ loop.index }}) {% if branch.teams %}{{ branch.teams | map(attribute="name") | join(", ") }}{% else %}{{ branch.user.username }}{% endif %}{% if not loop.last %} · {% endif %}{% endfor %}
+        </span>
+      </li>
+      {% endfor %}
+    </ul>
     {% else %}
     <div class="download-status__bar">
       <div
