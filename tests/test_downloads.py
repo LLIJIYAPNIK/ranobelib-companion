@@ -16,6 +16,7 @@ import app.jobs.store as job_store
 from app.config import get_settings
 from app.db.connection import connection
 from app.db.downloads import list_download_history
+from app.db.library import add_entry, set_default_translation_index
 from app.jobs.store import create_job, get_job
 from app.main import app
 from tests.db_reset import reset_app_database
@@ -173,6 +174,126 @@ def test_start_download_passes_translation_index_through(
     assert job.status == "done"
 
     os.remove(job.result_path)
+
+
+# --- PR 205: start_download() falls back to library_entries.default_translation_index --
+
+
+class _CapturingClient(_FakeClient):
+    """Same as _FakeClient, but records the `translation_index` download_title() was
+    actually called with, so a test can tell whether start_download() read the saved
+    default rather than just asserting the job still finished."""
+
+    def __init__(self, volumes: list[Volume], captured: dict[str, object]) -> None:
+        super().__init__(volumes)
+        self._captured = captured
+
+    async def download_title(
+        self,
+        *,
+        branch_id: int | None = None,
+        translation_index: int | None = None,
+        chapter_delay: float = 0.0,
+        on_chapter: object = None,
+    ) -> list[Volume]:
+        self._captured["translation_index"] = translation_index
+        return await super().download_title(
+            branch_id=branch_id,
+            translation_index=translation_index,
+            chapter_delay=chapter_delay,
+            on_chapter=on_chapter,
+        )
+
+
+async def test_start_download_uses_saved_default_translation_index(
+    logged_in_client: TestClient,
+) -> None:
+    async with connection() as conn:
+        await add_entry(conn, 1, "6712--test-novel")
+        await set_default_translation_index(conn, 1, "6712--test-novel", 1)
+
+    volumes = [Volume(number="1", chapters=[Chapter(id=1, volume="1", number="1")])]
+    captured: dict[str, object] = {}
+    with patch(
+        "app.services.client.RanobeLib", return_value=_CapturingClient(volumes, captured)
+    ):
+        response = logged_in_client.post(
+            "/titles/6712--test-novel/download", data={"fmt": "epub"}
+        )
+        job_id = _job_id_from_location(response.headers["location"])
+        _wait_until_terminal(job_id)
+
+    assert captured["translation_index"] == 1
+    os.remove(get_job(job_id).result_path)
+
+
+async def test_start_download_explicit_translation_index_overrides_saved_default(
+    logged_in_client: TestClient,
+) -> None:
+    async with connection() as conn:
+        await add_entry(conn, 1, "6712--test-novel")
+        await set_default_translation_index(conn, 1, "6712--test-novel", 1)
+
+    volumes = [Volume(number="1", chapters=[Chapter(id=1, volume="1", number="1")])]
+    captured: dict[str, object] = {}
+    with patch(
+        "app.services.client.RanobeLib", return_value=_CapturingClient(volumes, captured)
+    ):
+        response = logged_in_client.post(
+            "/titles/6712--test-novel/download",
+            data={"fmt": "epub", "translation_index": "0"},
+        )
+        job_id = _job_id_from_location(response.headers["location"])
+        _wait_until_terminal(job_id)
+
+    assert captured["translation_index"] == 0  # the form's own value, not the saved "1"
+    os.remove(get_job(job_id).result_path)
+
+
+async def test_start_download_without_library_entry_passes_none(
+    logged_in_client: TestClient,
+) -> None:
+    """No library entry at all for this title - not just "no default saved" - must not
+    error out looking one up."""
+    volumes = [Volume(number="1", chapters=[Chapter(id=1, volume="1", number="1")])]
+    captured: dict[str, object] = {}
+    with patch(
+        "app.services.client.RanobeLib", return_value=_CapturingClient(volumes, captured)
+    ):
+        response = logged_in_client.post(
+            "/titles/6712--test-novel/download", data={"fmt": "epub"}
+        )
+        job_id = _job_id_from_location(response.headers["location"])
+        _wait_until_terminal(job_id)
+
+    assert captured["translation_index"] is None
+    os.remove(get_job(job_id).result_path)
+
+
+async def test_start_download_saved_default_that_no_longer_resolves_falls_back_to_prompt(
+    logged_in_client: TestClient,
+) -> None:
+    """A default was saved earlier, but a chapter added since then has branches the saved
+    index doesn't reach (see start_download()'s own comment) - must land on
+    "needs_translation" like any other unresolved ambiguous chapter, not error out."""
+    async with connection() as conn:
+        await add_entry(conn, 1, "6712--test-novel")
+        await set_default_translation_index(conn, 1, "6712--test-novel", 5)
+
+    exc = MultipleTitleTranslationsError(
+        "6712--test-novel",
+        chapters=[
+            AmbiguousChapter(volume="1", number="5", branches=[_branch(1), _branch(2)])
+        ],
+    )
+    with patch("app.services.client.RanobeLib", return_value=_AmbiguousClient(exc)):
+        response = logged_in_client.post(
+            "/titles/6712--test-novel/download", data={"fmt": "epub"}
+        )
+        job_id = _job_id_from_location(response.headers["location"])
+        _wait_until_terminal(job_id)
+
+    assert get_job(job_id).status == "needs_translation"
 
 
 def test_show_download_status_renders_running_progress() -> None:

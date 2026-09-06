@@ -27,6 +27,7 @@ class LibraryEntry:
     last_read_number: str | None
     last_read_at: str | None
     is_favorite: bool
+    default_translation_index: int | None
 
 
 async def add_entry(conn: AsyncConnection, user_id: int, slug_url: str) -> LibraryEntry:
@@ -90,6 +91,21 @@ async def unset_favorite(conn: AsyncConnection, user_id: int, slug_url: str) -> 
     await conn.execute(
         "UPDATE library_entries SET is_favorite = 0 WHERE user_id = %s AND slug_url = %s",
         (user_id, slug_url),
+    )
+
+
+async def set_default_translation_index(
+    conn: AsyncConnection, user_id: int, slug_url: str, translation_index: int | None
+) -> None:
+    """PR 205: persists a per-title "перевод по умолчанию" so start_download() (and later,
+    reading a chapter) doesn't have to ask again every time a title turns out to have
+    ambiguous chapters. `None` clears it back to "спрашивать каждый раз". Only meaningful
+    for a title already in the library (nowhere else to store this per-user choice) - a
+    no-op, same shape as set_favorite()/record_progress(), if `slug_url` isn't."""
+    await conn.execute(
+        "UPDATE library_entries SET default_translation_index = %s "
+        "WHERE user_id = %s AND slug_url = %s",
+        (translation_index, user_id, slug_url),
     )
 
 
@@ -157,4 +173,5 @@ def _row_to_entry(row: dict[str, Any]) -> LibraryEntry:
         last_read_number=row["last_read_number"],
         last_read_at=row["last_read_at"],
         is_favorite=bool(row["is_favorite"]),
+        default_translation_index=row["default_translation_index"],
     )

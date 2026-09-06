@@ -92,6 +92,30 @@
   {% if title.teams %}
   <div><span class="title-credits__label">Переводы:</span>{{ title.teams | map(attribute="name") | join(", ") }}</div>
   {% endif %}
+  {% if ambiguous_chapter_count %}
+  {# PR 205: this used to repeat as a badge.badge--muted on every single ambiguous
+     chapter's row in the table of contents below (chapter.branches_count) - shown once
+     here instead, since the fact itself ("this title has chapters with more than one
+     translation") doesn't change chapter to chapter. #}
+  <div class="title-credits__ambiguous">
+    <span class="badge badge--muted">У {{ ambiguous_chapter_count }} глав несколько переводов</span>
+    {% if in_library %}
+    <form
+      method="post"
+      action="/library/{{ title.slug_url }}/default-translation"
+      class="title-credits__default-translation"
+    >
+      <select name="translation_index" class="toc__export-format" aria-label="Перевод по умолчанию для этого тайтла">
+        <option value="">Спрашивать каждый раз</option>
+        {% for index in range(max_branches) %}
+        <option value="{{ index }}"{% if default_translation_index == index %} selected{% endif %}>Вариант {{ index + 1 }}</option>
+        {% endfor %}
+      </select>
+      <button type="submit" class="btn btn--sm">Сохранить</button>
+    </form>
+    {% endif %}
+  </div>
+  {% endif %}
 </section>
 
 <form
@@ -141,9 +165,6 @@
           <span class="toc__chapter-number">{{ chapter.number }}</span>
           <span class="toc__chapter-name">{{ chapter.name or "Без названия" }}</span>
         </a>
-        {% if chapter.branches_count > 1 %}
-        <span class="badge badge--muted">{{ chapter.branches_count }} переводов</span>
-        {% endif %}
       </li>
       {% endfor %}
     </ul>

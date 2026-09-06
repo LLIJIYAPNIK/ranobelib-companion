@@ -441,12 +441,46 @@ def test_title_data_renders_table_of_contents() -> None:
     assert "Начало" in response.text
     assert "1.5" in response.text
     assert "Без названия" in response.text
-    assert "3 переводов" in response.text
-    assert response.text.count("переводов") == 1
+    # PR 205: the per-chapter "N переводов" badge is gone from the toc row itself - the
+    # fact is aggregated once into .title-credits instead (see the test below), not
+    # repeated per ambiguous chapter.
+    assert response.text.count("несколько переводов") == 1
+    assert "У 1 глав несколько переводов" in response.text
     assert 'name="chapters"' in response.text
     assert 'value="1--1"' in response.text
     assert 'value="1--1.5"' in response.text
     assert 'href="/titles/6712--test-novel/chapters/1/1"' in response.text
+
+
+def test_title_data_shows_ambiguous_translation_count_once_in_credits() -> None:
+    title = _fake_title()
+    volumes = [
+        Volume(
+            number="1",
+            chapters=[
+                Chapter(id=1, volume="1", number="1", branches_count=2),
+                Chapter(id=2, volume="1", number="2", branches_count=3),
+                Chapter(id=3, volume="1", number="3"),  # not ambiguous
+            ],
+        )
+    ]
+    with patch("app.services.client.RanobeLib", return_value=_FakeClient(title, volumes)):
+        response = client.get("/titles/6712--test-novel/data")
+
+    assert response.status_code == 200
+    assert response.text.count("несколько переводов") == 1
+    assert "У 2 глав несколько переводов" in response.text
+
+
+def test_title_data_omits_ambiguous_translation_note_when_none_ambiguous() -> None:
+    title = _fake_title()
+    volumes = [Volume(number="1", chapters=[Chapter(id=1, volume="1", number="1")])]
+
+    with patch("app.services.client.RanobeLib", return_value=_FakeClient(title, volumes)):
+        response = client.get("/titles/6712--test-novel/data")
+
+    assert response.status_code == 200
+    assert "несколько переводов" not in response.text
 
 
 def test_title_data_renders_export_form() -> None:
