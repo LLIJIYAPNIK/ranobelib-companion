@@ -28,7 +28,7 @@ from app.auth.dependencies import get_current_user
 from app.db.activity import daily_active_seconds, daily_reading_activity, daily_titles_read
 from app.db.comments import count_comments_by_user
 from app.db.connection import connection, get_connection
-from app.db.friendships import get_relationship
+from app.db.friendships import get_relationship, list_friends
 from app.db.users import User, get_user_by_id
 from app.services.client import open_client
 from app.templating import templates
@@ -36,6 +36,11 @@ from app.templating import templates
 router = APIRouter()
 
 _CALENDAR_WEEKS = 52
+
+# PR 201: how many friends the profile page's own "Друзья" section previews before
+# pointing at the full list (GET /profile/{user_id}/friends) instead of listing everyone
+# right there - same idea as PR 159's _MAX_TITLES_IN_LABEL, just for this section.
+_FRIEND_PREVIEW_LIMIT = 6
 
 
 @dataclass(frozen=True)
@@ -129,6 +134,10 @@ async def _render_profile(
     if viewer_id is not None and not is_own_profile:
         friend_state = await _friend_button_state(conn, viewer_id, profile_user.id)
 
+    # PR 201: no show_friends privacy flag exists yet (that's PR 202) - the list is shown
+    # unconditionally, same as comment_count/reading_calendar below, until that flag lands.
+    friends = await list_friends(conn, profile_user.id)
+
     return templates.TemplateResponse(
         request,
         "profile.html",
@@ -145,7 +154,29 @@ async def _render_profile(
             "currently_reading": currently_reading,
             "favorite_item": favorite_item,
             "library_items": items,
+            "friend_preview": friends[:_FRIEND_PREVIEW_LIMIT],
+            "friend_count": len(friends),
         },
+    )
+
+
+@router.get("/profile/{user_id}/friends")
+async def profile_friends_page(
+    request: Request,
+    user_id: int,
+    conn: Annotated[AsyncConnection, Depends(get_connection)],
+) -> HTMLResponse:
+    """The full list behind the profile page's own "Друзья" preview/"Показать всех" link
+    (PR 201) - public the same way /profile/{user_id} itself is, unlike /friends (no id),
+    which only ever shows the logged-in visitor's *own* requests/friends and has no notion
+    of "whose list is this". Just the accepted-friends list, read-only - no request
+    management here, that stays on /friends."""
+    profile_user = await get_user_by_id(conn, user_id)
+    if profile_user is None:
+        raise HTTPException(status_code=404, detail="Пользователь не найден")
+    friends = await list_friends(conn, profile_user.id)
+    return templates.TemplateResponse(
+        request, "profile_friends.html", {"profile_user": profile_user, "friends": friends}
     )
 
 

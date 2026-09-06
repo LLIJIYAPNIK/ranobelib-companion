@@ -677,3 +677,125 @@ async def test_privacy_flags_default_to_showing_everything(client: TestClient) -
     assert "Читает сейчас" in response.text
     assert '<h2 class="profile-section__title">Избранное</h2>' in response.text
     assert '<h2 class="profile-section__title">Библиотека</h2>' in response.text
+
+
+# --- PR 201: "Друзья" section on the profile page + its full-list page ------------------
+
+
+async def _befriend(user_a_id: int, user_b_id: int) -> None:
+    from app.db.friendships import accept_request, send_request
+
+    async with connection() as conn:
+        await send_request(conn, requester_id=user_a_id, addressee_id=user_b_id)
+        await accept_request(conn, user_id=user_b_id, requester_id=user_a_id)
+
+
+async def test_profile_omits_friends_section_without_any_friends(client: TestClient) -> None:
+    _register(client, "alice@example.com")
+
+    response = client.get("/profile")
+
+    assert response.status_code == 200
+    assert '<h2 class="profile-section__title">Друзья' not in response.text
+
+
+async def test_profile_shows_a_friend_preview_with_a_count(client: TestClient) -> None:
+    _register(client, "alice@example.com")
+    alice_id = await _user_id("alice@example.com")
+    _register(client, "bob@example.com")
+    bob_id = await _user_id("bob@example.com")
+    await _befriend(alice_id, bob_id)
+
+    response = client.get(f"/profile/{alice_id}")
+
+    assert response.status_code == 200
+    assert '<h2 class="profile-section__title">Друзья (1)</h2>' in response.text
+    assert "bob@example.com" in response.text
+
+
+async def test_profile_omits_show_all_link_within_the_preview_limit(
+    client: TestClient,
+) -> None:
+    from app.api.profile import _FRIEND_PREVIEW_LIMIT
+
+    _register(client, "alice@example.com")
+    alice_id = await _user_id("alice@example.com")
+    _register(client, "bob@example.com")
+    bob_id = await _user_id("bob@example.com")
+    await _befriend(alice_id, bob_id)
+
+    assert _FRIEND_PREVIEW_LIMIT > 1  # sanity - a single friend must stay within it
+    response = client.get(f"/profile/{alice_id}")
+
+    assert "Показать всех" not in response.text
+
+
+async def test_profile_shows_a_show_all_link_over_the_preview_limit(
+    client: TestClient,
+) -> None:
+    from app.api.profile import _FRIEND_PREVIEW_LIMIT
+
+    _register(client, "alice@example.com")
+    alice_id = await _user_id("alice@example.com")
+    for i in range(_FRIEND_PREVIEW_LIMIT + 1):
+        _register(client, f"friend{i}@example.com")
+        friend_id = await _user_id(f"friend{i}@example.com")
+        await _befriend(alice_id, friend_id)
+
+    response = client.get(f"/profile/{alice_id}")
+
+    assert response.status_code == 200
+    assert f"Друзья ({_FRIEND_PREVIEW_LIMIT + 1})" in response.text
+    assert f'href="/profile/{alice_id}/friends"' in response.text
+    assert "Показать всех" in response.text
+    # only the preview limit's worth of rows actually render on the profile page itself
+    assert response.text.count('class="friend-row__link"') == _FRIEND_PREVIEW_LIMIT
+
+
+async def test_profile_friends_section_shows_on_the_owners_own_profile_too(
+    client: TestClient,
+) -> None:
+    _register(client, "alice@example.com")
+    alice_id = await _user_id("alice@example.com")
+    _register(client, "bob@example.com")
+    bob_id = await _user_id("bob@example.com")
+    await _befriend(alice_id, bob_id)
+
+    client.post("/logout")
+    client.post("/login", data={"email": "alice@example.com", "password": "hunter2pass"})
+    response = client.get("/profile")
+
+    assert response.status_code == 200
+    assert '<h2 class="profile-section__title">Друзья (1)</h2>' in response.text
+
+
+async def test_profile_friends_page_lists_the_full_friend_list(client: TestClient) -> None:
+    _register(client, "alice@example.com")
+    alice_id = await _user_id("alice@example.com")
+    _register(client, "bob@example.com")
+    bob_id = await _user_id("bob@example.com")
+    await _befriend(alice_id, bob_id)
+
+    response = client.get(f"/profile/{alice_id}/friends")
+
+    assert response.status_code == 200
+    assert "bob@example.com" in response.text
+    assert f'href="/profile/{alice_id}"' in response.text  # back link
+
+
+async def test_profile_friends_page_shows_empty_state_without_friends(
+    client: TestClient,
+) -> None:
+    _register(client, "alice@example.com")
+    alice_id = await _user_id("alice@example.com")
+
+    response = client.get(f"/profile/{alice_id}/friends")
+
+    assert response.status_code == 200
+    assert "Пока нет друзей." in response.text
+
+
+async def test_profile_friends_page_404s_for_an_unknown_user(client: TestClient) -> None:
+    response = client.get("/profile/999/friends")
+
+    assert response.status_code == 404
