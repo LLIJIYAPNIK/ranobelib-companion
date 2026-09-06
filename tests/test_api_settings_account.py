@@ -300,6 +300,8 @@ def test_privacy_checkboxes_are_all_checked_by_default(client: TestClient) -> No
     assert 'name="show_currently_reading" checked' in response.text
     assert 'name="show_favorite" checked' in response.text
     assert 'name="show_library" checked' in response.text
+    assert 'name="show_friends" checked' in response.text
+    assert 'name="show_friends_activity_home" checked' in response.text
 
 
 def test_anonymous_privacy_post_is_redirected_to_login(client: TestClient) -> None:
@@ -309,11 +311,11 @@ def test_anonymous_privacy_post_is_redirected_to_login(client: TestClient) -> No
     assert response.headers["location"] == "/login"
 
 
-def test_update_privacy_unchecking_all_three_saves_them_as_hidden(client: TestClient) -> None:
+def test_update_privacy_unchecking_all_saves_them_as_hidden(client: TestClient) -> None:
     _register(client, "alice@example.com")
 
     # An unchecked checkbox isn't sent by the browser at all - submitting with none of
-    # the three fields present is exactly what "uncheck everything" looks like on the wire.
+    # the five fields present is exactly what "uncheck everything" looks like on the wire.
     response = client.post("/settings/account/privacy", data={})
 
     assert response.status_code == 200
@@ -321,6 +323,8 @@ def test_update_privacy_unchecking_all_three_saves_them_as_hidden(client: TestCl
     assert 'name="show_currently_reading" checked' not in response.text
     assert 'name="show_favorite" checked' not in response.text
     assert 'name="show_library" checked' not in response.text
+    assert 'name="show_friends" checked' not in response.text
+    assert 'name="show_friends_activity_home" checked' not in response.text
 
 
 def test_update_privacy_flags_are_independent(client: TestClient) -> None:
@@ -332,6 +336,25 @@ def test_update_privacy_flags_are_independent(client: TestClient) -> None:
     assert 'name="show_currently_reading" checked' not in response.text
     assert 'name="show_favorite" checked' in response.text
     assert 'name="show_library" checked' not in response.text
+    assert 'name="show_friends" checked' not in response.text
+    assert 'name="show_friends_activity_home" checked' not in response.text
+
+
+def test_update_privacy_new_flags_are_independent_of_the_original_three(
+    client: TestClient,
+) -> None:
+    _register(client, "alice@example.com")
+
+    response = client.post(
+        "/settings/account/privacy", data={"show_friends_activity_home": "on"}
+    )
+
+    assert response.status_code == 200
+    assert 'name="show_currently_reading" checked' not in response.text
+    assert 'name="show_favorite" checked' not in response.text
+    assert 'name="show_library" checked' not in response.text
+    assert 'name="show_friends" checked' not in response.text
+    assert 'name="show_friends_activity_home" checked' in response.text
 
 
 def test_update_privacy_persists_across_page_loads(client: TestClient) -> None:

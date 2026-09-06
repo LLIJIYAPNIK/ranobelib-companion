@@ -62,6 +62,8 @@ def _account_context(user: User, **extra: object) -> dict[str, object]:
         "show_currently_reading": user.show_currently_reading,
         "show_favorite": user.show_favorite,
         "show_library": user.show_library,
+        "show_friends_activity_home": user.show_friends_activity_home,
+        "show_friends": user.show_friends,
         **extra,
     }
 
@@ -161,16 +163,20 @@ async def update_privacy(
     show_currently_reading: bool = Form(default=False),
     show_favorite: bool = Form(default=False),
     show_library: bool = Form(default=False),
+    show_friends_activity_home: bool = Form(default=False),
+    show_friends: bool = Form(default=False),
 ) -> HTMLResponse:
     """Unchecked checkboxes simply aren't sent by the browser at all, so every submit of
-    this form carries the visitor's complete intended state for all three - no partial
-    update, matching update_privacy_settings()'s own "always write all three" shape."""
+    this form carries the visitor's complete intended state for all five - no partial
+    update, matching update_privacy_settings()'s own "always write all five" shape."""
     updated = await update_privacy_settings(
         conn,
         user.id,
         show_currently_reading=show_currently_reading,
         show_favorite=show_favorite,
         show_library=show_library,
+        show_friends_activity_home=show_friends_activity_home,
+        show_friends=show_friends,
     )
     return templates.TemplateResponse(
         request, "settings_account.html", _account_context(updated, privacy_saved=True)

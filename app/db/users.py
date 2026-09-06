@@ -1,6 +1,7 @@
 """Access to the ``users`` table (see migrations/0001_users.sql,
 0009_users_privacy_flags.sql for the ``show_*`` columns,
-0015_users_notification_flags.sql for ``notifications_enabled``/``do_not_disturb``).
+0015_users_notification_flags.sql for ``notifications_enabled``/``do_not_disturb``,
+0019_users_friends_privacy_flags.sql for ``show_friends_activity_home``/``show_friends``).
 """
 
 from __future__ import annotations
@@ -28,6 +29,16 @@ class User:
     show_currently_reading: bool = True
     show_favorite: bool = True
     show_library: bool = True
+    # PR 202: two more privacy toggles, same section/pattern as the three above but
+    # different targets. show_friends is the same kind of flag as the three above - what a
+    # *different* visitor sees on this user's public profile (PR 201's friends section),
+    # ignored on the owner's own view of their own profile. show_friends_activity_home is
+    # NOT about what others see - it's a personal preference gating the friends-activity
+    # column (PR 200) on *this user's own* home page, so unlike the other four it has no
+    # "owner's own view ignores it" carve-out (there's no "someone else's home page" to
+    # view in the first place).
+    show_friends_activity_home: bool = True
+    show_friends: bool = True
     # PR 171: "Показывать уведомления" (hides the sidebar bell entirely) and
     # "Не беспокоить" (hides it temporarily) - see update_notification_settings() below
     # for what each one actually does (both gate visibility identically; neither pauses
@@ -115,16 +126,28 @@ async def update_privacy_settings(
     show_currently_reading: bool,
     show_favorite: bool,
     show_library: bool,
+    show_friends_activity_home: bool,
+    show_friends: bool,
 ) -> User:
-    """The three "Приватность" toggles (PR 124) - independent of each other, so all three
-    are always written together as a plain replace, not a partial update."""
+    """The five "Приватность" toggles (PR 124's original three plus PR 202's two) -
+    independent of each other, so all five are always written together as a plain
+    replace, not a partial update - same shape as the original three, just wider now that
+    the same settings form (settings_account.html) carries two more checkboxes."""
     await conn.execute(
-        "UPDATE users SET show_currently_reading = %s, show_favorite = %s, show_library = %s "
+        "UPDATE users SET show_currently_reading = %s, show_favorite = %s, show_library = %s, "
+        "show_friends_activity_home = %s, show_friends = %s "
         "WHERE id = %s",
         # cast bool -> int: the column is INTEGER (0/1), not a native Postgres BOOLEAN -
         # see CLAUDE.md's PR 191 entry on why that stayed as-is - and unlike SQLite,
         # Postgres won't implicitly coerce a bound `True`/`False` into one.
-        (int(show_currently_reading), int(show_favorite), int(show_library), user_id),
+        (
+            int(show_currently_reading),
+            int(show_favorite),
+            int(show_library),
+            int(show_friends_activity_home),
+            int(show_friends),
+            user_id,
+        ),
     )
     user = await get_user_by_id(conn, user_id)
     assert user is not None  # just updated
@@ -162,6 +185,7 @@ async def update_notification_settings(
 _USER_COLUMNS = (
     "id, email, password_hash, created_at, nickname, bio, avatar_path, "
     "show_currently_reading, show_favorite, show_library, "
+    "show_friends_activity_home, show_friends, "
     "notifications_enabled, do_not_disturb"
 )
 
@@ -208,6 +232,8 @@ def _row_to_user(row: dict[str, Any]) -> User:
         show_currently_reading=bool(row["show_currently_reading"]),
         show_favorite=bool(row["show_favorite"]),
         show_library=bool(row["show_library"]),
+        show_friends_activity_home=bool(row["show_friends_activity_home"]),
+        show_friends=bool(row["show_friends"]),
         notifications_enabled=bool(row["notifications_enabled"]),
         do_not_disturb=bool(row["do_not_disturb"]),
     )

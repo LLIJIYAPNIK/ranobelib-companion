@@ -96,8 +96,9 @@
     <p class="content__notice content__notice--success">Настройки приватности сохранены</p>
     {% endif %}
     <p class="content__hint">
-      Эти переключатели касаются только вашей публичной страницы профиля — сами вы всегда
-      видите свой профиль полностью, независимо от них.
+      Большинство переключателей ниже касаются вашей публичной страницы профиля — сами вы
+      всегда видите свой профиль полностью, независимо от них. Показ активности друзей на
+      главной — личная настройка: она влияет только на то, что видите на главной вы сами.
     </p>
     <form class="settings-form" method="post" action="/settings/account/privacy">
       <label class="auth-form__field auth-form__field--checkbox">
@@ -111,6 +112,14 @@
       <label class="auth-form__field auth-form__field--checkbox">
         <input type="checkbox" name="show_library" {% if show_library %}checked{% endif %}>
         <span>Показывать библиотеку целиком</span>
+      </label>
+      <label class="auth-form__field auth-form__field--checkbox">
+        <input type="checkbox" name="show_friends" {% if show_friends %}checked{% endif %}>
+        <span>Показывать список друзей</span>
+      </label>
+      <label class="auth-form__field auth-form__field--checkbox">
+        <input type="checkbox" name="show_friends_activity_home" {% if show_friends_activity_home %}checked{% endif %}>
+        <span>Показывать активность друзей на главной странице</span>
       </label>
       <button class="btn btn--primary" type="submit">Сохранить</button>
     </form>

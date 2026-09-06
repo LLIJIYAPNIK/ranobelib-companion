@@ -111,9 +111,12 @@ async def _recent_with_progress(
 
 async def _friend_activity_cards(user: User | None) -> list[FriendActivityCard]:
     """PR 200's right-hand "Активность друзей" column - empty for an anonymous visitor (no
-    account, so no friends list) or for a user with no friends yet, in which case
-    index.html renders no column at all rather than an empty shell."""
-    if user is None:
+    account, so no friends list), a user with no friends yet, or a user who's turned the
+    column off for themselves (PR 202's show_friends_activity_home - a personal preference
+    about this user's own home page, unlike the other four privacy flags this one has no
+    "someone else's view" to ignore it on), in which case index.html renders no column at
+    all rather than an empty shell."""
+    if user is None or not user.show_friends_activity_home:
         return []
     async with connection() as conn:
         friends = await list_friends(conn, user.id)

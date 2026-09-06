@@ -273,7 +273,13 @@ async def test_home_hides_a_friends_currently_reading_when_they_opted_out(
         await add_entry(conn, alice_id, "6712--test-novel")
         await record_progress(conn, alice_id, "6712--test-novel", volume="1", number="3")
         await update_privacy_settings(
-            conn, alice_id, show_currently_reading=False, show_favorite=True, show_library=True
+            conn,
+            alice_id,
+            show_currently_reading=False,
+            show_favorite=True,
+            show_library=True,
+            show_friends_activity_home=True,
+            show_friends=True,
         )
 
     _login_as_bob(db_client)
@@ -313,3 +319,36 @@ async def test_home_shows_a_friends_reading_streak(db_client: TestClient) -> Non
     response = db_client.get("/")
 
     assert "1 день подряд" in response.text
+
+
+# --- PR 202: show_friends_activity_home gates the column on the viewer's OWN home page ---
+
+
+async def test_home_hides_the_friend_column_when_the_viewer_opted_out(
+    db_client: TestClient,
+) -> None:
+    from app.db.activity import record_chapter_read
+    from app.db.connection import connection
+    from app.db.users import update_privacy_settings
+
+    alice_id, bob_id = await _make_friends(db_client)  # session is Alice
+    async with connection() as conn:
+        await record_chapter_read(conn, alice_id, "6712--test-novel", "1", "5")
+
+    _login_as_bob(db_client)
+    async with connection() as conn:
+        # Bob is opting out of seeing *his own* home page's friend-activity column - not
+        # about what Alice shares.
+        await update_privacy_settings(
+            conn,
+            bob_id,
+            show_currently_reading=True,
+            show_favorite=True,
+            show_library=True,
+            show_friends_activity_home=False,
+            show_friends=True,
+        )
+    response = db_client.get("/")
+
+    assert 'class="home-columns__friends"' not in response.text
+    assert "1 день подряд" not in response.text
