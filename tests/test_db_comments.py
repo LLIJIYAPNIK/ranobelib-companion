@@ -10,6 +10,7 @@ from app.db.comments import (
     delete_comment,
     edit_comment,
     list_comments_for_paragraph,
+    list_recent_comments_by_user,
 )
 from app.db.migrate import run_migrations
 from tests.db_reset import fresh_connection
@@ -361,3 +362,88 @@ async def test_delete_comment_keeps_its_replies_in_the_tree(conn: psycopg.AsyncC
     assert roots[0].is_deleted is True
     assert len(roots[0].replies) == 1
     assert roots[0].replies[0].body == "reply"
+
+
+# --- PR 200: list_recent_comments_by_user (friend-activity feed) ------------------------
+
+
+async def test_list_recent_comments_by_user_orders_newest_first(
+    conn: psycopg.AsyncConnection,
+) -> None:
+    first = await create_comment(conn, 1, "6712--test-novel", "1", "5", "", 0, "first")
+    second = await create_comment(conn, 1, "6712--test-novel", "1", "6", "", 0, "second")
+
+    comments = await list_recent_comments_by_user(conn, 1)
+
+    assert [c.id for c in comments] == [second.id, first.id]
+
+
+async def test_list_recent_comments_by_user_is_capped_by_limit(
+    conn: psycopg.AsyncConnection,
+) -> None:
+    for i in range(5):
+        await create_comment(conn, 1, "6712--test-novel", "1", str(i), "", 0, f"comment {i}")
+
+    comments = await list_recent_comments_by_user(conn, 1, limit=3)
+
+    assert len(comments) == 3
+
+
+async def test_list_recent_comments_by_user_excludes_other_users(
+    conn: psycopg.AsyncConnection,
+) -> None:
+    await create_comment(conn, 2, "6712--test-novel", "1", "5", "", 0, "bob's comment")
+
+    assert await list_recent_comments_by_user(conn, 1) == []
+
+
+async def test_list_recent_comments_by_user_excludes_soft_deleted_comments(
+    conn: psycopg.AsyncConnection,
+) -> None:
+    comment = await create_comment(conn, 1, "6712--test-novel", "1", "5", "", 0, "goodbye")
+    await delete_comment(conn, comment.id, 1)
+
+    assert await list_recent_comments_by_user(conn, 1) == []
+
+
+async def test_list_recent_comments_by_user_truncates_a_long_body(
+    conn: psycopg.AsyncConnection,
+) -> None:
+    await create_comment(conn, 1, "6712--test-novel", "1", "5", "", 0, "x" * 200)
+
+    comments = await list_recent_comments_by_user(conn, 1)
+
+    assert len(comments[0].body_excerpt) == 141  # 140 chars + the ellipsis
+    assert comments[0].body_excerpt.endswith("…")
+
+
+async def test_list_recent_comments_by_user_keeps_a_short_body_intact(
+    conn: psycopg.AsyncConnection,
+) -> None:
+    await create_comment(conn, 1, "6712--test-novel", "1", "5", "", 0, "short comment")
+
+    comments = await list_recent_comments_by_user(conn, 1)
+
+    assert comments[0].body_excerpt == "short comment"
+
+
+def test_recent_comment_url_without_a_branch_id() -> None:
+    from app.db.comments import RecentComment
+
+    comment = RecentComment(
+        id=1, body_excerpt="hi", created_at="now",
+        slug_url="6712--test-novel", volume="1", number="5", branch_id="",
+    )
+
+    assert comment.url == "/titles/6712--test-novel/chapters/1/5"
+
+
+def test_recent_comment_url_with_a_branch_id() -> None:
+    from app.db.comments import RecentComment
+
+    comment = RecentComment(
+        id=1, body_excerpt="hi", created_at="now",
+        slug_url="6712--test-novel", volume="1", number="5", branch_id="42",
+    )
+
+    assert comment.url == "/titles/6712--test-novel/chapters/1/5?branch_id=42"

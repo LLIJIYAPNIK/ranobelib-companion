@@ -148,3 +148,19 @@ async def daily_titles_read(
 
 def _today_start() -> str:
     return datetime.now(UTC).date().isoformat()
+
+
+def reading_streak_days(daily_counts: dict[str, int]) -> int:
+    """Consecutive days with at least one chapter read, counting backward from today - or
+    from yesterday if today doesn't have a chapter yet, so an existing streak doesn't
+    briefly read as 0 just because the UTC day has rolled over before today's first
+    chapter. Stops at the first day with nothing. Pure - operates on
+    daily_reading_activity()'s own returned dict (PR 200's "N дней подряд" friend-activity
+    stat), issuing no query of its own."""
+    today = datetime.now(UTC).date()
+    current = today if daily_counts.get(today.isoformat(), 0) > 0 else today - timedelta(days=1)
+    streak = 0
+    while daily_counts.get(current.isoformat(), 0) > 0:
+        streak += 1
+        current -= timedelta(days=1)
+    return streak

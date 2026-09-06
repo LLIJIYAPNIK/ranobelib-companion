@@ -3,6 +3,7 @@ import pytest
 
 from app.db.library import (
     add_entry,
+    get_currently_reading_entries,
     get_entry,
     get_favorite_entry,
     list_entries,
@@ -165,3 +166,89 @@ async def test_get_favorite_entry_returns_the_favorited_entry(
 
     assert favorite is not None
     assert favorite.slug_url == "2--second"
+
+
+# --- PR 200: get_currently_reading_entries (batched, friend-activity feed) --------------
+
+
+async def _add_user(conn: psycopg.AsyncConnection, user_id: int, email: str) -> None:
+    await conn.execute(
+        "INSERT INTO users (id, email, password_hash, created_at) VALUES (%s, %s, 'hash', 'now')",
+        (user_id, email),
+    )
+
+
+async def test_get_currently_reading_entries_empty_for_empty_input(
+    conn: psycopg.AsyncConnection,
+) -> None:
+    assert await get_currently_reading_entries(conn, []) == {}
+
+
+async def test_get_currently_reading_entries_excludes_never_read_entries(
+    conn: psycopg.AsyncConnection,
+) -> None:
+    await add_entry(conn, 1, "6712--test-novel")  # added, never opened
+
+    assert await get_currently_reading_entries(conn, [1]) == {}
+
+
+async def test_get_currently_reading_entries_includes_a_read_entry(
+    conn: psycopg.AsyncConnection,
+) -> None:
+    await add_entry(conn, 1, "6712--test-novel")
+    await record_progress(conn, 1, "6712--test-novel", volume="1", number="3")
+
+    entries = await get_currently_reading_entries(conn, [1])
+
+    assert entries[1].slug_url == "6712--test-novel"
+
+
+async def test_get_currently_reading_entries_picks_the_most_recently_touched_entry(
+    conn: psycopg.AsyncConnection,
+) -> None:
+    await add_entry(conn, 1, "1--first")
+    await record_progress(conn, 1, "1--first", volume="1", number="1")
+    await add_entry(conn, 1, "2--second")
+    await record_progress(conn, 1, "2--second", volume="1", number="1")  # read most recently
+
+    entries = await get_currently_reading_entries(conn, [1])
+
+    assert entries[1].slug_url == "2--second"
+
+
+async def test_get_currently_reading_entries_omits_a_user_whose_top_entry_is_unread(
+    conn: psycopg.AsyncConnection,
+) -> None:
+    """The top entry overall (most recently *added*, PR 200's own rule matching
+    app/api/profile.py's currently_reading) has never been read - an older, already-read
+    entry further down must not be surfaced instead."""
+    await add_entry(conn, 1, "1--first")
+    await record_progress(conn, 1, "1--first", volume="1", number="1")
+    await add_entry(conn, 1, "2--second")  # added after, never opened
+
+    assert await get_currently_reading_entries(conn, [1]) == {}
+
+
+async def test_get_currently_reading_entries_covers_several_users_in_one_call(
+    conn: psycopg.AsyncConnection,
+) -> None:
+    await _add_user(conn, 2, "bob@example.com")
+    await add_entry(conn, 1, "1--first")
+    await record_progress(conn, 1, "1--first", volume="1", number="1")
+    await add_entry(conn, 2, "2--second")
+    await record_progress(conn, 2, "2--second", volume="1", number="1")
+
+    entries = await get_currently_reading_entries(conn, [1, 2])
+
+    assert entries[1].slug_url == "1--first"
+    assert entries[2].slug_url == "2--second"
+
+
+async def test_get_currently_reading_entries_ignores_a_user_not_in_the_list(
+    conn: psycopg.AsyncConnection,
+) -> None:
+    await _add_user(conn, 2, "bob@example.com")
+    await add_entry(conn, 2, "2--second")
+    await record_progress(conn, 2, "2--second", volume="1", number="1")
+
+    assert await get_currently_reading_entries(conn, [1]) == {}

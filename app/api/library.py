@@ -14,6 +14,7 @@ from app.db.connection import connection, get_connection
 from app.db.library import (
     LibraryEntry,
     add_entry,
+    get_currently_reading_entries,
     get_entry,
     list_entries,
     remove_entry,
@@ -295,3 +296,42 @@ async def library_items_for_user(
             }
         )
     return items
+
+
+async def currently_reading_for_users(
+    user_ids: list[int], conn: AsyncConnection
+) -> dict[int, dict[str, LibraryEntry | str | int | None]]:
+    """What each of these users (a viewer's friends, PR 200) is currently reading, keyed by
+    user_id - the same per-entry name/cover/progress enrichment library_items_for_user()
+    does for one user's whole library, just for a single "currently reading" entry across
+    many users at once. The DB lookup itself is batched (one query via
+    get_currently_reading_entries(), not N of them); the SDK enrichment loop below still
+    makes one call per distinct entry, same as library_items_for_user()'s own loop - there's
+    no bulk "get_info for many titles" in the SDK to batch that part with. A user_id with
+    nothing currently being read is simply absent from the returned dict.
+    """
+    entries = await get_currently_reading_entries(conn, user_ids)
+    result: dict[int, dict[str, LibraryEntry | str | int | None]] = {}
+    for user_id, entry in entries.items():
+        name: str | None = None
+        cover_url: str | None = None
+        progress_percent: int | None = None
+        try:
+            async with open_client(entry.slug_url) as lib:
+                title = await lib.get_info()
+                name = title.rus_name or title.name
+                cover_url = title.cover.default or title.cover.md or title.cover.thumbnail
+                if entry.last_read_volume is not None:
+                    volumes = await lib.get_table_of_contents()
+                    progress_percent = reading_progress_percent(
+                        volumes, entry.last_read_volume, entry.last_read_number
+                    )
+        except RanobeLibError:
+            pass
+        result[user_id] = {
+            "entry": entry,
+            "name": name,
+            "cover_url": cover_url,
+            "progress_percent": progress_percent,
+        }
+    return result

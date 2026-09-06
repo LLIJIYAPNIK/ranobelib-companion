@@ -60,6 +60,42 @@
       </div>
       {% endif %}
     </div>
+
+    {% if friend_activity %}
+    <aside class="home-columns__friends">
+      <h2 class="recent__title">Активность друзей</h2>
+      <div class="friend-activity-list">
+        {% for card in friend_activity %}
+        <section class="friend-activity-card">
+          <a class="friend-row__link friend-activity-card__header" href="/profile/{{ card.friend.id }}">
+            <span class="friend-row__avatar">
+              {% if card.friend.avatar_url %}<img class="avatar-img" src="{{ card.friend.avatar_url }}" alt="">{% else %}{{ card.friend.avatar_initials }}{% endif %}
+            </span>
+            <span class="friend-row__name">{{ card.friend.display_name }}</span>
+          </a>
+          {% if card.streak_label %}
+          <p class="friend-activity-card__streak">🔥 {{ card.streak_label }}</p>
+          {% endif %}
+          {% if card.currently_reading %}
+          <p class="friend-activity-card__reading">
+            Читает: <a href="/titles/{{ card.currently_reading.entry.slug_url }}">{{ card.currently_reading.name or card.currently_reading.entry.slug_url }}</a>
+          </p>
+          {% endif %}
+          {% if card.recent_comments %}
+          <ul class="friend-activity-card__comments">
+            {% for comment in card.recent_comments %}
+            <li><a href="{{ comment.url }}">{{ comment.body_excerpt }}</a></li>
+            {% endfor %}
+          </ul>
+          {% endif %}
+          {% if not card.has_activity %}
+          <p class="content__hint">Пока нет активности</p>
+          {% endif %}
+        </section>
+        {% endfor %}
+      </div>
+    </aside>
+    {% endif %}
   </div>
 </main>
 <script src="{{ url_for('static', path='js/recent-titles-forget.js') }}" defer></script>

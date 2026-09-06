@@ -93,6 +93,37 @@ async def unset_favorite(conn: AsyncConnection, user_id: int, slug_url: str) -> 
     )
 
 
+async def get_currently_reading_entries(
+    conn: AsyncConnection, user_ids: list[int]
+) -> dict[int, LibraryEntry]:
+    """The entry each of these users is "currently reading", keyed by user_id - same rule
+    app/api/profile.py's own `currently_reading` uses for a single user (the most recently
+    touched entry, COALESCE(last_read_at, added_at) DESC, only shown if that particular
+    entry has actually been opened at least once): a title that's merely the most recently
+    *added* one, never read, still means this user has nothing "currently reading", even if
+    an older entry further down does have a read position.
+
+    One query for the whole `user_ids` list (PR 200's friend-activity column needs this for
+    every friend at once), not one per user - the inner DISTINCT ON picks each user's single
+    most-recently-touched row first, and only then is it filtered down to rows that were
+    actually read, so an unread top entry correctly hides that user entirely rather than
+    falling through to an older, already-read one. A user_id absent from the returned dict
+    has nothing to show."""
+    if not user_ids:
+        return {}
+    cursor = await conn.execute(
+        "SELECT * FROM ("
+        "  SELECT DISTINCT ON (user_id) * FROM library_entries "
+        "  WHERE user_id = ANY(%s) "
+        "  ORDER BY user_id, COALESCE(last_read_at, added_at) DESC"
+        ") AS most_recently_touched "
+        "WHERE last_read_at IS NOT NULL",
+        (user_ids,),
+    )
+    rows = await cursor.fetchall()
+    return {row["user_id"]: _row_to_entry(row) for row in rows}
+
+
 async def get_favorite_entry(conn: AsyncConnection, user_id: int) -> LibraryEntry | None:
     cursor = await conn.execute(
         "SELECT * FROM library_entries WHERE user_id = %s AND is_favorite = 1", (user_id,)

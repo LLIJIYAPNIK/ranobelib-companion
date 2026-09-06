@@ -1330,9 +1330,9 @@ a {
   margin: 24px 0 12px;
 }
 
-/* PR 198: the left column of the home page's future two-column layout (right column -
-   friends activity - arrives in PR 200) - .home-columns__primary alone still spans the
-   full width today since there's no sibling yet. */
+/* PR 198: the left column of the home page's two-column layout; the right column -
+   friends activity, PR 200 - is .home-columns__friends below, present only for a logged-in
+   visitor with at least one friend (see index.html's own `{% if friend_activity %}`). */
 .home-columns {
   display: flex;
   align-items: flex-start;
@@ -1342,6 +1342,85 @@ a {
 .home-columns__primary {
   flex: 1;
   min-width: 0;
+}
+
+/* PR 200: fixed-width sidebar column, unlike .home-columns__primary's flexible one - a
+   friend-activity card reads better at a stable width than stretched to fill leftover
+   space next to a short "Недавние" grid. */
+.home-columns__friends {
+  flex: 0 0 320px;
+  min-width: 0;
+}
+
+.friend-activity-list {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  margin-top: 8px;
+}
+
+/* Same card language as .home-empty/.profile-section - a bordered surface, not a second
+   set of card styles. */
+.friend-activity-card {
+  padding: 16px;
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  background: var(--bg-surface);
+}
+
+.friend-activity-card__header {
+  margin: -4px -4px 10px;
+}
+
+.friend-activity-card__streak {
+  margin: 0 0 8px;
+  font-size: 13px;
+  color: var(--text-secondary);
+}
+
+.friend-activity-card__reading {
+  margin: 0 0 8px;
+  font-size: 13px;
+  color: var(--text-secondary);
+}
+
+.friend-activity-card__reading a {
+  color: var(--text-primary);
+  font-weight: 600;
+}
+
+.friend-activity-card__comments {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.friend-activity-card__comments a {
+  display: block;
+  overflow: hidden;
+  font-size: 13px;
+  line-height: 1.4;
+  color: var(--text-secondary);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* PR 200: stacked vertically on mobile - "Недавние"/empty state first, friend activity
+   below it - rather than squeezed into a second, half-width column (same "sequential
+   sections, not narrow side-by-side columns" approach PR 104 already took for mobile
+   settings). */
+@media (max-width: 640px) {
+  .home-columns {
+    flex-direction: column;
+  }
+
+  .home-columns__friends {
+    flex-basis: auto;
+    width: 100%;
+  }
 }
 
 /* Meaningful empty state for a first-time visitor / fresh account with no "Недавние"
