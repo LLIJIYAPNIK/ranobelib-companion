@@ -50,6 +50,26 @@ async def start_download(
     return RedirectResponse(f"/titles/{slug_url}/download/{job.id}", status_code=303)
 
 
+@router.post("/{job_id}/retry")
+async def retry_download_with_translation(
+    slug_url: str,
+    job_id: str,
+    current_user: Annotated[User, Depends(require_current_user)],
+    translation_index: Annotated[int, Form()],
+) -> RedirectResponse:
+    """The needs_translation retry form on download_status.html (PR 208) - resumes THIS
+    job in place rather than start_download() creating a second, separate one: that used
+    to leave the original stuck in "needs_translation" forever (nothing ever moved it out
+    of that status) while a brand new job actually did the downloading, so "Загрузки →
+    Текущие" showed two entries for the same title after every translation choice."""
+    job = _get_job_or_404(slug_url, job_id, current_user)
+    if job.status != "needs_translation":
+        raise HTTPException(status_code=409, detail="Задача не ожидает выбора перевода")
+    task = asyncio.create_task(run_download_job(job, translation_index=translation_index))
+    track_task(job.id, task)
+    return RedirectResponse(f"/titles/{slug_url}/download/{job.id}", status_code=303)
+
+
 @router.get("/{job_id}")
 async def show_download_status(
     request: Request,

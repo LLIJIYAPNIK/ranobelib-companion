@@ -17,7 +17,7 @@ from app.config import get_settings
 from app.db.connection import connection
 from app.db.downloads import list_download_history
 from app.db.library import add_entry, set_default_translation_index
-from app.jobs.store import create_job, get_job
+from app.jobs.store import create_job, get_job, list_active_jobs_for_user
 from app.main import app
 from tests.db_reset import reset_app_database
 
@@ -437,8 +437,11 @@ def test_show_download_status_renders_translation_choice() -> None:
     assert "Том 1, глава 6" in response.text
     assert "Команда А" in response.text
     assert "Команда Б" in response.text
-    assert 'action="/titles/6712--test-novel/download"' in response.text
-    assert 'value="epub"' in response.text
+    # PR 208: resumes THIS job by id rather than start_download() (which would create a
+    # second, separate one) - no more "fmt" hidden field either, since the resumed job
+    # already carries its own.
+    assert f'action="/titles/6712--test-novel/download/{job.id}/retry"' in response.text
+    assert 'value="epub"' not in response.text
     # max_branches across all ambiguous chapters is 2 (the first chapter's two branches)
     assert '<option value="0">Вариант 1</option>' in response.text
     assert '<option value="1">Вариант 2</option>' in response.text
@@ -447,9 +450,8 @@ def test_show_download_status_renders_translation_choice() -> None:
     assert "static/js/custom-dropdown.js" in response.text
     # PR 206: the translation-choice form comes before the list of ambiguous chapters, not
     # after it - so picking a translation never requires scrolling past that list first.
-    assert response.text.index('action="/titles/6712--test-novel/download"') < response.text.index(
-        "download-status__ambiguous"
-    )
+    form_action = f'action="/titles/6712--test-novel/download/{job.id}/retry"'
+    assert response.text.index(form_action) < response.text.index("download-status__ambiguous")
 
 
 def test_show_download_status_translation_form_precedes_a_long_ambiguous_list() -> None:
@@ -467,9 +469,9 @@ def test_show_download_status_translation_form_precedes_a_long_ambiguous_list() 
 
     assert response.status_code == 200
     assert response.text.count("download-status__ambiguous-item") == 21
-    assert response.text.index('action="/titles/6712--test-novel/download"') < response.text.index(
-        "download-status__ambiguous-item"
-    )
+    assert response.text.index(
+        f'action="/titles/6712--test-novel/download/{job.id}/retry"'
+    ) < response.text.index("download-status__ambiguous-item")
 
 
 def test_start_download_needs_translation_end_to_end(logged_in_client: TestClient) -> None:
@@ -493,6 +495,177 @@ def test_start_download_needs_translation_end_to_end(logged_in_client: TestClien
 
     status_response = logged_in_client.get(f"/titles/6712--test-novel/download/{job_id}")
     assert "выберите один" in status_response.text
+
+
+# --- PR 208: /titles/{slug_url}/download/{job_id}/retry resumes the SAME job ------------
+
+
+class _ResolvingOnRetryClient:
+    """download_title() raises `exc` unless called with `resolving_index` - the same
+    "first attempt ambiguous, a later one with the right translation_index resolves it"
+    shape the retry flow produces for a real title."""
+
+    def __init__(
+        self, volumes: list[Volume], exc: Exception, resolving_index: int | None
+    ) -> None:
+        self._volumes = volumes
+        self._exc = exc
+        self._resolving_index = resolving_index
+
+    async def __aenter__(self) -> "_ResolvingOnRetryClient":
+        return self
+
+    async def __aexit__(self, *exc_info: object) -> bool:
+        return False
+
+    async def download_title(
+        self,
+        *,
+        branch_id: int | None = None,
+        translation_index: int | None = None,
+        chapter_delay: float = 0.0,
+        on_chapter: object = None,
+    ) -> list[Volume]:
+        if translation_index != self._resolving_index:
+            raise self._exc
+        chapters = [chapter for volume in self._volumes for chapter in volume.chapters]
+        total = len(chapters)
+        for index in range(total):
+            if on_chapter is not None:
+                on_chapter(index + 1, total)
+        return self._volumes
+
+    async def export(self, chapters: list[Chapter], *, fmt: str, path: str) -> str:
+        with open(path, "w", encoding="utf-8") as f:
+            f.write("exported content")
+        return path
+
+
+def _start_needs_translation_job(logged_in_client: TestClient, client_impl: object) -> str:
+    with patch("app.services.client.RanobeLib", return_value=client_impl):
+        response = logged_in_client.post(
+            "/titles/6712--test-novel/download", data={"fmt": "epub"}
+        )
+        job_id = _job_id_from_location(response.headers["location"])
+        _wait_until_terminal(job_id)
+    assert get_job(job_id).status == "needs_translation"
+    return job_id
+
+
+def test_retry_requires_login() -> None:
+    job = create_job("6712--test-novel", "epub", user_id=1)
+    job.status = "needs_translation"
+
+    response = client.post(
+        f"/titles/6712--test-novel/download/{job.id}/retry",
+        data={"translation_index": "0"},
+        follow_redirects=False,
+    )
+
+    assert response.status_code == 303
+    assert response.headers["location"] == "/login"
+
+
+def test_retry_unknown_job_returns_404(logged_in_client: TestClient) -> None:
+    response = logged_in_client.post(
+        "/titles/6712--test-novel/download/does-not-exist/retry",
+        data={"translation_index": "0"},
+    )
+
+    assert response.status_code == 404
+
+
+def test_retry_rejects_job_owned_by_other_user(logged_in_client: TestClient) -> None:
+    job = create_job("6712--test-novel", "epub", user_id=1)  # alice
+    job.status = "needs_translation"
+
+    bob = _second_logged_in_client()
+    response = bob.post(
+        f"/titles/6712--test-novel/download/{job.id}/retry",
+        data={"translation_index": "0"},
+    )
+
+    assert response.status_code == 403
+
+
+def test_retry_rejects_a_job_not_awaiting_translation(logged_in_client: TestClient) -> None:
+    job = create_job("6712--test-novel", "epub", user_id=1)
+    job.status = "running"
+
+    response = logged_in_client.post(
+        f"/titles/6712--test-novel/download/{job.id}/retry",
+        data={"translation_index": "0"},
+    )
+
+    assert response.status_code == 409
+
+
+def test_retry_resumes_the_same_job_instead_of_creating_a_second_one(
+    logged_in_client: TestClient, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    # _jobs is a process-wide dict (see app/jobs/store.py) shared with every other test in
+    # this file - reset it so an earlier test's own leftover job for this same user_id=1
+    # doesn't inflate the "exactly one active job" count below.
+    monkeypatch.setattr(job_store, "_jobs", {})
+    exc = MultipleTitleTranslationsError(
+        "6712--test-novel",
+        chapters=[
+            AmbiguousChapter(volume="1", number="5", branches=[_branch(1), _branch(2)])
+        ],
+    )
+    volumes = [Volume(number="1", chapters=[Chapter(id=1, volume="1", number="1")])]
+    client_impl = _ResolvingOnRetryClient(volumes, exc, resolving_index=1)
+    job_id = _start_needs_translation_job(logged_in_client, client_impl)
+    job_before = get_job(job_id)
+    # Exactly one job for this title in "Текущие" right after the first attempt landed on
+    # needs_translation - the retry below must not add a second one alongside it.
+    assert len(list_active_jobs_for_user(1)) == 1
+
+    with patch("app.services.client.RanobeLib", return_value=client_impl):
+        retry_response = logged_in_client.post(
+            f"/titles/6712--test-novel/download/{job_id}/retry",
+            data={"translation_index": "1"},
+            follow_redirects=False,
+        )
+        _wait_until_terminal(job_id)
+
+    assert retry_response.status_code == 303
+    assert retry_response.headers["location"] == f"/titles/6712--test-novel/download/{job_id}"
+    job_after = get_job(job_id)
+    assert job_after is job_before  # same job object/id, not a second one
+    assert job_after.status == "done"
+    # Done now, not "active" - and no second, still-active job snuck in alongside it.
+    assert list_active_jobs_for_user(1) == []
+    os.remove(job_after.result_path)
+
+
+def test_retry_that_still_cant_resolve_stays_on_needs_translation(
+    logged_in_client: TestClient,
+) -> None:
+    """A retry whose translation_index doesn't cover every remaining ambiguous chapter -
+    must land back on needs_translation like the very first attempt, not error out."""
+    exc = MultipleTitleTranslationsError(
+        "6712--test-novel",
+        chapters=[
+            AmbiguousChapter(volume="1", number="5", branches=[_branch(1), _branch(2)])
+        ],
+    )
+    volumes = [Volume(number="1", chapters=[Chapter(id=1, volume="1", number="1")])]
+    # resolving_index=5 - no download_title() call in this test ever passes 5, so every
+    # attempt (including the retry) raises MultipleTitleTranslationsError again.
+    client_impl = _ResolvingOnRetryClient(volumes, exc, resolving_index=5)
+    job_id = _start_needs_translation_job(logged_in_client, client_impl)
+
+    with patch("app.services.client.RanobeLib", return_value=client_impl):
+        retry_response = logged_in_client.post(
+            f"/titles/6712--test-novel/download/{job_id}/retry",
+            data={"translation_index": "1"},
+            follow_redirects=False,
+        )
+        _wait_until_terminal(job_id)
+
+    assert retry_response.status_code == 303
+    assert get_job(job_id).status == "needs_translation"
 
 
 def test_download_delivered_via_global_toast_after_leaving_job_page(

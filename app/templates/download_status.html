@@ -14,8 +14,7 @@
       У {{ job.ambiguous_chapters | length }} глав несколько переводов — выберите один
       вариант перевода для всего тайтла.
     </p>
-    <form method="post" action="/titles/{{ slug_url }}/download" class="download-status__retry">
-      <input type="hidden" name="fmt" value="{{ job.fmt }}">
+    <form method="post" action="/titles/{{ slug_url }}/download/{{ job.id }}/retry" class="download-status__retry">
       <select name="translation_index" class="toc__export-format" aria-label="Вариант перевода">
         {% for index in range(max_branches) %}
         <option value="{{ index }}">Вариант {{ index + 1 }}</option>
