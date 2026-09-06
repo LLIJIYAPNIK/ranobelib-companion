@@ -179,3 +179,99 @@ async def test_home_shows_progress_bar_for_logged_in_user_with_recorded_progress
     assert response.status_code == 200
     assert 'class="reading-progress"' in response.text
     assert 'style="width: 75%"' in response.text  # 3 of 4 chapters
+
+
+# --- PR 200: friend activity column ------------------------------------------------------
+
+
+async def _user_id(email: str) -> int:
+    from app.db.connection import connection
+    from app.db.users import get_user_by_email
+
+    async with connection() as conn:
+        user = await get_user_by_email(conn, email)
+    assert user is not None
+    return user.id
+
+
+async def _make_friends(
+    client: TestClient, alice_email: str = "alice@example.com", bob_email: str = "bob@example.com"
+) -> tuple[int, int]:
+    """Registers both, sends Bob -> Alice, and accepts it - leaves the client's session
+    logged in as Alice, same as tests/test_api_friendships.py's own multi-user flow."""
+    _register(client, alice_email)
+    alice_id = await _user_id(alice_email)
+    _register(client, bob_email)  # switches the session to Bob
+    bob_id = await _user_id(bob_email)
+    client.post(f"/friends/{alice_id}/request")
+    client.post("/logout")
+    client.post("/login", data={"email": alice_email, "password": "hunter2pass"})
+    client.post(f"/friends/{bob_id}/accept")
+    return alice_id, bob_id
+
+
+def _login_as_bob(client: TestClient) -> None:
+    client.post("/logout")
+    client.post("/login", data={"email": "bob@example.com", "password": "hunter2pass"})
+
+
+async def test_home_shows_a_card_for_each_friend_with_no_activity(
+    db_client: TestClient,
+) -> None:
+    await _make_friends(db_client)  # session is Alice
+
+    _login_as_bob(db_client)
+    response = db_client.get("/")
+
+    assert 'class="home-columns__friends"' in response.text
+    assert "alice@example.com" in response.text
+    assert "Пока нет активности" in response.text
+
+
+async def test_home_shows_what_a_friend_is_currently_reading(db_client: TestClient) -> None:
+    from app.db.connection import connection
+    from app.db.library import add_entry, record_progress
+
+    alice_id, _ = await _make_friends(db_client)  # session is Alice
+    async with connection() as conn:
+        await add_entry(conn, alice_id, "6712--test-novel")
+        await record_progress(conn, alice_id, "6712--test-novel", volume="1", number="3")
+
+    _login_as_bob(db_client)
+    title = _fake_title()
+    with patch("app.services.client.RanobeLib", return_value=_FakeClient(title)):
+        response = db_client.get("/")
+
+    assert "Читает" in response.text
+    assert "Test Novel" in response.text
+
+
+async def test_home_shows_a_friends_recent_comment(db_client: TestClient) -> None:
+    from app.db.comments import create_comment
+    from app.db.connection import connection
+
+    alice_id, _ = await _make_friends(db_client)  # session is Alice
+    async with connection() as conn:
+        await create_comment(
+            conn, alice_id, "6712--test-novel", "1", "5", "", 0, "Отличная глава!"
+        )
+
+    _login_as_bob(db_client)
+    response = db_client.get("/")
+
+    assert "Отличная глава!" in response.text
+    assert "/titles/6712--test-novel/chapters/1/5" in response.text
+
+
+async def test_home_shows_a_friends_reading_streak(db_client: TestClient) -> None:
+    from app.db.activity import record_chapter_read
+    from app.db.connection import connection
+
+    alice_id, _ = await _make_friends(db_client)  # session is Alice
+    async with connection() as conn:
+        await record_chapter_read(conn, alice_id, "6712--test-novel", "1", "5")
+
+    _login_as_bob(db_client)
+    response = db_client.get("/")
+
+    assert "1 день подряд" in response.text
