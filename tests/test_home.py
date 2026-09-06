@@ -215,6 +215,21 @@ def _login_as_bob(client: TestClient) -> None:
     client.post("/login", data={"email": "bob@example.com", "password": "hunter2pass"})
 
 
+async def test_home_omits_friend_column_for_anonymous_visitor(db_client: TestClient) -> None:
+    response = db_client.get("/")
+
+    assert response.status_code == 200
+    assert 'class="home-columns__friends"' not in response.text
+
+
+async def test_home_omits_friend_column_without_friends(db_client: TestClient) -> None:
+    _register(db_client)
+
+    response = db_client.get("/")
+
+    assert 'class="home-columns__friends"' not in response.text
+
+
 async def test_home_shows_a_card_for_each_friend_with_no_activity(
     db_client: TestClient,
 ) -> None:
@@ -244,6 +259,29 @@ async def test_home_shows_what_a_friend_is_currently_reading(db_client: TestClie
 
     assert "Читает" in response.text
     assert "Test Novel" in response.text
+
+
+async def test_home_hides_a_friends_currently_reading_when_they_opted_out(
+    db_client: TestClient,
+) -> None:
+    from app.db.connection import connection
+    from app.db.library import add_entry, record_progress
+    from app.db.users import update_privacy_settings
+
+    alice_id, _ = await _make_friends(db_client)  # session is Alice
+    async with connection() as conn:
+        await add_entry(conn, alice_id, "6712--test-novel")
+        await record_progress(conn, alice_id, "6712--test-novel", volume="1", number="3")
+        await update_privacy_settings(
+            conn, alice_id, show_currently_reading=False, show_favorite=True, show_library=True
+        )
+
+    _login_as_bob(db_client)
+    title = _fake_title()
+    with patch("app.services.client.RanobeLib", return_value=_FakeClient(title)):
+        response = db_client.get("/")
+
+    assert "Читает" not in response.text
 
 
 async def test_home_shows_a_friends_recent_comment(db_client: TestClient) -> None:
