@@ -117,6 +117,21 @@
   </section>
   {% endif %}
 
+  {% if friend_preview %}
+  <section class="profile-section">
+    <h2 class="profile-section__title">Друзья{% if friend_count %} ({{ friend_count }}){% endif %}</h2>
+    {% from "_friend_row.html" import friend_row %}
+    <div class="friend-list">
+      {% for friend in friend_preview %}
+      {% call friend_row(friend) %}{% endcall %}
+      {% endfor %}
+    </div>
+    {% if friend_count > friend_preview|length %}
+    <p class="content__hint"><a href="/profile/{{ profile_user.id }}/friends">Показать всех →</a></p>
+    {% endif %}
+  </section>
+  {% endif %}
+
   {% if library_items %}
   <section class="profile-section">
     <h2 class="profile-section__title">Библиотека</h2>
