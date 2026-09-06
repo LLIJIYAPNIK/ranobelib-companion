@@ -5,9 +5,12 @@ from typing import Annotated, Any
 
 from fastapi import APIRouter, Depends, Form, HTTPException, Request
 from fastapi.responses import FileResponse, HTMLResponse, JSONResponse, RedirectResponse
+from psycopg import AsyncConnection
 from starlette.background import BackgroundTask
 
 from app.auth.dependencies import get_current_user, require_current_user
+from app.db.connection import get_connection
+from app.db.library import get_entry
 from app.db.users import User
 from app.jobs.download import run_download_job
 from app.jobs.eta import estimate_remaining_seconds
@@ -23,10 +26,22 @@ router = APIRouter(prefix="/titles/{slug_url}/download")
 async def start_download(
     slug_url: str,
     current_user: Annotated[User, Depends(require_current_user)],
+    conn: Annotated[AsyncConnection, Depends(get_connection)],
     fmt: Annotated[str, Form()],
     translation_index: Annotated[int | None, Form()] = None,
 ) -> RedirectResponse:
     require_known_format(fmt)
+    if translation_index is None:
+        # PR 205: a translation already saved for this title (default_translation_index,
+        # library_entries) is applied automatically, so this doesn't ask again every time.
+        # If a chapter added since the default was saved doesn't resolve at that index
+        # (more/different branches than it had before), download_title() simply can't
+        # resolve *that* chapter and run_download_job() lands on "needs_translation" as
+        # usual (see ranobelib.sdk._resolve_bulk_branch_id) - the saved default doesn't
+        # silently pick the wrong translation, it just stops covering every chapter.
+        entry = await get_entry(conn, current_user.id, slug_url)
+        if entry is not None:
+            translation_index = entry.default_translation_index
     job = create_job(slug_url, fmt, user_id=current_user.id)
     task = asyncio.create_task(
         run_download_job(job, translation_index=translation_index)
