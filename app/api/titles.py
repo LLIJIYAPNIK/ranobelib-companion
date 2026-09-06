@@ -46,12 +46,39 @@ async def open_title(request: Request, url: str) -> Response:
 
 
 @router.get("/{slug_url}")
-async def show_title(
+async def show_title(request: Request, slug_url: str, finished: bool = False) -> HTMLResponse:
+    """PR 203: renders immediately with a skeleton, no SDK call here at all - the real
+    content (get_info()/get_table_of_contents(), moved to title_data() below) is fetched
+    separately by title-content-load.js once the page has already painted, instead of this
+    route blocking on ranobelib.me (a cache miss can take a noticeable moment) before the
+    visitor sees anything past their browser's own tab-loading indicator."""
+    return templates.TemplateResponse(
+        request,
+        "title.html",
+        {
+            "slug_url": slug_url,
+            # PR 75: tap-to-read's own "past the last paragraph of the last chapter" tap
+            # lands here with ?finished=1 - a plain query flag, not persisted state, so a
+            # reload/bookmark of this same URL won't keep showing the notice forever.
+            "finished": finished,
+        },
+    )
+
+
+@router.get("/{slug_url}/data", response_model=None)
+async def title_data(
     request: Request,
     slug_url: str,
     current_user: Annotated[User | None, Depends(get_current_user)],
-    finished: bool = False,
 ) -> HTMLResponse:
+    """PR 203: the get_info()/get_table_of_contents() calls show_title() used to make
+    synchronously before returning any HTML - moved here so show_title() itself can render
+    its skeleton immediately, with title-content-load.js's own fetch() to this route
+    filling it in a beat later. Same _title_content.html context show_title() used to
+    build for the whole page; a RanobeLibError here (e.g. TitleNotFoundError) goes through
+    the same central exception handler as always, just answered as JSON by default (this
+    is a fetch() call, not a page navigation - see _wants_html() in app/exceptions.py) for
+    title-content-load.js to read `detail` from and show in place of the skeleton."""
     async with open_client(slug_url) as lib:
         title = await lib.get_info()
         volumes = await lib.get_table_of_contents()
@@ -72,7 +99,7 @@ async def show_title(
     )
     response = templates.TemplateResponse(
         request,
-        "title.html",
+        "_title_content.html",
         {
             "title": title,
             "cover_url": cover_url,
@@ -80,10 +107,6 @@ async def show_title(
             "export_formats": available_export_formats(),
             "in_library": library_entry is not None,
             "progress_percent": progress_percent,
-            # PR 75: tap-to-read's own "past the last paragraph of the last chapter" tap
-            # lands here with ?finished=1 - a plain query flag, not persisted state, so a
-            # reload/bookmark of this same URL won't keep showing the notice forever.
-            "finished": finished,
         },
     )
     remember(

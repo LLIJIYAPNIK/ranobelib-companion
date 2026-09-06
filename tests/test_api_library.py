@@ -119,7 +119,7 @@ def test_add_then_remove_round_trip(client: TestClient) -> None:
         add_response = client.post(
             "/library/6712--test-novel/add", follow_redirects=False
         )
-        title_page = client.get("/titles/6712--test-novel")
+        title_page = client.get("/titles/6712--test-novel/data")
 
     assert add_response.status_code == 303
     assert add_response.headers["location"] == "/titles/6712--test-novel"
@@ -129,7 +129,7 @@ def test_add_then_remove_round_trip(client: TestClient) -> None:
         "/library/6712--test-novel/remove", follow_redirects=False
     )
     with patch("app.services.client.RanobeLib", return_value=_FakeClient(title)):
-        title_page_after = client.get("/titles/6712--test-novel")
+        title_page_after = client.get("/titles/6712--test-novel/data")
 
     assert remove_response.status_code == 303
     assert remove_response.headers["location"] == "/library"
@@ -150,7 +150,7 @@ def test_reading_a_chapter_auto_adds_title_and_the_page_reflects_it(
     assert chapter_response.status_code == 200
 
     with patch("app.services.client.RanobeLib", return_value=_FakeClient(title)):
-        title_page = client.get("/titles/6712--test-novel")
+        title_page = client.get("/titles/6712--test-novel/data")
 
     assert "Убрать из библиотеки" in title_page.text
 
@@ -174,7 +174,7 @@ async def test_title_page_shows_reading_progress_for_library_entry(client: TestC
         )
 
     with patch("app.services.client.RanobeLib", return_value=_FakeClient(title, volumes)):
-        response = client.get("/titles/6712--test-novel")
+        response = client.get("/titles/6712--test-novel/data")
 
     assert response.status_code == 200
     assert "Прочитано 75%" in response.text  # 3 of 4 chapters
@@ -185,7 +185,7 @@ def test_title_page_omits_reading_progress_when_not_in_library(client: TestClien
     title = _fake_title()
 
     with patch("app.services.client.RanobeLib", return_value=_FakeClient(title)):
-        response = client.get("/titles/6712--test-novel")
+        response = client.get("/titles/6712--test-novel/data")
 
     assert response.status_code == 200
     assert "Прочитано" not in response.text

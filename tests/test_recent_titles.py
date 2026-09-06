@@ -56,7 +56,7 @@ def test_show_title_sets_recent_titles_cookie() -> None:
     client.cookies.clear()
     title = _fake_title("1--first-novel", "First Novel")
     with patch("app.services.client.RanobeLib", return_value=_FakeClient(title)):
-        response = client.get("/titles/1--first-novel")
+        response = client.get("/titles/1--first-novel/data")
 
     cookie = response.cookies.get("recent_titles")
     assert cookie is not None
@@ -71,7 +71,7 @@ def test_show_title_stores_cover_url_in_recent_titles_cookie() -> None:
         "1--first-novel", "First Novel", cover=Cover(default="https://example.com/cover.jpg")
     )
     with patch("app.services.client.RanobeLib", return_value=_FakeClient(title)):
-        response = client.get("/titles/1--first-novel")
+        response = client.get("/titles/1--first-novel/data")
 
     cookie = _decode_cookie(response.cookies.get("recent_titles"))
     assert cookie[0]["cover_url"] == "https://example.com/cover.jpg"
@@ -83,11 +83,11 @@ def test_show_title_moves_reopened_title_to_front() -> None:
     second = _fake_title("2--second-novel", "Second Novel")
 
     with patch("app.services.client.RanobeLib", return_value=_FakeClient(first)):
-        client.get("/titles/1--first-novel")
+        client.get("/titles/1--first-novel/data")
     with patch("app.services.client.RanobeLib", return_value=_FakeClient(second)):
-        client.get("/titles/2--second-novel")
+        client.get("/titles/2--second-novel/data")
     with patch("app.services.client.RanobeLib", return_value=_FakeClient(first)):
-        response = client.get("/titles/1--first-novel")
+        response = client.get("/titles/1--first-novel/data")
 
     cookie = _decode_cookie(response.cookies.get("recent_titles"))
     assert [item["slug_url"] for item in cookie] == ["1--first-novel", "2--second-novel"]
@@ -103,7 +103,7 @@ def test_show_title_truncates_long_names_in_recent_titles_cookie() -> None:
     assert len(long_name) > _MAX_NAME_LENGTH
     title = _fake_title("1--first-novel", long_name)
     with patch("app.services.client.RanobeLib", return_value=_FakeClient(title)):
-        response = client.get("/titles/1--first-novel")
+        response = client.get("/titles/1--first-novel/data")
 
     cookie = _decode_cookie(response.cookies.get("recent_titles"))
     assert len(cookie[0]["name"]) <= _MAX_NAME_LENGTH

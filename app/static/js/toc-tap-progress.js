@@ -3,6 +3,11 @@
 // revealed. Reads the same tapToReadProgress: entries tap-to-read.js itself writes
 // (PR 62/79); there is nothing to fetch from the server, since that data never leaves
 // the browser.
+//
+// PR 203: this markup now only exists once title-content-load.js has fetched and injected
+// the title page's real content (GET /titles/{slug}/data) - self-running at parse time
+// would find nothing yet, so this exposes an init function that call site runs explicitly
+// once that markup is in the DOM.
 (() => {
   const PROGRESS_KEY_PREFIX = "tapToReadProgress:";
   const CHECK_ICON =
@@ -36,32 +41,36 @@
     return null;
   }
 
-  for (const link of document.querySelectorAll(".toc__chapter-link")) {
-    const li = link.closest(".toc__chapter");
-    if (!li) continue;
+  function initTocTapProgress() {
+    for (const link of document.querySelectorAll(".toc__chapter-link")) {
+      const li = link.closest(".toc__chapter");
+      if (!li) continue;
 
-    const progress = findProgress(new URL(link.href, location.origin).pathname);
-    if (!progress) continue;
+      const progress = findProgress(new URL(link.href, location.origin).pathname);
+      if (!progress) continue;
 
-    if (progress.revealed >= progress.total) {
-      const check = document.createElement("span");
-      check.className = "toc__chapter-checkmark";
-      check.title = "Глава прочитана";
-      check.setAttribute("aria-label", "Глава прочитана");
-      check.innerHTML = CHECK_ICON;
-      li.appendChild(check);
-      continue;
+      if (progress.revealed >= progress.total) {
+        const check = document.createElement("span");
+        check.className = "toc__chapter-checkmark";
+        check.title = "Глава прочитана";
+        check.setAttribute("aria-label", "Глава прочитана");
+        check.innerHTML = CHECK_ICON;
+        li.appendChild(check);
+        continue;
+      }
+
+      const percent = Math.round((progress.revealed / progress.total) * 100);
+      const bar = document.createElement("span");
+      bar.className = "toc__chapter-progress";
+      bar.title = `Прочитано ${percent}%`;
+      bar.setAttribute("aria-label", `Прочитано ${percent}%`);
+      const fill = document.createElement("span");
+      fill.className = "toc__chapter-progress__fill";
+      fill.style.width = `${percent}%`;
+      bar.appendChild(fill);
+      li.appendChild(bar);
     }
-
-    const percent = Math.round((progress.revealed / progress.total) * 100);
-    const bar = document.createElement("span");
-    bar.className = "toc__chapter-progress";
-    bar.title = `Прочитано ${percent}%`;
-    bar.setAttribute("aria-label", `Прочитано ${percent}%`);
-    const fill = document.createElement("span");
-    fill.className = "toc__chapter-progress__fill";
-    fill.style.width = `${percent}%`;
-    bar.appendChild(fill);
-    li.appendChild(bar);
   }
+
+  window.initTocTapProgress = initTocTapProgress;
 })();

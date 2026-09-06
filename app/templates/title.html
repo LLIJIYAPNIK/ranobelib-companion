@@ -1,157 +1,42 @@
 {% extends "base.html" %}
-{% set display_name = title.rus_name or title.name %}
-{% block title %}{{ display_name }} — RanobeLib Companion{% endblock %}
+{% block title %}{{ slug_url }} — RanobeLib Companion{% endblock %}
 {% block content %}
 <main class="content">
   {% if finished %}
   <p class="content__notice content__notice--success" data-role="title-finished-notice">Тайтл прочитан</p>
   {% endif %}
-  <div class="title-hero">
-    {% if cover_url %}
-    <img class="title-hero__cover" src="{{ cover_url }}" alt="Обложка «{{ display_name }}»">
-    {% endif %}
-    <div class="title-hero__info">
-      <h1 class="title-hero__name">{{ display_name }}</h1>
-      {% set alt_names = [] %}
-      {% if title.name != display_name %}{% set _ = alt_names.append(title.name) %}{% endif %}
-      {% if title.eng_name and title.eng_name != display_name %}{% set _ = alt_names.append(title.eng_name) %}{% endif %}
-      {% for other in title.other_names %}{% if other != display_name %}{% set _ = alt_names.append(other) %}{% endif %}{% endfor %}
-      {% if alt_names %}
-      <p class="title-hero__alt-name">{{ alt_names | join(" / ") }}</p>
-      {% endif %}
-      <div class="title-hero__badges">
-        {% for genre in title.genres %}
-        <a class="badge badge--link" href="/library/catalog?genres={{ genre.id }}">{{ genre.name }}</a>
-        {% endfor %}
+
+  {# PR 203: this page renders immediately, with no SDK call of its own - the real
+     metadata/table of contents (GET /titles/{slug_url}/data, same get_info()/
+     get_table_of_contents() calls show_title() used to make before returning any HTML at
+     all) is fetched by title-content-load.js right after load and swaps this skeleton
+     out for _title_content.html's markup. Same box sizes as the real .title-hero/
+     .title-hero__cover so there's no layout shift once it's replaced. #}
+  <div data-role="title-content" data-slug-url="{{ slug_url }}">
+    <div class="title-hero title-hero--skeleton" aria-hidden="true">
+      <div class="title-hero__cover title-hero__cover--skeleton"></div>
+      <div class="title-hero__info">
+        <div class="skeleton-block skeleton-block--name"></div>
+        <div class="skeleton-block skeleton-block--meta"></div>
+        <div class="skeleton-block skeleton-block--meta"></div>
       </div>
-      {% if title.tags %}
-      <div class="title-hero__badges">
-        {% for tag in title.tags %}
-        <a class="badge badge--link" href="/library/catalog?tags={{ tag.id }}&tag_name={{ tag.name | urlencode }}">{{ tag.name }}</a>
-        {% endfor %}
+    </div>
+    <div class="toc toc--skeleton" aria-hidden="true">
+      <div class="toc__header">
+        <h2 class="toc__title">Оглавление</h2>
+        <span class="spinner" aria-hidden="true"></span>
       </div>
-      {% endif %}
-      <div class="title-hero__meta">
-        <span>{{ title.status.label }}</span>
-        <span>{{ title.age_restriction.label }}</span>
-        {% if title.is_licensed %}<span>Лицензировано</span>{% endif %}
-        {% if title.release_date %}<span>{{ title.release_date }}</span>{% endif %}
-        {% if title.chapter_count %}<span>{{ title.chapter_count }} глав</span>{% endif %}
-        <span class="title-size-estimate" data-role="title-size-estimate" data-slug-url="{{ title.slug_url }}">
-          <span class="spinner" aria-hidden="true"></span>
-          <span data-role="title-size-estimate-status">Загружаем главы…</span>
-        </span>
-      </div>
-      {% if in_library and progress_percent is not none %}
-      <p class="content__hint">Прочитано {{ progress_percent }}%</p>
-      <div class="reading-progress reading-progress--hero">
-        <div class="reading-progress__fill" style="width: {{ progress_percent }}%"></div>
-      </div>
-      {% endif %}
-      <div class="title-hero__actions">
-        {% if export_formats %}
-        <form method="post" action="/titles/{{ title.slug_url }}/download">
-          <select name="fmt" class="toc__export-format" aria-label="Формат скачивания">
-            {% for fmt in export_formats %}
-            <option value="{{ fmt }}">{{ fmt | upper }}</option>
-            {% endfor %}
-          </select>
-          <button type="submit" class="btn btn--primary">Скачать тайтл</button>
-        </form>
-        {% endif %}
-        {% if in_library %}
-        <form method="post" action="/library/{{ title.slug_url }}/remove">
-          <input type="hidden" name="next" value="/titles/{{ title.slug_url }}">
-          <button type="submit" class="btn btn--secondary">Убрать из библиотеки</button>
-        </form>
-        {% else %}
-        <form method="post" action="/library/{{ title.slug_url }}/add">
-          <input type="hidden" name="next" value="/titles/{{ title.slug_url }}">
-          <button type="submit" class="btn btn--secondary">Добавить в библиотеку</button>
-        </form>
-        {% endif %}
-      </div>
+      <div class="skeleton-block skeleton-block--chapter"></div>
+      <div class="skeleton-block skeleton-block--chapter"></div>
+      <div class="skeleton-block skeleton-block--chapter"></div>
     </div>
   </div>
-
-  {% if title.summary %}
-  <section class="title-summary">
-    <p>{{ title.summary }}</p>
-  </section>
-  {% endif %}
-
-  <section class="title-credits">
-    {% if title.authors %}
-    <div><span class="title-credits__label">Авторы:</span>{{ title.authors | map(attribute="name") | join(", ") }}</div>
-    {% endif %}
-    {% if title.artists %}
-    <div><span class="title-credits__label">Художники:</span>{{ title.artists | map(attribute="name") | join(", ") }}</div>
-    {% endif %}
-    {% if title.teams %}
-    <div><span class="title-credits__label">Переводы:</span>{{ title.teams | map(attribute="name") | join(", ") }}</div>
-    {% endif %}
-  </section>
-
-  <form
-    method="get"
-    action="/titles/{{ title.slug_url }}/export"
-    class="toc"
-    data-role="chapter-toc-form"
-  >
-    <div class="toc__header">
-      <h2 class="toc__title">Оглавление</h2>
-      {% if export_formats %}
-      <div class="toc__export-panel" data-role="chapter-export-panel">
-        <div class="toc__export">
-          <select name="fmt" class="toc__export-format" aria-label="Формат экспорта">
-            {% for fmt in export_formats %}
-            <option value="{{ fmt }}">{{ fmt | upper }}</option>
-            {% endfor %}
-          </select>
-          <button type="submit" class="btn btn--primary">Скачать выбранное</button>
-        </div>
-      </div>
-      {% endif %}
-    </div>
-    {% for volume in volumes %}
-    <div class="toc__volume">
-      <div class="toc__volume-header">
-        <h3 class="toc__volume-title">Том {{ volume.number }}</h3>
-        {% if export_formats %}
-        <button
-          type="submit"
-          formaction="/titles/{{ title.slug_url }}/volumes/{{ volume.number }}/export"
-          class="btn btn--sm"
-        >Скачать том</button>
-        {% endif %}
-      </div>
-      <ul class="toc__chapters">
-        {% for chapter in volume.chapters %}
-        <li class="toc__chapter">
-          <input
-            class="toc__chapter-checkbox"
-            type="checkbox"
-            name="chapters"
-            value="{{ volume.number }}--{{ chapter.number }}"
-            aria-label="Выбрать главу {{ chapter.number }}"
-          >
-          <a class="toc__chapter-link" href="/titles/{{ title.slug_url }}/chapters/{{ chapter.volume }}/{{ chapter.number }}">
-            <span class="toc__chapter-number">{{ chapter.number }}</span>
-            <span class="toc__chapter-name">{{ chapter.name or "Без названия" }}</span>
-          </a>
-          {% if chapter.branches_count > 1 %}
-          <span class="badge badge--muted">{{ chapter.branches_count }} переводов</span>
-          {% endif %}
-        </li>
-        {% endfor %}
-      </ul>
-    </div>
-    {% endfor %}
-  </form>
-  <script src="{{ url_for('static', path='js/chapter-export-panel.js') }}" defer></script>
-  <script src="{{ url_for('static', path='js/title-size-estimate.js') }}" defer></script>
-  <script src="{{ url_for('static', path='js/custom-dropdown.js') }}" defer></script>
-  <script src="{{ url_for('static', path='js/toc-tap-progress.js') }}" defer></script>
-  <script src="{{ url_for('static', path='js/image-lightbox.js') }}" defer></script>
+  <p class="form-error" data-role="title-content-error" hidden></p>
 </main>
+<script src="{{ url_for('static', path='js/chapter-export-panel.js') }}" defer></script>
+<script src="{{ url_for('static', path='js/title-size-estimate.js') }}" defer></script>
+<script src="{{ url_for('static', path='js/custom-dropdown.js') }}" defer></script>
+<script src="{{ url_for('static', path='js/toc-tap-progress.js') }}" defer></script>
+<script src="{{ url_for('static', path='js/image-lightbox.js') }}" defer></script>
+<script src="{{ url_for('static', path='js/title-content-load.js') }}" defer></script>
 {% endblock %}
