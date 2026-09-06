@@ -116,9 +116,14 @@ async def _render_profile(
     currently_reading = items[0] if items and items[0]["entry"].last_read_at else None
     favorite_item = next((item for item in items if item["entry"].is_favorite), None)
 
-    # PR 124: hide whichever sections the profile owner has opted out of, but only from
-    # someone else's view - computed above unconditionally so the owner's own visit is
-    # completely unaffected by their own flags.
+    # PR 201/202: the friends preview shown further down, gated the same way as the three
+    # sections right below (computed unconditionally so the owner's own visit is
+    # unaffected either way).
+    friends = await list_friends(conn, profile_user.id)
+
+    # PR 124/202: hide whichever sections the profile owner has opted out of, but only
+    # from someone else's view - computed above unconditionally so the owner's own visit
+    # is completely unaffected by their own flags.
     if not is_own_profile:
         if not profile_user.show_currently_reading:
             currently_reading = None
@@ -126,6 +131,8 @@ async def _render_profile(
             favorite_item = None
         if not profile_user.show_library:
             items = []
+        if not profile_user.show_friends:
+            friends = []
 
     # PR 199: which of the "Добавить в друзья" button's states to show - only meaningful
     # for a logged-in visitor looking at someone else's profile; None otherwise (an
@@ -133,10 +140,6 @@ async def _render_profile(
     friend_state = None
     if viewer_id is not None and not is_own_profile:
         friend_state = await _friend_button_state(conn, viewer_id, profile_user.id)
-
-    # PR 201: no show_friends privacy flag exists yet (that's PR 202) - the list is shown
-    # unconditionally, same as comment_count/reading_calendar below, until that flag lands.
-    friends = await list_friends(conn, profile_user.id)
 
     return templates.TemplateResponse(
         request,
@@ -164,17 +167,28 @@ async def _render_profile(
 async def profile_friends_page(
     request: Request,
     user_id: int,
+    viewer: Annotated[User | None, Depends(get_current_user)],
     conn: Annotated[AsyncConnection, Depends(get_connection)],
 ) -> HTMLResponse:
     """The full list behind the profile page's own "Друзья" preview/"Показать всех" link
     (PR 201) - public the same way /profile/{user_id} itself is, unlike /friends (no id),
     which only ever shows the logged-in visitor's *own* requests/friends and has no notion
     of "whose list is this". Just the accepted-friends list, read-only - no request
-    management here, that stays on /friends."""
+    management here, that stays on /friends.
+
+    PR 202: this URL is just profile_user.id + "/friends" - trivially guessable, so
+    show_friends has to gate this page too, not only its own preview on profile.html, or
+    the toggle would do nothing for anyone who finds/remembers the link. Same neutral
+    "just show the empty state" treatment the rest of this app gives a privacy-hidden
+    section (see _render_profile) - never a distinct "this is hidden" message that would
+    itself leak whether a flag is off."""
     profile_user = await get_user_by_id(conn, user_id)
     if profile_user is None:
         raise HTTPException(status_code=404, detail="Пользователь не найден")
-    friends = await list_friends(conn, profile_user.id)
+    is_own_profile = viewer is not None and viewer.id == profile_user.id
+    friends = []
+    if is_own_profile or profile_user.show_friends:
+        friends = await list_friends(conn, profile_user.id)
     return templates.TemplateResponse(
         request, "profile_friends.html", {"profile_user": profile_user, "friends": friends}
     )
