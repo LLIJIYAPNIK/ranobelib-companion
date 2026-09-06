@@ -292,3 +292,66 @@ async def count_comments_by_user(conn: AsyncConnection, user_id: int) -> int:
     )
     row = await cursor.fetchone()
     return row["n"]
+
+
+# PR 200: how much of a comment's body shows up in the friend-activity feed on the home
+# page - same "truncate with an ellipsis past this length" idea as notifications.py's own
+# COMMENT_EXCERPT_LENGTH, just a separate constant since that one is private to that module.
+_FEED_EXCERPT_LENGTH = 140
+
+
+@dataclass(frozen=True)
+class RecentComment:
+    """One entry in PR 200's friend-activity feed - a flat, trimmed view of a comment (no
+    author/replies/attachment, unlike Comment above) since the feed only ever lists the
+    viewer's own friends' comments one by one, each already labelled with that friend's
+    name by the card it renders inside."""
+
+    id: int
+    body_excerpt: str
+    created_at: str
+    slug_url: str
+    volume: str
+    number: str
+    branch_id: str
+
+    @property
+    def url(self) -> str:
+        """Same chapter-link shape as notifications.py's own `_comment_url()` - there's no
+        anchor to the specific paragraph a comment is on, just the chapter it's in."""
+        url = f"/titles/{self.slug_url}/chapters/{self.volume}/{self.number}"
+        if self.branch_id:
+            url += f"?branch_id={self.branch_id}"
+        return url
+
+
+async def list_recent_comments_by_user(
+    conn: AsyncConnection, user_id: int, limit: int = 3
+) -> list[RecentComment]:
+    """This user's own most recent comments, newest first, soft-deleted ones excluded -
+    PR 200's friend-activity feed, not scoped to any one paragraph/chapter the way
+    list_comments_for_paragraph() is."""
+    cursor = await conn.execute(
+        "SELECT id, body, created_at, slug_url, volume, number, branch_id FROM comments "
+        "WHERE user_id = %s AND is_deleted = 0 ORDER BY created_at DESC LIMIT %s",
+        (user_id, limit),
+    )
+    rows = await cursor.fetchall()
+    return [
+        RecentComment(
+            id=row["id"],
+            body_excerpt=_feed_excerpt(row["body"]),
+            created_at=row["created_at"],
+            slug_url=row["slug_url"],
+            volume=row["volume"],
+            number=row["number"],
+            branch_id=row["branch_id"],
+        )
+        for row in rows
+    ]
+
+
+def _feed_excerpt(body: str) -> str:
+    if len(body) <= _FEED_EXCERPT_LENGTH:
+        return body
+    return body[:_FEED_EXCERPT_LENGTH].rstrip() + "…"
