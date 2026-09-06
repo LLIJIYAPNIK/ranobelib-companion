@@ -65,6 +65,24 @@ class _RaisingClient:
         raise self._exc
 
 
+class _AssertNeverCalledClient:
+    """Stands in for the SDK client on tests asserting show_title() itself makes no SDK
+    call at all (PR 203) - any method being awaited fails the test immediately, rather
+    than only implicitly via a missing return value."""
+
+    async def __aenter__(self) -> "_AssertNeverCalledClient":
+        return self
+
+    async def __aexit__(self, *exc_info: object) -> bool:
+        return False
+
+    async def get_info(self) -> Title:
+        raise AssertionError("show_title() must not call the SDK - that's title_data()'s job")
+
+    async def get_table_of_contents(self) -> list[Volume]:
+        raise AssertionError("show_title() must not call the SDK - that's title_data()'s job")
+
+
 def test_open_title_redirects_to_canonical_slug_url() -> None:
     title = _fake_title()
     with patch("app.services.client.RanobeLib", return_value=_FakeClient(title)):
@@ -98,23 +116,41 @@ def test_open_title_rate_limited() -> None:
     }
 
 
-def test_show_title_renders_metadata() -> None:
-    title = _fake_title()
-    with patch("app.services.client.RanobeLib", return_value=_FakeClient(title)):
+# --- PR 203: show_title() itself - a skeleton, no SDK call, never hangs/errors ----------
+
+
+def test_show_title_makes_no_sdk_call_at_all() -> None:
+    with patch("app.services.client.RanobeLib", return_value=_AssertNeverCalledClient()):
         response = client.get("/titles/6712--test-novel")
 
     assert response.status_code == 200
-    assert "Test Novel" in response.text
-    assert "Тестовый роман" in response.text
-    assert "https://example.com/cover.jpg" in response.text
-    assert "42" in response.text
+
+
+def test_show_title_renders_the_skeleton_and_loader_script() -> None:
+    response = client.get("/titles/6712--test-novel")
+
+    assert response.status_code == 200
+    assert 'data-role="title-content"' in response.text
+    assert 'data-slug-url="6712--test-novel"' in response.text
+    assert 'class="title-hero title-hero--skeleton"' in response.text
+    assert "static/js/title-content-load.js" in response.text
+
+
+def test_show_title_still_200s_for_a_slug_that_will_fail_to_load() -> None:
+    # The core bug fix: a malformed/nonexistent slug used to 404 (or hang on a slow
+    # upstream) right on this page navigation - now that's title_data()'s problem, surfaced
+    # later in place of the skeleton, never this route's own status code.
+    response = client.get("/titles/not-a-valid-slug")
+
+    assert response.status_code == 200
+    assert 'data-role="title-content"' in response.text
 
 
 def test_show_title_renders_finished_notice_when_flagged() -> None:
     # PR 75: tap-to-read.js lands here with ?finished=1 after the last paragraph of a
-    # title's last chapter.
-    title = _fake_title()
-    with patch("app.services.client.RanobeLib", return_value=_FakeClient(title)):
+    # title's last chapter - a plain query flag, not SDK data, so it renders without any
+    # SDK call either.
+    with patch("app.services.client.RanobeLib", return_value=_AssertNeverCalledClient()):
         response = client.get("/titles/6712--test-novel?finished=1")
 
     assert response.status_code == 200
@@ -123,20 +159,56 @@ def test_show_title_renders_finished_notice_when_flagged() -> None:
 
 
 def test_show_title_omits_finished_notice_by_default() -> None:
-    title = _fake_title()
-    with patch("app.services.client.RanobeLib", return_value=_FakeClient(title)):
-        response = client.get("/titles/6712--test-novel")
+    response = client.get("/titles/6712--test-novel")
 
     assert response.status_code == 200
     assert "Тайтл прочитан" not in response.text
 
 
-def test_show_title_renders_size_estimate_placeholder() -> None:
-    # PR 43: show_title() no longer computes the estimate itself - it just renders a
-    # placeholder that title-size-estimate.js fills in from the endpoint below.
+def test_show_title_loads_every_toc_dependent_script() -> None:
+    response = client.get("/titles/6712--test-novel")
+
+    assert response.status_code == 200
+    for script in (
+        "chapter-export-panel.js",
+        "title-size-estimate.js",
+        "custom-dropdown.js",
+        "toc-tap-progress.js",
+        "image-lightbox.js",
+        "title-content-load.js",
+    ):
+        assert f"static/js/{script}" in response.text
+
+
+def test_show_title_not_found_still_200s_the_page_itself() -> None:
+    exc = TitleNotFoundError("6712--missing")
+    with patch("app.services.client.RanobeLib", return_value=_RaisingClient(exc)):
+        response = client.get("/titles/6712--missing")
+
+    # Unlike title_data() below, this route never even touches the SDK, so the exception
+    # never reaches it in the first place.
+    assert response.status_code == 200
+
+
+# --- PR 203: GET /titles/{slug}/data - the real content, fetched separately ------------
+
+
+def test_title_data_renders_metadata() -> None:
     title = _fake_title()
     with patch("app.services.client.RanobeLib", return_value=_FakeClient(title)):
-        response = client.get("/titles/6712--test-novel")
+        response = client.get("/titles/6712--test-novel/data")
+
+    assert response.status_code == 200
+    assert "Test Novel" in response.text
+    assert "Тестовый роман" in response.text
+    assert "https://example.com/cover.jpg" in response.text
+    assert "42" in response.text
+
+
+def test_title_data_renders_size_estimate_placeholder() -> None:
+    title = _fake_title()
+    with patch("app.services.client.RanobeLib", return_value=_FakeClient(title)):
+        response = client.get("/titles/6712--test-novel/data")
 
     assert response.status_code == 200
     assert 'data-role="title-size-estimate"' in response.text
@@ -144,17 +216,16 @@ def test_show_title_renders_size_estimate_placeholder() -> None:
     assert 'class="spinner"' in response.text
     assert 'data-role="title-size-estimate-status"' in response.text
     assert "Загружаем главы…" in response.text
-    assert "static/js/title-size-estimate.js" in response.text
 
 
-def test_show_title_does_not_call_estimate_title_size() -> None:
+def test_title_data_does_not_call_estimate_title_size() -> None:
     class _BlockingEstimateClient(_FakeClient):
         async def estimate_title_size(self) -> int:
-            raise AssertionError("show_title() must not block on the size estimate")
+            raise AssertionError("title_data() must not block on the size estimate")
 
     title = _fake_title()
     with patch("app.services.client.RanobeLib", return_value=_BlockingEstimateClient(title)):
-        response = client.get("/titles/6712--test-novel")
+        response = client.get("/titles/6712--test-novel/data")
 
     assert response.status_code == 200
 
@@ -241,22 +312,26 @@ def test_title_quickview_does_not_fetch_the_table_of_contents() -> None:
     assert response.status_code == 200
 
 
-def test_show_title_uses_russian_name_as_the_primary_heading() -> None:
+def test_title_data_uses_russian_name_as_the_primary_heading() -> None:
     # PR 25: rus_name (already in the SDK's Title model, no issue needed) becomes the
     # primary display name wherever the title's name is shown, with the original name
     # falling back to an alt-name line instead of disappearing.
+    #
+    # PR 203: no server-rendered <title> tag here any more (this is a fragment, not a full
+    # page) - title-content-load.js sets document.title client-side from this same
+    # data-display-name attribute instead.
     title = _fake_title()
     with patch("app.services.client.RanobeLib", return_value=_FakeClient(title)):
-        response = client.get("/titles/6712--test-novel")
+        response = client.get("/titles/6712--test-novel/data")
 
     assert response.status_code == 200
-    assert "<title>Тестовый роман — RanobeLib Companion</title>" in response.text
+    assert 'data-display-name="Тестовый роман"' in response.text
     assert '<h1 class="title-hero__name">Тестовый роман</h1>' in response.text
     assert '<p class="title-hero__alt-name">Test Novel</p>' in response.text
     assert 'alt="Обложка «Тестовый роман»"' in response.text
 
 
-def test_show_title_falls_back_to_original_name_without_a_russian_one() -> None:
+def test_title_data_falls_back_to_original_name_without_a_russian_one() -> None:
     title = Title(
         id=6712,
         name="Test Novel",
@@ -267,15 +342,15 @@ def test_show_title_falls_back_to_original_name_without_a_russian_one() -> None:
         status=Label(id=1, label="Онгоинг"),
     )
     with patch("app.services.client.RanobeLib", return_value=_FakeClient(title)):
-        response = client.get("/titles/6712--test-novel")
+        response = client.get("/titles/6712--test-novel/data")
 
     assert response.status_code == 200
-    assert "<title>Test Novel — RanobeLib Companion</title>" in response.text
+    assert 'data-display-name="Test Novel"' in response.text
     assert '<h1 class="title-hero__name">Test Novel</h1>' in response.text
     assert "title-hero__alt-name" not in response.text
 
 
-def test_show_title_renders_full_metadata() -> None:
+def test_title_data_renders_full_metadata() -> None:
     title = Title(
         id=6712,
         name="Test Novel",
@@ -291,7 +366,7 @@ def test_show_title_renders_full_metadata() -> None:
         tags=[Tag(id=1, name="Реинкарнация")],
     )
     with patch("app.services.client.RanobeLib", return_value=_FakeClient(title)):
-        response = client.get("/titles/6712--test-novel")
+        response = client.get("/titles/6712--test-novel/data")
 
     assert response.status_code == 200
     assert "Test Novel EN" in response.text
@@ -300,7 +375,7 @@ def test_show_title_renders_full_metadata() -> None:
     assert "Реинкарнация" in response.text
 
 
-def test_show_title_genres_link_to_the_filtered_catalog() -> None:
+def test_title_data_genres_link_to_the_filtered_catalog() -> None:
     # PR 31/38: a genre badge is a link into /library/catalog, not just a static label -
     # just the id, the catalog page resolves the display name itself via
     # Catalog.list_genres() (PR 38) rather than needing it forwarded in the URL.
@@ -315,14 +390,14 @@ def test_show_title_genres_link_to_the_filtered_catalog() -> None:
         genres=[Genre(id=5, name="Фэнтези"), Genre(id=8, name="Романтика")],
     )
     with patch("app.services.client.RanobeLib", return_value=_FakeClient(title)):
-        response = client.get("/titles/6712--test-novel")
+        response = client.get("/titles/6712--test-novel/data")
 
     assert response.status_code == 200
     assert 'href="/library/catalog?genres=5"' in response.text
     assert 'href="/library/catalog?genres=8"' in response.text
 
 
-def test_show_title_tags_link_to_the_filtered_catalog() -> None:
+def test_title_data_tags_link_to_the_filtered_catalog() -> None:
     # PR 86: same pattern as genre badges (PR 31), but there's no Catalog.list_tags()
     # to resolve a display name from just an id on the catalog page - unlike genres,
     # the tag's own already-known name has to be forwarded through the link itself
@@ -338,7 +413,7 @@ def test_show_title_tags_link_to_the_filtered_catalog() -> None:
         tags=[Tag(id=1, name="Реинкарнация"), Tag(id=2, name="Магия")],
     )
     with patch("app.services.client.RanobeLib", return_value=_FakeClient(title)):
-        response = client.get("/titles/6712--test-novel")
+        response = client.get("/titles/6712--test-novel/data")
 
     assert response.status_code == 200
     assert f'href="/library/catalog?tags=1&tag_name={quote("Реинкарнация")}"' in response.text
@@ -346,7 +421,7 @@ def test_show_title_tags_link_to_the_filtered_catalog() -> None:
     assert '<span class="badge badge--muted">Реинкарнация</span>' not in response.text
 
 
-def test_show_title_renders_table_of_contents() -> None:
+def test_title_data_renders_table_of_contents() -> None:
     title = _fake_title()
     volumes = [
         Volume(
@@ -359,7 +434,7 @@ def test_show_title_renders_table_of_contents() -> None:
         )
     ]
     with patch("app.services.client.RanobeLib", return_value=_FakeClient(title, volumes)):
-        response = client.get("/titles/6712--test-novel")
+        response = client.get("/titles/6712--test-novel/data")
 
     assert response.status_code == 200
     assert "Том 1" in response.text
@@ -374,42 +449,13 @@ def test_show_title_renders_table_of_contents() -> None:
     assert 'href="/titles/6712--test-novel/chapters/1/1"' in response.text
 
 
-def test_show_title_loads_tap_to_read_progress_script() -> None:
-    # PR 83: toc-tap-progress.js reads its data straight from localStorage client-side -
-    # nothing server-rendered to assert on beyond the script being wired into the page.
+def test_title_data_renders_export_form() -> None:
     title = _fake_title()
     volumes = [
         Volume(number="1", chapters=[Chapter(id=1, volume="1", number="1", name="Начало")])
     ]
     with patch("app.services.client.RanobeLib", return_value=_FakeClient(title, volumes)):
-        response = client.get("/titles/6712--test-novel")
-
-    assert response.status_code == 200
-    assert "static/js/toc-tap-progress.js" in response.text
-
-
-def test_show_title_loads_image_lightbox_script() -> None:
-    # PR 142: image-lightbox.js (PR 66/74) now also opens for .title-hero__cover, not
-    # just .reader-content img on the chapter page - nothing server-rendered to assert on
-    # beyond the script being wired into this page too.
-    title = _fake_title()
-    volumes = [
-        Volume(number="1", chapters=[Chapter(id=1, volume="1", number="1", name="Начало")])
-    ]
-    with patch("app.services.client.RanobeLib", return_value=_FakeClient(title, volumes)):
-        response = client.get("/titles/6712--test-novel")
-
-    assert response.status_code == 200
-    assert "static/js/image-lightbox.js" in response.text
-
-
-def test_show_title_renders_export_form() -> None:
-    title = _fake_title()
-    volumes = [
-        Volume(number="1", chapters=[Chapter(id=1, volume="1", number="1", name="Начало")])
-    ]
-    with patch("app.services.client.RanobeLib", return_value=_FakeClient(title, volumes)):
-        response = client.get("/titles/6712--test-novel")
+        response = client.get("/titles/6712--test-novel/data")
 
     assert response.status_code == 200
     assert 'action="/titles/6712--test-novel/export"' in response.text
@@ -424,21 +470,20 @@ def test_show_title_renders_export_form() -> None:
     assert "Скачать тайтл" in response.text
 
 
-def test_show_title_export_panel_is_a_sticky_js_enhanced_floating_panel() -> None:
+def test_title_data_export_panel_is_present_for_the_floating_panel_script() -> None:
     title = _fake_title()
     volumes = [
         Volume(number="1", chapters=[Chapter(id=1, volume="1", number="1", name="Начало")])
     ]
     with patch("app.services.client.RanobeLib", return_value=_FakeClient(title, volumes)):
-        response = client.get("/titles/6712--test-novel")
+        response = client.get("/titles/6712--test-novel/data")
 
     assert response.status_code == 200
     assert 'data-role="chapter-toc-form"' in response.text
     assert 'data-role="chapter-export-panel"' in response.text
-    assert "static/js/chapter-export-panel.js" in response.text
 
 
-def test_show_title_format_selects_are_progressively_enhanced_into_dropdowns() -> None:
+def test_title_data_has_two_format_selects() -> None:
     # PR 54: both the title-level "Скачать тайтл" and the selected-chapters "Скачать
     # выбранное" format pickers are plain <select>s enhanced by the same shared script.
     title = _fake_title()
@@ -446,38 +491,29 @@ def test_show_title_format_selects_are_progressively_enhanced_into_dropdowns() -
         Volume(number="1", chapters=[Chapter(id=1, volume="1", number="1", name="Начало")])
     ]
     with patch("app.services.client.RanobeLib", return_value=_FakeClient(title, volumes)):
-        response = client.get("/titles/6712--test-novel")
+        response = client.get("/titles/6712--test-novel/data")
 
     assert response.status_code == 200
     assert response.text.count('class="toc__export-format"') == 2
-    assert "static/js/custom-dropdown.js" in response.text
 
 
-def test_show_title_not_found_renders_html_error_page() -> None:
+def test_title_data_not_found_renders_json_by_default() -> None:
+    # PR 203: this is a fetch() target, not a page navigation - the central RanobeLibError
+    # handler answers with JSON here by default (see app/exceptions.py's _wants_html()),
+    # which is exactly what title-content-load.js reads `detail` from.
     exc = TitleNotFoundError("6712--missing")
     with patch("app.services.client.RanobeLib", return_value=_RaisingClient(exc)):
-        response = client.get("/titles/6712--missing", headers={"accept": "text/html"})
-
-    assert response.status_code == 404
-    assert response.headers["content-type"].startswith("text/html")
-    assert "Тайтл не найден, проверьте ссылку" in response.text
-    assert 'href="/"' in response.text
-
-
-def test_show_title_not_found_returns_json_without_html_accept() -> None:
-    exc = TitleNotFoundError("6712--missing")
-    with patch("app.services.client.RanobeLib", return_value=_RaisingClient(exc)):
-        response = client.get("/titles/6712--missing")
+        response = client.get("/titles/6712--missing/data")
 
     assert response.status_code == 404
     assert response.json() == {"detail": "Тайтл не найден, проверьте ссылку"}
 
 
-def test_show_title_malformed_slug_url_returns_friendly_404_not_500() -> None:
+def test_title_data_malformed_slug_url_returns_friendly_404_not_500() -> None:
     # No RanobeLib patch here on purpose - the real SDK class raises a plain ValueError
     # for a slug_url that doesn't parse, which open_client() must convert rather than
     # letting it fall through as an unhandled 500.
-    response = client.get("/titles/not-a-valid-slug")
+    response = client.get("/titles/not-a-valid-slug/data")
 
     assert response.status_code == 404
     assert response.json() == {"detail": "Тайтл не найден, проверьте ссылку"}
@@ -485,15 +521,15 @@ def test_show_title_malformed_slug_url_returns_friendly_404_not_500() -> None:
 
 class _UnmappedError(RanobeLibError):
     """A stand-in for a future RanobeLibError subclass this app's table doesn't cover
-    yet - used to confirm the fallback branch's HTML page never leaks the exception's
-    own message (which could carry internal detail)."""
+    yet - used to confirm the fallback branch never leaks the exception's own message
+    (which could carry internal detail)."""
 
 
-def test_show_title_unmapped_error_html_page_hides_the_message() -> None:
+def test_title_data_unmapped_error_hides_the_message() -> None:
     exc = _UnmappedError("some internal SDK detail")
     with patch("app.services.client.RanobeLib", return_value=_RaisingClient(exc)):
-        response = client.get("/titles/6712--test-novel", headers={"accept": "text/html"})
+        response = client.get("/titles/6712--test-novel/data")
 
     assert response.status_code == 500
-    assert "Внутренняя ошибка, попробуйте позже" in response.text
+    assert response.json()["detail"] == "Внутренняя ошибка, попробуйте позже"
     assert "some internal SDK detail" not in response.text
