@@ -18,7 +18,10 @@ from app.db.connection import connection, get_connection
 from app.db.friendships import (
     FriendEntry,
     FriendRequestEntry,
+    FriendSearchResult,
     accept_request,
+    friend_user_from_user,
+    get_friend_button_state,
     list_friends,
     list_incoming_requests,
     list_outgoing_requests,
@@ -26,7 +29,7 @@ from app.db.friendships import (
     send_request,
 )
 from app.db.notifications import notify_friend_accept, notify_friend_request
-from app.db.users import User, get_user_by_id
+from app.db.users import User, get_user_by_id, search_users_by_nickname
 from app.templating import templates
 
 router = APIRouter(prefix="/friends")
@@ -36,20 +39,29 @@ router = APIRouter(prefix="/friends")
 async def show_friends(
     request: Request,
     user: Annotated[User | None, Depends(get_current_user)],
+    query: str | None = None,
 ) -> HTMLResponse:
     """Same locked-screen gate as /library, /downloads, /activity (PR 22) - viewing the
     page itself doesn't require an account. conn is checked out below, not taken as a
     route-level Depends(get_connection) parameter, so an anonymous visitor never checks
     one out of the pool at all (see get_current_user()'s own docstring for the same
-    reasoning)."""
+    reasoning).
+
+    `query` (PR 209): the page's own "find someone to add" search - a plain GET query
+    param rather than a separate route/page, same shape as the catalog's own `query`
+    (app/api/library.py). Omitted or blank shows no search-results section at all, not an
+    empty-state message for a search nobody actually ran."""
     incoming: list[FriendRequestEntry] = []
     outgoing: list[FriendRequestEntry] = []
     friends: list[FriendEntry] = []
+    search_results: list[FriendSearchResult] = []
     if user is not None:
         async with connection() as conn:
             incoming = await list_incoming_requests(conn, user.id)
             outgoing = await list_outgoing_requests(conn, user.id)
             friends = await list_friends(conn, user.id)
+            if query:
+                search_results = await _search_friends(conn, user.id, query)
     return templates.TemplateResponse(
         request,
         "friends.html",
@@ -58,8 +70,27 @@ async def show_friends(
             "incoming_requests": incoming,
             "outgoing_requests": outgoing,
             "friends": friends,
+            "query": query,
+            "search_results": search_results,
         },
     )
+
+
+async def _search_friends(
+    conn: AsyncConnection, viewer_id: int, query: str
+) -> list[FriendSearchResult]:
+    """`query`'s search results, each paired with `viewer_id`'s own friend_request_actions
+    state against them - excludes `viewer_id` itself, since suggesting "add yourself" makes
+    no sense regardless of what search_users_by_nickname() itself happens to match."""
+    found_users = await search_users_by_nickname(conn, query)
+    return [
+        FriendSearchResult(
+            user=friend_user_from_user(found_user),
+            state=await get_friend_button_state(conn, viewer_id, found_user.id),
+        )
+        for found_user in found_users
+        if found_user.id != viewer_id
+    ]
 
 
 @router.post("/{other_user_id}/request")

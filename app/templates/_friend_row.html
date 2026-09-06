@@ -17,3 +17,37 @@
   </div>
 </div>
 {% endmacro %}
+
+{# The "Добавить в друзья" button and its three alternative states, extracted out of
+   profile.html (PR 199) so the "Друзья" page's own nickname search (PR 209) can render
+   the exact same button for each search result instead of a second, near-identical
+   version. `next_url`, if given, round-trips back to the caller's own page after the
+   POST (profile.html passes its own URL); omitted entirely for a caller like the search
+   results below that's already happy with the plain default (see _safe_next() in
+   app/api/friendships.py) each of these three actions falls back to. #}
+{% macro friend_request_actions(other_user_id, state, next_url=none) %}
+{% if state == "none" %}
+<form method="post" action="/friends/{{ other_user_id }}/request">
+  {% if next_url %}<input type="hidden" name="next" value="{{ next_url }}">{% endif %}
+  <button class="btn btn--secondary" type="submit">Добавить в друзья</button>
+</form>
+{% elif state == "outgoing" %}
+<form method="post" action="/friends/{{ other_user_id }}/remove">
+  {% if next_url %}<input type="hidden" name="next" value="{{ next_url }}">{% endif %}
+  <button class="btn btn--secondary" type="submit" title="Нажмите, чтобы отменить заявку">Заявка отправлена</button>
+</form>
+{% elif state == "incoming" %}
+<div class="profile__friend-actions">
+  <form method="post" action="/friends/{{ other_user_id }}/accept">
+    {% if next_url %}<input type="hidden" name="next" value="{{ next_url }}">{% endif %}
+    <button class="btn" type="submit">Принять заявку</button>
+  </form>
+  <form method="post" action="/friends/{{ other_user_id }}/remove">
+    {% if next_url %}<input type="hidden" name="next" value="{{ next_url }}">{% endif %}
+    <button class="btn btn--secondary" type="submit">Отклонить</button>
+  </form>
+</div>
+{% elif state == "friends" %}
+<p class="content__hint">Вы в друзьях</p>
+{% endif %}
+{% endmacro %}

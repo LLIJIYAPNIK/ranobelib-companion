@@ -24,6 +24,7 @@ import psycopg
 from psycopg import AsyncConnection
 
 from app.auth.avatar import initials_for, url_for
+from app.db.users import User
 
 
 @dataclass(frozen=True)
@@ -60,6 +61,44 @@ class FriendRequestEntry:
     friendship_id: int
     user: FriendUser
     created_at: str
+
+
+@dataclass(frozen=True)
+class FriendSearchResult:
+    """One row of the "Друзья" page's own nickname search (PR 209) - `state` is the same
+    "none"/"outgoing"/"incoming"/"friends" `get_friend_button_state()` below already
+    produces for profile.html's "Добавить в друзья" button, so a search result's row
+    (rendered through the same `friend_row()` macro) gets the same action button."""
+
+    user: FriendUser
+    state: str
+
+
+def friend_user_from_user(user: User) -> FriendUser:
+    """Same trimmed-down shape `_row_to_friend_user()` below builds from a joined
+    friendships/users row, just starting from a plain `User` (app/db/users.py) instead -
+    what search_users_by_nickname()'s own results (PR 209) come back as, since that query
+    has no friendships row to join against at all."""
+    return FriendUser(
+        id=user.id,
+        display_name=user.nickname or user.email,
+        avatar_url=url_for(user.avatar_path),
+        avatar_initials=initials_for(user.nickname, user.email),
+    )
+
+
+async def get_friend_button_state(conn: AsyncConnection, viewer_id: int, other_user_id: int) -> str:
+    """One of "none"/"outgoing"/"incoming"/"friends" - the "Добавить в друзья" button's
+    state (profile.html) relative to `viewer_id`, reused as-is for each row of the
+    "Друзья" page's own nickname search (PR 209) rather than duplicating this logic
+    there. Not a presentation-only helper despite living next to the raw DB access above -
+    identical "which of the four states" question either caller needs answered."""
+    relationship = await get_relationship(conn, viewer_id, other_user_id)
+    if relationship is None:
+        return "none"
+    if relationship.status == "accepted":
+        return "friends"
+    return "outgoing" if relationship.requester_id == viewer_id else "incoming"
 
 
 async def get_relationship(

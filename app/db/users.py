@@ -211,6 +211,36 @@ async def get_user_by_nickname(conn: AsyncConnection, nickname: str) -> User | N
     return _row_to_user(row) if row is not None else None
 
 
+# PR 209: "Друзья" page's own nickname search - a hard cap so an empty/single-letter
+# query (matching almost every nickname in the table) can't come back with the entire
+# user base, not just a nicety for a genuinely narrow search.
+_SEARCH_RESULT_LIMIT = 20
+
+
+async def search_users_by_nickname(
+    conn: AsyncConnection, query: str, limit: int = _SEARCH_RESULT_LIMIT
+) -> list[User]:
+    """Case-insensitive partial match, unlike `get_user_by_nickname()`'s exact one (that's
+    for the registration/settings uniqueness check, PR 194 - a different job). A blank/
+    whitespace-only `query` returns [] outright rather than reaching the database at all -
+    `'%' || '' || '%'` is just `'%'`, which would otherwise ILIKE-match every non-NULL
+    nickname in the table.
+
+    The literal `%` characters below are doubled (`%%`) - psycopg's own `%s` placeholder
+    syntax otherwise treats a bare `%` in the query text itself as the start of another
+    placeholder it doesn't recognize."""
+    query = query.strip()
+    if not query:
+        return []
+    cursor = await conn.execute(
+        f"SELECT {_USER_COLUMNS} FROM users WHERE nickname ILIKE '%%' || %s || '%%' "
+        "ORDER BY nickname LIMIT %s",
+        (query, limit),
+    )
+    rows = await cursor.fetchall()
+    return [_row_to_user(row) for row in rows]
+
+
 async def get_user_by_id(conn: AsyncConnection, user_id: int) -> User | None:
     cursor = await conn.execute(
         f"SELECT {_USER_COLUMNS} FROM users WHERE id = %s",

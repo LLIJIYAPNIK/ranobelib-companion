@@ -32,11 +32,16 @@ def client(monkeypatch: pytest.MonkeyPatch) -> Iterator[TestClient]:
     get_settings.cache_clear()
 
 
-def _register(client: TestClient, email: str, password: str = "hunter2pass") -> None:
-    client.post(
-        "/register",
-        data={"email": email, "password": password, "password_confirm": password},
-    )
+def _register(
+    client: TestClient,
+    email: str,
+    password: str = "hunter2pass",
+    nickname: str | None = None,
+) -> None:
+    data = {"email": email, "password": password, "password_confirm": password}
+    if nickname is not None:
+        data["nickname"] = nickname
+    client.post("/register", data=data)
 
 
 async def _user_id(email: str) -> int:
@@ -241,3 +246,109 @@ async def test_repeat_request_click_does_not_duplicate_the_notification(
     response = client.get("/notifications/unread-count")
 
     assert response.json() == {"unread_count": 1}
+
+
+# --- PR 209: nickname search on /friends -----------------------------------------------
+
+
+async def test_friends_page_without_query_shows_no_search_results_section(
+    client: TestClient,
+) -> None:
+    _register(client, "alice@example.com", nickname="Alice")
+
+    response = client.get("/friends")
+
+    assert response.status_code == 200
+    assert "Результаты поиска" not in response.text
+    # The explanatory intro text/search form are always there for a logged-in visitor.
+    assert 'action="/friends"' in response.text
+    assert "Ник пользователя" in response.text
+
+
+async def test_friends_search_finds_a_matching_nickname(client: TestClient) -> None:
+    _register(client, "alice@example.com", nickname="AliceReader")
+    _register(client, "bob@example.com", nickname="Bob")
+
+    response = client.get("/friends", params={"query": "alice"})
+
+    assert response.status_code == 200
+    assert "Результаты поиска" in response.text
+    assert "AliceReader" in response.text
+    assert "Bob" not in response.text
+    assert "Добавить в друзья" in response.text
+
+
+async def test_friends_search_empty_query_does_not_list_everyone(client: TestClient) -> None:
+    _register(client, "alice@example.com", nickname="Alice")
+    _register(client, "bob@example.com", nickname="Bob")
+
+    response = client.get("/friends", params={"query": ""})
+
+    # An empty `query` string behaves the same as no query at all - no results section,
+    # not "everyone matched".
+    assert "Результаты поиска" not in response.text
+
+
+async def test_friends_search_no_match_shows_empty_state(client: TestClient) -> None:
+    _register(client, "alice@example.com", nickname="Alice")
+
+    response = client.get("/friends", params={"query": "nobody-like-this"})
+
+    assert response.status_code == 200
+    assert "Никого не нашли" in response.text
+
+
+async def test_friends_search_excludes_the_searcher_themselves(client: TestClient) -> None:
+    _register(client, "alice@example.com", nickname="AliceReader")
+
+    response = client.get("/friends", params={"query": "alice"})
+
+    assert response.status_code == 200
+    assert "Результаты поиска" in response.text
+    # The only match is the searcher's own account - excluded, so this reads as no
+    # results at all rather than a row with "add yourself" as an option.
+    assert "Никого не нашли" in response.text
+    assert "Добавить в друзья" not in response.text
+
+
+async def test_friends_search_shows_outgoing_state_for_an_already_sent_request(
+    client: TestClient,
+) -> None:
+    _register(client, "alice@example.com", nickname="Alice")
+    alice_id = await _user_id("alice@example.com")
+    _register(client, "bob@example.com", nickname="Bob")
+    client.post(f"/friends/{alice_id}/request")
+
+    response = client.get("/friends", params={"query": "alice"})
+
+    assert response.status_code == 200
+    assert "Заявка отправлена" in response.text
+
+
+async def test_friends_search_shows_friends_state_for_an_accepted_friend(
+    client: TestClient,
+) -> None:
+    _register(client, "alice@example.com", nickname="Alice")
+    alice_id = await _user_id("alice@example.com")
+    _register(client, "bob@example.com", nickname="Bob")
+    bob_id = await _user_id("bob@example.com")
+    client.post(f"/friends/{alice_id}/request")
+    client.post("/logout")
+    client.post("/login", data={"email": "alice@example.com", "password": "hunter2pass"})
+    client.post(f"/friends/{bob_id}/accept")
+
+    response = client.get("/friends", params={"query": "bob"})
+
+    assert response.status_code == 200
+    assert "Вы в друзьях" in response.text
+
+
+async def test_friends_search_requires_login_to_return_results(client: TestClient) -> None:
+    _register(client, "alice@example.com", nickname="Alice")
+    client.post("/logout")
+
+    response = client.get("/friends", params={"query": "alice"})
+
+    assert response.status_code == 200
+    assert "Друзья скрыты" in response.text
+    assert "Alice" not in response.text

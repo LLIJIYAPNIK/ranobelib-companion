@@ -11,6 +11,7 @@ from app.db.users import (
     get_user_by_email,
     get_user_by_id,
     get_user_by_nickname,
+    search_users_by_nickname,
     update_notification_settings,
     update_privacy_settings,
     update_user_account,
@@ -335,6 +336,57 @@ async def test_update_notification_settings_sets_both_flags(conn: psycopg.AsyncC
     assert updated.notifications_enabled is False
     assert updated.do_not_disturb is True
     assert await get_user_by_id(conn, user.id) == updated
+
+
+async def test_search_users_by_nickname_partial_case_insensitive_match(
+    conn: psycopg.AsyncConnection,
+) -> None:
+    alice = await create_user(conn, "alice@example.com", "hash1", "AliceReader")
+    await create_user(conn, "bob@example.com", "hash2", "Bob")
+
+    results = await search_users_by_nickname(conn, "ALICE")
+
+    assert [user.id for user in results] == [alice.id]
+
+
+async def test_search_users_by_nickname_matches_anywhere_in_the_nickname(
+    conn: psycopg.AsyncConnection,
+) -> None:
+    alice = await create_user(conn, "alice@example.com", "hash1", "TheAliceReader")
+
+    results = await search_users_by_nickname(conn, "lice")
+
+    assert [user.id for user in results] == [alice.id]
+
+
+async def test_search_users_by_nickname_ignores_users_without_a_nickname(
+    conn: psycopg.AsyncConnection,
+) -> None:
+    await create_user(conn, "bob@example.com", "hash2")  # no nickname
+
+    assert await search_users_by_nickname(conn, "bob") == []
+
+
+async def test_search_users_by_nickname_blank_query_returns_nothing(
+    conn: psycopg.AsyncConnection,
+) -> None:
+    # Not "no results" because nothing matched - '%' || '' || '%' is just '%', which would
+    # ILIKE-match every non-NULL nickname if this reached the database at all.
+    await create_user(conn, "alice@example.com", "hash1", "Alice")
+
+    assert await search_users_by_nickname(conn, "") == []
+    assert await search_users_by_nickname(conn, "   ") == []
+
+
+async def test_search_users_by_nickname_respects_the_limit(
+    conn: psycopg.AsyncConnection,
+) -> None:
+    for i in range(5):
+        await create_user(conn, f"user{i}@example.com", "hash", f"Reader{i}")
+
+    results = await search_users_by_nickname(conn, "Reader", limit=3)
+
+    assert len(results) == 3
 
 
 async def test_update_notification_settings_flags_are_independent(

@@ -28,7 +28,7 @@ from app.auth.dependencies import get_current_user
 from app.db.activity import daily_active_seconds, daily_reading_activity, daily_titles_read
 from app.db.comments import count_comments_by_user
 from app.db.connection import connection, get_connection
-from app.db.friendships import get_relationship, list_friends
+from app.db.friendships import get_friend_button_state, list_friends
 from app.db.users import User, get_user_by_id
 from app.services.client import open_client
 from app.templating import templates
@@ -139,7 +139,7 @@ async def _render_profile(
     # anonymous visitor, or your own profile, has no friend-request UI at all).
     friend_state = None
     if viewer_id is not None and not is_own_profile:
-        friend_state = await _friend_button_state(conn, viewer_id, profile_user.id)
+        friend_state = await get_friend_button_state(conn, viewer_id, profile_user.id)
 
     return templates.TemplateResponse(
         request,
@@ -192,19 +192,6 @@ async def profile_friends_page(
     return templates.TemplateResponse(
         request, "profile_friends.html", {"profile_user": profile_user, "friends": friends}
     )
-
-
-async def _friend_button_state(conn: AsyncConnection, viewer_id: int, profile_user_id: int) -> str:
-    """One of "none"/"outgoing"/"incoming"/"friends" - see profile.html for what each one
-    renders. Not itself part of app/db/friendships.py since this is purely a presentation
-    concern (which of the button's states to show), the same kind of computation-on-top-of-
-    raw-data _build_reading_calendar() above already does for its own raw inputs."""
-    relationship = await get_relationship(conn, viewer_id, profile_user_id)
-    if relationship is None:
-        return "none"
-    if relationship.status == "accepted":
-        return "friends"
-    return "outgoing" if relationship.requester_id == viewer_id else "incoming"
 
 
 def _format_date(iso_timestamp: str) -> str:
