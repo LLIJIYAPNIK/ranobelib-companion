@@ -9,6 +9,7 @@ from app.db.library import (
     list_entries,
     record_progress,
     remove_entry,
+    set_default_translation_index,
     set_favorite,
     unset_favorite,
 )
@@ -36,6 +37,7 @@ async def test_add_entry_returns_a_new_entry(conn: psycopg.AsyncConnection) -> N
     assert entry.last_read_number is None
     assert entry.last_read_at is None
     assert entry.is_favorite is False
+    assert entry.default_translation_index is None
 
 
 async def test_add_entry_is_idempotent(conn: psycopg.AsyncConnection) -> None:
@@ -252,3 +254,48 @@ async def test_get_currently_reading_entries_ignores_a_user_not_in_the_list(
     await record_progress(conn, 2, "2--second", volume="1", number="1")
 
     assert await get_currently_reading_entries(conn, [1]) == {}
+
+
+# --- PR 205: set_default_translation_index (перевод по умолчанию для тайтла) -----------
+
+
+async def test_set_default_translation_index_stores_the_choice(
+    conn: psycopg.AsyncConnection,
+) -> None:
+    await add_entry(conn, 1, "6712--test-novel")
+
+    await set_default_translation_index(conn, 1, "6712--test-novel", 2)
+
+    assert (await get_entry(conn, 1, "6712--test-novel")).default_translation_index == 2
+
+
+async def test_set_default_translation_index_none_clears_it(
+    conn: psycopg.AsyncConnection,
+) -> None:
+    await add_entry(conn, 1, "6712--test-novel")
+    await set_default_translation_index(conn, 1, "6712--test-novel", 2)
+
+    await set_default_translation_index(conn, 1, "6712--test-novel", None)
+
+    assert (await get_entry(conn, 1, "6712--test-novel")).default_translation_index is None
+
+
+async def test_set_default_translation_index_outside_library_is_a_noop(
+    conn: psycopg.AsyncConnection,
+) -> None:
+    await set_default_translation_index(conn, 1, "6712--test-novel", 2)  # must not raise
+
+    assert await get_entry(conn, 1, "6712--test-novel") is None
+
+
+async def test_set_default_translation_index_does_not_affect_other_users(
+    conn: psycopg.AsyncConnection,
+) -> None:
+    await _add_user(conn, 2, "bob@example.com")
+    await add_entry(conn, 1, "6712--test-novel")
+    await add_entry(conn, 2, "6712--test-novel")
+
+    await set_default_translation_index(conn, 1, "6712--test-novel", 2)
+
+    assert (await get_entry(conn, 1, "6712--test-novel")).default_translation_index == 2
+    assert (await get_entry(conn, 2, "6712--test-novel")).default_translation_index is None
