@@ -1,6 +1,7 @@
 {% extends "base.html" %}
 {% block title %}Профиль — RanobeLib Companion{% endblock %}
 {% block content %}
+{% from "_friend_row.html" import friend_row, friend_request_actions %}
 <main class="content">
   <h1 class="toc__title">Профиль</h1>
   {% if profile_user %}
@@ -16,29 +17,8 @@
       <p class="profile__meta">На сайте с {{ registered_at }} · Комментариев: {{ comment_count }}</p>
       {% if is_own_profile %}
       <a class="btn btn--secondary" href="/settings/account">Редактировать</a>
-      {% elif friend_state == "none" %}
-      <form method="post" action="/friends/{{ profile_user.id }}/request">
-        <input type="hidden" name="next" value="/profile/{{ profile_user.id }}">
-        <button class="btn btn--secondary" type="submit">Добавить в друзья</button>
-      </form>
-      {% elif friend_state == "outgoing" %}
-      <form method="post" action="/friends/{{ profile_user.id }}/remove">
-        <input type="hidden" name="next" value="/profile/{{ profile_user.id }}">
-        <button class="btn btn--secondary" type="submit" title="Нажмите, чтобы отменить заявку">Заявка отправлена</button>
-      </form>
-      {% elif friend_state == "incoming" %}
-      <div class="profile__friend-actions">
-        <form method="post" action="/friends/{{ profile_user.id }}/accept">
-          <input type="hidden" name="next" value="/profile/{{ profile_user.id }}">
-          <button class="btn" type="submit">Принять заявку</button>
-        </form>
-        <form method="post" action="/friends/{{ profile_user.id }}/remove">
-          <input type="hidden" name="next" value="/profile/{{ profile_user.id }}">
-          <button class="btn btn--secondary" type="submit">Отклонить</button>
-        </form>
-      </div>
-      {% elif friend_state == "friends" %}
-      <p class="content__hint">Вы в друзьях</p>
+      {% else %}
+      {{ friend_request_actions(profile_user.id, friend_state, next_url="/profile/" ~ profile_user.id) }}
       {% endif %}
     </div>
   </div>
@@ -120,7 +100,6 @@
   {% if friend_preview %}
   <section class="profile-section">
     <h2 class="profile-section__title">Друзья{% if friend_count %} ({{ friend_count }}){% endif %}</h2>
-    {% from "_friend_row.html" import friend_row %}
     <div class="friend-list">
       {% for friend in friend_preview %}
       {% call friend_row(friend) %}{% endcall %}

@@ -62,6 +62,20 @@ class FriendRequestEntry:
     created_at: str
 
 
+async def get_friend_button_state(conn: AsyncConnection, viewer_id: int, other_user_id: int) -> str:
+    """One of "none"/"outgoing"/"incoming"/"friends" - the "Добавить в друзья" button's
+    state (profile.html) relative to `viewer_id`, reused as-is for each row of the
+    "Друзья" page's own nickname search (PR 209) rather than duplicating this logic
+    there. Not a presentation-only helper despite living next to the raw DB access above -
+    identical "which of the four states" question either caller needs answered."""
+    relationship = await get_relationship(conn, viewer_id, other_user_id)
+    if relationship is None:
+        return "none"
+    if relationship.status == "accepted":
+        return "friends"
+    return "outgoing" if relationship.requester_id == viewer_id else "incoming"
+
+
 async def get_relationship(
     conn: AsyncConnection, user_a: int, user_b: int
 ) -> Friendship | None:
