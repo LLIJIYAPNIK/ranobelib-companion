@@ -5,6 +5,11 @@
 <main class="content">
   <h1 class="toc__title">Друзья</h1>
   {% if current_user %}
+  <p class="content__hint">
+    Здесь можно находить знакомых читателей, отправлять и принимать заявки в друзья и
+    видеть их активность на главной странице (если это разрешено настройками
+    приватности) — ищите по нику через строку поиска ниже.
+  </p>
   {% if incoming_requests %}
   <section class="profile-section">
     <h2 class="profile-section__title">Заявки в друзья</h2>
