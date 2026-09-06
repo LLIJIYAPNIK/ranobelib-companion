@@ -28,7 +28,7 @@ from app.auth.dependencies import get_current_user
 from app.db.activity import daily_active_seconds, daily_reading_activity, daily_titles_read
 from app.db.comments import count_comments_by_user
 from app.db.connection import connection, get_connection
-from app.db.friendships import get_relationship
+from app.db.friendships import get_relationship, list_friends
 from app.db.users import User, get_user_by_id
 from app.services.client import open_client
 from app.templating import templates
@@ -146,6 +146,26 @@ async def _render_profile(
             "favorite_item": favorite_item,
             "library_items": items,
         },
+    )
+
+
+@router.get("/profile/{user_id}/friends")
+async def profile_friends_page(
+    request: Request,
+    user_id: int,
+    conn: Annotated[AsyncConnection, Depends(get_connection)],
+) -> HTMLResponse:
+    """The full list behind the profile page's own "Друзья" preview/"Показать всех" link
+    (PR 201) - public the same way /profile/{user_id} itself is, unlike /friends (no id),
+    which only ever shows the logged-in visitor's *own* requests/friends and has no notion
+    of "whose list is this". Just the accepted-friends list, read-only - no request
+    management here, that stays on /friends."""
+    profile_user = await get_user_by_id(conn, user_id)
+    if profile_user is None:
+        raise HTTPException(status_code=404, detail="Пользователь не найден")
+    friends = await list_friends(conn, profile_user.id)
+    return templates.TemplateResponse(
+        request, "profile_friends.html", {"profile_user": profile_user, "friends": friends}
     )
 
 

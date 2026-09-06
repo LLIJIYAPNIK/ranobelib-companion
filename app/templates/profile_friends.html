@@ -1,0 +1,18 @@
+{% extends "base.html" %}
+{% block title %}Друзья — {{ profile_user.nickname or profile_user.email }} — RanobeLib Companion{% endblock %}
+{% block content %}
+{% from "_friend_row.html" import friend_row %}
+<main class="content">
+  <p class="content__hint"><a href="/profile/{{ profile_user.id }}">← Назад к профилю</a></p>
+  <h1 class="toc__title">Друзья — {{ profile_user.nickname or profile_user.email }}</h1>
+  {% if friends %}
+  <div class="friend-list">
+    {% for friend in friends %}
+    {% call friend_row(friend) %}{% endcall %}
+    {% endfor %}
+  </div>
+  {% else %}
+  <p class="content__hint">Пока нет друзей.</p>
+  {% endif %}
+</main>
+{% endblock %}
