@@ -445,6 +445,31 @@ def test_show_download_status_renders_translation_choice() -> None:
     assert '<option value="2">' not in response.text
     # PR 54: the plain <select> is progressively enhanced into a custom listbox.
     assert "static/js/custom-dropdown.js" in response.text
+    # PR 206: the translation-choice form comes before the list of ambiguous chapters, not
+    # after it - so picking a translation never requires scrolling past that list first.
+    assert response.text.index('action="/titles/6712--test-novel/download"') < response.text.index(
+        "download-status__ambiguous"
+    )
+
+
+def test_show_download_status_translation_form_precedes_a_long_ambiguous_list() -> None:
+    """PR 206's own scenario: a title with many ambiguous chapters (the roadmap's own
+    screenshot has 21) - the form must still come first even when the list below it is
+    long, not just when it's short enough that the difference is invisible."""
+    job = create_job("6712--test-novel", "epub")
+    job.status = "needs_translation"
+    job.ambiguous_chapters = [
+        AmbiguousChapter(volume="1", number=str(n), branches=[_branch(1), _branch(2)])
+        for n in range(1, 22)
+    ]
+
+    response = client.get(f"/titles/6712--test-novel/download/{job.id}")
+
+    assert response.status_code == 200
+    assert response.text.count("download-status__ambiguous-item") == 21
+    assert response.text.index('action="/titles/6712--test-novel/download"') < response.text.index(
+        "download-status__ambiguous-item"
+    )
 
 
 def test_start_download_needs_translation_end_to_end(logged_in_client: TestClient) -> None:
