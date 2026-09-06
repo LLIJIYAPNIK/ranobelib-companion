@@ -9,6 +9,7 @@ from app.db.activity import (
     daily_reading_activity,
     daily_titles_read,
     list_chapters_read_today,
+    reading_streak_days,
     record_chapter_read,
     record_heartbeat,
     total_active_seconds_today,
@@ -290,3 +291,60 @@ async def test_daily_titles_read_is_scoped_to_the_user(conn: psycopg.AsyncConnec
     await record_chapter_read(conn, 2, "6712--test-novel", "1", "1")
 
     assert await daily_titles_read(conn, 1) == {}
+
+
+# --- PR 200: reading_streak_days (pure, no conn) -----------------------------------------
+
+
+def test_reading_streak_days_is_zero_with_no_activity() -> None:
+    assert reading_streak_days({}) == 0
+
+
+def test_reading_streak_days_counts_todays_activity_alone() -> None:
+    today = datetime.now(UTC).date().isoformat()
+
+    assert reading_streak_days({today: 3}) == 1
+
+
+def test_reading_streak_days_counts_consecutive_days_ending_today() -> None:
+    today = datetime.now(UTC).date()
+    counts = {(today - timedelta(days=i)).isoformat(): 1 for i in range(3)}
+
+    assert reading_streak_days(counts) == 3
+
+
+def test_reading_streak_days_stops_at_the_first_gap() -> None:
+    today = datetime.now(UTC).date()
+    counts = {
+        today.isoformat(): 1,
+        (today - timedelta(days=1)).isoformat(): 1,
+        (today - timedelta(days=3)).isoformat(): 1,  # gap at day 2 - not counted
+    }
+
+    assert reading_streak_days(counts) == 2
+
+
+def test_reading_streak_days_still_counts_yesterday_if_today_is_empty() -> None:
+    today = datetime.now(UTC).date()
+    counts = {
+        (today - timedelta(days=1)).isoformat(): 1,
+        (today - timedelta(days=2)).isoformat(): 1,
+    }
+
+    assert reading_streak_days(counts) == 2
+
+
+def test_reading_streak_days_is_zero_when_yesterday_and_today_are_both_empty() -> None:
+    today = datetime.now(UTC).date()
+    counts = {(today - timedelta(days=2)).isoformat(): 1}
+
+    assert reading_streak_days(counts) == 0
+
+
+def test_reading_streak_days_treats_an_explicit_zero_like_no_activity() -> None:
+    """A day present in the dict with count 0 behaves exactly like an absent day - still
+    falls back to checking yesterday, same as the "today is empty" case above."""
+    today = datetime.now(UTC).date()
+    counts = {today.isoformat(): 0, (today - timedelta(days=1)).isoformat(): 1}
+
+    assert reading_streak_days(counts) == 1
