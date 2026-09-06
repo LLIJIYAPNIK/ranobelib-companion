@@ -1,7 +1,7 @@
 {% extends "base.html" %}
 {% block title %}Друзья — RanobeLib Companion{% endblock %}
 {% block content %}
-{% from "_friend_row.html" import friend_row %}
+{% from "_friend_row.html" import friend_row, friend_request_actions %}
 <main class="content">
   <h1 class="toc__title">Друзья</h1>
   {% if current_user %}
@@ -10,6 +10,35 @@
     видеть их активность на главной странице (если это разрешено настройками
     приватности) — ищите по нику через строку поиска ниже.
   </p>
+  <form class="search-form" method="get" action="/friends">
+    <input
+      class="search-input"
+      type="text"
+      name="query"
+      value="{{ query or '' }}"
+      placeholder="Ник пользователя"
+      aria-label="Поиск пользователей по нику"
+    >
+    <button class="search-button" type="submit">Искать</button>
+  </form>
+
+  {% if query %}
+  <section class="profile-section">
+    <h2 class="profile-section__title">Результаты поиска</h2>
+    {% if search_results %}
+    <div class="friend-list">
+      {% for result in search_results %}
+      {% call friend_row(result) %}
+      {{ friend_request_actions(result.user.id, result.state) }}
+      {% endcall %}
+      {% endfor %}
+    </div>
+    {% else %}
+    <p class="content__hint">Никого не нашли по запросу «{{ query }}».</p>
+    {% endif %}
+  </section>
+  {% endif %}
+
   {% if incoming_requests %}
   <section class="profile-section">
     <h2 class="profile-section__title">Заявки в друзья</h2>
