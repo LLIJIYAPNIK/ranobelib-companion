@@ -45,3 +45,5 @@ jobs:
             cd ~/ranobelib-companion
             docker compose pull
             docker compose up -d
+            docker image prune -af
+            docker builder prune -af
