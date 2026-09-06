@@ -92,6 +92,15 @@
   {% if title.teams %}
   <div><span class="title-credits__label">Переводы:</span>{{ title.teams | map(attribute="name") | join(", ") }}</div>
   {% endif %}
+  {% if ambiguous_chapter_count %}
+  {# PR 205: this used to repeat as a badge.badge--muted on every single ambiguous
+     chapter's row in the table of contents below (chapter.branches_count) - shown once
+     here instead, since the fact itself ("this title has chapters with more than one
+     translation") doesn't change chapter to chapter. #}
+  <div class="title-credits__ambiguous">
+    <span class="badge badge--muted">У {{ ambiguous_chapter_count }} глав несколько переводов</span>
+  </div>
+  {% endif %}
 </section>
 
 <form
@@ -141,9 +150,6 @@
           <span class="toc__chapter-number">{{ chapter.number }}</span>
           <span class="toc__chapter-name">{{ chapter.name or "Без названия" }}</span>
         </a>
-        {% if chapter.branches_count > 1 %}
-        <span class="badge badge--muted">{{ chapter.branches_count }} переводов</span>
-        {% endif %}
       </li>
       {% endfor %}
     </ul>

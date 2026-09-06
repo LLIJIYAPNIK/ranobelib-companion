@@ -97,6 +97,17 @@ async def title_data(
         if library_entry is not None
         else None
     )
+    # PR 205: aggregated once here instead of re-checked per chapter in the template - how
+    # many chapters have more than one translation, and the largest branches_count among
+    # them (the number of options the "перевод по умолчанию" dropdown below needs). Pure
+    # counting over volumes/chapters get_table_of_contents() already returned, not a new
+    # SDK call or any parsing of ranobelib.me's own data.
+    ambiguous_branch_counts = [
+        chapter.branches_count
+        for volume in volumes
+        for chapter in volume.chapters
+        if chapter.branches_count > 1
+    ]
     response = templates.TemplateResponse(
         request,
         "_title_content.html",
@@ -107,6 +118,7 @@ async def title_data(
             "export_formats": available_export_formats(),
             "in_library": library_entry is not None,
             "progress_percent": progress_percent,
+            "ambiguous_chapter_count": len(ambiguous_branch_counts),
         },
     )
     remember(
