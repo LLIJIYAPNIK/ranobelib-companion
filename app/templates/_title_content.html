@@ -99,6 +99,21 @@
      translation") doesn't change chapter to chapter. #}
   <div class="title-credits__ambiguous">
     <span class="badge badge--muted">У {{ ambiguous_chapter_count }} глав несколько переводов</span>
+    {% if in_library %}
+    <form
+      method="post"
+      action="/library/{{ title.slug_url }}/default-translation"
+      class="title-credits__default-translation"
+    >
+      <select name="translation_index" class="toc__export-format" aria-label="Перевод по умолчанию для этого тайтла">
+        <option value="">Спрашивать каждый раз</option>
+        {% for index in range(max_branches) %}
+        <option value="{{ index }}"{% if default_translation_index == index %} selected{% endif %}>Вариант {{ index + 1 }}</option>
+        {% endfor %}
+      </select>
+      <button type="submit" class="btn btn--sm">Сохранить</button>
+    </form>
+    {% endif %}
   </div>
   {% endif %}
 </section>

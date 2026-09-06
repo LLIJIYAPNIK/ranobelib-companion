@@ -18,6 +18,7 @@ from app.db.library import (
     get_entry,
     list_entries,
     remove_entry,
+    set_default_translation_index,
     set_favorite,
     unset_favorite,
 )
@@ -244,6 +245,32 @@ async def toggle_favorite(
         return JSONResponse({"is_favorite": False})
     await set_favorite(conn, user.id, slug_url)
     return JSONResponse({"is_favorite": True})
+
+
+@router.post("/{slug_url}/default-translation")
+async def set_title_default_translation(
+    slug_url: str,
+    user: Annotated[User, Depends(require_current_user)],
+    conn: Annotated[AsyncConnection, Depends(get_connection)],
+    translation_index: Annotated[str, Form()] = "",
+) -> RedirectResponse:
+    """The dropdown next to .title-credits's "N глав несколько переводов" note (PR 205) -
+    an empty `translation_index` (the "Спрашивать каждый раз" option) clears the saved
+    default back to None, same as never having set one. Requires the title already being
+    in the library (same 404 as toggle_favorite() above) - there's nowhere else to persist
+    this per-user choice, see set_default_translation_index()'s own docstring."""
+    entry = await get_entry(conn, user.id, slug_url)
+    if entry is None:
+        raise HTTPException(status_code=404, detail="Тайтл не в библиотеке")
+    if translation_index == "":
+        parsed_index = None
+    else:
+        try:
+            parsed_index = int(translation_index)
+        except ValueError:
+            raise HTTPException(status_code=422, detail="Некорректный вариант перевода") from None
+    await set_default_translation_index(conn, user.id, slug_url, parsed_index)
+    return RedirectResponse(url=f"/titles/{slug_url}", status_code=303)
 
 
 def _safe_next(next_url: str | None, default: str) -> str:

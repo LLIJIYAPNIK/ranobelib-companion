@@ -119,6 +119,10 @@ async def title_data(
             "in_library": library_entry is not None,
             "progress_percent": progress_percent,
             "ambiguous_chapter_count": len(ambiguous_branch_counts),
+            "max_branches": max(ambiguous_branch_counts, default=0),
+            "default_translation_index": (
+                library_entry.default_translation_index if library_entry is not None else None
+            ),
         },
     )
     remember(

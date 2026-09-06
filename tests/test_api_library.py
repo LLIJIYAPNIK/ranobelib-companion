@@ -502,6 +502,120 @@ def test_favorite_toggle_unknown_title_is_not_found(client: TestClient) -> None:
     assert response.status_code == 404
 
 
+# --- PR 205: default_translation_index ("перевод по умолчанию для тайтла") -------------
+
+
+def _title_with_ambiguous_chapters() -> tuple[Title, list[Volume]]:
+    title = _fake_title()
+    volumes = [
+        Volume(
+            number="1",
+            chapters=[
+                Chapter(id=1, volume="1", number="1", branches_count=2),
+                Chapter(id=2, volume="1", number="2", branches_count=3),
+            ],
+        )
+    ]
+    return title, volumes
+
+
+def test_default_translation_dropdown_hidden_when_not_in_library(client: TestClient) -> None:
+    title, volumes = _title_with_ambiguous_chapters()
+
+    with patch("app.services.client.RanobeLib", return_value=_FakeClient(title, volumes)):
+        response = client.get("/titles/6712--test-novel/data")
+
+    assert response.status_code == 200
+    assert "несколько переводов" in response.text  # the note itself still shows
+    assert 'action="/library/6712--test-novel/default-translation"' not in response.text
+
+
+def test_default_translation_dropdown_shown_for_library_entry(client: TestClient) -> None:
+    _register(client)
+    title, volumes = _title_with_ambiguous_chapters()
+    with patch("app.services.client.RanobeLib", return_value=_FakeClient(title, volumes)):
+        client.post("/library/6712--test-novel/add")
+        response = client.get("/titles/6712--test-novel/data")
+
+    assert response.status_code == 200
+    assert 'action="/library/6712--test-novel/default-translation"' in response.text
+    # max_branches across ambiguous chapters is 3 (the second chapter's own branches_count)
+    assert '<option value="0"' in response.text
+    assert '<option value="1"' in response.text
+    assert '<option value="2"' in response.text
+    assert '<option value="3"' not in response.text
+
+
+def test_set_default_translation_requires_login(client: TestClient) -> None:
+    response = client.post(
+        "/library/6712--test-novel/default-translation",
+        data={"translation_index": "1"},
+        follow_redirects=False,
+    )
+
+    assert response.status_code == 303
+    assert response.headers["location"] == "/login"
+
+
+def test_set_default_translation_requires_title_in_library(client: TestClient) -> None:
+    _register(client)
+
+    response = client.post(
+        "/library/6712--test-novel/default-translation", data={"translation_index": "1"}
+    )
+
+    assert response.status_code == 404
+
+
+def test_set_default_translation_persists_and_preselects(client: TestClient) -> None:
+    _register(client)
+    title, volumes = _title_with_ambiguous_chapters()
+    with patch("app.services.client.RanobeLib", return_value=_FakeClient(title, volumes)):
+        client.post("/library/6712--test-novel/add")
+
+        save_response = client.post(
+            "/library/6712--test-novel/default-translation",
+            data={"translation_index": "1"},
+            follow_redirects=False,
+        )
+        page = client.get("/titles/6712--test-novel/data")
+
+    assert save_response.status_code == 303
+    assert save_response.headers["location"] == "/titles/6712--test-novel"
+    assert '<option value="1" selected>' in page.text
+
+
+def test_set_default_translation_empty_clears_it(client: TestClient) -> None:
+    _register(client)
+    title, volumes = _title_with_ambiguous_chapters()
+    with patch("app.services.client.RanobeLib", return_value=_FakeClient(title, volumes)):
+        client.post("/library/6712--test-novel/add")
+        client.post(
+            "/library/6712--test-novel/default-translation", data={"translation_index": "1"}
+        )
+
+        client.post(
+            "/library/6712--test-novel/default-translation", data={"translation_index": ""}
+        )
+        page = client.get("/titles/6712--test-novel/data")
+
+    assert " selected>" not in page.text
+
+
+def test_set_default_translation_rejects_garbage_value(client: TestClient) -> None:
+    _register(client)
+    title, volumes = _title_with_ambiguous_chapters()
+    with patch("app.services.client.RanobeLib", return_value=_FakeClient(title, volumes)):
+        client.post("/library/6712--test-novel/add")
+
+        response = client.post(
+            "/library/6712--test-novel/default-translation",
+            data={"translation_index": "not-a-number"},
+        )
+
+    assert response.status_code == 422
+
+
 def test_show_library_renders_the_favorite_star_button(client: TestClient) -> None:
     _register(client)
     title = _fake_title()
