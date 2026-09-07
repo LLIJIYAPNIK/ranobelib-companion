@@ -197,6 +197,24 @@ async def test_friends_page_lists_incoming_outgoing_and_accepted(client: TestCli
     assert "carol@example.com" in response.text  # incoming request row
     assert "alice@example.com" in response.text  # outgoing request row
     assert "dave@example.com" in response.text  # accepted friend row
+    # PR 215: the friend count moved into the intro paragraph, replacing the redundant
+    # "Друзья" heading that used to sit directly above the list.
+    assert "Сейчас у вас 1 друг." in response.text
+    assert '<h2 class="profile-section__title">Друзья</h2>' not in response.text
+
+
+async def test_friends_page_with_no_friends_shows_intro_hint_not_a_bare_heading(
+    client: TestClient,
+) -> None:
+    _register(client, "alice@example.com")
+
+    response = client.get("/friends")
+
+    assert response.status_code == 200
+    assert "Друзей пока нет — используйте поиск выше, чтобы найти знакомых читателей." in (
+        response.text
+    )
+    assert '<h2 class="profile-section__title">Друзья</h2>' not in response.text
 
 
 async def test_sending_a_friend_request_notifies_the_recipient(client: TestClient) -> None:
