@@ -5028,6 +5028,19 @@ img.paragraph-comment__attachment {
     display: none;
   }
 
+  /* PR 218: /settings's server-side redirect to a default section (settings.py,
+     settings_page()) stamps settings-nav__link--active on that section for desktop's
+     simultaneous two-column view - accurate there, but on mobile, while this list is
+     still showing (not yet in --mobile-detail), nothing has actually been chosen yet.
+     Reset back to the plain unselected look only in that specific state; once a link is
+     followed, --mobile-detail hides this list entirely (rule above) and the question
+     doesn't come up again. */
+  .settings-layout--mobile-js:not(.settings-layout--mobile-detail) .settings-nav__link--active {
+    color: var(--text-secondary);
+    background-color: transparent;
+    font-weight: 400;
+  }
+
   .settings-layout--mobile-js.settings-layout--mobile-detail .settings-nav {
     display: none;
   }
