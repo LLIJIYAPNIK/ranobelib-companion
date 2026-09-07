@@ -5,10 +5,14 @@
 // never delivers "pointerup" so this never has to fight page scrolling).
 //
 // Listens on .main (the shared content container, base.html) rather than the narrow .sidebar
-// bar itself, which is awkward to swipe on directly.
+// bar itself, which is awkward to swipe on directly. Direction is deliberately the opposite of
+// library-tabs-swipe.js's own convention (swipe right moves forward here; over there, swipe
+// left moves forward) - each gesture simply follows what was asked for it individually, and
+// the mismatch between the two is intentional, not left over by accident.
 (() => {
   const main = document.querySelector(".main");
-  if (!main) return;
+  const sidebar = document.querySelector(".sidebar");
+  if (!main || !sidebar) return;
 
   const mobileQuery = window.matchMedia("(max-width: 640px)");
   const MIN_DISTANCE = 60;
@@ -38,6 +42,12 @@
     // scroll flick would fail this even in the rare case it still delivers "pointerup".
     if (Math.abs(deltaX) < MIN_DISTANCE || Math.abs(deltaX) < Math.abs(deltaY)) return;
 
-    // Navigating to the neighboring section is added in the next commit.
+    const navLinks = [...sidebar.querySelectorAll(":scope > .sidebar__link")];
+    const activeIndex = navLinks.findIndex((link) => link.classList.contains("sidebar__link--active"));
+
+    // Swipe right moves forward (Главная → Библиотека → …), swipe left moves back - nothing
+    // to move to past either end of the list (a missing index just leaves `target` undefined).
+    const target = navLinks[deltaX > 0 ? activeIndex + 1 : activeIndex - 1];
+    if (target) window.location.href = target.href;
   });
 })();
