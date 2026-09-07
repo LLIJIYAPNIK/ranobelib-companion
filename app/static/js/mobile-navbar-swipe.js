@@ -22,6 +22,7 @@
   let pointerId = null;
   let startX = 0;
   let startY = 0;
+  let startedInLibraryTabs = false;
 
   main.addEventListener("pointerdown", (event) => {
     if (!mobileQuery.matches) return;
@@ -29,12 +30,15 @@
     pointerId = event.pointerId;
     startX = event.clientX;
     startY = event.clientY;
+    // PR 211 already owns swipes that start over the library tabs content - leaving this
+    // gesture alone there avoids switching a sidebar section and a library tab at once.
+    startedInLibraryTabs = Boolean(event.target.closest(".library-tabs-content"));
   });
 
   main.addEventListener("pointerup", (event) => {
     if (pointerId === null || event.pointerId !== pointerId) return;
     pointerId = null;
-    if (!mobileQuery.matches) return;
+    if (!mobileQuery.matches || startedInLibraryTabs) return;
 
     const deltaX = event.clientX - startX;
     const deltaY = event.clientY - startY;
@@ -44,6 +48,9 @@
 
     const navLinks = [...sidebar.querySelectorAll(":scope > .sidebar__link")];
     const activeIndex = navLinks.findIndex((link) => link.classList.contains("sidebar__link--active"));
+    // The current page isn't one of the five main sections (e.g. a chapter or title page) -
+    // nothing to "pull toward" in that case.
+    if (activeIndex === -1) return;
 
     // Swipe right moves forward (Главная → Библиотека → …), swipe left moves back - nothing
     // to move to past either end of the list (a missing index just leaves `target` undefined).
