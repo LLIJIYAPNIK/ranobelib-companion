@@ -66,7 +66,7 @@
         </svg>
         <span class="sidebar__label">Друзья</span>
       </a>
-      <a class="sidebar__link{% if active_nav == 'settings' %} sidebar__link--active{% endif %}" href="/settings" title="Настройки" aria-label="Настройки">
+      <a class="sidebar__link{% if active_nav == 'settings' %} sidebar__link--active{% endif %}" href="/settings" data-role="settings-link" title="Настройки" aria-label="Настройки">
         <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
           <circle cx="12" cy="12" r="3"/>
           <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/>
@@ -125,6 +125,9 @@
         <a class="sidebar__link" href="/login">Войти</a>
         <a class="sidebar__link" href="/register">Регистрация</a>
         {% endif %}
+        <!-- PR 213: empty on desktop - mobile-account-strip.js reparents the Settings
+             link and notifications bell in here once the mobile breakpoint matches. -->
+        <div class="sidebar__account-actions" data-role="sidebar-account-actions"></div>
       </div>
     </nav>
     <div class="main">
@@ -137,6 +140,9 @@
   {% include "_cookie_notice.html" %}
   <script src="{{ url_for('static', path='js/sidebar-toggle.js') }}" defer></script>
   <script src="{{ url_for('static', path='js/cookie-notice.js') }}" defer></script>
+  <!-- PR 213: must run before notifications-panel.js below - it needs to see the bell's
+       final (possibly already-mobile-reparented) home position when it first records it. -->
+  <script src="{{ url_for('static', path='js/mobile-account-strip.js') }}" defer></script>
   {% if current_user %}
   <script src="{{ url_for('static', path='js/download-ready.js') }}" defer></script>
   <script src="{{ url_for('static', path='js/downloads-status.js') }}" defer></script>

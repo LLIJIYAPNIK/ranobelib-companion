@@ -75,6 +75,33 @@ def test_sidebar_friends_link_points_at_the_friends_page() -> None:
     assert 'href="/friends"' in response.text
 
 
+def test_sidebar_wires_the_mobile_account_strip_script() -> None:
+    # PR 213: mobile-account-strip.js reparents the Settings link (and, for a logged-in
+    # visitor, the notifications bell) into the empty .sidebar__account-actions container
+    # once the mobile breakpoint matches - present for every visitor, since the Settings
+    # link itself isn't gated behind login.
+    response = client.get("/")
+
+    assert response.status_code == 200
+    assert 'data-role="settings-link"' in response.text
+    assert 'data-role="sidebar-account-actions"' in response.text
+    assert "static/js/mobile-account-strip.js" in response.text
+
+
+def test_mobile_account_strip_script_runs_before_notifications_panel_script(
+    logged_in_client: TestClient,
+) -> None:
+    # mobile-account-strip.js must reparent the notifications bell's home position before
+    # notifications-panel.js ever records it (see mobile-account-strip.js's own comment on
+    # why) - both are `defer`, so document order is what decides execution order.
+    response = logged_in_client.get("/")
+
+    assert response.status_code == 200
+    assert response.text.index("static/js/mobile-account-strip.js") < response.text.index(
+        "static/js/notifications-panel.js"
+    )
+
+
 def test_logged_in_visitor_sees_a_profile_menu_trigger_avatar(
     logged_in_client: TestClient,
 ) -> None:
