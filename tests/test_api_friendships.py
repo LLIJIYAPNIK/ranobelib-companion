@@ -316,17 +316,31 @@ async def test_friends_search_no_match_shows_empty_state(client: TestClient) -> 
     assert "Никого не нашли" in response.text
 
 
-async def test_friends_search_excludes_the_searcher_themselves(client: TestClient) -> None:
+async def test_friends_search_marks_the_searchers_own_nickname_as_self(
+    client: TestClient,
+) -> None:
     _register(client, "alice@example.com", nickname="AliceReader")
 
     response = client.get("/friends", params={"query": "alice"})
 
     assert response.status_code == 200
     assert "Результаты поиска" in response.text
-    # The only match is the searcher's own account - excluded, so this reads as no
-    # results at all rather than a row with "add yourself" as an option.
-    assert "Никого не нашли" in response.text
+    # The only match is the searcher's own account (PR 216) - shown as a row marked "Это
+    # вы", not folded into "no results" (indistinguishable from a nonexistent nickname)
+    # and not offered "Добавить в друзья" (adding yourself makes no sense).
+    assert "Никого не нашли" not in response.text
+    assert "AliceReader" in response.text
+    assert "Это вы" in response.text
     assert "Добавить в друзья" not in response.text
+
+
+async def test_friends_search_no_match_still_shows_empty_state(client: TestClient) -> None:
+    _register(client, "alice@example.com")
+
+    response = client.get("/friends", params={"query": "nobody-with-this-nickname"})
+
+    assert response.status_code == 200
+    assert "Никого не нашли по запросу «nobody-with-this-nickname»." in response.text
 
 
 async def test_friends_search_shows_outgoing_state_for_an_already_sent_request(
