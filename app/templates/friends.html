@@ -9,6 +9,7 @@
     Здесь можно находить знакомых читателей, отправлять и принимать заявки в друзья и
     видеть их активность на главной странице (если это разрешено настройками
     приватности) — ищите по нику через строку поиска ниже.
+    {{ friends_summary }}
   </p>
   <form class="search-form" method="get" action="/friends">
     <input
@@ -73,7 +74,6 @@
   {% endif %}
 
   <section class="profile-section">
-    <h2 class="profile-section__title">Друзья</h2>
     {% if friends %}
     <div class="friend-list">
       {% for friend in friends %}
