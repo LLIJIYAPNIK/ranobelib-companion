@@ -4830,14 +4830,24 @@ img.paragraph-comment__attachment {
      login/register links inside .sidebar__account, which aren't part of this bottom tab
      bar at all. Their inherited min-height: 44px/padding: 12px inflated the fixed
      top account strip's real height well past .main's hardcoded padding-top, so page
-     content started underneath it. */
+     content started underneath it.
+
+     PR 213: Settings and the notifications bell moving out to the top account strip
+     leaves this row at five items instead of seven - room to grow each hit-box (44px ->
+     52px) and its icon (20px -> 24px, via the sibling rule below) without crowding a
+     typical phone width, still comfortably inside .sidebar's own 64px bar height. */
   .sidebar > .sidebar__link {
-    font-size: 10px;
+    font-size: 11px;
     gap: 0;
-    padding: 12px;
-    min-width: 44px;
-    min-height: 44px;
+    padding: 14px;
+    min-width: 52px;
+    min-height: 52px;
     justify-content: center;
+  }
+
+  .sidebar > .sidebar__link svg {
+    width: 24px;
+    height: 24px;
   }
 
   .sidebar__toggle {
