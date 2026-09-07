@@ -283,6 +283,15 @@ def test_show_library_empty_state(client: TestClient) -> None:
     assert "Пока пусто" in response.text
 
 
+def test_show_library_wires_the_tab_swipe_script(client: TestClient) -> None:
+    # PR 211: mobile-only swipe-to-switch-tabs shortcut between /library and
+    # /library/catalog.
+    response = client.get("/library")
+
+    assert response.status_code == 200
+    assert "static/js/library-tabs-swipe.js" in response.text
+
+
 async def test_show_library_lists_added_titles_with_progress(client: TestClient) -> None:
     _register(client)
     title = _fake_title()

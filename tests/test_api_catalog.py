@@ -87,6 +87,17 @@ def test_show_catalog_renders_cards() -> None:
     assert "static/js/custom-dropdown.js" in response.text
 
 
+def test_show_catalog_wires_the_tab_swipe_script() -> None:
+    # PR 211: mobile-only swipe-to-switch-tabs shortcut between /library and
+    # /library/catalog.
+    page = CatalogPage(items=[], page=1, has_next_page=False)
+    with patch("app.services.catalog.Catalog", return_value=_FakeCatalog(page)):
+        response = client.get("/library/catalog")
+
+    assert response.status_code == 200
+    assert "static/js/library-tabs-swipe.js" in response.text
+
+
 def test_show_catalog_renders_a_quickview_trigger_on_each_card() -> None:
     # PR 117: the eye icon on every title_card() opens a quick-view modal for that title
     # without navigating away - data-slug-url is what title-quickview.js fetches.
