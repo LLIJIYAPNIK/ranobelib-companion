@@ -101,17 +101,20 @@ async def _search_friends(
     conn: AsyncConnection, viewer_id: int, query: str
 ) -> list[FriendSearchResult]:
     """`query`'s search results, each paired with `viewer_id`'s own friend_request_actions
-    state against them - excludes `viewer_id` itself, since suggesting "add yourself" makes
-    no sense regardless of what search_users_by_nickname() itself happens to match."""
+    state against them. `viewer_id` themselves is included rather than filtered out (PR
+    216) - filtering it out made searching your own nickname indistinguishable from no
+    such user existing at all; a dedicated "self" state (no fifth real relationship exists
+    with yourself, so this skips get_friend_button_state() entirely) renders as "Это вы"
+    instead of any action button."""
     found_users = await search_users_by_nickname(conn, query)
-    return [
-        FriendSearchResult(
-            user=friend_user_from_user(found_user),
-            state=await get_friend_button_state(conn, viewer_id, found_user.id),
-        )
-        for found_user in found_users
-        if found_user.id != viewer_id
-    ]
+    results = []
+    for found_user in found_users:
+        if found_user.id == viewer_id:
+            state = "self"
+        else:
+            state = await get_friend_button_state(conn, viewer_id, found_user.id)
+        results.append(FriendSearchResult(user=friend_user_from_user(found_user), state=state))
+    return results
 
 
 @router.post("/{other_user_id}/request")
