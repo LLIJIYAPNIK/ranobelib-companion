@@ -286,6 +286,17 @@ a {
   width: 100%;
 }
 
+/* PR 213: .sidebar__account-actions (base.html) is always in the DOM, even on desktop
+   where mobile-account-strip.js never puts anything into it - without this, its empty box
+   would still claim one .sidebar__account gap slot, nudging the avatar above it up by
+   that amount for no visible reason. display: none entirely removes it from the flex
+   layout (no gap contribution) for as long as it has no children; the moment
+   mobile-account-strip.js appends the Settings link/notifications bell into it, :empty
+   stops matching and the mobile-only rule below takes over instead. */
+.sidebar__account-actions:empty {
+  display: none;
+}
+
 /* PR 93: now a <button> (was a plain <a> to /settings) - it opens the profile-menu
    dropdown below instead of linking directly, so it needs the usual button resets a link
    never did (border/padding/font-family/cursor). */
@@ -4862,6 +4873,29 @@ img.paragraph-comment__attachment {
     width: 28px;
     height: 28px;
     font-size: 11px;
+  }
+
+  /* PR 213: base.html always renders this container inside .sidebar__account, right
+     after the profile-menu/login-register links - empty (and invisible, taking up no
+     space) unless mobile-account-strip.js has reparented the Settings link/notifications
+     bell into it. .sidebar__account's own justify-content: space-between then naturally
+     puts the avatar on the left and this group on the right, the same way it already
+     splits "Войти"/"Регистрация" for an anonymous visitor. */
+  .sidebar__account-actions {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+  }
+
+  /* Reset from .sidebar > .sidebar__link's bottom-tab-bar sizing (scoped to *direct*
+     children of .sidebar, so it no longer applies once these move under
+     .sidebar__account-actions) to a smaller square matching .sidebar__avatar's own
+     28px - sized to fit the same 48px account strip, not the taller 64px tab bar. */
+  .sidebar__account-actions .sidebar__link {
+    width: 28px;
+    height: 28px;
+    gap: 0;
+    justify-content: center;
   }
 
   .header {
