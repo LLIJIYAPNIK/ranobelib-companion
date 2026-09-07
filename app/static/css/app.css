@@ -4934,9 +4934,18 @@ img.paragraph-comment__attachment {
      200px nav column has no room next to the content pane on a phone-width viewport, and
      a short 3-item nav has no scrolling behavior worth keeping sticky. Turned into a
      horizontal row (not a vertical stack) since 3 short labels fit one line and read more
-     like tabs than a menu at this width. */
+     like tabs than a menu at this width.
+
+     PR 212: the base rule's `align-items: flex-start` is meant for the desktop row layout
+     (don't stretch the nav/content columns to match each other's height) - inherited
+     as-is here, it instead shrinks `.settings-nav` itself to its own content width on the
+     cross axis, which is now horizontal since the direction just flipped to column. That
+     left `.settings-nav__link` (in the --mobile-js vertical-list state, below) narrow and
+     left-aligned instead of spanning the full width. `align-items: stretch` overrides it
+     back to full width for both `.settings-nav` and `.settings-content`. */
   .settings-layout {
     flex-direction: column;
+    align-items: stretch;
   }
 
   .settings-nav {
