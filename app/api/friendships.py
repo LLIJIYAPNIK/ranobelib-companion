@@ -72,8 +72,29 @@ async def show_friends(
             "friends": friends,
             "query": query,
             "search_results": search_results,
+            "friends_summary": _friends_summary(friends),
         },
     )
+
+
+def _friends_summary(friends: list[FriendEntry]) -> str:
+    """One sentence for the intro paragraph replacing the old, redundant "Друзья" heading
+    that used to sit right above the list itself (PR 215) - states the current count, or
+    points at the search form when there isn't one yet, so the list below reads clearly
+    from context alone."""
+    if not friends:
+        return "Друзей пока нет — используйте поиск выше, чтобы найти знакомых читателей."
+    count = len(friends)
+    return f"Сейчас у вас {count} {_pluralize_friends(count)}."
+
+
+def _pluralize_friends(n: int) -> str:
+    mod10, mod100 = n % 10, n % 100
+    if mod10 == 1 and mod100 != 11:
+        return "друг"
+    if 2 <= mod10 <= 4 and not (12 <= mod100 <= 14):
+        return "друга"
+    return "друзей"
 
 
 async def _search_friends(
