@@ -1,0 +1,60 @@
+// PR 217: swipe gesture handling for the mobile bottom tab bar (.sidebar > .sidebar__link),
+// extending PR 211's own swipe between the two library tabs to all five main navigation
+// sections. Same pointerdown/pointerup approach as library-tabs-swipe.js, for the same
+// reason (a mouse drag in a desktop-width emulator works too, and a real vertical scroll
+// never delivers "pointerup" so this never has to fight page scrolling).
+//
+// Listens on .main (the shared content container, base.html) rather than the narrow .sidebar
+// bar itself, which is awkward to swipe on directly. Direction is deliberately the opposite of
+// library-tabs-swipe.js's own convention (swipe right moves forward here; over there, swipe
+// left moves forward) - each gesture simply follows what was asked for it individually, and
+// the mismatch between the two is intentional, not left over by accident.
+(() => {
+  const main = document.querySelector(".main");
+  const sidebar = document.querySelector(".sidebar");
+  if (!main || !sidebar) return;
+
+  const mobileQuery = window.matchMedia("(max-width: 640px)");
+  const MIN_DISTANCE = 60;
+  // Same system-gesture reasoning as library-tabs-swipe.js's own EDGE_EXCLUSION.
+  const EDGE_EXCLUSION = 24;
+
+  let pointerId = null;
+  let startX = 0;
+  let startY = 0;
+  let startedInLibraryTabs = false;
+
+  main.addEventListener("pointerdown", (event) => {
+    if (!mobileQuery.matches) return;
+    if (event.clientX < EDGE_EXCLUSION || event.clientX > window.innerWidth - EDGE_EXCLUSION) return;
+    pointerId = event.pointerId;
+    startX = event.clientX;
+    startY = event.clientY;
+    // PR 211 already owns swipes that start over the library tabs content - leaving this
+    // gesture alone there avoids switching a sidebar section and a library tab at once.
+    startedInLibraryTabs = Boolean(event.target.closest(".library-tabs-content"));
+  });
+
+  main.addEventListener("pointerup", (event) => {
+    if (pointerId === null || event.pointerId !== pointerId) return;
+    pointerId = null;
+    if (!mobileQuery.matches || startedInLibraryTabs) return;
+
+    const deltaX = event.clientX - startX;
+    const deltaY = event.clientY - startY;
+    // A horizontal swipe: far enough on the X axis, and X dominates Y - a vertical
+    // scroll flick would fail this even in the rare case it still delivers "pointerup".
+    if (Math.abs(deltaX) < MIN_DISTANCE || Math.abs(deltaX) < Math.abs(deltaY)) return;
+
+    const navLinks = [...sidebar.querySelectorAll(":scope > .sidebar__link")];
+    const activeIndex = navLinks.findIndex((link) => link.classList.contains("sidebar__link--active"));
+    // The current page isn't one of the five main sections (e.g. a chapter or title page) -
+    // nothing to "pull toward" in that case.
+    if (activeIndex === -1) return;
+
+    // Swipe right moves forward (Главная → Библиотека → …), swipe left moves back - nothing
+    // to move to past either end of the list (a missing index just leaves `target` undefined).
+    const target = navLinks[deltaX > 0 ? activeIndex + 1 : activeIndex - 1];
+    if (target) window.location.href = target.href;
+  });
+})();

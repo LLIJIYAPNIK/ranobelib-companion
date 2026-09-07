@@ -143,6 +143,10 @@
   <!-- PR 213: must run before notifications-panel.js below - it needs to see the bell's
        final (possibly already-mobile-reparented) home position when it first records it. -->
   <script src="{{ url_for('static', path='js/mobile-account-strip.js') }}" defer></script>
+  <!-- PR 217: no ordering dependency on mobile-account-strip.js above - it queries
+       .sidebar's direct .sidebar__link children fresh on every swipe, long after page
+       load, not once up front. -->
+  <script src="{{ url_for('static', path='js/mobile-navbar-swipe.js') }}" defer></script>
   {% if current_user %}
   <script src="{{ url_for('static', path='js/download-ready.js') }}" defer></script>
   <script src="{{ url_for('static', path='js/downloads-status.js') }}" defer></script>
