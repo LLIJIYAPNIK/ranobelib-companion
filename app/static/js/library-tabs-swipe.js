@@ -8,7 +8,8 @@
 // in that case, so it never has to fight the page's own scrolling.
 (() => {
   const content = document.querySelector(".library-tabs-content");
-  if (!content) return;
+  const tabLinks = [...document.querySelectorAll(".library-tabs__link")];
+  if (!content || tabLinks.length < 2) return;
 
   const MIN_DISTANCE = 60;
 
@@ -32,7 +33,15 @@
     // scroll flick would fail this even in the rare case it still delivers "pointerup".
     if (Math.abs(deltaX) < MIN_DISTANCE || Math.abs(deltaX) < Math.abs(deltaY)) return;
 
-    const direction = deltaX < 0 ? "left" : "right";
-    content.dispatchEvent(new CustomEvent("library-tabs-swipe", { detail: { direction } }));
+    const activeIndex = tabLinks.findIndex((link) =>
+      link.classList.contains("library-tabs__link--active")
+    );
+    if (activeIndex === -1) return;
+
+    // Swipe left ("Читаю" → "Все тайтлы") moves to the next tab link, swipe right moves
+    // back to the previous one - there's nothing to move to past either end (missing
+    // index just means `target` below is undefined).
+    const target = tabLinks[deltaX < 0 ? activeIndex + 1 : activeIndex - 1];
+    if (target) window.location.href = target.href;
   });
 })();
