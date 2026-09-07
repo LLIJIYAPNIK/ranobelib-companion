@@ -8,12 +8,24 @@
 //
 // Portal/click-outside/Escape mechanics copied from profile-menu.js (PR 97) - same
 // .sidebar overflow-y: auto clipping problem, same fix (move the panel to <body>,
-// position: fixed, restore it on close). Positioning itself differs: this panel always
-// opens flush against the sidebar's own right edge, not relative to the trigger - it's
-// the sidebar's flyout, not a dropdown hanging off one specific icon.
+// position: fixed, restore it on close). Positioning itself differs on desktop: this
+// panel opens flush against the sidebar's own right edge, not relative to the trigger -
+// it's the sidebar's flyout there, not a dropdown hanging off one specific icon.
+//
+// PR 214: that desktop positioning doesn't carry over to mobile, where .sidebar itself
+// becomes the fixed, full-width bottom tab bar (PR 71) - sidebarRect.right below would
+// then equal the full viewport width, placing the panel entirely off-screen to the right
+// instead of anywhere near the bell. The bell doesn't even live in .sidebar's own bottom
+// row on mobile any more (PR 213 moved it up into .sidebar__account), so "flush against
+// .sidebar's edge" was never the right frame of reference there to begin with. position()
+// below branches on the same breakpoint the rest of the mobile adaptation uses, and on
+// mobile anchors the panel to the viewport's own right edge and to just below the fixed
+// top account strip instead - the same "float in the corner" language .download-ready/
+// .cookie-notice already use for their own mobile positioning.
 (() => {
   const GAP = 8;
   const UNREAD_POLL_INTERVAL = 15000;
+  const mobileQuery = window.matchMedia("(max-width: 640px)");
 
   const sidebar = document.querySelector('[data-role="sidebar"]');
   const trigger = document.querySelector('[data-role="notifications-trigger"]');
@@ -32,8 +44,15 @@
   }
 
   function position() {
+    if (mobileQuery.matches) {
+      panel.style.left = "";
+      panel.style.right = "12px";
+      panel.style.top = `calc(var(--mobile-account-height) + ${GAP}px)`;
+      return;
+    }
     const sidebarRect = sidebar.getBoundingClientRect();
     const triggerRect = trigger.getBoundingClientRect();
+    panel.style.right = "";
     panel.style.left = `${sidebarRect.right + GAP}px`;
     const top = Math.min(triggerRect.top, window.innerHeight - panel.offsetHeight - GAP);
     panel.style.top = `${Math.max(GAP, top)}px`;
@@ -59,6 +78,7 @@
     panel.style.position = "";
     panel.style.top = "";
     panel.style.left = "";
+    panel.style.right = "";
     if (refocusTrigger) trigger.focus();
   }
 
