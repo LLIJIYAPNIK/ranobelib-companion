@@ -389,9 +389,11 @@ a {
   border-radius: 50%;
   background: var(--accent-teal);
   color: var(--bg-page);
-  font-size: 11px;
-  font-weight: 700;
-  line-height: 1;
+}
+
+.sidebar__guest-badge svg {
+  width: 9px;
+  height: 9px;
 }
 
 .sidebar__guest-text {
@@ -5141,7 +5143,11 @@ img.paragraph-comment__attachment {
   .sidebar__guest-badge {
     width: 12px;
     height: 12px;
-    font-size: 9px;
+  }
+
+  .sidebar__guest-badge svg {
+    width: 7px;
+    height: 7px;
   }
 
   /* PR 213: base.html always renders this container inside .sidebar__account, right
