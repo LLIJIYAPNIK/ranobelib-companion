@@ -1,44 +1,55 @@
 {% extends "base.html" %}
 {% block title %}Вход — RanobeLib Companion{% endblock %}
 {% block content %}
-<header class="header">
-  <h1 class="toc__title">Вход</h1>
-</header>
 <main class="content">
-  {% if error %}
-  <p class="form-error">{{ error }}</p>
-  {% endif %}
-  <form class="auth-form" method="post" action="/login">
-    <div class="auth-form__field">
-      <label class="auth-form__label" for="login-email">Email</label>
-      <input
-        class="auth-form__input"
-        id="login-email"
-        type="email"
-        name="email"
-        value="{{ submitted_email or '' }}"
-        placeholder="you@example.com"
-        required
-        autofocus
-      >
+  <div class="auth-card">
+    <div class="auth-card__intro">
+      <div class="auth-card__brand">webnovells</div>
+      <p class="auth-card__pitch">Читать можно и без аккаунта. С аккаунтом — удобнее.</p>
+      <ul class="auth-card__perks">
+        <li>Своя библиотека и избранное</li>
+        <li>Прогресс чтения и календарь активности</li>
+        <li>Загрузки в epub/fb2/pdf с историей</li>
+      </ul>
+      <p class="auth-card__disclaimer">Отдельный аккаунт сайта, никак не связан с ranobelib.me.</p>
     </div>
-    <div class="auth-form__field">
-      <label class="auth-form__label" for="login-password">Пароль</label>
-      <input
-        class="auth-form__input"
-        id="login-password"
-        type="password"
-        name="password"
-        required
-      >
+    <div class="auth-card__form">
+      {% include "_auth_tabs.html" %}
+      {% if error %}
+      <p class="form-error">{{ error }}</p>
+      {% endif %}
+      <form class="auth-form" method="post" action="/login">
+        <div class="auth-form__field">
+          <label class="auth-form__label" for="login-email">Email</label>
+          <input
+            class="auth-form__input"
+            id="login-email"
+            type="email"
+            name="email"
+            value="{{ submitted_email or '' }}"
+            placeholder="you@example.com"
+            required
+            autofocus
+          >
+        </div>
+        <div class="auth-form__field">
+          <label class="auth-form__label" for="login-password">Пароль</label>
+          <input
+            class="auth-form__input"
+            id="login-password"
+            type="password"
+            name="password"
+            required
+          >
+        </div>
+        <label class="auth-form__field auth-form__field--checkbox">
+          <input id="login-remember" type="checkbox" name="remember_me">
+          <span>Запомнить меня</span>
+        </label>
+        <button class="btn btn--primary" type="submit">Войти</button>
+      </form>
+      <script src="{{ url_for('static', path='js/disable-mobile-autofocus.js') }}"></script>
     </div>
-    <label class="auth-form__field auth-form__field--checkbox">
-      <input id="login-remember" type="checkbox" name="remember_me">
-      <span>Запомнить меня</span>
-    </label>
-    <button class="btn btn--primary" type="submit">Войти</button>
-  </form>
-  <script src="{{ url_for('static', path='js/disable-mobile-autofocus.js') }}"></script>
-  <p class="content__hint content__hint--auth">Ещё нет аккаунта? <a href="/register">Зарегистрироваться</a>.</p>
+  </div>
 </main>
 {% endblock %}

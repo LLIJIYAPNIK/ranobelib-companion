@@ -1,64 +1,75 @@
 {% extends "base.html" %}
 {% block title %}Регистрация — RanobeLib Companion{% endblock %}
 {% block content %}
-<header class="header">
-  <h1 class="toc__title">Регистрация</h1>
-</header>
 <main class="content">
-  {% if error %}
-  <p class="form-error">{{ error }}</p>
-  {% endif %}
-  <form class="auth-form" method="post" action="/register">
-    <div class="auth-form__field">
-      <label class="auth-form__label" for="register-nickname">Никнейм</label>
-      <input
-        class="auth-form__input"
-        id="register-nickname"
-        type="text"
-        name="nickname"
-        value="{{ submitted_nickname or '' }}"
-        maxlength="60"
-        placeholder="Необязательно"
-      >
+  <div class="auth-card">
+    <div class="auth-card__intro">
+      <div class="auth-card__brand">webnovells</div>
+      <p class="auth-card__pitch">Читать можно и без аккаунта. С аккаунтом — удобнее.</p>
+      <ul class="auth-card__perks">
+        <li>Своя библиотека и избранное</li>
+        <li>Прогресс чтения и календарь активности</li>
+        <li>Загрузки в epub/fb2/pdf с историей</li>
+      </ul>
+      <p class="auth-card__disclaimer">Отдельный аккаунт сайта, никак не связан с ranobelib.me.</p>
     </div>
-    <div class="auth-form__field">
-      <label class="auth-form__label" for="register-email">Email</label>
-      <input
-        class="auth-form__input"
-        id="register-email"
-        type="email"
-        name="email"
-        value="{{ submitted_email or '' }}"
-        placeholder="you@example.com"
-        required
-        autofocus
-      >
+    <div class="auth-card__form">
+      {% include "_auth_tabs.html" %}
+      {% if error %}
+      <p class="form-error">{{ error }}</p>
+      {% endif %}
+      <form class="auth-form" method="post" action="/register">
+        <div class="auth-form__field">
+          <label class="auth-form__label" for="register-nickname">Никнейм</label>
+          <input
+            class="auth-form__input"
+            id="register-nickname"
+            type="text"
+            name="nickname"
+            value="{{ submitted_nickname or '' }}"
+            maxlength="60"
+            placeholder="Необязательно"
+          >
+        </div>
+        <div class="auth-form__field">
+          <label class="auth-form__label" for="register-email">Email</label>
+          <input
+            class="auth-form__input"
+            id="register-email"
+            type="email"
+            name="email"
+            value="{{ submitted_email or '' }}"
+            placeholder="you@example.com"
+            required
+            autofocus
+          >
+        </div>
+        <div class="auth-form__field">
+          <label class="auth-form__label" for="register-password">Пароль</label>
+          <input
+            class="auth-form__input"
+            id="register-password"
+            type="password"
+            name="password"
+            minlength="8"
+            required
+          >
+          <p class="auth-form__hint">Минимум 8 символов, лучше 12+</p>
+        </div>
+        <div class="auth-form__field">
+          <label class="auth-form__label" for="register-password-confirm">Повторите пароль</label>
+          <input
+            class="auth-form__input"
+            id="register-password-confirm"
+            type="password"
+            name="password_confirm"
+            required
+          >
+        </div>
+        <button class="btn btn--primary" type="submit">Зарегистрироваться</button>
+      </form>
+      <script src="{{ url_for('static', path='js/disable-mobile-autofocus.js') }}"></script>
     </div>
-    <div class="auth-form__field">
-      <label class="auth-form__label" for="register-password">Пароль</label>
-      <input
-        class="auth-form__input"
-        id="register-password"
-        type="password"
-        name="password"
-        minlength="8"
-        required
-      >
-      <p class="auth-form__hint">Минимум 8 символов, лучше 12+</p>
-    </div>
-    <div class="auth-form__field">
-      <label class="auth-form__label" for="register-password-confirm">Повторите пароль</label>
-      <input
-        class="auth-form__input"
-        id="register-password-confirm"
-        type="password"
-        name="password_confirm"
-        required
-      >
-    </div>
-    <button class="btn btn--primary" type="submit">Зарегистрироваться</button>
-  </form>
-  <script src="{{ url_for('static', path='js/disable-mobile-autofocus.js') }}"></script>
-  <p class="content__hint content__hint--auth">Уже есть аккаунт? <a href="/login">Войти</a>.</p>
+  </div>
 </main>
 {% endblock %}
