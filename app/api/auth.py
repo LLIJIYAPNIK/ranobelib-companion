@@ -43,9 +43,23 @@ def _client_ip(request: Request) -> str:
     return request.client.host if request.client is not None else "unknown"
 
 
+def _is_modal_request(request: Request) -> bool:
+    """True for a fetch() call from auth-modal.js (PR 218), false for an ordinary
+    navigation/no-JS form submission - distinguishes "render just the _auth_card.html
+    fragment the modal can swap in" from "render the full page", the same signal both the
+    GET routes and the error branches of the POST routes below branch on."""
+    return request.headers.get("x-requested-with") == "XMLHttpRequest"
+
+
+def _auth_template(request: Request, full_page_template: str) -> str:
+    return "_auth_card.html" if _is_modal_request(request) else full_page_template
+
+
 @router.get("/register")
 async def show_register(request: Request) -> HTMLResponse:
-    return templates.TemplateResponse(request, "register.html", {"mode": "register"})
+    return templates.TemplateResponse(
+        request, _auth_template(request, "register.html"), {"mode": "register"}
+    )
 
 
 @router.post("/register", response_model=None)
@@ -60,7 +74,7 @@ async def register(
     if is_rate_limited(f"register:{_client_ip(request)}:{email}"):
         return templates.TemplateResponse(
             request,
-            "register.html",
+            _auth_template(request, "register.html"),
             {
                 "mode": "register",
                 "error": _RATE_LIMIT_MESSAGE,
@@ -93,7 +107,7 @@ async def register(
     if error is not None:
         return templates.TemplateResponse(
             request,
-            "register.html",
+            _auth_template(request, "register.html"),
             {
                 "mode": "register",
                 "error": error,
@@ -112,7 +126,7 @@ async def register(
         if exc.diag.constraint_name == "users_nickname_lower_unique":
             return templates.TemplateResponse(
                 request,
-                "register.html",
+                _auth_template(request, "register.html"),
                 {
                     "mode": "register",
                     "error": "Этот никнейм уже занят",
@@ -129,6 +143,26 @@ async def register(
     # - ever runs, so it has to be refreshed explicitly here too for the sidebar to reflect
     # the new account immediately rather than on the next request.
     request.state.current_user = user
+    if _is_modal_request(request):
+        # PR 218: auth-modal.js only knows how to detect success via a redirect (see its
+        # own comment on why - unlike the login form, this success case has no error/OK
+        # fragment distinction to sniff). A plain, no-JS submission keeps rendering the
+        # avatar prompt directly instead (the branch below, unchanged since PR 106) - only
+        # the modal's own fetch() needs somewhere to redirect *to*, hence GET
+        # /register/avatar just below existing solely to give this a target.
+        return RedirectResponse(url="/register/avatar", status_code=303)
+    return templates.TemplateResponse(request, "register_avatar.html", {})
+
+
+@router.get("/register/avatar")
+async def show_register_avatar(
+    request: Request, user: Annotated[User, Depends(require_current_user)]
+) -> HTMLResponse:
+    """Only reachable today via the redirect above (a modal-driven registration) - a
+    plain, no-JS registration renders register_avatar.html directly from POST /register
+    instead and never hits this route. Exists as a real GET regardless (not, say, folded
+    into the redirect target as a query string) so reloading it or bookmarking it still
+    works like any other page."""
     return templates.TemplateResponse(request, "register_avatar.html", {})
 
 
@@ -155,7 +189,9 @@ async def register_avatar(
 
 @router.get("/login")
 async def show_login(request: Request) -> HTMLResponse:
-    return templates.TemplateResponse(request, "login.html", {"mode": "login"})
+    return templates.TemplateResponse(
+        request, _auth_template(request, "login.html"), {"mode": "login"}
+    )
 
 
 @router.post("/login", response_model=None)
@@ -169,7 +205,7 @@ async def login(
     if is_rate_limited(f"login:{_client_ip(request)}:{email}"):
         return templates.TemplateResponse(
             request,
-            "login.html",
+            _auth_template(request, "login.html"),
             {"mode": "login", "error": _RATE_LIMIT_MESSAGE, "submitted_email": email},
             status_code=429,
         )
@@ -179,7 +215,7 @@ async def login(
     if user is None or not verify_password(password, user.password_hash):
         return templates.TemplateResponse(
             request,
-            "login.html",
+            _auth_template(request, "login.html"),
             {"mode": "login", "error": "Неверный email или пароль", "submitted_email": email},
             status_code=400,
         )
