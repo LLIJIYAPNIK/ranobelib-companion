@@ -227,6 +227,7 @@ a {
     width: 100%;
     height: auto;
     justify-content: flex-start;
+    gap: 10px;
     padding: 8px;
     border: 1px solid var(--border);
     background: var(--bg-surface);
@@ -352,7 +353,6 @@ a {
   display: flex;
   align-items: center;
   justify-content: center;
-  gap: 10px;
   width: 44px;
   height: 44px;
   padding: 0;
