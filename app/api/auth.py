@@ -45,7 +45,7 @@ def _client_ip(request: Request) -> str:
 
 @router.get("/register")
 async def show_register(request: Request) -> HTMLResponse:
-    return templates.TemplateResponse(request, "register.html", {})
+    return templates.TemplateResponse(request, "register.html", {"mode": "register"})
 
 
 @router.post("/register", response_model=None)
@@ -62,6 +62,7 @@ async def register(
             request,
             "register.html",
             {
+                "mode": "register",
                 "error": _RATE_LIMIT_MESSAGE,
                 "submitted_email": email,
                 "submitted_nickname": nickname,
@@ -93,7 +94,12 @@ async def register(
         return templates.TemplateResponse(
             request,
             "register.html",
-            {"error": error, "submitted_email": email, "submitted_nickname": nickname},
+            {
+                "mode": "register",
+                "error": error,
+                "submitted_email": email,
+                "submitted_nickname": nickname,
+            },
             status_code=400,
         )
 
@@ -108,6 +114,7 @@ async def register(
                 request,
                 "register.html",
                 {
+                    "mode": "register",
                     "error": "Этот никнейм уже занят",
                     "submitted_email": email,
                     "submitted_nickname": nickname,
@@ -148,7 +155,7 @@ async def register_avatar(
 
 @router.get("/login")
 async def show_login(request: Request) -> HTMLResponse:
-    return templates.TemplateResponse(request, "login.html", {})
+    return templates.TemplateResponse(request, "login.html", {"mode": "login"})
 
 
 @router.post("/login", response_model=None)
@@ -163,7 +170,7 @@ async def login(
         return templates.TemplateResponse(
             request,
             "login.html",
-            {"error": _RATE_LIMIT_MESSAGE, "submitted_email": email},
+            {"mode": "login", "error": _RATE_LIMIT_MESSAGE, "submitted_email": email},
             status_code=429,
         )
 
@@ -173,7 +180,7 @@ async def login(
         return templates.TemplateResponse(
             request,
             "login.html",
-            {"error": "Неверный email или пароль", "submitted_email": email},
+            {"mode": "login", "error": "Неверный email или пароль", "submitted_email": email},
             status_code=400,
         )
 

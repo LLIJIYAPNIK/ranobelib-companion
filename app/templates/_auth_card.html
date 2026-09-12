@@ -1,0 +1,115 @@
+{#
+  PR 218: the actual login/register card, extracted out of login.html/register.html so
+  the same markup can be rendered two ways - wrapped in base.html for a full-page visit
+  (the no-JS fallback, and where the form still posts on error) and bare, as a fragment,
+  when app/api/auth.py detects the X-Requested-With header auth-modal.js sends (see its
+  own comment) and loads/swaps it into the sidebar guest button's modal instead.
+
+  `mode` ("login" or "register") picks which form to show - always passed explicitly by
+  the route, not inferred from request.url.path, since this same partial is rendered from
+  more than one path (GET /login, GET /register, and their POST error branches).
+  `_auth_tabs.html`'s own `active_tab` isn't wired up here - it's a pre-existing, tracked
+  gap (see CLAUDE.md, PR 219), not something this PR's `mode` is standing in for.
+#}
+<div class="auth-card">
+  <div class="auth-card__intro">
+    <div class="auth-card__brand">webnovells</div>
+    <p class="auth-card__pitch">Читать можно и без аккаунта. С аккаунтом — удобнее.</p>
+    <ul class="auth-card__perks">
+      <li>Своя библиотека и избранное</li>
+      <li>Прогресс чтения и календарь активности</li>
+      <li>Загрузки в epub/fb2/pdf с историей</li>
+    </ul>
+    <p class="auth-card__disclaimer">Отдельный аккаунт сайта, никак не связан с ranobelib.me.</p>
+  </div>
+  <div class="auth-card__form">
+    {% include "_auth_tabs.html" %}
+    {% if error %}
+    <p class="form-error">{{ error }}</p>
+    {% endif %}
+    {% if mode == "register" %}
+    <form class="auth-form" method="post" action="/register" data-role="auth-form">
+      <div class="auth-form__field">
+        <label class="auth-form__label" for="register-nickname">Никнейм</label>
+        <input
+          class="auth-form__input"
+          id="register-nickname"
+          type="text"
+          name="nickname"
+          value="{{ submitted_nickname or '' }}"
+          maxlength="60"
+          placeholder="Необязательно"
+        >
+      </div>
+      <div class="auth-form__field">
+        <label class="auth-form__label" for="register-email">Email</label>
+        <input
+          class="auth-form__input"
+          id="register-email"
+          type="email"
+          name="email"
+          value="{{ submitted_email or '' }}"
+          placeholder="you@example.com"
+          required
+          autofocus
+        >
+      </div>
+      <div class="auth-form__field">
+        <label class="auth-form__label" for="register-password">Пароль</label>
+        <input
+          class="auth-form__input"
+          id="register-password"
+          type="password"
+          name="password"
+          minlength="8"
+          required
+        >
+        <p class="auth-form__hint">Минимум 8 символов, лучше 12+</p>
+      </div>
+      <div class="auth-form__field">
+        <label class="auth-form__label" for="register-password-confirm">Повторите пароль</label>
+        <input
+          class="auth-form__input"
+          id="register-password-confirm"
+          type="password"
+          name="password_confirm"
+          required
+        >
+      </div>
+      <button class="btn btn--primary" type="submit">Зарегистрироваться</button>
+    </form>
+    {% else %}
+    <form class="auth-form" method="post" action="/login" data-role="auth-form">
+      <div class="auth-form__field">
+        <label class="auth-form__label" for="login-email">Email</label>
+        <input
+          class="auth-form__input"
+          id="login-email"
+          type="email"
+          name="email"
+          value="{{ submitted_email or '' }}"
+          placeholder="you@example.com"
+          required
+          autofocus
+        >
+      </div>
+      <div class="auth-form__field">
+        <label class="auth-form__label" for="login-password">Пароль</label>
+        <input
+          class="auth-form__input"
+          id="login-password"
+          type="password"
+          name="password"
+          required
+        >
+      </div>
+      <label class="auth-form__field auth-form__field--checkbox">
+        <input id="login-remember" type="checkbox" name="remember_me">
+        <span>Запомнить меня</span>
+      </label>
+      <button class="btn btn--primary" type="submit">Войти</button>
+    </form>
+    {% endif %}
+    <script src="{{ url_for('static', path='js/disable-mobile-autofocus.js') }}"></script>
+  </div>
+</div>
