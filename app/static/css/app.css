@@ -2688,6 +2688,60 @@ a {
   }
 }
 
+/* PR 218: same fixed-overlay/backdrop-click/Escape/close-button pattern as
+   .title-quickview-modal just above - opens _auth_card.html over the current page
+   instead of navigating to /login or /register (see auth-modal.js). Unlike that modal,
+   the panel here carries no background/border/padding of its own - .auth-card, loaded
+   inside it, already supplies all of that; stacking a second card's chrome around it
+   would just double the border and corner radius. */
+.auth-modal {
+  position: fixed;
+  inset: 0;
+  z-index: 90;
+  display: none;
+  align-items: center;
+  justify-content: center;
+  padding: 20px;
+  background: rgba(0, 0, 0, 0.6);
+}
+
+.auth-modal--open {
+  display: flex;
+}
+
+.auth-modal__panel {
+  position: relative;
+  width: 100%;
+  max-width: 660px;
+  max-height: 90vh;
+  overflow-y: auto;
+}
+
+.auth-modal__panel .auth-card {
+  margin: 0;
+}
+
+.auth-modal__close {
+  position: absolute;
+  top: 12px;
+  right: 12px;
+  z-index: 1;
+  background: none;
+  border: none;
+  padding: 4px;
+  color: var(--text-muted);
+  font-size: 20px;
+  line-height: 1;
+  cursor: pointer;
+  transition: color 0.15s ease;
+}
+
+@media (hover: hover) {
+  .auth-modal__close:hover {
+    color: var(--accent-teal);
+  }
+}
+
 .title-quickview {
   display: flex;
   gap: 20px;

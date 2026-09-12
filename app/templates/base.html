@@ -126,7 +126,13 @@
           </div>
         </div>
         {% else %}
-        <a class="sidebar__guest" href="/login" title="Войти или создать аккаунт" aria-label="Войти или создать аккаунт">
+        <a
+          class="sidebar__guest"
+          href="/login"
+          data-role="auth-modal-trigger"
+          title="Войти или создать аккаунт"
+          aria-label="Войти или создать аккаунт"
+        >
           <span class="sidebar__guest-avatar" aria-hidden="true">
             <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 11a3 3 0 1 0 0-6 3 3 0 0 0 0 6Z"/><path d="M3 20c0-3.3 2.7-6 6-6s6 2.7 6 6"/></svg>
             <span class="sidebar__guest-badge" aria-hidden="true">
@@ -161,6 +167,9 @@
        .sidebar's direct .sidebar__link children fresh on every swipe, long after page
        load, not once up front. -->
   <script src="{{ url_for('static', path='js/mobile-navbar-swipe.js') }}" defer></script>
+  {% if not current_user %}
+  <script src="{{ url_for('static', path='js/auth-modal.js') }}" defer></script>
+  {% endif %}
   {% if current_user %}
   <script src="{{ url_for('static', path='js/download-ready.js') }}" defer></script>
   <script src="{{ url_for('static', path='js/downloads-status.js') }}" defer></script>
