@@ -31,8 +31,9 @@
   /* Mobile account strip's own height (PR 71) - shared by .sidebar__account's min-height
      and .main's padding-top below it, so the two can't drift apart into two independent
      hardcoded numbers the way they did before (see the .sidebar__link fix in the same
-     PR for the actual cause of that drift). */
-  --mobile-account-height: 48px;
+     PR for the actual cause of that drift). 48px -> 52px in PR 224 (Claude Design import)
+     to fit the account trigger's name label, now shown next to the avatar on mobile too. */
+  --mobile-account-height: 52px;
 }
 
 * {
@@ -5294,8 +5295,11 @@ img.paragraph-comment__attachment {
     width: 100%;
     height: 64px;
     flex-direction: row;
-    align-items: center;
-    justify-content: space-around;
+    /* PR 224 (Claude Design import): stretch (the flex default, but .sidebar's own base
+       rule sets align-items: center for the desktop icon column) so each tab below fills
+       the bar's full 64px height - its own background/active indicator need that to
+       reach edge to edge, not just around a centered icon. */
+    align-items: stretch;
     gap: 0;
     padding: 0;
     border-right: none;
@@ -5303,29 +5307,52 @@ img.paragraph-comment__attachment {
     z-index: 40;
   }
 
-  /* Scoped to direct children (like the desktop 44x44 hit-box rule above) - PR 71: an
+  /* Scoped to direct children (like the desktop full-width-row rule above) - PR 71: an
      unscoped .sidebar__link here also matched the logout button and the anonymous
      login/register links inside .sidebar__account, which aren't part of this bottom tab
      bar at all. Their inherited min-height: 44px/padding: 12px inflated the fixed
      top account strip's real height well past .main's hardcoded padding-top, so page
      content started underneath it.
 
-     PR 213: Settings and the notifications bell moving out to the top account strip
-     leaves this row at five items instead of seven - room to grow each hit-box (44px ->
-     52px) and its icon (20px -> 24px, via the sibling rule below) without crowding a
-     typical phone width, still comfortably inside .sidebar's own 64px bar height. */
+     PR 224 (Claude Design import): each of the five tabs now fills an equal 1/5 share of
+     the bar's width edge-to-edge (flex: 1, no gaps) instead of a fixed 52x52 box
+     centered by the parent's old justify-content: space-around - same full-bleed-row
+     language PR 223 already brought to the desktop column. */
   .sidebar > .sidebar__link {
+    flex: 1;
     font-size: 11px;
     gap: 0;
-    padding: 14px;
-    min-width: 52px;
-    min-height: 52px;
+    padding: 0;
+    min-width: 0;
+    min-height: 0;
     justify-content: center;
   }
 
   .sidebar > .sidebar__link svg {
     width: 24px;
     height: 24px;
+  }
+
+  /* PR 224 (Claude Design import): the active tab's indicator moves from the desktop
+     column's left-edge bar (.sidebar__link--active::before, PR 223) to a top-edge bar
+     spanning the tab's own width - "top of the row" reads as "this section" the same way
+     "left of the row" does in a vertical list, just rotated for a horizontal bar. */
+  .sidebar > .sidebar__link.sidebar__link--active::before {
+    left: 0;
+    right: 0;
+    top: 0;
+    bottom: auto;
+    width: auto;
+    height: 2px;
+  }
+
+  /* Claude Design import's mobile tab bar anchors a tab's own badge to its own full-width
+     column (top: 12px/right: 16px from that column's own right edge, not centered near
+     the icon) - differs from the desktop collapsed row's icon-hugging top: 6px/right: 12px
+     (PR 223), which assumes a much narrower 44px-wide row. */
+  .sidebar > .sidebar__link .sidebar__badge {
+    top: 12px;
+    right: 16px;
   }
 
   .sidebar__toggle {
@@ -5342,15 +5369,15 @@ img.paragraph-comment__attachment {
     /* Pinned to the same value .main's padding-top compensates for (PR 71) - box-sizing
        makes padding count toward this, so whatever the actual content measures out to,
        the strip itself never grows past what .main already leaves room for underneath
-       it - the smaller .sidebar__avatar size below is chosen to fit this exactly
-       (10px + 28px + 10px = 48px). */
+       it - the .sidebar__avatar size below is chosen to fit this exactly
+       (11px + 30px + 11px = 52px). */
     min-height: var(--mobile-account-height);
     box-sizing: border-box;
     flex-direction: row;
     align-items: center;
     justify-content: space-between;
     gap: 12px;
-    padding: 10px 16px;
+    padding: 11px 16px;
     border-top: none;
     border-bottom: 1px solid var(--border);
     background: var(--bg-panel);
@@ -5358,18 +5385,38 @@ img.paragraph-comment__attachment {
   }
 
   .sidebar__avatar {
-    width: 28px;
-    height: 28px;
+    width: 30px;
+    height: 30px;
     font-size: 11px;
   }
 
   /* PR 223 introduced this wrapper button around .sidebar__avatar above (desktop-only
-     redesign) - clamped back to the avatar's own mobile size here so the top account
-     strip's height stays exactly --mobile-account-height, unchanged from before that PR.
-     Mobile's own layout for it is PR 224's job, not this one. */
+     redesign, icon-only on mobile at the time). PR 224 (Claude Design import) gives it
+     its own mobile row, same idea as the desktop expanded state: avatar + name (no
+     email - see .sidebar__account-email below - and no aria-expanded chevron rotation
+     logic to keep, it's a plain visual rotate) + a chevron, auto-width rather than the
+     desktop's full-width row since there's no room to spare next to the account-actions
+     icons on the right. */
   .sidebar__account-trigger {
-    width: 28px;
-    height: 28px;
+    width: auto;
+    height: auto;
+    gap: 10px;
+  }
+
+  .sidebar__account-info {
+    max-width: 140px;
+    opacity: 1;
+  }
+
+  .sidebar__account-email {
+    display: none;
+  }
+
+  .sidebar__account-chevron {
+    display: block;
+    width: 14px;
+    height: 14px;
+    transform: rotate(90deg);
   }
 
   .sidebar__guest {
@@ -5406,13 +5453,22 @@ img.paragraph-comment__attachment {
 
   /* Reset from .sidebar > .sidebar__link's bottom-tab-bar sizing (scoped to *direct*
      children of .sidebar, so it no longer applies once these move under
-     .sidebar__account-actions) to a smaller square matching .sidebar__avatar's own
-     28px - sized to fit the same 48px account strip, not the taller 64px tab bar. */
+     .sidebar__account-actions) to a square tap zone sized to fit the account strip, not
+     the taller 64px tab bar - 36px in PR 224 (Claude Design import), up from 28px, while
+     the icon itself stays its default 20x20 (no override needed, unlike the tab bar's own
+     24x24 icons). */
   .sidebar__account-actions .sidebar__link {
-    width: 28px;
-    height: 28px;
+    width: 36px;
+    height: 36px;
     gap: 0;
     justify-content: center;
+  }
+
+  /* The desktop collapsed row's icon-hugging top: 6px/right: 12px (PR 223) assumes a much
+     narrower 44px row - tucked back into the corner of this 36px tap zone instead. */
+  .sidebar__account-actions .sidebar__badge {
+    top: 2px;
+    right: 2px;
   }
 
   .header {
