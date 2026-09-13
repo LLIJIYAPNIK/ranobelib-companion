@@ -292,7 +292,10 @@ async def test_friends_search_finds_a_matching_nickname(client: TestClient) -> N
     assert response.status_code == 200
     assert "Результаты поиска" in response.text
     assert "AliceReader" in response.text
-    assert "Bob" not in response.text
+    # PR 223: a bare "Bob" not in response.text substring check also caught the sidebar
+    # account row's own display of the logged-in searcher's name (Bob, in this test) -
+    # scope this to the actual search-result row instead.
+    assert '<span class="friend-row__name">Bob</span>' not in response.text
     assert "Добавить в друзья" in response.text
 
 
