@@ -7,9 +7,10 @@
 
   `mode` ("login" or "register") picks which form to show - always passed explicitly by
   the route, not inferred from request.url.path, since this same partial is rendered from
-  more than one path (GET /login, GET /register, and their POST error branches).
-  `_auth_tabs.html`'s own `active_tab` isn't wired up here - it's a pre-existing, tracked
-  gap (see CLAUDE.md, PR 219), not something this PR's `mode` is standing in for.
+  more than one path (GET /login, GET /register, and their POST error branches). The route
+  also passes `active_tab` with the same value (PR 219) so `_auth_tabs.html` can highlight
+  the current tab - kept as a separate key from `mode` rather than reusing it, since the
+  two serve different templates for different reasons.
 #}
 <div class="auth-card">
   <div class="auth-card__intro">

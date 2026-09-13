@@ -58,7 +58,9 @@ def _auth_template(request: Request, full_page_template: str) -> str:
 @router.get("/register")
 async def show_register(request: Request) -> HTMLResponse:
     return templates.TemplateResponse(
-        request, _auth_template(request, "register.html"), {"mode": "register"}
+        request,
+        _auth_template(request, "register.html"),
+        {"mode": "register", "active_tab": "register"},
     )
 
 
@@ -77,6 +79,7 @@ async def register(
             _auth_template(request, "register.html"),
             {
                 "mode": "register",
+                "active_tab": "register",
                 "error": _RATE_LIMIT_MESSAGE,
                 "submitted_email": email,
                 "submitted_nickname": nickname,
@@ -110,6 +113,7 @@ async def register(
             _auth_template(request, "register.html"),
             {
                 "mode": "register",
+                "active_tab": "register",
                 "error": error,
                 "submitted_email": email,
                 "submitted_nickname": nickname,
@@ -129,6 +133,7 @@ async def register(
                 _auth_template(request, "register.html"),
                 {
                     "mode": "register",
+                    "active_tab": "register",
                     "error": "Этот никнейм уже занят",
                     "submitted_email": email,
                     "submitted_nickname": nickname,
@@ -190,7 +195,9 @@ async def register_avatar(
 @router.get("/login")
 async def show_login(request: Request) -> HTMLResponse:
     return templates.TemplateResponse(
-        request, _auth_template(request, "login.html"), {"mode": "login"}
+        request,
+        _auth_template(request, "login.html"),
+        {"mode": "login", "active_tab": "login"},
     )
 
 
@@ -206,7 +213,12 @@ async def login(
         return templates.TemplateResponse(
             request,
             _auth_template(request, "login.html"),
-            {"mode": "login", "error": _RATE_LIMIT_MESSAGE, "submitted_email": email},
+            {
+                "mode": "login",
+                "active_tab": "login",
+                "error": _RATE_LIMIT_MESSAGE,
+                "submitted_email": email,
+            },
             status_code=429,
         )
 
@@ -216,7 +228,12 @@ async def login(
         return templates.TemplateResponse(
             request,
             _auth_template(request, "login.html"),
-            {"mode": "login", "error": "Неверный email или пароль", "submitted_email": email},
+            {
+                "mode": "login",
+                "active_tab": "login",
+                "error": "Неверный email или пароль",
+                "submitted_email": email,
+            },
             status_code=400,
         )
 
