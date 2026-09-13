@@ -1114,10 +1114,19 @@ a {
     margin: 16px;
   }
 
+  /* PR 222: the form is what a returning visitor actually needs - put it
+     first on mobile instead of making them scroll past the marketing intro
+     to reach it. The DOM order stays as-is (desktop's row layout still needs
+     intro-then-form), this only reorders how they stack visually below the
+     640px breakpoint. */
+  .auth-card__form {
+    order: -1;
+  }
+
   .auth-card__intro {
     width: auto;
     border-right: none;
-    border-bottom: 1px solid var(--border);
+    border-top: 1px solid var(--border);
   }
 
   .auth-tabs {
