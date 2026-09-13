@@ -130,6 +130,28 @@ a {
   display: none;
 }
 
+/* Sidebar wordmark row (Claude Design import, PR 223 - "Обновление 2: сайдбар", see
+   CLAUDE.md "Дизайн") - sits above the nav links, border-bottom matching the account
+   row's own border-top below. Hidden by default/on mobile (the bottom tab bar has no
+   room or need for it, see .sidebar__toggle's own display: none in the mobile query
+   further down) - shown only once the desktop breakpoint applies. */
+.sidebar__header {
+  display: none;
+}
+
+.sidebar__brand {
+  display: inline-block;
+  max-width: 0;
+  overflow: hidden;
+  opacity: 0;
+  font-size: 13px;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  color: var(--text-primary);
+  white-space: nowrap;
+  transition: max-width 0.2s ease, opacity 0.15s ease;
+}
+
 /* PR 175: the notification bell (base.html, PR 168) is a native <button>, the only
    .sidebar__link that isn't an <a> - everything below this point resets properties an <a>
    already has no UA styling for anyway (no background/border/own font/padding), so it's a
@@ -149,17 +171,16 @@ a {
   color: var(--text-muted);
   text-decoration: none;
   text-align: center;
-  border-radius: 8px;
   cursor: pointer;
-  transition: color 0.15s ease;
+  transition: background-color 0.12s ease, color 0.12s ease;
 }
 
 /* Active-downloads count (PR 56) - anchored to the icon's corner in the collapsed
    sidebar (phone-style notification dot), inline after the label once expanded. */
 .sidebar__badge {
   position: absolute;
-  top: 2px;
-  right: 2px;
+  top: 6px;
+  right: 12px;
   min-width: 16px;
   height: 16px;
   padding: 0 4px;
@@ -167,14 +188,15 @@ a {
   background: var(--accent-orange);
   color: var(--bg-page);
   font-size: 10px;
-  font-weight: 600;
+  font-weight: 700;
   line-height: 16px;
   text-align: center;
 }
 
-/* Direct nav links (icon-only in the collapsed state) get a fixed square hit-box with
-   the icon centered inside - unlike the account/login links below them, which stay
-   auto-sized to their text and shouldn't be squeezed into 44x44. */
+/* Direct nav links (icon-only in the collapsed state) span the full row width (PR 223 -
+   "полноширинные ряды", see the Claude Design import above) with the icon centered
+   inside, rather than a rounded square inset within it - unlike the account/login links
+   below them, which stay auto-sized to their text and shouldn't be squeezed into this. */
 .sidebar > .sidebar__link {
   justify-content: center;
   gap: 0;
@@ -193,8 +215,39 @@ a {
 }
 
 @media (min-width: 641px) {
+  /* PR 223 (Claude Design import): full-width nav rows sit flush against each other and
+     against .sidebar__header/.sidebar__account's own borders above/below them - no gap
+     or outer padding needed the way the old spaced-out icon buttons wanted (mobile's own
+     .sidebar rule, @media max-width: 640px above, already sets these to 0 independently
+     of this query and is untouched by it). */
+  .sidebar {
+    gap: 0;
+    padding: 0;
+  }
+
+  /* PR 223 (Claude Design import, "Обновление 2: сайдбар") - the header row (toggle +
+     wordmark) only makes sense once there's room for a full sidebar column; the mobile
+     bottom tab bar has neither. */
+  .sidebar__header {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex: 0 0 auto;
+    width: 100%;
+    height: 57px;
+    box-sizing: border-box;
+    border-bottom: 1px solid var(--border);
+  }
+
+  /* Nav rows span the sidebar's full width edge-to-edge in both the collapsed (64px) and
+     expanded (232px) states - see .sidebar__link--active's left-edge indicator below,
+     which needs that full-bleed row to anchor against. */
+  .sidebar > .sidebar__link {
+    width: 100%;
+  }
+
   .sidebar--expanded {
-    width: 200px;
+    width: 232px;
     align-items: stretch;
   }
 
@@ -202,15 +255,26 @@ a {
      room for automatically) - .main reserves the matching width itself instead, on
      both sides of the expand/collapse toggle. */
   .sidebar--expanded ~ .main {
-    margin-left: 200px;
+    margin-left: 232px;
+  }
+
+  .sidebar--expanded .sidebar__header {
+    justify-content: flex-start;
+    gap: 12px;
+    padding: 0 18px;
+  }
+
+  .sidebar--expanded .sidebar__brand {
+    max-width: 160px;
+    opacity: 1;
   }
 
   .sidebar--expanded .sidebar__link {
-    width: auto;
-    height: auto;
+    width: 100%;
+    height: 44px;
     justify-content: flex-start;
-    gap: 12px;
-    padding: 10px 22px;
+    gap: 14px;
+    padding: 0 18px;
   }
 
   .sidebar--expanded .sidebar__label {
@@ -221,6 +285,10 @@ a {
   .sidebar--expanded .sidebar__badge {
     position: static;
     margin-left: auto;
+    min-width: 18px;
+    height: 18px;
+    padding: 0 5px;
+    line-height: 18px;
   }
 
   .sidebar--expanded .sidebar__guest {
@@ -261,23 +329,22 @@ a {
 
 .sidebar__link svg {
   vertical-align: middle;
-  transition: transform 0.15s ease;
 }
 
 /* Hover-only devices (mouse/trackpad) - gated so a tap on a touchscreen doesn't leave
    the color/scale change "stuck" until the visitor taps elsewhere (touch UAs otherwise
    apply :hover on tap and only clear it on the next unrelated tap). */
 @media (hover: hover) {
-  .sidebar__link:hover {
-    color: var(--accent-teal);
-  }
-
-  .sidebar__link:hover svg {
-    transform: scale(1.12);
+  /* PR 223 (Claude Design import): the row itself fills with --bg-surface on hover, same
+     language as a table row, instead of the link's own text/icon turning teal - teal is
+     reserved for the active-page indicator below. */
+  .sidebar__link:not(.sidebar__link--active):hover {
+    background-color: var(--bg-surface);
+    color: var(--text-primary);
   }
 
   .sidebar__toggle:hover {
-    color: var(--accent-teal);
+    color: var(--text-primary);
   }
 }
 
@@ -286,14 +353,27 @@ a {
     background-color: rgba(34, 211, 197, 0);
   }
   to {
-    background-color: rgba(34, 211, 197, 0.12);
+    background-color: rgba(34, 211, 197, 0.07);
   }
 }
 
+/* PR 223 (Claude Design import): a 2px teal bar along the row's left edge, in place of
+   the earlier flat highlight alone - needs the row's own position: relative (already set
+   on .sidebar__link above) to anchor against. */
 .sidebar__link--active {
   color: var(--accent-teal);
-  background-color: rgba(34, 211, 197, 0.12);
+  background-color: rgba(34, 211, 197, 0.07);
   animation: sidebar-active-highlight 0.3s ease;
+}
+
+.sidebar__link--active::before {
+  content: "";
+  position: absolute;
+  left: 0;
+  top: 0;
+  bottom: 0;
+  width: 2px;
+  background: var(--accent-teal);
 }
 
 .sidebar__link--disabled {
@@ -323,25 +403,103 @@ a {
   display: none;
 }
 
-/* PR 93: now a <button> (was a plain <a> to /settings) - it opens the profile-menu
-   dropdown below instead of linking directly, so it needs the usual button resets a link
-   never did (border/padding/font-family/cursor). */
+/* PR 93: opens the profile-menu dropdown below. PR 223 (Claude Design import) moved the
+   clickable element up to .sidebar__account-trigger, wrapping this avatar circle plus the
+   name/email/chevron shown once expanded - .sidebar__avatar itself is now a plain visual
+   circle (picture-or-initials), not the button. */
 .sidebar__avatar {
   display: flex;
+  flex: 0 0 auto;
   align-items: center;
   justify-content: center;
   width: 36px;
   height: 36px;
-  border: none;
-  padding: 0;
   border-radius: 50%;
   background: var(--accent);
   color: var(--text-primary);
-  font-family: inherit;
   font-size: 13px;
   font-weight: 600;
-  text-decoration: none;
+}
+
+/* PR 223 (Claude Design import): the actual clickable element - collapsed by default to
+   the same 44x44 icon-only hit box as .sidebar__guest below (just the avatar circle
+   centered inside, no visible border/background), .sidebar--expanded further down turns
+   it into a full row with the visitor's name/email and a chevron. */
+.sidebar__account-trigger {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 44px;
+  height: 44px;
+  gap: 12px;
+  border: none;
+  padding: 0;
+  border-radius: 10px;
+  background: none;
+  color: inherit;
+  font: inherit;
+  text-align: left;
   cursor: pointer;
+  transition: background-color 0.15s ease;
+}
+
+.sidebar__account-info {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  min-width: 0;
+  flex: 1;
+  max-width: 0;
+  overflow: hidden;
+  opacity: 0;
+  transition: max-width 0.2s ease, opacity 0.15s ease;
+}
+
+.sidebar__account-name {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text-primary);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.sidebar__account-email {
+  font-size: 11px;
+  color: var(--text-muted);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.sidebar__account-chevron {
+  flex: 0 0 auto;
+  display: none;
+  color: var(--text-muted);
+}
+
+@media (min-width: 641px) {
+  .sidebar--expanded .sidebar__account-trigger {
+    width: 100%;
+    height: auto;
+    justify-content: flex-start;
+    padding: 12px 18px;
+  }
+
+  .sidebar--expanded .sidebar__account-info {
+    max-width: 140px;
+    opacity: 1;
+  }
+
+  .sidebar--expanded .sidebar__account-chevron {
+    display: block;
+  }
+}
+
+@media (min-width: 641px) and (hover: hover) {
+  .sidebar--expanded .sidebar__account-trigger:hover {
+    background-color: var(--bg-surface);
+  }
 }
 
 /* PR 215: guest state of .sidebar__account - a single link echoing .sidebar__avatar's
@@ -5203,6 +5361,15 @@ img.paragraph-comment__attachment {
     width: 28px;
     height: 28px;
     font-size: 11px;
+  }
+
+  /* PR 223 introduced this wrapper button around .sidebar__avatar above (desktop-only
+     redesign) - clamped back to the avatar's own mobile size here so the top account
+     strip's height stays exactly --mobile-account-height, unchanged from before that PR.
+     Mobile's own layout for it is PR 224's job, not this one. */
+  .sidebar__account-trigger {
+    width: 28px;
+    height: 28px;
   }
 
   .sidebar__guest {

@@ -175,8 +175,10 @@ def test_saved_nickname_switches_the_sidebar_avatar_initials(client: TestClient)
 
     home = client.get("/")
 
-    assert ">BC</button>" in home.text
-    assert ">AW</button>" not in home.text
+    # PR 223: the avatar circle is a plain span inside .sidebar__account-trigger (the
+    # real button), not the button itself - see test_sidebar.py's own equivalent check.
+    assert '<span class="sidebar__avatar" aria-hidden="true">BC</span>' in home.text
+    assert '<span class="sidebar__avatar" aria-hidden="true">AW</span>' not in home.text
 
 
 def test_avatar_upload_is_a_clickable_preview_that_auto_submits(client: TestClient) -> None:
