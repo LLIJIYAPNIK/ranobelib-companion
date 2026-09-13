@@ -113,7 +113,10 @@ def test_logged_in_visitor_sees_a_profile_menu_trigger_avatar(
     assert 'aria-haspopup="true"' in response.text
     assert 'aria-expanded="false"' in response.text
     assert 'title="alice.wong@example.com"' in response.text
-    assert ">AW</button>" in response.text
+    # PR 223 (Claude Design import): the avatar circle is a plain span nested inside
+    # .sidebar__account-trigger (the real button), not the button itself - see its own
+    # accompanying name/email/chevron, also inside the trigger.
+    assert '<span class="sidebar__avatar" aria-hidden="true">AW</span>' in response.text
     assert "static/js/profile-menu.js" in response.text
 
 
@@ -129,7 +132,7 @@ def test_profile_menu_trigger_shows_the_uploaded_avatar_image_over_initials(
 
     assert response.status_code == 200
     assert '<img class="avatar-img" src="/avatars/' in response.text
-    assert ">AW</button>" not in response.text
+    assert '<span class="sidebar__avatar" aria-hidden="true">AW</span>' not in response.text
 
 
 def test_anonymous_visitor_gets_no_profile_menu() -> None:
