@@ -1102,13 +1102,16 @@ a {
 }
 
 @media (max-width: 640px) {
+  /* PR 221: keep the same rounded, bordered card as desktop on mobile - just
+     stacked into one column - instead of stretching it edge-to-edge with
+     square corners. .auth-modal__panel .auth-card (further below) still
+     zeroes this margin back out when the card is shown inside the
+     login/register modal, since that overlay already supplies its own inset
+     padding. */
   .auth-card {
     flex-direction: column;
     max-width: none;
-    margin-top: 0;
-    border-radius: 0;
-    border-left: none;
-    border-right: none;
+    margin: 16px;
   }
 
   .auth-card__intro {
