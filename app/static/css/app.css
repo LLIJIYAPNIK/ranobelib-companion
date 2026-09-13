@@ -376,6 +376,15 @@ a {
   color: var(--text-muted);
 }
 
+/* PR 220: this reuses the "person" silhouette from the "Друзья" sidebar icon
+   (base.html), but that silhouette isn't centered within its own 24x24
+   viewBox - it spans x 3-15 (center x=9), not x 0-24 (center x=12). Flex-
+   centering the <svg> box itself still leaves the visible silhouette shifted
+   left inside the circle, so nudge it back with a small, eyeballed offset. */
+.sidebar__guest-avatar svg {
+  transform: translateX(2px);
+}
+
 .sidebar__guest-badge {
   position: absolute;
   right: -2px;
