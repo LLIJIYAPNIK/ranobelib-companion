@@ -177,6 +177,9 @@
        .sidebar's direct .sidebar__link children fresh on every swipe, long after page
        load, not once up front. -->
   <script src="{{ url_for('static', path='js/mobile-navbar-swipe.js') }}" defer></script>
+  <!-- PR 227: loaded on every page (not only from the forms themselves) - see its own
+       comment on why the auth modal's injected card can't bring its own copy. -->
+  <script src="{{ url_for('static', path='js/password-toggle.js') }}" defer></script>
   {% if not current_user %}
   <script src="{{ url_for('static', path='js/auth-modal.js') }}" defer></script>
   {% endif %}
