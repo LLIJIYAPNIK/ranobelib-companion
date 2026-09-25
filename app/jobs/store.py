@@ -37,7 +37,7 @@ def list_active_jobs_for_user(user_id: int) -> list[DownloadJob]:
     return [
         job
         for job in _jobs.values()
-        if job.user_id == user_id and job.status not in ("done", "error")
+        if job.user_id == user_id and job.status not in ("done", "error", "cancelled")
     ]
 
 
