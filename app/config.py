@@ -51,6 +51,16 @@ otherwise avatars vanish on every restart.
 attachments a comment can carry - same "user-generated data outside app/static, needs a
 persistent volume" treatment as ``avatar_dir``, just its own directory since a comment
 attachment isn't a profile avatar.
+
+``password_reset_token_ttl`` (PR 225) is how long a "Забыли пароль?" link stays valid
+(seconds) before ``app/db/password_reset.py``'s ``get_valid_token()`` starts rejecting it -
+same "explicit config, not hardcoded" treatment as ``download_file_ttl``.
+
+``email_host``/``email_port``/``email_user``/``email_password``/``email_from`` (PR 225)
+configure the SMTP connection ``app/email.py`` sends through - not tied to any specific
+transactional-email provider, any SMTP-compatible one works. Left unset in local dev/CI on
+purpose (``email_host`` being empty is what tells ``app/email.py`` to log instead of
+actually sending) - a real deploy needs all of these set, see DEPLOY.md.
 """
 
 from __future__ import annotations
@@ -72,6 +82,8 @@ _DEFAULT_SESSION_REMEMBER_MAX_AGE_SECONDS = 90 * 24 * 60 * 60  # 90 days
 _DEFAULT_DOWNLOAD_FILE_TTL_SECONDS = 30 * 60  # 30 minutes
 _DEFAULT_AVATAR_DIR = ".ranobelib_avatars"
 _DEFAULT_COMMENT_ATTACHMENT_DIR = ".ranobelib_comment_attachments"
+_DEFAULT_PASSWORD_RESET_TOKEN_TTL_SECONDS = 60 * 60  # 1 hour
+_DEFAULT_EMAIL_PORT = 587
 
 
 @dataclass(frozen=True)
@@ -86,6 +98,12 @@ class Settings:
     avatar_dir: Path
     comment_attachment_dir: Path
     is_production: bool
+    password_reset_token_ttl: float
+    email_host: str | None
+    email_port: int
+    email_user: str | None
+    email_password: str | None
+    email_from: str | None
 
 
 @lru_cache
@@ -124,4 +142,14 @@ def get_settings() -> Settings:
         comment_attachment_dir=Path(
             os.environ.get("COMMENT_ATTACHMENT_DIR", _DEFAULT_COMMENT_ATTACHMENT_DIR)
         ),
+        password_reset_token_ttl=float(
+            os.environ.get(
+                "PASSWORD_RESET_TOKEN_TTL_SECONDS", _DEFAULT_PASSWORD_RESET_TOKEN_TTL_SECONDS
+            )
+        ),
+        email_host=os.environ.get("EMAIL_HOST") or None,
+        email_port=int(os.environ.get("EMAIL_PORT", _DEFAULT_EMAIL_PORT)),
+        email_user=os.environ.get("EMAIL_USER") or None,
+        email_password=os.environ.get("EMAIL_PASSWORD") or None,
+        email_from=os.environ.get("EMAIL_FROM") or None,
     )

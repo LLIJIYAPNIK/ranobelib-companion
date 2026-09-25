@@ -46,13 +46,49 @@ async def test_get_current_user_no_session_returns_none(conn: psycopg.AsyncConne
 async def test_get_current_user_valid_session_returns_user(conn: psycopg.AsyncConnection) -> None:
     user = await create_user(conn, "alice@example.com", "hash1")
 
-    found = await get_current_user(_request_with_session({"user_id": user.id}))
+    # A real session always carries both keys together (see app/api/auth.py's
+    # login()/register(), which set them in the same two lines) - this is what a genuine
+    # post-login session looks like, not just `user_id` on its own.
+    found = await get_current_user(
+        _request_with_session({"user_id": user.id, "session_version": user.session_version})
+    )
 
     assert found == user
 
 
 async def test_get_current_user_stale_user_id_returns_none(conn: psycopg.AsyncConnection) -> None:
     assert await get_current_user(_request_with_session({"user_id": 999})) is None
+
+
+# --- PR 225: a session issued before a password reset is no longer honored -------------
+
+
+async def test_get_current_user_stale_session_version_returns_none(
+    conn: psycopg.AsyncConnection,
+) -> None:
+    """Simulates a session that was already open when the account's password got reset -
+    its stashed `session_version` (still 1, the account's original value at the time it
+    was issued) no longer matches the account's current one (bumped past 1 by the reset,
+    see app/db/users.py's `update_user_password_from_reset()`)."""
+    user = await create_user(conn, "alice@example.com", "hash1")
+
+    found = await get_current_user(
+        _request_with_session({"user_id": user.id, "session_version": user.session_version + 1})
+    )
+
+    assert found is None
+
+
+async def test_get_current_user_missing_session_version_returns_none(
+    conn: psycopg.AsyncConnection,
+) -> None:
+    """A session with no `session_version` key at all - e.g. one issued before this PR -
+    is treated the same as a mismatched one, not specially trusted."""
+    user = await create_user(conn, "alice@example.com", "hash1")
+
+    found = await get_current_user(_request_with_session({"user_id": user.id}))
+
+    assert found is None
 
 
 async def test_require_current_user_passes_through_logged_in_user() -> None:

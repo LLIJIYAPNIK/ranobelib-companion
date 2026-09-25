@@ -19,6 +19,11 @@ async def get_current_user(request: Request) -> User | None:
 
     A missing/stale user_id in the session (e.g. the account was deleted) is treated the
     same as no session at all, rather than raising - the next login simply overwrites it.
+    A session whose stashed ``session_version`` no longer matches the account's current
+    one is treated the same way (PR 225): that happens when the password was reset via
+    the "Забыли пароль?" flow after this particular session was issued, which bumps
+    ``users.session_version`` specifically to invalidate every session issued before it -
+    see app/db/users.py's ``update_user_password_from_reset()``.
 
     Registered as an app-level dependency (``FastAPI(dependencies=[Depends(get_current_user)])``,
     see app/main.py) so it runs for every request regardless of whether the specific route
@@ -40,6 +45,8 @@ async def get_current_user(request: Request) -> User | None:
         return None
     async with connection() as conn:
         user = await get_user_by_id(conn, user_id)
+    if user is not None and user.session_version != request.session.get("session_version"):
+        user = None
     request.state.current_user = user
     return user
 

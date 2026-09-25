@@ -46,6 +46,12 @@ class User:
     # has never opened this settings section sees any change in behavior.
     notifications_enabled: bool = True
     do_not_disturb: bool = False
+    # PR 225: bumped by update_user_password_from_reset() below on every successful
+    # "Забыли пароль?" reset, invalidating every session issued before it - see
+    # migrations/0022_users_session_version.sql and app/auth/dependencies.py's
+    # get_current_user(), which compares this against the value stashed in the session
+    # cookie at login/register time.
+    session_version: int = 1
 
 
 async def create_user(
@@ -119,6 +125,24 @@ async def update_user_password(conn: AsyncConnection, user_id: int, password_has
     return user
 
 
+async def update_user_password_from_reset(
+    conn: AsyncConnection, user_id: int, password_hash: str
+) -> User:
+    """Same write as `update_user_password()` above, plus bumping `session_version` in the
+    same statement (PR 225) - unlike an ordinary "know my current password" change
+    (settings_security.html), a "Забыли пароль?" reset is exactly the moment someone else
+    might have had the *old* session hijacked, so every session issued before this reset
+    is invalidated as a defensive step (see get_current_user() in
+    app/auth/dependencies.py)."""
+    await conn.execute(
+        "UPDATE users SET password_hash = %s, session_version = session_version + 1 WHERE id = %s",
+        (password_hash, user_id),
+    )
+    user = await get_user_by_id(conn, user_id)
+    assert user is not None  # just updated
+    return user
+
+
 async def update_privacy_settings(
     conn: AsyncConnection,
     user_id: int,
@@ -186,7 +210,7 @@ _USER_COLUMNS = (
     "id, email, password_hash, created_at, nickname, bio, avatar_path, "
     "show_currently_reading, show_favorite, show_library, "
     "show_friends_activity_home, show_friends, "
-    "notifications_enabled, do_not_disturb"
+    "notifications_enabled, do_not_disturb, session_version"
 )
 
 
@@ -266,6 +290,7 @@ def _row_to_user(row: dict[str, Any]) -> User:
         show_friends=bool(row["show_friends"]),
         notifications_enabled=bool(row["notifications_enabled"]),
         do_not_disturb=bool(row["do_not_disturb"]),
+        session_version=row["session_version"],
     )
 
 
