@@ -226,6 +226,21 @@ async def test_show_downloads_history_shows_error(client: TestClient) -> None:
     assert "Опа" in response.text
 
 
+async def test_show_downloads_history_shows_cancelled(client: TestClient) -> None:
+    # PR 226: must not fall into the "Ошибка" branch just because it isn't "done" - a
+    # cancelled row is neither.
+    _register(client)  # user id 1
+    async with connection() as conn:
+        await record_download(conn, 1, "6712--test-novel", "epub", "cancelled", 3, None)
+
+    response = client.get("/downloads")
+
+    assert "Отменено" in response.text
+    assert "3 глав" in response.text
+    assert "Ошибка" not in response.text
+    assert "downloads-history__status--error" not in response.text
+
+
 async def test_show_downloads_offers_download_link_for_a_ready_job(client: TestClient) -> None:
     # PR 58: even if the visitor closed the "file ready" toast (PR 50) without clicking
     # through, the file is still on disk and this page should still offer it.

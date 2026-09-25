@@ -1,3 +1,4 @@
+import asyncio
 import os
 import tempfile
 import time
@@ -17,7 +18,7 @@ from app.config import get_settings
 from app.db.connection import connection
 from app.db.downloads import list_download_history
 from app.db.library import add_entry, set_default_translation_index
-from app.jobs.store import create_job, get_job, list_active_jobs_for_user
+from app.jobs.store import create_job, get_job, list_active_jobs_for_user, track_task
 from app.main import app
 from tests.db_reset import reset_app_database
 
@@ -69,6 +70,22 @@ class _AmbiguousClient:
         raise self._exc
 
 
+class _StallingClient:
+    """download_title() never returns on its own - it just waits on an Event nothing ever
+    sets - so a test can cancel the job while it's genuinely "running" (PR 226), rather
+    than racing a real download to catch it mid-flight."""
+
+    async def __aenter__(self) -> "_StallingClient":
+        return self
+
+    async def __aexit__(self, *exc_info: object) -> bool:
+        return False
+
+    async def download_title(self, **kwargs: object) -> list[Volume]:
+        await asyncio.Event().wait()
+        raise AssertionError("unreachable")  # pragma: no cover
+
+
 def _branch(branch_id: int, team_name: str | None = None) -> ChapterBranch:
     teams = (
         [Team(id=branch_id, slug=f"t{branch_id}", slug_url=f"t{branch_id}", name=team_name)]
@@ -92,10 +109,25 @@ def _wait_until_terminal(job_id: str, timeout: float = 2.0) -> None:
     deadline = time.monotonic() + timeout
     while time.monotonic() < deadline:
         job = get_job(job_id)
-        if job is not None and job.status in ("done", "error", "needs_translation"):
+        if job is not None and job.status in (
+            "done",
+            "error",
+            "needs_translation",
+            "cancelled",
+        ):
             return
         time.sleep(0.01)
     raise AssertionError(f"job {job_id} did not reach a terminal state in time")
+
+
+def _wait_until_running(job_id: str, timeout: float = 2.0) -> None:
+    deadline = time.monotonic() + timeout
+    while time.monotonic() < deadline:
+        job = get_job(job_id)
+        if job is not None and job.status == "running":
+            return
+        time.sleep(0.01)
+    raise AssertionError(f"job {job_id} did not start running in time")
 
 
 @pytest.fixture
@@ -666,6 +698,95 @@ def test_retry_that_still_cant_resolve_stays_on_needs_translation(
 
     assert retry_response.status_code == 303
     assert get_job(job_id).status == "needs_translation"
+
+
+# --- PR 226: POST /titles/{slug_url}/download/{job_id}/cancel --------------------------
+
+
+def test_cancel_requires_login() -> None:
+    job = create_job("6712--test-novel", "epub", user_id=1)
+
+    response = client.post(f"/titles/6712--test-novel/download/{job.id}/cancel")
+
+    assert response.status_code == 303
+    assert response.headers["location"] == "/login"
+
+
+def test_cancel_unknown_job_returns_404(logged_in_client: TestClient) -> None:
+    response = logged_in_client.post(
+        "/titles/6712--test-novel/download/does-not-exist/cancel"
+    )
+
+    assert response.status_code == 404
+
+
+def test_cancel_rejects_job_owned_by_other_user(logged_in_client: TestClient) -> None:
+    job = create_job("6712--test-novel", "epub", user_id=1)  # alice
+
+    bob = _second_logged_in_client()
+    response = bob.post(f"/titles/6712--test-novel/download/{job.id}/cancel")
+
+    assert response.status_code == 403
+
+
+def test_cancel_an_already_done_job_has_no_effect(logged_in_client: TestClient) -> None:
+    job = create_job("6712--test-novel", "epub", user_id=1)
+    job.status = "done"
+
+    response = logged_in_client.post(
+        f"/titles/6712--test-novel/download/{job.id}/cancel", follow_redirects=False
+    )
+
+    assert response.status_code == 303  # not a 500, no special-casing needed
+    assert get_job(job.id).status == "done"
+
+
+async def test_cancel_a_queued_job(logged_in_client: TestClient) -> None:
+    job = create_job("6712--test-novel", "epub", user_id=1)
+    assert job.status == "queued"
+    never_finishes = asyncio.Event()
+    task = asyncio.create_task(never_finishes.wait())
+    track_task(job.id, task)
+
+    response = logged_in_client.post(
+        f"/titles/6712--test-novel/download/{job.id}/cancel", follow_redirects=False
+    )
+
+    assert response.status_code == 303
+    assert response.headers["location"] == f"/titles/6712--test-novel/download/{job.id}"
+    with pytest.raises(asyncio.CancelledError):
+        await task
+
+
+def test_cancel_a_running_job_end_to_end(
+    logged_in_client: TestClient, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    # _jobs is a process-wide dict (see app/jobs/store.py) shared with every other test in
+    # this file - reset it so this test's own "exactly one active job" assertion below
+    # isn't inflated by an earlier test's leftover job for this same user_id=1.
+    monkeypatch.setattr(job_store, "_jobs", {})
+    with patch("app.services.client.RanobeLib", return_value=_StallingClient()):
+        response = logged_in_client.post(
+            "/titles/6712--test-novel/download", data={"fmt": "epub"}
+        )
+        job_id = _job_id_from_location(response.headers["location"])
+        _wait_until_running(job_id)
+
+        cancel_response = logged_in_client.post(
+            f"/titles/6712--test-novel/download/{job_id}/cancel", follow_redirects=False
+        )
+        _wait_until_terminal(job_id)
+
+    assert cancel_response.status_code == 303
+    job = get_job(job_id)
+    assert job.status == "cancelled"
+    # Moved out of "Текущие" - see list_active_jobs_for_user()'s own filter.
+    assert list_active_jobs_for_user(1) == []
+
+    status_response = logged_in_client.get(f"/titles/6712--test-novel/download/{job_id}")
+    assert "Отменено" in status_response.text
+    # A cancelled job's own status page no longer polls for updates - it's terminal.
+    assert "static/js/download-status.js" not in status_response.text
 
 
 def test_download_delivered_via_global_toast_after_leaving_job_page(
