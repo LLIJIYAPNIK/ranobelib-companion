@@ -24,6 +24,35 @@
   // described - this just actually implements it.
   let sawActiveJobs = Boolean(section && section.querySelector("[data-job-id]"));
 
+  // PR 226: cancelling a job removes its row immediately rather than waiting for the next
+  // poll tick or a full reload - the row's own data-job-id, once removed from the DOM,
+  // means the poll loop below simply finds no matching row for that job_id any more (its
+  // querySelector lookup returns null) and skips it, so a poll response that was already
+  // in flight when the row was removed can't "resurrect" stale progress into it.
+  if (section) {
+    section.addEventListener("click", async (event) => {
+      const button = event.target.closest('[data-role="cancel-job"]');
+      if (!button) return;
+      const row = button.closest("[data-job-id]");
+      const link = row && row.querySelector(".downloads-list__link");
+      if (!row || !link) return;
+
+      button.disabled = true;
+      try {
+        const response = await fetch(`${link.getAttribute("href")}/cancel`, {
+          method: "POST",
+        });
+        if (response.ok) {
+          row.remove();
+        } else {
+          button.disabled = false;
+        }
+      } catch {
+        button.disabled = false;
+      }
+    });
+  }
+
   const STATUS_LABELS = {
     queued: () => "В очереди…",
     running: (job) =>
