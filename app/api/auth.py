@@ -34,7 +34,7 @@ from app.db.users import (
     get_user_by_id,
     get_user_by_nickname,
     update_user_avatar,
-    update_user_password,
+    update_user_password_from_reset,
 )
 from app.email import send_email
 from app.templating import templates
@@ -147,6 +147,10 @@ async def register(
             )
         raise
     request.session["user_id"] = user.id
+    # PR 225: stashed alongside user_id and checked on every request (see
+    # get_current_user(), app/auth/dependencies.py) against the account's current
+    # session_version - lets a password reset invalidate sessions issued before it.
+    request.session["session_version"] = user.session_version
     # PR 106: one more screen before home, offering an avatar upload. `current_user` (see
     # app/templating.py's context processor) is resolved once up front by an app-level
     # dependency (app/main.py), before this route body - and therefore this session write
@@ -243,6 +247,8 @@ async def login(
         )
 
     request.session["user_id"] = user.id
+    # PR 225: see the matching comment in register() above.
+    request.session["session_version"] = user.session_version
     if remember_me:
         # PR 36: extends the session cookie's lifetime - see
         # app/auth/session_middleware.py, RememberMeSessionMiddleware.
@@ -357,6 +363,6 @@ async def confirm_password_reset(
             status_code=400,
         )
 
-    await update_user_password(conn, reset_token.user_id, new_password_hash)
+    await update_user_password_from_reset(conn, reset_token.user_id, new_password_hash)
     await mark_token_used(conn, reset_token.id)
     return templates.TemplateResponse(request, "password_reset.html", {"success": True})
