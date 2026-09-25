@@ -35,6 +35,7 @@ class _FakeCatalog:
         self._genres = genres or []
         self._countries = countries or []
         self.received_kwargs: dict[str, object] | None = None
+        self.calls: list[dict[str, object]] = []
 
     async def __aenter__(self) -> "_FakeCatalog":
         return self
@@ -44,6 +45,7 @@ class _FakeCatalog:
 
     async def list_titles(self, **kwargs: object) -> CatalogPage:
         self.received_kwargs = kwargs
+        self.calls.append(kwargs)
         if self._exc is not None:
             raise self._exc
         assert self._page is not None
@@ -257,13 +259,15 @@ def test_show_catalog_passes_genres_to_the_sdk() -> None:
     assert fake.received_kwargs["genres"] == [5]
 
 
-def test_show_catalog_passes_several_genres_to_the_sdk() -> None:
+def test_show_catalog_queries_each_of_several_genres_separately() -> None:
+    # PR 228: several genres mean "any of them" - the SDK's genres=[5, 8] would mean
+    # "all of them", so each genre is listed on its own and merged.
     page = CatalogPage(items=[], page=1, has_next_page=False)
     fake = _FakeCatalog(page)
     with patch("app.services.catalog.Catalog", return_value=fake):
         client.get("/library/catalog", params={"genres": [5, 8]})
 
-    assert fake.received_kwargs["genres"] == [5, 8]
+    assert [call["genres"] for call in fake.calls] == [[5], [8]]
 
 
 def test_show_catalog_without_genres_passes_none() -> None:
@@ -550,13 +554,13 @@ def test_show_catalog_without_genres_omits_the_filter_chip() -> None:
     assert 'data-role="catalog-filters"' not in response.text
 
 
-def test_catalog_page_fragment_passes_genres_to_the_sdk() -> None:
+def test_catalog_page_fragment_queries_each_of_several_genres_separately() -> None:
     page = CatalogPage(items=[], page=1, has_next_page=False)
     fake = _FakeCatalog(page)
     with patch("app.services.catalog.Catalog", return_value=fake):
         client.get("/library/catalog/page", params={"genres": [5, 8]})
 
-    assert fake.received_kwargs["genres"] == [5, 8]
+    assert [call["genres"] for call in fake.calls] == [[5], [8]]
 
 
 def test_catalog_page_fragment_passes_tags_to_the_sdk() -> None:
