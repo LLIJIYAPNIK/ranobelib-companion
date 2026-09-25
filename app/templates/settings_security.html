@@ -1,6 +1,7 @@
 {% extends "settings_layout.html" %}
 {% block title %}Безопасность — Настройки — RanobeLib Companion{% endblock %}
 {% block settings_content %}
+  {% from "_password_field.html" import password_input %}
   {% if current_user %}
   <section class="settings-card">
     <h2 class="reader-settings-section__title">Изменение пароля</h2>
@@ -13,35 +14,16 @@
     <form class="settings-form" method="post" action="/settings/security">
       <div class="auth-form__field">
         <label class="auth-form__label" for="security-current-password">Текущий пароль</label>
-        <input
-          class="auth-form__input"
-          id="security-current-password"
-          type="password"
-          name="current_password"
-          required
-        >
+        {{ password_input("security-current-password", "current_password") }}
       </div>
       <div class="auth-form__field">
         <label class="auth-form__label" for="security-new-password">Новый пароль</label>
-        <input
-          class="auth-form__input"
-          id="security-new-password"
-          type="password"
-          name="new_password"
-          minlength="8"
-          required
-        >
+        {{ password_input("security-new-password", "new_password", minlength=8) }}
         <p class="auth-form__hint">Минимум 8 символов, лучше 12+</p>
       </div>
       <div class="auth-form__field">
         <label class="auth-form__label" for="security-new-password-confirm">Повторите новый пароль</label>
-        <input
-          class="auth-form__input"
-          id="security-new-password-confirm"
-          type="password"
-          name="new_password_confirm"
-          required
-        >
+        {{ password_input("security-new-password-confirm", "new_password_confirm") }}
       </div>
       <button class="btn btn--primary" type="submit">Сохранить</button>
     </form>
