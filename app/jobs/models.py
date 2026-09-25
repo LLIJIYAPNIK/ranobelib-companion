@@ -8,7 +8,9 @@ from typing import Literal
 
 from ranobelib.exceptions import AmbiguousChapter
 
-JobStatus = Literal["queued", "running", "exporting", "done", "error", "needs_translation"]
+JobStatus = Literal[
+    "queued", "running", "exporting", "done", "error", "needs_translation", "cancelled"
+]
 
 
 @dataclass
