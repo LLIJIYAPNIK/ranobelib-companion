@@ -4,7 +4,10 @@ import tempfile
 import time
 from pathlib import Path
 
+import pytest
+
 from app.jobs.store import (
+    cancel_job,
     create_job,
     delete_result_file,
     get_job,
@@ -131,6 +134,63 @@ def test_ready_file_url_returns_the_file_url_when_still_ready() -> None:
     job.result_path = Path("/tmp/whatever.epub")
 
     assert ready_file_url(job.id, user_id=1) == f"/titles/6712--test-novel/download/{job.id}/file"
+
+
+# --- PR 226: cancel_job() ---------------------------------------------------------------
+
+
+def test_cancel_job_unknown_job_returns_false() -> None:
+    assert cancel_job("does-not-exist", user_id=1) is False
+
+
+def test_cancel_job_with_no_tracked_task_returns_false() -> None:
+    # e.g. a job that already finished - track_task()'s own done-callback already dropped
+    # it from _tasks by the time anything would try to cancel it.
+    job = create_job("6712--test-novel", "epub", user_id=1)
+    job.status = "done"
+
+    assert cancel_job(job.id, user_id=1) is False
+
+
+async def test_cancel_job_owned_by_another_user_returns_false_and_does_not_cancel() -> None:
+    job = create_job("6712--test-novel", "epub", user_id=1)
+    finish = asyncio.Event()
+    task = asyncio.create_task(finish.wait())
+    track_task(job.id, task)
+
+    assert cancel_job(job.id, user_id=2) is False
+    assert not task.cancelled()
+
+    finish.set()
+    await task
+
+
+async def test_cancel_job_cancels_the_tracked_task() -> None:
+    job = create_job("6712--test-novel", "epub", user_id=1)
+    finish = asyncio.Event()
+    task = asyncio.create_task(finish.wait())
+    track_task(job.id, task)
+
+    assert cancel_job(job.id, user_id=1) is True
+
+    with pytest.raises(asyncio.CancelledError):
+        await task
+    assert task.cancelled()
+
+
+async def test_cancel_job_anonymous_job_is_cancellable_by_anyone() -> None:
+    # No user_id (an anonymous download) - same asymmetric ownership rule as
+    # app/api/downloads.py's _get_job_or_404(): only a job actually tied to an account is
+    # scoped to its owner.
+    job = create_job("6712--test-novel", "epub")  # user_id=None
+    finish = asyncio.Event()
+    task = asyncio.create_task(finish.wait())
+    track_task(job.id, task)
+
+    assert cancel_job(job.id, user_id=999) is True
+
+    with pytest.raises(asyncio.CancelledError):
+        await task
 
 
 async def test_track_task_survives_until_it_completes() -> None:

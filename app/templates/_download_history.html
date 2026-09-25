@@ -6,6 +6,7 @@
     <span class="downloads-history__fmt">{{ entry.fmt | upper }}</span>
     <span class="downloads-history__status{% if entry.status == 'error' %} downloads-history__status--error{% endif %}">
       {% if entry.status == "done" %}Готово{% if entry.chapter_count %} · {{ entry.chapter_count }} глав{% endif %}
+      {% elif entry.status == "cancelled" %}Отменено{% if entry.chapter_count %} · {{ entry.chapter_count }} глав{% endif %}
       {% else %}{{ entry.error or "Ошибка" }}
       {% endif %}
     </span>

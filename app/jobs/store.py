@@ -37,7 +37,7 @@ def list_active_jobs_for_user(user_id: int) -> list[DownloadJob]:
     return [
         job
         for job in _jobs.values()
-        if job.user_id == user_id and job.status not in ("done", "error")
+        if job.user_id == user_id and job.status not in ("done", "error", "cancelled")
     ]
 
 
@@ -100,6 +100,30 @@ def sweep_expired_result_files(ttl_seconds: float) -> None:
             and now - job.finished_at > ttl_seconds
         ):
             delete_result_file(job)
+
+
+def cancel_job(job_id: str, user_id: int) -> bool:
+    """Cancels the running `asyncio.Task` behind `job_id` (PR 226) - `run_download_job()`
+    (app/jobs/download.py) catches the resulting `asyncio.CancelledError`, records it in
+    `download_history` and moves `job.status` to "cancelled" before re-raising, so this
+    function itself only has to trigger the cancellation, not update any job state.
+
+    False - a no-op, not an error - when `job_id` doesn't exist, belongs to a different
+    `user_id` (same ownership check as app/api/downloads.py's `_get_job_or_404()`), or has
+    no tracked task to cancel: already terminal (`track_task()`'s own done-callback drops
+    it from `_tasks` the moment it finishes) or the in-memory store lost it to a process
+    restart. Callers don't need to distinguish any of these - cancelling something that's
+    already gone is exactly as much a no-op as cancelling something still in flight is a
+    real cancellation."""
+    job = _jobs.get(job_id)
+    if job is None:
+        return False
+    if job.user_id is not None and job.user_id != user_id:
+        return False
+    task = _tasks.get(job_id)
+    if task is None:
+        return False
+    return task.cancel()
 
 
 def track_task(job_id: str, task: asyncio.Task[None]) -> None:

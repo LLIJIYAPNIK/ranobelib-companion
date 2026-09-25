@@ -1,3 +1,4 @@
+import asyncio
 import contextlib
 import os
 from datetime import UTC, datetime
@@ -371,6 +372,66 @@ async def test_run_download_job_records_its_own_job_id_in_history(
     assert recorded["kwargs"] == {"job_id": "job-1"}
 
     os.remove(job.result_path)
+
+
+# --- PR 226: cancellation ----------------------------------------------------------------
+
+
+class _CancelledClient(_FakeClient):
+    """Raises asyncio.CancelledError from download_title() - what actually happens to an
+    in-flight `await lib.download_title(...)` once app/jobs/store.py's cancel_job() calls
+    task.cancel() on the task running run_download_job()."""
+
+    async def download_title(self, **kwargs: object) -> list[Volume]:
+        raise asyncio.CancelledError()
+
+
+async def test_run_download_job_records_and_reraises_cancellation(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    fake = _CancelledClient()
+    monkeypatch.setattr("app.jobs.download.open_client", lambda slug_url: fake)
+
+    job = _job()
+    job.completed = 2
+    job.total = 5
+
+    with pytest.raises(asyncio.CancelledError):
+        await run_download_job(job)
+
+    assert job.status == "cancelled"
+    assert fake.export_calls == []
+    assert job.result_path is None
+
+
+async def test_run_download_job_cancellation_records_history(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    fake = _CancelledClient()
+    monkeypatch.setattr("app.jobs.download.open_client", lambda slug_url: fake)
+    recorded: dict[str, object] = {}
+
+    async def fake_record_download(*args: object, **kwargs: object) -> None:
+        recorded["args"] = args
+
+    monkeypatch.setattr("app.jobs.download.record_download", fake_record_download)
+
+    @contextlib.asynccontextmanager
+    async def fake_connection():
+        yield None
+
+    monkeypatch.setattr("app.jobs.download.connection", fake_connection)
+
+    job = _job(user_id=1)
+    job.completed = 3
+    job.total = 7
+
+    with pytest.raises(asyncio.CancelledError):
+        await run_download_job(job)
+
+    # record_download(conn, user_id, slug_url, fmt, status, chapter_count, error, job_id=...)
+    assert recorded["args"][4] == "cancelled"
+    assert recorded["args"][5] == 3  # chapter_count == job.completed at the time of cancellation
 
 
 async def test_run_download_job_malformed_slug_url_is_a_friendly_error() -> None:

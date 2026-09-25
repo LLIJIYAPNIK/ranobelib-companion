@@ -5175,6 +5175,35 @@ img.paragraph-comment__attachment {
   font-size: 12px;
 }
 
+/* PR 226: same warning-color-on-hover treatment as .downloads-history__delete below - a
+   bordered text button rather than that one's bare "×" glyph, since "Отменить" needs more
+   visual weight than a single character to still read as clickable. */
+.downloads-list__cancel {
+  flex: 0 0 auto;
+  background: none;
+  border: 1px solid var(--border);
+  border-radius: 5px;
+  padding: 4px 10px;
+  color: var(--text-muted);
+  font-size: 11px;
+  font-weight: 600;
+  font-family: inherit;
+  cursor: pointer;
+  transition: color 0.15s ease, border-color 0.15s ease;
+}
+
+.downloads-list__cancel:disabled {
+  opacity: 0.5;
+  cursor: default;
+}
+
+@media (hover: hover) {
+  .downloads-list__cancel:hover:not(:disabled) {
+    color: var(--accent-orange);
+    border-color: var(--accent-orange);
+  }
+}
+
 .downloads-history__status {
   flex: 0 0 auto;
   color: var(--text-secondary);

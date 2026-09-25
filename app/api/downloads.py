@@ -15,7 +15,7 @@ from app.db.users import User
 from app.jobs.download import run_download_job
 from app.jobs.eta import estimate_remaining_seconds
 from app.jobs.models import DownloadJob
-from app.jobs.store import create_job, delete_result_file, get_job, track_task
+from app.jobs.store import cancel_job, create_job, delete_result_file, get_job, track_task
 from app.services.exports import require_known_format
 from app.templating import templates
 
@@ -67,6 +67,23 @@ async def retry_download_with_translation(
         raise HTTPException(status_code=409, detail="Задача не ожидает выбора перевода")
     task = asyncio.create_task(run_download_job(job, translation_index=translation_index))
     track_task(job.id, task)
+    return RedirectResponse(f"/titles/{slug_url}/download/{job.id}", status_code=303)
+
+
+@router.post("/{job_id}/cancel")
+async def cancel_download(
+    slug_url: str,
+    job_id: str,
+    current_user: Annotated[User, Depends(require_current_user)],
+) -> RedirectResponse:
+    """Same require_current_user protection and _get_job_or_404() ownership check as
+    /retry above. cancel_job()'s own return value is deliberately ignored - cancelling a
+    job that's already terminal (done/error/cancelled, or one that lost its tracked task
+    to a process restart) is a no-op, not an error a visitor needs to see; this just
+    redirects back to the status page either way, which will render whatever job.status
+    actually ended up being."""
+    job = _get_job_or_404(slug_url, job_id, current_user)
+    cancel_job(job.id, current_user.id)
     return RedirectResponse(f"/titles/{slug_url}/download/{job.id}", status_code=303)
 
 

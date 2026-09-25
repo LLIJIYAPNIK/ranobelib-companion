@@ -22,6 +22,9 @@
       </select>
       <button type="submit" class="btn btn--primary">Скачать с этим переводом</button>
     </form>
+    <form method="post" action="/titles/{{ slug_url }}/download/{{ job.id }}/cancel" class="download-status__cancel-form">
+      <button type="submit" class="btn btn--secondary">Отменить</button>
+    </form>
     <script src="{{ url_for('static', path='js/custom-dropdown.js') }}" defer></script>
     <ul class="download-status__ambiguous">
       {% for chapter in job.ambiguous_chapters %}
@@ -47,15 +50,20 @@
       {% elif job.status == "exporting" %}Сборка файла…
       {% elif job.status == "done" %}Готово
       {% elif job.status == "error" %}{{ job.error }}
+      {% elif job.status == "cancelled" %}Отменено
       {% endif %}
     </p>
     <p class="download-status__eta" data-role="eta-text"></p>
     {% if job.status == "done" %}
     <a class="btn btn--primary" href="/titles/{{ slug_url }}/download/{{ job.id }}/file">Скачать файл</a>
+    {% elif job.status in ("queued", "running", "exporting") %}
+    <form method="post" action="/titles/{{ slug_url }}/download/{{ job.id }}/cancel" class="download-status__cancel-form">
+      <button type="submit" class="btn btn--secondary">Отменить</button>
+    </form>
     {% endif %}
     {% endif %}
   </div>
-  {% if job.status not in ("done", "error", "needs_translation") %}
+  {% if job.status not in ("done", "error", "needs_translation", "cancelled") %}
   <script src="{{ url_for('static', path='js/download-status.js') }}" defer></script>
   {% endif %}
 </main>
