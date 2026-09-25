@@ -24,7 +24,12 @@ from app.db.library import (
 )
 from app.db.users import User
 from app.reading_progress import reading_progress_percent
-from app.services.catalog import get_catalog, list_countries, list_genres
+from app.services.catalog import (
+    get_catalog,
+    list_catalog_titles,
+    list_countries,
+    list_genres,
+)
 from app.services.client import get_client, open_client
 from app.templating import templates
 
@@ -86,12 +91,13 @@ async def show_catalog(
     `Catalog.list_titles(genres=[...])`'s own parameter name. Their display names are
     resolved from `list_genres()` (SDK >=0.7.0) rather than forwarded from the caller,
     unlike PR 31's original `genre_name` workaround - there's a real endpoint for that
-    now.
+    now. Several selected genres mean "any of them" (PR 228), not the SDK's AND - see
+    `list_catalog_titles()`.
 
     `countries` (PR 85, checkboxes since PR 100): a title only ever has one country of
     origin, but the *filter* still matches OR-style against several - same shape as
-    `genres` (a repeated `?countries=1&countries=2` param), just AND vs. OR semantics
-    once forwarded to `Catalog.list_titles(countries=[...])` (SDK >=0.9.0). Before PR 100
+    `genres` (a repeated `?countries=1&countries=2` param), with OR semantics straight
+    from `Catalog.list_titles(countries=[...])` (SDK >=0.9.0). Before PR 100
     this was a single-select radio group and a single `country: int | None` SDK
     parameter; garbage/non-numeric input now 422s the same way a garbage `genres` id
     already did, rather than being silently swallowed.
@@ -110,13 +116,14 @@ async def show_catalog(
     all_genres = await list_genres()
     all_countries = await list_countries()
     async with get_catalog() as catalog:
-        result = await catalog.list_titles(
+        result = await list_catalog_titles(
+            catalog,
             page=page,
             query=query or None,
             sort=sort,
-            genres=genres or None,
-            countries=countries or None,
-            tags=tags or None,
+            genres=genres,
+            countries=countries,
+            tags=tags,
         )
     genre_names_by_id = {genre.id: genre.name for genre in all_genres}
     country_names_by_id = {c.id: c.name for c in all_countries}
@@ -160,13 +167,14 @@ async def catalog_page_fragment(
     """Just the card markup, no base.html - what catalog-scroll.js fetches and appends
     as the visitor scrolls (see app/static/js/catalog-scroll.js)."""
     async with get_catalog() as catalog:
-        result = await catalog.list_titles(
+        result = await list_catalog_titles(
+            catalog,
             page=page,
             query=query or None,
             sort=sort,
-            genres=genres or None,
-            countries=countries or None,
-            tags=tags or None,
+            genres=genres or [],
+            countries=countries or [],
+            tags=tags or [],
         )
     response = templates.TemplateResponse(request, "_catalog_cards.html", {"items": result.items})
     response.headers["X-Has-Next-Page"] = "true" if result.has_next_page else "false"
