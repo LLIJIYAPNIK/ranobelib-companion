@@ -105,6 +105,21 @@ async def run_download_job(
         # just an in-memory attribute write with no such gap.
         await _record_history(job, "done", chapter_count=len(chapters))
         job.status = "done"
+    except asyncio.CancelledError:
+        # PR 226: app/jobs/store.py's cancel_job() cancels this task from outside - without
+        # this handler the CancelledError would just propagate straight out (it's a
+        # BaseException, not caught by `except Exception` below), leaving job.status stuck
+        # wherever it was ("queued"/"running"/"exporting") forever, with nothing recorded
+        # in download_history. Same "write history before the terminal status is visible
+        # to a poller" ordering as every other branch here - then re-raises, since
+        # swallowing it here would break asyncio's own cancellation contract for whatever
+        # awaited this task (app/jobs/store.py's track_task()).
+        logger.info(
+            "Download of %s cancelled after %d/%d chapters", job.slug_url, job.completed, job.total
+        )
+        await _record_history(job, "cancelled", chapter_count=job.completed)
+        job.status = "cancelled"
+        raise
     except MultipleTitleTranslationsError as exc:
         # Not a terminal state - the retry form on download_status.html re-POSTs with a
         # translation_index, so no history entry yet.
