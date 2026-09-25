@@ -21,6 +21,14 @@
     {% if alt_names %}
     <p class="title-hero__alt-name">{{ alt_names | join(" / ") }}</p>
     {% endif %}
+    {# PR 229: country of origin (SDK `Title.country`, the API's "type") - same badge
+       link into the filtered catalog as genres/tags, using the catalog's own
+       `countries` filter (PR 85/100). The API can omit it, so no block at all then. #}
+    {% if title.country %}
+    <div class="title-hero__badges">
+      <a class="badge badge--link" href="/library/catalog?countries={{ title.country.id }}">{{ title.country.name }}</a>
+    </div>
+    {% endif %}
     <div class="title-hero__badges">
       {% for genre in title.genres %}
       <a class="badge badge--link" href="/library/catalog?genres={{ genre.id }}">{{ genre.name }}</a>
