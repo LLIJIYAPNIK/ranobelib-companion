@@ -73,7 +73,7 @@ async def show_library(
     )
 
 
-@router.get("/catalog")
+@router.get("/catalog", response_model=None)
 async def show_catalog(
     request: Request,
     query: str | None = None,
@@ -84,7 +84,7 @@ async def show_catalog(
     tag_name: str | None = None,
     page: Annotated[int, Query(ge=1)] = 1,
     random_empty: bool = False,
-) -> HTMLResponse:
+) -> Response:
     """The catalog tab - unlike "Читаю", browsing it has never needed an account (see
     the "Список читаемого скрыт" copy on library.html's locked state).
 
@@ -116,6 +116,13 @@ async def show_catalog(
     genres = genres or []
     countries = countries or []
     tags = tags or []
+    if sort == "random":
+        # PR 230: the no-JS path (catalog-random-redirect.js normally never lets the form
+        # submit sort=random) - same one-random-title redirect, not a reshuffled list.
+        params = _catalog_filter_params(query, genres, countries, tags, tag_name)
+        return RedirectResponse(
+            url=f"/library/catalog/random?{urlencode(params)}", status_code=303
+        )
     all_genres = await list_genres()
     all_countries = await list_countries()
     async with get_catalog() as catalog:
