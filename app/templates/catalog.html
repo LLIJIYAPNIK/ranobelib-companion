@@ -38,6 +38,9 @@
   <a href="?query={{ query or '' }}&sort={{ sort }}">Сбросить фильтр{{ "ы" if active_filters | length > 1 else "" }}</a>
 </p>
 {% endif %}
+{% if random_empty %}
+<p class="content__hint content__hint--page" role="status">Не нашлось ранобэ по этим фильтрам</p>
+{% endif %}
 <main class="content library-tabs-content catalog-layout">
   <div class="catalog-layout__results">
     <div
@@ -160,6 +163,7 @@
   <script src="{{ url_for('static', path='js/catalog-header-scroll.js') }}" defer></script>
   <script src="{{ url_for('static', path='js/catalog-back-to-top.js') }}" defer></script>
   <script src="{{ url_for('static', path='js/custom-dropdown.js') }}" defer></script>
+  <script src="{{ url_for('static', path='js/catalog-random-redirect.js') }}" defer></script>
   {% if all_genres or all_countries %}
   <script src="{{ url_for('static', path='js/catalog-filters-toggle.js') }}" defer></script>
   <script src="{{ url_for('static', path='js/catalog-filters-accordion.js') }}" defer></script>

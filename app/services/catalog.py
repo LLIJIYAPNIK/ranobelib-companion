@@ -1,9 +1,10 @@
 """The only place in this application allowed to construct ``Catalog(...)``."""
 
+import random
 from collections.abc import AsyncGenerator
 
 from ranobelib import Catalog, CatalogPage
-from ranobelib.catalog import MAX_PER_PAGE
+from ranobelib.catalog import MAX_PER_PAGE, MIN_PER_PAGE
 from ranobelib.models import Country, Genre, Title
 
 from app.config import get_settings
@@ -176,3 +177,46 @@ async def _genre_stream(
             yield title
         if not result.has_next_page:
             return
+
+
+async def pick_random_title(
+    catalog: Catalog,
+    *,
+    query: str | None,
+    genres: list[int],
+    countries: list[int],
+    tags: list[int],
+) -> Title | None:
+    """One random title matching the current catalog filters (PR 230's "Случайно"), or
+    `None` if nothing matches them.
+
+    `sort="random"` makes the API shuffle its listing; the first item is the pick.
+    `refresh=True` is required, not optional: without it the SDK would serve this exact
+    parameter combination from its disk cache for the whole `cache_ttl`, and "Случайно"
+    would keep returning the same title to everyone for hours.
+
+    Several genres mean "any of them" here too, like `list_catalog_titles()` (PR 228):
+    rather than the SDK's AND, one of the selected genres is picked at random first, then
+    a random title from it - trying the rest in random order if that genre has nothing
+    left under the other filters. A title from a smaller genre (or in several selected
+    genres) is somewhat likelier to come up than under a true uniform pick; a single
+    request instead of listing every genre is the trade-off.
+    """
+    genre_choices: list[list[int] | None] = (
+        [[g] for g in genres] if len(genres) >= 2 else [genres or None]
+    )
+    random.shuffle(genre_choices)
+    for genre_filter in genre_choices:
+        result = await catalog.list_titles(
+            page=1,
+            per_page=MIN_PER_PAGE,
+            query=query,
+            sort="random",
+            genres=genre_filter,
+            countries=countries or None,
+            tags=tags or None,
+            refresh=True,
+        )
+        if result.items:
+            return result.items[0]
+    return None

@@ -683,3 +683,115 @@ def test_show_catalog_omits_the_accordion_script_when_there_is_nothing_to_filter
 
     assert response.status_code == 200
     assert "catalog-filters-accordion.js" not in response.text
+
+
+# --- PR 230: "Случайно" goes to one random title --------------------------------------
+
+_no_redirect_client = TestClient(app, follow_redirects=False)
+
+
+def test_random_redirects_to_the_first_title_of_a_random_listing() -> None:
+    page = CatalogPage(items=[_fake_title(7, "Picked")], page=1, has_next_page=True)
+    fake = _FakeCatalog(page)
+    with patch("app.services.catalog.Catalog", return_value=fake):
+        response = _no_redirect_client.get("/library/catalog/random")
+
+    assert response.status_code == 303
+    assert response.headers["location"] == "/titles/7--test-novel-7"
+    assert fake.received_kwargs["sort"] == "random"
+    assert fake.received_kwargs["page"] == 1
+
+
+def test_random_bypasses_the_sdk_cache() -> None:
+    # Without refresh=True the SDK disk cache would hand back the same "random" title
+    # for the whole cache_ttl.
+    page = CatalogPage(items=[_fake_title(7)], page=1, has_next_page=False)
+    fake = _FakeCatalog(page)
+    with patch("app.services.catalog.Catalog", return_value=fake):
+        _no_redirect_client.get("/library/catalog/random")
+
+    assert fake.received_kwargs["refresh"] is True
+
+
+def test_random_forwards_the_current_filters() -> None:
+    page = CatalogPage(items=[_fake_title(7)], page=1, has_next_page=False)
+    fake = _FakeCatalog(page)
+    with patch("app.services.catalog.Catalog", return_value=fake):
+        _no_redirect_client.get(
+            "/library/catalog/random",
+            params={"query": "dxd", "genres": 5, "countries": [1, 2], "tags": 9},
+        )
+
+    assert fake.received_kwargs["query"] == "dxd"
+    assert fake.received_kwargs["genres"] == [5]
+    assert fake.received_kwargs["countries"] == [1, 2]
+    assert fake.received_kwargs["tags"] == [9]
+
+
+def test_random_with_several_genres_picks_from_one_genre_at_a_time() -> None:
+    # Several genres mean "any of them" (PR 228), never the SDK's AND.
+    page = CatalogPage(items=[_fake_title(7)], page=1, has_next_page=False)
+    fake = _FakeCatalog(page)
+    with patch("app.services.catalog.Catalog", return_value=fake):
+        _no_redirect_client.get("/library/catalog/random", params={"genres": [5, 8]})
+
+    assert fake.received_kwargs["genres"] in ([5], [8])
+
+
+def test_random_with_several_genres_tries_the_others_if_one_is_empty() -> None:
+    fake = _FakeCatalog(CatalogPage(items=[], page=1, has_next_page=False))
+    with patch("app.services.catalog.Catalog", return_value=fake):
+        _no_redirect_client.get("/library/catalog/random", params={"genres": [5, 8]})
+
+    assert sorted(call["genres"] for call in fake.calls) == [[5], [8]]
+
+
+def test_random_with_no_matches_returns_to_the_catalog_with_a_notice() -> None:
+    fake = _FakeCatalog(CatalogPage(items=[], page=1, has_next_page=False))
+    with patch("app.services.catalog.Catalog", return_value=fake):
+        response = _no_redirect_client.get(
+            "/library/catalog/random", params={"query": "zzz", "countries": 3}
+        )
+
+    assert response.status_code == 303
+    assert response.headers["location"] == ("/library/catalog?query=zzz&countries=3&random_empty=1")
+
+
+def test_catalog_shows_the_nothing_found_notice_after_an_empty_random_pick() -> None:
+    fake = _FakeCatalog(CatalogPage(items=[], page=1, has_next_page=False))
+    with patch("app.services.catalog.Catalog", return_value=fake):
+        response = client.get("/library/catalog", params={"random_empty": 1})
+
+    assert response.status_code == 200
+    assert "Не нашлось ранобэ по этим фильтрам" in response.text
+    assert fake.received_kwargs["sort"] != "random"
+
+
+def test_catalog_without_random_empty_has_no_notice() -> None:
+    fake = _FakeCatalog(CatalogPage(items=[], page=1, has_next_page=False))
+    with patch("app.services.catalog.Catalog", return_value=fake):
+        response = client.get("/library/catalog")
+
+    assert "Не нашлось ранобэ по этим фильтрам" not in response.text
+
+
+def test_catalog_sort_random_redirects_to_the_random_route() -> None:
+    # The no-JS path: the plain form submit still sends ?sort=random.
+    fake = _FakeCatalog(CatalogPage(items=[], page=1, has_next_page=False))
+    with patch("app.services.catalog.Catalog", return_value=fake):
+        response = _no_redirect_client.get(
+            "/library/catalog", params={"sort": "random", "genres": [5, 8], "query": "x"}
+        )
+
+    assert response.status_code == 303
+    assert response.headers["location"] == "/library/catalog/random?query=x&genres=5&genres=8"
+    assert fake.calls == []
+
+
+def test_show_catalog_wires_the_random_redirect_script() -> None:
+    fake = _FakeCatalog(CatalogPage(items=[], page=1, has_next_page=False))
+    with patch("app.services.catalog.Catalog", return_value=fake):
+        response = client.get("/library/catalog")
+
+    assert "js/catalog-random-redirect.js" in response.text
+    assert '<option value="random"' in response.text
