@@ -26,13 +26,15 @@ from app.auth.rate_limit import is_rate_limited
 from app.auth.session_middleware import REMEMBER_ME_KEY
 from app.config import get_settings
 from app.db.connection import get_connection
-from app.db.password_reset import create_token
+from app.db.password_reset import create_token, get_valid_token, mark_token_used
 from app.db.users import (
     User,
     create_user,
     get_user_by_email,
+    get_user_by_id,
     get_user_by_nickname,
     update_user_avatar,
+    update_user_password,
 )
 from app.email import send_email
 from app.templating import templates
@@ -300,3 +302,61 @@ async def request_password_reset(
         "password_reset_request.html",
         {"message": _PASSWORD_RESET_SENT_MESSAGE, "submitted_email": email},
     )
+
+
+@router.get("/password-reset/{token}")
+async def show_password_reset_confirm(
+    request: Request,
+    conn: Annotated[AsyncConnection, Depends(get_connection)],
+    token: str,
+) -> HTMLResponse:
+    reset_token = await get_valid_token(conn, token)
+    if reset_token is None:
+        return templates.TemplateResponse(
+            request, "password_reset.html", {"invalid": True}, status_code=400
+        )
+    return templates.TemplateResponse(request, "password_reset.html", {"token": token})
+
+
+@router.post("/password-reset/{token}", response_model=None)
+async def confirm_password_reset(
+    request: Request,
+    conn: Annotated[AsyncConnection, Depends(get_connection)],
+    token: str,
+    new_password: str = Form(...),
+    new_password_confirm: str = Form(...),
+) -> Response:
+    # Re-checked here, not just trusted from the GET above - the token could have been
+    # consumed (or could have expired) by a concurrent request in between.
+    reset_token = await get_valid_token(conn, token)
+    if reset_token is None:
+        return templates.TemplateResponse(
+            request, "password_reset.html", {"invalid": True}, status_code=400
+        )
+
+    error: str | None = None
+    new_password_hash = ""
+    if new_password != new_password_confirm:
+        error = "Пароли не совпадают"
+    else:
+        user = await get_user_by_id(conn, reset_token.user_id)
+        assert user is not None  # the token's own FK guarantees this
+        try:
+            validate_password_strength(new_password, user.email)
+            new_password_hash = hash_password(new_password)
+        except PasswordTooWeakError:
+            error = "Пароль слишком простой или короткий (минимум 8 символов)"
+        except PasswordTooLongError:
+            error = "Пароль слишком длинный"
+
+    if error is not None:
+        return templates.TemplateResponse(
+            request,
+            "password_reset.html",
+            {"token": token, "error": error},
+            status_code=400,
+        )
+
+    await update_user_password(conn, reset_token.user_id, new_password_hash)
+    await mark_token_used(conn, reset_token.id)
+    return templates.TemplateResponse(request, "password_reset.html", {"success": True})
