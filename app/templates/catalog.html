@@ -38,6 +38,9 @@
   <a href="?query={{ query or '' }}&sort={{ sort }}">Сбросить фильтр{{ "ы" if active_filters | length > 1 else "" }}</a>
 </p>
 {% endif %}
+{% if random_empty %}
+<p class="content__hint content__hint--page" role="status">Не нашлось ранобэ по этим фильтрам</p>
+{% endif %}
 <main class="content library-tabs-content catalog-layout">
   <div class="catalog-layout__results">
     <div

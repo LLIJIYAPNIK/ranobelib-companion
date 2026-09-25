@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from typing import Annotated
+from urllib.parse import urlencode
 
 from fastapi import APIRouter, Depends, Form, HTTPException, Query, Request
 from fastapi.responses import HTMLResponse, JSONResponse, RedirectResponse, Response
@@ -29,6 +30,7 @@ from app.services.catalog import (
     list_catalog_titles,
     list_countries,
     list_genres,
+    pick_random_title,
 )
 from app.services.client import get_client, open_client
 from app.templating import templates
@@ -81,6 +83,7 @@ async def show_catalog(
     tags: Annotated[list[int] | None, Query()] = None,
     tag_name: str | None = None,
     page: Annotated[int, Query(ge=1)] = 1,
+    random_empty: bool = False,
 ) -> HTMLResponse:
     """The catalog tab - unlike "Читаю", browsing it has never needed an account (see
     the "Список читаемого скрыт" copy on library.html's locked state).
@@ -150,8 +153,53 @@ async def show_catalog(
             "selected_country_names": [country_names_by_id.get(c, str(c)) for c in countries],
             "tags": tags,
             "selected_tag_names": selected_tag_names,
+            "random_empty": random_empty,
         },
     )
+
+
+@router.get("/catalog/random")
+async def random_catalog_title(
+    query: str | None = None,
+    genres: Annotated[list[int] | None, Query()] = None,
+    countries: Annotated[list[int] | None, Query()] = None,
+    tags: Annotated[list[int] | None, Query()] = None,
+    tag_name: str | None = None,
+) -> RedirectResponse:
+    """PR 230, "Случайно": straight to one random title matching the current filters,
+    not the catalog list reshuffled (what `sort=random` alone gives - Ошибка 6). If the
+    filters match nothing, back to the catalog with those same filters and a
+    "nothing found" notice (`random_empty`) instead of an error page."""
+    genres = genres or []
+    countries = countries or []
+    tags = tags or []
+    async with get_catalog() as catalog:
+        title = await pick_random_title(
+            catalog, query=query or None, genres=genres, countries=countries, tags=tags
+        )
+    if title is not None:
+        return RedirectResponse(url=f"/titles/{title.slug_url}", status_code=303)
+    params = _catalog_filter_params(query, genres, countries, tags, tag_name)
+    params.append(("random_empty", "1"))
+    return RedirectResponse(url=f"/library/catalog?{urlencode(params)}", status_code=303)
+
+
+def _catalog_filter_params(
+    query: str | None,
+    genres: list[int],
+    countries: list[int],
+    tags: list[int],
+    tag_name: str | None,
+) -> list[tuple[str, str | int]]:
+    params: list[tuple[str, str | int]] = []
+    if query:
+        params.append(("query", query))
+    params += [("genres", g) for g in genres]
+    params += [("countries", c) for c in countries]
+    params += [("tags", t) for t in tags]
+    if tag_name:
+        params.append(("tag_name", tag_name))
+    return params
 
 
 @router.get("/catalog/page", response_model=None)
