@@ -3,7 +3,7 @@ from urllib.parse import quote
 
 from fastapi.testclient import TestClient
 from ranobelib import RanobeLibError, RateLimitError, TitleNotFoundError
-from ranobelib.models import Chapter, Cover, Genre, Label, Tag, Title, Volume
+from ranobelib.models import Chapter, Country, Cover, Genre, Label, Tag, Title, Volume
 
 from app.main import app
 
@@ -419,6 +419,29 @@ def test_title_data_tags_link_to_the_filtered_catalog() -> None:
     assert f'href="/library/catalog?tags=1&tag_name={quote("Реинкарнация")}"' in response.text
     assert f'href="/library/catalog?tags=2&tag_name={quote("Магия")}"' in response.text
     assert '<span class="badge badge--muted">Реинкарнация</span>' not in response.text
+
+
+def test_title_data_country_links_to_the_filtered_catalog() -> None:
+    # PR 229: Title.country was already in every get_info() response but never shown.
+    title = _fake_title().model_copy(update={"country": Country(id=1, name="Япония")})
+    with patch("app.services.client.RanobeLib", return_value=_FakeClient(title)):
+        response = client.get("/titles/6712--test-novel/data")
+
+    assert response.status_code == 200
+    assert (
+        '<a class="badge badge--link" href="/library/catalog?countries=1">Япония</a>'
+        in response.text
+    )
+
+
+def test_title_data_without_country_renders_no_country_badge() -> None:
+    title = _fake_title()
+    assert title.country is None
+    with patch("app.services.client.RanobeLib", return_value=_FakeClient(title)):
+        response = client.get("/titles/6712--test-novel/data")
+
+    assert response.status_code == 200
+    assert "/library/catalog?countries=" not in response.text
 
 
 def test_title_data_renders_table_of_contents() -> None:
