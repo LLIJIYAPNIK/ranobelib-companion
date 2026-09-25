@@ -12,6 +12,7 @@
   the current tab - kept as a separate key from `mode` rather than reusing it, since the
   two serve different templates for different reasons.
 #}
+{% from "_password_field.html" import password_input %}
 <div class="auth-card">
   <div class="auth-card__intro">
     <div class="auth-card__brand">webnovells</div>
@@ -57,25 +58,12 @@
       </div>
       <div class="auth-form__field">
         <label class="auth-form__label" for="register-password">Пароль</label>
-        <input
-          class="auth-form__input"
-          id="register-password"
-          type="password"
-          name="password"
-          minlength="8"
-          required
-        >
+        {{ password_input("register-password", "password", minlength=8) }}
         <p class="auth-form__hint">Минимум 8 символов, лучше 12+</p>
       </div>
       <div class="auth-form__field">
         <label class="auth-form__label" for="register-password-confirm">Повторите пароль</label>
-        <input
-          class="auth-form__input"
-          id="register-password-confirm"
-          type="password"
-          name="password_confirm"
-          required
-        >
+        {{ password_input("register-password-confirm", "password_confirm") }}
       </div>
       <button class="btn btn--primary" type="submit">Зарегистрироваться</button>
     </form>
@@ -96,13 +84,7 @@
       </div>
       <div class="auth-form__field">
         <label class="auth-form__label" for="login-password">Пароль</label>
-        <input
-          class="auth-form__input"
-          id="login-password"
-          type="password"
-          name="password"
-          required
-        >
+        {{ password_input("login-password", "password") }}
       </div>
       <label class="auth-form__field auth-form__field--checkbox">
         <input id="login-remember" type="checkbox" name="remember_me">

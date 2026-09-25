@@ -1397,6 +1397,54 @@ a {
   outline: none;
 }
 
+/* PR 227: password field + its show/hide button (_password_field.html). The button sits
+   inside the input's own box (absolute, right-aligned) rather than beside it, so the field
+   keeps the exact same outer width as every other .auth-form__input and can't be pushed
+   past the form's edge on a narrow (360px) screen; the input reserves room on the right
+   so typed text never runs under the button. */
+.auth-form__password-field {
+  position: relative;
+}
+
+.auth-form__password-field .auth-form__input {
+  padding-right: 44px;
+}
+
+.auth-form__password-toggle {
+  position: absolute;
+  top: 0;
+  right: 0;
+  width: 40px;
+  height: 40px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+  border: none;
+  border-radius: 0 6px 6px 0;
+  background: transparent;
+  color: var(--text-muted);
+  cursor: pointer;
+  transition: color 0.15s ease;
+}
+
+/* The UA stylesheet's [hidden] rule doesn't reliably reach <svg> - hide the inactive icon
+   explicitly. */
+.auth-form__password-toggle svg[hidden] {
+  display: none;
+}
+
+.auth-form__password-toggle:hover,
+.auth-form__password-toggle[aria-pressed="true"] {
+  color: var(--text-secondary);
+}
+
+.auth-form__password-toggle:focus-visible {
+  outline: none;
+  color: var(--accent-teal);
+  box-shadow: 0 0 0 3px rgba(34, 211, 197, 0.18);
+}
+
 .auth-form .btn {
   width: 100%;
   justify-content: center;
