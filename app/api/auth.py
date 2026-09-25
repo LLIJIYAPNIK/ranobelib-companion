@@ -24,7 +24,9 @@ from app.auth.passwords import (
 )
 from app.auth.rate_limit import is_rate_limited
 from app.auth.session_middleware import REMEMBER_ME_KEY
+from app.config import get_settings
 from app.db.connection import get_connection
+from app.db.password_reset import create_token
 from app.db.users import (
     User,
     create_user,
@@ -32,6 +34,7 @@ from app.db.users import (
     get_user_by_nickname,
     update_user_avatar,
 )
+from app.email import send_email
 from app.templating import templates
 
 router = APIRouter()
@@ -249,3 +252,51 @@ async def login(
 async def logout(request: Request) -> Response:
     request.session.clear()
     return RedirectResponse(url="/", status_code=303)
+
+
+# --- PR 225: "Забыли пароль?" ------------------------------------------------------------
+
+_PASSWORD_RESET_SENT_MESSAGE = (
+    "Если такой email зарегистрирован, на него отправлена ссылка для восстановления пароля"
+)
+
+
+@router.get("/password-reset")
+async def show_password_reset_request(request: Request) -> HTMLResponse:
+    return templates.TemplateResponse(request, "password_reset_request.html", {})
+
+
+@router.post("/password-reset", response_model=None)
+async def request_password_reset(
+    request: Request,
+    conn: Annotated[AsyncConnection, Depends(get_connection)],
+    email: str = Form(...),
+) -> Response:
+    if is_rate_limited(f"password-reset:{_client_ip(request)}:{email}"):
+        return templates.TemplateResponse(
+            request,
+            "password_reset_request.html",
+            {"error": _RATE_LIMIT_MESSAGE, "submitted_email": email},
+            status_code=429,
+        )
+
+    # Always the same response whether or not the email is registered - same protection
+    # against account enumeration already applied to POST /login's error message.
+    user = await get_user_by_email(conn, email)
+    if user is not None:
+        raw_token = await create_token(conn, user.id, get_settings().password_reset_token_ttl)
+        reset_url = str(request.url_for("show_password_reset_confirm", token=raw_token))
+        ttl_hours = max(1, int(get_settings().password_reset_token_ttl // 3600))
+        await send_email(
+            user.email,
+            "Восстановление пароля — webnovells",
+            f"Чтобы задать новый пароль, перейдите по ссылке:\n{reset_url}\n\n"
+            f"Ссылка действует {ttl_hours} ч. Если вы не запрашивали восстановление "
+            "пароля, просто проигнорируйте это письмо.",
+        )
+
+    return templates.TemplateResponse(
+        request,
+        "password_reset_request.html",
+        {"message": _PASSWORD_RESET_SENT_MESSAGE, "submitted_email": email},
+    )
