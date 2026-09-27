@@ -319,7 +319,17 @@ a {
   }
 }
 
+/* PR 234: without an explicit display, the button falls back to the UA default
+   (inline-block) - .sidebar__header's align-items: center then centers that whole box as
+   a flex item, but the SVG inside still sits at its own default vertical-align: baseline
+   within it, leaving a sliver of descender space below the icon that the box-level
+   centering doesn't know to strip - the icon itself ends up a couple pixels off from
+   .sidebar__brand's text baseline next to it. inline-flex with its own centering doesn't
+   depend on the SVG's vertical-align at all, unlike .sidebar__link svg's fix above. */
 .sidebar__toggle {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
   background: none;
   border: none;
   padding: 0;
