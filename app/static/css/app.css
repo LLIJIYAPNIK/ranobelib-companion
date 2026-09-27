@@ -36,8 +36,16 @@
   --mobile-account-height: 52px;
 }
 
+/* PR 238: WebKit/some Chrome builds paint their own translucent grey-blue flash over
+   whatever's tapped (any link/button, sitewide - not specific to one component) while
+   it's pressed, on top of the site's own dark theme - it reads as a foreign, out-of-place
+   highlight rather than a deliberate part of the design. Reset sitewide rather than
+   patching each component that happens to get noticed; anywhere tactile tap feedback is
+   actually wanted, a deliberate :active style is added on top instead of relying on this
+   browser default (see .library-tabs__link:active below). */
 * {
   box-sizing: border-box;
+  -webkit-tap-highlight-color: transparent;
 }
 
 /* Custom scrollbar (PR 55) - both APIs, since neither alone covers every browser.
@@ -2136,6 +2144,13 @@ a {
   .library-tabs__link:hover {
     color: var(--text-secondary);
   }
+}
+
+/* PR 238: deliberate tap feedback in place of the sitewide -webkit-tap-highlight-color
+   reset above - unlike :hover, not gated behind (hover: hover), since this is exactly the
+   touch-tap feedback that reset otherwise leaves this link with none of. */
+.library-tabs__link:active {
+  color: var(--text-secondary);
 }
 
 @keyframes library-tab-indicator-in {
