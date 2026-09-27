@@ -504,4 +504,8 @@ async def confirm_password_reset(
 
     await update_user_password_from_reset(conn, reset_token.user_id, new_password_hash)
     await mark_token_used(conn, reset_token.id)
+    # PR 246: the reset link was emailed to this address, so using it proves the same
+    # thing a confirmation link does - without this, an unconfirmed account that resets
+    # its password would still be stuck at /verify-email on the next login.
+    await mark_email_verified(conn, reset_token.user_id)
     return templates.TemplateResponse(request, "password_reset.html", {"success": True})
