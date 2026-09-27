@@ -5513,9 +5513,15 @@ img.paragraph-comment__attachment {
      PR 224 (Claude Design import): each of the five tabs now fills an equal 1/5 share of
      the bar's width edge-to-edge (flex: 1, no gaps) instead of a fixed 52x52 box
      centered by the parent's old justify-content: space-around - same full-bleed-row
-     language PR 223 already brought to the desktop column. */
+     language PR 223 already brought to the desktop column.
+
+     PR 243: height: auto resets the base rule's desktop height: 44px (declared outside
+     any media query, so it applies here too). A definite height beats .sidebar's
+     align-items: stretch, which left every tab a 44px box pinned to the bar's top, with
+     dead space under the icons instead of filling the full 64px. */
   .sidebar > .sidebar__link {
     flex: 1;
+    height: auto;
     font-size: 11px;
     gap: 0;
     padding: 0;
