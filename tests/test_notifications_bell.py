@@ -60,3 +60,27 @@ def test_notifications_badge_starts_hidden_with_no_unread(
     assert '<span class="sidebar__badge" data-role="notifications-badge" hidden>0</span>' in (
         response.text
     )
+
+
+def _bell_tag(html: str) -> str:
+    start = html.rindex("<button", 0, html.index('data-role="notifications-trigger"'))
+    return html[start : html.index(">", start)]
+
+
+def test_notifications_bell_is_highlighted_on_the_full_notifications_page(
+    logged_in_client: TestClient,
+) -> None:
+    # PR 244: the standalone page has no open panel, so PR 237's aria-expanded highlight
+    # never applies there - active_nav is what lights the bell up instead.
+    response = logged_in_client.get("/notifications")
+
+    assert response.status_code == 200
+    assert "sidebar__link--active" in _bell_tag(response.text)
+
+
+def test_notifications_bell_is_not_highlighted_on_other_pages(
+    logged_in_client: TestClient,
+) -> None:
+    response = logged_in_client.get("/settings/reading")
+
+    assert "sidebar__link--active" not in _bell_tag(response.text)
