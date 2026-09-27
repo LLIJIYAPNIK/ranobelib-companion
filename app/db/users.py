@@ -1,7 +1,8 @@
 """Access to the ``users`` table (see migrations/0001_users.sql,
 0009_users_privacy_flags.sql for the ``show_*`` columns,
 0015_users_notification_flags.sql for ``notifications_enabled``/``do_not_disturb``,
-0019_users_friends_privacy_flags.sql for ``show_friends_activity_home``/``show_friends``).
+0019_users_friends_privacy_flags.sql for ``show_friends_activity_home``/``show_friends``,
+0023_email_verification.sql for ``email_verified_at``).
 """
 
 from __future__ import annotations
@@ -52,6 +53,14 @@ class User:
     # get_current_user(), which compares this against the value stashed in the session
     # cookie at login/register time.
     session_version: int = 1
+    # PR 246: None until the account confirms its email (app/api/auth.py blocks login
+    # until then). Accounts that existed before PR 246 were set to their own created_at
+    # by migrations/0023_email_verification.sql, so they count as verified.
+    email_verified_at: str | None = None
+
+    @property
+    def is_email_verified(self) -> bool:
+        return self.email_verified_at is not None
 
 
 async def create_user(
@@ -143,6 +152,18 @@ async def update_user_password_from_reset(
     return user
 
 
+async def mark_email_verified(conn: AsyncConnection, user_id: int) -> User:
+    """PR 246: stamps the account as verified. The COALESCE keeps the first confirmation
+    time if a second one (e.g. a stale link opened later) lands after it."""
+    await conn.execute(
+        "UPDATE users SET email_verified_at = COALESCE(email_verified_at, %s) WHERE id = %s",
+        (datetime.now(UTC).isoformat(), user_id),
+    )
+    user = await get_user_by_id(conn, user_id)
+    assert user is not None  # just updated
+    return user
+
+
 async def update_privacy_settings(
     conn: AsyncConnection,
     user_id: int,
@@ -210,7 +231,7 @@ _USER_COLUMNS = (
     "id, email, password_hash, created_at, nickname, bio, avatar_path, "
     "show_currently_reading, show_favorite, show_library, "
     "show_friends_activity_home, show_friends, "
-    "notifications_enabled, do_not_disturb, session_version"
+    "notifications_enabled, do_not_disturb, session_version, email_verified_at"
 )
 
 
@@ -291,6 +312,7 @@ def _row_to_user(row: dict[str, Any]) -> User:
         notifications_enabled=bool(row["notifications_enabled"]),
         do_not_disturb=bool(row["do_not_disturb"]),
         session_version=row["session_version"],
+        email_verified_at=row["email_verified_at"],
     )
 
 

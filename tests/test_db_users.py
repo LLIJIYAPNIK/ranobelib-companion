@@ -1,9 +1,12 @@
 import asyncio
+import shutil
+from pathlib import Path
 
 import psycopg
 import pytest
 from psycopg.rows import dict_row
 
+import app.db.migrate
 from app.db.migrate import run_migrations
 from app.db.users import (
     User,
@@ -11,6 +14,7 @@ from app.db.users import (
     get_user_by_email,
     get_user_by_id,
     get_user_by_nickname,
+    mark_email_verified,
     search_users_by_nickname,
     update_notification_settings,
     update_privacy_settings,
@@ -400,3 +404,59 @@ async def test_update_notification_settings_flags_are_independent(
 
     assert updated.notifications_enabled is True
     assert updated.do_not_disturb is True
+
+
+# --- PR 246: email verification ---------------------------------------------------------
+
+
+async def test_new_user_starts_unverified(conn: psycopg.AsyncConnection) -> None:
+    user = await create_user(conn, "alice@example.com", "hash")
+
+    assert user.email_verified_at is None
+    assert not user.is_email_verified
+    stored = await get_user_by_id(conn, user.id)
+    assert stored is not None and not stored.is_email_verified
+
+
+async def test_mark_email_verified_sets_the_timestamp(conn: psycopg.AsyncConnection) -> None:
+    user = await create_user(conn, "alice@example.com", "hash")
+
+    verified = await mark_email_verified(conn, user.id)
+
+    assert verified.is_email_verified
+
+
+async def test_mark_email_verified_keeps_the_first_timestamp(
+    conn: psycopg.AsyncConnection,
+) -> None:
+    user = await create_user(conn, "alice@example.com", "hash")
+    first = await mark_email_verified(conn, user.id)
+
+    second = await mark_email_verified(conn, user.id)
+
+    assert second.email_verified_at == first.email_verified_at
+
+
+async def test_migration_grandfathers_existing_accounts_as_verified(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    # An account created before 0023 must not be locked out by the new login check -
+    # apply every migration up to 0022, insert a user, then apply 0023 on top.
+    connection = await fresh_connection()
+    source = Path(app.db.migrate.__file__).parent / "migrations"
+    for path in sorted(source.glob("*.sql")):
+        if path.name < "0023":
+            shutil.copy(path, tmp_path / path.name)
+    monkeypatch.setattr(app.db.migrate, "_MIGRATIONS_DIR", tmp_path)
+    await run_migrations(connection)
+    await connection.execute(
+        "INSERT INTO users (email, password_hash, created_at) VALUES (%s, %s, %s)",
+        ("old@example.com", "hash", "2026-01-01T00:00:00+00:00"),
+    )
+
+    shutil.copy(source / "0023_email_verification.sql", tmp_path)
+    await run_migrations(connection)
+
+    user = await get_user_by_email(connection, "old@example.com")
+    assert user is not None
+    assert user.email_verified_at == "2026-01-01T00:00:00+00:00"
