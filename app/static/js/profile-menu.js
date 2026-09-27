@@ -21,11 +21,35 @@
 
   const trigger = wrapper.querySelector('[data-role="profile-menu-trigger"]');
   const panel = wrapper.querySelector('[data-role="profile-menu-panel"]');
+  const chevron = trigger.querySelector(".sidebar__account-chevron");
   const homeParent = wrapper;
   const homeNextSibling = panel.nextSibling;
 
   function isOpen() {
     return wrapper.classList.contains("profile-menu--open");
+  }
+
+  // Mirrors the direction the chevron points to whichever side the panel actually opens
+  // toward, instead of a breakpoint-hardcoded rotation that only happened to match the
+  // typical desktop/mobile layouts (PR 233).
+  function setChevronDirection(openBelow) {
+    if (!chevron) return;
+    chevron.classList.toggle("sidebar__account-chevron--down", openBelow);
+    chevron.classList.toggle("sidebar__account-chevron--up", !openBelow);
+  }
+
+  // Same "more room below or above" comparison position() uses, minus the panel-height
+  // term - the panel measures 0 while parked collapsed inside .sidebar (see app.css), so
+  // that term is meaningless before the panel has ever been portaled out for an open().
+  // Good enough for the idle chevron's resting direction; position() below still computes
+  // the precise, height-aware value once the panel is actually about to be shown.
+  function estimateOpenBelow(rect) {
+    return window.innerHeight - rect.bottom >= rect.top;
+  }
+
+  function updateIdleChevronDirection() {
+    if (isOpen()) return;
+    setChevronDirection(estimateOpenBelow(trigger.getBoundingClientRect()));
   }
 
   // Opens toward whichever side of the trigger has more room - upward on the desktop
@@ -38,6 +62,7 @@
 
     panel.classList.toggle("profile-menu__panel--below", openBelow);
     panel.classList.toggle("profile-menu__panel--above", !openBelow);
+    setChevronDirection(openBelow);
 
     if (openBelow) {
       panel.style.top = `${rect.bottom + GAP}px`;
@@ -95,4 +120,7 @@
   document.addEventListener("keydown", (event) => {
     if (event.key === "Escape" && isOpen()) close(true);
   });
+
+  updateIdleChevronDirection();
+  window.addEventListener("resize", updateIdleChevronDirection);
 })();
