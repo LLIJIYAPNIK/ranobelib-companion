@@ -478,6 +478,18 @@ a {
   color: var(--text-muted);
 }
 
+/* PR 233: direction now follows profile-menu.js's own above/below calculation (mirroring
+   .profile-menu__panel--above/--below on the panel itself) instead of a breakpoint
+   hardcode that only happened to match the typical desktop (menu opens up) and mobile
+   (menu opens down) layouts, and stayed wrong for any narrower/unusual viewport. */
+.sidebar__account-chevron--down {
+  transform: rotate(90deg);
+}
+
+.sidebar__account-chevron--up {
+  transform: rotate(-90deg);
+}
+
 @media (min-width: 641px) {
   .sidebar--expanded .sidebar__account-trigger {
     width: 100%;
@@ -5500,7 +5512,6 @@ img.paragraph-comment__attachment {
     display: block;
     width: 14px;
     height: 14px;
-    transform: rotate(90deg);
   }
 
   .sidebar__guest {
