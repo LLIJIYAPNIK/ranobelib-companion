@@ -5477,7 +5477,11 @@ img.paragraph-comment__attachment {
     left: 0;
     right: 0;
     width: 100%;
-    min-height: 64px;
+    /* An explicit height, not min-height: the base .sidebar rule sets height: 100vh for
+       the desktop column, and min-height alone doesn't override that - the bar stretched
+       over the whole viewport and hid every page on mobile. border-box (sitewide default)
+       keeps the tabs at 64px with the safe-area padding below added on top. */
+    height: calc(64px + env(safe-area-inset-bottom, 0px));
     flex-direction: row;
     /* PR 224 (Claude Design import): stretch (the flex default, but .sidebar's own base
        rule sets align-items: center for the desktop icon column) so each tab below fills
@@ -5490,9 +5494,8 @@ img.paragraph-comment__attachment {
        (iOS in particular), a plain bottom: 0 sits the bar's edge at the true bottom of
        the viewport, but the OS still paints its own indicator over the bottom slice of
        it - env() adds that reserved space as extra padding below the tabs instead
-       (min-height, not height, so this grows the bar rather than squeezing the icons
-       into a shorter box - box-sizing: border-box is already the sitewide default, see
-       the `*` rule near the top of this file). Falls back to 0px with no visible change
+       (the height above grows by the same env() term, so this doesn't squeeze the icons
+       into a shorter box). Falls back to 0px with no visible change
        on devices/browsers with no such reserved area. */
     padding-bottom: env(safe-area-inset-bottom, 0px);
     border-right: none;
