@@ -59,6 +59,16 @@
     </div>
     {% endif %}
     <div class="title-hero__actions">
+      {% if in_library and progress_percent is not none %}
+      {# PR 240: same "still in the table of contents" check reading_progress_percent()
+         already made to produce progress_percent at all - if that came back not-none,
+         (last_read_volume, last_read_number) is guaranteed to still be a real chapter,
+         so this always links somewhere that exists. #}
+      <a
+        class="btn btn--primary"
+        href="/titles/{{ title.slug_url }}/chapters/{{ last_read_volume }}/{{ last_read_number }}"
+      >Продолжить чтение (Глава {{ last_read_number }})</a>
+      {% endif %}
       {% if export_formats %}
       <form method="post" action="/titles/{{ title.slug_url }}/download">
         <select name="fmt" class="toc__export-format" aria-label="Формат скачивания">

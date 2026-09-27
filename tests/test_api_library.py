@@ -179,6 +179,9 @@ async def test_title_page_shows_reading_progress_for_library_entry(client: TestC
     assert response.status_code == 200
     assert "Прочитано 75%" in response.text  # 3 of 4 chapters
     assert 'style="width: 75%"' in response.text
+    # PR 240: same last-read chapter the progress bar above is based on.
+    assert 'href="/titles/6712--test-novel/chapters/1/3"' in response.text
+    assert "Продолжить чтение (Глава 3)" in response.text
 
 
 def test_title_page_omits_reading_progress_when_not_in_library(client: TestClient) -> None:
@@ -190,6 +193,38 @@ def test_title_page_omits_reading_progress_when_not_in_library(client: TestClien
     assert response.status_code == 200
     assert "Прочитано" not in response.text
     assert 'class="reading-progress' not in response.text
+    assert "Продолжить чтение" not in response.text
+
+
+async def test_title_page_omits_continue_reading_link_when_last_read_chapter_is_gone(
+    client: TestClient,
+) -> None:
+    # PR 240: shares reading_progress_percent()'s own "still in the table of contents"
+    # check (app/reading_progress.py) - a chapter recorded as last-read that's since been
+    # removed upstream shouldn't offer a link to a page that no longer exists.
+    _register(client)
+    title = _fake_title()
+    volumes = [
+        Volume(
+            number="1",
+            chapters=[Chapter(id=i, volume="1", number=str(i)) for i in range(1, 5)],
+        )
+    ]
+
+    with patch("app.services.client.RanobeLib", return_value=_FakeClient(title, volumes)):
+        client.post("/library/6712--test-novel/add")
+
+    async with connection() as conn:
+        await record_progress(
+            conn, user_id=1, slug_url="6712--test-novel", volume="1", number="99"
+        )
+
+    with patch("app.services.client.RanobeLib", return_value=_FakeClient(title, volumes)):
+        response = client.get("/titles/6712--test-novel/data")
+
+    assert response.status_code == 200
+    assert "Прочитано" not in response.text
+    assert "Продолжить чтение" not in response.text
 
 
 def test_add_is_idempotent(client: TestClient) -> None:
