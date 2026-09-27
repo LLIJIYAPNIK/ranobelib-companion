@@ -5581,6 +5581,24 @@ img.paragraph-comment__attachment {
     justify-content: center;
   }
 
+  /* PR 236: .sidebar__link--active's highlight (a 2px left/top-edge stripe plus a faint
+     full-row tint, sized for a wide nav row - see the base rule and its mobile tab-bar
+     override above) reads as a stray, seemingly-clipped sliver on this component's narrow
+     36x36 icon-only square instead of "this is the current page/state" - only "Настройки"
+     among the icons reparented here (PR 213) ever carries this class at all, since
+     "Уведомления" is a toggle rather than a page, see PR 237. A dedicated solid, rounded
+     fill for the whole square instead, replacing the edge stripe/animation rather than
+     layering on top of them. */
+  .sidebar__account-actions .sidebar__link.sidebar__link--active {
+    background-color: rgba(34, 211, 197, 0.16);
+    border-radius: 10px;
+    animation: none;
+  }
+
+  .sidebar__account-actions .sidebar__link.sidebar__link--active::before {
+    content: none;
+  }
+
   /* The desktop collapsed row's icon-hugging top: 6px/right: 12px (PR 223) assumes a much
      narrower 44px row - tucked back into the corner of this 36px tap zone instead. */
   .sidebar__account-actions .sidebar__badge {
