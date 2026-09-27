@@ -432,7 +432,6 @@ a {
   justify-content: center;
   width: 44px;
   height: 44px;
-  gap: 12px;
   border: none;
   padding: 0;
   border-radius: 10px;
@@ -484,6 +483,7 @@ a {
     width: 100%;
     height: auto;
     justify-content: flex-start;
+    gap: 12px;
     padding: 12px 18px;
   }
 
