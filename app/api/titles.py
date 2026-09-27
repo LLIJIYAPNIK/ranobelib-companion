@@ -118,6 +118,12 @@ async def title_data(
             "export_formats": available_export_formats(),
             "in_library": library_entry is not None,
             "progress_percent": progress_percent,
+            "last_read_volume": (
+                library_entry.last_read_volume if library_entry is not None else None
+            ),
+            "last_read_number": (
+                library_entry.last_read_number if library_entry is not None else None
+            ),
             "ambiguous_chapter_count": len(ambiguous_branch_counts),
             "max_branches": max(ambiguous_branch_counts, default=0),
             "default_translation_index": (
