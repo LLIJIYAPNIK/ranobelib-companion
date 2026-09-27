@@ -370,14 +370,25 @@ a {
 
 /* PR 223 (Claude Design import): a 2px teal bar along the row's left edge, in place of
    the earlier flat highlight alone - needs the row's own position: relative (already set
-   on .sidebar__link above) to anchor against. */
-.sidebar__link--active {
+   on .sidebar__link above) to anchor against.
+
+   PR 237: the notifications bell (base.html) never carries .sidebar__link--active - it's
+   a toggle for its own flyout panel, not a page active_nav points at - so it shares this
+   highlight via its aria-expanded state instead, kept in sync by notifications-panel.js's
+   open()/close(). On desktop this bell is still a plain .sidebar > .sidebar__link row like
+   Настройки/Активность/etc (mobile-account-strip.js only reparents it on narrow
+   viewports), so the same row-oriented highlight applies here unchanged; the mobile
+   square case is handled separately below, alongside PR 236's own override for
+   Настройки's identical problem there. */
+.sidebar__link--active,
+[data-role="notifications-trigger"][aria-expanded="true"] {
   color: var(--accent-teal);
   background-color: rgba(34, 211, 197, 0.07);
   animation: sidebar-active-highlight 0.3s ease;
 }
 
-.sidebar__link--active::before {
+.sidebar__link--active::before,
+[data-role="notifications-trigger"][aria-expanded="true"]::before {
   content: "";
   position: absolute;
   left: 0;
@@ -5584,18 +5595,22 @@ img.paragraph-comment__attachment {
   /* PR 236: .sidebar__link--active's highlight (a 2px left/top-edge stripe plus a faint
      full-row tint, sized for a wide nav row - see the base rule and its mobile tab-bar
      override above) reads as a stray, seemingly-clipped sliver on this component's narrow
-     36x36 icon-only square instead of "this is the current page/state" - only "Настройки"
-     among the icons reparented here (PR 213) ever carries this class at all, since
-     "Уведомления" is a toggle rather than a page, see PR 237. A dedicated solid, rounded
-     fill for the whole square instead, replacing the edge stripe/animation rather than
-     layering on top of them. */
-  .sidebar__account-actions .sidebar__link.sidebar__link--active {
+     36x36 icon-only square instead of "this is the current page/state". A dedicated
+     solid, rounded fill for the whole square instead, replacing the edge stripe/animation
+     rather than layering on top of them.
+
+     PR 237: the notifications bell reparented here alongside Настройки (PR 213) gets the
+     exact same treatment for its own aria-expanded-driven highlight (base rule above) -
+     same narrow-square mismatch, same fix, just a different trigger for the highlight. */
+  .sidebar__account-actions .sidebar__link.sidebar__link--active,
+  .sidebar__account-actions [data-role="notifications-trigger"][aria-expanded="true"] {
     background-color: rgba(34, 211, 197, 0.16);
     border-radius: 10px;
     animation: none;
   }
 
-  .sidebar__account-actions .sidebar__link.sidebar__link--active::before {
+  .sidebar__account-actions .sidebar__link.sidebar__link--active::before,
+  .sidebar__account-actions [data-role="notifications-trigger"][aria-expanded="true"]::before {
     content: none;
   }
 
