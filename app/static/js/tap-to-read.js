@@ -228,7 +228,17 @@
     return text ? text.split(/\s+/).length : 0;
   }
 
+  // PR 239: chapter-footnotes.js's grouped block is collapsed (a closed <details>) by
+  // default - its footnote paragraphs aren't actually rendered, but .textContent still
+  // includes them, so wordCount() above would otherwise count text nobody can currently
+  // see. Without this, a chapter with many footnotes could turn this one wrap's tempo-
+  // paced reveal into a multi-second wait over words that are invisible either way.
+  function isFootnotesWrap(wrap) {
+    return wrap.querySelector('[data-role="reader-footnotes"]') !== null;
+  }
+
   function computeTempoDurationMs(wrap) {
+    if (isFootnotesWrap(wrap)) return 0;
     const words = wordCount(wrap);
     if (words === 0) return 0; // nothing to time (e.g. a bare <img>)
     const raw = (words / readingSpeedWpm) * 60_000;
@@ -393,8 +403,14 @@
     let lastRevealed = null;
     for (let i = revealedCount; i < count; i++) {
       const wrap = wraps[i];
+      // PR 239: same "don't type out invisible, collapsed footnote text" reasoning as
+      // computeTempoDurationMs's own isFootnotesWrap() guard above - this is the older,
+      // non-tempo typewriter animation (PR 65), not PR 79's tempo runners, but it walks
+      // the exact same hidden text nodes.
       const pendingTypewriter =
-        paragraphAnimation === "typewriter" ? prepareTypewriter(wrap) : null;
+        paragraphAnimation === "typewriter" && !isFootnotesWrap(wrap)
+          ? prepareTypewriter(wrap)
+          : null;
 
       if (CSS_ANIMATIONS.has(paragraphAnimation)) {
         wrap.classList.add(`reader-content__paragraph-wrap--anim-${paragraphAnimation}`);
