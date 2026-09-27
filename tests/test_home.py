@@ -8,6 +8,7 @@ from fastapi.testclient import TestClient
 from ranobelib.models import Chapter, Cover, Label, Title, Volume
 
 from app.main import app
+from tests.auth_helpers import register
 
 client = TestClient(app)
 
@@ -106,10 +107,7 @@ def db_client(monkeypatch: pytest.MonkeyPatch) -> Iterator[TestClient]:
 
 
 def _register(test_client: TestClient, email: str = "alice@example.com") -> None:
-    test_client.post(
-        "/register",
-        data={"email": email, "password": "hunter2pass", "password_confirm": "hunter2pass"},
-    )
+    register(test_client, email)
 
 
 def test_home_omits_progress_for_anonymous_visitor(db_client: TestClient) -> None:

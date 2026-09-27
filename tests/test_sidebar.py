@@ -6,6 +6,7 @@ from fastapi.testclient import TestClient
 
 from app.config import get_settings
 from app.main import app
+from tests.auth_helpers import register
 from tests.db_reset import reset_app_database
 
 client = TestClient(app)
@@ -19,14 +20,7 @@ def logged_in_client(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> Iterato
     get_settings.cache_clear()
 
     with TestClient(app) as test_client:
-        test_client.post(
-            "/register",
-            data={
-                "email": "alice.wong@example.com",
-                "password": "hunter2pass",
-                "password_confirm": "hunter2pass",
-            },
-        )
+        register(test_client, "alice.wong@example.com")
         yield test_client
 
     get_settings.cache_clear()

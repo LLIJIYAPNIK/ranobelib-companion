@@ -1,0 +1,72 @@
+{#
+  PR 246: "check your email" - the step between registering (or logging in with an
+  unconfirmed email) and actually being logged in. The email carries both a link and a
+  6-digit code; this page takes the code, for when the email is opened on another device.
+
+  States: the code form (default, needs `pending_email` - the account waiting in this
+  session), plus `message`/`error` above it; and `invalid` for a dead link from the email.
+  get_valid_token() doesn't say why a link is dead, so neither does this page.
+#}
+{% extends "base.html" %}
+{% block title %}Подтверждение email — RanobeLib Companion{% endblock %}
+{% block content %}
+<main class="content">
+  <div class="auth-card">
+    <div class="auth-card__intro">
+      <div class="auth-card__brand">webnovells</div>
+      <p class="auth-card__pitch">
+        Подтвердите email, чтобы войти в аккаунт.
+      </p>
+    </div>
+    <div class="auth-card__form">
+      {% if invalid %}
+      <p class="form-error">Ссылка недействительна, уже использована или устарела.</p>
+      {% if pending_email %}
+      <p class="auth-form__hint"><a href="/verify-email">Ввести код или отправить письмо заново</a></p>
+      {% else %}
+      <p class="auth-form__hint">
+        Войдите — если email ещё не подтверждён, можно будет отправить письмо заново.
+      </p>
+      <p class="auth-form__hint"><a href="/login">Войти</a></p>
+      {% endif %}
+      {% else %}
+      <p class="auth-form__hint">
+        Мы отправили письмо на <strong>{{ pending_email }}</strong>. Перейдите по ссылке из
+        письма или введите код из него.
+      </p>
+      {% if message %}
+      <p class="content__notice content__notice--success">{{ message }}</p>
+      {% endif %}
+      {% if error %}
+      <p class="form-error">{{ error }}</p>
+      {% endif %}
+      <form class="auth-form" method="post" action="/verify-email" data-role="verify-email-form">
+        <div class="auth-form__field">
+          <label class="auth-form__label" for="verify-email-code">Код из письма</label>
+          <input
+            class="auth-form__input"
+            id="verify-email-code"
+            type="text"
+            name="code"
+            inputmode="numeric"
+            autocomplete="one-time-code"
+            maxlength="7"
+            placeholder="123456"
+            required
+            autofocus
+          >
+        </div>
+        <button class="btn btn--primary" type="submit">Подтвердить</button>
+      </form>
+      <form method="post" action="/verify-email/resend" data-role="verify-email-resend">
+        <p class="auth-form__hint">
+          Письмо не пришло? Проверьте «Спам» или
+          <button class="auth-form__link-button" type="submit">отправьте его ещё раз</button>.
+        </p>
+      </form>
+      {% endif %}
+      <script src="{{ url_for('static', path='js/disable-mobile-autofocus.js') }}"></script>
+    </div>
+  </div>
+</main>
+{% endblock %}

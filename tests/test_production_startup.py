@@ -72,6 +72,10 @@ with TestClient(app) as client:
             "password": "hunter2pass",
             "password_confirm": "hunter2pass",
         },
+        # PR 246: registering redirects to /verify-email. Read the cookie off the
+        # response that set it - over the test's plain http://, a Secure cookie isn't
+        # sent back on the followed request, so the final response has no Set-Cookie.
+        follow_redirects=False,
     )
     set_cookie = response.headers.get("set-cookie", "")
     print("SECURE" if "secure" in set_cookie.lower() else "NOT_SECURE")

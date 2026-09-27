@@ -11,6 +11,7 @@ import app.jobs.store as job_store
 from app.config import get_settings
 from app.jobs.store import create_job
 from app.main import app
+from tests.auth_helpers import register
 from tests.db_reset import reset_app_database
 
 client = TestClient(app)
@@ -24,14 +25,7 @@ def logged_in_client(monkeypatch: pytest.MonkeyPatch) -> Iterator[TestClient]:
     monkeypatch.setattr(job_store, "_jobs", {})
 
     with TestClient(app) as test_client:
-        test_client.post(
-            "/register",
-            data={
-                "email": "alice@example.com",
-                "password": "hunter2pass",
-                "password_confirm": "hunter2pass",
-            },
-        )
+        register(test_client, "alice@example.com")
         yield test_client
 
     get_settings.cache_clear()

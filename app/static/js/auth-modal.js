@@ -85,13 +85,13 @@
       return; // Left as-is - the visitor can just retry the submit.
     }
     if (response.redirected) {
-      // Register's success redirect (see app/api/auth.py's _is_modal_request() branch in
-      // register()) moves to a genuinely new onboarding step (the avatar prompt) - that's
-      // a real navigation. Login's own success redirect always targets "/" regardless of
-      // where this modal was opened from; following it would yank the visitor away from
-      // whatever page they were actually on, exactly what this PR set out to stop - a
-      // plain reload of the current page takes its place instead.
-      if (isRegister) {
+      // Register's success redirect moves to a genuinely new step - that's a real
+      // navigation. So is login's redirect to /verify-email (PR 246: right password, but
+      // the email isn't confirmed yet). Login's own success redirect always targets "/"
+      // regardless of where this modal was opened from; following it would yank the
+      // visitor away from whatever page they were actually on, exactly what this PR set
+      // out to stop - a plain reload of the current page takes its place instead.
+      if (isRegister || new URL(response.url).pathname === "/verify-email") {
         window.location.href = response.url;
       } else {
         window.location.reload();

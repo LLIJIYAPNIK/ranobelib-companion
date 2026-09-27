@@ -22,6 +22,7 @@ from app.db.comments import create_comment
 from app.db.connection import connection
 from app.db.library import record_progress
 from app.db.users import get_user_by_email
+from tests.auth_helpers import register
 from tests.db_reset import reset_app_database
 
 
@@ -41,10 +42,7 @@ def client(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> Iterator[TestClie
 
 
 def _register(client: TestClient, email: str, password: str = "hunter2pass") -> None:
-    client.post(
-        "/register",
-        data={"email": email, "password": password, "password_confirm": password},
-    )
+    register(client, email, password)
 
 
 async def _user_id(email: str) -> int:

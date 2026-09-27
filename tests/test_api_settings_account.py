@@ -7,6 +7,7 @@ import pytest
 from fastapi.testclient import TestClient
 
 from app.config import get_settings
+from tests.auth_helpers import register
 from tests.db_reset import reset_app_database
 
 
@@ -26,10 +27,7 @@ def client(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> Iterator[TestClie
 
 
 def _register(client: TestClient, email: str, password: str = "hunter2pass") -> None:
-    client.post(
-        "/register",
-        data={"email": email, "password": password, "password_confirm": password},
-    )
+    register(client, email, password)
 
 
 def test_anonymous_visitor_sees_a_locked_screen_instead_of_the_form(

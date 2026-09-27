@@ -15,6 +15,7 @@ from collections.abc import Iterator
 import pytest
 
 from app.auth.rate_limit import _attempts
+from tests.auth_helpers import record_email, sent_emails
 
 if sys.platform == "win32":
     # Same requirement as app/main.py's own WindowsSelectorEventLoopPolicy (psycopg's
@@ -31,3 +32,14 @@ def _reset_rate_limits() -> Iterator[None]:
     _attempts.clear()
     yield
     _attempts.clear()
+
+
+@pytest.fixture(autouse=True)
+def _capture_emails(monkeypatch: pytest.MonkeyPatch) -> Iterator[None]:
+    """PR 246: records outgoing email instead of sending it, so tests can confirm a new
+    account with the emailed code (see tests/auth_helpers.py). Patched by string, so
+    app.api.auth is only imported when a test runs, not while conftest.py loads."""
+    sent_emails.clear()
+    monkeypatch.setattr("app.api.auth.send_email", record_email)
+    yield
+    sent_emails.clear()

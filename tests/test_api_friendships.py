@@ -15,6 +15,7 @@ from fastapi.testclient import TestClient
 from app.config import get_settings
 from app.db.connection import connection
 from app.db.users import get_user_by_email
+from tests.auth_helpers import register
 from tests.db_reset import reset_app_database
 
 
@@ -38,10 +39,7 @@ def _register(
     password: str = "hunter2pass",
     nickname: str | None = None,
 ) -> None:
-    data = {"email": email, "password": password, "password_confirm": password}
-    if nickname is not None:
-        data["nickname"] = nickname
-    client.post("/register", data=data)
+    register(client, email, password, nickname)
 
 
 async def _user_id(email: str) -> int:

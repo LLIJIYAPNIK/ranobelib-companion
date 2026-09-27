@@ -108,32 +108,35 @@ def test_register_error_modal_fragment_omits_sidebar(client: TestClient) -> None
     assert "уже зарегистрирован" in response.text
 
 
-def test_register_success_no_ajax_still_renders_avatar_prompt_directly(
+def test_register_success_no_ajax_redirects_to_email_confirmation(
     client: TestClient,
 ) -> None:
-    # Unchanged PR 106 behavior - a plain, no-JS registration never redirects.
+    # PR 246: a plain, no-JS registration redirects too now - to the "check your email"
+    # step, not PR 106's avatar prompt, which waits until the email is confirmed.
     response = _register(client, "alice@example.com")
 
-    assert response.status_code == 200
-    assert "Хотите добавить аватар?" in response.text
+    assert response.status_code == 303
+    assert response.headers["location"] == "/verify-email"
 
 
-def test_register_success_via_modal_redirects_to_register_avatar(client: TestClient) -> None:
+def test_register_success_via_modal_redirects_to_email_confirmation(client: TestClient) -> None:
     response = _register(client, "alice@example.com", headers=_AJAX_HEADERS)
 
     assert response.status_code == 303
-    assert response.headers["location"] == "/register/avatar"
+    assert response.headers["location"] == "/verify-email"
 
 
-def test_register_success_via_modal_session_is_set(client: TestClient) -> None:
+def test_register_success_via_modal_leaves_the_account_pending_not_logged_in(
+    client: TestClient,
+) -> None:
     _register(client, "alice@example.com", headers=_AJAX_HEADERS)
 
-    # The redirect's target is itself a protected page - reaching it (rather than being
-    # bounced to /login) confirms the session was set before the redirect was issued.
-    response = client.get("/register/avatar")
-
-    assert response.status_code == 200
-    assert "Хотите добавить аватар?" in response.text
+    # The session holds the pending account for /verify-email, but not a login - the
+    # avatar step (a protected page) still bounces to /login.
+    assert "alice@example.com" in client.get("/verify-email").text
+    response = client.get("/register/avatar", follow_redirects=False)
+    assert response.status_code == 303
+    assert response.headers["location"] == "/login"
 
 
 def test_get_register_avatar_requires_login(client: TestClient) -> None:
