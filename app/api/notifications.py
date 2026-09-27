@@ -77,6 +77,7 @@ async def show_notifications(
         request,
         "notifications.html",
         {
+            "active_nav": "notifications",
             "notifications": [_to_template_context(n) for n in notifications],
             "page": page,
             "has_next_page": has_next_page,
