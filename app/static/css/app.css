@@ -300,12 +300,15 @@ a {
     line-height: 18px;
   }
 
+  /* PR 245: gap/padding match .sidebar--expanded .sidebar__account-trigger below - the
+     same slot and the same avatar + two-line text row, just logged out - so both states
+     read as one component instead of a noticeably tighter guest variant. */
   .sidebar--expanded .sidebar__guest {
     width: 100%;
     height: auto;
     justify-content: flex-start;
-    gap: 10px;
-    padding: 8px;
+    gap: 12px;
+    padding: 12px 18px;
     border: 1px solid var(--border);
     background: var(--bg-surface);
   }
