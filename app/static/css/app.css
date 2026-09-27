@@ -1879,6 +1879,31 @@ a {
   opacity: 1;
 }
 
+/* PR 241: the heatmap above has no mobile override at all - the same fixed 11px cell and
+   ~53-column year grid as desktop, just inside a much narrower profile card. Compacting
+   the shared cell/gap variables (day grid, weekday column, month row and legend swatches
+   all key off them, see .reading-calendar-card above) fits more of the grid into view
+   before the horizontal scroll (.reading-calendar-scroll) has to kick in, and hiding the
+   month row reclaims some of that width for the day grid itself instead. */
+@media (max-width: 640px) {
+  .reading-calendar-card {
+    --reading-calendar-cell: 8px;
+    --reading-calendar-gap: 2px;
+  }
+
+  .reading-calendar-months {
+    display: none;
+  }
+
+  /* Only exists to line the weekday column's first row up below the month row + its own
+     gap (see the base rule's own comment) - with that row hidden above, this would just
+     push the weekday labels down with nothing to align against. */
+  .reading-calendar-weekdays {
+    margin-top: 0;
+    font-size: 9px;
+  }
+}
+
 .recent__title {
   font-size: 16px;
   font-weight: 700;
