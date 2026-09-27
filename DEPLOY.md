@@ -50,7 +50,8 @@ from ever sending the cookie back).
 | `SESSION_REMEMBER_MAX_AGE_SECONDS` | no | 90 days | Session cookie lifetime when "Запомнить меня" was checked. |
 | `DOWNLOAD_FILE_TTL_SECONDS` | no | 30 minutes | Fallback cleanup window for an exported title's file if nobody comes back to download it. |
 | `PASSWORD_RESET_TOKEN_TTL_SECONDS` | no | 1 hour | How long a "Забыли пароль?" link stays valid before it's rejected. |
-| `EMAIL_HOST` | **yes, in practice** | (unset) | SMTP host used to send password-reset emails. Left unset, `app/email.py` logs the email instead of sending it - fine for local dev, not for a real deploy: without it, nobody can actually recover a forgotten password. Any SMTP-compatible transactional-email provider works. |
+| `EMAIL_VERIFICATION_TOKEN_TTL_SECONDS` | no | 24 hours | How long the registration confirmation link and code stay valid (PR 246). |
+| `EMAIL_HOST` | **yes** | (unset) | SMTP host used to send password-reset and registration confirmation emails. Left unset, `app/email.py` logs the email instead of sending it - fine for local dev, not for a real deploy: without it, nobody can finish registering (PR 246 blocks login until the email is confirmed) or recover a forgotten password. Any SMTP-compatible transactional-email provider works. |
 | `EMAIL_PORT` | no | 587 | SMTP port (submission with STARTTLS). |
 | `EMAIL_USER` | no | (unset) | SMTP auth username, if the provider requires one. |
 | `EMAIL_PASSWORD` | no | (unset) | SMTP auth password/API key. |
@@ -60,10 +61,12 @@ Local development also reads these same variables, but every one of them falls b
 working default under the project directory except `DATABASE_URL` - see `README.md`'s
 Development section. `EMAIL_HOST` is the one exception worth calling out again: its
 "default" (unset) is a silent no-op send, not a working SMTP connection - fine while
-developing (nobody needs a real password-reset email locally), but a real deploy must set
-the whole `EMAIL_*` block for that feature to actually work. A reset link is only safe to
+developing (outside production the log line includes the email body, so a confirmation
+link/code can be copied from the server log), but a real deploy must set the whole
+`EMAIL_*` block - since PR 246 a new account can't log in until it confirms its email, so
+without SMTP nobody can finish registering. A reset or confirmation link is only safe to
 send once the site has its own HTTPS domain (see the DNS/TLS sections above) - sending one
-over plain `http://` both looks like phishing and exposes the reset token itself in transit.
+over plain `http://` both looks like phishing and exposes the token itself in transit.
 
 ## First deploy
 

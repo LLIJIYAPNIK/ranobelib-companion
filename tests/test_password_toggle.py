@@ -16,6 +16,7 @@ from fastapi.testclient import TestClient
 
 import app.api.auth as auth_module
 from app.config import get_settings
+from tests.auth_helpers import register
 from tests.db_reset import reset_app_database
 
 _TOGGLE_SCRIPT = "js/password-toggle.js"
@@ -38,10 +39,7 @@ def client(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> Iterator[TestClie
 
 
 def _register(client: TestClient, email: str, password: str = "hunter2pass") -> None:
-    client.post(
-        "/register",
-        data={"email": email, "password": password, "password_confirm": password, "nickname": ""},
-    )
+    register(client, email, password)
 
 
 def _assert_every_password_field_has_a_toggle(html: str, expected_ids: list[str]) -> None:
@@ -104,14 +102,16 @@ def test_settings_security_password_fields_have_toggles(client: TestClient) -> N
 def test_password_reset_form_fields_have_toggles(
     client: TestClient, monkeypatch: pytest.MonkeyPatch
 ) -> None:
+    # Registered first: the shared email capture (conftest.py) has to see the PR 246
+    # confirmation email before the stub below takes over send_email.
+    _register(client, "alice@example.com")
+    client.post("/logout")
     sent: list[str] = []
 
     async def _fake_send_email(to: str, subject: str, body: str) -> None:
         sent.append(body)
 
     monkeypatch.setattr(auth_module, "send_email", _fake_send_email)
-    _register(client, "alice@example.com")
-    client.post("/logout")
     client.post("/password-reset", data={"email": "alice@example.com"})
     token = re.search(r"/password-reset/([\w-]+)", sent[0]).group(1)  # type: ignore[union-attr]
 

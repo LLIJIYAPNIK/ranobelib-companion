@@ -18,6 +18,7 @@ from app.db.connection import connection
 from app.db.downloads import record_download
 from app.db.users import User, get_user_by_email
 from app.jobs.store import create_job
+from tests.auth_helpers import register
 from tests.db_reset import areset_app_database
 
 
@@ -31,14 +32,7 @@ async def user(monkeypatch: pytest.MonkeyPatch) -> Iterator[User]:
     from app.main import app
 
     with TestClient(app) as client:
-        client.post(
-            "/register",
-            data={
-                "email": "alice@example.com",
-                "password": "hunter2pass",
-                "password_confirm": "hunter2pass",
-            },
-        )
+        register(client, "alice@example.com")
         async with connection() as conn:
             yield await get_user_by_email(conn, "alice@example.com")
 

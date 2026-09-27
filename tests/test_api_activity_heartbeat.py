@@ -9,6 +9,7 @@ from fastapi.testclient import TestClient
 from app.config import get_settings
 from app.db.activity import total_active_seconds_today
 from app.db.connection import connection
+from tests.auth_helpers import register
 from tests.db_reset import reset_app_database
 
 
@@ -27,10 +28,7 @@ def client(monkeypatch: pytest.MonkeyPatch) -> Iterator[TestClient]:
 
 
 def _register(client: TestClient, email: str = "alice@example.com") -> None:
-    client.post(
-        "/register",
-        data={"email": email, "password": "hunter2pass", "password_confirm": "hunter2pass"},
-    )
+    register(client, email)
 
 
 def test_heartbeat_requires_login(client: TestClient) -> None:

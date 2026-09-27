@@ -28,11 +28,22 @@ async def send_email(to: str, subject: str, body: str) -> None:
     stall the loop" reasoning, just for SMTP instead of the SDK)."""
     settings = get_settings()
     if not settings.email_host:
-        logger.warning(
-            "EMAIL_HOST not configured - logging email instead of sending (to=%s, subject=%s)",
-            to,
-            subject,
-        )
+        # PR 246: outside production the body is logged too - locally that's the only way
+        # to get at a registration confirmation link/code, and login is blocked until one
+        # is used. Never in production: the body carries one-time secrets, and logs are
+        # the wrong place for them.
+        if settings.is_production:
+            logger.warning(
+                "EMAIL_HOST not configured - email NOT sent (to=%s, subject=%s)", to, subject
+            )
+        else:
+            logger.warning(
+                "EMAIL_HOST not configured - logging email instead of sending "
+                "(to=%s, subject=%s)\n%s",
+                to,
+                subject,
+                body,
+            )
         return
     await asyncio.to_thread(_send_sync, to, subject, body)
 

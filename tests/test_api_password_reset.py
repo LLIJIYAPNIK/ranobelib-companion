@@ -17,6 +17,7 @@ from fastapi.testclient import TestClient
 
 import app.api.auth as auth_module
 from app.config import get_settings
+from tests.auth_helpers import record_email, register
 from tests.db_reset import reset_app_database
 
 
@@ -25,7 +26,12 @@ def sent_emails(monkeypatch: pytest.MonkeyPatch) -> list[dict[str, str]]:
     captured: list[dict[str, str]] = []
 
     async def _fake_send_email(to: str, subject: str, body: str) -> None:
-        captured.append({"to": to, "subject": subject, "body": body})
+        # PR 246: registering sends a confirmation email too - forwarded to the shared
+        # recorder (conftest.py) so tests.auth_helpers.register() can confirm the
+        # account, and kept out of this list, which is only about reset emails.
+        await record_email(to, subject, body)
+        if subject.startswith("Восстановление пароля"):
+            captured.append({"to": to, "subject": subject, "body": body})
 
     monkeypatch.setattr(auth_module, "send_email", _fake_send_email)
     return captured
@@ -47,10 +53,7 @@ def client(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> Iterator[TestClie
 
 
 def _register(client: TestClient, email: str, password: str = "hunter2pass") -> None:
-    client.post(
-        "/register",
-        data={"email": email, "password": password, "password_confirm": password, "nickname": ""},
-    )
+    register(client, email, password)
 
 
 def _extract_reset_token(body: str) -> str:
@@ -201,3 +204,36 @@ def test_reset_invalidates_a_session_that_was_already_logged_in(
     response = client.get("/settings/account")
 
     assert 'href="/login"' in response.text or response.status_code == 303
+
+
+# --- PR 246: a completed reset also confirms the email ----------------------------------
+
+
+def test_reset_confirms_an_unconfirmed_email(
+    client: TestClient, sent_emails: list[dict[str, str]]
+) -> None:
+    # Registered but never confirmed - login would stop at /verify-email. The reset link
+    # was emailed to the same address, so using it proves the same thing.
+    client.post(
+        "/register",
+        data={
+            "email": "alice@example.com",
+            "password": "original-pass",
+            "password_confirm": "original-pass",
+        },
+    )
+    client.cookies.clear()
+    client.post("/password-reset", data={"email": "alice@example.com"})
+    token = _extract_reset_token(sent_emails[0]["body"])
+    client.post(
+        f"/password-reset/{token}",
+        data={"new_password": "brand-new-pass", "new_password_confirm": "brand-new-pass"},
+    )
+
+    response = client.post(
+        "/login",
+        data={"email": "alice@example.com", "password": "brand-new-pass"},
+        follow_redirects=False,
+    )
+
+    assert response.headers["location"] == "/"

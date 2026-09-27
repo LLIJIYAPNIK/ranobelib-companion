@@ -1173,8 +1173,25 @@ a {
   transition: color 0.15s ease, text-decoration-color 0.15s ease;
 }
 
+/* PR 246: a POST action worded as an inline link (verify_email.html's "отправьте его ещё
+   раз" resend) - a <button>, since it has to submit a form, dressed as PR 82's auth
+   links above. */
+.auth-form__link-button {
+  padding: 0;
+  border: none;
+  background: none;
+  font: inherit;
+  color: var(--text-secondary);
+  text-decoration: underline;
+  text-decoration-color: var(--text-muted);
+  text-underline-offset: 2px;
+  cursor: pointer;
+  transition: color 0.15s ease, text-decoration-color 0.15s ease;
+}
+
 @media (hover: hover) {
-  .content__hint--auth a:hover {
+  .content__hint--auth a:hover,
+  .auth-form__link-button:hover {
     color: var(--accent-teal);
     text-decoration-color: var(--accent-teal);
   }

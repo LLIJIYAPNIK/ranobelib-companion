@@ -10,6 +10,7 @@ import pytest
 from fastapi.testclient import TestClient
 
 from app.config import get_settings
+from tests.auth_helpers import register
 from tests.db_reset import reset_app_database
 
 
@@ -29,10 +30,7 @@ def client(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> Iterator[TestClie
 
 
 def _register(client: TestClient, email: str) -> None:
-    client.post(
-        "/register",
-        data={"email": email, "password": "hunter2pass", "password_confirm": "hunter2pass"},
-    )
+    register(client, email)
 
 
 def test_sidebar_guest_link_is_marked_as_the_modal_trigger(client: TestClient) -> None:

@@ -56,6 +56,10 @@ attachment isn't a profile avatar.
 (seconds) before ``app/db/password_reset.py``'s ``get_valid_token()`` starts rejecting it -
 same "explicit config, not hardcoded" treatment as ``download_file_ttl``.
 
+``email_verification_token_ttl`` (PR 246) is the same for the link and code in the
+registration confirmation email (``app/db/email_verification.py``) - longer by default,
+since a new user may not check their inbox straight away.
+
 ``email_host``/``email_port``/``email_user``/``email_password``/``email_from`` (PR 225)
 configure the SMTP connection ``app/email.py`` sends through - not tied to any specific
 transactional-email provider, any SMTP-compatible one works. Left unset in local dev/CI on
@@ -83,6 +87,7 @@ _DEFAULT_DOWNLOAD_FILE_TTL_SECONDS = 30 * 60  # 30 minutes
 _DEFAULT_AVATAR_DIR = ".ranobelib_avatars"
 _DEFAULT_COMMENT_ATTACHMENT_DIR = ".ranobelib_comment_attachments"
 _DEFAULT_PASSWORD_RESET_TOKEN_TTL_SECONDS = 60 * 60  # 1 hour
+_DEFAULT_EMAIL_VERIFICATION_TOKEN_TTL_SECONDS = 24 * 60 * 60  # 24 hours
 _DEFAULT_EMAIL_PORT = 587
 
 
@@ -99,6 +104,7 @@ class Settings:
     comment_attachment_dir: Path
     is_production: bool
     password_reset_token_ttl: float
+    email_verification_token_ttl: float
     email_host: str | None
     email_port: int
     email_user: str | None
@@ -145,6 +151,12 @@ def get_settings() -> Settings:
         password_reset_token_ttl=float(
             os.environ.get(
                 "PASSWORD_RESET_TOKEN_TTL_SECONDS", _DEFAULT_PASSWORD_RESET_TOKEN_TTL_SECONDS
+            )
+        ),
+        email_verification_token_ttl=float(
+            os.environ.get(
+                "EMAIL_VERIFICATION_TOKEN_TTL_SECONDS",
+                _DEFAULT_EMAIL_VERIFICATION_TOKEN_TTL_SECONDS,
             )
         ),
         email_host=os.environ.get("EMAIL_HOST") or None,

@@ -26,6 +26,10 @@ from app.auth.rate_limit import is_rate_limited
 from app.auth.session_middleware import REMEMBER_ME_KEY
 from app.config import get_settings
 from app.db.connection import get_connection
+from app.db.email_verification import check_code as check_verification_code
+from app.db.email_verification import create_token as create_verification_token
+from app.db.email_verification import get_valid_token as get_valid_verification_token
+from app.db.email_verification import mark_token_used as mark_verification_token_used
 from app.db.password_reset import create_token, get_valid_token, mark_token_used
 from app.db.users import (
     User,
@@ -33,6 +37,7 @@ from app.db.users import (
     get_user_by_email,
     get_user_by_id,
     get_user_by_nickname,
+    mark_email_verified,
     update_user_avatar,
     update_user_password_from_reset,
 )
@@ -146,37 +151,25 @@ async def register(
                 status_code=400,
             )
         raise
-    request.session["user_id"] = user.id
-    # PR 225: stashed alongside user_id and checked on every request (see
-    # get_current_user(), app/auth/dependencies.py) against the account's current
-    # session_version - lets a password reset invalidate sessions issued before it.
-    request.session["session_version"] = user.session_version
-    # PR 106: one more screen before home, offering an avatar upload. `current_user` (see
-    # app/templating.py's context processor) is resolved once up front by an app-level
-    # dependency (app/main.py), before this route body - and therefore this session write
-    # - ever runs, so it has to be refreshed explicitly here too for the sidebar to reflect
-    # the new account immediately rather than on the next request.
-    request.state.current_user = user
-    if _is_modal_request(request):
-        # PR 218: auth-modal.js only knows how to detect success via a redirect (see its
-        # own comment on why - unlike the login form, this success case has no error/OK
-        # fragment distinction to sniff). A plain, no-JS submission keeps rendering the
-        # avatar prompt directly instead (the branch below, unchanged since PR 106) - only
-        # the modal's own fetch() needs somewhere to redirect *to*, hence GET
-        # /register/avatar just below existing solely to give this a target.
-        return RedirectResponse(url="/register/avatar", status_code=303)
-    return templates.TemplateResponse(request, "register_avatar.html", {})
+    # PR 246: not logged in yet - the account waits in the session until its email is
+    # confirmed (see the email confirmation section below). Any older login in this
+    # browser is dropped rather than left running alongside a different, pending account.
+    await _send_verification_email(request, conn, user)
+    request.session.pop("user_id", None)
+    request.session.pop("session_version", None)
+    request.session[PENDING_VERIFICATION_KEY] = user.id
+    # A redirect for both the no-JS form and auth-modal.js (PR 218), which follows a
+    # register redirect as a full navigation.
+    return RedirectResponse(url="/verify-email", status_code=303)
 
 
 @router.get("/register/avatar")
 async def show_register_avatar(
     request: Request, user: Annotated[User, Depends(require_current_user)]
 ) -> HTMLResponse:
-    """Only reachable today via the redirect above (a modal-driven registration) - a
-    plain, no-JS registration renders register_avatar.html directly from POST /register
-    instead and never hits this route. Exists as a real GET regardless (not, say, folded
-    into the redirect target as a query string) so reloading it or bookmarking it still
-    works like any other page."""
+    """PR 106's optional avatar step. Since PR 246 it follows email confirmation (see
+    _complete_verification()), the first moment a new account is logged in. A real GET,
+    so reloading or bookmarking it still works like any other page."""
     return templates.TemplateResponse(request, "register_avatar.html", {})
 
 
@@ -199,6 +192,145 @@ async def register_avatar(
 
     await update_user_avatar(conn, user.id, avatar_path)
     return RedirectResponse(url="/", status_code=303)
+
+
+# --- PR 246: email confirmation -----------------------------------------------------------
+#
+# A new account can't log in until it confirms its email. Between registering (or logging
+# in with the right password but an unconfirmed email) and confirming, the session holds
+# only PENDING_VERIFICATION_KEY - never user_id - so nothing else on the site treats the
+# visitor as logged in. Confirming either way (the link or the code from the same email)
+# swaps that for a real session via _log_in().
+
+PENDING_VERIFICATION_KEY = "pending_verification_user_id"
+
+_INVALID_CODE_MESSAGE = "Неверный или устаревший код. Проверьте письмо или отправьте новое."
+
+
+def _log_in(request: Request, user: User) -> None:
+    request.session.pop(PENDING_VERIFICATION_KEY, None)
+    request.session["user_id"] = user.id
+    # PR 225: stashed alongside user_id and checked on every request (see
+    # get_current_user(), app/auth/dependencies.py) against the account's current
+    # session_version - lets a password reset invalidate sessions issued before it.
+    request.session["session_version"] = user.session_version
+    # `current_user` (see app/templating.py's context processor) is resolved once up front
+    # by an app-level dependency (app/main.py), before this session write - refresh it so
+    # whatever renders next already sees the visitor as logged in.
+    request.state.current_user = user
+
+
+async def _send_verification_email(request: Request, conn: AsyncConnection, user: User) -> None:
+    ttl_seconds = get_settings().email_verification_token_ttl
+    issued = await create_verification_token(conn, user.id, ttl_seconds)
+    verify_url = str(request.url_for("verify_email_link", token=issued.token))
+    ttl_hours = max(1, int(ttl_seconds // 3600))
+    await send_email(
+        user.email,
+        "Подтверждение email — webnovells",
+        f"Чтобы подтвердить email и войти, перейдите по ссылке:\n{verify_url}\n\n"
+        f"Или введите код на странице подтверждения: {issued.code}\n\n"
+        f"Ссылка и код действуют {ttl_hours} ч. Если вы не регистрировались на "
+        "webnovells, просто проигнорируйте это письмо.",
+    )
+
+
+async def _pending_user(request: Request, conn: AsyncConnection) -> User | None:
+    """The unconfirmed account waiting in this session, if any. An account confirmed
+    since (e.g. by the link on another device) no longer counts as pending."""
+    user_id = request.session.get(PENDING_VERIFICATION_KEY)
+    if user_id is None:
+        return None
+    user = await get_user_by_id(conn, user_id)
+    if user is None or user.is_email_verified:
+        request.session.pop(PENDING_VERIFICATION_KEY, None)
+        return None
+    return user
+
+
+def _verify_email_page(
+    request: Request, user: User, *, status_code: int = 200, **context: object
+) -> HTMLResponse:
+    return templates.TemplateResponse(
+        request,
+        "verify_email.html",
+        {"pending_email": user.email, **context},
+        status_code=status_code,
+    )
+
+
+async def _complete_verification(
+    request: Request, conn: AsyncConnection, token_id: int, user_id: int
+) -> Response:
+    await mark_verification_token_used(conn, token_id)
+    user = await mark_email_verified(conn, user_id)
+    _log_in(request, user)
+    # PR 106's optional avatar step still follows registration - it just starts from here
+    # now, the first moment the account is actually logged in.
+    return RedirectResponse(url="/register/avatar", status_code=303)
+
+
+@router.get("/verify-email", response_model=None)
+async def show_verify_email(
+    request: Request, conn: Annotated[AsyncConnection, Depends(get_connection)]
+) -> Response:
+    user = await _pending_user(request, conn)
+    if user is None:
+        return RedirectResponse(url="/login", status_code=303)
+    return _verify_email_page(request, user)
+
+
+@router.post("/verify-email", response_model=None)
+async def verify_email_code(
+    request: Request,
+    conn: Annotated[AsyncConnection, Depends(get_connection)],
+    code: str = Form(...),
+) -> Response:
+    user = await _pending_user(request, conn)
+    if user is None:
+        return RedirectResponse(url="/login", status_code=303)
+    # Per-IP on top of check_code()'s own per-email cap (see app/db/email_verification.py).
+    if is_rate_limited(f"verify-email:{_client_ip(request)}"):
+        return _verify_email_page(request, user, status_code=429, error=_RATE_LIMIT_MESSAGE)
+
+    token = await check_verification_code(conn, user.id, code)
+    if token is None:
+        return _verify_email_page(request, user, status_code=400, error=_INVALID_CODE_MESSAGE)
+    return await _complete_verification(request, conn, token.id, user.id)
+
+
+@router.post("/verify-email/resend", response_model=None)
+async def resend_verification_email(
+    request: Request, conn: Annotated[AsyncConnection, Depends(get_connection)]
+) -> Response:
+    user = await _pending_user(request, conn)
+    if user is None:
+        return RedirectResponse(url="/login", status_code=303)
+    # Same limiter and bucket as POST /register (PR 188) - a resend is one more
+    # "send this address an email" attempt, like the registration that sent the first.
+    if is_rate_limited(f"register:{_client_ip(request)}:{user.email}"):
+        return _verify_email_page(request, user, status_code=429, error=_RATE_LIMIT_MESSAGE)
+
+    await _send_verification_email(request, conn, user)
+    return _verify_email_page(request, user, message="Письмо отправлено ещё раз")
+
+
+@router.get("/verify-email/{token}", response_model=None)
+async def verify_email_link(
+    request: Request,
+    conn: Annotated[AsyncConnection, Depends(get_connection)],
+    token: str,
+) -> Response:
+    verification = await get_valid_verification_token(conn, token)
+    if verification is None:
+        pending = await _pending_user(request, conn)
+        return templates.TemplateResponse(
+            request,
+            "verify_email.html",
+            {"invalid": True, "pending_email": pending.email if pending else None},
+            status_code=400,
+        )
+    return await _complete_verification(request, conn, verification.id, verification.user_id)
 
 
 @router.get("/login")
@@ -246,9 +378,16 @@ async def login(
             status_code=400,
         )
 
-    request.session["user_id"] = user.id
-    # PR 225: see the matching comment in register() above.
-    request.session["session_version"] = user.session_version
+    if not user.is_email_verified:
+        # PR 246: only reached with the right password, so this reveals nothing about
+        # which emails are registered. No new email is sent automatically - the page
+        # offers a resend instead, so repeated logins don't flood the inbox.
+        request.session.pop("user_id", None)
+        request.session.pop("session_version", None)
+        request.session[PENDING_VERIFICATION_KEY] = user.id
+        return RedirectResponse(url="/verify-email", status_code=303)
+
+    _log_in(request, user)
     if remember_me:
         # PR 36: extends the session cookie's lifetime - see
         # app/auth/session_middleware.py, RememberMeSessionMiddleware.
@@ -365,4 +504,8 @@ async def confirm_password_reset(
 
     await update_user_password_from_reset(conn, reset_token.user_id, new_password_hash)
     await mark_token_used(conn, reset_token.id)
+    # PR 246: the reset link was emailed to this address, so using it proves the same
+    # thing a confirmation link does - without this, an unconfirmed account that resets
+    # its password would still be stuck at /verify-email on the next login.
+    await mark_email_verified(conn, reset_token.user_id)
     return templates.TemplateResponse(request, "password_reset.html", {"success": True})

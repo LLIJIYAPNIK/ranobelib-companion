@@ -13,6 +13,7 @@ from app.db.activity import record_chapter_read, record_heartbeat
 from app.db.connection import connection
 from app.db.downloads import record_download
 from app.jobs.store import create_job
+from tests.auth_helpers import register
 from tests.db_reset import reset_app_database
 
 
@@ -32,10 +33,7 @@ def client(monkeypatch: pytest.MonkeyPatch) -> Iterator[TestClient]:
 
 
 def _register(client: TestClient, email: str = "alice@example.com") -> None:
-    client.post(
-        "/register",
-        data={"email": email, "password": "hunter2pass", "password_confirm": "hunter2pass"},
-    )
+    register(client, email)
 
 
 class _FakeClient:

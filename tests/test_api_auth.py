@@ -13,6 +13,7 @@ import pytest
 from fastapi.testclient import TestClient
 
 from app.config import get_settings
+from tests.auth_helpers import register
 from tests.db_reset import reset_app_database
 
 
@@ -34,6 +35,8 @@ def client(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> Iterator[TestClie
 def _register(
     client: TestClient, email: str, password: str = "hunter2pass", nickname: str = ""
 ) -> object:
+    """Just POST /register - for the form's own validation. Tests that need the account
+    logged in use tests.auth_helpers.register(), which also confirms the email (PR 246)."""
     return client.post(
         "/register",
         data={
@@ -45,14 +48,15 @@ def _register(
     )
 
 
-def test_register_creates_a_session_and_shows_the_avatar_prompt(client: TestClient) -> None:
-    # PR 106: registering no longer redirects straight home - it lands on an intermediate
-    # "add an avatar?" screen first. The session cookie is set regardless (current_user's
-    # email shows up in the sidebar via app/templating.py's context processor).
-    response = _register(client, "alice@example.com")
+def test_confirming_the_email_logs_in_and_shows_the_avatar_prompt(client: TestClient) -> None:
+    # PR 106: registering doesn't go straight home - it lands on an intermediate "add an
+    # avatar?" screen first. Since PR 246 that screen follows email confirmation, the
+    # first moment the account is logged in (current_user's email shows up in the sidebar
+    # via app/templating.py's context processor).
+    response = register(client, "alice@example.com")
 
     assert response.status_code == 200
-    assert not response.history
+    assert response.history[0].headers["location"] == "/register/avatar"
     assert "Хотите добавить аватар?" in response.text
     assert 'action="/register/avatar"' in response.text
     assert "alice@example.com" in response.text
@@ -67,7 +71,7 @@ def test_register_nickname_is_optional(client: TestClient) -> None:
 
 
 def test_register_nickname_is_stored_on_the_account(client: TestClient) -> None:
-    _register(client, "alice@example.com", nickname="Alice Wong")
+    register(client, "alice@example.com", nickname="Alice Wong")
 
     response = client.get("/settings/account")
 
@@ -85,7 +89,7 @@ def test_register_form_preserves_nickname_on_error(client: TestClient) -> None:
 
 
 def test_register_avatar_prompt_offers_a_skip_link_to_home(client: TestClient) -> None:
-    response = _register(client, "alice@example.com")
+    response = register(client, "alice@example.com")
 
     assert response.status_code == 200
     assert '<a href="/">Пропустить</a>' in response.text
@@ -98,7 +102,7 @@ def test_register_avatar_prompt_is_a_clickable_preview_that_auto_submits(
     # same round avatar-preview widget PR 109 already gave /settings/account, reusing its
     # avatar-upload.js rather than a second implementation of the same thing. "Пропустить"
     # itself is untouched (see the test above).
-    response = _register(client, "alice@example.com")
+    response = register(client, "alice@example.com")
 
     assert response.status_code == 200
     assert 'data-role="avatar-upload-form"' in response.text
@@ -116,7 +120,7 @@ _PNG_BYTES = b"\x89PNG\r\n\x1a\n" + b"\x00" * 32
 def test_register_avatar_upload_saves_the_file_and_redirects_home(
     client: TestClient, tmp_path: Path
 ) -> None:
-    _register(client, "alice@example.com")
+    register(client, "alice@example.com")
 
     response = client.post(
         "/register/avatar", files={"avatar": ("me.png", _PNG_BYTES, "image/png")}
@@ -130,7 +134,7 @@ def test_register_avatar_upload_saves_the_file_and_redirects_home(
 def test_register_avatar_upload_rejects_a_disallowed_content_type(
     client: TestClient, tmp_path: Path
 ) -> None:
-    _register(client, "alice@example.com")
+    register(client, "alice@example.com")
 
     response = client.post(
         "/register/avatar",
@@ -230,7 +234,7 @@ def test_register_eight_char_password_is_accepted(client: TestClient) -> None:
     response = _register(client, "alice@example.com", password="eightchr")
 
     assert response.status_code == 200
-    assert not response.history
+    assert response.history[0].headers["location"] == "/verify-email"
 
 
 def test_register_seven_char_password_is_rejected(client: TestClient) -> None:
@@ -248,7 +252,7 @@ def test_register_seven_char_password_is_rejected(client: TestClient) -> None:
 
 
 def test_login_wrong_password_shows_form_error(client: TestClient) -> None:
-    _register(client, "alice@example.com", password="hunter2pass")
+    register(client, "alice@example.com", password="hunter2pass")
     client.post("/logout")
 
     response = client.post(
@@ -332,7 +336,7 @@ def test_register_placeholder_is_not_submitted_as_the_email_value(client: TestCl
 
 
 def test_login_correct_credentials_establishes_session(client: TestClient) -> None:
-    _register(client, "alice@example.com", password="hunter2pass")
+    register(client, "alice@example.com", password="hunter2pass")
     client.post("/logout")
 
     response = client.post("/login", data={"email": "alice@example.com", "password": "hunter2pass"})
@@ -345,7 +349,7 @@ def test_login_correct_credentials_establishes_session(client: TestClient) -> No
 def test_login_without_remember_me_uses_the_default_session_lifetime(
     client: TestClient,
 ) -> None:
-    _register(client, "alice@example.com", password="hunter2pass")
+    register(client, "alice@example.com", password="hunter2pass")
     client.post("/logout")
 
     response = client.post(
@@ -359,7 +363,7 @@ def test_login_without_remember_me_uses_the_default_session_lifetime(
 
 
 def test_login_with_remember_me_extends_the_session_lifetime(client: TestClient) -> None:
-    _register(client, "alice@example.com", password="hunter2pass")
+    register(client, "alice@example.com", password="hunter2pass")
     client.post("/logout")
 
     response = client.post(
@@ -380,7 +384,7 @@ def test_login_with_remember_me_extends_the_session_lifetime(client: TestClient)
 
 
 def test_login_is_rate_limited_after_repeated_wrong_passwords(client: TestClient) -> None:
-    _register(client, "alice@example.com", password="hunter2pass")
+    register(client, "alice@example.com", password="hunter2pass")
     client.post("/logout")
 
     for _ in range(5):
@@ -400,7 +404,7 @@ def test_login_is_rate_limited_after_repeated_wrong_passwords(client: TestClient
 def test_login_succeeds_after_a_few_failed_attempts_while_under_the_limit(
     client: TestClient,
 ) -> None:
-    _register(client, "alice@example.com", password="hunter2pass")
+    register(client, "alice@example.com", password="hunter2pass")
     client.post("/logout")
 
     for _ in range(2):
@@ -434,7 +438,8 @@ def test_register_is_rate_limited_after_repeated_attempts(client: TestClient) ->
 
 
 def test_logout_clears_session(client: TestClient) -> None:
-    _register(client, "alice@example.com")
+    register(client, "alice@example.com")
+    assert "alice@example.com" in client.get("/").text
 
     response = client.post("/logout")
     home = client.get("/")
