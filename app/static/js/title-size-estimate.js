@@ -29,6 +29,11 @@
         clearInterval(cycle);
         if (data && data.label) {
           el.textContent = `≈ ${data.label}`;
+          // PR 253: the mobile download sheets repeat the estimate («308 глав · ≈ 82 МБ»,
+          // «Скачать EPUB · ≈ 82 МБ»).
+          document.querySelectorAll('[data-role="title-size-label"]').forEach((label) => {
+            label.textContent = ` · ≈ ${data.label}`;
+          });
         } else {
           el.remove();
         }

@@ -28,4 +28,20 @@
     { passive: true }
   );
   update();
+
+  // PR 253: the strip's back button (base.html, strip_back_href) - a real history step
+  // when we came from a page of this site, its fallback href otherwise (a shared link,
+  // a new tab).
+  const back = strip.querySelector('[data-role="strip-back"]');
+  back?.addEventListener("click", (event) => {
+    let sameOrigin = false;
+    try {
+      sameOrigin = document.referrer && new URL(document.referrer).origin === location.origin;
+    } catch {
+      sameOrigin = false;
+    }
+    if (!sameOrigin || history.length < 2) return;
+    event.preventDefault();
+    history.back();
+  });
 })();

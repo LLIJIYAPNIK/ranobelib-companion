@@ -2733,189 +2733,6 @@ html.shell-scroll-lock body {
   border-radius: 2px;
 }
 
-.reading-progress--hero {
-  max-width: 320px;
-  margin-top: 4px;
-}
-
-.title-hero {
-  display: flex;
-  gap: 28px;
-  padding-bottom: 24px;
-  border-bottom: 1px solid var(--legacy-border);
-}
-
-.title-hero__cover {
-  width: 170px;
-  height: 250px;
-  flex: 0 0 170px;
-  border-radius: 8px;
-  object-fit: cover;
-  background: var(--bg-surface);
-  /* PR 142: opens image-lightbox.js's fullscreen viewer, same as .reader-content img
-     already does - set here rather than inline via JS, since image-lightbox.js's own
-     click listener for this class is delegated and may only ever see a cover injected
-     long after load (the quick-view modal's own copy of this class, PR 117), with no
-     single "attach time" a script-set inline style could hook into. */
-  cursor: zoom-in;
-}
-
-/* PR 203: title.html's own skeleton, shown until title-content-load.js's fetch to
-   GET /titles/{slug}/data replaces [data-role="title-content"] with the real markup -
-   .title-hero__cover--skeleton/.title-hero--skeleton reuse the real hero's own box sizes
-   (just above) so nothing shifts once that swap happens. */
-.title-hero--skeleton {
-  pointer-events: none;
-}
-
-.title-hero__cover--skeleton {
-  cursor: default;
-}
-
-.skeleton-block {
-  border-radius: 4px;
-  background: var(--bg-surface);
-  animation: skeleton-pulse 1.4s ease-in-out infinite;
-}
-
-@keyframes skeleton-pulse {
-  0%, 100% {
-    opacity: 1;
-  }
-  50% {
-    opacity: 0.5;
-  }
-}
-
-.skeleton-block--name {
-  width: 60%;
-  max-width: 420px;
-  height: 34px;
-  margin-bottom: 12px;
-}
-
-.skeleton-block--meta {
-  width: 40%;
-  max-width: 280px;
-  height: 14px;
-  margin-bottom: 8px;
-}
-
-.toc--skeleton {
-  padding-top: 24px;
-}
-
-.skeleton-block--chapter {
-  width: 100%;
-  height: 40px;
-  margin-bottom: 8px;
-}
-
-.title-hero__info {
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-}
-
-.title-hero__info > .btn {
-  align-self: flex-start;
-}
-
-.title-hero__name {
-  font-size: 34px;
-  font-weight: 800;
-  letter-spacing: -0.5px;
-  margin: 0;
-}
-
-.title-hero__alt-name {
-  color: var(--text-muted);
-  margin: 0;
-}
-
-.title-hero__badges {
-  display: flex;
-  gap: 8px;
-  flex-wrap: wrap;
-}
-
-.badge {
-  background: var(--bg-surface);
-  border-radius: 4px;
-  font-size: 11px;
-  padding: 3px 9px;
-}
-
-.badge--muted {
-  background: transparent;
-  border: 1px solid var(--legacy-border);
-  color: var(--text-muted);
-}
-
-.badge--link {
-  text-decoration: none;
-}
-
-.badge--link:hover {
-  color: var(--accent-teal);
-}
-
-.title-hero__meta {
-  display: flex;
-  gap: 14px;
-  margin-top: 6px;
-  color: var(--text-muted);
-  font-size: 13px;
-}
-
-.title-size-estimate {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-}
-
-.spinner {
-  width: 11px;
-  height: 11px;
-  border: 2px solid var(--legacy-border);
-  border-top-color: var(--accent-teal);
-  border-radius: 50%;
-  animation: spin 0.7s linear infinite;
-}
-
-@keyframes spin {
-  to {
-    transform: rotate(360deg);
-  }
-}
-
-.title-hero__actions {
-  display: flex;
-  align-items: center;
-  gap: 14px;
-  margin-top: 14px;
-}
-
-.title-summary {
-  padding: 20px 0;
-  color: var(--text-secondary);
-  line-height: 1.7;
-  max-width: 720px;
-}
-
-.title-credits {
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-  font-size: 13px;
-  color: var(--text-secondary);
-}
-
-.title-credits__label {
-  color: var(--text-muted);
-  margin-right: 6px;
-}
-
 /* PR 218: same fixed-overlay/backdrop-click/Escape/close-button pattern as
    the title quick view (PR 117) - opens _auth_card.html over the current page
    instead of navigating to /login or /register (see auth-modal.js). Unlike that modal,
@@ -3026,10 +2843,6 @@ html.shell-scroll-lock body {
     border-color: var(--accent-teal);
   }
 
-  .toc__chapter-checkbox:hover:not(:checked) {
-    border-color: var(--accent-teal);
-  }
-
   .reader-settings__toggle:hover:not(:checked) {
     border-color: var(--accent-teal);
   }
@@ -3061,57 +2874,6 @@ html.shell-scroll-lock body {
    .btn--sm's one regardless of source order. */
 .btn--sm.btn--secondary {
   background: transparent;
-}
-
-.toc {
-  margin-top: 28px;
-  /* Clearance for the fixed export panel below (PR 51) so it never sits over the last
-     couple of chapters/checkboxes on a long table of contents - reserved unconditionally
-     (not just while the panel is actually visible) so the list doesn't jump/reflow as it
-     slides in and out. */
-  padding-bottom: 96px;
-}
-
-.toc__header {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  flex-wrap: wrap;
-  gap: 12px;
-  margin-bottom: 16px;
-}
-
-.toc__export-panel {
-  /* PR 37 originally made this `position: sticky`, which only holds an element within
-     its own containing block (here, the short `.toc__header` row) - once the page
-     scrolls past that row, the panel scrolls away with it despite `sticky`, which is
-     exactly the bug PR 51 fixes: `fixed` anchors to the viewport instead, so it stays
-     reachable for the entire length of a long chapter list. Bottom-anchored rather than
-     top - avoids the top-right "download ready" toast (PR 50) and needs no coordination
-     with the mobile fixed account header up there. */
-  position: fixed;
-  bottom: 24px;
-  right: 32px;
-  z-index: 45;
-  opacity: 1;
-  transform: translateY(0);
-  transition: opacity 0.2s ease, transform 0.2s ease;
-}
-
-.toc__export-panel--js:not(.toc__export-panel--visible) {
-  opacity: 0;
-  transform: translateY(8px);
-  pointer-events: none;
-}
-
-.toc__export {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  padding: 8px;
-  background: var(--bg-surface);
-  border: 1px solid var(--legacy-border);
-  border-radius: 8px;
 }
 
 .toc__export-format {
@@ -3226,149 +2988,6 @@ html.shell-scroll-lock body {
   font-size: 18px;
   font-weight: 700;
   margin: 0;
-}
-
-.toc__volume {
-  margin-bottom: 20px;
-}
-
-.toc__volume-header {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 12px;
-  margin-bottom: 8px;
-}
-
-.toc__volume-title {
-  font-size: 14px;
-  font-weight: 700;
-  color: var(--text-secondary);
-  margin: 0;
-}
-
-.toc__chapters {
-  list-style: none;
-  margin: 0;
-  padding: 0;
-  display: flex;
-  flex-direction: column;
-}
-
-.toc__chapter {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  padding: 8px 10px;
-  border-bottom: 1px solid var(--legacy-border);
-  font-size: 13px;
-}
-
-/* Custom checkmark (PR 59) - the same treatment PR 53 gave the catalog genre checkboxes
-   (.catalog-filters__option input[type="checkbox"] above), so chapter selection on the
-   title page isn't the one remaining browser-default checkbox in a dark theme built
-   around a custom one everywhere else. */
-.toc__chapter-checkbox {
-  appearance: none;
-  -webkit-appearance: none;
-  flex: 0 0 auto;
-  width: 16px;
-  height: 16px;
-  margin: 0;
-  position: relative;
-  border: 1px solid var(--legacy-border);
-  border-radius: 4px;
-  background: var(--bg-surface);
-  cursor: pointer;
-  transition: border-color 0.15s ease, background-color 0.15s ease, box-shadow 0.15s ease;
-}
-
-.toc__chapter-checkbox::after {
-  content: "";
-  position: absolute;
-  left: 4px;
-  top: 1px;
-  width: 4px;
-  height: 8px;
-  border: solid var(--legacy-bg-page);
-  border-width: 0 2px 2px 0;
-  transform: rotate(45deg) scale(0);
-  transition: transform 0.1s ease;
-}
-
-.toc__chapter-checkbox:checked {
-  background: var(--accent-teal);
-  border-color: var(--accent-teal);
-}
-
-.toc__chapter-checkbox:checked::after {
-  transform: rotate(45deg) scale(1);
-}
-
-.toc__chapter-checkbox:focus-visible {
-  outline: none;
-  border-color: var(--accent-teal);
-  box-shadow: 0 0 0 3px rgba(34, 211, 197, 0.18);
-}
-
-.toc__chapter-link {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  flex: 1;
-  min-width: 0;
-  text-decoration: none;
-  color: inherit;
-}
-
-.toc__chapter-link:hover .toc__chapter-name {
-  color: var(--accent-teal);
-}
-
-.toc__chapter-number {
-  font-family: var(--legacy-font-mono);
-  color: var(--text-muted);
-  flex: 0 0 auto;
-  min-width: 44px;
-}
-
-.toc__chapter-name {
-  color: var(--text-secondary);
-  flex: 1;
-}
-
-/* PR 83: tap-to-read progress (toc-tap-progress.js) - client-side only, so it starts
-   absent from the row and is only ever added once that script finds a matching
-   localStorage entry, same as the "N переводов" badge it sits next to. */
-.toc__chapter-progress {
-  flex: 0 0 auto;
-  width: 44px;
-  height: 4px;
-  border-radius: 2px;
-  background: var(--legacy-border);
-  overflow: hidden;
-}
-
-.toc__chapter-progress__fill {
-  display: block;
-  height: 100%;
-  background: var(--accent-teal);
-  border-radius: 2px;
-}
-
-/* PR 83: replaces the bar once a chapter's tap-to-read progress reaches 100% - same
-   teal-fill-on-dark checkmark treatment the custom checkboxes (PR 53/59/63) use for
-   their own checked state, just circular instead of a checkbox's square. */
-.toc__chapter-checkmark {
-  flex: 0 0 auto;
-  width: 18px;
-  height: 18px;
-  border-radius: 50%;
-  background: var(--accent-teal);
-  color: var(--legacy-bg-page);
-  display: flex;
-  align-items: center;
-  justify-content: center;
 }
 
 .error-page {
@@ -5411,56 +5030,6 @@ img.paragraph-comment__attachment {
     font-size: 11px;
   }
 
-  .title-hero {
-    gap: 14px;
-    padding-bottom: 16px;
-  }
-
-  .title-hero__cover {
-    width: 100px;
-    height: 148px;
-    flex: 0 0 100px;
-  }
-
-  .title-hero__name {
-    font-size: 22px;
-    letter-spacing: -0.3px;
-    line-height: 1.15;
-  }
-
-  .title-hero__actions {
-    flex-wrap: wrap;
-  }
-
-  .title-hero__actions form {
-    display: flex;
-    flex: 1 1 100%;
-    gap: 8px;
-  }
-
-  .toc__volume-header {
-    flex-wrap: wrap;
-  }
-
-  .toc {
-    /* Wider clearance than desktop - the panel spans full width down here (below) and
-       needs room above the fixed bottom tab bar too. */
-    padding-bottom: 132px;
-  }
-
-  .toc__export-panel {
-    /* Full-width bar above the fixed bottom tab bar (PR 46, 64px tall) instead of a
-       corner-anchored box - same 76px clearance already used by the download-ready toast
-       (PR 50) for the same tab bar. */
-    bottom: calc(var(--shell-bottom) + 16px);
-    left: 12px;
-    right: 12px;
-  }
-
-  .toc__export {
-    justify-content: center;
-  }
-
   .downloads-list__item,
   .downloads-history__item {
     flex-wrap: wrap;
@@ -7003,6 +6572,10 @@ a.ui-title-card:focus-visible .ui-title-card__cover {
   color: var(--danger-text);
 }
 
+.ui-notice[hidden] {
+  display: none;
+}
+
 /* Toast (download-ready): look only - where it floats (bottom-left beside the
    sidebar, above the Quiet Edge Bar on mobile) belongs to the shell, PR 249. */
 .ui-toast {
@@ -8372,5 +7945,1301 @@ a.ui-title-card:focus-visible .ui-title-card__cover {
 
   .ui-locked--page {
     margin-top: var(--s-16);
+  }
+}
+
+/* ==========================================================================
+   Aurora Ink screens - title page (PR 253): TITLE-DEFAULT / TITLE-IN-LIBRARY and
+   M-TITLE-*. A blurred copy of the cover sits behind the hero; on mobile the
+   download/library actions move into bottom sheets (title-actions-sheet.js) and
+   Описание / Оглавление become tabs (title-page-ui.js).
+   ========================================================================== */
+.spinner {
+  display: inline-block;
+  width: 11px;
+  height: 11px;
+  border: 2px solid var(--border);
+  border-top-color: var(--accent);
+  border-radius: 50%;
+  animation: spin 0.7s linear infinite;
+}
+
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+/* The fullscreen viewer opens from a cover here and in the quick view (PR 142). */
+.title-hero__cover {
+  cursor: zoom-in;
+}
+
+.title-page {
+  --title-cover-w: 240px;
+  position: relative;
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: var(--s-16);
+  padding: var(--s-32) var(--s-40) var(--s-40);
+}
+
+.title-page__notice {
+  position: relative;
+  z-index: 1;
+  align-self: flex-start;
+}
+
+.title-page__content {
+  display: flex;
+  flex-direction: column;
+  gap: var(--s-32);
+}
+
+/* Everything but the backdrop (and the top-layer sheets) paints above it. */
+.title-page__content > :not(.title-backdrop):not(dialog) {
+  position: relative;
+  z-index: 1;
+}
+
+.title-backdrop {
+  position: absolute;
+  top: 0;
+  right: 0;
+  left: 0;
+  z-index: 0;
+  height: 480px;
+  overflow: hidden;
+  pointer-events: none;
+}
+
+.title-backdrop img {
+  position: absolute;
+  inset: -80px;
+  width: calc(100% + 160px);
+  height: calc(100% + 160px);
+  object-fit: cover;
+  filter: blur(70px) saturate(0.85);
+  opacity: 0.4;
+}
+
+.title-backdrop::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(180deg, rgba(11, 11, 20, 0.5), var(--bg-page) 96%);
+}
+
+/* Hero. */
+.title-hero {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--s-40);
+}
+
+.title-hero > .title-hero__cover {
+  flex: 0 0 auto;
+  width: var(--title-cover-w);
+  aspect-ratio: 2 / 3;
+  border-radius: var(--r-xl);
+  object-fit: cover;
+  box-shadow: 0 30px 60px rgba(0, 0, 0, 0.55), 0 0 0 1px rgba(255, 255, 255, 0.1);
+}
+
+.title-hero__info {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  flex: 1;
+  min-width: 0;
+  padding-top: 6px;
+}
+
+.title-hero__name {
+  margin: 0;
+  color: var(--text-1);
+  font: 800 42px/1.08 var(--font-ui);
+  letter-spacing: -0.02em;
+  text-wrap: balance;
+  overflow-wrap: anywhere;
+}
+
+.title-hero__alt-name {
+  margin: 0;
+  overflow: hidden;
+  color: var(--text-2);
+  font: 500 14px/1.4 var(--font-ui);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.title-hero__meta {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px var(--s-16);
+  color: var(--text-2);
+  font: 600 14px/1.3 var(--font-ui);
+}
+
+.title-hero__meta .ui-status {
+  font-size: 14px;
+}
+
+.title-size-estimate {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.title-hero__bookmark {
+  display: none;
+}
+
+.title-chip {
+  height: 32px;
+  border-color: var(--border);
+  background: rgba(28, 26, 43, 0.85);
+  color: #e4e0f2;
+}
+
+@media (hover: hover) {
+  a.title-chip:hover {
+    background: var(--surface-3);
+  }
+}
+
+/* «Ещё N»: the extra chips wrap onto their own rows once opened; the summary goes. */
+.title-hero__chips-more[open] {
+  flex-basis: 100%;
+}
+
+.title-hero__chips-more[open] > summary {
+  display: none;
+}
+
+.title-hero__chips-more > summary {
+  height: 32px;
+}
+
+/* Progress card (in the library, with a known position). */
+.title-progress {
+  display: flex;
+  align-items: center;
+  gap: var(--s-16);
+  max-width: 620px;
+  margin-top: var(--s-4);
+}
+
+.title-progress__pct {
+  color: var(--accent-text);
+  font: 800 28px/1 var(--font-ui);
+  font-variant-numeric: tabular-nums;
+}
+
+.title-progress__body {
+  display: flex;
+  flex-direction: column;
+  gap: var(--s-8);
+  flex: 1;
+  min-width: 0;
+}
+
+.title-progress__where {
+  overflow: hidden;
+  color: var(--text-2);
+  font: 600 14px/1.3 var(--font-ui);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.title-progress__bar {
+  display: block;
+  height: 8px;
+  border-radius: 4px;
+  background: var(--border);
+  overflow: hidden;
+}
+
+.title-progress__fill {
+  display: block;
+  min-width: 4px;
+  height: 100%;
+  border-radius: inherit;
+  background: var(--accent);
+}
+
+/* Actions: CTA, library toggle, download group; «⋯» on mobile only. */
+.title-hero__actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin-top: 6px;
+}
+
+.title-hero__actions svg {
+  flex: 0 0 auto;
+  width: 18px;
+  height: 18px;
+}
+
+.title-cta {
+  gap: 10px;
+  padding: 0 var(--s-24);
+  font-size: 16px;
+}
+
+.title-cta svg {
+  width: 16px;
+  height: 16px;
+}
+
+.title-hero__library form {
+  display: contents;
+}
+
+.title-library-on {
+  --ui-btn-fg: var(--accent-text);
+  padding: 0 var(--s-16);
+}
+
+.title-download {
+  display: flex;
+  height: 52px;
+  border: 1px solid var(--border-strong);
+  border-radius: var(--r-lg);
+}
+
+.title-download > .title-download__format {
+  height: 100%;
+  border: 0;
+  border-right: 1px solid var(--border-strong);
+  border-radius: var(--r-lg) 0 0 var(--r-lg);
+  background: transparent;
+  color: var(--text-2);
+  font: 700 13px/1 var(--font-ui);
+}
+
+.title-download__submit {
+  appearance: none;
+  display: flex;
+  align-items: center;
+  gap: var(--s-8);
+  padding: 0 var(--s-16);
+  border: 0;
+  border-radius: 0 var(--r-lg) var(--r-lg) 0;
+  background: transparent;
+  color: var(--text-1);
+  font: 600 15px/1 var(--font-ui);
+  cursor: pointer;
+  transition: background-color var(--dur-base) var(--ease);
+}
+
+@media (hover: hover) {
+  .title-download__submit:hover {
+    background: var(--surface-2);
+  }
+}
+
+.title-download__submit:focus-visible {
+  outline: none;
+  box-shadow: var(--focus-ring);
+}
+
+.title-hero__more {
+  width: 52px;
+  padding: 0;
+  border-color: transparent;
+  color: #e4e0f2;
+}
+
+.title-hero__more[hidden],
+.title-tabs[hidden],
+.title-toc__select[hidden],
+[data-role="title-tab-panel"][hidden] {
+  display: none;
+}
+
+/* Skeleton shell (title.html) - same boxes as the content that replaces it. */
+.title-hero--skeleton .title-hero__cover {
+  flex: 0 0 auto;
+  width: var(--title-cover-w);
+  cursor: default;
+}
+
+.title-hero__skeleton-name {
+  width: 70%;
+  height: 40px;
+  border-radius: var(--r-sm);
+}
+
+.title-hero__skeleton-cta {
+  width: 220px;
+  height: 52px;
+  margin-top: 6px;
+  border-radius: var(--r-lg);
+}
+
+.title-body--skeleton .title-body__about,
+.title-body--skeleton .title-body__toc {
+  gap: 10px;
+}
+
+.title-body__skeleton-row {
+  height: 44px;
+  border-radius: var(--r-sm);
+}
+
+/* Mobile tabs (title-page-ui.js shows them). */
+.title-tabs .ui-tabs__link {
+  padding: 0;
+  border: 0;
+  background: none;
+  cursor: pointer;
+}
+
+.title-tabs__count {
+  margin-left: 4px;
+  color: var(--text-3);
+  font-weight: 600;
+}
+
+/* Описание | Оглавление. */
+.title-body {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--s-32) var(--s-48);
+}
+
+.title-body__about {
+  display: flex;
+  flex-direction: column;
+  gap: var(--s-12);
+  flex: 1 1 360px;
+  min-width: 0;
+}
+
+.title-body__toc {
+  display: flex;
+  flex-direction: column;
+  gap: var(--s-12);
+  flex: 1.2 1 420px;
+  min-width: 0;
+}
+
+.title-body__heading {
+  margin: 0;
+  color: var(--text-1);
+  font: var(--type-h2);
+}
+
+.title-summary {
+  max-width: 640px;
+  margin: 0;
+  color: #ddd8ee;
+  font: 400 17px/1.75 var(--font-reader-serif);
+  white-space: pre-line;
+  overflow-wrap: anywhere;
+}
+
+.title-summary--clamped {
+  display: -webkit-box;
+  -webkit-line-clamp: 4;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+.title-summary__toggle {
+  align-self: flex-start;
+  height: 36px;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: var(--primary-text);
+  font: 700 14px/1 var(--font-ui);
+  cursor: pointer;
+}
+
+.title-summary__toggle:focus-visible {
+  outline: none;
+  border-radius: var(--r-xs);
+  box-shadow: var(--focus-ring);
+}
+
+.title-credits {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding-top: var(--s-12);
+  border-top: 1px solid var(--divider);
+  color: var(--text-2);
+  font: 500 14px/1.5 var(--font-ui);
+}
+
+.title-credits__label {
+  color: var(--text-3);
+}
+
+.title-credits__ambiguous {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--s-8);
+  margin-top: var(--s-4);
+}
+
+.title-credits__ambiguous-note {
+  display: inline-flex;
+  align-items: center;
+  height: 28px;
+  padding: 0 10px;
+  border-radius: var(--r-xs);
+  background: var(--surface-2);
+  color: var(--text-1);
+  font: 600 12px/1 var(--font-ui);
+}
+
+.title-credits__default-translation {
+  display: flex;
+  align-items: center;
+  gap: var(--s-8);
+}
+
+.ui-select.ui-select--sm {
+  height: 36px;
+  padding: 0 var(--s-12);
+  border-radius: var(--r-md);
+  font-size: 13px;
+}
+
+.ui-select--sm .dropdown__trigger {
+  height: 34px;
+}
+
+/* Table of contents. */
+.title-toc__head {
+  display: flex;
+  align-items: center;
+  gap: var(--s-12);
+}
+
+.title-toc__count {
+  color: var(--text-3);
+  font: 500 14px/1 var(--font-ui);
+}
+
+.title-toc__select {
+  margin-left: auto;
+}
+
+.title-toc__select[aria-pressed="true"] {
+  --ui-btn-bg: var(--surface-selected);
+  --ui-btn-border: #5b3fb0;
+}
+
+.toc {
+  border: 1px solid var(--border);
+  border-radius: var(--r-xl);
+  background: var(--surface-1);
+  overflow: hidden;
+}
+
+.toc:focus {
+  outline: none;
+}
+
+/* Room for the floating «Скачать выбранное» bar while it's up. */
+.title-body__toc:has(.toc__export-panel--visible) {
+  padding-bottom: 88px;
+}
+
+.toc__volume + .toc__volume .toc__volume-header {
+  border-top: 1px solid var(--border);
+}
+
+.toc__volume-header {
+  display: flex;
+  align-items: center;
+  height: 48px;
+  padding: 0 var(--s-8) 0 var(--s-16);
+  background: var(--surface-2);
+}
+
+.toc__volume-title {
+  margin: 0;
+  color: var(--text-1);
+  font: 700 15px/1 var(--font-ui);
+}
+
+.toc__volume-read {
+  margin-left: 10px;
+  color: var(--accent-text);
+  font: 600 12px/1 var(--font-ui);
+}
+
+.toc__volume-download {
+  appearance: none;
+  height: 36px;
+  margin-left: auto;
+  padding: 0 10px;
+  border: 0;
+  border-radius: var(--r-md);
+  background: transparent;
+  color: var(--primary-text);
+  font: 700 13px/1 var(--font-ui);
+  cursor: pointer;
+}
+
+@media (hover: hover) {
+  .toc__volume-download:hover {
+    background: var(--surface-3);
+  }
+}
+
+.toc__volume-download:focus-visible {
+  outline: none;
+  box-shadow: var(--focus-ring);
+}
+
+.toc__chapters {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+/* Row: [read mark / checkbox] [number · name · «вы здесь»] [tap-to-read progress]. */
+.toc__chapter {
+  display: grid;
+  grid-template-columns: 24px minmax(0, 1fr) auto;
+  align-items: center;
+  column-gap: var(--s-8);
+  min-height: 44px;
+  padding: 0 var(--s-16);
+  border-top: 1px solid var(--surface-pressed);
+}
+
+.toc__chapter-checkbox,
+.toc__chapter-state {
+  grid-column: 1;
+  grid-row: 1;
+}
+
+.toc__chapter-state {
+  display: grid;
+  place-items: center;
+  color: var(--accent-text);
+}
+
+.toc__chapter-state svg {
+  width: 14px;
+  height: 14px;
+}
+
+.toc__chapter-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--accent);
+}
+
+.toc__chapter-link {
+  display: grid;
+  grid-template-columns: 48px minmax(0, 1fr) auto;
+  align-items: center;
+  gap: var(--s-8);
+  min-height: 44px;
+  color: var(--text-2);
+  font: 500 14px/1.3 var(--font-ui);
+  text-decoration: none;
+}
+
+@media (hover: hover) {
+  .toc__chapter-link:hover {
+    color: var(--text-1);
+  }
+}
+
+.toc__chapter-link:focus-visible {
+  outline: none;
+  border-radius: var(--r-xs);
+  box-shadow: inset 0 0 0 2px var(--focus);
+}
+
+.toc__chapter-number {
+  color: var(--text-3);
+  font-variant-numeric: tabular-nums;
+}
+
+.toc__chapter-name {
+  overflow-wrap: anywhere;
+}
+
+.toc__chapter-here {
+  color: var(--accent-text);
+  font: 700 12px/1 var(--font-ui);
+}
+
+.toc__chapter--current {
+  min-height: 52px;
+  background: rgba(34, 211, 197, 0.08);
+  box-shadow: inset 3px 0 0 var(--accent);
+}
+
+.toc__chapter--current .toc__chapter-link {
+  min-height: 52px;
+  color: var(--text-1);
+  font-weight: 700;
+}
+
+.toc__chapter--current .toc__chapter-number {
+  color: var(--accent-text);
+}
+
+/* Checkboxes: always there without JS; with JS only in selection mode, where they take
+   the read mark's place. */
+.toc--selectable:not(.toc--selecting) .toc__chapter-checkbox,
+.toc--selecting .toc__chapter-state,
+.toc:not(.toc--selectable) .toc__chapter-state {
+  display: none;
+}
+
+.toc__chapter-checkbox {
+  appearance: none;
+  -webkit-appearance: none;
+  position: relative;
+  width: 20px;
+  height: 20px;
+  margin: 0;
+  border: 1.5px solid var(--disabled);
+  border-radius: var(--r-xs);
+  background: transparent;
+  cursor: pointer;
+  transition:
+    background-color var(--dur-press) var(--ease),
+    border-color var(--dur-press) var(--ease);
+}
+
+.toc__chapter-checkbox::after {
+  content: "";
+  position: absolute;
+  left: 5.5px;
+  top: 2px;
+  width: 5px;
+  height: 10px;
+  border: solid #ffffff;
+  border-width: 0 2px 2px 0;
+  transform: rotate(45deg);
+  opacity: 0;
+}
+
+.toc__chapter-checkbox:checked {
+  border-color: #8b5cf6;
+  background: #8b5cf6;
+}
+
+.toc__chapter-checkbox:checked::after {
+  opacity: 1;
+}
+
+.toc__chapter-checkbox:focus-visible {
+  outline: none;
+  box-shadow: var(--focus-ring);
+}
+
+/* Tap-to-read progress per chapter (toc-tap-progress.js, PR 83). */
+.toc__chapter-progress {
+  display: block;
+  width: 36px;
+  height: 4px;
+  border-radius: 2px;
+  background: var(--border);
+  overflow: hidden;
+}
+
+.toc__chapter-progress__fill {
+  display: block;
+  height: 100%;
+  background: var(--accent);
+}
+
+.toc__chapter-checkmark {
+  display: grid;
+  place-items: center;
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  background: var(--accent);
+  color: var(--bg-page);
+}
+
+/* «Скачать выбранное» bar (chapter-export-panel.js): floats bottom-right once a
+   chapter is checked (PR 37/51), above the Quiet Edge Bar on mobile. */
+.toc__export-panel {
+  position: fixed;
+  right: var(--s-40);
+  bottom: calc(var(--s-24) + var(--shell-bottom));
+  z-index: 45;
+  transition:
+    opacity var(--dur-base) var(--ease),
+    transform var(--dur-base) var(--ease);
+}
+
+.toc__export-panel--js:not(.toc__export-panel--visible) {
+  opacity: 0;
+  transform: translateY(calc(8px * var(--motion-shift)));
+  pointer-events: none;
+}
+
+.toc__export {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: var(--s-8) var(--s-8) var(--s-8) var(--s-16);
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  background: var(--surface-2);
+  box-shadow: var(--shadow-popover);
+}
+
+.toc__export-label {
+  color: var(--text-1);
+  font: 600 14px/1.3 var(--font-ui);
+}
+
+/* Mobile sheets (<dialog class="ui-dialog ui-dialog--sheet">). */
+.title-sheet {
+  padding-bottom: calc(var(--s-16) + env(safe-area-inset-bottom, 0px));
+}
+
+.title-sheet__head {
+  display: flex;
+  align-items: center;
+  gap: var(--s-12);
+  padding: 6px var(--s-8) var(--s-12) var(--s-20);
+  border-bottom: 1px solid var(--border);
+}
+
+.title-sheet__head--nav {
+  gap: var(--s-4);
+  padding: var(--s-4) var(--s-8) var(--s-12);
+}
+
+.title-sheet__cover {
+  width: 36px;
+  height: 54px;
+  border-radius: 6px;
+  object-fit: cover;
+}
+
+.title-sheet__title {
+  display: flex;
+  flex-direction: column;
+  gap: var(--s-4);
+  flex: 1;
+  min-width: 0;
+  color: var(--text-3);
+  font: 500 13px/1.2 var(--font-ui);
+}
+
+.title-sheet__title b {
+  color: var(--text-1);
+  font: 700 15px/1.25 var(--font-ui);
+}
+
+.title-sheet__heading {
+  flex: 1;
+  color: var(--text-1);
+  font: 800 17px/1 var(--font-ui);
+}
+
+.title-sheet__close {
+  color: var(--text-2);
+}
+
+.title-sheet .ui-icon-btn svg {
+  width: 20px;
+  height: 20px;
+}
+
+.title-sheet__list {
+  display: flex;
+  flex-direction: column;
+  padding: var(--s-8) 0;
+}
+
+.title-sheet__row {
+  appearance: none;
+  display: grid;
+  grid-template-columns: 40px minmax(0, 1fr) 20px;
+  align-items: center;
+  gap: 14px;
+  width: 100%;
+  min-height: 68px;
+  padding: var(--s-8) var(--s-20);
+  border: 0;
+  background: transparent;
+  color: var(--text-1);
+  font: inherit;
+  text-align: left;
+  text-decoration: none;
+  cursor: pointer;
+}
+
+.title-sheet__row:active {
+  background: var(--surface-3);
+}
+
+.title-sheet__row:focus-visible {
+  outline: none;
+  box-shadow: inset 0 0 0 2px var(--focus);
+}
+
+.title-sheet__icon {
+  display: grid;
+  place-items: center;
+  width: 40px;
+  height: 40px;
+  border-radius: 10px;
+  background: var(--surface-3);
+}
+
+.title-sheet__icon svg {
+  width: 20px;
+  height: 20px;
+}
+
+.title-sheet__text {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  color: var(--text-3);
+  font: 500 13px/1.3 var(--font-ui);
+}
+
+.title-sheet__text b {
+  color: inherit;
+  font: 700 15px/1 var(--font-ui);
+}
+
+.title-sheet__row .title-sheet__text b {
+  color: var(--text-1);
+}
+
+.title-sheet__chev {
+  width: 18px;
+  height: 18px;
+  color: var(--text-3);
+}
+
+.title-sheet__row--danger,
+.title-sheet__row--danger .title-sheet__text b {
+  color: var(--danger-text);
+}
+
+.title-sheet__row--danger .title-sheet__icon {
+  background: rgba(251, 113, 133, 0.12);
+}
+
+.title-sheet__sep {
+  height: 1px;
+  margin: 6px var(--s-20);
+  border: 0;
+  background: var(--border);
+}
+
+.title-sheet__form {
+  display: flex;
+  flex-direction: column;
+  gap: var(--s-8);
+  padding: 10px var(--s-12) 0;
+}
+
+.title-sheet__form > .ui-btn {
+  width: auto;
+  margin: 0 var(--s-8);
+}
+
+.title-formats {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  margin: 0;
+  padding: 0;
+  border: 0;
+}
+
+.title-formats__legend {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  white-space: nowrap;
+}
+
+.title-format {
+  display: grid;
+  grid-template-columns: 24px minmax(0, 1fr);
+  align-items: center;
+  gap: 14px;
+  min-height: 60px;
+  padding: var(--s-8) var(--s-12);
+  border-radius: var(--r-lg);
+  cursor: pointer;
+}
+
+.title-format:has(input:checked) {
+  background: rgba(139, 92, 246, 0.14);
+}
+
+.title-format input {
+  appearance: none;
+  -webkit-appearance: none;
+  width: 22px;
+  height: 22px;
+  margin: 0;
+  border: 2px solid var(--disabled);
+  border-radius: 50%;
+  cursor: pointer;
+  transition: border-width var(--dur-press) var(--ease);
+}
+
+.title-format input:checked {
+  border: 7px solid #8b5cf6;
+}
+
+.title-format input:focus-visible {
+  outline: none;
+  box-shadow: var(--focus-ring);
+}
+
+.title-format__text {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  color: var(--text-3);
+  font: 500 13px/1.3 var(--font-ui);
+}
+
+.title-format__text b {
+  color: var(--text-1);
+  font: 700 15px/1 var(--font-ui);
+}
+
+.title-sheet--confirm {
+  gap: 14px;
+  padding: var(--s-8) var(--s-20) calc(var(--s-24) + env(safe-area-inset-bottom, 0px));
+}
+
+.title-sheet--confirm .ui-dialog__grabber {
+  margin-bottom: 0;
+}
+
+.title-sheet__danger-icon {
+  display: grid;
+  place-items: center;
+  width: 48px;
+  height: 48px;
+  margin-top: var(--s-8);
+  border-radius: 14px;
+  background: rgba(251, 113, 133, 0.14);
+  color: var(--danger-text);
+}
+
+.title-sheet__danger-icon svg {
+  width: 24px;
+  height: 24px;
+}
+
+.title-sheet__confirm-title {
+  color: var(--text-1);
+  font: 800 21px/1.2 var(--font-ui);
+}
+
+.title-sheet__confirm-text {
+  margin: 0;
+  color: var(--text-2);
+  font: 500 15px/1.5 var(--font-ui);
+}
+
+.title-sheet--confirm .ui-btn--destructive {
+  margin-top: var(--s-4);
+  font-weight: 800;
+}
+
+.title-sheet__cancel {
+  --ui-btn-bg: var(--surface-3);
+  --ui-btn-border: transparent;
+}
+
+/* Mobile strip back button (base.html, strip_back_href). */
+.sidebar__strip-back {
+  display: none;
+}
+
+@media (max-width: 1199px) {
+  .title-page {
+    --title-cover-w: 200px;
+    padding: 28px var(--s-32) var(--s-32);
+  }
+
+  .title-hero__name {
+    font-size: 34px;
+  }
+
+  .toc__export-panel {
+    right: var(--s-32);
+  }
+}
+
+@media (max-width: 767px) {
+  .title-page {
+    --title-cover-w: 108px;
+    padding: var(--s-4) var(--s-20) var(--s-8);
+  }
+
+  .title-page__content {
+    gap: var(--s-16);
+  }
+
+  .title-backdrop {
+    height: 420px;
+  }
+
+  .title-backdrop img {
+    inset: -60px;
+    width: calc(100% + 120px);
+    height: calc(100% + 120px);
+    filter: blur(50px);
+    opacity: 0.42;
+  }
+
+  .title-backdrop::after {
+    background: linear-gradient(180deg, rgba(11, 11, 20, 0.4), var(--bg-page) 95%);
+  }
+
+  /* Cover and heading side by side, bottom-aligned; the rest of .title-hero__info
+     spans the full width underneath (display: contents lifts it into the hero grid). */
+  .title-hero {
+    display: grid;
+    grid-template-columns: var(--title-cover-w) minmax(0, 1fr);
+    align-items: end;
+    gap: var(--s-16);
+  }
+
+  .title-hero:not(:has(> .title-hero__cover)) {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .title-hero > .title-hero__cover {
+    grid-row: 1 / span 3;
+    border-radius: var(--r-lg);
+    box-shadow: 0 16px 36px rgba(0, 0, 0, 0.5);
+  }
+
+  .title-hero__info {
+    display: contents;
+  }
+
+  .title-hero__info > * {
+    grid-column: 1 / -1;
+  }
+
+  .title-hero__name,
+  .title-hero__meta,
+  .title-hero__bookmark {
+    grid-column: 2;
+  }
+
+  .title-hero:not(:has(> .title-hero__cover)) .title-hero__info > * {
+    grid-column: 1;
+  }
+
+  .title-hero__name {
+    font-size: 23px;
+    line-height: 1.15;
+  }
+
+  .title-hero__alt-name {
+    display: none;
+  }
+
+  .title-hero__meta {
+    gap: 0;
+    font-size: 13px;
+    line-height: 1.4;
+  }
+
+  .title-hero__meta .ui-status {
+    font-size: 13px;
+  }
+
+  .title-hero__meta .ui-status::before {
+    display: none;
+  }
+
+  .title-hero__meta > * + *::before {
+    content: "·";
+    margin: 0 6px;
+    color: var(--text-3);
+  }
+
+  .title-hero__bookmark {
+    display: block;
+    margin-top: -6px;
+  }
+
+  .title-bookmark {
+    appearance: none;
+    display: inline-flex;
+    align-items: center;
+    gap: var(--s-8);
+    height: 44px;
+    margin-left: -10px;
+    padding: 0 10px;
+    border: 0;
+    border-radius: var(--r-md);
+    background: transparent;
+    color: var(--text-1);
+    font: 700 14px/1 var(--font-ui);
+    text-decoration: none;
+    cursor: pointer;
+  }
+
+  .title-bookmark svg {
+    width: 18px;
+    height: 18px;
+  }
+
+  .title-bookmark--on {
+    color: var(--accent-text);
+  }
+
+  .title-bookmark:focus-visible {
+    outline: none;
+    box-shadow: var(--focus-ring);
+  }
+
+  .title-chip,
+  .title-hero__chips-more > summary {
+    height: 28px;
+    padding: 0 10px;
+    border: 0;
+    font-size: 12px;
+  }
+
+  /* Progress: «Том N, глава M» and the percent on one line, bar under them. */
+  .title-progress {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
+    grid-template-areas: "where pct" "bar bar";
+    gap: var(--s-8);
+    max-width: none;
+    margin: 0;
+  }
+
+  .title-progress__body {
+    display: contents;
+  }
+
+  .title-progress__where {
+    grid-area: where;
+    font-size: 13px;
+  }
+
+  .title-progress__name {
+    display: none;
+  }
+
+  .title-progress__pct {
+    grid-area: pct;
+    font: 700 13px/1.3 var(--font-ui);
+  }
+
+  .title-progress__bar {
+    grid-area: bar;
+    height: 6px;
+    border-radius: 3px;
+  }
+
+  .title-hero__actions {
+    margin-top: 0;
+    flex-wrap: nowrap;
+  }
+
+  .title-cta {
+    flex: 1;
+    min-width: 0;
+    justify-content: center;
+  }
+
+  .title-cta svg {
+    display: none;
+  }
+
+  /* Download and library move into the «⋯» sheet - but only once the script that
+     opens it is running (it un-hides «⋯»). */
+  .title-hero__actions:has(.title-hero__more:not([hidden])) .title-hero__library,
+  .title-hero__actions:has(.title-hero__more:not([hidden])) .title-download {
+    display: none;
+  }
+
+  .title-hero__more {
+    flex: 0 0 52px;
+    background: var(--surface-2);
+  }
+
+  .title-tabs {
+    gap: var(--s-24);
+    border-bottom-color: #221f33;
+  }
+
+  /* The tab says what the panel is. */
+  .title-tabs:not([hidden]) ~ .title-body .title-body__heading {
+    display: none;
+  }
+
+  .title-body {
+    gap: var(--s-24);
+  }
+
+  .title-body__about,
+  .title-body__toc {
+    flex-basis: 100%;
+  }
+
+  .title-summary {
+    font-size: 16px;
+    line-height: 1.7;
+  }
+
+  .toc__export-panel {
+    right: var(--s-20);
+    bottom: calc(var(--shell-bottom) + var(--s-16));
+    left: var(--s-20);
+  }
+
+  .toc__export {
+    justify-content: space-between;
+  }
+
+  .toc__export-label {
+    display: none;
+  }
+
+  .sidebar__strip-back {
+    display: grid;
+    place-items: center;
+    width: 44px;
+    height: 44px;
+    margin-right: auto;
+    border-radius: var(--r-lg);
+    color: var(--text-1);
+  }
+
+  .sidebar__strip-back:focus-visible {
+    outline: none;
+    box-shadow: var(--focus-ring);
   }
 }

@@ -1,42 +1,48 @@
 {% extends "base.html" %}
+{% set strip_back_href = "/library/catalog" %}
 {% block title %}{{ slug_url }} — RanobeLib Companion{% endblock %}
 {% block content %}
-<main class="content">
+<main class="title-page">
   {% if finished %}
-  <p class="content__notice content__notice--success" data-role="title-finished-notice">Тайтл прочитан</p>
+  <p class="ui-notice title-page__notice" data-role="title-finished-notice">Тайтл прочитан</p>
   {% endif %}
 
   {# PR 203: this page renders immediately, with no SDK call of its own - the real
-     metadata/table of contents (GET /titles/{slug_url}/data, same get_info()/
-     get_table_of_contents() calls show_title() used to make before returning any HTML at
-     all) is fetched by title-content-load.js right after load and swaps this skeleton
-     out for _title_content.html's markup. Same box sizes as the real .title-hero/
-     .title-hero__cover so there's no layout shift once it's replaced. #}
-  <div data-role="title-content" data-slug-url="{{ slug_url }}">
+     metadata/table of contents (GET /titles/{slug_url}/data) is fetched by
+     title-content-load.js right after load and swaps this skeleton out for
+     _title_content.html's markup. PR 253: the skeleton uses the same hero/cover box as
+     the real content, so nothing jumps when it's replaced. #}
+  <div class="title-page__content" data-role="title-content" data-slug-url="{{ slug_url }}">
     <div class="title-hero title-hero--skeleton" aria-hidden="true">
-      <div class="title-hero__cover title-hero__cover--skeleton"></div>
+      <span class="ui-skeleton ui-skeleton--cover title-hero__cover"></span>
       <div class="title-hero__info">
-        <div class="skeleton-block skeleton-block--name"></div>
-        <div class="skeleton-block skeleton-block--meta"></div>
-        <div class="skeleton-block skeleton-block--meta"></div>
+        <span class="ui-skeleton title-hero__skeleton-name"></span>
+        <span class="ui-skeleton ui-skeleton--line" style="width: 45%"></span>
+        <span class="ui-skeleton ui-skeleton--line" style="width: 60%"></span>
+        <span class="ui-skeleton title-hero__skeleton-cta"></span>
       </div>
     </div>
-    <div class="toc toc--skeleton" aria-hidden="true">
-      <div class="toc__header">
-        <h2 class="toc__title">Оглавление</h2>
-        <span class="spinner" aria-hidden="true"></span>
+    <div class="title-body title-body--skeleton" aria-hidden="true">
+      <div class="title-body__about">
+        <span class="ui-skeleton ui-skeleton--line" style="width: 90%"></span>
+        <span class="ui-skeleton ui-skeleton--line" style="width: 80%"></span>
+        <span class="ui-skeleton ui-skeleton--line" style="width: 85%"></span>
       </div>
-      <div class="skeleton-block skeleton-block--chapter"></div>
-      <div class="skeleton-block skeleton-block--chapter"></div>
-      <div class="skeleton-block skeleton-block--chapter"></div>
+      <div class="title-body__toc">
+        <span class="ui-skeleton title-body__skeleton-row"></span>
+        <span class="ui-skeleton title-body__skeleton-row"></span>
+        <span class="ui-skeleton title-body__skeleton-row"></span>
+      </div>
     </div>
   </div>
-  <p class="form-error" data-role="title-content-error" hidden></p>
+  <p class="ui-notice ui-notice--error" data-role="title-content-error" hidden></p>
 </main>
 <script src="{{ url_for('static', path='js/chapter-export-panel.js') }}" defer></script>
 <script src="{{ url_for('static', path='js/title-size-estimate.js') }}" defer></script>
 <script src="{{ url_for('static', path='js/custom-dropdown.js') }}" defer></script>
 <script src="{{ url_for('static', path='js/toc-tap-progress.js') }}" defer></script>
 <script src="{{ url_for('static', path='js/image-lightbox.js') }}" defer></script>
+<script src="{{ url_for('static', path='js/title-page-ui.js') }}" defer></script>
+<script src="{{ url_for('static', path='js/title-actions-sheet.js') }}" defer></script>
 <script src="{{ url_for('static', path='js/title-content-load.js') }}" defer></script>
 {% endblock %}

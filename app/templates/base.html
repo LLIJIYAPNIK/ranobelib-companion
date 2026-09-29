@@ -60,7 +60,14 @@
         </a>
       </div>
       <div class="sidebar__account">
+        {# PR 253: a page that sets strip_back_href (title page, M-TITLE-*) gets a back
+           button in the mobile strip instead of the wordmark - mobile-account-strip.js
+           goes back in history when the previous page was ours, the href otherwise. #}
+        {% if strip_back_href %}
+        <a class="sidebar__strip-back" href="{{ strip_back_href }}" data-role="strip-back" aria-label="Назад"><svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M15 5l-7 7 7 7"/></svg></a>
+        {% else %}
         <a class="sidebar__strip-brand" href="/" aria-label="Webnovells — на главную"><span aria-hidden="true">W</span><span class="sidebar__brand-dot" aria-hidden="true"></span></a>
+        {% endif %}
         <div class="sidebar__account-actions" data-role="sidebar-account-actions">
           {% if current_user and current_user.notifications_enabled and not current_user.do_not_disturb %}
           <button

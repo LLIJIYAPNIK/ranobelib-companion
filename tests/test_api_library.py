@@ -175,11 +175,14 @@ async def test_title_page_shows_reading_progress_for_library_entry(client: TestC
         response = client.get("/titles/6712--test-novel/data")
 
     assert response.status_code == 200
-    assert "Прочитано 75%" in response.text  # 3 of 4 chapters
+    assert 'aria-label="Прочитано 75%"' in response.text  # 3 of 4 chapters
     assert 'style="width: 75%"' in response.text
     # PR 240: same last-read chapter the progress bar above is based on.
     assert 'href="/titles/6712--test-novel/chapters/1/3"' in response.text
-    assert "Продолжить чтение (Глава 3)" in response.text
+    assert "Продолжить · Глава 3" in response.text
+    # PR 253: the TOC marks the chapters before it as read and this one as current.
+    assert 'aria-current="step"' in response.text
+    assert response.text.count("toc__chapter--read") == 2
 
 
 def test_title_page_omits_reading_progress_when_not_in_library(client: TestClient) -> None:
@@ -190,8 +193,8 @@ def test_title_page_omits_reading_progress_when_not_in_library(client: TestClien
 
     assert response.status_code == 200
     assert "Прочитано" not in response.text
-    assert 'class="reading-progress' not in response.text
-    assert "Продолжить чтение" not in response.text
+    assert 'class="title-progress' not in response.text
+    assert "Продолжить ·" not in response.text
 
 
 async def test_title_page_omits_continue_reading_link_when_last_read_chapter_is_gone(
@@ -222,7 +225,8 @@ async def test_title_page_omits_continue_reading_link_when_last_read_chapter_is_
 
     assert response.status_code == 200
     assert "Прочитано" not in response.text
-    assert "Продолжить чтение" not in response.text
+    assert "Продолжить ·" not in response.text
+    assert 'aria-current="step"' not in response.text
 
 
 def test_add_is_idempotent(client: TestClient) -> None:
