@@ -69,6 +69,7 @@
             {% if item.progress_percent is not none %}
             <div class="ui-progress ui-progress--lg">
               <span class="ui-progress__bar"><span class="ui-progress__fill" style="width: {{ item.progress_percent }}%"></span></span>
+              <span class="ui-progress__pct">{{ item.progress_percent }}%</span>
             </div>
             {% endif %}
             {% else %}

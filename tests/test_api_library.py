@@ -382,6 +382,8 @@ async def test_show_library_renders_reading_progress_bar(client: TestClient) -> 
     assert response.status_code == 200
     assert 'class="ui-progress ui-progress--lg"' in response.text
     assert 'style="width: 50%"' in response.text  # 2 of 4 chapters
+    # PR 252: the percent is also shown as text next to the bar.
+    assert '<span class="ui-progress__pct">50%</span>' in response.text
 
 
 def test_show_library_omits_progress_bar_for_unopened_titles(client: TestClient) -> None:
