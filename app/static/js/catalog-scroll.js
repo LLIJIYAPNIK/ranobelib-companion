@@ -9,6 +9,21 @@
   let nextPage = grid.dataset.nextPage ? Number(grid.dataset.nextPage) : null;
   let loading = false;
 
+  // PR 251 (CATALOG-DEFAULT): two skeleton cards at the end of the grid while a page
+  // loads - the same size as the cards about to replace them.
+  const SKELETON_HTML =
+    '<div class="ui-title-card catalog-grid__skeleton" aria-hidden="true">' +
+    '<span class="ui-skeleton ui-skeleton--cover"></span>' +
+    '<span class="ui-skeleton ui-skeleton--line" style="width: 85%"></span></div>';
+
+  function showSkeletons() {
+    grid.insertAdjacentHTML("beforeend", SKELETON_HTML + SKELETON_HTML);
+  }
+
+  function hideSkeletons() {
+    grid.querySelectorAll(".catalog-grid__skeleton").forEach((el) => el.remove());
+  }
+
   // rootMargin extends the trigger zone below the viewport, so the next page starts
   // loading while the visitor still has some unread cards to scroll through instead of
   // only once they hit the very bottom.
@@ -39,21 +54,26 @@
       for (const id of grid.dataset.tags.split(",")) params.append("tags", id);
     }
 
+    showSkeletons();
     let response;
+    let html;
     try {
       response = await fetch(`/library/catalog/page?${params}`);
+      html = response.ok ? await response.text() : null;
     } catch {
+      hideSkeletons();
       loading = false;
       return;
     }
+    hideSkeletons();
 
-    if (!response.ok) {
+    if (html === null) {
       observer.unobserve(sentinel);
       loading = false;
       return;
     }
 
-    grid.insertAdjacentHTML("beforeend", await response.text());
+    grid.insertAdjacentHTML("beforeend", html);
     nextPage = response.headers.get("X-Has-Next-Page") === "true" ? nextPage + 1 : null;
     loading = false;
     if (!nextPage) {
