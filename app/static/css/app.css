@@ -2780,7 +2780,7 @@ html.shell-scroll-lock body {
    `[hidden] { display: none }` UA rule, same reasoning as .download-ready (PR 50). */
 .back-to-top {
   position: fixed;
-  bottom: 24px;
+  bottom: calc(24px + var(--shell-bottom));
   right: 32px;
   z-index: 45;
   display: flex;
@@ -2826,7 +2826,7 @@ html.shell-scroll-lock body {
   .back-to-top {
     /* Same 76px clearance above the fixed bottom tab bar (PR 46) already used by
        .download-ready and .toc__export-panel on mobile. */
-    bottom: 76px;
+    bottom: calc(var(--shell-bottom) + 16px);
     right: 12px;
   }
 
@@ -6177,7 +6177,7 @@ img.paragraph-comment__attachment {
     /* Full-width bar above the fixed bottom tab bar (PR 46, 64px tall) instead of a
        corner-anchored box - same 76px clearance already used by the download-ready toast
        (PR 50) for the same tab bar. */
-    bottom: 76px;
+    bottom: calc(var(--shell-bottom) + 16px);
     left: 12px;
     right: 12px;
   }
@@ -6253,24 +6253,22 @@ img.paragraph-comment__attachment {
     padding-bottom: 56px;
   }
 
-  body.reader-page .sidebar,
-  body.reader-page .sidebar__account {
-    display: none;
-  }
 }
 
 /* Global "file ready" toasts (PR 50) - rendered by download-ready.js from
    GET /downloads/ready, which is polled on every logged-in page so a finished title
    download gets delivered wherever the visitor ends up, not only on its own job page. */
+/* PR 249 (Aurora Ink): bottom-left beside the rail on desktop, above the Quiet Edge Bar
+   on mobile ("02 Components" -> Toast), with the .ui-toast look. */
 .download-ready {
   position: fixed;
-  top: 16px;
-  right: 16px;
+  bottom: 16px;
+  left: calc(var(--sidebar-width) + 16px);
   z-index: 60;
   display: flex;
   flex-direction: column;
   gap: 8px;
-  max-width: 320px;
+  max-width: 420px;
 }
 
 .download-ready[hidden] {
@@ -6280,58 +6278,72 @@ img.paragraph-comment__attachment {
 @keyframes download-ready-in {
   from {
     opacity: 0;
-    transform: translateY(-8px);
-  }
-  to {
-    opacity: 1;
-    transform: translateY(0);
+    transform: translateY(calc(8px * var(--motion-shift)));
   }
 }
 
 .download-ready__toast {
   display: flex;
   align-items: center;
-  gap: 10px;
-  padding: 10px 12px;
-  background: var(--bg-surface);
-  border: 1px solid var(--legacy-border);
-  border-radius: 8px;
-  box-shadow: 0 8px 20px rgba(0, 0, 0, 0.35);
-  animation: download-ready-in 0.2s ease;
+  gap: var(--s-12);
+  padding: 10px 6px 10px var(--s-16);
+  background: var(--surface-2);
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  box-shadow: var(--shadow-popover);
+  animation: download-ready-in var(--dur-sheet) var(--ease);
+}
+
+.download-ready__toast::before {
+  content: "";
+  flex: 0 0 auto;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--accent);
 }
 
 .download-ready__text {
   flex: 1;
-  font-size: 13px;
-  color: var(--text-secondary);
+  min-width: 0;
+  color: var(--text-1);
+  font: 600 14px/1.3 var(--font-ui);
+  overflow-wrap: anywhere;
 }
 
 .download-ready__dismiss {
+  display: grid;
+  place-items: center;
+  width: 36px;
+  height: 36px;
   background: none;
   border: none;
-  padding: 4px;
-  color: var(--text-muted);
-  font-size: 18px;
+  border-radius: var(--r-md);
+  padding: 0;
+  color: var(--text-3);
+  font-size: 20px;
   line-height: 1;
   cursor: pointer;
-  transition: color 0.15s ease;
+  transition: color var(--dur-base) var(--ease), background-color var(--dur-base) var(--ease);
+}
+
+.download-ready__dismiss:focus-visible {
+  outline: none;
+  box-shadow: var(--focus-ring);
 }
 
 @media (hover: hover) {
   .download-ready__dismiss:hover {
-    color: var(--accent-teal);
+    background: var(--surface-3);
+    color: var(--text-1);
   }
 }
 
 @media (max-width: 640px) {
   .download-ready {
-    /* Anchored above the fixed bottom tab bar (or the reader's own bottom nav on a
-       chapter page, PR 28/52) instead of below the fixed top account header - the top of
-       the page is where a visitor's actual content starts on mobile (e.g. the home
-       page's search field), so a toast there would sit on top of it instead of beside
-       it like it does on desktop. */
-    top: auto;
-    bottom: 76px;
+    /* Full width above the Quiet Edge Bar (or the reader's own bottom nav on a chapter
+       page, PR 28/52). */
+    bottom: calc(var(--shell-bottom) + 16px);
     right: 12px;
     left: 12px;
     max-width: none;
@@ -6348,7 +6360,7 @@ img.paragraph-comment__attachment {
 .cookie-notice {
   position: fixed;
   right: 16px;
-  bottom: 16px;
+  bottom: calc(16px + var(--shell-bottom));
   z-index: 70;
   display: flex;
   flex-direction: column;
@@ -6377,7 +6389,7 @@ img.paragraph-comment__attachment {
     /* Same 76px clearance above the fixed bottom tab bar as .download-ready/
        .toc__export-panel (PR 51) use on mobile. */
     right: 12px;
-    bottom: 76px;
+    bottom: calc(var(--shell-bottom) + 16px);
   }
 }
 
