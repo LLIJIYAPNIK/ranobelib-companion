@@ -8036,3 +8036,261 @@ a.ui-title-card:focus-visible .ui-title-card__cover {
   outline: none;
   box-shadow: inset 0 0 0 2px var(--focus);
 }
+
+/* ==========================================================================
+   Aurora Ink screens - home (PR 250): HOME-GUEST / HOME-AUTH / HOME-EMPTY from
+   "03 Desktop + Tablet" and "04 Mobile". Page padding per viewport: D 32/40/40,
+   T 28/32/32, M 4/20 (the shell already pads the mobile bottom for the Quiet Edge Bar).
+   Grid columns min out at 150 / 140 / 100px - three covers across at 390px.
+   ========================================================================== */
+.home {
+  --home-grid-min: 150px;
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: var(--s-24);
+  padding: var(--s-32) var(--s-40) var(--s-40);
+}
+
+.home__open {
+  max-width: 720px;
+}
+
+/* The error sits right under the field it belongs to - pulled up into the column gap. */
+.home__error {
+  margin: calc(-1 * var(--s-16)) 0 0;
+}
+
+.home__columns {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-start;
+  gap: 28px;
+}
+
+.home__primary {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  flex: 1 1 480px;
+  min-width: 0;
+}
+
+.home__section {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.home__heading {
+  margin: 0;
+  color: var(--text-1);
+  font: var(--type-h2);
+}
+
+.home__grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(var(--home-grid-min), 1fr));
+  gap: var(--s-20) 14px;
+}
+
+/* No friend activity -> no aside at all, and .home__primary takes the whole row. */
+.home__friends {
+  display: flex;
+  flex-direction: column;
+  gap: var(--s-12);
+  flex: 1 1 280px;
+  max-width: 340px;
+  min-width: 0;
+}
+
+/* Guest banner: the _auth_card.html pitch in one row, actions wrap under the copy. */
+.home-guest {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 14px var(--s-24);
+  max-width: 1040px;
+  padding: 18px var(--s-20);
+  border: 1px solid var(--border);
+  border-radius: var(--r-xl);
+  background: var(--surface-1);
+}
+
+.home-guest__copy {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  flex: 1 1 360px;
+  min-width: 0;
+}
+
+.home-guest__title {
+  color: var(--text-1);
+  font: 800 16px/1.3 var(--font-ui);
+}
+
+.home-guest__text {
+  color: var(--text-2);
+  font: 500 14px/1.45 var(--font-ui);
+}
+
+.home-guest__actions {
+  display: flex;
+  gap: 10px;
+}
+
+.home-guest__register {
+  --ui-btn-fg: var(--primary-text);
+  padding: 0 var(--s-12);
+}
+
+/* Empty state: a card rather than the one-line .ui-empty - on the home page it is the
+   whole content, so it explains the site and offers the catalog. */
+.home-empty-card {
+  display: flex;
+  flex-direction: column;
+  gap: var(--s-12);
+  max-width: 620px;
+  padding: 28px;
+  border: 1px solid var(--border);
+  border-radius: var(--r-xl);
+  background: var(--surface-1);
+}
+
+.home-empty-card__title {
+  margin: 0;
+  color: var(--text-1);
+  font: 800 20px/1.25 var(--font-ui);
+}
+
+.home-empty-card__text {
+  margin: 0;
+  color: var(--text-2);
+  font: 500 15px/1.6 var(--font-ui);
+}
+
+.home-empty-card__note {
+  margin: 0;
+  color: var(--text-3);
+  font: 500 13px/1.55 var(--font-ui);
+}
+
+.home-empty-card__cta {
+  align-self: flex-start;
+  margin-top: var(--s-4);
+}
+
+/* Friend activity card. */
+.home-friend {
+  display: flex;
+  flex-direction: column;
+  gap: var(--s-8);
+  padding: 14px var(--s-16);
+  border: 1px solid var(--border);
+  border-radius: var(--r-xl);
+  background: var(--surface-1);
+}
+
+.home-friend__who {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-height: 40px;
+  min-width: 0;
+  color: var(--text-1);
+  text-decoration: none;
+}
+
+.home-friend__avatar {
+  display: grid;
+  place-items: center;
+  flex: 0 0 auto;
+  width: 36px;
+  height: 36px;
+  border-radius: var(--r-full);
+  background: var(--surface-3);
+  color: var(--text-2);
+  font: 800 12px/1 var(--font-ui);
+  overflow: hidden;
+}
+
+.home-friend__name {
+  overflow: hidden;
+  font: 700 14px/1.2 var(--font-ui);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.home-friend__who:focus-visible {
+  outline: none;
+  border-radius: var(--r-md);
+  box-shadow: var(--focus-ring);
+}
+
+.home-friend__streak {
+  color: var(--warning);
+  font: 600 13px/1.3 var(--font-ui);
+}
+
+.home-friend__reading {
+  color: var(--text-2);
+  font: 500 13px/1.45 var(--font-ui);
+}
+
+.home-friend__reading a,
+.home-friend__comments a {
+  color: var(--primary-text);
+}
+
+.home-friend__comments {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.home-friend__comments a {
+  display: block;
+  overflow: hidden;
+  font: 500 13px/1.4 var(--font-ui);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.home-friend__none {
+  color: var(--text-3);
+  font: 500 13px/1.4 var(--font-ui);
+}
+
+@media (hover: hover) {
+  .home-friend__who:hover .home-friend__name {
+    color: var(--primary-text);
+  }
+
+  .home-friend__reading a:hover,
+  .home-friend__comments a:hover {
+    color: #d6c8ff;
+  }
+}
+
+@media (max-width: 1199px) {
+  .home {
+    --home-grid-min: 140px;
+    padding: 28px var(--s-32) var(--s-32);
+  }
+}
+
+@media (max-width: 767px) {
+  .home {
+    --home-grid-min: 100px;
+    padding: var(--s-4) var(--s-20) var(--s-8);
+  }
+
+  /* Stacked under "Недавние" at full width, not a 280px island. */
+  .home__friends {
+    max-width: none;
+  }
+}
