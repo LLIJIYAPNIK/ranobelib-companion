@@ -47,6 +47,37 @@ def test_home_omits_empty_state_when_recent_titles_exist() -> None:
     assert 'data-role="home-empty"' not in response.text
 
 
+def test_home_empty_state_links_to_catalog() -> None:
+    """PR 250 (HOME-EMPTY): the empty card offers the catalog as a next step."""
+    response = client.get("/")
+
+    assert response.status_code == 200
+    assert 'href="/library/catalog"' in response.text
+    assert "Открыть каталог" in response.text
+
+
+def test_home_shows_guest_banner_to_anonymous_visitor() -> None:
+    """PR 250 (HOME-GUEST): a guest sees the sign-in pitch, its links open the auth modal
+    and still point at /login and /register without JS."""
+    response = client.get("/")
+
+    assert response.status_code == 200
+    assert 'class="home-guest"' in response.text
+    assert 'href="/register" data-role="auth-modal-trigger"' in response.text
+
+
+def test_home_recent_card_keeps_forget_button() -> None:
+    payload = dumps([{"slug_url": "6712--test-novel", "name": "Test Novel"}]).encode("utf-8")
+    test_client = TestClient(app)
+    test_client.cookies.set("recent_titles", urlsafe_b64encode(payload).decode("ascii"))
+
+    response = test_client.get("/")
+
+    assert 'class="ui-title-card"' in response.text
+    assert 'data-role="forget-recent-title"' in response.text
+    assert 'data-slug-url="6712--test-novel"' in response.text
+
+
 def _set_recent_cookie(test_client: TestClient, slug_url: str, name: str) -> None:
     payload = dumps([{"slug_url": slug_url, "name": name}]).encode("utf-8")
     test_client.cookies.set("recent_titles", urlsafe_b64encode(payload).decode("ascii"))
@@ -110,6 +141,15 @@ def _register(test_client: TestClient, email: str = "alice@example.com") -> None
     register(test_client, email)
 
 
+def test_home_hides_guest_banner_for_logged_in_user(db_client: TestClient) -> None:
+    _register(db_client)
+
+    response = db_client.get("/")
+
+    assert response.status_code == 200
+    assert 'class="home-guest"' not in response.text
+
+
 def test_home_omits_progress_for_anonymous_visitor(db_client: TestClient) -> None:
     """No account, so nothing to match the recent-titles cookie against (PR 68)."""
     _set_recent_cookie(db_client, "6712--test-novel", "Test Novel")
@@ -118,7 +158,7 @@ def test_home_omits_progress_for_anonymous_visitor(db_client: TestClient) -> Non
 
     assert response.status_code == 200
     assert "Test Novel" in response.text
-    assert 'class="reading-progress"' not in response.text
+    assert 'class="ui-progress"' not in response.text
 
 
 def test_home_omits_progress_when_title_not_in_library(db_client: TestClient) -> None:
@@ -132,7 +172,7 @@ def test_home_omits_progress_when_title_not_in_library(db_client: TestClient) ->
         response = db_client.get("/")
 
     assert response.status_code == 200
-    assert 'class="reading-progress"' not in response.text
+    assert 'class="ui-progress"' not in response.text
 
 
 def test_home_omits_progress_when_never_read(db_client: TestClient) -> None:
@@ -147,7 +187,7 @@ def test_home_omits_progress_when_never_read(db_client: TestClient) -> None:
         response = db_client.get("/")
 
     assert response.status_code == 200
-    assert 'class="reading-progress"' not in response.text
+    assert 'class="ui-progress"' not in response.text
 
 
 async def test_home_shows_progress_bar_for_logged_in_user_with_recorded_progress(
@@ -178,8 +218,10 @@ async def test_home_shows_progress_bar_for_logged_in_user_with_recorded_progress
         response = db_client.get("/")
 
     assert response.status_code == 200
-    assert 'class="reading-progress"' in response.text
+    assert 'class="ui-progress"' in response.text
     assert 'style="width: 75%"' in response.text  # 3 of 4 chapters
+    # PR 250: the percent is also shown as text next to the bar.
+    assert '<span class="ui-progress__pct">75%</span>' in response.text
 
 
 # --- PR 200: friend activity column ------------------------------------------------------
@@ -220,7 +262,7 @@ async def test_home_omits_friend_column_for_anonymous_visitor(db_client: TestCli
     response = db_client.get("/")
 
     assert response.status_code == 200
-    assert 'class="home-columns__friends"' not in response.text
+    assert 'class="home__friends"' not in response.text
 
 
 async def test_home_omits_friend_column_without_friends(db_client: TestClient) -> None:
@@ -228,7 +270,7 @@ async def test_home_omits_friend_column_without_friends(db_client: TestClient) -
 
     response = db_client.get("/")
 
-    assert 'class="home-columns__friends"' not in response.text
+    assert 'class="home__friends"' not in response.text
 
 
 async def test_home_shows_a_card_for_each_friend_with_no_activity(
@@ -239,7 +281,7 @@ async def test_home_shows_a_card_for_each_friend_with_no_activity(
     _login_as_bob(db_client)
     response = db_client.get("/")
 
-    assert 'class="home-columns__friends"' in response.text
+    assert 'class="home__friends"' in response.text
     assert "alice@example.com" in response.text
     assert "Пока нет активности" in response.text
 
@@ -351,5 +393,5 @@ async def test_home_hides_the_friend_column_when_the_viewer_opted_out(
         )
     response = db_client.get("/")
 
-    assert 'class="home-columns__friends"' not in response.text
+    assert 'class="home__friends"' not in response.text
     assert "1 день подряд" not in response.text
