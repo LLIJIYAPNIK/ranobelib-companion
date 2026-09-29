@@ -3,9 +3,9 @@
 // app/recent_titles.py's forget()) and drops the card from the page without a reload,
 // same delegation pattern as download-history-delete.js.
 //
-// The button sits inside the card's own <a> (title_card()'s caller block) so a click on
-// it would otherwise also navigate to the title page - preventDefault()/stopPropagation()
-// before the fetch stops that.
+// Since PR 250 the button sits next to the cover link (ui_title_card()'s caller block),
+// not inside it, so a click no longer navigates - preventDefault()/stopPropagation() stay
+// as a guard for anything else listening on the grid.
 (() => {
   const grid = document.querySelector('[data-role="recent-titles"]');
   if (!grid) return;
@@ -17,7 +17,7 @@
     event.preventDefault();
     event.stopPropagation();
 
-    const card = button.closest(".title-card");
+    const card = button.closest(".ui-title-card");
     const slugUrl = button.dataset.slugUrl;
     if (!card || !slugUrl) return;
 

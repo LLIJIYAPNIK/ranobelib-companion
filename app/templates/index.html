@@ -1,105 +1,120 @@
 {% extends "base.html" %}
 {% block title %}RanobeLib Companion{% endblock %}
 {% block content %}
-<header class="header">
-  <form class="search-form" method="get" action="/titles/open">
-    <input
-      class="search-input"
-      type="text"
-      name="url"
-      placeholder="Вставьте ссылку на тайтл ranobelib.me…"
-      value="{{ submitted_url or '' }}"
-      required
-      autofocus
-    >
-    <button class="search-button" type="submit">Открыть</button>
+{#
+  PR 250 (Aurora Ink, HOME-GUEST/HOME-AUTH/HOME-EMPTY): link field, then - for a guest
+  only - the sign-in banner, then "Недавние" (or the empty card) with friend activity
+  in a right-hand column that wraps under it when there's no room.
+#}
+{% from "_title_card.html" import ui_title_card %}
+<main class="home">
+  <form class="home__open ui-input-row" method="get" action="/titles/open">
+    <label class="ui-input-group">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M10 14a5 5 0 0 0 7 0l3-3a5 5 0 0 0-7-7l-1 1M14 10a5 5 0 0 0-7 0l-3 3a5 5 0 0 0 7 7l1-1"/></svg>
+      <input
+        class="ui-input"
+        type="text"
+        name="url"
+        placeholder="Вставьте ссылку на тайтл ranobelib.me…"
+        aria-label="Ссылка на тайтл ranobelib.me"
+        value="{{ submitted_url or '' }}"
+        {% if error %}aria-invalid="true" aria-describedby="home-open-error"{% endif %}
+        required
+        autofocus
+      >
+    </label>
+    <button class="ui-btn ui-btn--primary" type="submit">Открыть</button>
   </form>
   <script src="{{ url_for('static', path='js/disable-mobile-autofocus.js') }}"></script>
-</header>
-<main class="content">
   {% if error %}
-  <p class="form-error">{{ error }}</p>
+  <p class="home__error ui-field__error" id="home-open-error" role="alert">{{ error }}</p>
   {% endif %}
 
-  <div class="home-columns">
-    <div class="home-columns__primary">
+  {% if not current_user %}
+  {# Same pitch as the sign-in card (_auth_card.html); the links open that card in the
+     auth modal, and stay plain /login and /register links without JS. #}
+  <section class="home-guest" aria-label="Аккаунт">
+    <div class="home-guest__copy">
+      <b class="home-guest__title">Читать можно и без аккаунта. С аккаунтом — удобнее.</b>
+      <span class="home-guest__text">Своя библиотека и избранное, прогресс чтения и календарь активности, загрузки с историей.</span>
+    </div>
+    <div class="home-guest__actions">
+      <a class="ui-btn" href="/login" data-role="auth-modal-trigger">Войти</a>
+      <a class="ui-btn ui-btn--quiet home-guest__register" href="/register" data-role="auth-modal-trigger">Создать аккаунт</a>
+    </div>
+  </section>
+  {% endif %}
+
+  <div class="home__columns">
+    <div class="home__primary">
       {% if recent %}
-      <section>
-        <h2 class="recent__title">Недавние</h2>
-        <div class="title-card-grid" data-role="recent-titles">
-          {% from "_title_card.html" import title_card %}
+      <section class="home__section">
+        <h2 class="home__heading">Недавние</h2>
+        <div class="home__grid" data-role="recent-titles">
           {% for item in recent %}
-          {% call title_card(item.slug_url, item.name, item.cover_url) %}
+          {% call ui_title_card(item.slug_url, item.name, item.cover_url, item.progress_percent) %}
           <button
             type="button"
-            class="title-card__remove"
+            class="ui-title-card__action ui-title-card__action--sm"
             data-role="forget-recent-title"
             data-slug-url="{{ item.slug_url }}"
             aria-label="Убрать «{{ item.name }}» из недавних"
             title="Убрать из недавних"
-          >×</button>
-          {% if item.progress_percent is not none %}
-          <div class="reading-progress" aria-hidden="true">
-            <div class="reading-progress__fill" style="width: {{ item.progress_percent }}%"></div>
-          </div>
-          {% endif %}
+          >
+            <span class="ui-title-card__action-chip"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" aria-hidden="true"><path d="M6 6l12 12M18 6 6 18"/></svg></span>
+          </button>
           {% endcall %}
           {% endfor %}
         </div>
       </section>
       {% else %}
-      <div class="home-empty" data-role="home-empty">
-        <p class="home-empty__text">
-          Здесь появятся недавно открытые тайтлы — вставьте ссылку на тайтл ranobelib.me
-          в поле поиска выше, чтобы начать.
+      <section class="home-empty-card" data-role="home-empty">
+        <h2 class="home-empty-card__title">Здесь появятся недавно открытые тайтлы</h2>
+        <p class="home-empty-card__text">Вставьте ссылку на тайтл ranobelib.me в поле выше, чтобы начать.</p>
+        <p class="home-empty-card__note">
+          Сайт — веб-интерфейс поверх публичного API RanobeLib, а не самостоятельный источник
+          контента: все тайтлы и главы загружаются напрямую с ranobelib.me.
         </p>
-        <p class="home-empty__text home-empty__text--muted">
-          Сайт — веб-интерфейс поверх публичного API RanobeLib (SDK
-          ranobelib-python-sdk), а не самостоятельный источник контента: все тайтлы и
-          главы загружаются напрямую с ranobelib.me.
-        </p>
-      </div>
+        <a class="ui-btn home-empty-card__cta" href="/library/catalog">Открыть каталог</a>
+      </section>
       {% endif %}
     </div>
 
     {% if friend_activity %}
-    <aside class="home-columns__friends">
-      <h2 class="recent__title">Активность друзей</h2>
-      <div class="friend-activity-list">
-        {% for card in friend_activity %}
-        <section class="friend-activity-card">
-          <a class="friend-row__link friend-activity-card__header" href="/profile/{{ card.friend.id }}">
-            <span class="friend-row__avatar">
-              {% if card.friend.avatar_url %}<img class="avatar-img" src="{{ card.friend.avatar_url }}" alt="">{% else %}{{ card.friend.avatar_initials }}{% endif %}
-            </span>
-            <span class="friend-row__name">{{ card.friend.display_name }}</span>
-          </a>
-          {% if card.streak_label %}
-          <p class="friend-activity-card__streak">🔥 {{ card.streak_label }}</p>
-          {% endif %}
-          {% if card.currently_reading %}
-          <p class="friend-activity-card__reading">
-            Читает: <a href="/titles/{{ card.currently_reading.entry.slug_url }}">{{ card.currently_reading.name or card.currently_reading.entry.slug_url }}</a>
-          </p>
-          {% endif %}
-          {% if card.recent_comments %}
-          <ul class="friend-activity-card__comments">
-            {% for comment in card.recent_comments %}
-            <li><a href="{{ comment.url }}">{{ comment.body_excerpt }}</a></li>
-            {% endfor %}
-          </ul>
-          {% endif %}
-          {% if not card.has_activity %}
-          <p class="content__hint">Пока нет активности</p>
-          {% endif %}
-        </section>
-        {% endfor %}
-      </div>
+    <aside class="home__friends">
+      <h2 class="home__heading">Активность друзей</h2>
+      {% for card in friend_activity %}
+      <section class="home-friend">
+        <a class="home-friend__who" href="/profile/{{ card.friend.id }}">
+          <span class="home-friend__avatar">
+            {% if card.friend.avatar_url %}<img class="avatar-img" src="{{ card.friend.avatar_url }}" alt="">{% else %}{{ card.friend.avatar_initials }}{% endif %}
+          </span>
+          <b class="home-friend__name">{{ card.friend.display_name }}</b>
+        </a>
+        {% if card.streak_label %}
+        <span class="home-friend__streak">{{ card.streak_label }}</span>
+        {% endif %}
+        {% if card.currently_reading %}
+        <span class="home-friend__reading">
+          Читает: <a href="/titles/{{ card.currently_reading.entry.slug_url }}">{{ card.currently_reading.name or card.currently_reading.entry.slug_url }}</a>
+        </span>
+        {% endif %}
+        {% if card.recent_comments %}
+        <ul class="home-friend__comments">
+          {% for comment in card.recent_comments %}
+          <li><a href="{{ comment.url }}">{{ comment.body_excerpt }}</a></li>
+          {% endfor %}
+        </ul>
+        {% endif %}
+        {% if not card.has_activity %}
+        <span class="home-friend__none">Пока нет активности</span>
+        {% endif %}
+      </section>
+      {% endfor %}
     </aside>
     {% endif %}
   </div>
 </main>
 <script src="{{ url_for('static', path='js/recent-titles-forget.js') }}" defer></script>
-<script src="{{ url_for('static', path='js/title-quickview.js') }}" defer></script>
 <script src="{{ url_for('static', path='js/image-lightbox.js') }}" defer></script>
 {% endblock %}
