@@ -197,7 +197,7 @@ def test_show_downloads_lists_active_job_with_progress(client: TestClient) -> No
     assert response.status_code == 200
     assert f'data-job-id="{job.id}"' in response.text
     assert "6712--test-novel" in response.text
-    assert "Глава 3 из 10" in response.text
+    assert "Скачивание · 3 из 10 глав" in response.text
     assert "static/js/downloads-status.js" in response.text
 
 

@@ -56,7 +56,9 @@
   const STATUS_LABELS = {
     queued: () => "В очереди…",
     running: (job) =>
-      job.total ? `Глава ${job.completed} из ${job.total}` : "Начинаем скачивание…",
+      job.total
+        ? `Скачивание · ${job.completed} из ${job.total} глав`
+        : "Начинаем скачивание…",
     exporting: () => "Сборка файла…",
     needs_translation: () => "Нужен выбор перевода",
   };
@@ -96,9 +98,13 @@
         const row = section.querySelector(`[data-job-id="${job.job_id}"]`);
         if (!row) continue;
 
-        const bar = row.querySelector('[data-role="bar-fill"]');
-        if (bar && job.total) {
-          bar.style.width = `${Math.min(100, (job.completed / job.total) * 100)}%`;
+        if (job.total) {
+          const pct = Math.min(100, Math.floor((job.completed / job.total) * 100));
+          const bar = row.querySelector('[data-role="bar-fill"]');
+          if (bar) bar.style.width = `${pct}%`;
+          // PR 256: the percent next to the bar on the Aurora Ink job card.
+          const pctText = row.querySelector('[data-role="bar-pct"]');
+          if (pctText) pctText.textContent = `${pct}%`;
         }
 
         const text = row.querySelector('[data-role="status-text"]');
@@ -109,7 +115,7 @@
         if (etaText) {
           etaText.textContent =
             job.status === "running" && job.eta_seconds != null
-              ? `Осталось ≈ ${formatEta(job.eta_seconds)}`
+              ? `≈ ${formatEta(job.eta_seconds)}`
               : "";
         }
       }

@@ -1,8 +1,13 @@
 {% extends "base.html" %}
 {% block title %}Загрузки — RanobeLib Companion{% endblock %}
 {% block content %}
-<main class="content">
-  <h1 class="toc__title">Загрузки</h1>
+{#
+  PR 256 (Aurora Ink, DOWNLOADS/M-DOWNLOADS): "Текущие" as cards with progress, then
+  "История" as a plain divided list; an empty section is one hint line (.ui-empty).
+  A guest gets the locked state instead.
+#}
+<main class="downloads-page">
+  <h1 class="downloads-page__title">Загрузки</h1>
 
   {% if current_user %}
   <section class="downloads-section" data-role="active-downloads">
@@ -11,7 +16,7 @@
     {% from "_active_downloads.html" import active_downloads_list with context %}
     {{ active_downloads_list(active_jobs) }}
     {% else %}
-    <p class="content__hint">Сейчас ничего не скачивается.</p>
+    <p class="ui-empty">Сейчас ничего не скачивается.</p>
     {% endif %}
   </section>
 
@@ -21,7 +26,7 @@
     {% from "_download_history.html" import download_history_list with context %}
     {{ download_history_list(history, ready_files) }}
     {% else %}
-    <p class="content__hint">Пока ничего не скачивали.</p>
+    <p class="ui-empty">Пока ничего не скачивали.</p>
     {% endif %}
   </section>
   {% else %}
