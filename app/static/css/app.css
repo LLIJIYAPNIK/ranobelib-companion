@@ -6639,3 +6639,257 @@ img.paragraph-comment__attachment {
   color: var(--disabled);
   cursor: not-allowed;
 }
+
+/* Fields: label above, 44px input, hint or error below. Error state is driven by
+   aria-invalid="true" (what a screen reader needs anyway), .ui-input--error is the
+   same look for server-rendered errors that can't set the attribute on the input. */
+.ui-field {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  min-width: 0;
+}
+
+.ui-field__label {
+  font: 700 13px/1 var(--font-ui);
+  color: var(--text-2);
+}
+
+.ui-field__hint {
+  font: 500 12px/1.3 var(--font-ui);
+  color: var(--text-3);
+}
+
+.ui-field__error {
+  font: 600 12px/1.3 var(--font-ui);
+  color: var(--danger-text);
+}
+
+.ui-input {
+  appearance: none;
+  width: 100%;
+  height: 44px;
+  padding: 0 14px;
+  border: 1px solid var(--border);
+  border-radius: var(--r-lg);
+  background: var(--surface-1);
+  color: var(--text-1);
+  font: 500 15px/1 var(--font-ui);
+  transition:
+    border-color var(--dur-base) var(--ease),
+    box-shadow var(--dur-base) var(--ease),
+    background-color var(--dur-base) var(--ease);
+}
+
+.ui-input::placeholder {
+  color: var(--text-3);
+  opacity: 1;
+}
+
+.ui-input:focus,
+.ui-input-group:focus-within {
+  outline: none;
+  border-color: var(--accent);
+  background: var(--bg-page);
+  box-shadow: 0 0 0 3px rgba(34, 211, 197, 0.2);
+}
+
+.ui-input[aria-invalid="true"],
+.ui-input--error {
+  border-color: var(--danger);
+}
+
+.ui-input:disabled,
+.ui-input-group:has(.ui-input:disabled) {
+  border-style: dashed;
+  background: #100f1b;
+  color: var(--disabled-text);
+  cursor: not-allowed;
+}
+
+/* Input with a leading icon (link field on the home page, catalog search): the group
+   draws the box, the input inside is bare. */
+.ui-input-group {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  height: 44px;
+  padding: 0 14px;
+  border: 1px solid var(--border);
+  border-radius: var(--r-lg);
+  background: var(--surface-1);
+  color: var(--text-3);
+  transition:
+    border-color var(--dur-base) var(--ease),
+    box-shadow var(--dur-base) var(--ease),
+    background-color var(--dur-base) var(--ease);
+}
+
+.ui-input-group > svg {
+  flex: 0 0 auto;
+  width: 18px;
+  height: 18px;
+}
+
+.ui-input-group .ui-input {
+  flex: 1;
+  height: 100%;
+  min-width: 0;
+  padding: 0;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  box-shadow: none;
+}
+
+/* Field + action on one line ("Вставьте ссылку…" + «Открыть»). */
+.ui-input-row {
+  display: flex;
+  gap: 10px;
+}
+
+.ui-input-row > :first-child {
+  flex: 1;
+  min-width: 0;
+}
+
+/* Select: still the native <select>, skinned by custom-dropdown.js exactly as before -
+   this only restyles the .dropdown markup that script already builds, when it sits
+   inside .ui-select. The trigger's ::before stretches its hit area over the whole box,
+   so the optional .ui-select__prefix ("Сортировка:") opens it too, and the listbox is
+   positioned against the box rather than the (static) .dropdown wrapper. Without JS
+   the native <select> gets the same box. */
+.ui-select {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  height: 44px;
+  padding: 0 14px;
+  border: 1px solid var(--border);
+  border-radius: var(--r-lg);
+  background: var(--surface-2);
+  color: var(--text-1);
+  font: 600 14px/1 var(--font-ui);
+  white-space: nowrap;
+}
+
+.ui-select:focus-within {
+  box-shadow: var(--focus-ring);
+}
+
+.ui-select__prefix {
+  color: var(--text-3);
+  font-weight: 500;
+}
+
+.ui-select > select {
+  appearance: none;
+  flex: 1;
+  height: 100%;
+  border: 0;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  cursor: pointer;
+}
+
+.ui-select > select:focus {
+  outline: none;
+}
+
+.ui-select .dropdown {
+  position: static;
+  flex: 1;
+}
+
+.ui-select .dropdown__trigger {
+  height: 42px;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  cursor: pointer;
+}
+
+.ui-select .dropdown__trigger:focus {
+  outline: none;
+}
+
+.ui-select .dropdown__trigger::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+}
+
+/* Chevron drawn with two borders - a data: URI icon would be blocked by img-src. */
+.ui-select .dropdown__trigger::after {
+  width: 7px;
+  height: 7px;
+  margin: -4px 2px 0 0;
+  border: solid var(--text-3);
+  border-width: 0 2px 2px 0;
+  transform: rotate(45deg);
+  transition: transform var(--dur-base) var(--ease);
+}
+
+.ui-select .dropdown--open .dropdown__trigger::after {
+  margin-top: 4px;
+  transform: rotate(225deg);
+}
+
+.ui-select .dropdown__listbox {
+  top: calc(100% + 6px);
+  min-width: max(100%, 220px);
+  padding: var(--s-4);
+  border: 1px solid var(--border);
+  border-radius: var(--r-lg);
+  background: var(--surface-2);
+  box-shadow: var(--shadow-popover);
+  transform: translateY(calc(-6px * var(--motion-shift)));
+  transition:
+    opacity var(--dur-exit) var(--ease-exit),
+    transform var(--dur-exit) var(--ease-exit);
+}
+
+.ui-select .dropdown--open .dropdown__listbox {
+  transform: none;
+  transition:
+    opacity var(--dur-sheet) var(--ease),
+    transform var(--dur-sheet) var(--ease);
+}
+
+.ui-select .dropdown__option {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--s-12);
+  height: 40px;
+  padding: 0 10px;
+  border-radius: var(--r-sm);
+  color: var(--text-2);
+  font: 500 14px/1 var(--font-ui);
+}
+
+.ui-select .dropdown__option--active {
+  background: var(--surface-3);
+  color: var(--text-1);
+}
+
+.ui-select .dropdown__option--selected {
+  color: var(--text-1);
+  font-weight: 600;
+}
+
+.ui-select .dropdown__option--selected::after {
+  content: "";
+  flex: 0 0 auto;
+  width: 5px;
+  height: 10px;
+  margin: -3px 3px 0 0;
+  border: solid var(--accent);
+  border-width: 0 2px 2px 0;
+  transform: rotate(45deg);
+}
