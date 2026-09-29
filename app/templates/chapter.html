@@ -129,6 +129,33 @@
 </dialog>
 {% endif %}
 
+{# Tap Focus onboarding (M-READER-ONBOARDING): shown once per device by tap-to-read.js
+   the first time Tap Focus is on. #}
+<div class="reader-onboarding" data-role="reader-onboarding" hidden>
+  <div class="reader-onboarding__zones" aria-hidden="true">
+    <div class="reader-onboarding__zone">
+      <span class="reader-onboarding__icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 5l-7 7 7 7"/></svg></span>
+      <b>Назад на абзац</b><span>отменить случайный тап</span>
+    </div>
+    <div class="reader-onboarding__zone">
+      <span class="reader-onboarding__icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 6h16M4 12h16M4 18h16"/></svg></span>
+      <b>Показать управление</b><span>HUD и Aa</span>
+    </div>
+    <div class="reader-onboarding__zone">
+      <span class="reader-onboarding__icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m9 6 6 6-6 6"/></svg></span>
+      <b>Читать дальше</b><span>следующий абзац</span>
+    </div>
+  </div>
+  <div class="reader-onboarding__card" role="dialog" aria-modal="true" aria-labelledby="reader-onboarding-title">
+    <b class="reader-onboarding__title" id="reader-onboarding-title">Tap Focus: абзац за абзацем</b>
+    <span class="reader-onboarding__text">Прокрутка работает как обычно. Долгое нажатие на абзац — реакции и комментарии.</span>
+    <div class="reader-onboarding__foot">
+      <label class="ui-checkbox"><input type="checkbox" data-role="reader-onboarding-dismiss" checked><span>Больше не показывать</span></label>
+      <button type="button" class="ui-btn reader-onboarding__ok" data-role="reader-onboarding-ok">Понятно</button>
+    </div>
+  </div>
+</div>
+
 {% if current_user %}
 <script src="{{ url_for('static', path='js/activity-heartbeat.js') }}" defer></script>
 {% endif %}
