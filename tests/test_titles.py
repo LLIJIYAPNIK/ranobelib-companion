@@ -646,3 +646,10 @@ def test_title_data_mobile_sheets_offer_every_export_format() -> None:
     sheet = response.text[response.text.index('data-role="title-format-sheet"') :]
     for fmt in available_export_formats():
         assert f'name="fmt" value="{fmt}"' in sheet
+
+
+def test_show_title_puts_a_back_button_in_the_mobile_strip() -> None:
+    response = client.get("/titles/6712--test-novel")
+
+    assert 'data-role="strip-back"' in response.text
+    assert "sidebar__strip-brand" not in response.text
