@@ -1200,3 +1200,24 @@ def test_post_comment_reaction_reflected_by_a_later_get(logged_in_client: TestCl
     fetched = response.json()["comments"][0]
     assert fetched["reactions"] == {"like": 1, "dislike": 0}
     assert fetched["my_reaction"] == 1
+
+
+def test_read_chapter_has_an_aa_panel_on_the_same_settings() -> None:
+    # PR 255: HUD → Aa opens quick settings bound to the same readerSettings keys as
+    # /settings/reading, and the theme is applied from <head> before first paint.
+    chapter = Chapter(id=2, volume="1", number="2", content="<p>x</p>")
+    with patch(
+        "app.services.client.RanobeLib",
+        return_value=_FakeClient(chapter, volumes=_three_chapter_volumes()),
+    ):
+        response = client.get("/titles/6712--test-novel/chapters/1/2")
+
+    panel_start = response.text.index('data-role="reader-aa-panel"')
+    panel = response.text[panel_start : response.text.index("</dialog>", panel_start)]
+    for key in ("theme", "fontFamily", "lineHeight", "width", "margins", "readerMode"):
+        assert f'data-setting="{key}"' in panel
+    assert 'data-setting="revealPreset"' in panel
+    assert 'data-setting-step="fontSize"' in panel
+    assert 'href="/settings/reading"' in panel
+    head = response.text[: response.text.index("</head>")]
+    assert "static/js/reader-theme-early.js" in head
