@@ -4133,10 +4133,6 @@ img.paragraph-comment__attachment {
   max-width: none;
 }
 
-.reader-settings-page {
-  max-width: 480px;
-}
-
 /* Named sections (PR 61) - .reader-settings-page used to render every field as one flat
    list, which stopped scaling as soon as a second, unrelated group of settings (the
    upcoming "Чтение с помощью тапа" section, PR 63-65) needed a place to live. Same
@@ -4430,28 +4426,6 @@ img.paragraph-comment__attachment {
   border-color: var(--accent-teal);
   box-shadow: 0 0 0 3px rgba(34, 211, 197, 0.18);
   outline: none;
-}
-
-.reader-settings-preview {
-  margin-top: 16px;
-  padding: 16px;
-  /* Bug fix: only the inner <p> was capped at --reader-width - the panel itself grew to
-     fill the settings column regardless, so the visible background/border rectangle
-     never actually matched the width the "Ширина области чтения" slider (PR 34) claims
-     to be previewing. */
-  max-width: var(--reader-width);
-  background: var(--bg-surface);
-  border: 1px solid var(--legacy-border);
-  border-radius: 8px;
-  color: var(--text-secondary);
-  font-family: var(--reader-font-family);
-  font-size: var(--reader-font-size);
-  line-height: var(--reader-line-height);
-}
-
-.reader-settings-preview p {
-  max-width: var(--reader-width);
-  margin: 0;
 }
 
 @keyframes translation-choice-in {
@@ -9112,10 +9086,11 @@ body.reader-page {
   z-index: 60;
   width: min(880px, calc(100vw - var(--sidebar-width) - 48px));
   overflow: hidden;
-  border: 1px solid #1f1d30;
+  border: 1px solid var(--r-track);
   border-top: 0;
   border-radius: 0 0 14px 14px;
   background: var(--r-hud);
+  color: var(--r-text);
   opacity: 0;
   transform: translate(-50%, calc(-8px * var(--motion-shift)));
   pointer-events: none;
@@ -9152,7 +9127,7 @@ body.reader-hud-visible .reader-hud {
   border: 0;
   border-radius: var(--r-lg);
   background: transparent;
-  color: var(--text-1);
+  color: var(--r-text);
   text-decoration: none;
   cursor: pointer;
   transition: background-color var(--dur-press) var(--ease);
@@ -9164,7 +9139,7 @@ body.reader-hud-visible .reader-hud {
 }
 
 .reader-hud__btn--nav {
-  color: var(--text-2);
+  color: var(--r-muted);
 }
 
 .reader-hud__btn--nav svg {
@@ -9175,13 +9150,13 @@ body.reader-hud-visible .reader-hud {
 @media (hover: hover) {
   .reader-hud__btn:hover,
   .reader-hud__chapter:hover {
-    background: #211e33;
+    background: var(--r-surface);
   }
 }
 
 .reader-hud__btn:active,
 .reader-hud__btn[aria-expanded="true"] {
-  background: #262338;
+  background: var(--r-track);
 }
 
 .reader-hud__btn:focus-visible,
@@ -9205,7 +9180,7 @@ body.reader-hud-visible .reader-hud {
   margin-right: auto;
   padding: 0 var(--s-8);
   border-radius: 10px;
-  color: var(--text-1);
+  color: var(--r-text);
   text-decoration: none;
 }
 
@@ -9307,7 +9282,7 @@ body.reader-hud-visible .reader-hud {
 
 .reader__title {
   margin: 0;
-  color: #f2effa;
+  color: var(--r-text);
   font: var(--type-reader-title);
   text-wrap: balance;
   overflow-wrap: anywhere;
@@ -9345,7 +9320,7 @@ body.reader-hud-visible .reader-hud {
   border-radius: 0 12px 12px 0;
   background: var(--r-active-tint);
   box-shadow: inset 2px 0 0 var(--r-accent);
-  color: #f4f1fb;
+  color: var(--r-text);
 }
 
 .reader-paragraph-more {
@@ -9409,7 +9384,7 @@ body.reader-hud-visible .reader-hud {
 }
 
 .reader-end__title {
-  color: var(--text-1);
+  color: var(--r-text);
   font: 800 20px/1.25 var(--font-ui);
 }
 
@@ -9427,7 +9402,7 @@ body.reader-hud-visible .reader-hud {
   display: flex;
   align-items: center;
   min-height: 44px;
-  color: var(--text-2);
+  color: var(--r-muted);
   font: 700 14px/1 var(--font-ui);
   text-decoration: none;
 }
@@ -9573,7 +9548,7 @@ body.reader-hud-visible .reader-hud {
     width: 100%;
     padding-top: env(safe-area-inset-top, 0px);
     border: 0;
-    border-bottom: 1px solid #1f1d30;
+    border-bottom: 1px solid var(--r-track);
     border-radius: 0;
     transform: translateY(calc(-8px * var(--motion-shift)));
   }
@@ -9600,7 +9575,7 @@ body.reader-hud-visible .reader-hud {
   }
 
   .reader-hud__chapter-num {
-    color: var(--text-1);
+    color: var(--r-text);
     font-weight: 700;
   }
 
@@ -9628,7 +9603,7 @@ body.reader-hud-visible .reader-hud {
     justify-content: space-between;
     height: calc(52px + env(safe-area-inset-bottom, 0px));
     padding: 0 var(--s-8) env(safe-area-inset-bottom, 0px);
-    border-top: 1px solid #1f1d30;
+    border-top: 1px solid var(--r-track);
     background: var(--r-hud);
     opacity: 0;
     transform: translateY(calc(8px * var(--motion-shift)));
@@ -9654,7 +9629,7 @@ body.reader-hud-visible .reader-hud {
     height: 44px;
     padding: 0 var(--s-12);
     border-radius: var(--r-lg);
-    color: var(--text-2);
+    color: var(--r-muted);
     font: 600 15px/1 var(--font-ui);
     text-decoration: none;
   }
@@ -9712,4 +9687,500 @@ body.reader-hud-visible .reader-hud {
     width: 44px;
     height: 32px;
   }
+}
+
+/* ==========================================================================
+   Aurora Ink screens - reader look (PR 255): 5 reader themes (--r-* tokens swapped by
+   data-reader-theme, see the top of this file), the Aa panel (READER-TAP-FOCUS popover
+   on desktop, M-READER-SETTINGS sheet on mobile) and SETTINGS-READING.
+   ========================================================================== */
+/* Social layer off (Aa / settings switch): hidden at once; paragraph-menu.js stops
+   loading it from the next page load. */
+.reader-social-off .paragraph-reactions,
+.reader-social-off .paragraph-comments,
+.reader-social-off .reader-paragraph-more {
+  display: none;
+}
+
+/* Mobile side padding of the reading column (readerSettings.margins). */
+@media (max-width: 767px) {
+  .reader {
+    padding-right: var(--reader-margin, 22px);
+    padding-left: var(--reader-margin, 22px);
+  }
+}
+
+/* Theme swatches. */
+.reader-themes {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  gap: var(--s-12);
+  margin: 0;
+  padding: 0;
+  border: 0;
+}
+
+.reader-theme {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  width: 58px;
+  cursor: pointer;
+}
+
+.reader-theme input {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  margin: 0;
+  opacity: 0;
+  cursor: pointer;
+}
+
+.reader-theme__swatch {
+  display: grid;
+  place-items: center;
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  box-shadow: 0 0 0 1px var(--border-strong);
+  font: 500 15px/1 var(--font-reader-serif);
+  transition: box-shadow var(--dur-base) var(--ease);
+}
+
+.reader-theme__swatch--aurora {
+  background: #0e0d17;
+  color: #e6e2f3;
+}
+
+.reader-theme__swatch--amoled {
+  background: #000000;
+  color: #d9d6e4;
+}
+
+.reader-theme__swatch--sepia {
+  background: #f4ead7;
+  color: #3a2e21;
+}
+
+.reader-theme__swatch--light {
+  background: #faf9fc;
+  color: #1d1a28;
+}
+
+.reader-theme__swatch--system {
+  background: linear-gradient(135deg, #0e0d17 50%, #faf9fc 50%);
+  color: #8e88a8;
+}
+
+.reader-theme__name {
+  color: var(--text-3);
+  font: 600 11px/1.1 var(--font-ui);
+}
+
+.reader-theme input:checked ~ .reader-theme__swatch {
+  box-shadow: 0 0 0 2px var(--surface-2), 0 0 0 4px var(--accent);
+}
+
+.reader-theme input:checked ~ .reader-theme__name {
+  color: var(--text-1);
+}
+
+.reader-theme input:focus-visible ~ .reader-theme__swatch {
+  box-shadow: 0 0 0 2px var(--surface-2), 0 0 0 4px var(--focus);
+}
+
+/* Font size stepper. */
+.reader-stepper {
+  display: inline-flex;
+  align-items: center;
+  flex: 0 0 auto;
+  padding: 3px;
+  border-radius: var(--r-md);
+  background: #12111f;
+}
+
+.reader-stepper__btn {
+  appearance: none;
+  width: 40px;
+  height: 36px;
+  padding: 0;
+  border: 0;
+  border-radius: var(--r-sm);
+  background: transparent;
+  color: var(--text-1);
+  font: 600 18px/1 var(--font-ui);
+  cursor: pointer;
+}
+
+@media (hover: hover) {
+  .reader-stepper__btn:hover {
+    background: var(--surface-3);
+  }
+}
+
+.reader-stepper__btn:focus-visible {
+  outline: none;
+  box-shadow: var(--focus-ring);
+}
+
+.reader-stepper__value {
+  width: 30px;
+  color: var(--text-1);
+  font: 800 15px/1 var(--font-ui);
+  text-align: center;
+  font-variant-numeric: tabular-nums;
+}
+
+/* Aa panel: a sheet on mobile (.ui-dialog--sheet), a popover under the HUD's Aa on
+   desktop. The HUD stays up while it's open (reader-hud.js). */
+.reader-aa {
+  width: 304px;
+}
+
+.reader-aa::backdrop {
+  background: transparent;
+}
+
+.reader-aa__head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  height: 44px;
+  padding: 6px var(--s-8) 0 var(--s-16);
+}
+
+.reader-aa__title {
+  margin: 0;
+  color: var(--text-1);
+  font: 800 15px/1 var(--font-ui);
+}
+
+.reader-aa__close {
+  color: var(--text-2);
+}
+
+.reader-aa__close svg {
+  width: 16px;
+  height: 16px;
+}
+
+.reader-aa__body {
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  padding: 0 var(--s-16);
+  overflow-y: auto;
+  overscroll-behavior: contain;
+}
+
+.reader-aa__row {
+  display: flex;
+  flex-direction: column;
+  gap: var(--s-8);
+  padding: 9px 0;
+  border-bottom: 1px solid var(--border);
+}
+
+.reader-aa__row--switch {
+  flex-direction: row;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.reader-aa__label {
+  color: var(--text-2);
+  font: 700 12px/1.3 var(--font-ui);
+}
+
+.reader-aa__type {
+  display: flex;
+  gap: var(--s-8);
+}
+
+.reader-aa__type .ui-segmented {
+  flex: 1;
+}
+
+.reader-aa .ui-segmented__item span {
+  height: 32px;
+  font-size: 12px;
+}
+
+.reader-aa .reader-themes {
+  gap: 0;
+}
+
+.reader-aa .reader-theme {
+  width: 52px;
+}
+
+.reader-aa .reader-theme__swatch {
+  width: 34px;
+  height: 34px;
+  font-size: 13px;
+}
+
+.reader-aa .reader-theme__name {
+  font-size: 10px;
+}
+
+.reader-aa__row--mobile {
+  display: none;
+}
+
+.reader-aa__foot {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 2px var(--s-16) 10px;
+}
+
+.reader-aa__more {
+  display: flex;
+  align-items: center;
+  height: 36px;
+  color: var(--text-1);
+  font: 700 13px/1 var(--font-ui);
+  text-decoration: none;
+}
+
+.reader-aa__reset,
+.reader-settings-reset {
+  appearance: none;
+  height: 36px;
+  padding: 0;
+  border: 0;
+  background: none;
+  color: var(--r-muted);
+  font: 600 12px/1 var(--font-ui);
+  cursor: pointer;
+}
+
+.reader-aa__more:focus-visible,
+.reader-aa__reset:focus-visible,
+.reader-settings-reset:focus-visible {
+  outline: none;
+  border-radius: var(--r-xs);
+  box-shadow: var(--focus-ring);
+}
+
+@media (min-width: 768px) {
+  .reader-aa[open] {
+    position: fixed;
+    inset: 72px 16px auto auto;
+    margin: 0;
+    max-height: calc(100dvh - 88px);
+    animation: ui-dialog-in var(--dur-base) var(--ease);
+  }
+}
+
+@media (max-width: 767px) {
+  .reader-aa {
+    width: 100%;
+  }
+
+  .reader-aa__head {
+    height: 40px;
+    padding: 0 var(--s-8) 0 var(--s-20);
+  }
+
+  .reader-aa__title {
+    font-size: 17px;
+  }
+
+  .reader-aa__body {
+    padding: 0 var(--s-20);
+  }
+
+  .reader-aa__row {
+    gap: 9px;
+    padding: 10px 0;
+  }
+
+  .reader-aa__label {
+    font-size: 13px;
+  }
+
+  .reader-aa .ui-segmented__item span {
+    height: 36px;
+    font-size: 13px;
+  }
+
+  .reader-aa .reader-theme {
+    width: 58px;
+  }
+
+  .reader-aa .reader-theme__swatch {
+    width: 40px;
+    height: 40px;
+    font-size: 15px;
+  }
+
+  .reader-aa__row--desktop {
+    display: none;
+  }
+
+  .reader-aa__row--mobile {
+    display: flex;
+  }
+
+  .reader-aa__foot {
+    padding: var(--s-4) var(--s-20) calc(var(--s-12) + env(safe-area-inset-bottom, 0px));
+  }
+
+  .reader-aa__more {
+    height: 44px;
+    font-size: 14px;
+  }
+}
+
+/* SETTINGS-READING: cards of rows, then the live preview in the chosen reader theme. */
+.reader-settings-page {
+  display: flex;
+  flex-direction: column;
+  gap: var(--s-16);
+  max-width: 640px;
+}
+
+.reader-settings-card {
+  display: flex;
+  flex-direction: column;
+  gap: var(--s-12);
+  padding: var(--s-20);
+  border: 1px solid var(--border);
+  border-radius: var(--r-xl);
+  background: var(--surface-1);
+}
+
+.reader-settings-card__title {
+  margin: 0;
+  color: var(--text-1);
+  font: 800 16px/1.2 var(--font-ui);
+}
+
+.reader-settings-card--speed {
+  flex-direction: row;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--s-12) var(--s-20);
+}
+
+.reader-settings-card__intro {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  flex: 1 1 220px;
+}
+
+.reader-settings-row {
+  display: flex;
+  flex-direction: column;
+  gap: var(--s-8);
+}
+
+.reader-settings-row__head {
+  display: flex;
+  justify-content: space-between;
+  gap: var(--s-12);
+}
+
+.reader-settings-row__label {
+  color: var(--text-2);
+  font: 700 13px/1.2 var(--font-ui);
+}
+
+.reader-settings-row__value {
+  color: var(--text-1);
+  font: 700 13px/1.2 var(--font-ui);
+  font-variant-numeric: tabular-nums;
+}
+
+.reader-settings-row__hint {
+  margin: 0;
+  color: var(--text-3);
+  font: 500 13px/1.4 var(--font-ui);
+}
+
+.reader-settings-row--switch {
+  flex-direction: row;
+  align-items: center;
+  justify-content: space-between;
+  min-height: 48px;
+  border-top: 1px solid var(--divider);
+}
+
+.reader-settings-row .ui-select {
+  align-self: flex-start;
+}
+
+/* The track would vanish against the card's own surface. */
+.reader-settings-card .ui-segmented,
+.reader-settings-card .reading-speed-test__stepper {
+  background: var(--bg-page);
+}
+
+.reader-settings-more {
+  border-top: 1px solid var(--divider);
+  padding-top: 10px;
+}
+
+.reader-settings-more__summary {
+  display: flex;
+  align-items: center;
+  min-height: 40px;
+  color: var(--text-1);
+  font: 700 14px/1.3 var(--font-ui);
+  cursor: pointer;
+}
+
+.reader-settings-more__summary:focus-visible {
+  outline: none;
+  border-radius: var(--r-xs);
+  box-shadow: var(--focus-ring);
+}
+
+.reader-settings-more__body {
+  display: flex;
+  flex-direction: column;
+  gap: var(--s-16);
+  padding-top: var(--s-12);
+}
+
+.reading-speed-test__manual-field {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.reading-speed-test__manual-label {
+  color: var(--text-3);
+  font: 600 12px/1.2 var(--font-ui);
+}
+
+.reader-settings-preview {
+  max-width: var(--reader-width);
+  padding: 18px var(--s-20);
+  border: 1px dashed var(--border-strong);
+  border-radius: var(--r-xl);
+  background: var(--r-bg);
+  color: var(--r-text);
+  font-family: var(--reader-font-family);
+  font-size: var(--reader-font-size);
+  line-height: var(--reader-line-height);
+}
+
+.reader-settings-preview p {
+  margin: 0;
+}
+
+.reader-settings-reset {
+  align-self: flex-start;
+  color: var(--text-3);
+  font-size: 13px;
 }
