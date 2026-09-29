@@ -92,11 +92,23 @@
     ? settings.paragraphStyle
     : "book";
   const socialEnabled = settings.showParagraphSocial !== false;
-  const paragraphAnimation =
-    CSS_ANIMATIONS.has(settings.paragraphAnimation) || settings.paragraphAnimation === "typewriter"
-      ? settings.paragraphAnimation
+  function animationFrom(s) {
+    return CSS_ANIMATIONS.has(s.paragraphAnimation) || s.paragraphAnimation === "typewriter"
+      ? s.paragraphAnimation
       : "none";
-  const revealTempo = TEMPO_OPTIONS.has(settings.revealTempo) ? settings.revealTempo : "instant";
+  }
+  function tempoFrom(s) {
+    return TEMPO_OPTIONS.has(s.revealTempo) ? s.revealTempo : "instant";
+  }
+  // PR 255: the Aa panel's «Появление абзаца» applies to the next reveal, no reload.
+  let paragraphAnimation = animationFrom(settings);
+  let revealTempo = tempoFrom(settings);
+  document.addEventListener("reader-settings:change", (event) => {
+    const next = event.detail?.settings;
+    if (!next) return;
+    paragraphAnimation = animationFrom(next);
+    revealTempo = tempoFrom(next);
+  });
   const readingSpeedWpm = Number(settings.readingSpeedWpm) > 0 ? Number(settings.readingSpeedWpm) : DEFAULT_WPM;
 
   const content = document.querySelector('[data-role="chapter"]');
