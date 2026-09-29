@@ -7,6 +7,7 @@
   panel - a 292px column beside the grid on desktop, a bottom sheet on mobile, both
   with a «Сбросить»/«Показать» footer.
 #}
+{% set filter_count = genres | length + countries | length %}
 {% set has_filters = all_genres or all_countries %}
 <div class="catalog-page">
   {% set aurora_tabs = true %}
@@ -44,6 +45,7 @@
     >
       <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M4 6h16M7 12h10M10 18h4"/></svg>
       Фильтры
+      {% if filter_count %}<span class="ui-badge ui-badge--accent" aria-label="выбрано: {{ filter_count }}">{{ filter_count }}</span>{% endif %}
     </button>
     {% endif %}
     <button class="ui-btn ui-btn--primary catalog-toolbar__submit" type="submit" form="catalog-search-form">Искать</button>
