@@ -1,8 +1,18 @@
-{% from "_title_card.html" import title_card %}
+{# PR 251: Aurora Ink grid card with the quickview eye as its corner action - the same
+   markup whether rendered into catalog.html or appended by catalog-scroll.js. #}
+{% from "_title_card.html" import ui_title_card %}
 {% for title in items %}
-{% call title_card(title.slug_url, title.rus_name or title.name, title.cover.default or title.cover.md or title.cover.thumbnail) %}
-{% if title.status %}
-<span class="badge title-card__status">{{ title.status.label }}</span>
-{% endif %}
+{% set name = title.rus_name or title.name %}
+{% call ui_title_card(title.slug_url, name, title.cover.default or title.cover.md or title.cover.thumbnail) %}
+<button
+  type="button"
+  class="ui-title-card__action"
+  data-role="title-quickview-trigger"
+  data-slug-url="{{ title.slug_url }}"
+  aria-label="Быстрый просмотр «{{ name }}»"
+  title="Быстрый просмотр"
+>
+  <span class="ui-title-card__action-chip"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M2 12s4-7 10-7 10 7 10 7-4 7-10 7S2 12 2 12zM12 15a3 3 0 1 0 0-6 3 3 0 0 0 0 6z"/></svg></span>
+</button>
 {% endcall %}
 {% endfor %}

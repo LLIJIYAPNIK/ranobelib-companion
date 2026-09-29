@@ -447,7 +447,7 @@ def test_filters_toggle_is_a_header_sibling_of_the_search_form_not_nested_inside
         response = client.get("/library/catalog")
 
     assert response.status_code == 200
-    assert 'class="header__filters-toggle"' in response.text
+    assert "catalog-toolbar__filters" in response.text
     form_end = response.text.index("</form>")
     toggle_start = response.text.index('data-role="catalog-filters-toggle"')
     assert toggle_start > form_end
@@ -768,11 +768,22 @@ def test_catalog_shows_the_nothing_found_notice_after_an_empty_random_pick() -> 
 
 
 def test_catalog_without_random_empty_has_no_notice() -> None:
-    fake = _FakeCatalog(CatalogPage(items=[], page=1, has_next_page=False))
+    page = CatalogPage(items=[_fake_title(1, "High School DxD")], page=1, has_next_page=False)
+    fake = _FakeCatalog(page)
     with patch("app.services.catalog.Catalog", return_value=fake):
         response = client.get("/library/catalog")
 
     assert "Не нашлось ранобэ по этим фильтрам" not in response.text
+
+
+def test_catalog_with_no_results_shows_empty_state() -> None:
+    """PR 251 (CATALOG-DEFAULT edge case): an empty listing says so instead of leaving a
+    blank grid."""
+    fake = _FakeCatalog(CatalogPage(items=[], page=1, has_next_page=False))
+    with patch("app.services.catalog.Catalog", return_value=fake):
+        response = client.get("/library/catalog")
+
+    assert '<p class="ui-empty">Не нашлось ранобэ по этим фильтрам</p>' in response.text
 
 
 def test_catalog_sort_random_redirects_to_the_random_route() -> None:
