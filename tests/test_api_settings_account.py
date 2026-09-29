@@ -36,7 +36,7 @@ def test_anonymous_visitor_sees_a_locked_screen_instead_of_the_form(
     response = client.get("/settings/account")
 
     assert response.status_code == 200
-    assert 'class="locked-feature"' in response.text
+    assert 'data-role="locked-feature"' in response.text
     assert 'name="email"' not in response.text
 
 

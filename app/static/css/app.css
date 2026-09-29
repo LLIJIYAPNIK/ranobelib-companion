@@ -246,7 +246,7 @@
    highlight rather than a deliberate part of the design. Reset sitewide rather than
    patching each component that happens to get noticed; anywhere tactile tap feedback is
    actually wanted, a deliberate :active style is added on top instead of relying on this
-   browser default (see .library-tabs__link:active below). */
+   browser default (see .ui-tabs__link:active). */
 * {
   box-sizing: border-box;
   -webkit-tap-highlight-color: transparent;
@@ -2501,7 +2501,7 @@ html.shell-scroll-lock body {
    entries yet (PR 198) - explains what the page is for and, separately, that this site
    is a thin layer over the public RanobeLib API rather than its own content source
    (same distinction CLAUDE.md already draws for developers, just also said out loud to
-   visitors here). Same card language as .locked-feature, left-aligned rather than
+   visitors here). Same card language as the locked state, left-aligned rather than
    centered since this replaces a left-aligned section, not a full-page state. */
 .home-empty {
   max-width: 480px;
@@ -2526,168 +2526,6 @@ html.shell-scroll-lock body {
 .home-empty__text--muted {
   font-size: 13px;
   color: var(--text-muted);
-}
-
-/* Personal-feature-needs-an-account state (originally "Читаю" locked for anonymous
-   visitors - Claude Design import "RanobeLib Library Locked", see CLAUDE.md, "Дизайн"),
-   generalized for reuse by "Загрузки" (PR 17) too. */
-
-.locked-feature {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 22px;
-  max-width: 420px;
-  margin: 0 auto;
-  padding: 48px 40px;
-  border: 1px solid var(--legacy-border);
-  border-radius: 16px;
-  background: var(--bg-surface);
-}
-
-.locked-feature__icon {
-  position: relative;
-  width: 64px;
-  height: 74px;
-}
-
-.locked-feature__icon-shackle {
-  position: absolute;
-  top: 0;
-  left: 14px;
-  width: 36px;
-  height: 34px;
-  box-sizing: border-box;
-  border: 6px solid #4b4a58;
-  border-bottom: none;
-  border-radius: 18px 18px 0 0;
-}
-
-.locked-feature__icon-body {
-  position: absolute;
-  bottom: 0;
-  width: 64px;
-  height: 46px;
-  border-radius: 8px;
-  background: linear-gradient(135deg, var(--legacy-accent), #5b21b6);
-}
-
-.locked-feature__icon-keyhole {
-  position: absolute;
-  bottom: 16px;
-  left: 28px;
-  width: 8px;
-  height: 8px;
-  border-radius: 50%;
-  background: #1c1230;
-}
-
-.locked-feature__icon-keyhole-stem {
-  position: absolute;
-  bottom: 11px;
-  left: 30.5px;
-  width: 3px;
-  height: 9px;
-  background: #1c1230;
-}
-
-.locked-feature__copy {
-  text-align: center;
-}
-
-.locked-feature__title {
-  margin: 0 0 8px;
-  font-size: 16px;
-  font-weight: 700;
-  color: var(--text-primary);
-}
-
-.locked-feature__text {
-  margin: 0;
-  font-size: 14px;
-  line-height: 1.6;
-  color: var(--text-muted);
-}
-
-.locked-feature__text a {
-  color: #a78bfa;
-}
-
-.locked-feature__text a:hover {
-  color: #c4b5fd;
-}
-
-.locked-feature__cta {
-  margin-top: 4px;
-  padding: 10px 22px;
-  border-radius: 8px;
-  background: var(--legacy-accent);
-  color: var(--text-primary);
-  font-size: 14px;
-  font-weight: 600;
-  text-decoration: none;
-  display: inline-block;
-  transition: transform 0.15s ease, box-shadow 0.15s ease;
-}
-
-.library-tabs {
-  display: flex;
-  gap: 20px;
-  padding: 0 32px;
-  border-bottom: 1px solid var(--legacy-border);
-}
-
-.library-tabs__link {
-  position: relative;
-  padding: 14px 0;
-  color: var(--text-muted);
-  text-decoration: none;
-  font-size: 14px;
-  font-weight: 600;
-  transition: color 0.15s ease;
-}
-
-.library-tabs__link::after {
-  content: "";
-  position: absolute;
-  left: 0;
-  right: 0;
-  bottom: -1px;
-  height: 2px;
-  background: var(--accent-teal);
-  transform: scaleX(0);
-  transform-origin: left;
-}
-
-@media (hover: hover) {
-  .library-tabs__link:hover {
-    color: var(--text-secondary);
-  }
-}
-
-/* PR 238: deliberate tap feedback in place of the sitewide -webkit-tap-highlight-color
-   reset above - unlike :hover, not gated behind (hover: hover), since this is exactly the
-   touch-tap feedback that reset otherwise leaves this link with none of. */
-.library-tabs__link:active {
-  color: var(--text-secondary);
-}
-
-@keyframes library-tab-indicator-in {
-  from {
-    transform: scaleX(0);
-  }
-  to {
-    transform: scaleX(1);
-  }
-}
-
-.library-tabs__link--active {
-  color: var(--text-primary);
-}
-
-.library-tabs__link--active::after {
-  transform: scaleX(1);
-  animation: library-tab-indicator-in 0.2s ease;
 }
 
 @keyframes library-tabs-content-in {
@@ -2831,7 +2669,7 @@ html.shell-scroll-lock body {
      overlay, which put it in the same z-index:auto positioned stacking layer as this
      button - since it sits later in _title_card.html than .title-card__quickview, it
      started painting (and intercepting clicks) on top of that one specifically, purely
-     because of DOM order. This button and .title-card__favorite below happen to come
+     because of DOM order. This button and the old favorite star (PR 123) happened to come
      after the wrap in the DOM so were unaffected by that particular ordering, but an
      explicit z-index here removes the dependency on DOM order for any of the three
      corner buttons, not just the one that broke. */
@@ -2870,43 +2708,6 @@ html.shell-scroll-lock body {
 @media (hover: hover) {
   .title-card__quickview:hover {
     background: var(--accent-teal);
-  }
-}
-
-/* PR 123: favorite-star toggle - top-right corner, only ever rendered on the "Читаю"
-   grid (library.html), which never shows .title-card__remove ("Недавние" only), so the
-   two never collide despite sharing that same corner. */
-.title-card__favorite {
-  position: absolute;
-  top: 6px;
-  right: 6px;
-  width: 24px;
-  height: 24px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  background: rgba(0, 0, 0, 0.55);
-  border: none;
-  border-radius: 50%;
-  color: #fff;
-  cursor: pointer;
-  transition: background 0.15s ease;
-  /* See the matching comment on .title-card__remove above. */
-  z-index: 1;
-}
-
-.title-card__favorite--active {
-  color: var(--accent-orange);
-}
-
-.title-card__favorite--active svg {
-  fill: currentColor;
-}
-
-@media (hover: hover) {
-  .title-card__favorite:hover {
-    background: var(--accent-orange);
-    color: #fff;
   }
 }
 
@@ -3216,7 +3017,6 @@ html.shell-scroll-lock body {
   .btn--secondary:hover,
   .btn:hover,
   .search-button:hover,
-  .locked-feature__cta:hover,
   .reader-export__link:hover {
     transform: scale(1.03);
     box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
@@ -5513,10 +5313,6 @@ img.paragraph-comment__attachment {
     padding: 16px;
   }
 
-  .library-tabs {
-    padding: 0 16px;
-  }
-
   .content__hint--page {
     padding: 0 16px;
   }
@@ -5613,10 +5409,6 @@ img.paragraph-comment__attachment {
 
   .title-card__name {
     font-size: 11px;
-  }
-
-  .locked-feature {
-    padding: 32px 20px;
   }
 
   .title-hero {
@@ -6747,6 +6539,11 @@ img.paragraph-comment__attachment {
   .ui-tabs__link:hover {
     color: var(--text-1);
   }
+}
+
+/* PR 238's deliberate tap feedback, carried over from the old library tabs. */
+.ui-tabs__link:active {
+  color: var(--text-1);
 }
 
 .ui-tabs__link[aria-current="page"] {
@@ -8383,5 +8180,197 @@ a.ui-title-card:focus-visible .ui-title-card__cover {
 
   .title-quickview__open {
     align-self: stretch;
+  }
+}
+
+/* ==========================================================================
+   Aurora Ink screens - library (PR 252): LIBRARY / LOCKED. Same page padding as home
+   and the catalog; horizontal library cards, 300px minimum, one column on a phone.
+   ========================================================================== */
+.library-page {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: var(--s-16);
+  padding: var(--s-32) var(--s-40) var(--s-40);
+}
+
+.library-page__add {
+  max-width: 720px;
+}
+
+/* The error sits right under the field it belongs to. */
+.library-page__error {
+  margin: calc(-1 * var(--s-8)) 0 0;
+}
+
+.library-page__content {
+  display: flex;
+  flex-direction: column;
+  gap: var(--s-16);
+}
+
+.library-page__head {
+  display: flex;
+  align-items: baseline;
+  gap: 10px;
+}
+
+.library-page__title {
+  margin: 0;
+  color: var(--text-1);
+  font: 800 24px/1.15 var(--font-ui);
+}
+
+.library-page__count {
+  color: var(--text-3);
+  font: 600 14px/1 var(--font-ui);
+}
+
+.library-page__grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(min(100%, 300px), 1fr));
+  gap: 14px;
+}
+
+.library-page__grid .ui-library-card__cover {
+  display: block;
+}
+
+@media (hover: hover) {
+  .library-page__grid .ui-library-card__name:hover {
+    color: var(--primary-text);
+  }
+}
+
+.library-page__grid .ui-library-card__name:focus-visible {
+  outline: none;
+  border-radius: var(--r-xs);
+  box-shadow: var(--focus-ring);
+}
+
+/* Favorite star: a 28px chip over the cover's top-right corner, 44px hit area; state
+   is aria-pressed (favorite-toggle.js). */
+.library-card__cover-wrap {
+  position: relative;
+  flex: 0 0 auto;
+}
+
+.library-card__favorite {
+  appearance: none;
+  position: absolute;
+  top: -6px;
+  right: -10px;
+  display: grid;
+  place-items: center;
+  width: 44px;
+  height: 44px;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: var(--text-1);
+  cursor: pointer;
+}
+
+.library-card__favorite-chip {
+  display: grid;
+  place-items: center;
+  width: 28px;
+  height: 28px;
+  border-radius: var(--r-sm);
+  background: rgba(11, 11, 20, 0.8);
+  transition:
+    background-color var(--dur-base) var(--ease),
+    color var(--dur-base) var(--ease);
+}
+
+.library-card__favorite svg {
+  width: 14px;
+  height: 14px;
+}
+
+.library-card__favorite[aria-pressed="true"] {
+  color: var(--warning);
+}
+
+.library-card__favorite[aria-pressed="true"] svg {
+  fill: currentColor;
+}
+
+@media (hover: hover) {
+  .library-card__favorite:hover .library-card__favorite-chip {
+    background: rgba(11, 11, 20, 0.95);
+  }
+}
+
+.library-card__favorite:focus-visible {
+  outline: none;
+}
+
+.library-card__favorite:focus-visible .library-card__favorite-chip {
+  box-shadow: var(--focus-ring);
+}
+
+.library-card__favorite:disabled {
+  cursor: progress;
+}
+
+/* Locked state at page level (LOCKED): the .ui-locked row turned into a centered
+   card - bigger tile, title and text - for a whole page a guest can't see. */
+.ui-locked--page {
+  flex-direction: column;
+  flex-wrap: nowrap;
+  align-items: center;
+  gap: 14px;
+  max-width: 620px;
+  margin: var(--s-40) auto 0;
+  padding: var(--s-32) var(--s-24);
+  border-radius: var(--r-2xl);
+  text-align: center;
+}
+
+.ui-locked--page .ui-locked__icon {
+  width: 56px;
+  height: 56px;
+  border-radius: var(--r-xl);
+}
+
+.ui-locked--page .ui-locked__icon svg {
+  width: 26px;
+  height: 26px;
+}
+
+.ui-locked--page .ui-locked__copy {
+  align-items: center;
+  gap: 14px;
+  min-width: 0;
+}
+
+.ui-locked--page .ui-locked__title {
+  font: 800 21px/1.25 var(--font-ui);
+}
+
+.ui-locked--page .ui-locked__text {
+  font: 500 15px/1.6 var(--font-ui);
+}
+
+.ui-locked--page .ui-locked__cta {
+  margin-top: var(--s-4);
+  font-size: 14px;
+}
+
+@media (max-width: 1199px) {
+  .library-page {
+    padding: 28px var(--s-32) var(--s-32);
+  }
+}
+
+@media (max-width: 767px) {
+  .library-page {
+    padding: var(--s-4) var(--s-20) var(--s-8);
+  }
+
+  .ui-locked--page {
+    margin-top: var(--s-16);
   }
 }

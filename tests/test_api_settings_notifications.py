@@ -35,7 +35,7 @@ def test_anonymous_visitor_sees_a_locked_screen_instead_of_the_form(
     response = client.get("/settings/notifications")
 
     assert response.status_code == 200
-    assert 'class="locked-feature"' in response.text
+    assert 'data-role="locked-feature"' in response.text
     assert 'name="notifications_enabled"' not in response.text
 
 

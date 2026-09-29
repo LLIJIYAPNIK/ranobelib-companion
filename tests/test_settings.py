@@ -58,7 +58,7 @@ def test_settings_account_page_shows_a_locked_screen_for_anonymous_visitors() ->
 
     assert response.status_code == 200
     assert _nav_link_is_active(response.text, "/settings/account")
-    assert 'class="locked-feature"' in response.text
+    assert 'data-role="locked-feature"' in response.text
     assert 'data-role="reader-settings"' not in response.text
 
 
@@ -69,7 +69,7 @@ def test_settings_security_page_shows_a_locked_screen_for_anonymous_visitors() -
 
     assert response.status_code == 200
     assert _nav_link_is_active(response.text, "/settings/security")
-    assert 'class="locked-feature"' in response.text
+    assert 'data-role="locked-feature"' in response.text
     assert 'data-role="reader-settings"' not in response.text
 
 
