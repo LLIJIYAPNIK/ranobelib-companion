@@ -24,3 +24,32 @@
   {% if caller %}{{ caller() }}{% endif %}
 </a>
 {% endmacro %}
+
+{#
+  PR 250: Aurora Ink grid card ("02 Components" -> Title card) - the 2:3 cover is the
+  link, the corner action (caller block, e.g. «×» on "Недавние") sits beside it inside
+  .ui-title-card__cover rather than nested in the <a> like title_card() above, and the
+  optional progress row shows "N%" as text next to the bar. The name repeats the link for
+  pointer users only (tabindex -1, aria-hidden) - the cover link already carries the full
+  name as its aria-label. title_card() stays for the screens wave 31 hasn't moved yet;
+  PR 267 drops it.
+#}
+{% macro ui_title_card(slug_url, name, cover_url=none, progress_percent=none) %}
+<div class="ui-title-card">
+  <div class="ui-title-card__cover">
+    <a class="ui-title-card__link" href="/titles/{{ slug_url }}" aria-label="{{ name }}">
+      {% if cover_url %}
+      <img class="ui-title-card__img" src="{{ cover_url }}" alt="" loading="lazy">
+      {% endif %}
+    </a>
+    {% if caller %}{{ caller() }}{% endif %}
+  </div>
+  {% if progress_percent is not none %}
+  <div class="ui-progress">
+    <span class="ui-progress__bar"><span class="ui-progress__fill" style="width: {{ progress_percent }}%"></span></span>
+    <span class="ui-progress__pct">{{ progress_percent }}%</span>
+  </div>
+  {% endif %}
+  <a class="ui-title-card__link ui-title-card__name" href="/titles/{{ slug_url }}" title="{{ name }}" tabindex="-1" aria-hidden="true">{{ name }}</a>
+</div>
+{% endmacro %}

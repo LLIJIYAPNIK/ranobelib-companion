@@ -7435,11 +7435,15 @@ a.ui-title-card:focus-visible .ui-title-card__cover {
   box-shadow: var(--focus-ring);
 }
 
+/* border-radius: 0 - as a link (ui_title_card()) it would otherwise inherit
+   .ui-title-card__link's 12px radius, and overflow: hidden then clips the first
+   letter of each clamped line. */
 .ui-title-card__name {
   display: -webkit-box;
   -webkit-line-clamp: 2;
   -webkit-box-orient: vertical;
   overflow: hidden;
+  border-radius: 0;
   font: 600 13px/1.3 var(--font-ui);
   overflow-wrap: anywhere;
 }
