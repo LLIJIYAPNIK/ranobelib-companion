@@ -35,7 +35,7 @@
   let hideTimer = null;
 
   function pinned() {
-    return (sheet && sheet.open) || hud.contains(document.activeElement);
+    return document.querySelector("dialog[open]") !== null || hud.contains(document.activeElement);
   }
 
   function show() {
@@ -178,6 +178,38 @@
     });
   }
 
+  // --- Aa panel (PR 255) ----------------------------------------------------------------
+  // Opened from the HUD's Aa (a plain /settings/reading link without JS). Changes apply
+  // as they're made (reader-settings.js); switching Scroll <-> Tap Focus reloads the
+  // chapter, since tap-to-read.js sets the text up once on load.
+  const aaPanel = document.querySelector('[data-role="reader-aa-panel"]');
+  if (aa && aaPanel) {
+    aa.setAttribute("aria-haspopup", "dialog");
+    aa.addEventListener("click", (event) => {
+      event.preventDefault();
+      if (aaPanel.open) {
+        aaPanel.close();
+        return;
+      }
+      body.classList.add("reader-hud-visible");
+      clearTimeout(hideTimer);
+      aaPanel.showModal();
+      aa.setAttribute("aria-expanded", "true");
+    });
+    aaPanel.querySelector('[data-role="reader-aa-close"]')?.addEventListener("click", () => aaPanel.close());
+    aaPanel.addEventListener("click", (event) => {
+      if (event.target === aaPanel) aaPanel.close();
+    });
+    aaPanel.addEventListener("close", () => {
+      aa.setAttribute("aria-expanded", "false");
+      aa.focus();
+      scheduleHide();
+    });
+    document.addEventListener("reader-settings:change", (event) => {
+      if (event.detail?.modeChanged) location.reload();
+    });
+  }
+
   // --- keyboard ------------------------------------------------------------------------
   function typing(target) {
     return target.closest("input, textarea, select, [contenteditable=''], [contenteditable='true']");
@@ -194,7 +226,7 @@
       if (!tocLink) return;
       event.preventDefault();
       tocLink.click();
-    } else if (event.key === "Escape" && !(sheet && sheet.open)) {
+    } else if (event.key === "Escape" && !document.querySelector("dialog[open]")) {
       if (document.querySelector(".paragraph-menu__panel--open, .image-lightbox--open")) return;
       if (hud.contains(document.activeElement)) document.activeElement.blur();
       hide();

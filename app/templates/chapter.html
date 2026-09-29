@@ -2,6 +2,7 @@
 {% block title %}Глава {{ chapter.number }} — RanobeLib Companion{% endblock %}
 {% block head_extra %}
 <script src="{{ url_for('static', path='js/scroll-restoration.js') }}"></script>
+<script src="{{ url_for('static', path='js/reader-theme-early.js') }}"></script>
 {% endblock %}
 {% block body_class %}reader-page{% endblock %}
 {% block content %}
@@ -128,6 +129,68 @@
   </div>
 </dialog>
 {% endif %}
+
+{# PR 255: Aa - quick reading settings over the text (READER-TAP-FOCUS popover on
+   desktop, M-READER-SETTINGS sheet on mobile). Same controls and same stored object as
+   /settings/reading; changes apply immediately. #}
+{% from "_reader_controls.html" import segmented, themes, font_size_stepper, LINE_HEIGHTS, WIDTHS, MARGINS, MODES, PRESETS %}
+<dialog class="ui-dialog ui-dialog--sheet reader-aa" data-role="reader-aa-panel" aria-labelledby="reader-aa-title">
+  <span class="ui-dialog__grabber" aria-hidden="true"></span>
+  <div class="reader-aa__head">
+    <h2 class="reader-aa__title" id="reader-aa-title">Настройки чтения</h2>
+    <button type="button" class="ui-icon-btn reader-aa__close" data-role="reader-aa-close" aria-label="Закрыть (Esc)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M6 6l12 12M18 6 6 18"/></svg></button>
+  </div>
+  <div class="reader-aa__body">
+    <div class="reader-aa__row">
+      <span class="reader-aa__label">Тема</span>
+      {{ themes("aa-theme") }}
+    </div>
+    {# Same key twice - short labels fit the desktop popover, the sheet has room for the
+       full ones; only one row shows per viewport. #}
+    <div class="reader-aa__row reader-aa__row--desktop">
+      <span class="reader-aa__label">Шрифт и размер</span>
+      <div class="reader-aa__type">
+        {{ segmented("fontFamily", "aa-font-d", [("serif", "Serif"), ("sans", "Sans")], "Шрифт") }}
+        {{ font_size_stepper() }}
+      </div>
+    </div>
+    <div class="reader-aa__row reader-aa__row--mobile">
+      <span class="reader-aa__label">Шрифт и размер</span>
+      <div class="reader-aa__type">
+        {{ segmented("fontFamily", "aa-font-m", [("serif", "С засечками"), ("sans", "Без засечек")], "Шрифт") }}
+        {{ font_size_stepper() }}
+      </div>
+    </div>
+    <div class="reader-aa__row">
+      <span class="reader-aa__label">Интервал</span>
+      {{ segmented("lineHeight", "aa-line", LINE_HEIGHTS, "Межстрочный интервал") }}
+    </div>
+    <div class="reader-aa__row reader-aa__row--desktop">
+      <span class="reader-aa__label">Ширина колонки</span>
+      {{ segmented("width", "aa-width", WIDTHS, "Ширина колонки") }}
+    </div>
+    <div class="reader-aa__row reader-aa__row--mobile">
+      <span class="reader-aa__label">Поля</span>
+      {{ segmented("margins", "aa-margins", MARGINS, "Поля") }}
+    </div>
+    <div class="reader-aa__row">
+      <span class="reader-aa__label">Режим</span>
+      {{ segmented("readerMode", "aa-mode", MODES, "Режим чтения") }}
+    </div>
+    <div class="reader-aa__row">
+      <span class="reader-aa__label">Появление абзаца</span>
+      {{ segmented("revealPreset", "aa-preset", PRESETS, "Появление абзаца") }}
+    </div>
+    <label class="reader-aa__row reader-aa__row--switch ui-switch">
+      <span class="reader-aa__label">Реакции и комментарии у абзацев</span>
+      <input type="checkbox" role="switch" data-setting="showParagraphSocial">
+    </label>
+  </div>
+  <div class="reader-aa__foot">
+    <a class="reader-aa__more" href="/settings/reading">Дополнительно ›</a>
+    <button type="button" class="reader-aa__reset" data-role="reader-settings-reset">Сбросить настройки</button>
+  </div>
+</dialog>
 
 {# Tap Focus onboarding (M-READER-ONBOARDING): shown once per device by tap-to-read.js
    the first time Tap Focus is on. #}

@@ -92,42 +92,41 @@ def test_settings_page_renders_reader_settings_panel() -> None:
 
 
 def test_settings_page_groups_fields_into_named_sections() -> None:
+    # PR 255 (SETTINGS-READING): Текст · Тема читалки · Режим чтения · Скорость чтения,
+    # each heading ahead of its own controls.
     response = client.get("/settings/reading")
 
     assert response.status_code == 200
-    assert "Типографика" in response.text
-    assert "Чтение с помощью тапа" in response.text
-    # The typography section's own heading comes before its fields, and before the
-    # (currently empty) tap-to-read section - grouping, not just extra headings anywhere.
-    typography_index = response.text.index("Типографика")
-    tap_reading_index = response.text.index("Чтение с помощью тапа")
-    assert typography_index < response.text.index('data-setting="fontFamily"') < tap_reading_index
-
-
-def test_settings_page_offers_a_tap_to_read_toggle() -> None:
-    response = client.get("/settings/reading")
-
-    assert response.status_code == 200
+    text = response.text
     assert (
-        'type="checkbox" class="reader-settings__toggle" data-setting="tapToRead"'
-        in response.text
+        text.index("Текст")
+        < text.index('data-setting="fontFamily"')
+        < text.index("Тема читалки")
+        < text.index('data-setting="theme"')
+        < text.index("Режим чтения")
+        < text.index('data-setting="readerMode"')
+        < text.index('data-role="reading-speed-test"')
     )
-    # It belongs to the "Чтение с помощью тапа" section (PR 61), not floating anywhere.
-    assert response.text.index("Чтение с помощью тапа") < response.text.index(
-        'data-setting="tapToRead"'
-    )
+
+
+def test_settings_page_offers_a_reading_mode_choice() -> None:
+    # PR 255: the tapToRead checkbox became the Прокрутка / Tap Focus segment
+    # (readerMode, kept in sync with tapToRead by reader-settings.js).
+    response = client.get("/settings/reading")
+
+    assert response.status_code == 200
+    assert 'type="radio" name="set-mode" value="scroll" data-setting="readerMode"' in response.text
+    assert 'type="radio" name="set-mode" value="tap" data-setting="readerMode"' in response.text
+    assert response.text.index("Режим чтения") < response.text.index('data-setting="readerMode"')
 
 
 def test_settings_page_offers_a_show_paragraph_social_toggle() -> None:
     response = client.get("/settings/reading")
 
     assert response.status_code == 200
-    assert (
-        'type="checkbox" class="reader-settings__toggle" data-setting="showParagraphSocial"'
-        in response.text
-    )
-    # Its own section, not tucked inside "Чтение с помощью тапа" - it applies to both
-    # reading modes, not just the tap mechanic (PR 134).
+    assert 'type="checkbox" role="switch" data-setting="showParagraphSocial"' in response.text
+    # PR 134: applies to both reading modes - it sits in «Режим чтения», not under a
+    # tap-only option.
     assert response.text.index("Реакции и комментарии") < response.text.index(
         'data-setting="showParagraphSocial"'
     )
@@ -140,8 +139,8 @@ def test_settings_page_offers_a_paragraph_style_choice() -> None:
     assert 'data-setting="paragraphStyle"' in response.text
     assert '<option value="chat">' in response.text
     assert '<option value="plain">' in response.text
-    # Same section as the tapToRead toggle - it's meaningless without that mechanic on.
-    assert response.text.index("Чтение с помощью тапа") < response.text.index(
+    # PR 255: the fine-grained choice lives under «Дополнительно» in «Режим чтения».
+    assert response.text.index('class="reader-settings-more"') < response.text.index(
         'data-setting="paragraphStyle"'
     )
 
@@ -153,8 +152,8 @@ def test_settings_page_offers_a_paragraph_animation_choice() -> None:
     assert 'data-setting="paragraphAnimation"' in response.text
     for value in ("none", "slide-up", "slide-left", "fade", "typewriter", "blur-focus"):
         assert f'<option value="{value}">' in response.text
-    # Same section as the other tap-to-read options.
-    assert response.text.index("Чтение с помощью тапа") < response.text.index(
+    # PR 255: the fine-grained choice lives under «Дополнительно» in «Режим чтения».
+    assert response.text.index('class="reader-settings-more"') < response.text.index(
         'data-setting="paragraphAnimation"'
     )
 
@@ -173,8 +172,8 @@ def test_settings_page_offers_a_reveal_tempo_choice() -> None:
         "word-dissolve",
     ):
         assert f'<option value="{value}">' in response.text
-    # Same section as the other tap-to-read options.
-    assert response.text.index("Чтение с помощью тапа") < response.text.index(
+    # PR 255: the fine-grained choice lives under «Дополнительно» in «Режим чтения».
+    assert response.text.index('class="reader-settings-more"') < response.text.index(
         'data-setting="revealTempo"'
     )
 
@@ -192,7 +191,7 @@ def test_settings_page_offers_a_monospace_font_choice() -> None:
     response = client.get("/settings/reading")
 
     assert response.status_code == 200
-    assert '<option value="mono">' in response.text
+    assert 'type="radio" name="set-font" value="mono" data-setting="fontFamily"' in response.text
 
 
 def test_settings_page_font_size_is_a_slider_with_live_preview() -> None:
@@ -221,9 +220,8 @@ def test_settings_page_offers_a_reading_speed_test() -> None:
     assert 'data-role="reading-speed-value"' in response.text
     assert "Скорость чтения" in response.text
     assert "static/js/reading-speed-test.js" in response.text
-    # Nested inside "Чтение с помощью тапа" (PR 77), not its own top-level section.
-    tap_reading_index = response.text.index("Чтение с помощью тапа")
-    assert tap_reading_index < response.text.index("Скорость чтения")
+    # PR 255: its own card after «Режим чтения» - it also drives «По скорости».
+    assert response.text.index("Режим чтения") < response.text.index("Скорость чтения")
 
 
 def test_settings_page_offers_manual_reading_speed_entry() -> None:
@@ -264,3 +262,22 @@ def test_reading_speed_manual_field_lives_outside_the_modal() -> None:
     manual_index = response.text.index('data-role="reading-speed-manual-input"')
     modal_index = response.text.index('data-role="reading-speed-modal"')
     assert manual_index < modal_index
+
+
+def test_settings_page_offers_five_reader_themes() -> None:
+    response = client.get("/settings/reading")
+
+    assert response.status_code == 200
+    for theme in ("aurora", "amoled", "sepia", "light", "system"):
+        assert f'value="{theme}" data-setting="theme"' in response.text
+
+
+def test_settings_page_offers_reveal_presets_and_mobile_margins() -> None:
+    response = client.get("/settings/reading")
+
+    assert response.status_code == 200
+    for preset in ("instant", "smooth", "speed"):
+        assert f'value="{preset}" data-setting="revealPreset"' in response.text
+    for margins in ("compact", "normal", "wide"):
+        assert f'value="{margins}" data-setting="margins"' in response.text
+    assert 'data-role="reader-settings-reset"' in response.text
