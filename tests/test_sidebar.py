@@ -182,9 +182,12 @@ def test_profile_menu_is_the_account_hub(
     panel = response.text[response.text.index('data-role="profile-menu-panel"') :]
     assert '<a class="profile-menu__head" href="/profile">' in panel
     for href, label in (("/activity", "Активность"), ("/friends", "Друзья")):
-        assert re.search(rf'<a class="profile-menu__item" href="{href}">.*?</svg>{label}</a>', panel)
+        assert re.search(
+            rf'<a class="profile-menu__item" href="{href}">.*?</svg>{label}</a>', panel
+        )
     assert re.search(
-        r'<a class="profile-menu__item" href="/settings" data-role="settings-link">.*?</svg>Настройки</a>',
+        r'<a class="profile-menu__item" href="/settings" data-role="settings-link">'
+        r".*?</svg>Настройки</a>",
         panel,
     )
     assert "Читаю" not in panel[: panel.index("</form>")]
@@ -194,8 +197,8 @@ def test_account_hub_marks_the_current_section(logged_in_client: TestClient) -> 
     response = logged_in_client.get("/settings/reading")
 
     assert (
-        '<a class="profile-menu__item" href="/settings" data-role="settings-link" aria-current="page">'
-        in response.text
+        '<a class="profile-menu__item" href="/settings" data-role="settings-link"'
+        ' aria-current="page">' in response.text
     )
 
 
@@ -205,6 +208,7 @@ def test_profile_menu_lets_you_log_out(logged_in_client: TestClient) -> None:
     assert response.status_code == 200
     assert '<form class="profile-menu__form" method="post" action="/logout">' in response.text
     assert re.search(
-        r'<button class="profile-menu__item profile-menu__item--danger" type="submit">.*?</svg>Выйти</button>',
+        r'<button class="profile-menu__item profile-menu__item--danger" type="submit">'
+        r".*?</svg>Выйти</button>",
         response.text,
     )
