@@ -68,17 +68,15 @@
         </div>
       </section>
       {% else %}
-      <div class="home-empty" data-role="home-empty">
-        <p class="home-empty__text">
-          Здесь появятся недавно открытые тайтлы — вставьте ссылку на тайтл ranobelib.me
-          в поле поиска выше, чтобы начать.
+      <section class="home-empty-card" data-role="home-empty">
+        <h2 class="home-empty-card__title">Здесь появятся недавно открытые тайтлы</h2>
+        <p class="home-empty-card__text">Вставьте ссылку на тайтл ranobelib.me в поле выше, чтобы начать.</p>
+        <p class="home-empty-card__note">
+          Сайт — веб-интерфейс поверх публичного API RanobeLib, а не самостоятельный источник
+          контента: все тайтлы и главы загружаются напрямую с ranobelib.me.
         </p>
-        <p class="home-empty__text home-empty__text--muted">
-          Сайт — веб-интерфейс поверх публичного API RanobeLib (SDK
-          ranobelib-python-sdk), а не самостоятельный источник контента: все тайтлы и
-          главы загружаются напрямую с ranobelib.me.
-        </p>
-      </div>
+        <a class="ui-btn home-empty-card__cta" href="/library/catalog">Открыть каталог</a>
+      </section>
       {% endif %}
     </div>
 
