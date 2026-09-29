@@ -286,13 +286,33 @@
 
 body {
   margin: 0;
-  background: var(--legacy-bg-page);
-  color: var(--text-primary);
-  font-family: var(--font-sans);
+  background: var(--bg-page);
+  color: var(--text-1);
+  font-family: var(--font-ui);
 }
 
 a {
   color: inherit;
+}
+
+/* ==========================================================================
+   Aurora Ink shell (PR 249) - "02 Components" -> Sidebar / Account hub / Quiet Edge
+   Bar of the Claude Design import, plus the shell rows of "05 Спецификация". Desktop
+   (>= 768px): an 84px rail, icon over label, that expands to 248px (sidebarExpanded in
+   localStorage, as before). Mobile (<= 767px): the same <nav> is the Quiet Edge Bar and
+   .sidebar__account the top strip. The rail is a grid so the one toggle button can sit
+   at the bottom when collapsed and in the header row when expanded.
+   ========================================================================== */
+
+:root {
+  --sidebar-width: 84px;
+  /* Room fixed corner UI (toasts, cookie notice, back-to-top, export panel) leaves
+     under itself for the Quiet Edge Bar - 0 on desktop, set in the mobile block below. */
+  --shell-bottom: 0px;
+}
+
+body:has(.sidebar--expanded) {
+  --sidebar-width: 248px;
 }
 
 .app-shell {
@@ -300,552 +320,1050 @@ a {
   min-height: 100vh;
 }
 
+/* PR 207's reason for position: fixed still holds - a sticky rail slid up at the end of
+   long pages; .main reserves the width itself (margin-left below). */
 .sidebar {
-  width: 64px;
-  /* PR 207: was position: sticky, which can only ever stay pinned to top: 0 within the
-     bounds of its own containing block (.app-shell) - once scrolling gets close enough
-     to .app-shell's own bottom edge that a full 100vh-tall sidebar sitting at top: 0
-     would poke past it, the browser has to slide the sidebar UP to keep it inside
-     .app-shell instead, which is what read as a "lifted" sidebar with empty space
-     opening up underneath it (reproduced by forcing extra height below .app-shell - a
-     production page can hit the same imbalance from subpixel/zoom rounding a sticky
-     element's clamp is sensitive to, even when nothing else on the page looks unusual).
-     position: fixed sidesteps this whole class of bug - it's anchored to the viewport
-     itself, never to any ancestor's box, so there's no containing-block edge for it to
-     ever need to stay inside of. The width this used to reserve via flexbox is now
-     reserved explicitly on .main's own margin-left below instead. */
   position: fixed;
   top: 0;
   left: 0;
+  z-index: 40;
+  width: 84px;
   height: 100vh;
+  height: 100dvh;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  grid-template-rows: auto auto auto 1fr auto auto;
+  grid-template-areas: "brand" "sep" "nav" "." "account" "toggle";
+  justify-items: center;
+  padding: 18px 0 14px;
+  background: var(--bg-nav);
+  border-right: 1px solid var(--divider);
   overflow-x: hidden;
   overflow-y: auto;
-  /* PR 116: overflow-y: auto above is still needed for the rare case the icon list
-     genuinely outgrows the viewport, but on ordinary short/medium windows it leaves just
-     enough overhang to paint a visible scrollbar in this 64px-wide icon-only column,
-     which has no room to spare for one. Hide the scrollbar itself (both engines' APIs)
-     rather than removing overflow-y - scrolling still works via keyboard/wheel/touch,
-     same trade-off *::-webkit-scrollbar's global thin styling elsewhere in this file
-     makes, just all the way to invisible instead of just thinner. */
+  /* PR 116: scrolling stays possible on very short windows, the scrollbar itself never
+     shows in a column this narrow. */
   scrollbar-width: none;
-  background: var(--bg-panel);
-  border-right: 1px solid var(--legacy-border);
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 22px;
-  padding: 20px 0;
-  z-index: 40;
-  transition: width 0.2s ease;
+  transition: width var(--dur-base) var(--ease);
 }
 
 .sidebar::-webkit-scrollbar {
   display: none;
 }
 
-/* Sidebar wordmark row (Claude Design import, PR 223 - "Обновление 2: сайдбар", see
-   CLAUDE.md "Дизайн") - sits above the nav links, border-bottom matching the account
-   row's own border-top below. Hidden by default/on mobile (the bottom tab bar has no
-   room or need for it, see .sidebar__toggle's own display: none in the mobile query
-   further down) - shown only once the desktop breakpoint applies. */
-.sidebar__header {
+.sidebar__brand {
+  grid-area: brand;
+  display: flex;
+  align-items: center;
+  height: 44px;
+  border-radius: var(--r-md);
+  color: var(--text-1);
+  font: 800 24px/1 var(--font-ui);
+  letter-spacing: -0.04em;
+  text-decoration: none;
+}
+
+.sidebar__brand-rest {
   display: none;
 }
 
-.sidebar__brand {
-  display: inline-block;
-  max-width: 0;
-  overflow: hidden;
-  opacity: 0;
-  font-size: 13px;
-  font-weight: 600;
-  letter-spacing: 0.02em;
-  color: var(--text-primary);
-  white-space: nowrap;
-  transition: max-width 0.2s ease, opacity 0.15s ease;
+.sidebar__brand-dot {
+  flex: 0 0 auto;
+  width: 6px;
+  height: 6px;
+  margin: 12px 0 0 3px;
+  border-radius: 50%;
+  background: var(--accent);
 }
 
-/* PR 175: the notification bell (base.html, PR 168) is a native <button>, the only
-   .sidebar__link that isn't an <a> - everything below this point resets properties an <a>
-   already has no UA styling for anyway (no background/border/own font/padding), so it's a
-   no-op there and only actually changes anything for the button, bringing it visually in
-   line with the rest of the sidebar in every layout instead of just patching the mobile
-   tab-bar where the mismatch happened to be most visible. */
+.sidebar__toggle {
+  grid-area: toggle;
+  display: grid;
+  place-items: center;
+  width: 44px;
+  height: 32px;
+  margin-top: 6px;
+  padding: 0;
+  border: 0;
+  border-radius: var(--r-md);
+  background: transparent;
+  color: var(--disabled-text);
+  cursor: pointer;
+  transition: background-color var(--dur-base) var(--ease), color var(--dur-base) var(--ease);
+}
+
+.sidebar__toggle-collapse {
+  display: none;
+}
+
+.sidebar__sep {
+  grid-area: sep;
+  width: 32px;
+  height: 1px;
+  margin: 14px 0 12px;
+  background: #221f33;
+}
+
+.sidebar__nav {
+  grid-area: nav;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
 .sidebar__link {
   position: relative;
   display: flex;
+  flex-direction: column;
   align-items: center;
-  gap: 12px;
-  background: none;
-  border: none;
-  padding: 0;
-  font: inherit;
-  font-size: 11px;
-  color: var(--text-muted);
+  justify-content: center;
+  gap: 5px;
+  width: 68px;
+  height: 60px;
+  border-radius: var(--r-lg);
+  color: var(--text-3);
+  font: 600 11px/1 var(--font-ui);
   text-decoration: none;
-  text-align: center;
-  cursor: pointer;
-  transition: background-color 0.12s ease, color 0.12s ease;
+  transition: background-color var(--dur-base) var(--ease), color var(--dur-base) var(--ease);
 }
 
-/* Active-downloads count (PR 56) - anchored to the icon's corner in the collapsed
-   sidebar (phone-style notification dot), inline after the label once expanded. */
+.sidebar__icon {
+  position: relative;
+  display: grid;
+  place-items: center;
+}
+
+.sidebar__icon svg {
+  width: 22px;
+  height: 22px;
+}
+
+.sidebar__label-mobile {
+  display: none;
+}
+
+.sidebar__link--active {
+  background: var(--surface-selected);
+  color: var(--text-1);
+  font-weight: 700;
+}
+
+.sidebar__link--active .sidebar__icon {
+  color: var(--accent);
+}
+
+/* Count badge - cyan for downloads (coral for the bell, below). */
 .sidebar__badge {
   position: absolute;
-  top: 6px;
-  right: 12px;
+  top: -5px;
+  right: -9px;
+  min-width: 18px;
+  height: 18px;
+  padding: 0 5px;
+  border-radius: 9px;
+  background: var(--accent);
+  color: var(--bg-page);
+  font: 800 10px/18px var(--font-ui);
+  text-align: center;
+  font-variant-numeric: tabular-nums;
+}
+
+.sidebar__badge[hidden] {
+  display: none;
+}
+
+/* Footer: bell, avatar (or «Войти») above the toggle. The actions wrapper only exists to
+   keep its data-role - its children lay out as if they were the account's own. */
+.sidebar__account {
+  grid-area: account;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  width: 56px;
+  padding-top: 10px;
+  border-top: 1px solid #221f33;
+}
+
+.sidebar__account-actions {
+  display: contents;
+}
+
+.sidebar__strip-brand {
+  display: none;
+}
+
+.sidebar__bell {
+  position: relative;
+  display: grid;
+  place-items: center;
+  width: 44px;
+  height: 44px;
+  padding: 0;
+  border: 0;
+  border-radius: var(--r-lg);
+  background: transparent;
+  color: var(--text-2);
+  font: 600 15px/1 var(--font-ui);
+  cursor: pointer;
+  transition: background-color var(--dur-base) var(--ease), color var(--dur-base) var(--ease);
+}
+
+.sidebar__bell .sidebar__icon svg {
+  width: 21px;
+  height: 21px;
+}
+
+.sidebar__bell .sidebar__label {
+  display: none;
+}
+
+.sidebar__bell .sidebar__badge {
+  top: -4px;
+  right: -4px;
   min-width: 16px;
   height: 16px;
   padding: 0 4px;
-  border-radius: 999px;
-  background: var(--accent-orange);
-  color: var(--legacy-bg-page);
-  font-size: 10px;
-  font-weight: 700;
-  line-height: 16px;
-  text-align: center;
+  border: 2px solid var(--bg-nav);
+  border-radius: 8px;
+  background: var(--danger);
+  color: #1a0a10;
+  font: 800 9px/12px var(--font-ui);
 }
 
-/* Direct nav links (icon-only in the collapsed state) span the full row width (PR 223 -
-   "полноширинные ряды", see the Claude Design import above) with the icon centered
-   inside, rather than a rounded square inset within it - unlike the account/login links
-   below them, which stay auto-sized to their text and shouldn't be squeezed into this. */
-.sidebar > .sidebar__link {
-  justify-content: center;
-  gap: 0;
-  width: 44px;
-  height: 44px;
+/* Open panel (PR 237) and the /notifications page itself (PR 244). */
+.sidebar__bell[aria-expanded="true"] {
+  background: var(--surface-3);
+  color: var(--text-1);
 }
 
-.sidebar__label {
-  display: inline-block;
-  max-width: 0;
-  overflow: hidden;
-  opacity: 0;
-  font-size: 13px;
-  white-space: nowrap;
-  transition: max-width 0.2s ease, opacity 0.15s ease;
+.sidebar__bell--active {
+  background: var(--surface-selected);
+  color: var(--text-1);
 }
 
-@media (min-width: 641px) {
-  /* PR 223 (Claude Design import): full-width nav rows sit flush against each other and
-     against .sidebar__header/.sidebar__account's own borders above/below them - no gap
-     or outer padding needed the way the old spaced-out icon buttons wanted (mobile's own
-     .sidebar rule, @media max-width: 640px above, already sets these to 0 independently
-     of this query and is untouched by it). */
-  .sidebar {
-    gap: 0;
-    padding: 0;
-  }
-
-  /* PR 223 (Claude Design import, "Обновление 2: сайдбар") - the header row (toggle +
-     wordmark) only makes sense once there's room for a full sidebar column; the mobile
-     bottom tab bar has neither. */
-  .sidebar__header {
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    flex: 0 0 auto;
-    width: 100%;
-    height: 57px;
-    box-sizing: border-box;
-    border-bottom: 1px solid var(--legacy-border);
-  }
-
-  /* Nav rows span the sidebar's full width edge-to-edge in both the collapsed (64px) and
-     expanded (232px) states - see .sidebar__link--active's left-edge indicator below,
-     which needs that full-bleed row to anchor against. */
-  .sidebar > .sidebar__link {
-    width: 100%;
-  }
-
-  .sidebar--expanded {
-    width: 232px;
-    align-items: stretch;
-  }
-
-  /* PR 207: .sidebar is position: fixed now (no longer a flex item .main can just make
-     room for automatically) - .main reserves the matching width itself instead, on
-     both sides of the expand/collapse toggle. */
-  .sidebar--expanded ~ .main {
-    margin-left: 232px;
-  }
-
-  .sidebar--expanded .sidebar__header {
-    justify-content: flex-start;
-    gap: 12px;
-    padding: 0 18px;
-  }
-
-  .sidebar--expanded .sidebar__brand {
-    max-width: 160px;
-    opacity: 1;
-  }
-
-  .sidebar--expanded .sidebar__link {
-    width: 100%;
-    height: 44px;
-    justify-content: flex-start;
-    gap: 14px;
-    padding: 0 18px;
-  }
-
-  .sidebar--expanded .sidebar__label {
-    max-width: 140px;
-    opacity: 1;
-  }
-
-  .sidebar--expanded .sidebar__badge {
-    position: static;
-    margin-left: auto;
-    min-width: 18px;
-    height: 18px;
-    padding: 0 5px;
-    line-height: 18px;
-  }
-
-  /* PR 245: gap/padding match .sidebar--expanded .sidebar__account-trigger below - the
-     same slot and the same avatar + two-line text row, just logged out - so both states
-     read as one component instead of a noticeably tighter guest variant. */
-  .sidebar--expanded .sidebar__guest {
-    width: 100%;
-    height: auto;
-    justify-content: flex-start;
-    gap: 12px;
-    padding: 12px 18px;
-    border: 1px solid var(--legacy-border);
-    background: var(--bg-surface);
-  }
-
-  .sidebar--expanded .sidebar__guest-badge {
-    display: none;
-  }
-
-  .sidebar--expanded .sidebar__guest-text {
-    max-width: 160px;
-    opacity: 1;
-  }
+.sidebar__bell--active .sidebar__icon {
+  color: var(--accent);
 }
 
-@media (min-width: 641px) and (hover: hover) {
-  .sidebar--expanded .sidebar__guest:hover {
-    border-color: var(--accent-teal);
-    background-color: var(--bg-surface);
-  }
-}
-
-/* PR 234: without an explicit display, the button falls back to the UA default
-   (inline-block) - .sidebar__header's align-items: center then centers that whole box as
-   a flex item, but the SVG inside still sits at its own default vertical-align: baseline
-   within it, leaving a sliver of descender space below the icon that the box-level
-   centering doesn't know to strip - the icon itself ends up a couple pixels off from
-   .sidebar__brand's text baseline next to it. inline-flex with its own centering doesn't
-   depend on the SVG's vertical-align at all, unlike .sidebar__link svg's fix above. */
-.sidebar__toggle {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  background: none;
-  border: none;
-  padding: 0;
-  color: var(--text-muted);
-  cursor: pointer;
-  transition: color 0.15s ease;
-}
-
-.sidebar__link svg {
-  vertical-align: middle;
-}
-
-/* Hover-only devices (mouse/trackpad) - gated so a tap on a touchscreen doesn't leave
-   the color/scale change "stuck" until the visitor taps elsewhere (touch UAs otherwise
-   apply :hover on tap and only clear it on the next unrelated tap). */
-@media (hover: hover) {
-  /* PR 223 (Claude Design import): the row itself fills with --bg-surface on hover, same
-     language as a table row, instead of the link's own text/icon turning teal - teal is
-     reserved for the active-page indicator below. */
-  .sidebar__link:not(.sidebar__link--active):hover {
-    background-color: var(--bg-surface);
-    color: var(--text-primary);
-  }
-
-  .sidebar__toggle:hover {
-    color: var(--text-primary);
-  }
-}
-
-@keyframes sidebar-active-highlight {
-  from {
-    background-color: rgba(34, 211, 197, 0);
-  }
-  to {
-    background-color: rgba(34, 211, 197, 0.07);
-  }
-}
-
-/* PR 223 (Claude Design import): a 2px teal bar along the row's left edge, in place of
-   the earlier flat highlight alone - needs the row's own position: relative (already set
-   on .sidebar__link above) to anchor against.
-
-   PR 237: the notifications bell (base.html) is a toggle for its own flyout panel, so it
-   shares this highlight via its aria-expanded state while that panel is open, kept in
-   sync by notifications-panel.js's open()/close(). PR 244: on the standalone
-   /notifications page (active_nav == 'notifications') it carries .sidebar__link--active
-   like any other nav row, so it stays lit there with the panel closed; the two triggers
-   produce the same look, so both at once is a no-op. On desktop this bell is still a plain .sidebar > .sidebar__link row like
-   Настройки/Активность/etc (mobile-account-strip.js only reparents it on narrow
-   viewports), so the same row-oriented highlight applies here unchanged; the mobile
-   square case is handled separately below, alongside PR 236's own override for
-   Настройки's identical problem there. */
-.sidebar__link--active,
-[data-role="notifications-trigger"][aria-expanded="true"] {
-  color: var(--accent-teal);
-  background-color: rgba(34, 211, 197, 0.07);
-  animation: sidebar-active-highlight 0.3s ease;
-}
-
-.sidebar__link--active::before,
-[data-role="notifications-trigger"][aria-expanded="true"]::before {
-  content: "";
-  position: absolute;
-  left: 0;
-  top: 0;
-  bottom: 0;
-  width: 2px;
-  background: var(--accent-teal);
-}
-
-.sidebar__link--disabled {
-  opacity: 0.6;
-  cursor: default;
-}
-
-.sidebar__account {
-  margin-top: auto;
+.profile-menu {
+  position: relative;
   display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 8px;
-  padding-top: 12px;
-  border-top: 1px solid var(--legacy-border);
-  width: 100%;
-}
-
-/* PR 213: .sidebar__account-actions (base.html) is always in the DOM, even on desktop
-   where mobile-account-strip.js never puts anything into it - without this, its empty box
-   would still claim one .sidebar__account gap slot, nudging the avatar above it up by
-   that amount for no visible reason. display: none entirely removes it from the flex
-   layout (no gap contribution) for as long as it has no children; the moment
-   mobile-account-strip.js appends the Settings link/notifications bell into it, :empty
-   stops matching and the mobile-only rule below takes over instead. */
-.sidebar__account-actions:empty {
-  display: none;
-}
-
-/* PR 93: opens the profile-menu dropdown below. PR 223 (Claude Design import) moved the
-   clickable element up to .sidebar__account-trigger, wrapping this avatar circle plus the
-   name/email/chevron shown once expanded - .sidebar__avatar itself is now a plain visual
-   circle (picture-or-initials), not the button. */
-.sidebar__avatar {
-  display: flex;
-  flex: 0 0 auto;
-  align-items: center;
   justify-content: center;
-  width: 36px;
-  height: 36px;
-  border-radius: 50%;
-  background: var(--legacy-accent);
-  color: var(--text-primary);
-  font-size: 13px;
-  font-weight: 600;
 }
 
-/* PR 223 (Claude Design import): the actual clickable element - collapsed by default to
-   the same 44x44 icon-only hit box as .sidebar__guest below (just the avatar circle
-   centered inside, no visible border/background), .sidebar--expanded further down turns
-   it into a full row with the visitor's name/email and a chevron. */
 .sidebar__account-trigger {
-  display: flex;
-  align-items: center;
-  justify-content: center;
+  display: grid;
+  place-items: center;
   width: 44px;
   height: 44px;
-  border: none;
   padding: 0;
-  border-radius: 10px;
-  background: none;
-  color: inherit;
+  border: 0;
+  border-radius: 50%;
+  background: transparent;
+  color: var(--text-1);
   font: inherit;
   text-align: left;
   cursor: pointer;
-  transition: background-color 0.15s ease;
+  transition: background-color var(--dur-base) var(--ease);
 }
 
-.sidebar__account-info {
+.sidebar__avatar,
+.profile-menu__avatar {
+  display: grid;
+  place-items: center;
+  flex: 0 0 auto;
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  background: var(--surface-3);
+  color: var(--text-2);
+  font: 800 12px/1 var(--font-ui);
+  overflow: hidden;
+}
+
+.sidebar__avatar {
+  border: 2px solid #2a2540;
+}
+
+.sidebar__account-trigger[aria-expanded="true"] .sidebar__avatar {
+  box-shadow: 0 0 0 2px var(--accent);
+}
+
+.sidebar__account-info,
+.sidebar__account-chevron {
+  display: none;
+}
+
+.sidebar__guest {
   display: flex;
   flex-direction: column;
-  gap: 1px;
-  min-width: 0;
+  align-items: center;
+  justify-content: center;
+  gap: 5px;
+  width: 68px;
+  min-height: 56px;
+  border-radius: var(--r-lg);
+  background: var(--surface-2);
+  color: var(--text-1);
+  font: 700 11px/1 var(--font-ui);
+  text-decoration: none;
+  transition: background-color var(--dur-base) var(--ease);
+}
+
+.sidebar__guest svg {
+  width: 20px;
+  height: 20px;
+}
+
+@media (hover: hover) {
+  .sidebar__link:not(.sidebar__link--active):hover {
+    background: #161426;
+    color: var(--text-1);
+  }
+
+  .sidebar__bell:hover,
+  .sidebar__toggle:hover {
+    background: var(--surface-2);
+    color: var(--text-1);
+  }
+
+  .sidebar__guest:hover {
+    background: var(--surface-3);
+    color: var(--text-1);
+  }
+}
+
+.sidebar__brand:focus-visible,
+.sidebar__toggle:focus-visible,
+.sidebar__link:focus-visible,
+.sidebar__bell:focus-visible,
+.sidebar__guest:focus-visible,
+.sidebar__strip-brand:focus-visible {
+  outline: none;
+  box-shadow: var(--focus-ring);
+}
+
+.sidebar__account-trigger:focus-visible {
+  outline: none;
+}
+
+.sidebar__account-trigger:focus-visible .sidebar__avatar {
+  box-shadow: var(--focus-ring);
+}
+
+.main {
   flex: 1;
-  max-width: 0;
-  overflow: hidden;
-  opacity: 0;
-  transition: max-width 0.2s ease, opacity 0.15s ease;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  margin-left: var(--sidebar-width);
+  transition: margin-left var(--dur-base) var(--ease);
 }
 
-.sidebar__account-name {
-  font-size: 13px;
-  font-weight: 600;
-  color: var(--text-primary);
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-}
+/* Expanded rail (248px): header row with the full wordmark and the collapse button,
+   full-width rows, bell row with its label, account card. Desktop only - the mobile
+   block below never has to undo any of it. */
+@media (min-width: 768px) {
+  .sidebar--expanded {
+    width: 248px;
+    grid-template-columns: minmax(0, 1fr) auto;
+    grid-template-rows: auto auto auto 1fr auto;
+    grid-template-areas: "brand toggle" "sep sep" "nav nav" ". ." "account account";
+    justify-items: stretch;
+    padding: 16px 12px 12px;
+  }
 
-.sidebar__account-email {
-  font-size: 11px;
-  color: var(--text-muted);
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-}
+  .sidebar--expanded .sidebar__brand {
+    height: 40px;
+    padding: 0 8px;
+    font-size: 19px;
+    letter-spacing: -0.02em;
+  }
 
-.sidebar__account-chevron {
-  flex: 0 0 auto;
-  display: none;
-  color: var(--text-muted);
-}
+  .sidebar--expanded .sidebar__brand-rest {
+    display: inline;
+  }
 
-/* PR 233: direction now follows profile-menu.js's own above/below calculation (mirroring
-   .profile-menu__panel--above/--below on the panel itself) instead of a breakpoint
-   hardcode that only happened to match the typical desktop (menu opens up) and mobile
-   (menu opens down) layouts, and stayed wrong for any narrower/unusual viewport. */
-.sidebar__account-chevron--down {
-  transform: rotate(90deg);
-}
+  .sidebar--expanded .sidebar__brand-dot {
+    margin-top: 9px;
+  }
 
-.sidebar__account-chevron--up {
-  transform: rotate(-90deg);
-}
+  .sidebar--expanded .sidebar__toggle {
+    align-self: center;
+    width: 36px;
+    height: 36px;
+    margin: 0;
+  }
 
-@media (min-width: 641px) {
-  .sidebar--expanded .sidebar__account-trigger {
-    width: 100%;
-    height: auto;
+  .sidebar--expanded .sidebar__toggle-expand {
+    display: none;
+  }
+
+  .sidebar--expanded .sidebar__toggle-collapse {
+    display: block;
+  }
+
+  .sidebar--expanded .sidebar__sep {
+    width: auto;
+    margin: 12px 6px 10px;
+  }
+
+  .sidebar--expanded .sidebar__link,
+  .sidebar--expanded .sidebar__bell {
+    flex-direction: row;
     justify-content: flex-start;
+    gap: 14px;
+    width: auto;
+    height: 46px;
+    padding: 0 12px;
+    color: var(--text-2);
+    font: 600 15px/1 var(--font-ui);
+  }
+
+  .sidebar--expanded .sidebar__bell {
+    display: flex;
+    align-items: center;
+    height: 44px;
+  }
+
+  .sidebar--expanded .sidebar__link--active,
+  .sidebar--expanded .sidebar__bell--active,
+  .sidebar--expanded .sidebar__bell[aria-expanded="true"] {
+    color: var(--text-1);
+    font-weight: 700;
+  }
+
+  .sidebar--expanded .sidebar__icon svg {
+    width: 21px;
+    height: 21px;
+  }
+
+  .sidebar--expanded .sidebar__bell .sidebar__label {
+    display: inline;
+  }
+
+  /* Badges become end-of-row pills: the icon stops being their containing block. */
+  .sidebar--expanded .sidebar__icon {
+    position: static;
+  }
+
+  .sidebar--expanded .sidebar__badge {
+    top: 50%;
+    right: 12px;
+    min-width: 22px;
+    height: 22px;
+    padding: 0 8px;
+    border: 0;
+    border-radius: 11px;
+    transform: translateY(-50%);
+    font: 700 12px/22px var(--font-ui);
+  }
+
+  .sidebar--expanded .sidebar__link .sidebar__badge {
+    background: rgba(34, 211, 197, 0.14);
+    color: var(--accent-text);
+  }
+
+  .sidebar--expanded .sidebar__bell .sidebar__badge {
+    font-weight: 800;
+  }
+
+  .sidebar--expanded .sidebar__account {
+    align-items: stretch;
+    gap: 4px;
+    width: auto;
+  }
+
+  .sidebar--expanded .profile-menu {
+    display: block;
+  }
+
+  .sidebar--expanded .sidebar__account-trigger {
+    display: flex;
+    align-items: center;
     gap: 12px;
-    padding: 12px 18px;
+    width: 100%;
+    height: 56px;
+    padding: 0 10px;
+    border-radius: var(--r-lg);
+    background: var(--surface-2);
+    box-shadow: inset 0 0 0 1px var(--border-strong);
+  }
+
+  .sidebar--expanded .sidebar__avatar {
+    border: 0;
   }
 
   .sidebar--expanded .sidebar__account-info {
-    max-width: 140px;
-    opacity: 1;
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    flex: 1;
+    min-width: 0;
   }
 
   .sidebar--expanded .sidebar__account-chevron {
     display: block;
+    flex: 0 0 auto;
+    color: var(--text-3);
+  }
+
+  .sidebar--expanded .sidebar__guest {
+    flex-direction: row;
+    justify-content: flex-start;
+    gap: 14px;
+    width: auto;
+    min-height: 46px;
+    padding: 0 12px;
+    font: 700 15px/1 var(--font-ui);
   }
 }
 
-@media (min-width: 641px) and (hover: hover) {
+@media (min-width: 768px) and (hover: hover) {
   .sidebar--expanded .sidebar__account-trigger:hover {
-    background-color: var(--bg-surface);
+    background: var(--surface-3);
   }
 }
 
-/* PR 215: guest state of .sidebar__account - a single link echoing .sidebar__avatar's
-   own circular hit box, replacing the old plain "Войти"/"Регистрация" text links so a
-   logged-out visitor gets the same-shaped slot as a logged-in one. Collapsed by default
-   (dashed avatar + teal "+" badge, same idea as .sidebar__link's icon-only collapsed
-   state); .sidebar--expanded below swaps in the text and drops the badge. */
-.sidebar__guest {
+.sidebar__account-name {
+  overflow: hidden;
+  color: var(--text-1);
+  font: 700 14px/1.1 var(--font-ui);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.sidebar__account-sub {
+  color: var(--text-3);
+  font: 500 12px/1 var(--font-ui);
+}
+
+/* Account hub: a popover beside the rail on desktop (profile-menu.js positions it, see
+   PR 97 for why it's portaled to <body>), a bottom sheet over a scrim on mobile
+   (--sheet, added by the same script). */
+.profile-menu__panel {
+  display: none;
+  flex-direction: column;
+  width: 250px;
+  padding: 6px;
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  background: var(--surface-2);
+  box-shadow: var(--shadow-popover);
+  color: var(--text-1);
+  z-index: 80;
+}
+
+.profile-menu__panel--open {
+  display: flex;
+  animation: shell-pop-in var(--dur-base) var(--ease);
+}
+
+.profile-menu__grabber {
+  display: none;
+}
+
+.profile-menu__head {
   display: flex;
   align-items: center;
-  justify-content: center;
-  width: 44px;
-  height: 44px;
-  padding: 0;
-  border-radius: 10px;
-  color: inherit;
+  gap: 12px;
+  padding: 10px;
+  border-radius: var(--r-md);
+  background: var(--surface-3);
+  color: var(--text-1);
   text-decoration: none;
-  transition: background-color 0.15s ease;
 }
 
-.sidebar__guest-avatar {
-  position: relative;
-  display: flex;
-  flex: 0 0 auto;
-  align-items: center;
-  justify-content: center;
-  width: 36px;
-  height: 36px;
-  border: 1px dashed var(--legacy-border);
-  border-radius: 50%;
-  background: var(--bg-panel);
-  color: var(--text-muted);
+.profile-menu__head .profile-menu__avatar {
+  width: 40px;
+  height: 40px;
 }
 
-/* PR 220: this reuses the "person" silhouette from the "Друзья" sidebar icon
-   (base.html), but that silhouette isn't centered within its own 24x24
-   viewBox - it spans x 3-15 (center x=9), not x 0-24 (center x=12). Flex-
-   centering the <svg> box itself still leaves the visible silhouette shifted
-   left inside the circle, so nudge it back with a small, eyeballed offset.
-   PR 231: direct child only (`>`) - .sidebar__guest-badge sits inside this same
-   avatar, and a plain descendant selector nudged the badge's own "+" 2px right too,
-   off-center within the badge. Barely visible in the 15px desktop badge, but the
-   mobile badge shrinks to 12px (8px inside its border) and the "+" visibly slid into
-   the badge's right edge (Ошибка 7). The silhouette's own 2px stays as-is on every
-   breakpoint - it compensates the path's offset inside its 18px <svg> (3 of 24 viewBox
-   units = 2.25px), which doesn't change when the circle around it shrinks. */
-.sidebar__guest-avatar > svg {
-  transform: translateX(2px);
-}
-
-.sidebar__guest-badge {
-  position: absolute;
-  right: -2px;
-  bottom: -2px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  width: 15px;
-  height: 15px;
-  border: 2px solid var(--bg-panel);
-  border-radius: 50%;
-  background: var(--accent-teal);
-  color: var(--legacy-bg-page);
-}
-
-.sidebar__guest-badge svg {
-  width: 9px;
-  height: 9px;
-}
-
-.sidebar__guest-text {
+.profile-menu__who {
   display: flex;
   flex-direction: column;
-  gap: 2px;
-  max-width: 0;
+  gap: 4px;
+  flex: 1;
+  min-width: 0;
+}
+
+.profile-menu__name {
   overflow: hidden;
-  opacity: 0;
+  font: 700 15px/1.1 var(--font-ui);
+  text-overflow: ellipsis;
   white-space: nowrap;
-  transition: max-width 0.2s ease, opacity 0.15s ease;
 }
 
-.sidebar__guest-name {
-  font-size: 13px;
-  font-weight: 600;
-  color: var(--text-primary);
+.profile-menu__profile-link {
+  color: var(--primary-text);
+  font: 600 12px/1 var(--font-ui);
 }
 
-.sidebar__guest-cta {
-  font-size: 11px;
-  color: var(--accent-teal);
+.profile-menu__head-chevron {
+  display: none;
+  flex: 0 0 auto;
+  color: var(--text-3);
+}
+
+.profile-menu__sep {
+  height: 1px;
+  margin: 6px 4px;
+  border: 0;
+  background: var(--border);
+}
+
+.profile-menu__form {
+  margin: 0;
+}
+
+.profile-menu__item {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  width: 100%;
+  min-height: 42px;
+  padding: 0 10px;
+  border: 0;
+  border-radius: var(--r-md);
+  background: transparent;
+  color: #e4e0f2;
+  font: 600 14px/1.2 var(--font-ui);
+  text-align: left;
+  text-decoration: none;
+  cursor: pointer;
+  transition: background-color var(--dur-press) var(--ease);
+}
+
+.profile-menu__item svg {
+  flex: 0 0 auto;
+  color: var(--text-3);
+}
+
+.profile-menu__item[aria-current="page"] {
+  background: var(--surface-selected);
+  color: var(--text-1);
+}
+
+.profile-menu__item[aria-current="page"] svg {
+  color: var(--accent);
+}
+
+.profile-menu__item--danger,
+.profile-menu__item--danger svg {
+  color: var(--danger-text);
 }
 
 @media (hover: hover) {
-  .sidebar__guest:hover {
-    background-color: rgba(34, 211, 197, 0.1);
+  .profile-menu__item:hover,
+  .profile-menu__head:hover {
+    background: var(--surface-3);
+  }
+
+  .profile-menu__head:hover {
+    background: #2d2944;
+  }
+}
+
+.profile-menu__item:focus-visible,
+.profile-menu__head:focus-visible {
+  outline: none;
+  box-shadow: inset 0 0 0 2px var(--focus);
+}
+
+/* Scrim under a mobile sheet (profile-menu.js creates it). */
+.shell-scrim {
+  position: fixed;
+  inset: 0;
+  z-index: 79;
+  background: var(--scrim);
+  animation: ui-fade-in 160ms var(--ease);
+}
+
+html.shell-scroll-lock,
+html.shell-scroll-lock body {
+  overflow: hidden;
+}
+
+@keyframes shell-pop-in {
+  from {
+    opacity: 0;
+    transform: translateY(calc(6px * var(--motion-shift)));
+  }
+}
+
+@keyframes shell-sheet-in {
+  from {
+    transform: translateY(calc(100% * var(--motion-shift)));
+  }
+}
+
+/* Notifications popover (the item cards inside keep their own rules below until PR 259
+   moves them to the new card). Portaled to <body> and placed by notifications-panel.js. */
+.notifications-panel {
+  display: none;
+  flex-direction: column;
+  width: 380px;
+  max-width: calc(100vw - 24px);
+  max-height: min(560px, calc(100dvh - 16px));
+  border: 1px solid var(--border);
+  border-radius: var(--r-xl);
+  background: var(--surface-2);
+  box-shadow: var(--shadow-popover);
+  color: var(--text-1);
+  overflow: hidden;
+  z-index: 80;
+}
+
+.notifications-panel--open {
+  display: flex;
+  animation: shell-pop-in var(--dur-base) var(--ease);
+}
+
+.notifications-panel__header {
+  display: flex;
+  align-items: center;
+  flex: 0 0 auto;
+  height: 52px;
+  padding: 0 18px;
+  border-bottom: 1px solid var(--border);
+}
+
+.notifications-panel__title {
+  margin: 0;
+  font: 800 16px/1 var(--font-ui);
+}
+
+.notifications-panel__list {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  min-height: 0;
+  padding: 6px;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+}
+
+.notifications-panel__empty {
+  margin: 0;
+  padding: 18px 12px;
+  color: var(--text-3);
+  font: 500 14px/1.5 var(--font-ui);
+}
+
+.notifications-panel__footer {
+  display: grid;
+  place-items: center;
+  flex: 0 0 auto;
+  height: 48px;
+  border-top: 1px solid var(--border);
+  color: var(--primary-text);
+  font: 700 14px/1 var(--font-ui);
+  text-decoration: none;
+  transition: background-color var(--dur-base) var(--ease);
+}
+
+@media (hover: hover) {
+  .notifications-panel__footer:hover {
+    background: var(--surface-3);
+    color: var(--primary-text);
+  }
+}
+
+.notifications-panel__footer:focus-visible {
+  outline: none;
+  box-shadow: inset 0 0 0 2px var(--focus);
+}
+
+/* Mobile: Quiet Edge Bar (bottom) + top strip. */
+@media (max-width: 767px) {
+  :root,
+  body:has(.sidebar--expanded) {
+    --sidebar-width: 0px;
+    --shell-bottom: calc(60px + env(safe-area-inset-bottom, 0px));
+  }
+
+  /* PR 46's per-section fade-in, now on the shared motion tokens. */
+  @keyframes shell-section-in {
+    from {
+      opacity: 0;
+      transform: translateY(calc(6px * var(--motion-shift)));
+    }
+  }
+
+  .main {
+    margin-left: 0;
+    padding-top: calc(var(--mobile-account-height) + env(safe-area-inset-top, 0px));
+    padding-bottom: calc(var(--shell-bottom) + 16px);
+    animation: shell-section-in 150ms var(--ease);
+  }
+
+  /* PR 47: the library tabs fade their own content in already. */
+  .main:has(.library-tabs-content) {
+    animation: none;
+  }
+
+  .sidebar {
+    top: auto;
+    right: 0;
+    bottom: 0;
+    z-index: 50;
+    width: auto;
+    height: auto;
+    display: block;
+    /* The rail's justify-items: center would also center (and shrink) block children -
+       Chrome applies justify-items in block layout too. */
+    justify-items: normal;
+    padding: 0 16px env(safe-area-inset-bottom, 0px);
+    border-right: 0;
+    border-top: 1px solid var(--divider);
+    overflow: visible;
+    transition: none;
+  }
+
+  .sidebar__brand,
+  .sidebar__toggle,
+  .sidebar__sep {
+    display: none;
+  }
+
+  .sidebar__nav {
+    flex-direction: row;
+    gap: 0;
+    height: 60px;
+  }
+
+  .sidebar__link {
+    flex: 1;
+    gap: 4px;
+    width: auto;
+    height: 60px;
+    border-radius: 0;
+    background: none;
+    color: #a7a3b8;
+    font: 600 12px/14px var(--font-ui);
+  }
+
+  /* Pressed / focus zone: 84x48, radius 12, centered on the item. */
+  .sidebar__link::after {
+    content: "";
+    position: absolute;
+    top: 6px;
+    left: 50%;
+    width: 84px;
+    max-width: 100%;
+    height: 48px;
+    border-radius: var(--r-lg);
+    transform: translateX(-50%);
+    transition: background-color var(--dur-press) var(--ease);
+  }
+
+  .sidebar__link:active::after {
+    background: rgba(245, 243, 255, 0.07);
+  }
+
+  .sidebar__link:focus-visible {
+    box-shadow: none;
+  }
+
+  .sidebar__link:focus-visible::after {
+    box-shadow: inset 0 0 0 2px var(--focus);
+  }
+
+  .sidebar__link--active {
+    background: none;
+    color: var(--text-1);
+    font-weight: 700;
+  }
+
+  /* Active indicator: 28x2 on the bar's top edge. */
+  .sidebar__link--active::before {
+    content: "";
+    position: absolute;
+    top: -1px;
+    left: 50%;
+    width: 28px;
+    height: 2px;
+    margin-left: -14px;
+    border-radius: 0 0 2px 2px;
+    background: var(--accent);
+  }
+
+  .sidebar__link .sidebar__badge {
+    top: -6px;
+    right: -10px;
+    padding: 0 4px;
+    border: 2px solid var(--bg-nav);
+    line-height: 14px;
+  }
+
+  .sidebar__link--desktop-only {
+    display: none;
+  }
+
+  .sidebar__link:has(.sidebar__label-mobile) .sidebar__label {
+    display: none;
+  }
+
+  .sidebar__label-mobile {
+    display: block;
+  }
+
+  /* Top strip: transparent until the page scrolls 8px (mobile-account-strip.js). */
+  .sidebar__account {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    z-index: 50;
+    flex-direction: row;
+    gap: 2px;
+    width: auto;
+    height: calc(var(--mobile-account-height) + env(safe-area-inset-top, 0px));
+    padding: env(safe-area-inset-top, 0px) 8px 0;
+    border-top: 0;
+    background: transparent;
+    transition: background-color var(--dur-base) var(--ease);
+  }
+
+  .sidebar__account--scrolled {
+    background: rgba(11, 11, 20, 0.96);
+  }
+
+  .sidebar__strip-brand {
+    display: flex;
+    align-items: center;
+    height: 44px;
+    margin-right: auto;
+    padding: 0 12px;
+    border-radius: var(--r-md);
+    color: var(--text-1);
+    font: 800 22px/1 var(--font-ui);
+    letter-spacing: -0.04em;
+    text-decoration: none;
+  }
+
+  .sidebar__strip-brand .sidebar__brand-dot {
+    margin-top: 10px;
+  }
+
+  .sidebar__bell {
+    color: var(--text-1);
+  }
+
+  /* Unread = an 8px coral dot, no number, on the strip. */
+  .sidebar__bell .sidebar__badge {
+    top: -1px;
+    right: -1px;
+    width: 12px;
+    min-width: 0;
+    height: 12px;
+    padding: 0;
+    border-color: var(--bg-page);
+    font-size: 0;
+  }
+
+  .sidebar__avatar {
+    width: 32px;
+    height: 32px;
+    border: 0;
+  }
+
+  .sidebar__guest {
+    flex-direction: row;
+    width: auto;
+    min-height: 40px;
+    margin-right: 4px;
+    padding: 0 16px;
+    border-radius: var(--r-md);
+    font: 700 14px/1 var(--font-ui);
+  }
+
+  .sidebar__guest svg {
+    display: none;
+  }
+
+  /* Account hub as a bottom sheet. */
+  .profile-menu__panel--sheet {
+    left: 0;
+    right: 0;
+    bottom: 0;
+    top: auto;
+    width: auto;
+    padding: 8px 0 calc(12px + env(safe-area-inset-bottom, 0px));
+    border-width: 1px 0 0;
+    border-radius: var(--r-2xl) var(--r-2xl) 0 0;
+    box-shadow: var(--shadow-sheet);
+    animation: shell-sheet-in var(--dur-sheet) var(--ease);
+  }
+
+  .profile-menu__panel--sheet .profile-menu__grabber {
+    display: block;
+    width: 36px;
+    height: 4px;
+    margin: 0 auto 6px;
+    border-radius: 2px;
+    background: var(--disabled);
+  }
+
+  .profile-menu__panel--sheet .profile-menu__head {
+    gap: 14px;
+    padding: 10px 12px 14px 20px;
+    border-radius: 0;
+    background: transparent;
+  }
+
+  .profile-menu__panel--sheet .profile-menu__avatar {
+    width: 52px;
+    height: 52px;
+    font-size: 15px;
+  }
+
+  .profile-menu__panel--sheet .profile-menu__name {
+    font: 800 17px/1.1 var(--font-ui);
+  }
+
+  .profile-menu__panel--sheet .profile-menu__profile-link {
+    font-size: 13px;
+  }
+
+  .profile-menu__panel--sheet .profile-menu__head-chevron {
+    display: block;
+  }
+
+  .profile-menu__panel--sheet .profile-menu__sep {
+    margin: 6px 20px;
+  }
+
+  .profile-menu__panel--sheet .profile-menu__item {
+    gap: 16px;
+    min-height: 52px;
+    padding: 0 20px;
+    border-radius: 0;
+    color: var(--text-1);
+    font-size: 16px;
+  }
+
+  .profile-menu__panel--sheet .profile-menu__item svg {
+    width: 22px;
+    height: 22px;
+    color: var(--text-2);
+  }
+
+  .profile-menu__panel--sheet .profile-menu__item--danger,
+  .profile-menu__panel--sheet .profile-menu__item--danger svg {
+    color: var(--danger-text);
+  }
+
+  /* The reader is immersive on mobile - no bar, no strip. */
+  body.reader-page .sidebar,
+  body.reader-page .sidebar__account {
+    display: none;
+  }
+
+  body.reader-page .main {
+    padding-top: 0;
+    padding-bottom: 0;
+    animation: none;
   }
 }
 
@@ -858,200 +1376,6 @@ a {
   height: 100%;
   object-fit: cover;
   border-radius: inherit;
-}
-
-/* PR 126: no :hover recolor here on purpose - the avatar's clickability is already
-   obvious (cursor: pointer above, plus the dropdown it opens), so repainting the
-   initials/photo on hover read as noise rather than a useful affordance. */
-
-/* PR 93: the avatar's dropdown menu (Профиль/Читаю/Настройки/Выйти). */
-.profile-menu {
-  position: relative;
-}
-
-/* PR 97: position (top/bottom/left) is set inline by profile-menu.js from the trigger's
-   own getBoundingClientRect() once the panel is portaled to <body> and made `position:
-   fixed` - not handled here, since `.sidebar`'s `overflow-y: auto` (its own link list's
-   scrolling) clips an absolutely/relatively-positioned descendant regardless of z-index.
-   The open/closed state also toggles a class on the panel itself (`--open` below) rather
-   than relying on a `.profile-menu--open .profile-menu__panel` descendant selector like
-   before PR 97 - once portaled, the panel is a sibling of `.profile-menu` in the DOM, not
-   its descendant, so that selector would silently stop matching and the menu would stay
-   invisible (opacity/pointer-events never flip) even though it's now positioned exactly
-   where it should be. `--above`/`--below` (toggled by that same script, based on which
-   side of the trigger has more room - upward on the desktop sidebar, downward on the
-   mobile top account strip) only control which direction the open/close slide animates
-   from - same fade + slide-toward-the-trigger animation as the custom <select> dropdown
-   (PR 54's .dropdown__listbox), always in the DOM (opacity/pointer-events, not
-   display:none) so the transition has something to animate. */
-/* PR 120: while closed, the panel is still parked in its home spot inside .sidebar (the
-   JS below only portals it out to <body> on open) - `position: absolute` with no offsets
-   set here falls back to its *static* position, right below the avatar button, which
-   itself sits flush against .sidebar's bottom edge (.sidebar__account's margin-top:
-   auto). That pushes the panel's box past .sidebar's own bottom edge even while fully
-   invisible (opacity: 0 below), and .sidebar's overflow-y: auto (kept for the rare case
-   the link list itself outgrows the viewport, PR 116) still counts that as scrollable
-   overflow - scrolling the sidebar at all then visibly shifts the real icons up by that
-   same phantom amount, the "sidebar scrolls" bug. Collapse the box to nothing while it's
-   parked here - max-height alone isn't enough with box-sizing: border-box, since the used
-   height can't shrink below the border+padding sum, so those are zeroed too. profile-
-   menu.js always portals the panel to <body> (out from under this selector) and sets
-   explicit position: fixed coordinates before ever making it visible, so none of this
-   affects the actual open panel. */
-.sidebar .profile-menu__panel {
-  max-height: 0;
-  padding: 0;
-  border-width: 0;
-  overflow: hidden;
-}
-
-.profile-menu__panel {
-  display: flex;
-  flex-direction: column;
-  gap: 2px;
-  position: absolute;
-  z-index: 40;
-  min-width: 180px;
-  padding: 6px;
-  background: var(--bg-surface);
-  border: 1px solid var(--legacy-border);
-  border-radius: 8px;
-  box-shadow: 0 10px 24px rgba(0, 0, 0, 0.35);
-  opacity: 0;
-  pointer-events: none;
-  transition: opacity 0.15s ease, transform 0.15s ease;
-}
-
-.profile-menu__panel--above {
-  transform: translateY(6px);
-}
-
-.profile-menu__panel--below {
-  transform: translateY(-6px);
-}
-
-.profile-menu__panel--open {
-  opacity: 1;
-  transform: translateY(0);
-  pointer-events: auto;
-}
-
-/* The "Выйти" item is a <button> inside its own <form> (it POSTs to /logout, unlike the
-   other three items' plain links) - display: contents drops the <form> from layout so
-   that button still sits directly in .profile-menu__panel's flex column/gap like its
-   siblings, instead of getting wrapped in an extra box. */
-.profile-menu__form {
-  display: contents;
-}
-
-.profile-menu__item {
-  display: block;
-  width: 100%;
-  padding: 8px 10px;
-  border: none;
-  border-radius: 6px;
-  background: none;
-  color: var(--text-secondary);
-  font-family: inherit;
-  font-size: 13px;
-  text-align: left;
-  text-decoration: none;
-  cursor: pointer;
-  transition: background-color 0.1s ease, color 0.1s ease;
-}
-
-@media (hover: hover) {
-  .profile-menu__item:hover {
-    background: rgba(34, 211, 197, 0.12);
-    color: var(--text-primary);
-  }
-}
-
-/* PR 168: the sidebar bell's flyout - notifications-panel.js portals it to <body> on
-   open, same position: fixed mechanics as .profile-menu__panel (PR 97) above, so it needs
-   the same "collapse to nothing while parked inside .sidebar" treatment to avoid that same
-   .sidebar overflow-y: auto scroll bug (see .sidebar .profile-menu__panel's own comment). */
-.sidebar .notifications-panel {
-  max-height: 0;
-  padding: 0;
-  border-width: 0;
-  overflow: hidden;
-}
-
-/* Deliberately wider than .catalog-filters' 240px (PR 85) - a notification row needs
-   room for an avatar plus a line or two of text plus a timestamp, where a filter
-   checkbox only needs its own label - but still a small capped-width side panel, not a
-   centered modal (.title-quickview-modal) or a full-bleed one. Opens flush against the
-   sidebar's own right edge (notifications-panel.js's position()), not below/above the
-   trigger like .profile-menu__panel - it's the sidebar's own flyout, not a dropdown tied
-   to one icon's position. */
-.notifications-panel {
-  display: flex;
-  flex-direction: column;
-  position: absolute;
-  z-index: 40;
-  width: 340px;
-  max-width: calc(100vw - 32px);
-  max-height: min(480px, calc(100vh - 32px));
-  background: var(--bg-surface);
-  border: 1px solid var(--legacy-border);
-  border-radius: 8px;
-  box-shadow: 0 10px 24px rgba(0, 0, 0, 0.35);
-  opacity: 0;
-  pointer-events: none;
-  transform: translateX(-6px);
-  transition: opacity 0.15s ease, transform 0.15s ease;
-}
-
-.notifications-panel--open {
-  opacity: 1;
-  pointer-events: auto;
-  transform: translateX(0);
-}
-
-.notifications-panel__header {
-  flex: 0 0 auto;
-  padding: 12px 14px;
-  border-bottom: 1px solid var(--legacy-border);
-}
-
-.notifications-panel__title {
-  margin: 0;
-  font-size: 14px;
-  font-weight: 600;
-  color: var(--text-primary);
-}
-
-.notifications-panel__list {
-  display: flex;
-  flex-direction: column;
-  overflow-y: auto;
-}
-
-.notifications-panel__empty {
-  margin: 0;
-  padding: 20px 14px;
-  color: var(--text-muted);
-  font-size: 13px;
-  text-align: center;
-}
-
-/* PR 169: links to notifications.html's full "Все уведомления" list. */
-.notifications-panel__footer {
-  flex: 0 0 auto;
-  padding: 10px 14px;
-  border-top: 1px solid var(--legacy-border);
-  color: var(--text-muted);
-  font-size: 12px;
-  text-align: center;
-  text-decoration: none;
-  transition: color 0.1s ease;
-}
-
-@media (hover: hover) {
-  .notifications-panel__footer:hover {
-    color: var(--accent-teal);
-  }
 }
 
 /* PR 170: the outer row (link + actions) - was itself the link/flex-row for
@@ -1243,17 +1567,6 @@ a {
   height: 1px;
 }
 
-.main {
-  flex: 1;
-  min-width: 0;
-  display: flex;
-  flex-direction: column;
-  /* PR 207: matches .sidebar's own (fixed, no longer flex-participating) width - see its
-     own comment. Overridden back to 0 on the mobile breakpoint below, where .sidebar
-     becomes a bottom tab bar instead of a side rail. */
-  margin-left: 64px;
-  transition: margin-left 0.2s ease;
-}
 
 .header {
   display: flex;
@@ -5659,267 +5972,6 @@ img.paragraph-comment__attachment {
    account controls move to a slim fixed top strip, which isn't covered by any of
    the mobile frames, extended here from the same visual language. */
 @media (max-width: 640px) {
-  /* PR 46: switching sidebar section here is a full page navigation (server-rendered,
-     no client-side router), not a single-page-app transition - so "animating between
-     sections" means fading/sliding each newly-loaded page's content in on paint,
-     instead of the previous hard cut. Kept short (150ms) so it doesn't read as added
-     load time, and scoped to this mobile breakpoint only - the desktop sidebar already
-     stays put alongside .main rather than being replaced by page navigation the way the
-     mobile bottom tab bar visually reads as "switching sections", so it doesn't need
-     this treatment. */
-  @keyframes mobile-section-in {
-    from {
-      opacity: 0;
-      transform: translateY(6px);
-    }
-    to {
-      opacity: 1;
-      transform: translateY(0);
-    }
-  }
-
-  .main {
-    margin-left: 0;
-    padding-top: var(--mobile-account-height);
-    /* env() falls back to 0px on devices with no reserved gesture-nav area (or in
-       browsers that don't support it at all) - this simply stays 72px there, matching
-       .sidebar's own bottom padding below. */
-    padding-bottom: calc(72px + env(safe-area-inset-bottom, 0px));
-    animation: mobile-section-in 0.15s ease-out;
-  }
-
-  /* PR 47: /library and /library/catalog's own content already fades in via
-     .library-tabs-content - without this, .main's animation above would run at the same
-     time, and since CSS opacity compounds across nested animated elements, the two
-     together would read as one slower, muddier fade instead of either intended one. */
-  .main:has(.library-tabs-content) {
-    animation: none;
-  }
-
-  .sidebar {
-    position: fixed;
-    top: auto;
-    bottom: 0;
-    left: 0;
-    right: 0;
-    width: 100%;
-    /* An explicit height, not min-height: the base .sidebar rule sets height: 100vh for
-       the desktop column, and min-height alone doesn't override that - the bar stretched
-       over the whole viewport and hid every page on mobile. border-box (sitewide default)
-       keeps the tabs at 64px with the safe-area padding below added on top. */
-    height: calc(64px + env(safe-area-inset-bottom, 0px));
-    flex-direction: row;
-    /* PR 224 (Claude Design import): stretch (the flex default, but .sidebar's own base
-       rule sets align-items: center for the desktop icon column) so each tab below fills
-       the bar's full 64px height - its own background/active indicator need that to
-       reach edge to edge, not just around a centered icon. */
-    align-items: stretch;
-    gap: 0;
-    padding: 0;
-    /* PR 235: on devices that reserve space for a home indicator/gesture-nav strip
-       (iOS in particular), a plain bottom: 0 sits the bar's edge at the true bottom of
-       the viewport, but the OS still paints its own indicator over the bottom slice of
-       it - env() adds that reserved space as extra padding below the tabs instead
-       (the height above grows by the same env() term, so this doesn't squeeze the icons
-       into a shorter box). Falls back to 0px with no visible change
-       on devices/browsers with no such reserved area. */
-    padding-bottom: env(safe-area-inset-bottom, 0px);
-    border-right: none;
-    border-top: 1px solid var(--legacy-border);
-    z-index: 40;
-  }
-
-  /* Scoped to direct children (like the desktop full-width-row rule above) - PR 71: an
-     unscoped .sidebar__link here also matched the logout button and the anonymous
-     login/register links inside .sidebar__account, which aren't part of this bottom tab
-     bar at all. Their inherited min-height: 44px/padding: 12px inflated the fixed
-     top account strip's real height well past .main's hardcoded padding-top, so page
-     content started underneath it.
-
-     PR 224 (Claude Design import): each of the five tabs now fills an equal 1/5 share of
-     the bar's width edge-to-edge (flex: 1, no gaps) instead of a fixed 52x52 box
-     centered by the parent's old justify-content: space-around - same full-bleed-row
-     language PR 223 already brought to the desktop column.
-
-     PR 243: height: auto resets the base rule's desktop height: 44px (declared outside
-     any media query, so it applies here too). A definite height beats .sidebar's
-     align-items: stretch, which left every tab a 44px box pinned to the bar's top, with
-     dead space under the icons instead of filling the full 64px. */
-  .sidebar > .sidebar__link {
-    flex: 1;
-    height: auto;
-    font-size: 11px;
-    gap: 0;
-    padding: 0;
-    min-width: 0;
-    min-height: 0;
-    justify-content: center;
-  }
-
-  .sidebar > .sidebar__link svg {
-    width: 24px;
-    height: 24px;
-  }
-
-  /* PR 224 (Claude Design import): the active tab's indicator moves from the desktop
-     column's left-edge bar (.sidebar__link--active::before, PR 223) to a top-edge bar
-     spanning the tab's own width - "top of the row" reads as "this section" the same way
-     "left of the row" does in a vertical list, just rotated for a horizontal bar. */
-  .sidebar > .sidebar__link.sidebar__link--active::before {
-    left: 0;
-    right: 0;
-    top: 0;
-    bottom: auto;
-    width: auto;
-    height: 2px;
-  }
-
-  /* Claude Design import's mobile tab bar anchors a tab's own badge to its own full-width
-     column (top: 12px/right: 16px from that column's own right edge, not centered near
-     the icon) - differs from the desktop collapsed row's icon-hugging top: 6px/right: 12px
-     (PR 223), which assumes a much narrower 44px-wide row. */
-  .sidebar > .sidebar__link .sidebar__badge {
-    top: 12px;
-    right: 16px;
-  }
-
-  .sidebar__toggle {
-    display: none;
-  }
-
-  .sidebar__account {
-    position: fixed;
-    top: 0;
-    left: 0;
-    right: 0;
-    margin-top: 0;
-    width: auto;
-    /* Pinned to the same value .main's padding-top compensates for (PR 71) - box-sizing
-       makes padding count toward this, so whatever the actual content measures out to,
-       the strip itself never grows past what .main already leaves room for underneath
-       it - the .sidebar__avatar size below is chosen to fit this exactly
-       (11px + 30px + 11px = 52px). */
-    min-height: var(--mobile-account-height);
-    box-sizing: border-box;
-    flex-direction: row;
-    align-items: center;
-    justify-content: space-between;
-    gap: 12px;
-    padding: 11px 16px;
-    border-top: none;
-    border-bottom: 1px solid var(--legacy-border);
-    background: var(--bg-panel);
-    z-index: 40;
-  }
-
-  .sidebar__avatar {
-    width: 30px;
-    height: 30px;
-    font-size: 11px;
-  }
-
-  /* PR 223 introduced this wrapper button around .sidebar__avatar above (desktop-only
-     redesign, icon-only on mobile at the time). PR 224 (Claude Design import) gives it
-     its own mobile row, same idea as the desktop expanded state: avatar + name (no
-     email - see .sidebar__account-email below - and no aria-expanded chevron rotation
-     logic to keep, it's a plain visual rotate) + a chevron, auto-width rather than the
-     desktop's full-width row since there's no room to spare next to the account-actions
-     icons on the right. */
-  .sidebar__account-trigger {
-    width: auto;
-    height: auto;
-    gap: 10px;
-  }
-
-  .sidebar__account-info {
-    max-width: 140px;
-    opacity: 1;
-  }
-
-  .sidebar__account-email {
-    display: none;
-  }
-
-  .sidebar__account-chevron {
-    display: block;
-    width: 14px;
-    height: 14px;
-  }
-
-  .sidebar__guest {
-    width: 28px;
-    height: 28px;
-  }
-
-  .sidebar__guest-avatar {
-    width: 28px;
-    height: 28px;
-  }
-
-  .sidebar__guest-badge {
-    width: 12px;
-    height: 12px;
-  }
-
-  .sidebar__guest-badge svg {
-    width: 7px;
-    height: 7px;
-  }
-
-  /* PR 213: base.html always renders this container inside .sidebar__account, right
-     after the profile-menu/login-register links - empty (and invisible, taking up no
-     space) unless mobile-account-strip.js has reparented the Settings link/notifications
-     bell into it. .sidebar__account's own justify-content: space-between then naturally
-     puts the avatar on the left and this group on the right, the same way it already
-     splits "Войти"/"Регистрация" for an anonymous visitor. */
-  .sidebar__account-actions {
-    display: flex;
-    align-items: center;
-    gap: 4px;
-  }
-
-  /* Reset from .sidebar > .sidebar__link's bottom-tab-bar sizing (scoped to *direct*
-     children of .sidebar, so it no longer applies once these move under
-     .sidebar__account-actions) to a square tap zone sized to fit the account strip, not
-     the taller 64px tab bar - 36px in PR 224 (Claude Design import), up from 28px, while
-     the icon itself stays its default 20x20 (no override needed, unlike the tab bar's own
-     24x24 icons). */
-  .sidebar__account-actions .sidebar__link {
-    width: 36px;
-    height: 36px;
-    gap: 0;
-    justify-content: center;
-  }
-
-  /* PR 236: .sidebar__link--active's highlight (a 2px left/top-edge stripe plus a faint
-     full-row tint, sized for a wide nav row - see the base rule and its mobile tab-bar
-     override above) reads as a stray, seemingly-clipped sliver on this component's narrow
-     36x36 icon-only square instead of "this is the current page/state". A dedicated
-     solid, rounded fill for the whole square instead, replacing the edge stripe/animation
-     rather than layering on top of them.
-
-     PR 237: the notifications bell reparented here alongside Настройки (PR 213) gets the
-     exact same treatment for its own aria-expanded-driven highlight (base rule above) -
-     same narrow-square mismatch, same fix, just a different trigger for the highlight. */
-  .sidebar__account-actions .sidebar__link.sidebar__link--active,
-  .sidebar__account-actions [data-role="notifications-trigger"][aria-expanded="true"] {
-    background-color: rgba(34, 211, 197, 0.16);
-    border-radius: 10px;
-    animation: none;
-  }
-
-  .sidebar__account-actions .sidebar__link.sidebar__link--active::before,
-  .sidebar__account-actions [data-role="notifications-trigger"][aria-expanded="true"]::before {
-    content: none;
-  }
-
-  /* The desktop collapsed row's icon-hugging top: 6px/right: 12px (PR 223) assumes a much
-     narrower 44px row - tucked back into the corner of this 36px tap zone instead. */
-  .sidebar__account-actions .sidebar__badge {
-    top: 2px;
-    right: 2px;
-  }
-
   .header {
     padding: 14px 16px;
     flex-wrap: wrap;
