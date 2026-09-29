@@ -134,6 +134,10 @@
   --dur-exit: 140ms; /* HUD hide, popover close */
   --ease: cubic-bezier(0.2, 0, 0, 1);
   --ease-exit: ease-in;
+  /* Multiplier for every translate/scale distance, so reduced motion can zero them
+     all in one place: transform: translateY(calc(8px * var(--motion-shift))) or
+     scale(calc(1 + 0.04 * var(--motion-shift))). */
+  --motion-shift: 1;
 
   /* Reader theme (--r-*): Aurora Dark by default; the other four themes override the
      same names under [data-reader-theme] below. Not to be confused with the radii
@@ -154,6 +158,20 @@
 @media (min-width: 1200px) {
   :root {
     --type-reader-title: 500 34px/1.25 var(--font-reader-serif);
+  }
+}
+
+/* Reduced motion ("01 Foundations" -> Motion): no shifts or scaling, only opacity, at
+   most 120ms. Done at the token level, so it covers exactly the components built on
+   the duration tokens and --motion-shift, and leaves the pre-Aurora animations alone until each is
+   moved over. Components where the spec asks for no fade at all (instant paragraph
+   reveal, HUD) opt out themselves - a token can't tell them apart. */
+@media (prefers-reduced-motion: reduce) {
+  :root {
+    --dur-base: 120ms;
+    --dur-sheet: 120ms;
+    --dur-exit: 120ms;
+    --motion-shift: 0;
   }
 }
 
