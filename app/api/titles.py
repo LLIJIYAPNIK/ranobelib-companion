@@ -108,6 +108,20 @@ async def title_data(
         for chapter in volume.chapters
         if chapter.branches_count > 1
     ]
+    # PR 253: the hero's primary CTA («Читать · Глава 1» / «Продолжить · Глава N»), its
+    # progress line and the TOC's read/current markers all need a position in the same
+    # SDK chapter order reading_progress_percent() measures against - looked up once here
+    # rather than searched for again in the template.
+    chapters = [chapter for volume in volumes for chapter in volume.chapters]
+    positions = [
+        (volume.number, chapter.number) for volume in volumes for chapter in volume.chapters
+    ]
+    last_read = (
+        (library_entry.last_read_volume, library_entry.last_read_number)
+        if library_entry is not None
+        else None
+    )
+    current_index = positions.index(last_read) if last_read in positions else None
     response = templates.TemplateResponse(
         request,
         "_title_content.html",
@@ -124,6 +138,10 @@ async def title_data(
             "last_read_number": (
                 library_entry.last_read_number if library_entry is not None else None
             ),
+            "chapter_total": len(chapters),
+            "first_chapter": chapters[0] if chapters else None,
+            "current_chapter": chapters[current_index] if current_index is not None else None,
+            "current_chapter_index": current_index,
             "ambiguous_chapter_count": len(ambiguous_branch_counts),
             "max_branches": max(ambiguous_branch_counts, default=0),
             "default_translation_index": (
