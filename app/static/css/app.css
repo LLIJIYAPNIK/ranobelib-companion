@@ -4505,83 +4505,6 @@ img.paragraph-comment__attachment {
   flex: 0 0 auto;
 }
 
-.download-status {
-  display: flex;
-  flex-direction: column;
-  gap: 14px;
-  max-width: 480px;
-}
-
-.download-status__heading {
-  font-size: 20px;
-  font-weight: 800;
-  margin: 0;
-}
-
-.download-status__text {
-  font-size: 14px;
-  color: var(--text-secondary);
-  margin: 0;
-}
-
-.download-status__bar {
-  height: 3px;
-  background: var(--legacy-border);
-  border-radius: 2px;
-  overflow: hidden;
-}
-
-.download-status__bar-fill {
-  height: 100%;
-  width: 0%;
-  background: var(--accent-teal);
-  transition: width 0.3s ease;
-}
-
-.download-status__text--error {
-  color: var(--accent-orange);
-}
-
-.download-status__eta {
-  font-size: 12px;
-  color: var(--text-muted);
-  margin: 0;
-}
-
-.download-status__ambiguous {
-  list-style: none;
-  margin: 0;
-  padding: 0;
-  display: flex;
-  flex-direction: column;
-  gap: 6px;
-  font-size: 13px;
-}
-
-.download-status__ambiguous-item {
-  padding: 8px 10px;
-  border: 1px solid var(--legacy-border);
-  border-radius: 6px;
-  background: var(--bg-surface);
-}
-
-.download-status__ambiguous-chapter {
-  display: block;
-  font-weight: 700;
-  color: var(--text-secondary);
-  margin-bottom: 2px;
-}
-
-.download-status__ambiguous-branches {
-  color: var(--text-muted);
-}
-
-.download-status__retry {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-}
-
 .activity-stats {
   display: flex;
   gap: 32px;
@@ -10240,6 +10163,96 @@ body.reader-hud-visible .reader-hud {
   }
 }
 
+/* Title download progress page (download_status.html). */
+.download-status {
+  max-width: calc(640px + 2 * var(--s-40));
+}
+
+.download-status__back {
+  align-self: flex-start;
+  margin: calc(-1 * var(--s-12)) 0 calc(-1 * var(--s-8)) calc(-1 * var(--s-12));
+}
+
+.download-status__back svg {
+  width: 18px;
+  height: 18px;
+}
+
+.download-status__head {
+  display: flex;
+  flex-direction: column;
+  gap: var(--s-8);
+}
+
+.download-status__slug {
+  color: var(--text-3);
+  font: 500 14px/1.4 var(--font-ui);
+  overflow-wrap: anywhere;
+}
+
+.download-status__choice {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.download-status__text {
+  margin: 0;
+  color: var(--text-2);
+  font: var(--type-body);
+}
+
+.download-status__actions,
+.download-status__retry {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px;
+}
+
+.download-status__cancel-form {
+  margin: 0;
+}
+
+.download-status__file,
+.download-status__cancel-form {
+  align-self: flex-start;
+}
+
+.download-status .ui-download-progress .ui-progress__fill {
+  transition: width var(--dur-base) var(--ease);
+}
+
+/* Chapters that have more than one translation - a quiet list under the choice. */
+.download-status__ambiguous {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.download-status__ambiguous-item {
+  display: flex;
+  flex-direction: column;
+  gap: var(--s-4);
+  padding: 10px 14px;
+  border: 1px solid var(--border);
+  border-radius: var(--r-lg);
+  background: var(--surface-1);
+}
+
+.download-status__ambiguous-chapter {
+  color: var(--text-1);
+  font: 700 14px/1.3 var(--font-ui);
+}
+
+.download-status__ambiguous-branches {
+  color: var(--text-3);
+  font: 500 13px/1.45 var(--font-ui);
+}
+
 @media (max-width: 767px) {
   .downloads-page {
     padding: var(--s-4) var(--s-20) var(--s-8);
@@ -10248,5 +10261,10 @@ body.reader-hud-visible .reader-hud {
   .downloads-page__title {
     font-size: 22px;
     line-height: 1;
+  }
+
+  /* The mobile strip has its own back button (strip_back_href). */
+  .download-status__back {
+    display: none;
   }
 }
