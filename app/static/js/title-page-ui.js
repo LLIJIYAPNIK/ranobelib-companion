@@ -51,7 +51,8 @@
       });
     });
     mobileQuery.addEventListener("change", () => apply());
-    select(0);
+    // PR 254: the reader's «К оглавлению» / chapter title link here with #title-panel-toc.
+    select(location.hash === "#title-panel-toc" ? tabs.length - 1 : 0);
     return { showToc: () => select(tabs.length - 1) };
   }
 
@@ -99,6 +100,11 @@
     const tabs = initTabs();
     initSummary();
     const startSelecting = initChapterSelection();
+
+    // The fragment arrives after the browser's own jump to the hash, so do it here.
+    if (location.hash === "#title-panel-toc") {
+      document.getElementById("title-panel-toc")?.scrollIntoView({ block: "start" });
+    }
 
     window.titlePageUi = {
       startChapterSelection() {

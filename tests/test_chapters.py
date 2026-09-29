@@ -12,7 +12,16 @@ from ranobelib import (
     MultipleTranslationsError,
     RateLimitError,
 )
-from ranobelib.models import Chapter, ChapterBranch, ChapterUser, Team, Volume
+from ranobelib.models import (
+    Chapter,
+    ChapterBranch,
+    ChapterUser,
+    Cover,
+    Label,
+    Team,
+    Title,
+    Volume,
+)
 
 from app.config import get_settings
 from app.db.activity import list_chapters_read_today
@@ -20,6 +29,7 @@ from app.db.connection import connection
 from app.db.library import add_entry, get_entry, list_entries
 from app.gif_video import is_ffmpeg_available
 from app.main import app
+from app.services.exports import available_export_formats
 from tests.auth_helpers import register
 from tests.db_reset import reset_app_database
 
@@ -66,6 +76,18 @@ class _FakeClient:
 
     async def get_table_of_contents(self) -> list[Volume]:
         return self._volumes
+
+    async def get_info(self) -> Title:
+        # PR 254: only called for the title's last chapter (the «Тайтл прочитан» card).
+        return Title(
+            id=6712,
+            name="Test Novel",
+            slug="test-novel",
+            slug_url="6712--test-novel",
+            cover=Cover(),
+            age_restriction=Label(id=0, label="16+"),
+            status=Label(id=1, label="Онгоинг"),
+        )
 
 
 def test_read_chapter_renders_heading_and_content() -> None:
@@ -115,12 +137,8 @@ def test_read_chapter_shows_adjacent_chapter_links() -> None:
     assert 'href="/titles/6712--test-novel/chapters/1/3"' in response.text
 
 
-def test_read_chapter_duplicates_adjacent_links_below_the_content() -> None:
-    # PR 28: the same prev/next navigation as the top block, repeated after the chapter
-    # text so it doesn't take a scroll back to the top to reach it. PR 52 adds a third
-    # copy in the reveal-on-scroll-up overlay, ahead of both - see the test below.
-    chapter = Chapter(id=2, volume="1", number="2", name="Середина", content="<p>x</p>")
-    volumes = [
+def _three_chapter_volumes() -> list[Volume]:
+    return [
         Volume(
             number="1",
             chapters=[
@@ -130,49 +148,76 @@ def test_read_chapter_duplicates_adjacent_links_below_the_content() -> None:
             ],
         )
     ]
+
+
+def test_read_chapter_renders_one_hud_ahead_of_the_text() -> None:
+    # PR 254: the old in-flow .reader-nav and PR 52's reveal-on-scroll-up copy became a
+    # single HUD (reader-hud.js), still data-role="reader-scroll-nav".
+    chapter = Chapter(id=2, volume="1", number="2", name="Середина", content="<p>x</p>")
     with patch(
         "app.services.client.RanobeLib",
-        return_value=_FakeClient(chapter, volumes=volumes),
+        return_value=_FakeClient(chapter, volumes=_three_chapter_volumes()),
     ):
         response = client.get("/titles/6712--test-novel/chapters/1/2")
 
     assert response.status_code == 200
-    assert response.text.count('href="/titles/6712--test-novel/chapters/1/1"') == 3
-    assert response.text.count('href="/titles/6712--test-novel/chapters/1/3"') == 3
-    assert 'class="reader-nav__adjacent reader-nav__adjacent--bottom"' in response.text
-    # Bottom block comes after the chapter content, not before it.
-    assert response.text.index("reader-nav__adjacent--bottom") > response.text.index(
+    assert response.text.count('data-role="reader-scroll-nav"') == 1
+    assert "static/js/reader-hud.js" in response.text
+    assert "static/js/reader-scroll-nav.js" not in response.text
+    assert 'class="reader-nav"' not in response.text
+    assert response.text.index('data-role="reader-scroll-nav"') < response.text.index(
         'data-role="chapter"'
     )
+    assert 'aria-label="Предыдущая глава"' in response.text
+    assert 'aria-label="Следующая глава"' in response.text
 
 
-def test_read_chapter_renders_reveal_on_scroll_up_overlay() -> None:
-    # PR 52: a fixed panel duplicating the back link/heading/prev-next, shown on any
-    # upward scroll mid-chapter - see app/static/js/reader-scroll-nav.js.
+def test_read_chapter_ends_with_a_next_chapter_card() -> None:
+    # PR 254: the bottom prev/next links became an end-of-chapter card after the text;
+    # next-chapter-link moved onto its «Следующая глава» button.
     chapter = Chapter(id=2, volume="1", number="2", name="Середина", content="<p>x</p>")
-    volumes = [
-        Volume(
-            number="1",
-            chapters=[
-                Chapter(id=1, volume="1", number="1"),
-                Chapter(id=2, volume="1", number="2"),
-                Chapter(id=3, volume="1", number="3"),
-            ],
-        )
-    ]
     with patch(
         "app.services.client.RanobeLib",
-        return_value=_FakeClient(chapter, volumes=volumes),
+        return_value=_FakeClient(chapter, volumes=_three_chapter_volumes()),
     ):
         response = client.get("/titles/6712--test-novel/chapters/1/2")
 
-    assert response.status_code == 200
-    assert 'data-role="reader-scroll-nav"' in response.text
-    assert "static/js/reader-scroll-nav.js" in response.text
-    # The overlay is the very first thing in the page - ahead of the in-flow nav.
-    assert response.text.index('data-role="reader-scroll-nav"') < response.text.index(
-        'class="reader-nav"'
-    )
+    card_start = response.text.index('data-role="reader-end-card"')
+    assert card_start > response.text.index('data-role="chapter"')
+    card = response.text[card_start : response.text.index("</section>", card_start)]
+    assert "Далее — глава 3" in card
+    assert "тайтл прочитан на 67%" in card  # 2 of 3 chapters
+    assert 'href="/titles/6712--test-novel/chapters/1/3" data-role="next-chapter-link"' in card
+
+
+def test_read_chapter_last_chapter_card_says_the_title_is_finished() -> None:
+    chapter = Chapter(id=3, volume="1", number="3", content="<p>x</p>")
+    with patch(
+        "app.services.client.RanobeLib",
+        return_value=_FakeClient(chapter, volumes=_three_chapter_volumes()),
+    ):
+        response = client.get("/titles/6712--test-novel/chapters/1/3")
+
+    card_start = response.text.index('data-role="reader-end-card"')
+    card = response.text[card_start : response.text.index("</section>", card_start)]
+    assert "Тайтл прочитан" in card
+    assert "Test Novel" in card
+    assert 'href="/titles/6712--test-novel?finished=1"' in card
+    assert 'data-role="next-chapter-link"' not in response.text
+
+
+def test_read_chapter_export_moves_into_the_more_sheet() -> None:
+    chapter = Chapter(id=2, volume="1", number="2", content="<p>x</p>")
+    with patch(
+        "app.services.client.RanobeLib",
+        return_value=_FakeClient(chapter, volumes=_three_chapter_volumes()),
+    ):
+        response = client.get("/titles/6712--test-novel/chapters/1/2")
+
+    sheet = response.text[response.text.index('data-role="reader-more-sheet"') :]
+    for fmt in available_export_formats():
+        assert f'/titles/6712--test-novel/chapters/1/2/export?fmt={fmt}"' in sheet
+    assert 'class="reader-export"' not in response.text
 
 
 def test_read_chapter_includes_tap_to_read_script() -> None:
