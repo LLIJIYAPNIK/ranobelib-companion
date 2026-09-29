@@ -6,6 +6,7 @@ from ranobelib import RanobeLibError, RateLimitError, TitleNotFoundError
 from ranobelib.models import Chapter, Country, Cover, Genre, Label, Tag, Title, Volume
 
 from app.main import app
+from app.services.exports import available_export_formats
 
 client = TestClient(app, follow_redirects=False)
 
@@ -635,3 +636,13 @@ def test_title_data_shows_six_chips_and_folds_the_rest_into_details() -> None:
     details = response.text[response.text.index("<details") :]
     assert 'href="/library/catalog?genres=7"' in details
     assert 'href="/library/catalog?genres=6"' not in details
+
+
+def test_title_data_mobile_sheets_offer_every_export_format() -> None:
+    title = _fake_title()
+    with patch("app.services.client.RanobeLib", return_value=_FakeClient(title)):
+        response = client.get("/titles/6712--test-novel/data")
+
+    sheet = response.text[response.text.index('data-role="title-format-sheet"') :]
+    for fmt in available_export_formats():
+        assert f'name="fmt" value="{fmt}"' in sheet

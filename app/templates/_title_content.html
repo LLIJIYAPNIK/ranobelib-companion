@@ -167,6 +167,17 @@
         </button>
       </form>
       {% endif %}
+
+      <button
+        type="button"
+        class="ui-btn ui-btn--lg title-hero__more"
+        data-role="title-actions-trigger"
+        aria-haspopup="dialog"
+        aria-label="Действия с тайтлом: скачать, библиотека"
+        hidden
+      >
+        <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><circle cx="5" cy="12" r="2"/><circle cx="12" cy="12" r="2"/><circle cx="19" cy="12" r="2"/></svg>
+      </button>
     </div>
   </div>
 </section>
@@ -284,3 +295,87 @@
     </form>
   </section>
 </div>
+
+{# Mobile sheets (M-TITLE-ACTIONS/-FORMAT/-REMOVE), opened by title-actions-sheet.js. #}
+<dialog class="ui-dialog ui-dialog--sheet title-sheet" data-role="title-actions-sheet" aria-label="Действия с тайтлом">
+  <span class="ui-dialog__grabber" aria-hidden="true"></span>
+  <div class="title-sheet__head">
+    {% if cover_url %}<img class="title-sheet__cover" src="{{ cover_url }}" alt="">{% endif %}
+    <span class="title-sheet__title">
+      <b>{{ display_name }}</b>
+      <span>{{ chapter_total }} {{ chapters_word(chapter_total) }}<span data-role="title-size-label"></span></span>
+    </span>
+    <button type="button" class="ui-icon-btn title-sheet__close" data-role="title-sheet-close" aria-label="Закрыть"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M6 6l12 12M18 6 6 18"/></svg></button>
+  </div>
+  <div class="title-sheet__list">
+    {% if export_formats %}
+    <button type="button" class="title-sheet__row" data-role="title-format-open">
+      <span class="title-sheet__icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 4v11M7.5 11 12 15.5 16.5 11M4.5 18.5v1a1 1 0 0 0 1 1h13a1 1 0 0 0 1-1v-1"/></svg></span>
+      <span class="title-sheet__text"><b>Скачать тайтл</b><span>{{ export_formats | map("upper") | join(", ") }}</span></span>
+      <svg class="title-sheet__chev" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="m9 6 6 6-6 6"/></svg>
+    </button>
+    <button type="button" class="title-sheet__row" data-role="title-select-chapters">
+      <span class="title-sheet__icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" aria-hidden="true"><path d="M9 6h12M9 12h12M9 18h12M4 6h.01M4 12h.01M4 18h.01"/></svg></span>
+      <span class="title-sheet__text"><b>Скачать тома или главы</b><span>Откроет выбор в оглавлении</span></span>
+      <svg class="title-sheet__chev" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="m9 6 6 6-6 6"/></svg>
+    </button>
+    <hr class="title-sheet__sep">
+    {% endif %}
+    {% if not current_user %}
+    <a class="title-sheet__row" href="/login" data-role="auth-modal-trigger">
+      <span class="title-sheet__icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round" aria-hidden="true"><path d="{{ bookmark_icon }}"/></svg></span>
+      <span class="title-sheet__text"><b>Добавить в библиотеку</b><span>Нужен аккаунт сайта</span></span>
+    </a>
+    {% elif in_library %}
+    <button type="button" class="title-sheet__row title-sheet__row--danger" data-role="title-remove-open">
+      <span class="title-sheet__icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round" aria-hidden="true"><path d="M6 3h12v18l-6-4.5L6 21zM9 10h6"/></svg></span>
+      <span class="title-sheet__text"><b>Убрать из библиотеки</b><span>Тайтл пропадёт из «Читаю»</span></span>
+    </button>
+    {% else %}
+    <form method="post" action="/library/{{ title.slug_url }}/add">
+      <input type="hidden" name="next" value="/titles/{{ title.slug_url }}">
+      <button type="submit" class="title-sheet__row">
+        <span class="title-sheet__icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round" aria-hidden="true"><path d="{{ bookmark_icon }}"/></svg></span>
+        <span class="title-sheet__text"><b>Добавить в библиотеку</b><span>Появится в «Читаю»</span></span>
+      </button>
+    </form>
+    {% endif %}
+  </div>
+</dialog>
+
+{% if export_formats %}
+<dialog class="ui-dialog ui-dialog--sheet title-sheet" data-role="title-format-sheet" aria-label="Скачать тайтл">
+  <span class="ui-dialog__grabber" aria-hidden="true"></span>
+  <div class="title-sheet__head title-sheet__head--nav">
+    <button type="button" class="ui-icon-btn" data-role="title-format-back" aria-label="Назад к действиям"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M15 5l-7 7 7 7"/></svg></button>
+    <b class="title-sheet__heading">Скачать тайтл</b>
+    <button type="button" class="ui-icon-btn title-sheet__close" data-role="title-sheet-close" aria-label="Закрыть"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M6 6l12 12M18 6 6 18"/></svg></button>
+  </div>
+  <form method="post" action="/titles/{{ title.slug_url }}/download" class="title-sheet__form">
+    <fieldset class="title-formats">
+      <legend class="title-formats__legend">Формат файла</legend>
+      {% for fmt in export_formats %}
+      <label class="title-format">
+        <input type="radio" name="fmt" value="{{ fmt }}"{% if loop.first %} checked{% endif %}>
+        <span class="title-format__text"><b>{{ fmt | upper }}</b>{% if format_notes[fmt] %}<span>{{ format_notes[fmt] }}</span>{% endif %}</span>
+      </label>
+      {% endfor %}
+    </fieldset>
+    <button type="submit" class="ui-btn ui-btn--primary ui-btn--lg ui-btn--block" data-role="title-format-submit"><span>Скачать <span data-role="title-format-name">{{ export_formats[0] | upper }}</span><span data-role="title-size-label"></span></span></button>
+  </form>
+</dialog>
+{% endif %}
+
+{% if in_library %}
+<dialog class="ui-dialog ui-dialog--sheet title-sheet title-sheet--confirm" data-role="title-remove-sheet" role="alertdialog" aria-labelledby="title-remove-heading">
+  <span class="ui-dialog__grabber" aria-hidden="true"></span>
+  <span class="title-sheet__danger-icon" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"><path d="M6 3h12v18l-6-4.5L6 21zM9 10h6"/></svg></span>
+  <b class="title-sheet__confirm-title" id="title-remove-heading">Убрать из библиотеки?</b>
+  <p class="title-sheet__confirm-text">«{{ display_name }}» пропадёт из раздела «Читаю». Вернуть можно в любой момент со страницы тайтла.</p>
+  <form method="post" action="/library/{{ title.slug_url }}/remove">
+    <input type="hidden" name="next" value="/titles/{{ title.slug_url }}">
+    <button type="submit" class="ui-btn ui-btn--destructive ui-btn--lg ui-btn--block">Убрать</button>
+  </form>
+  <button type="button" class="ui-btn ui-btn--lg ui-btn--block title-sheet__cancel" data-role="title-sheet-close">Отмена</button>
+</dialog>
+{% endif %}
