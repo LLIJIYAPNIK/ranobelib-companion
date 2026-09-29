@@ -160,6 +160,7 @@ async def show_catalog(
             "selected_country_names": [country_names_by_id.get(c, str(c)) for c in countries],
             "tags": tags,
             "selected_tag_names": selected_tag_names,
+            "tag_name": tag_name,
             "random_empty": random_empty,
         },
     )

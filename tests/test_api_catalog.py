@@ -786,6 +786,25 @@ def test_catalog_with_no_results_shows_empty_state() -> None:
     assert '<p class="ui-empty">Не нашлось ранобэ по этим фильтрам</p>' in response.text
 
 
+def test_catalog_filters_footer_resets_filters_and_submits_the_search_form() -> None:
+    """PR 251: «Сбросить» drops genres/countries but keeps the search, sort and tags;
+    «Показать» submits the toolbar's form."""
+    page = CatalogPage(items=[], page=1, has_next_page=False)
+    genres = [Genre(id=5, name="Фэнтези")]
+    with patch("app.services.catalog.Catalog", return_value=_FakeCatalog(page, genres=genres)):
+        response = client.get("/library/catalog?query=dxd&genres=5&tags=3")
+
+    reset = re.search(r'<a\s+class="[^"]*catalog-filters__reset"\s+href="([^"]*)"', response.text)
+    assert reset is not None
+    assert "genres" not in reset.group(1)
+    assert "query=dxd" in reset.group(1)
+    assert "tags=3" in reset.group(1)
+    assert (
+        'class="ui-btn catalog-filters__apply" type="submit" form="catalog-search-form"'
+        in response.text
+    )
+
+
 def test_catalog_sort_random_redirects_to_the_random_route() -> None:
     # The no-JS path: the plain form submit still sends ?sort=random.
     fake = _FakeCatalog(CatalogPage(items=[], page=1, has_next_page=False))

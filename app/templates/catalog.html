@@ -176,6 +176,15 @@
         </section>
         {% endif %}
       </div>
+      {# «Сбросить» drops genres/countries only - the search, sort and any tag filter
+         (set from a title page badge, not from this panel) stay. #}
+      <div class="catalog-filters__foot">
+        <a
+          class="ui-btn ui-btn--quiet catalog-filters__reset"
+          href="?query={{ query | urlencode if query else '' }}&sort={{ sort }}{% for t in tags %}&tags={{ t }}{% endfor %}{% if tag_name %}&tag_name={{ tag_name | urlencode }}{% endif %}"
+        >Сбросить</a>
+        <button class="ui-btn catalog-filters__apply" type="submit" form="catalog-search-form">Показать</button>
+      </div>
     </aside>
     {% endif %}
   </main>
