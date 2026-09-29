@@ -65,7 +65,7 @@
         <label class="auth-form__label" for="register-password-confirm">Повторите пароль</label>
         {{ password_input("register-password-confirm", "password_confirm") }}
       </div>
-      <button class="btn btn--primary" type="submit">Зарегистрироваться</button>
+      <button class="ui-btn ui-btn--primary ui-btn--block" type="submit">Зарегистрироваться</button>
     </form>
     {% else %}
     <form class="auth-form" method="post" action="/login" data-role="auth-form">
@@ -91,7 +91,7 @@
         <span>Запомнить меня</span>
       </label>
       <p class="auth-form__hint"><a href="/password-reset">Забыли пароль?</a></p>
-      <button class="btn btn--primary" type="submit">Войти</button>
+      <button class="ui-btn ui-btn--primary ui-btn--block" type="submit">Войти</button>
     </form>
     {% endif %}
     <script src="{{ url_for('static', path='js/disable-mobile-autofocus.js') }}"></script>

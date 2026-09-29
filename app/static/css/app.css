@@ -63,6 +63,12 @@
   --primary: #7c3aed;
   --primary-pressed: #6d28d9;
   --primary-text: #b9a2ff;
+  /* PR 248: pressed/hover steps from the "02 Components" button matrix - not in the
+     Foundations table, but every button state reads them. */
+  --primary-active: #5b21b6;
+  --danger-hover: #f43f5e;
+  --danger-active: #e11d48;
+  --surface-pressed: #211e33;
   --accent: #22d3c5;
   --accent-text: #5eead4;
   --accent-soft: rgba(34, 211, 197, 0.1);
@@ -6467,4 +6473,1498 @@ img.paragraph-comment__attachment {
     height: 36px;
     font-size: 18px;
   }
+}
+
+/* ==========================================================================
+   Aurora Ink components (PR 248) - section "02 Components" of the Claude Design
+   import "Webnovells - Aurora Ink - Final", built on the PR 247 tokens. Namespaced
+   .ui-* so they sit next to the pre-Aurora classes (.btn, .dropdown skin, ...) without
+   restyling them; each wave 31 screen PR moves its markup over, PR 267 drops the old.
+   ========================================================================== */
+
+/* Buttons: Primary / Secondary / Quiet / Destructive, 44px (sm 36, lg 52), radius 12.
+   One Primary per screen. Hover only on hover-capable pointers, touch gets :active.
+   Loading = disabled + aria-busy="true": keeps its width, only dims. */
+.ui-btn {
+  --ui-btn-bg: var(--surface-2);
+  --ui-btn-fg: var(--text-1);
+  --ui-btn-border: var(--border-strong);
+  --ui-btn-hover: var(--surface-3);
+  --ui-btn-active: var(--surface-pressed);
+  appearance: none;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--s-8);
+  height: 44px;
+  padding: 0 18px;
+  border: 1px solid var(--ui-btn-border);
+  border-radius: var(--r-lg);
+  background: var(--ui-btn-bg);
+  color: var(--ui-btn-fg);
+  font: var(--type-button);
+  white-space: nowrap;
+  text-decoration: none;
+  cursor: pointer;
+  transition:
+    background-color var(--dur-base) var(--ease),
+    color var(--dur-base) var(--ease),
+    opacity var(--dur-press) var(--ease);
+}
+
+.ui-btn--primary {
+  --ui-btn-bg: var(--primary);
+  --ui-btn-fg: #ffffff;
+  --ui-btn-border: transparent;
+  --ui-btn-hover: var(--primary-pressed);
+  --ui-btn-active: var(--primary-active);
+}
+
+.ui-btn--quiet {
+  --ui-btn-bg: transparent;
+  --ui-btn-fg: var(--text-2);
+  --ui-btn-border: transparent;
+  --ui-btn-hover: var(--surface-2);
+}
+
+.ui-btn--destructive {
+  --ui-btn-bg: var(--danger);
+  --ui-btn-fg: #1a0a10;
+  --ui-btn-border: transparent;
+  --ui-btn-hover: var(--danger-hover);
+  --ui-btn-active: var(--danger-active);
+}
+
+.ui-btn--sm {
+  height: 36px;
+  padding: 0 14px;
+  border-radius: var(--r-md);
+  font: var(--type-button-sm);
+}
+
+.ui-btn--lg {
+  height: 52px;
+  padding: 0 22px;
+  font-size: 16px;
+}
+
+.ui-btn--block {
+  width: 100%;
+}
+
+@media (hover: hover) {
+  .ui-btn:hover {
+    background: var(--ui-btn-hover);
+    color: var(--ui-btn-fg);
+  }
+}
+
+.ui-btn:active {
+  background: var(--ui-btn-active);
+}
+
+.ui-btn--destructive:active {
+  color: #ffffff;
+}
+
+.ui-btn:focus-visible {
+  outline: none;
+  box-shadow: var(--focus-ring);
+}
+
+.ui-btn:disabled,
+.ui-btn[aria-disabled="true"] {
+  background: var(--surface-2);
+  border-color: var(--border);
+  color: var(--disabled-text);
+  cursor: not-allowed;
+}
+
+.ui-btn--quiet:disabled,
+.ui-btn--quiet[aria-disabled="true"] {
+  background: transparent;
+  border-color: transparent;
+}
+
+/* Loading keeps the variant's own colors (it isn't "unavailable", just busy). */
+.ui-btn[aria-busy="true"] {
+  background: var(--ui-btn-bg);
+  border-color: var(--ui-btn-border);
+  color: var(--ui-btn-fg);
+  opacity: 0.75;
+  cursor: progress;
+}
+
+/* Icon-only button: 44x44, always with an aria-label. */
+.ui-icon-btn {
+  appearance: none;
+  position: relative;
+  display: inline-grid;
+  place-items: center;
+  flex: 0 0 auto;
+  width: 44px;
+  height: 44px;
+  padding: 0;
+  border: 0;
+  border-radius: var(--r-lg);
+  background: transparent;
+  color: var(--text-1);
+  cursor: pointer;
+  transition: background-color var(--dur-base) var(--ease), color var(--dur-base) var(--ease);
+}
+
+.ui-icon-btn svg {
+  width: 20px;
+  height: 20px;
+}
+
+@media (hover: hover) {
+  .ui-icon-btn:hover {
+    background: var(--surface-2);
+  }
+}
+
+.ui-icon-btn:active,
+.ui-icon-btn[aria-expanded="true"] {
+  background: var(--surface-pressed);
+}
+
+.ui-icon-btn:focus-visible {
+  outline: none;
+  box-shadow: var(--focus-ring);
+}
+
+.ui-icon-btn:disabled {
+  background: transparent;
+  color: var(--disabled);
+  cursor: not-allowed;
+}
+
+/* Fields: label above, 44px input, hint or error below. Error state is driven by
+   aria-invalid="true" (what a screen reader needs anyway), .ui-input--error is the
+   same look for server-rendered errors that can't set the attribute on the input. */
+.ui-field {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  min-width: 0;
+}
+
+.ui-field__label {
+  font: 700 13px/1 var(--font-ui);
+  color: var(--text-2);
+}
+
+.ui-field__hint {
+  font: 500 12px/1.3 var(--font-ui);
+  color: var(--text-3);
+}
+
+.ui-field__error {
+  font: 600 12px/1.3 var(--font-ui);
+  color: var(--danger-text);
+}
+
+.ui-input {
+  appearance: none;
+  width: 100%;
+  height: 44px;
+  padding: 0 14px;
+  border: 1px solid var(--border);
+  border-radius: var(--r-lg);
+  background: var(--surface-1);
+  color: var(--text-1);
+  font: 500 15px/1 var(--font-ui);
+  transition:
+    border-color var(--dur-base) var(--ease),
+    box-shadow var(--dur-base) var(--ease),
+    background-color var(--dur-base) var(--ease);
+}
+
+.ui-input::placeholder {
+  color: var(--text-3);
+  opacity: 1;
+}
+
+.ui-input:focus,
+.ui-input-group:focus-within {
+  outline: none;
+  border-color: var(--accent);
+  background: var(--bg-page);
+  box-shadow: 0 0 0 3px rgba(34, 211, 197, 0.2);
+}
+
+.ui-input[aria-invalid="true"],
+.ui-input--error {
+  border-color: var(--danger);
+}
+
+.ui-input:disabled,
+.ui-input-group:has(.ui-input:disabled) {
+  border-style: dashed;
+  background: #100f1b;
+  color: var(--disabled-text);
+  cursor: not-allowed;
+}
+
+/* Input with a leading icon (link field on the home page, catalog search): the group
+   draws the box, the input inside is bare. */
+.ui-input-group {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  height: 44px;
+  padding: 0 14px;
+  border: 1px solid var(--border);
+  border-radius: var(--r-lg);
+  background: var(--surface-1);
+  color: var(--text-3);
+  transition:
+    border-color var(--dur-base) var(--ease),
+    box-shadow var(--dur-base) var(--ease),
+    background-color var(--dur-base) var(--ease);
+}
+
+.ui-input-group > svg {
+  flex: 0 0 auto;
+  width: 18px;
+  height: 18px;
+}
+
+.ui-input-group .ui-input {
+  flex: 1;
+  height: 100%;
+  min-width: 0;
+  padding: 0;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  box-shadow: none;
+}
+
+/* Field + action on one line ("Вставьте ссылку…" + «Открыть»). */
+.ui-input-row {
+  display: flex;
+  gap: 10px;
+}
+
+.ui-input-row > :first-child {
+  flex: 1;
+  min-width: 0;
+}
+
+/* Select: still the native <select>, skinned by custom-dropdown.js exactly as before -
+   this only restyles the .dropdown markup that script already builds, when it sits
+   inside .ui-select. The trigger's ::before stretches its hit area over the whole box,
+   so the optional .ui-select__prefix ("Сортировка:") opens it too, and the listbox is
+   positioned against the box rather than the (static) .dropdown wrapper. Without JS
+   the native <select> gets the same box. */
+.ui-select {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  height: 44px;
+  padding: 0 14px;
+  border: 1px solid var(--border);
+  border-radius: var(--r-lg);
+  background: var(--surface-2);
+  color: var(--text-1);
+  font: 600 14px/1 var(--font-ui);
+  white-space: nowrap;
+}
+
+.ui-select:focus-within {
+  box-shadow: var(--focus-ring);
+}
+
+.ui-select__prefix {
+  color: var(--text-3);
+  font-weight: 500;
+}
+
+.ui-select > select {
+  appearance: none;
+  flex: 1;
+  height: 100%;
+  border: 0;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  cursor: pointer;
+}
+
+.ui-select > select:focus {
+  outline: none;
+}
+
+.ui-select .dropdown {
+  position: static;
+  flex: 1;
+}
+
+.ui-select .dropdown__trigger {
+  height: 42px;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  cursor: pointer;
+}
+
+.ui-select .dropdown__trigger:focus {
+  outline: none;
+}
+
+.ui-select .dropdown__trigger::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+}
+
+/* Chevron drawn with two borders - a data: URI icon would be blocked by img-src. */
+.ui-select .dropdown__trigger::after {
+  width: 7px;
+  height: 7px;
+  margin: -4px 2px 0 0;
+  border: solid var(--text-3);
+  border-width: 0 2px 2px 0;
+  transform: rotate(45deg);
+  transition: transform var(--dur-base) var(--ease);
+}
+
+.ui-select .dropdown--open .dropdown__trigger::after {
+  margin-top: 4px;
+  transform: rotate(225deg);
+}
+
+.ui-select .dropdown__listbox {
+  top: calc(100% + 6px);
+  min-width: max(100%, 220px);
+  padding: var(--s-4);
+  border: 1px solid var(--border);
+  border-radius: var(--r-lg);
+  background: var(--surface-2);
+  box-shadow: var(--shadow-popover);
+  transform: translateY(calc(-6px * var(--motion-shift)));
+  transition:
+    opacity var(--dur-exit) var(--ease-exit),
+    transform var(--dur-exit) var(--ease-exit);
+}
+
+.ui-select .dropdown--open .dropdown__listbox {
+  transform: none;
+  transition:
+    opacity var(--dur-sheet) var(--ease),
+    transform var(--dur-sheet) var(--ease);
+}
+
+.ui-select .dropdown__option {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--s-12);
+  height: 40px;
+  padding: 0 10px;
+  border-radius: var(--r-sm);
+  color: var(--text-2);
+  font: 500 14px/1 var(--font-ui);
+}
+
+.ui-select .dropdown__option--active {
+  background: var(--surface-3);
+  color: var(--text-1);
+}
+
+.ui-select .dropdown__option--selected {
+  color: var(--text-1);
+  font-weight: 600;
+}
+
+.ui-select .dropdown__option--selected::after {
+  content: "";
+  flex: 0 0 auto;
+  width: 5px;
+  height: 10px;
+  margin: -3px 3px 0 0;
+  border: solid var(--accent);
+  border-width: 0 2px 2px 0;
+  transform: rotate(45deg);
+}
+
+/* Checkbox: 20px box, violet when checked. Always the real <input type="checkbox">,
+   only its appearance is replaced. */
+.ui-checkbox {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  min-height: 24px;
+  color: var(--text-1);
+  font: 500 14px/1.3 var(--font-ui);
+  cursor: pointer;
+}
+
+.ui-checkbox input[type="checkbox"] {
+  appearance: none;
+  -webkit-appearance: none;
+  position: relative;
+  flex: 0 0 auto;
+  width: 20px;
+  height: 20px;
+  margin: 0;
+  border: 1.5px solid var(--disabled);
+  border-radius: var(--r-xs);
+  background: transparent;
+  cursor: pointer;
+  transition:
+    background-color var(--dur-press) var(--ease),
+    border-color var(--dur-press) var(--ease);
+}
+
+.ui-checkbox input[type="checkbox"]::after {
+  content: "";
+  position: absolute;
+  left: 5.5px;
+  top: 2px;
+  width: 5px;
+  height: 10px;
+  border: solid #ffffff;
+  border-width: 0 2px 2px 0;
+  transform: rotate(45deg);
+  opacity: 0;
+}
+
+.ui-checkbox input[type="checkbox"]:checked {
+  border-color: #8b5cf6;
+  background: #8b5cf6;
+}
+
+.ui-checkbox input[type="checkbox"]:checked::after {
+  opacity: 1;
+}
+
+.ui-checkbox input[type="checkbox"]:focus-visible {
+  outline: none;
+  box-shadow: var(--focus-ring);
+}
+
+.ui-checkbox:has(input:disabled) {
+  color: var(--disabled-text);
+  cursor: not-allowed;
+}
+
+.ui-checkbox input[type="checkbox"]:disabled {
+  border-style: dashed;
+  border-color: var(--border);
+  background: transparent;
+  cursor: not-allowed;
+}
+
+/* Switch: <input type="checkbox" role="switch"> - the same field a form already
+   submits, just drawn as a 44x26 toggle. */
+.ui-switch {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  min-height: 26px;
+  color: var(--text-1);
+  font: 500 14px/1.3 var(--font-ui);
+  cursor: pointer;
+}
+
+.ui-switch input[type="checkbox"] {
+  appearance: none;
+  -webkit-appearance: none;
+  position: relative;
+  flex: 0 0 auto;
+  width: 44px;
+  height: 26px;
+  margin: 0;
+  border: 0;
+  border-radius: 13px;
+  background: var(--border);
+  cursor: pointer;
+  transition: background-color var(--dur-base) var(--ease);
+}
+
+.ui-switch input[type="checkbox"]::before {
+  content: "";
+  position: absolute;
+  left: 3px;
+  top: 3px;
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  background: var(--text-3);
+  transition:
+    transform var(--dur-base) var(--ease),
+    background-color var(--dur-base) var(--ease);
+}
+
+.ui-switch input[type="checkbox"]:checked {
+  background: #1b6e68;
+}
+
+/* The knob moving is the state itself, so it isn't scaled by --motion-shift. */
+.ui-switch input[type="checkbox"]:checked::before {
+  background: var(--text-1);
+  transform: translateX(18px);
+}
+
+.ui-switch input[type="checkbox"]:focus-visible {
+  outline: none;
+  box-shadow: var(--focus-ring);
+}
+
+.ui-switch:has(input:disabled) {
+  color: var(--disabled-text);
+  cursor: not-allowed;
+}
+
+.ui-switch input[type="checkbox"]:disabled {
+  background: var(--r-surface);
+  box-shadow: inset 0 0 0 1px var(--border);
+  cursor: not-allowed;
+}
+
+.ui-switch input[type="checkbox"]:disabled::before {
+  display: none;
+}
+
+/* Range: 4px track, cyan fill, 22px knob. Firefox paints the fill itself
+   (::-moz-range-progress); WebKit needs --ui-range-fill, kept in sync by
+   ui-range.js. */
+.ui-range {
+  --ui-range-fill: 0%;
+  appearance: none;
+  -webkit-appearance: none;
+  width: 100%;
+  height: 24px;
+  margin: 0;
+  background: transparent;
+  cursor: pointer;
+}
+
+.ui-range::-webkit-slider-runnable-track {
+  height: 4px;
+  border-radius: 2px;
+  background: linear-gradient(
+    to right,
+    var(--accent) 0 var(--ui-range-fill),
+    var(--border) var(--ui-range-fill) 100%
+  );
+}
+
+.ui-range::-moz-range-track {
+  height: 4px;
+  border-radius: 2px;
+  background: var(--border);
+}
+
+.ui-range::-moz-range-progress {
+  height: 4px;
+  border-radius: 2px;
+  background: var(--accent);
+}
+
+.ui-range::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  width: 22px;
+  height: 22px;
+  margin-top: -9px;
+  border: 0;
+  border-radius: 50%;
+  background: var(--text-1);
+  box-shadow: 0 0 0 4px rgba(34, 211, 197, 0.25);
+}
+
+.ui-range::-moz-range-thumb {
+  width: 22px;
+  height: 22px;
+  border: 0;
+  border-radius: 50%;
+  background: var(--text-1);
+  box-shadow: 0 0 0 4px rgba(34, 211, 197, 0.25);
+}
+
+.ui-range:focus {
+  outline: none;
+}
+
+.ui-range:focus-visible::-webkit-slider-thumb {
+  box-shadow: var(--focus-ring);
+}
+
+.ui-range:focus-visible::-moz-range-thumb {
+  box-shadow: var(--focus-ring);
+}
+
+/* Label row above a range: name left, current value right. */
+.ui-range-label {
+  display: flex;
+  justify-content: space-between;
+  gap: var(--s-12);
+  font: 700 13px/1 var(--font-ui);
+  color: var(--text-2);
+}
+
+.ui-range-label output,
+.ui-range-label__value {
+  color: var(--text-1);
+}
+
+/* Segmented control: a radiogroup of real radios; the active segment is a raised
+   surface, never violet. */
+.ui-segmented {
+  display: flex;
+  gap: 3px;
+  padding: 3px;
+  border: 0;
+  border-radius: var(--r-md);
+  background: #12111f;
+  margin: 0;
+  min-width: 0;
+}
+
+.ui-segmented__item {
+  position: relative;
+  flex: 1;
+  min-width: 0;
+}
+
+.ui-segmented__item input {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  margin: 0;
+  opacity: 0;
+  cursor: pointer;
+}
+
+.ui-segmented__item span {
+  display: grid;
+  place-items: center;
+  height: 36px;
+  padding: 0 var(--s-8);
+  border-radius: var(--r-sm);
+  color: var(--text-3);
+  font: 600 13px/1 var(--font-ui);
+  white-space: nowrap;
+  transition:
+    background-color var(--dur-base) var(--ease),
+    color var(--dur-base) var(--ease);
+}
+
+@media (hover: hover) {
+  .ui-segmented__item input:not(:checked):hover + span {
+    color: var(--text-1);
+  }
+}
+
+.ui-segmented__item input:checked + span {
+  background: #2b2742;
+  color: var(--text-1);
+  font-weight: 700;
+}
+
+.ui-segmented__item input:focus-visible + span {
+  box-shadow: var(--focus-ring);
+}
+
+/* Tabs: links between routes (_library_tabs.html), active one has aria-current. */
+.ui-tabs {
+  display: flex;
+  gap: 28px;
+  border-bottom: 1px solid var(--divider);
+  overflow-x: auto;
+  scrollbar-width: none;
+}
+
+.ui-tabs__link {
+  display: flex;
+  align-items: center;
+  height: 44px;
+  color: var(--text-3);
+  font: 600 15px/1 var(--font-ui);
+  text-decoration: none;
+  white-space: nowrap;
+  transition:
+    color var(--dur-base) var(--ease),
+    box-shadow var(--dur-base) var(--ease);
+}
+
+@media (hover: hover) {
+  .ui-tabs__link:hover {
+    color: var(--text-1);
+  }
+}
+
+.ui-tabs__link[aria-current="page"] {
+  color: var(--text-1);
+  font-weight: 700;
+  box-shadow: inset 0 -2px 0 var(--accent);
+}
+
+.ui-tabs__link:focus-visible {
+  outline: none;
+  border-radius: var(--r-xs);
+  box-shadow: var(--focus-ring);
+}
+
+/* Progress bar: 4px under grid cards (percent 11px), --lg 6px on library cards
+   (percent 15px/800). Width comes from an inline style="width: N%" on the fill, the
+   same way the pre-Aurora .reading-progress bars already do it. */
+.ui-progress {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.ui-progress__bar {
+  flex: 1;
+  height: 4px;
+  border-radius: 2px;
+  background: var(--border);
+  overflow: hidden;
+}
+
+.ui-progress__fill {
+  display: block;
+  min-width: 3px;
+  height: 100%;
+  border-radius: inherit;
+  background: var(--accent);
+}
+
+.ui-progress__pct {
+  color: var(--accent-text);
+  font: 700 11px/1 var(--font-ui);
+  font-variant-numeric: tabular-nums;
+}
+
+.ui-progress--lg {
+  gap: 10px;
+}
+
+.ui-progress--lg .ui-progress__bar {
+  height: 6px;
+  border-radius: 3px;
+}
+
+.ui-progress--lg .ui-progress__fill {
+  min-width: 4px;
+}
+
+.ui-progress--lg .ui-progress__pct {
+  min-width: 36px;
+  text-align: right;
+  font: 800 15px/1 var(--font-ui);
+}
+
+/* Title card (grid): 2:3 cover, optional corner action (quickview eye, «×» forget),
+   optional progress, name clamped to 2 lines - the full name goes in the link's
+   title/aria-label. */
+.ui-title-card {
+  display: flex;
+  flex-direction: column;
+  gap: var(--s-8);
+  min-width: 0;
+  color: var(--text-1);
+  text-decoration: none;
+}
+
+.ui-title-card__cover {
+  position: relative;
+  display: block;
+  aspect-ratio: 2 / 3;
+  border-radius: var(--r-lg);
+  background: var(--surface-1);
+  overflow: hidden;
+}
+
+.ui-title-card__img {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  transition: filter var(--dur-base) var(--ease);
+}
+
+.ui-title-card__link {
+  display: block;
+  border-radius: var(--r-lg);
+  color: inherit;
+  text-decoration: none;
+}
+
+.ui-title-card__cover > .ui-title-card__link {
+  height: 100%;
+}
+
+.ui-title-card__link:focus-visible {
+  outline: none;
+}
+
+.ui-title-card__link:focus-visible .ui-title-card__cover,
+a.ui-title-card:focus-visible .ui-title-card__cover {
+  box-shadow: var(--focus-ring);
+}
+
+@media (hover: hover) {
+  .ui-title-card:hover .ui-title-card__img {
+    filter: brightness(1.08);
+  }
+}
+
+/* Corner action: visually 32px (or 28px --sm), always a 44px hit area. */
+.ui-title-card__action {
+  appearance: none;
+  position: absolute;
+  top: 0;
+  right: 0;
+  display: grid;
+  place-items: center;
+  width: 44px;
+  height: 44px;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: var(--text-1);
+  cursor: pointer;
+}
+
+.ui-title-card__action-chip {
+  display: grid;
+  place-items: center;
+  width: 32px;
+  height: 32px;
+  border-radius: var(--r-md);
+  background: rgba(11, 11, 20, 0.78);
+  transition: background-color var(--dur-base) var(--ease);
+}
+
+.ui-title-card__action--sm .ui-title-card__action-chip {
+  width: 28px;
+  height: 28px;
+  border-radius: 9px;
+}
+
+.ui-title-card__action-chip svg {
+  width: 16px;
+  height: 16px;
+}
+
+@media (hover: hover) {
+  .ui-title-card__action:hover .ui-title-card__action-chip {
+    background: rgba(11, 11, 20, 0.95);
+  }
+}
+
+.ui-title-card__action:focus-visible {
+  outline: none;
+}
+
+.ui-title-card__action:focus-visible .ui-title-card__action-chip {
+  box-shadow: var(--focus-ring);
+}
+
+.ui-title-card__name {
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+  font: 600 13px/1.3 var(--font-ui);
+  overflow-wrap: anywhere;
+}
+
+.ui-title-card__meta {
+  color: var(--text-3);
+  font: var(--type-body-sm);
+}
+
+/* Library card (horizontal): 72x108 cover, name, meta line, large progress. */
+.ui-library-card {
+  display: flex;
+  gap: 14px;
+  min-width: 0;
+  padding: var(--s-12);
+  border: 1px solid var(--border);
+  border-radius: var(--r-xl);
+  background: var(--surface-1);
+  color: var(--text-1);
+}
+
+.ui-library-card__cover {
+  position: relative;
+  flex: 0 0 auto;
+  width: 72px;
+  height: 108px;
+  border-radius: var(--r-sm);
+  background: var(--surface-2);
+  overflow: hidden;
+}
+
+.ui-library-card__cover img {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.ui-library-card__body {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  flex: 1;
+  min-width: 0;
+}
+
+.ui-library-card__name {
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+  font: 700 15px/1.3 var(--font-ui);
+  color: inherit;
+  text-decoration: none;
+  overflow-wrap: anywhere;
+}
+
+.ui-library-card__meta {
+  color: var(--text-3);
+  font: 500 13px/1.2 var(--font-ui);
+}
+
+.ui-library-card .ui-progress {
+  margin-top: auto;
+}
+
+/* Chips: links only (genres, tags, country -> catalog with a filter). */
+.ui-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--s-8);
+  align-items: center;
+}
+
+.ui-chip {
+  display: inline-flex;
+  align-items: center;
+  height: 30px;
+  padding: 0 var(--s-12);
+  border: 1px solid var(--border-strong);
+  border-radius: var(--r-sm);
+  background: transparent;
+  color: var(--text-1);
+  font: 600 13px/1 var(--font-ui);
+  text-decoration: none;
+  white-space: nowrap;
+  transition:
+    background-color var(--dur-base) var(--ease),
+    border-color var(--dur-base) var(--ease);
+}
+
+.ui-chip--filled {
+  border-color: transparent;
+  background: var(--surface-2);
+}
+
+@media (hover: hover) {
+  a.ui-chip:hover {
+    border-color: var(--border-strong);
+    background: var(--surface-3);
+    color: var(--text-1);
+  }
+}
+
+.ui-chip:focus-visible {
+  outline: none;
+  box-shadow: var(--focus-ring);
+}
+
+/* «Ещё N» - a text button next to the chips (a <summary> on the title page). */
+.ui-chip-more {
+  display: inline-flex;
+  align-items: center;
+  height: 30px;
+  padding: 0 10px;
+  color: var(--primary-text);
+  font: 700 13px/1 var(--font-ui);
+  cursor: pointer;
+  list-style: none;
+}
+
+.ui-chip-more::-webkit-details-marker {
+  display: none;
+}
+
+/* Status: text with a dot, never a chip. */
+.ui-status {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  color: var(--warning);
+  font: 600 13px/1 var(--font-ui);
+}
+
+.ui-status::before {
+  content: "";
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: currentColor;
+}
+
+.ui-status--accent {
+  color: var(--accent-text);
+}
+
+/* Count badge: coral for notifications, cyan for downloads. */
+.ui-badge {
+  display: inline-block;
+  min-width: 20px;
+  height: 20px;
+  padding: 0 6px;
+  border-radius: 10px;
+  background: var(--danger);
+  color: #1a0a10;
+  font: 800 11px/20px var(--font-ui);
+  text-align: center;
+  font-variant-numeric: tabular-nums;
+}
+
+.ui-badge--accent {
+  background: var(--accent);
+  color: var(--bg-page);
+}
+
+/* Skeleton: same size as what it stands in for. The sheen is decoration, so reduced
+   motion drops it rather than just shortening it. */
+.ui-skeleton {
+  display: block;
+  border-radius: var(--s-4);
+  background: var(--surface-2);
+}
+
+.ui-skeleton--cover {
+  aspect-ratio: 2 / 3;
+  border-radius: var(--r-lg);
+  background: linear-gradient(110deg, var(--surface-1) 30%, #1f1c30 50%, var(--surface-1) 70%);
+  background-size: 250% 100%;
+  animation: ui-skeleton-sheen 1.4s linear infinite;
+}
+
+.ui-skeleton--line {
+  height: 12px;
+}
+
+@keyframes ui-skeleton-sheen {
+  from {
+    background-position: 100% 0;
+  }
+  to {
+    background-position: -150% 0;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .ui-skeleton--cover {
+    animation: none;
+  }
+}
+
+/* Empty state: one --text-3 line where the list would be, plus an action if any. */
+.ui-empty {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--s-12);
+  margin: 0;
+  color: var(--text-3);
+  font: 500 14px/1.5 var(--font-ui);
+}
+
+/* Locked feature (guest): lock tile, title, text with sign-in links, secondary CTA. */
+.ui-locked {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 14px;
+  padding: var(--s-16);
+  border: 1px solid var(--border);
+  border-radius: var(--r-xl);
+  background: var(--surface-1);
+}
+
+.ui-locked__icon {
+  display: grid;
+  place-items: center;
+  flex: 0 0 auto;
+  width: 44px;
+  height: 44px;
+  border-radius: var(--r-lg);
+  background: var(--surface-2);
+  color: var(--primary-text);
+}
+
+.ui-locked__icon svg {
+  width: 22px;
+  height: 22px;
+}
+
+.ui-locked__copy {
+  display: flex;
+  flex-direction: column;
+  gap: var(--s-4);
+  flex: 1;
+  min-width: 200px;
+}
+
+.ui-locked__title {
+  margin: 0;
+  color: var(--text-1);
+  font: 700 15px/1.2 var(--font-ui);
+}
+
+.ui-locked__text {
+  margin: 0;
+  color: var(--text-2);
+  font: 500 13px/1.4 var(--font-ui);
+}
+
+.ui-locked__text a {
+  color: var(--primary-text);
+}
+
+/* Inline notices: error above a form, success after a save. */
+.ui-notice {
+  display: block;
+  margin: 0;
+  padding: 10px 14px;
+  border-radius: var(--r-md);
+  background: var(--accent-soft);
+  color: var(--accent-text);
+  font: 600 14px/1.4 var(--font-ui);
+}
+
+.ui-notice--error {
+  background: rgba(251, 113, 133, 0.1);
+  color: var(--danger-text);
+}
+
+/* Toast (download-ready): look only - where it floats (bottom-left beside the
+   sidebar, above the Quiet Edge Bar on mobile) belongs to the shell, PR 249. */
+.ui-toast {
+  display: flex;
+  align-items: center;
+  gap: var(--s-12);
+  max-width: min(480px, 100%);
+  padding: 10px 10px 10px var(--s-16);
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  background: var(--surface-2);
+  box-shadow: var(--shadow-popover);
+  color: var(--text-1);
+  font: 600 14px/1.3 var(--font-ui);
+}
+
+.ui-toast::before {
+  content: "";
+  flex: 0 0 auto;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--accent);
+}
+
+.ui-toast__text {
+  flex: 1;
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+/* Download progress: status line, ETA, 6px bar (bar-fill/status-text/eta-text). */
+.ui-download-progress {
+  display: flex;
+  flex-direction: column;
+  gap: var(--s-8);
+  padding: 14px var(--s-16);
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  background: var(--surface-1);
+}
+
+.ui-download-progress__head {
+  display: flex;
+  justify-content: space-between;
+  gap: var(--s-12);
+  color: var(--text-1);
+  font: 600 13px/1.3 var(--font-ui);
+}
+
+.ui-download-progress__eta {
+  color: var(--text-3);
+  white-space: nowrap;
+}
+
+.ui-download-progress .ui-progress__bar {
+  flex: none;
+  height: 6px;
+  border-radius: 3px;
+}
+
+/* Dialog: native <dialog> opened with showModal() ("05 Спецификация" -> Sheets,
+   popovers, dialogs). Height capped at 90dvh with the body scrolling and the footer
+   pinned. --sheet turns it into a bottom sheet on mobile. Enter only - closing a
+   <dialog> removes it from rendering at once, so there's nothing to animate out. */
+.ui-dialog {
+  width: min(560px, calc(100% - 32px));
+  max-width: none;
+  max-height: 90dvh;
+  margin: auto;
+  padding: 0;
+  border: 1px solid var(--border);
+  border-radius: var(--r-xl);
+  background: var(--surface-2);
+  box-shadow: var(--shadow-popover);
+  color: var(--text-1);
+  font: var(--type-body);
+  overflow: hidden;
+}
+
+.ui-dialog[open] {
+  display: flex;
+  flex-direction: column;
+  animation: ui-dialog-in var(--dur-sheet) var(--ease);
+}
+
+.ui-dialog::backdrop {
+  background: var(--scrim);
+  animation: ui-fade-in 160ms var(--ease);
+}
+
+.ui-dialog__head {
+  display: flex;
+  align-items: center;
+  gap: var(--s-12);
+  padding: var(--s-16) var(--s-12) var(--s-8) var(--s-20);
+}
+
+.ui-dialog__title {
+  flex: 1;
+  min-width: 0;
+  margin: 0;
+  font: var(--type-h2);
+}
+
+.ui-dialog__body {
+  flex: 1;
+  min-height: 0;
+  padding: 0 var(--s-20) var(--s-20);
+  overflow-y: auto;
+  overscroll-behavior: contain;
+}
+
+.ui-dialog__foot {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 10px;
+  padding: var(--s-16) var(--s-20);
+  border-top: 1px solid var(--divider);
+  background: var(--surface-2);
+}
+
+.ui-dialog__grabber {
+  display: none;
+}
+
+@keyframes ui-dialog-in {
+  from {
+    opacity: 0;
+    transform: translateY(calc(8px * var(--motion-shift)));
+  }
+}
+
+@keyframes ui-fade-in {
+  from {
+    opacity: 0;
+  }
+}
+
+@media (max-width: 767px) {
+  .ui-dialog--sheet {
+    width: 100%;
+    margin: auto 0 0;
+    border-width: 1px 0 0;
+    border-radius: var(--r-2xl) var(--r-2xl) 0 0;
+    box-shadow: var(--shadow-sheet);
+  }
+
+  .ui-dialog--sheet[open] {
+    animation-name: ui-sheet-in;
+  }
+
+  .ui-dialog--sheet .ui-dialog__grabber {
+    display: block;
+    flex: 0 0 auto;
+    width: 36px;
+    height: 4px;
+    margin: var(--s-8) auto 0;
+    border-radius: 2px;
+    background: var(--border-strong);
+  }
+
+  .ui-dialog--sheet .ui-dialog__foot {
+    padding-bottom: calc(var(--s-16) + env(safe-area-inset-bottom, 0px));
+  }
+}
+
+@keyframes ui-sheet-in {
+  from {
+    transform: translateY(calc(100% * var(--motion-shift)));
+  }
+}
+
+/* Menu: popover list of actions (Account hub, paragraph menu, «⋯»). */
+.ui-menu {
+  display: flex;
+  flex-direction: column;
+  min-width: 220px;
+  margin: 0;
+  padding: 6px;
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  background: var(--surface-2);
+  box-shadow: var(--shadow-popover);
+  list-style: none;
+}
+
+.ui-menu__item {
+  appearance: none;
+  display: flex;
+  align-items: center;
+  gap: var(--s-12);
+  width: 100%;
+  min-height: 42px;
+  padding: 0 10px;
+  border: 0;
+  border-radius: var(--r-md);
+  background: transparent;
+  color: #e4e0f2;
+  font: 600 14px/1.2 var(--font-ui);
+  text-align: left;
+  text-decoration: none;
+  cursor: pointer;
+  transition: background-color var(--dur-press) var(--ease);
+}
+
+.ui-menu__item svg {
+  flex: 0 0 auto;
+  width: 19px;
+  height: 19px;
+  color: var(--text-3);
+}
+
+@media (hover: hover) {
+  .ui-menu__item:hover {
+    background: var(--surface-3);
+    color: #e4e0f2;
+  }
+}
+
+.ui-menu__item:active {
+  background: var(--surface-3);
+}
+
+.ui-menu__item:focus-visible {
+  outline: none;
+  background: var(--surface-3);
+  box-shadow: inset 0 0 0 2px var(--focus);
+}
+
+.ui-menu__item--danger,
+.ui-menu__item--danger svg {
+  color: var(--danger-text);
+}
+
+@media (hover: hover) {
+  .ui-menu__item--danger:hover {
+    color: var(--danger-text);
+  }
+}
+
+.ui-menu__sep {
+  height: 1px;
+  margin: 6px var(--s-4);
+  border: 0;
+  background: var(--border);
+}
+
+/* List: stacked choice rows inside a dialog or page (choose_translation.html, PR 266). */
+.ui-list {
+  display: flex;
+  flex-direction: column;
+  margin: 0;
+  padding: 0;
+  border: 1px solid var(--border);
+  border-radius: var(--r-xl);
+  background: var(--surface-1);
+  list-style: none;
+  overflow: hidden;
+}
+
+.ui-list__item + .ui-list__item {
+  border-top: 1px solid var(--divider);
+}
+
+.ui-list__row {
+  appearance: none;
+  display: flex;
+  align-items: center;
+  gap: var(--s-12);
+  width: 100%;
+  min-height: 56px;
+  padding: var(--s-12) var(--s-16);
+  border: 0;
+  background: transparent;
+  color: var(--text-1);
+  font: 600 15px/1.3 var(--font-ui);
+  text-align: left;
+  text-decoration: none;
+  cursor: pointer;
+  transition: background-color var(--dur-press) var(--ease);
+}
+
+.ui-list__main {
+  display: flex;
+  flex-direction: column;
+  gap: var(--s-4);
+  flex: 1;
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+.ui-list__meta {
+  color: var(--text-3);
+  font: var(--type-body-sm);
+}
+
+@media (hover: hover) {
+  .ui-list__row:hover {
+    background: var(--surface-2);
+    color: var(--text-1);
+  }
+}
+
+.ui-list__row:active {
+  background: var(--surface-3);
+}
+
+.ui-list__row:focus-visible {
+  outline: none;
+  box-shadow: inset 0 0 0 2px var(--focus);
 }
