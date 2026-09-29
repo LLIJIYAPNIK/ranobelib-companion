@@ -7300,6 +7300,10 @@ img.paragraph-comment__attachment {
   text-decoration: none;
 }
 
+.ui-title-card__cover > .ui-title-card__link {
+  height: 100%;
+}
+
 .ui-title-card__link:focus-visible {
   outline: none;
 }
@@ -7707,6 +7711,7 @@ a.ui-title-card:focus-visible .ui-title-card__cover {
 }
 
 .ui-download-progress .ui-progress__bar {
+  flex: none;
   height: 6px;
   border-radius: 3px;
 }
