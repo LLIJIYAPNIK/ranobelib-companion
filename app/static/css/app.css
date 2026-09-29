@@ -1576,30 +1576,6 @@ html.shell-scroll-lock body {
   border-bottom: 1px solid var(--legacy-border);
 }
 
-/* PR 101: reveal-on-scroll-up for the catalog's own .header (search bar, sort, "Фильтры"
-   toggle), scoped via the data-role attribute so /library/catalog is the only page where
-   plain .header picks this up - login/register/index/library reuse the same class for a
-   static, always-in-flow header and shouldn't start sliding around. Same direction-
-   detection idea as .reader-scroll-nav (PR 52, see catalog-header-scroll.js), but inverted:
-   .reader-scroll-nav is a duplicate overlay that's hidden by default because the real nav
-   is already visible in-flow, whereas this *is* the only header, so it has to stay visible
-   without JS (and before the first scroll event) for the <noscript> pagination fallback to
-   keep working - only a --hidden modifier is ever added, never a --visible one.
-   position: sticky (not fixed) keeps it inside .main's own box instead of the viewport, so
-   it never overlaps the sidebar, matching PR 51/52's reasoning for the same choice. */
-.header[data-role="catalog-scroll-header"] {
-  position: sticky;
-  top: 0;
-  z-index: 45;
-  background: var(--legacy-bg-page);
-  transform: translateY(0);
-  transition: transform 0.25s ease;
-}
-
-.header[data-role="catalog-scroll-header"].header--hidden {
-  transform: translateY(-100%);
-}
-
 .search-form {
   flex: 1;
   max-width: 480px;
@@ -1640,27 +1616,6 @@ html.shell-scroll-lock body {
   font-weight: 600;
   cursor: pointer;
   transition: transform 0.15s ease, box-shadow 0.15s ease;
-}
-
-/* PR 98/111: opens/closes .catalog-filters (see below) - a .header child (a sibling of
-   .search-form, not nested inside it), pushed to .header's own right edge with
-   margin-left: auto. Nesting it inside .search-form (which caps out at max-width: 480px,
-   PR 98's original placement) only pushed it to that form's right edge, stranded
-   somewhere in the middle of a wide header instead of the actual right edge of the page -
-   see PR 111. Only rendered when there's something to filter by (catalog.html). */
-.header__filters-toggle {
-  height: 36px;
-  padding: 0 18px;
-  margin-left: auto;
-  border: 1px solid var(--legacy-border);
-  border-radius: 6px;
-  background: transparent;
-  color: var(--text-secondary);
-  font-size: 13px;
-  font-weight: 600;
-  font-family: inherit;
-  cursor: pointer;
-  transition: color 0.15s ease, border-color 0.15s ease;
 }
 
 .content {
@@ -2756,329 +2711,11 @@ html.shell-scroll-lock body {
   animation: library-tabs-content-in 0.18s ease-out;
 }
 
-/* PR 85: replaces the collapsible .catalog-genres popup (PR 38/45) with a permanently
-   visible right-hand column, laid out like a store's filter sidebar - .catalog-layout
-   is the flex row (results left, filters right), .catalog-layout__results wraps the
-   grid so it can shrink properly next to a fixed-width sidebar. */
-.catalog-layout {
-  display: flex;
-  align-items: flex-start;
-  gap: 24px;
-}
-
-.catalog-layout__results {
-  flex: 1;
-  min-width: 0;
-}
-
-/* PR 102: floating "back to top" button for the catalog's infinite-scroll grid (PR 15/24) -
-   escaping a long, still-growing card grid otherwise takes a slow manual scroll. Same
-   bottom-right corner and z-index convention as .toc__export-panel (PR 51), though the two
-   never actually share a page - this only renders in catalog.html. Visibility is toggled
-   via the `hidden` attribute (catalog-back-to-top.js), not a class - `display: flex` below
-   needs the explicit [hidden] override since it would otherwise outrank the browser's own
-   `[hidden] { display: none }` UA rule, same reasoning as .download-ready (PR 50). */
-.back-to-top {
-  position: fixed;
-  bottom: calc(24px + var(--shell-bottom));
-  right: 32px;
-  z-index: 45;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  width: 44px;
-  height: 44px;
-  border: 1px solid var(--legacy-border);
-  border-radius: 999px;
-  background: var(--bg-surface);
-  color: var(--text-primary);
-  font-size: 18px;
-  line-height: 1;
-  cursor: pointer;
-  box-shadow: 0 8px 20px rgba(0, 0, 0, 0.35);
-  transition: transform 0.15s ease, border-color 0.15s ease, right 0.18s ease;
-}
-
-.back-to-top[hidden] {
-  display: none;
-}
-
-@media (hover: hover) {
-  .back-to-top:hover {
-    border-color: var(--accent-teal);
-    transform: translateY(-3px);
-  }
-}
-
-/* PR 127: .catalog-filters (240px wide, PR 98) sits flush against the same 32px page
-   padding this button's own `right: 32px` uses, so an open panel would otherwise sit
-   right on top of it. Shifted left by the panel's own width plus .catalog-layout's 24px
-   column gap (240 + 24 = 264px) whenever catalog-filters-toggle.js opens it - `right`
-   is in the transition list above so the two move in step with the panel's own
-   open/close animation, not a jump cut. */
-@media (min-width: 641px) {
-  .back-to-top--filters-open {
-    right: 296px;
-  }
-}
-
-@media (max-width: 640px) {
-  .back-to-top {
-    /* Same 76px clearance above the fixed bottom tab bar (PR 46) already used by
-       .download-ready and .toc__export-panel on mobile. */
-    bottom: calc(var(--shell-bottom) + 16px);
-    right: 12px;
-  }
-
-  /* On mobile .catalog-filters is a fullscreen modal (PR 103), not a side column - there's
-     no sensible "shifted" position next to it, so this button just disappears for as
-     long as the modal covers the screen instead. */
-  .back-to-top--filters-open {
-    display: none;
-  }
-}
-
-/* PR 98: fades/slides in whenever the panel goes from `hidden` to shown (same one-shot
-   entrance animation pattern as .library-tabs-content-in - toggling `hidden` restarts a
-   CSS `animation` reliably, unlike `transition`, which needs the element already
-   rendered to detect a property change). Closing needs the reverse:
-   catalog-filters-toggle.js adds --closing first to transition opacity/transform down,
-   then sets `hidden`
-   itself once that finishes - `hidden` can't be delayed via CSS alone. */
-.catalog-filters {
-  flex: 0 0 240px;
-  position: sticky;
-  top: 16px;
-  max-height: calc(100vh - 32px);
-  overflow-y: auto;
-  padding: 16px;
-  background: var(--bg-surface);
-  border: 1px solid var(--legacy-border);
-  border-radius: 8px;
-  animation: catalog-filters-in 0.18s ease-out;
-  transition: opacity 0.15s ease, transform 0.15s ease;
-}
-
-.catalog-filters--closing {
-  opacity: 0;
-  transform: translateY(-6px);
-  pointer-events: none;
-}
-
-@keyframes catalog-filters-in {
-  from {
-    opacity: 0;
-    transform: translateY(6px);
-  }
-  to {
-    opacity: 1;
-    transform: translateY(0);
-  }
-}
-
-/* PR 98: title + close button on one row, replacing the title's own margin-bottom. */
-.catalog-filters__header {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 12px;
-  margin: 0 0 12px;
-}
-
-.catalog-filters__title {
-  font-size: 15px;
-  margin: 0;
-}
-
-.catalog-filters__close {
-  flex: 0 0 auto;
-  background: none;
-  border: none;
-  padding: 4px;
-  color: var(--text-muted);
-  font-size: 18px;
-  line-height: 1;
-  cursor: pointer;
-  transition: color 0.15s ease;
-}
-
-@media (hover: hover) {
-  .catalog-filters__close:hover {
-    color: var(--accent-teal);
-  }
-}
-
-.catalog-filters__section + .catalog-filters__section {
-  margin-top: 20px;
-  padding-top: 20px;
-  border-top: 1px solid var(--legacy-border);
-}
-
-.catalog-filters__section-title {
-  margin: 0 0 10px;
-}
-
-/* PR 99: the section title is now a button (accordion header) instead of plain text -
-   same font styling the <h3> used to carry directly, reset to look like a heading again
-   since a <button> comes with its own UA-agent chrome by default. */
-.catalog-filters__section-toggle {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 8px;
-  width: 100%;
-  padding: 0;
-  border: none;
-  background: none;
-  font: inherit;
-  font-size: 12px;
-  font-weight: 600;
-  color: var(--text-secondary);
-  text-align: left;
-  cursor: pointer;
-}
-
-.catalog-filters__section-toggle::after {
-  content: "";
-  flex: 0 0 auto;
-  width: 0;
-  height: 0;
-  border-left: 4px solid transparent;
-  border-right: 4px solid transparent;
-  border-top: 5px solid var(--text-muted);
-  transform: rotate(180deg);
-  transition: transform 0.15s ease;
-}
-
-.catalog-filters__section--collapsed .catalog-filters__section-toggle::after {
-  transform: rotate(0deg);
-}
-
-/* PR 99: collapse animation - max-height is JS-driven (catalog-filters-accordion.js),
-   from 0 up to the options list's own measured scrollHeight, since the list's real
-   height varies a lot between sections (a couple of country radios vs 50+ genre
-   checkboxes) and can't be hardcoded as a single fixed value. */
-.catalog-filters__options {
-  display: flex;
-  flex-direction: column;
-  gap: 10px;
-  overflow: hidden;
-  transition: max-height 0.2s ease;
-}
-
-.catalog-filters__option {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  font-size: 13px;
-  color: var(--text-secondary);
-  cursor: pointer;
-}
-
-/* Custom checkmark (PR 53) - the browser-default checkbox otherwise stood out against
-   the rest of the dark theme, and its checked color isn't something CSS can retint on
-   its own. `appearance: none` drops the native box entirely; the border/background here
-   replace it, and the ::after checkmark is drawn with a rotated border rather than an
-   image so it inherits the same currentColor-free palette as everything else on the
-   page. `:focus-visible` (not `:focus`) matches .toc__export-format's convention
-   elsewhere in this file - a visible keyboard-focus ring without one on mouse click. */
-.catalog-filters__option input[type="checkbox"] {
-  appearance: none;
-  -webkit-appearance: none;
-  flex: 0 0 auto;
-  width: 16px;
-  height: 16px;
-  margin: 0;
-  position: relative;
-  border: 1px solid var(--legacy-border);
-  border-radius: 4px;
-  background: var(--bg-surface);
-  cursor: pointer;
-  transition: border-color 0.15s ease, background-color 0.15s ease, box-shadow 0.15s ease;
-}
-
-.catalog-filters__option input[type="checkbox"]::after {
-  content: "";
-  position: absolute;
-  left: 4px;
-  top: 1px;
-  width: 4px;
-  height: 8px;
-  border: solid var(--legacy-bg-page);
-  border-width: 0 2px 2px 0;
-  transform: rotate(45deg) scale(0);
-  transition: transform 0.1s ease;
-}
-
-.catalog-filters__option input[type="checkbox"]:checked {
-  background: var(--accent-teal);
-  border-color: var(--accent-teal);
-}
-
-.catalog-filters__option input[type="checkbox"]:checked::after {
-  transform: rotate(45deg) scale(1);
-}
-
-.catalog-filters__option input[type="checkbox"]:focus-visible {
-  outline: none;
-  border-color: var(--accent-teal);
-  box-shadow: 0 0 0 3px rgba(34, 211, 197, 0.18);
-}
-
-/* PR 85: the "Страна" section is single-select (Catalog.list_titles(country=...) takes
-   one id, not a list like genres) - a radio group, not checkboxes, so it needs its own
-   circular custom control rather than reusing the checkbox's square/checkmark one. Same
-   currentColor-free, appearance:none approach as the checkbox above, just a dot in a
-   circle instead of a checkmark in a square. */
-.catalog-filters__option input[type="radio"] {
-  appearance: none;
-  -webkit-appearance: none;
-  flex: 0 0 auto;
-  width: 16px;
-  height: 16px;
-  margin: 0;
-  position: relative;
-  border: 1px solid var(--legacy-border);
-  border-radius: 50%;
-  background: var(--bg-surface);
-  cursor: pointer;
-  transition: border-color 0.15s ease, background-color 0.15s ease, box-shadow 0.15s ease;
-}
-
-.catalog-filters__option input[type="radio"]::after {
-  content: "";
-  position: absolute;
-  inset: 3px;
-  border-radius: 50%;
-  background: var(--legacy-bg-page);
-  transform: scale(0);
-  transition: transform 0.1s ease;
-}
-
-.catalog-filters__option input[type="radio"]:checked {
-  background: var(--accent-teal);
-  border-color: var(--accent-teal);
-}
-
-.catalog-filters__option input[type="radio"]:checked::after {
-  transform: scale(1);
-}
-
-.catalog-filters__option input[type="radio"]:focus-visible {
-  outline: none;
-  border-color: var(--accent-teal);
-  box-shadow: 0 0 0 3px rgba(34, 211, 197, 0.18);
-}
-
 .title-card-grid {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
   gap: 20px;
   margin-top: 16px;
-}
-
-.title-card-grid__sentinel {
-  height: 1px;
 }
 
 .title-card {
@@ -3478,65 +3115,8 @@ html.shell-scroll-lock body {
   margin-right: 6px;
 }
 
-/* PR 117: "quick view" modal - opened from the eye icon on any title card
-   (.title-card__quickview above), fetched by title-quickview.js from
-   GET /titles/{slug}/quickview. Reuses .title-hero__cover/__info/__alt-name/__meta/
-   __badges and .title-summary as-is (same partial data the full title page shows,
-   app/templates/_title_quickview.html) - only the cover/name get scoped, smaller sizing
-   here, tuned for a compact modal instead of the page's full-width hero. Same
-   fixed-overlay/backdrop-click/Escape/close-button pattern as .image-lightbox (PR 66),
-   one level below its z-index: 100 since a preview modal shouldn't outrank a fullscreen
-   image viewer if both were somehow open. */
-.title-quickview-modal {
-  position: fixed;
-  inset: 0;
-  z-index: 90;
-  display: none;
-  align-items: center;
-  justify-content: center;
-  padding: 20px;
-  background: rgba(0, 0, 0, 0.6);
-}
-
-.title-quickview-modal--open {
-  display: flex;
-}
-
-.title-quickview-modal__panel {
-  position: relative;
-  width: 100%;
-  max-width: 560px;
-  max-height: 85vh;
-  overflow-y: auto;
-  padding: 24px;
-  background: var(--bg-surface);
-  border: 1px solid var(--legacy-border);
-  border-radius: 12px;
-  box-shadow: 0 20px 48px rgba(0, 0, 0, 0.4);
-}
-
-.title-quickview-modal__close {
-  position: absolute;
-  top: 12px;
-  right: 12px;
-  background: none;
-  border: none;
-  padding: 4px;
-  color: var(--text-muted);
-  font-size: 20px;
-  line-height: 1;
-  cursor: pointer;
-  transition: color 0.15s ease;
-}
-
-@media (hover: hover) {
-  .title-quickview-modal__close:hover {
-    color: var(--accent-teal);
-  }
-}
-
 /* PR 218: same fixed-overlay/backdrop-click/Escape/close-button pattern as
-   .title-quickview-modal just above - opens _auth_card.html over the current page
+   the title quick view (PR 117) - opens _auth_card.html over the current page
    instead of navigating to /login or /register (see auth-modal.js). Unlike that modal,
    the panel here carries no background/border/padding of its own - .auth-card, loaded
    inside it, already supplies all of that; stacking a second card's chrome around it
@@ -3589,42 +3169,6 @@ html.shell-scroll-lock body {
   }
 }
 
-.title-quickview {
-  display: flex;
-  gap: 20px;
-}
-
-.title-quickview .title-hero__cover {
-  width: 110px;
-  height: 160px;
-  flex: 0 0 110px;
-}
-
-.title-quickview__name {
-  font-size: 20px;
-  font-weight: 700;
-  margin: 0;
-}
-
-.title-quickview__summary {
-  padding: 8px 0 0;
-  max-width: none;
-  font-size: 13px;
-}
-
-@media (max-width: 480px) {
-  .title-quickview {
-    flex-direction: column;
-  }
-
-  .title-quickview .title-hero__cover {
-    width: 100%;
-    height: auto;
-    aspect-ratio: 2 / 3;
-    flex-basis: auto;
-  }
-}
-
 .btn {
   height: 44px;
   padding: 0 26px;
@@ -3670,10 +3214,6 @@ html.shell-scroll-lock body {
    shadowed state "stuck" until then (same issue fixed for the sidebar in PR 42). */
 @media (hover: hover) {
   .btn--secondary:hover,
-  .header__filters-toggle:hover {
-    border-color: var(--accent-teal);
-  }
-
   .btn:hover,
   .search-button:hover,
   .locked-feature__cta:hover,
@@ -3683,14 +3223,6 @@ html.shell-scroll-lock body {
   }
 
   .toc__export-format:hover {
-    border-color: var(--accent-teal);
-  }
-
-  .catalog-filters__option:hover input[type="checkbox"]:not(:checked) {
-    border-color: var(--accent-teal);
-  }
-
-  .catalog-filters__option:hover input[type="radio"]:not(:checked) {
     border-color: var(--accent-teal);
   }
 
@@ -5989,56 +5521,7 @@ img.paragraph-comment__attachment {
     padding: 0 16px;
   }
 
-  /* PR 85: the sidebar layout only works with room for a fixed-width column beside the
-     grid - below the breakpoint .catalog-layout__results (the grid) is the only child
-     left in flow, so this just stacks it full-width; .catalog-filters itself is pulled
-     out of flow entirely below (PR 103). */
-  .catalog-layout {
-    flex-direction: column;
-  }
-
-  /* PR 103 (пересматривает PR 85's mobile order: -1 stacking, kept until now): a filters
-     panel merely stacked above the grid still pushed a page of cards down below the fold
-     on a phone-width viewport, especially once the genre list (50+ checkboxes, PR 38) is
-     expanded - a fullscreen takeover reads more like a normal e-commerce filter sheet and
-     needs no in-flow space of its own. The panel's own opaque background (inherited from
-     the base rule above) doubles as the backdrop - no separate overlay element needed.
-     catalog-filters-toggle.js/catalog-filters-accordion.js are unchanged: they only ever
-     toggle `hidden`/`--closing`, oblivious to how those states are styled at this width. */
-  .catalog-filters {
-    position: fixed;
-    inset: 0;
-    z-index: 70;
-    width: 100%;
-    max-height: none;
-    border: none;
-    border-radius: 0;
-    padding: 20px 16px;
-    animation: catalog-filters-in-mobile 0.22s ease-out;
-  }
-
-  /* Slides from the right instead of the desktop entrance's fade-and-drop-down (see
-     .catalog-filters-in above) - a fullscreen sheet reads as "sliding into place" rather
-     than "fading in", per the roadmap's "выезжающая анимацией справа налево". */
-  @keyframes catalog-filters-in-mobile {
-    from {
-      opacity: 0;
-      transform: translateX(100%);
-    }
-    to {
-      opacity: 1;
-      transform: translateX(0);
-    }
-  }
-
-  /* Overrides the desktop --closing transform (translateY) with the matching reverse of
-     the slide-in above - same class, same JS-driven transition timing (0.15s, unchanged
-     in catalog-filters-toggle.js), just a different direction at this width. */
-  .catalog-filters--closing {
-    transform: translateX(100%);
-  }
-
-  /* PR 89: same stack-instead-of-column reasoning as .catalog-layout above - a fixed
+  /* PR 89: same stack-instead-of-column reasoning as the catalog's filters column - a fixed
      200px nav column has no room next to the content pane on a phone-width viewport, and
      a short 3-item nav has no scrolling behavior worth keeping sticky. Turned into a
      horizontal row (not a vertical stack) since 3 short labels fit one line and read more
@@ -8292,5 +7775,613 @@ a.ui-title-card:focus-visible .ui-title-card__cover {
   /* Stacked under "Недавние" at full width, not a 280px island. */
   .home__friends {
     max-width: none;
+  }
+}
+
+/* ==========================================================================
+   Aurora Ink screens - catalog (PR 251): CATALOG-DEFAULT / -FILTERS / -QUICKVIEW.
+   Same page padding and grid minimums as the home page (PR 250). The toolbar card is
+   sticky (hidden on scroll down, back on scroll up - catalog-header-scroll.js adds
+   .header--hidden); the filters panel is a 292px column beside the grid on desktop and
+   a 90% bottom sheet on mobile once catalog-filters-toggle.js has enhanced it.
+   ========================================================================== */
+.catalog-page {
+  --catalog-grid-min: 150px;
+  --catalog-pad-x: var(--s-40);
+  --catalog-sticky-top: var(--s-12);
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: var(--s-16);
+  padding: var(--s-32) var(--catalog-pad-x) var(--s-40);
+}
+
+.catalog-toolbar {
+  position: sticky;
+  top: var(--catalog-sticky-top);
+  z-index: 45;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  padding: 10px;
+  border: 1px solid var(--border);
+  border-radius: var(--r-xl);
+  background: var(--surface-1);
+  transition: transform var(--dur-base) var(--ease);
+}
+
+.catalog-toolbar.header--hidden {
+  transform: translateY(calc(-100% - var(--catalog-sticky-top) - 4px));
+}
+
+/* Its fields join the toolbar row; see catalog.html. */
+.catalog-toolbar__form {
+  display: contents;
+}
+
+.catalog-toolbar__search {
+  flex: 1 1 240px;
+  background: var(--bg-page);
+}
+
+.catalog-toolbar__sort {
+  flex: 0 1 auto;
+}
+
+.catalog-toolbar__filters,
+.catalog-toolbar__submit {
+  flex: 0 0 auto;
+  font-size: 14px;
+}
+
+.catalog-toolbar__filters {
+  --ui-btn-border: var(--border);
+  padding: 0 var(--s-16);
+}
+
+.catalog-toolbar__filters svg {
+  flex: 0 0 auto;
+}
+
+.catalog-toolbar__filters[aria-expanded="true"] {
+  --ui-btn-bg: var(--surface-selected);
+  --ui-btn-border: #5b3fb0;
+}
+
+.catalog-toolbar__submit {
+  padding: 0 22px;
+}
+
+.catalog-page__hint {
+  margin: 0;
+  color: var(--text-2);
+  font: 500 14px/1.4 var(--font-ui);
+}
+
+.catalog-page__hint a {
+  color: var(--primary-text);
+}
+
+.catalog-layout {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--s-24);
+}
+
+.catalog-layout__results {
+  display: flex;
+  flex-direction: column;
+  gap: var(--s-16);
+  flex: 1;
+  min-width: 0;
+}
+
+.catalog-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(var(--catalog-grid-min), 1fr));
+  gap: 22px 14px;
+}
+
+.catalog-grid__sentinel {
+  height: 1px;
+}
+
+/* Filters panel - desktop column. */
+.catalog-filters {
+  position: sticky;
+  top: var(--s-16);
+  display: flex;
+  flex-direction: column;
+  flex: 0 0 292px;
+  max-height: min(620px, calc(100dvh - 32px));
+  border: 1px solid var(--border);
+  border-radius: var(--r-xl);
+  background: var(--surface-1);
+  animation: catalog-filters-in var(--dur-sheet) var(--ease);
+  transition:
+    opacity var(--dur-exit) var(--ease-exit),
+    transform var(--dur-exit) var(--ease-exit);
+}
+
+.catalog-filters[hidden] {
+  display: none;
+}
+
+.catalog-filters--closing {
+  opacity: 0;
+  transform: translateY(calc(-6px * var(--motion-shift)));
+  pointer-events: none;
+}
+
+@keyframes catalog-filters-in {
+  from {
+    opacity: 0;
+    transform: translateY(calc(6px * var(--motion-shift)));
+  }
+}
+
+.catalog-filters__grabber {
+  display: none;
+}
+
+.catalog-filters__header {
+  display: flex;
+  flex: 0 0 auto;
+  align-items: center;
+  justify-content: space-between;
+  height: 56px;
+  padding: 0 var(--s-8) 0 18px;
+}
+
+.catalog-filters__title {
+  margin: 0;
+  color: var(--text-1);
+  font: 800 17px/1 var(--font-ui);
+}
+
+.catalog-filters__close {
+  color: var(--text-2);
+}
+
+.catalog-filters__close svg {
+  width: 18px;
+  height: 18px;
+}
+
+/* Only the list scrolls - header and footer stay put (PR 113/114). */
+.catalog-filters__body {
+  flex: 1;
+  min-height: 0;
+  padding: 0 var(--s-12) var(--s-8);
+  overflow-y: auto;
+  overscroll-behavior: contain;
+}
+
+.catalog-filters__section {
+  background: var(--surface-1);
+}
+
+.catalog-filters__section + .catalog-filters__section {
+  margin-top: 6px;
+  border-top: 1px solid var(--border);
+}
+
+/* Section toggles stick to the top of the list while it scrolls (PR 114). */
+.catalog-filters__section-title {
+  position: sticky;
+  top: 0;
+  z-index: 1;
+  margin: 0;
+  background: inherit;
+}
+
+.catalog-filters__section-toggle {
+  appearance: none;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--s-8);
+  width: 100%;
+  height: 44px;
+  padding: 0 6px;
+  border: 0;
+  border-radius: var(--r-sm);
+  background: transparent;
+  color: var(--text-1);
+  font: 700 14px/1 var(--font-ui);
+  text-align: left;
+  cursor: pointer;
+}
+
+.catalog-filters__section-toggle:focus-visible {
+  outline: none;
+  box-shadow: inset 0 0 0 2px var(--focus);
+}
+
+/* Chevron: up while the section is open, down when collapsed. */
+.catalog-filters__section-toggle::after {
+  content: "";
+  flex: 0 0 auto;
+  width: 7px;
+  height: 7px;
+  margin: 4px 4px 0 0;
+  border: solid var(--text-3);
+  border-width: 0 2px 2px 0;
+  transform: rotate(225deg);
+  transition: transform var(--dur-base) var(--ease);
+}
+
+.catalog-filters__section--collapsed .catalog-filters__section-toggle::after {
+  margin-top: -4px;
+  transform: rotate(45deg);
+}
+
+/* max-height is driven by catalog-filters-accordion.js. */
+.catalog-filters__options {
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  transition: max-height var(--dur-sheet) var(--ease);
+}
+
+.catalog-filters__option {
+  display: flex;
+  gap: var(--s-12);
+  min-height: 40px;
+  padding: 0 6px;
+  border-radius: var(--r-sm);
+  color: #e4e0f2;
+  font: 500 14px/1.2 var(--font-ui);
+}
+
+@media (hover: hover) {
+  .catalog-filters__option:hover {
+    background: var(--surface-2);
+  }
+}
+
+.catalog-filters__foot {
+  display: flex;
+  flex: 0 0 auto;
+  gap: var(--s-8);
+  padding: var(--s-12) 14px;
+  border-top: 1px solid var(--border);
+}
+
+.catalog-filters__reset,
+.catalog-filters__apply {
+  font-size: 14px;
+}
+
+.catalog-filters__reset {
+  flex: 1;
+}
+
+.catalog-filters__apply {
+  flex: 1.4;
+}
+
+.catalog-filters-scrim {
+  display: none;
+}
+
+/* Back to top: bottom-right, clear of the open filters column (PR 127) and, on mobile,
+   of the Quiet Edge Bar. */
+.back-to-top {
+  position: fixed;
+  right: var(--catalog-pad-x);
+  bottom: calc(var(--s-24) + var(--shell-bottom));
+  z-index: 45;
+  border: 1px solid var(--border-strong);
+  border-radius: var(--r-full);
+  background: var(--surface-2);
+  box-shadow: var(--shadow-popover);
+  transition:
+    right var(--dur-sheet) var(--ease),
+    background-color var(--dur-base) var(--ease);
+}
+
+.back-to-top[hidden] {
+  display: none;
+}
+
+@media (hover: hover) {
+  .back-to-top:hover {
+    background: var(--surface-3);
+  }
+}
+
+.back-to-top--filters-open {
+  right: calc(var(--catalog-pad-x) + 292px + var(--s-24));
+}
+
+/* Quick view (title-quickview.js): a non-modal <dialog> over its own scrim, one level
+   below the image lightbox (z-index 100) that its cover opens. */
+.title-quickview-scrim {
+  position: fixed;
+  inset: 0;
+  z-index: 89;
+  background: var(--scrim);
+  animation: ui-fade-in 160ms var(--ease);
+}
+
+.title-quickview-scrim[hidden] {
+  display: none;
+}
+
+.title-quickview-dialog {
+  position: fixed;
+  inset: 0;
+  z-index: 90;
+  width: min(720px, calc(100% - 64px));
+  height: fit-content;
+  border-radius: var(--r-2xl);
+}
+
+.title-quickview-dialog__close {
+  position: absolute;
+  top: 14px;
+  right: 14px;
+  z-index: 1;
+  color: var(--text-2);
+}
+
+.title-quickview-dialog__close svg {
+  width: 18px;
+  height: 18px;
+}
+
+.title-quickview-dialog__body {
+  min-height: 0;
+  padding: var(--s-24);
+  overflow-y: auto;
+  overscroll-behavior: contain;
+}
+
+.title-quickview {
+  display: flex;
+  gap: var(--s-24);
+}
+
+.title-quickview .title-quickview__cover {
+  flex: 0 0 180px;
+  width: 180px;
+  height: auto;
+  aspect-ratio: 2 / 3;
+  border-radius: var(--r-lg);
+  background: var(--surface-1);
+  object-fit: cover;
+}
+
+.title-quickview__info {
+  display: flex;
+  flex-direction: column;
+  gap: var(--s-12);
+  flex: 1;
+  min-width: 0;
+}
+
+.title-quickview__name {
+  margin: 0;
+  padding-right: 40px;
+  color: var(--text-1);
+  font: 800 24px/1.15 var(--font-ui);
+  overflow-wrap: anywhere;
+}
+
+.title-quickview__alt {
+  margin: 0;
+  color: var(--text-3);
+  font: 500 13px/1.4 var(--font-ui);
+}
+
+.title-quickview__meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px 14px;
+  color: var(--text-2);
+  font: 600 13px/1.3 var(--font-ui);
+}
+
+.title-quickview__status {
+  color: var(--warning);
+}
+
+/* Filled chips would vanish on the dialog's own surface-2 - one step up, as in the
+   CATALOG-QUICKVIEW mockup. */
+.title-quickview .ui-chip {
+  height: 28px;
+  padding: 0 10px;
+  background: var(--surface-3);
+  font-size: 12px;
+}
+
+.title-quickview__summary {
+  display: -webkit-box;
+  -webkit-line-clamp: 5;
+  -webkit-box-orient: vertical;
+  margin: 0;
+  overflow: hidden;
+  color: #ddd8ee;
+  font: 400 15px/1.65 var(--font-reader-serif);
+}
+
+.title-quickview__open {
+  align-self: flex-start;
+  height: 48px;
+  margin-top: auto;
+  padding: 0 22px;
+}
+
+@media (max-width: 1199px) {
+  .catalog-page {
+    --catalog-grid-min: 140px;
+    --catalog-pad-x: var(--s-32);
+    padding: 28px var(--catalog-pad-x) var(--s-32);
+  }
+}
+
+@media (max-width: 767px) {
+  .catalog-page {
+    --catalog-grid-min: 100px;
+    --catalog-pad-x: var(--s-20);
+    --catalog-sticky-top: calc(var(--mobile-account-height) + env(safe-area-inset-top, 0px) + var(--s-8));
+    padding: var(--s-4) var(--catalog-pad-x) var(--s-8);
+  }
+
+  /* Search on its own row, sort and «Фильтры» on the second (M-CATALOG). «Искать» goes
+     once catalog-sort-autosubmit.js makes sort changes submit on their own. */
+  .catalog-toolbar__search {
+    flex-basis: 100%;
+  }
+
+  .catalog-toolbar__sort {
+    flex: 1 1 0;
+    min-width: 0;
+  }
+
+  .catalog-toolbar--autosubmit .catalog-toolbar__submit {
+    display: none;
+  }
+
+  .catalog-layout {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  /* Without JS the panel is just a block under the grid. */
+  .catalog-filters {
+    position: static;
+    flex: none;
+    max-height: none;
+  }
+
+  /* Bottom sheet, 90% of the screen, footer pinned above the safe area. */
+  .catalog-filters.catalog-filters--enhanced {
+    position: fixed;
+    top: auto;
+    right: 0;
+    bottom: 0;
+    left: 0;
+    z-index: 70;
+    height: 90dvh;
+    border-width: 1px 0 0;
+    border-radius: var(--r-2xl) var(--r-2xl) 0 0;
+    background: var(--surface-2);
+    box-shadow: var(--shadow-sheet);
+    animation: ui-sheet-in var(--dur-sheet) var(--ease);
+  }
+
+  .catalog-filters--enhanced.catalog-filters--closing {
+    opacity: 1;
+    transform: translateY(calc(100% * var(--motion-shift)));
+  }
+
+  .catalog-filters--enhanced .catalog-filters__grabber {
+    display: block;
+    flex: 0 0 auto;
+    width: 36px;
+    height: 4px;
+    margin: var(--s-8) auto 0;
+    border-radius: 2px;
+    background: var(--border-strong);
+  }
+
+  .catalog-filters--enhanced .catalog-filters__section {
+    background: var(--surface-2);
+  }
+
+  .catalog-filters__header {
+    height: 52px;
+    padding: 0 var(--s-8) 0 var(--s-20);
+  }
+
+  .catalog-filters__body {
+    padding: 0 14px var(--s-8);
+  }
+
+  .catalog-filters__section-toggle {
+    height: 48px;
+    font-size: 15px;
+  }
+
+  .catalog-filters__option {
+    min-height: 44px;
+    font-size: 15px;
+  }
+
+  .catalog-filters__option input[type="checkbox"] {
+    width: 22px;
+    height: 22px;
+  }
+
+  .catalog-filters__option input[type="checkbox"]::after {
+    left: 6.5px;
+    top: 3px;
+  }
+
+  .catalog-filters__foot {
+    gap: 10px;
+    padding: var(--s-12) var(--s-16) calc(var(--s-12) + env(safe-area-inset-bottom, 0px));
+  }
+
+  .catalog-filters__reset,
+  .catalog-filters__apply {
+    height: 48px;
+    font-size: 15px;
+  }
+
+  .catalog-filters__apply {
+    --ui-btn-bg: var(--primary);
+    --ui-btn-fg: #ffffff;
+    --ui-btn-border: transparent;
+    --ui-btn-hover: var(--primary-pressed);
+    --ui-btn-active: var(--primary-active);
+    flex: 1.6;
+  }
+
+  .catalog-filters-scrim:not([hidden]) {
+    display: block;
+    position: fixed;
+    inset: 0;
+    z-index: 69;
+    background: var(--scrim);
+    animation: ui-fade-in 160ms var(--ease);
+  }
+
+  body.catalog-filters-open {
+    overflow: hidden;
+  }
+
+  .back-to-top {
+    bottom: calc(var(--shell-bottom) + var(--s-16));
+  }
+
+  /* The sheet covers it anyway. */
+  .back-to-top--filters-open {
+    display: none;
+  }
+
+  .title-quickview-dialog {
+    width: calc(100% - 32px);
+    max-height: calc(100dvh - 32px);
+  }
+
+  .title-quickview-dialog__body {
+    padding: var(--s-20);
+  }
+
+  .title-quickview {
+    flex-direction: column;
+    gap: var(--s-16);
+  }
+
+  .title-quickview .title-quickview__cover {
+    flex: none;
+    width: 140px;
+  }
+
+  .title-quickview__open {
+    align-self: stretch;
   }
 }
