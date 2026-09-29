@@ -19,7 +19,7 @@
     // the chapter page - none of them is a CSS custom property like the rest of these, so
     // apply() below has nothing to do for any of them.
     tapToRead: false,
-    paragraphStyle: "chat",
+    paragraphStyle: "book",
     paragraphAnimation: "none",
     revealTempo: "instant",
     // PR 134: read directly from this same key by app/static/js/paragraph-menu.js, same
@@ -33,12 +33,29 @@
 
   const root = document.documentElement;
 
+  // PR 254: "book" replaces the chat bubble as the default paragraph style. Anyone who
+  // ever changed a setting has the old default "chat" saved alongside it, so a stored
+  // "chat" from before this version is taken as that default, not a choice - migrated
+  // once (settingsVersion 2); picking "chat" again afterwards sticks.
+  const SETTINGS_VERSION = 2;
+
   function load() {
+    let stored = {};
     try {
-      return { ...DEFAULTS, ...JSON.parse(localStorage.getItem(STORAGE_KEY) || "{}") };
+      stored = JSON.parse(localStorage.getItem(STORAGE_KEY) || "{}") || {};
     } catch {
       return { ...DEFAULTS };
     }
+    if ((stored.settingsVersion || 1) < SETTINGS_VERSION) {
+      if (stored.paragraphStyle === "chat") stored.paragraphStyle = "book";
+      stored.settingsVersion = SETTINGS_VERSION;
+      try {
+        localStorage.setItem(STORAGE_KEY, JSON.stringify(stored));
+      } catch {
+        // storage blocked - the migrated value just isn't persisted
+      }
+    }
+    return { ...DEFAULTS, ...stored };
   }
 
   function apply(settings) {
