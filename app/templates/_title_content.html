@@ -182,11 +182,17 @@
   </div>
 </section>
 
+<div class="ui-tabs title-tabs" role="tablist" aria-label="Разделы тайтла" data-role="title-tabs" hidden>
+  <button class="ui-tabs__link" type="button" role="tab" id="title-tab-about" aria-controls="title-panel-about" aria-selected="true" data-role="title-tab">Описание</button>
+  <button class="ui-tabs__link" type="button" role="tab" id="title-tab-toc" aria-controls="title-panel-toc" aria-selected="false" tabindex="-1" data-role="title-tab">Оглавление <span class="title-tabs__count">{{ chapter_total }}</span></button>
+</div>
+
 <div class="title-body">
   <section class="title-body__about" id="title-panel-about" role="tabpanel" aria-labelledby="title-tab-about" data-role="title-tab-panel">
     <h2 class="title-body__heading">Описание</h2>
     {% if title.summary %}
     <p class="title-summary" data-role="title-summary">{{ title.summary }}</p>
+    <button type="button" class="title-summary__toggle" data-role="title-summary-toggle" aria-expanded="false" hidden>Читать полностью</button>
     {% endif %}
     {% if title.authors or title.artists or title.teams or ambiguous_chapter_count %}
     <div class="title-credits">
@@ -226,6 +232,9 @@
     <div class="title-toc__head">
       <h2 class="title-body__heading">Оглавление</h2>
       <span class="title-toc__count">{{ chapter_total }} {{ chapters_word(chapter_total) }}</span>
+      {% if export_formats %}
+      <button type="button" class="ui-btn ui-btn--sm title-toc__select" data-role="toc-select-toggle" aria-pressed="false" hidden>Выбрать главы</button>
+      {% endif %}
     </div>
     <form
       method="get"

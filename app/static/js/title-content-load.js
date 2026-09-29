@@ -50,6 +50,7 @@
       if (window.initChapterExportPanel) window.initChapterExportPanel();
       if (window.initTitleSizeEstimate) window.initTitleSizeEstimate();
       if (window.initTocTapProgress) window.initTocTapProgress();
+      if (window.initTitlePageUi) window.initTitlePageUi();
       if (window.initTitleActionsSheet) window.initTitleActionsSheet();
     })
     .catch(() => showError("Не удалось загрузить тайтл"));
