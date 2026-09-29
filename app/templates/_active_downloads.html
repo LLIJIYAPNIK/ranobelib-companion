@@ -1,33 +1,42 @@
+{#
+  PR 256 (Aurora Ink, DOWNLOADS): one card per active job - the slug (breaks anywhere,
+  slugs are long), a "FMT · status · ≈ ETA" line, an icon cancel button, and a 6px bar
+  with its percent. The .downloads-list__* class names and the data-role hooks are what
+  downloads-status.js reads (cancel URL from the link's href, bar-fill/bar-pct/
+  status-text/eta-text updated in place), so they stay as they were.
+#}
 {% macro active_downloads_list(jobs) %}
 <ul class="downloads-list">
   {% for job in jobs %}
+  {% set pct = ((job.completed / job.total * 100) if job.total else 0) | int %}
   <li class="downloads-list__item" data-job-id="{{ job.id }}">
-    <a class="downloads-list__link" href="/titles/{{ job.slug_url }}/download/{{ job.id }}">
-      {{ job.slug_url }}
-    </a>
-    <span class="downloads-list__fmt">{{ job.fmt | upper }}</span>
-    <div class="download-status__bar">
-      <div
-        class="download-status__bar-fill"
-        data-role="bar-fill"
-        style="width: {{ (job.completed / job.total * 100) if job.total else 0 }}%"
-      ></div>
+    <div class="downloads-list__head">
+      <div class="downloads-list__copy">
+        <a class="downloads-list__link" href="/titles/{{ job.slug_url }}/download/{{ job.id }}">{{ job.slug_url }}</a>
+        <span class="downloads-list__meta">
+          <span class="downloads-list__fmt">{{ job.fmt | upper }}</span>
+          <span class="downloads-list__status" data-role="status-text">
+            {%- if job.status == "queued" %}В очереди…
+            {%- elif job.status == "running" %}{% if job.total %}Скачивание · {{ job.completed }} из {{ job.total }} глав{% else %}Начинаем скачивание…{% endif %}
+            {%- elif job.status == "exporting" %}Сборка файла…
+            {%- elif job.status == "needs_translation" %}Нужен выбор перевода
+            {%- endif -%}
+          </span>
+          <span class="downloads-list__eta" data-role="eta-text"></span>
+        </span>
+      </div>
+      <button
+        type="button"
+        class="ui-icon-btn downloads-list__cancel"
+        data-role="cancel-job"
+        aria-label="Отменить загрузку"
+        title="Отменить загрузку"
+      ><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M6 6l12 12M18 6 6 18"/></svg></button>
     </div>
-    <span class="downloads-list__status" data-role="status-text">
-      {% if job.status == "queued" %}В очереди…
-      {% elif job.status == "running" %}{% if job.total %}Глава {{ job.completed }} из {{ job.total }}{% else %}Начинаем скачивание…{% endif %}
-      {% elif job.status == "exporting" %}Сборка файла…
-      {% elif job.status == "needs_translation" %}Нужен выбор перевода
-      {% endif %}
-    </span>
-    <span class="downloads-list__eta" data-role="eta-text"></span>
-    <button
-      type="button"
-      class="downloads-list__cancel"
-      data-role="cancel-job"
-      aria-label="Отменить загрузку"
-      title="Отменить загрузку"
-    >Отменить</button>
+    <div class="ui-progress ui-progress--lg downloads-list__progress">
+      <span class="ui-progress__bar"><span class="ui-progress__fill" data-role="bar-fill" style="width: {{ pct }}%"></span></span>
+      <b class="ui-progress__pct" data-role="bar-pct">{{ pct }}%</b>
+    </div>
   </li>
   {% endfor %}
 </ul>
