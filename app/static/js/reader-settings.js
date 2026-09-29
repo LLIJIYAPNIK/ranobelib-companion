@@ -7,7 +7,7 @@
   const FONT_FAMILIES = {
     sans: "var(--font-sans)",
     serif: "var(--font-serif)",
-    mono: "var(--font-mono)",
+    mono: "var(--legacy-font-mono)",
   };
   const DEFAULTS = {
     fontFamily: "sans",
