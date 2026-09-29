@@ -1,21 +1,25 @@
 /* Palette and layout language taken from Claude Design import:
-   "Concept 3 - Media Collection Dashboard" (see CLAUDE.md, "Дизайн"). */
+   "Concept 3 - Media Collection Dashboard" (see CLAUDE.md, "Дизайн").
+   PR 247: the four names Aurora Ink's tokens reuse with different values (--bg-page,
+   --border, --accent, --font-mono) are renamed --legacy-* here, same values, so both
+   palettes coexist while wave 31 moves each screen over; the legacy set goes away in
+   PR 267 together with the old markup that still reads it. */
 
 :root {
-  --bg-page: #0e0d14;
+  --legacy-bg-page: #0e0d14;
   --bg-panel: #12111a;
   --bg-surface: #1a1922;
-  --border: #2c2b38;
+  --legacy-border: #2c2b38;
   --text-primary: #e6e5ee;
   --text-secondary: #c7c6d6;
   --text-muted: #6e6c85;
-  --accent: #6d28d9;
+  --legacy-accent: #6d28d9;
   --accent-teal: #22d3c5;
   --accent-green: #2fd07a;
   --accent-orange: #f0a63f;
   --font-sans:
     -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif;
-  --font-mono: ui-monospace, Menlo, monospace;
+  --legacy-font-mono: ui-monospace, Menlo, monospace;
   --font-serif: Georgia, "Times New Roman", serif;
   /* Reader typography/width settings (PR 30) - overridden inline on :root by
      reader-settings.js from the visitor's saved preference (localStorage), read fresh on
@@ -36,6 +40,200 @@
   --mobile-account-height: 52px;
 }
 
+/* Aurora Ink design tokens (PR 247) - section "01 Foundations" of the Claude Design
+   import "Webnovells - Aurora Ink - Final" (see CLAUDE.md, "Дизайн" -> "Обновление 3"),
+   values copied from its token tables as-is. Declared only: nothing reads them yet,
+   components (PR 248) and screens (PR 249+) switch over one by one. Breakpoints from
+   the same section can't live in a custom property (media queries don't take var()):
+   <= 767 mobile, 768-1199 tablet, >= 1200 desktop. */
+:root {
+  /* Semantic colors - the app itself has one theme. */
+  --bg-page: #0b0b14;
+  --bg-nav: #0f0e1a;
+  --surface-1: #141421;
+  --surface-2: #1c1a2b;
+  --surface-3: #262338;
+  --surface-selected: #1f1a33;
+  --border: #2a2740;
+  --border-strong: #3a3556;
+  --divider: #1e1b2e;
+  --text-1: #f5f3ff;
+  --text-2: #cfcae3;
+  --text-3: #a9a3c2;
+  --primary: #7c3aed;
+  --primary-pressed: #6d28d9;
+  --primary-text: #b9a2ff;
+  --accent: #22d3c5;
+  --accent-text: #5eead4;
+  --accent-soft: rgba(34, 211, 197, 0.1);
+  --danger: #fb7185;
+  --danger-text: #fda4af;
+  --warning: #f6b94a;
+  --scrim: rgba(5, 5, 10, 0.66);
+  --focus: #22d3c5;
+  --disabled: #4a4566;
+  --disabled-text: #8e88a8;
+  /* Focus ring: 2px of page background, then 2px of --focus. */
+  --focus-ring: 0 0 0 2px var(--bg-page), 0 0 0 4px var(--focus);
+
+  /* Typography. */
+  --font-ui: Manrope, "Segoe UI", system-ui, sans-serif;
+  --font-reader-serif: Literata, "PT Serif", Georgia, serif;
+  --font-reader-sans: "Golos Text", "PT Sans", system-ui, sans-serif;
+  --font-mono: "JetBrains Mono", ui-monospace, monospace;
+  --type-display: 800 42px/1.08 var(--font-ui);
+  --type-h1: 800 28px/1.15 var(--font-ui);
+  --type-h2: 800 20px/1.2 var(--font-ui);
+  --type-h3: 700 16px/1.3 var(--font-ui);
+  --type-body: 500 15px/1.55 var(--font-ui);
+  --type-body-sm: 500 13px/1.45 var(--font-ui);
+  --type-label: 700 12px/1 var(--font-ui);
+  --type-button: 700 15px/1 var(--font-ui);
+  --type-button-sm: 700 13px/1 var(--font-ui);
+  --type-reader: 400 18px/1.85 var(--font-reader-serif);
+  --type-reader-sans: 400 18px/1.85 var(--font-reader-sans);
+  --type-reader-title: 500 26px/1.25 var(--font-reader-serif);
+  --type-mono: 400 12px/1.4 var(--font-mono);
+  --tracking-display: -0.02em;
+  --tracking-h1: -0.01em;
+  /* Labels are uppercase (text-transform) with this tracking. */
+  --tracking-label: 0.1em;
+
+  /* Spacing - step 4 (plus 2 for hairline gaps). */
+  --s-2: 2px;
+  --s-4: 4px;
+  --s-8: 8px;
+  --s-12: 12px;
+  --s-16: 16px;
+  --s-20: 20px;
+  --s-24: 24px;
+  --s-32: 32px;
+  --s-40: 40px;
+  --s-48: 48px;
+  --s-64: 64px;
+
+  /* Radii. */
+  --r-xs: 6px; /* badges, chips */
+  --r-sm: 8px; /* segments, small buttons */
+  --r-md: 10px; /* menu rows */
+  --r-lg: 12px; /* buttons, fields, covers */
+  --r-xl: 16px; /* cards, panels */
+  --r-2xl: 20px; /* bottom sheet top corners */
+  --r-full: 999px; /* avatars, switch */
+
+  /* Elevation. "surface" is --surface-1 + 1px --border and "raised" is --surface-2
+     with no shadow, so only the three shadowed levels need their own token. */
+  --shadow-popover: 0 20px 48px rgba(0, 0, 0, 0.5);
+  --shadow-sheet: 0 -12px 32px rgba(0, 0, 0, 0.4);
+  --shadow-cover: 0 18px 40px rgba(0, 0, 0, 0.5), 0 0 0 1px rgba(255, 255, 255, 0.08);
+
+  /* Motion. Enter with --ease, exit with --ease-exit. */
+  --dur-press: 120ms; /* pressed, tap feedback, paragraph marker */
+  --dur-base: 180ms; /* hover, fade, nav indicator, HUD enter, "smooth" reveal */
+  --dur-sheet: 220ms; /* bottom sheet, popover, scroll to paragraph */
+  --dur-exit: 140ms; /* HUD hide, popover close */
+  --ease: cubic-bezier(0.2, 0, 0, 1);
+  --ease-exit: ease-in;
+  /* Multiplier for every translate/scale distance, so reduced motion can zero them
+     all in one place: transform: translateY(calc(8px * var(--motion-shift))) or
+     scale(calc(1 + 0.04 * var(--motion-shift))). */
+  --motion-shift: 1;
+
+  /* Reader theme (--r-*): Aurora Dark by default; the other four themes override the
+     same names under [data-reader-theme] below. Not to be confused with the radii
+     above - those are --r-<size>, these are --r-<role>. */
+  --r-bg: #0e0d17;
+  --r-text: #e6e2f3;
+  --r-text-read: #b4afc7;
+  --r-muted: #a29db8;
+  --r-accent: #22d3c5;
+  --r-active-tint: rgba(34, 211, 197, 0.06);
+  --r-hud: #121120;
+  --r-surface: #17152a;
+  --r-select: rgba(139, 92, 246, 0.2);
+  --r-track: #221f33;
+  --r-focus: #22d3c5;
+}
+
+@media (min-width: 1200px) {
+  :root {
+    --type-reader-title: 500 34px/1.25 var(--font-reader-serif);
+  }
+}
+
+/* Reduced motion ("01 Foundations" -> Motion): no shifts or scaling, only opacity, at
+   most 120ms. Done at the token level, so it covers exactly the components built on
+   the duration tokens and --motion-shift, and leaves the pre-Aurora animations alone until each is
+   moved over. Components where the spec asks for no fade at all (instant paragraph
+   reveal, HUD) opt out themselves - a token can't tell them apart. */
+@media (prefers-reduced-motion: reduce) {
+  :root {
+    --dur-base: 120ms;
+    --dur-sheet: 120ms;
+    --dur-exit: 120ms;
+    --motion-shift: 0;
+  }
+}
+
+[data-reader-theme="amoled"] {
+  --r-bg: #000000;
+  --r-text: #d9d6e4;
+  --r-text-read: #a9a5ba;
+  --r-muted: #8f8ba3;
+  --r-accent: #22d3c5;
+  --r-active-tint: rgba(34, 211, 197, 0.07);
+  --r-hud: #0a0a0f;
+  --r-surface: #0e0d14;
+  --r-select: rgba(139, 92, 246, 0.22);
+  --r-track: #16151f;
+  --r-focus: #22d3c5;
+}
+
+[data-reader-theme="sepia"] {
+  --r-bg: #f4ead7;
+  --r-text: #3a2e21;
+  --r-text-read: #5e5040;
+  --r-muted: #6e5f4b;
+  --r-accent: #0f766e;
+  --r-active-tint: rgba(15, 118, 110, 0.08);
+  --r-hud: #ede1ca;
+  --r-surface: #eadcc3;
+  --r-select: rgba(124, 58, 237, 0.16);
+  --r-track: #e3d5bb;
+  --r-focus: #0f766e;
+}
+
+[data-reader-theme="light"] {
+  --r-bg: #faf9fc;
+  --r-text: #1d1a28;
+  --r-text-read: #4a4659;
+  --r-muted: #6b6680;
+  --r-accent: #0f766e;
+  --r-active-tint: rgba(15, 118, 110, 0.07);
+  --r-hud: #f1eff6;
+  --r-surface: #efedf5;
+  --r-select: rgba(124, 58, 237, 0.14);
+  --r-track: #e6e3ee;
+  --r-focus: #0f766e;
+}
+
+/* "System" follows the OS: Aurora Dark (the :root defaults) when dark, Light when light. */
+@media (prefers-color-scheme: light) {
+  [data-reader-theme="system"] {
+    --r-bg: #faf9fc;
+    --r-text: #1d1a28;
+    --r-text-read: #4a4659;
+    --r-muted: #6b6680;
+    --r-accent: #0f766e;
+    --r-active-tint: rgba(15, 118, 110, 0.07);
+    --r-hud: #f1eff6;
+    --r-surface: #efedf5;
+    --r-select: rgba(124, 58, 237, 0.14);
+    --r-track: #e6e3ee;
+    --r-focus: #0f766e;
+  }
+}
+
 /* PR 238: WebKit/some Chrome builds paint their own translucent grey-blue flash over
    whatever's tapped (any link/button, sitewide - not specific to one component) while
    it's pressed, on top of the site's own dark theme - it reads as a foreign, out-of-place
@@ -52,7 +250,7 @@
    scrollbar-color is inherited, so setting it on :root reaches every scrollable
    element (page, sidebar, dropdown listboxes) without repeating it per container. */
 :root {
-  scrollbar-color: var(--border) transparent;
+  scrollbar-color: var(--legacy-border) transparent;
   scrollbar-width: thin;
 }
 
@@ -66,14 +264,14 @@
 }
 
 *::-webkit-scrollbar-thumb {
-  background-color: var(--border);
+  background-color: var(--legacy-border);
   border-radius: 999px;
   border: 2px solid transparent;
   background-clip: padding-box;
 }
 
 *::-webkit-scrollbar-thumb:hover {
-  background-color: var(--accent);
+  background-color: var(--legacy-accent);
 }
 
 *::-webkit-scrollbar-corner {
@@ -82,7 +280,7 @@
 
 body {
   margin: 0;
-  background: var(--bg-page);
+  background: var(--legacy-bg-page);
   color: var(--text-primary);
   font-family: var(--font-sans);
 }
@@ -125,7 +323,7 @@ a {
      makes, just all the way to invisible instead of just thinner. */
   scrollbar-width: none;
   background: var(--bg-panel);
-  border-right: 1px solid var(--border);
+  border-right: 1px solid var(--legacy-border);
   display: flex;
   flex-direction: column;
   align-items: center;
@@ -195,7 +393,7 @@ a {
   padding: 0 4px;
   border-radius: 999px;
   background: var(--accent-orange);
-  color: var(--bg-page);
+  color: var(--legacy-bg-page);
   font-size: 10px;
   font-weight: 700;
   line-height: 16px;
@@ -245,7 +443,7 @@ a {
     width: 100%;
     height: 57px;
     box-sizing: border-box;
-    border-bottom: 1px solid var(--border);
+    border-bottom: 1px solid var(--legacy-border);
   }
 
   /* Nav rows span the sidebar's full width edge-to-edge in both the collapsed (64px) and
@@ -309,7 +507,7 @@ a {
     justify-content: flex-start;
     gap: 12px;
     padding: 12px 18px;
-    border: 1px solid var(--border);
+    border: 1px solid var(--legacy-border);
     background: var(--bg-surface);
   }
 
@@ -423,7 +621,7 @@ a {
   align-items: center;
   gap: 8px;
   padding-top: 12px;
-  border-top: 1px solid var(--border);
+  border-top: 1px solid var(--legacy-border);
   width: 100%;
 }
 
@@ -450,7 +648,7 @@ a {
   width: 36px;
   height: 36px;
   border-radius: 50%;
-  background: var(--accent);
+  background: var(--legacy-accent);
   color: var(--text-primary);
   font-size: 13px;
   font-weight: 600;
@@ -575,7 +773,7 @@ a {
   justify-content: center;
   width: 36px;
   height: 36px;
-  border: 1px dashed var(--border);
+  border: 1px dashed var(--legacy-border);
   border-radius: 50%;
   background: var(--bg-panel);
   color: var(--text-muted);
@@ -609,7 +807,7 @@ a {
   border: 2px solid var(--bg-panel);
   border-radius: 50%;
   background: var(--accent-teal);
-  color: var(--bg-page);
+  color: var(--legacy-bg-page);
 }
 
 .sidebar__guest-badge svg {
@@ -710,7 +908,7 @@ a {
   min-width: 180px;
   padding: 6px;
   background: var(--bg-surface);
-  border: 1px solid var(--border);
+  border: 1px solid var(--legacy-border);
   border-radius: 8px;
   box-shadow: 0 10px 24px rgba(0, 0, 0, 0.35);
   opacity: 0;
@@ -790,7 +988,7 @@ a {
   max-width: calc(100vw - 32px);
   max-height: min(480px, calc(100vh - 32px));
   background: var(--bg-surface);
-  border: 1px solid var(--border);
+  border: 1px solid var(--legacy-border);
   border-radius: 8px;
   box-shadow: 0 10px 24px rgba(0, 0, 0, 0.35);
   opacity: 0;
@@ -808,7 +1006,7 @@ a {
 .notifications-panel__header {
   flex: 0 0 auto;
   padding: 12px 14px;
-  border-bottom: 1px solid var(--border);
+  border-bottom: 1px solid var(--legacy-border);
 }
 
 .notifications-panel__title {
@@ -836,7 +1034,7 @@ a {
 .notifications-panel__footer {
   flex: 0 0 auto;
   padding: 10px 14px;
-  border-top: 1px solid var(--border);
+  border-top: 1px solid var(--legacy-border);
   color: var(--text-muted);
   font-size: 12px;
   text-align: center;
@@ -925,7 +1123,7 @@ a {
   width: 28px;
   height: 28px;
   border-radius: 50%;
-  background: var(--accent);
+  background: var(--legacy-accent);
   color: var(--text-primary);
   font-size: 11px;
   font-weight: 600;
@@ -999,7 +1197,7 @@ a {
   width: 32px;
   height: 32px;
   border-radius: 50%;
-  background: var(--accent);
+  background: var(--legacy-accent);
   color: var(--text-primary);
   font-size: 12px;
   font-weight: 600;
@@ -1056,7 +1254,7 @@ a {
   align-items: center;
   gap: 16px;
   padding: 20px 32px;
-  border-bottom: 1px solid var(--border);
+  border-bottom: 1px solid var(--legacy-border);
 }
 
 /* PR 101: reveal-on-scroll-up for the catalog's own .header (search bar, sort, "Фильтры"
@@ -1074,7 +1272,7 @@ a {
   position: sticky;
   top: 0;
   z-index: 45;
-  background: var(--bg-page);
+  background: var(--legacy-bg-page);
   transform: translateY(0);
   transition: transform 0.25s ease;
 }
@@ -1093,11 +1291,11 @@ a {
 .search-input {
   flex: 1;
   height: 36px;
-  border: 1px solid var(--border);
+  border: 1px solid var(--legacy-border);
   border-radius: 6px;
   background: var(--bg-surface);
   color: var(--text-primary);
-  font-family: var(--font-mono);
+  font-family: var(--legacy-font-mono);
   font-size: 13px;
   padding: 0 12px;
 }
@@ -1117,7 +1315,7 @@ a {
   padding: 0 18px;
   border: none;
   border-radius: 6px;
-  background: var(--accent);
+  background: var(--legacy-accent);
   color: var(--text-primary);
   font-size: 13px;
   font-weight: 600;
@@ -1135,7 +1333,7 @@ a {
   height: 36px;
   padding: 0 18px;
   margin-left: auto;
-  border: 1px solid var(--border);
+  border: 1px solid var(--legacy-border);
   border-radius: 6px;
   background: transparent;
   color: var(--text-secondary);
@@ -1158,7 +1356,7 @@ a {
 }
 
 .content__hint code {
-  font-family: var(--font-mono);
+  font-family: var(--legacy-font-mono);
   color: var(--text-secondary);
 }
 
@@ -1220,7 +1418,7 @@ a {
   max-width: 660px;
   margin: 24px auto 0;
   background: var(--bg-surface);
-  border: 1px solid var(--border);
+  border: 1px solid var(--legacy-border);
   border-radius: 12px;
   overflow: hidden;
 }
@@ -1230,14 +1428,14 @@ a {
   width: 260px;
   padding: 26px 24px;
   background: var(--bg-panel);
-  border-right: 1px solid var(--border);
+  border-right: 1px solid var(--legacy-border);
   display: flex;
   flex-direction: column;
   gap: 18px;
 }
 
 .auth-card__brand {
-  font-family: var(--font-mono);
+  font-family: var(--legacy-font-mono);
   font-size: 11px;
   letter-spacing: 0.08em;
   text-transform: uppercase;
@@ -1299,7 +1497,7 @@ a {
   margin-right: 38px;
   padding: 4px;
   background: var(--bg-panel);
-  border: 1px solid var(--border);
+  border: 1px solid var(--legacy-border);
   border-radius: 10px;
 }
 
@@ -1355,7 +1553,7 @@ a {
   .auth-card__intro {
     width: auto;
     border-right: none;
-    border-top: 1px solid var(--border);
+    border-top: 1px solid var(--legacy-border);
   }
 
   .auth-tabs {
@@ -1405,7 +1603,7 @@ a {
   height: 16px;
   margin: 0;
   position: relative;
-  border: 1px solid var(--border);
+  border: 1px solid var(--legacy-border);
   border-radius: 4px;
   background: var(--bg-surface);
   cursor: pointer;
@@ -1419,7 +1617,7 @@ a {
   top: 1px;
   width: 4px;
   height: 8px;
-  border: solid var(--bg-page);
+  border: solid var(--legacy-bg-page);
   border-width: 0 2px 2px 0;
   transform: rotate(45deg) scale(0);
   transition: transform 0.1s ease;
@@ -1448,7 +1646,7 @@ a {
 .auth-form__input {
   width: 100%;
   height: 40px;
-  border: 1px solid var(--border);
+  border: 1px solid var(--legacy-border);
   border-radius: 6px;
   background: var(--bg-surface);
   color: var(--text-primary);
@@ -1560,7 +1758,7 @@ a {
   height: 100%;
   border-radius: 50%;
   overflow: hidden;
-  background: var(--accent);
+  background: var(--legacy-accent);
   color: var(--text-primary);
 }
 
@@ -1633,7 +1831,7 @@ a {
   width: 96px;
   height: 96px;
   border-radius: 50%;
-  background: var(--accent);
+  background: var(--legacy-accent);
   color: var(--text-primary);
   font-size: 32px;
   font-weight: 600;
@@ -1823,7 +2021,7 @@ a {
   height: var(--reading-calendar-cell);
   border-radius: 2px;
   background: var(--bg-surface);
-  border: 1px solid var(--border);
+  border: 1px solid var(--legacy-border);
 }
 
 .reading-calendar-legend__swatch--level-1 {
@@ -1851,7 +2049,7 @@ a {
   height: 11px;
   border-radius: 2px;
   background: var(--bg-surface);
-  border: 1px solid var(--border);
+  border: 1px solid var(--legacy-border);
 }
 
 .reading-calendar__day--level-1 {
@@ -1885,7 +2083,7 @@ a {
   max-width: 240px;
   padding: 8px 10px;
   background: var(--bg-surface);
-  border: 1px solid var(--border);
+  border: 1px solid var(--legacy-border);
   border-radius: 8px;
   box-shadow: 0 10px 24px rgba(0, 0, 0, 0.35);
   font-size: 12px;
@@ -1965,7 +2163,7 @@ a {
    set of card styles. */
 .friend-activity-card {
   padding: 16px;
-  border: 1px solid var(--border);
+  border: 1px solid var(--legacy-border);
   border-radius: 12px;
   background: var(--bg-surface);
 }
@@ -2035,7 +2233,7 @@ a {
   max-width: 480px;
   margin-top: 8px;
   padding: 24px;
-  border: 1px solid var(--border);
+  border: 1px solid var(--legacy-border);
   border-radius: 12px;
   background: var(--bg-surface);
 }
@@ -2068,7 +2266,7 @@ a {
   max-width: 420px;
   margin: 0 auto;
   padding: 48px 40px;
-  border: 1px solid var(--border);
+  border: 1px solid var(--legacy-border);
   border-radius: 16px;
   background: var(--bg-surface);
 }
@@ -2097,7 +2295,7 @@ a {
   width: 64px;
   height: 46px;
   border-radius: 8px;
-  background: linear-gradient(135deg, var(--accent), #5b21b6);
+  background: linear-gradient(135deg, var(--legacy-accent), #5b21b6);
 }
 
 .locked-feature__icon-keyhole {
@@ -2149,7 +2347,7 @@ a {
   margin-top: 4px;
   padding: 10px 22px;
   border-radius: 8px;
-  background: var(--accent);
+  background: var(--legacy-accent);
   color: var(--text-primary);
   font-size: 14px;
   font-weight: 600;
@@ -2162,7 +2360,7 @@ a {
   display: flex;
   gap: 20px;
   padding: 0 32px;
-  border-bottom: 1px solid var(--border);
+  border-bottom: 1px solid var(--legacy-border);
 }
 
 .library-tabs__link {
@@ -2271,7 +2469,7 @@ a {
   justify-content: center;
   width: 44px;
   height: 44px;
-  border: 1px solid var(--border);
+  border: 1px solid var(--legacy-border);
   border-radius: 999px;
   background: var(--bg-surface);
   color: var(--text-primary);
@@ -2336,7 +2534,7 @@ a {
   overflow-y: auto;
   padding: 16px;
   background: var(--bg-surface);
-  border: 1px solid var(--border);
+  border: 1px solid var(--legacy-border);
   border-radius: 8px;
   animation: catalog-filters-in 0.18s ease-out;
   transition: opacity 0.15s ease, transform 0.15s ease;
@@ -2394,7 +2592,7 @@ a {
 .catalog-filters__section + .catalog-filters__section {
   margin-top: 20px;
   padding-top: 20px;
-  border-top: 1px solid var(--border);
+  border-top: 1px solid var(--legacy-border);
 }
 
 .catalog-filters__section-title {
@@ -2473,7 +2671,7 @@ a {
   height: 16px;
   margin: 0;
   position: relative;
-  border: 1px solid var(--border);
+  border: 1px solid var(--legacy-border);
   border-radius: 4px;
   background: var(--bg-surface);
   cursor: pointer;
@@ -2487,7 +2685,7 @@ a {
   top: 1px;
   width: 4px;
   height: 8px;
-  border: solid var(--bg-page);
+  border: solid var(--legacy-bg-page);
   border-width: 0 2px 2px 0;
   transform: rotate(45deg) scale(0);
   transition: transform 0.1s ease;
@@ -2521,7 +2719,7 @@ a {
   height: 16px;
   margin: 0;
   position: relative;
-  border: 1px solid var(--border);
+  border: 1px solid var(--legacy-border);
   border-radius: 50%;
   background: var(--bg-surface);
   cursor: pointer;
@@ -2533,7 +2731,7 @@ a {
   position: absolute;
   inset: 3px;
   border-radius: 50%;
-  background: var(--bg-page);
+  background: var(--legacy-bg-page);
   transform: scale(0);
   transition: transform 0.1s ease;
 }
@@ -2767,7 +2965,7 @@ a {
 
 .reading-progress {
   height: 3px;
-  background: var(--border);
+  background: var(--legacy-border);
   border-radius: 2px;
   overflow: hidden;
 }
@@ -2787,7 +2985,7 @@ a {
   display: flex;
   gap: 28px;
   padding-bottom: 24px;
-  border-bottom: 1px solid var(--border);
+  border-bottom: 1px solid var(--legacy-border);
 }
 
 .title-hero__cover {
@@ -2893,7 +3091,7 @@ a {
 
 .badge--muted {
   background: transparent;
-  border: 1px solid var(--border);
+  border: 1px solid var(--legacy-border);
   color: var(--text-muted);
 }
 
@@ -2922,7 +3120,7 @@ a {
 .spinner {
   width: 11px;
   height: 11px;
-  border: 2px solid var(--border);
+  border: 2px solid var(--legacy-border);
   border-top-color: var(--accent-teal);
   border-radius: 50%;
   animation: spin 0.7s linear infinite;
@@ -2993,7 +3191,7 @@ a {
   overflow-y: auto;
   padding: 24px;
   background: var(--bg-surface);
-  border: 1px solid var(--border);
+  border: 1px solid var(--legacy-border);
   border-radius: 12px;
   box-shadow: 0 20px 48px rgba(0, 0, 0, 0.4);
 }
@@ -3125,12 +3323,12 @@ a {
 }
 
 .btn--primary {
-  background: var(--accent);
+  background: var(--legacy-accent);
 }
 
 .btn--secondary {
   background: transparent;
-  border: 1px solid var(--border);
+  border: 1px solid var(--legacy-border);
 }
 
 /* PR 138: the "Сохранить" buttons on every /settings/* form had no focus-visible ring at
@@ -3202,7 +3400,7 @@ a {
   border-radius: 5px;
   font-size: 11px;
   font-weight: 600;
-  background: var(--accent);
+  background: var(--legacy-accent);
 }
 
 /* PR 199: .btn--sm's own `background` above otherwise wins over .btn--secondary's
@@ -3261,18 +3459,18 @@ a {
   gap: 10px;
   padding: 8px;
   background: var(--bg-surface);
-  border: 1px solid var(--border);
+  border: 1px solid var(--legacy-border);
   border-radius: 8px;
 }
 
 .toc__export-format {
   height: 36px;
   padding: 0 10px;
-  border: 1px solid var(--border);
+  border: 1px solid var(--legacy-border);
   border-radius: 8px;
   background: var(--bg-surface);
   color: var(--text-primary);
-  font-family: var(--font-mono);
+  font-family: var(--legacy-font-mono);
   font-size: 13px;
   cursor: pointer;
   box-shadow: 0 1px 2px rgba(0, 0, 0, 0.2);
@@ -3336,7 +3534,7 @@ a {
   padding: 6px;
   list-style: none;
   background: var(--bg-surface);
-  border: 1px solid var(--border);
+  border: 1px solid var(--legacy-border);
   border-radius: 8px;
   box-shadow: 0 10px 24px rgba(0, 0, 0, 0.35);
   max-height: 280px;
@@ -3411,7 +3609,7 @@ a {
   align-items: center;
   gap: 10px;
   padding: 8px 10px;
-  border-bottom: 1px solid var(--border);
+  border-bottom: 1px solid var(--legacy-border);
   font-size: 13px;
 }
 
@@ -3427,7 +3625,7 @@ a {
   height: 16px;
   margin: 0;
   position: relative;
-  border: 1px solid var(--border);
+  border: 1px solid var(--legacy-border);
   border-radius: 4px;
   background: var(--bg-surface);
   cursor: pointer;
@@ -3441,7 +3639,7 @@ a {
   top: 1px;
   width: 4px;
   height: 8px;
-  border: solid var(--bg-page);
+  border: solid var(--legacy-bg-page);
   border-width: 0 2px 2px 0;
   transform: rotate(45deg) scale(0);
   transition: transform 0.1s ease;
@@ -3477,7 +3675,7 @@ a {
 }
 
 .toc__chapter-number {
-  font-family: var(--font-mono);
+  font-family: var(--legacy-font-mono);
   color: var(--text-muted);
   flex: 0 0 auto;
   min-width: 44px;
@@ -3496,7 +3694,7 @@ a {
   width: 44px;
   height: 4px;
   border-radius: 2px;
-  background: var(--border);
+  background: var(--legacy-border);
   overflow: hidden;
 }
 
@@ -3516,7 +3714,7 @@ a {
   height: 18px;
   border-radius: 50%;
   background: var(--accent-teal);
-  color: var(--bg-page);
+  color: var(--legacy-bg-page);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -3530,7 +3728,7 @@ a {
 }
 
 .error-page__status {
-  font-family: var(--font-mono);
+  font-family: var(--legacy-font-mono);
   color: var(--text-muted);
   font-size: 13px;
   letter-spacing: 1px;
@@ -3569,7 +3767,7 @@ a {
   gap: 8px 20px;
   padding: 14px 32px;
   background: var(--bg-panel);
-  border-bottom: 1px solid var(--border);
+  border-bottom: 1px solid var(--legacy-border);
   transform: translateY(-100%);
   transition: transform 0.25s ease;
 }
@@ -3600,7 +3798,7 @@ a {
   gap: 8px;
   padding-bottom: 20px;
   margin-bottom: 20px;
-  border-bottom: 1px solid var(--border);
+  border-bottom: 1px solid var(--legacy-border);
 }
 
 .reader-nav__back {
@@ -3636,7 +3834,7 @@ a {
   max-width: var(--reader-width);
   margin: 24px auto 0;
   padding-top: 20px;
-  border-top: 1px solid var(--border);
+  border-top: 1px solid var(--legacy-border);
 }
 
 .reader-content {
@@ -3660,7 +3858,7 @@ a {
 
 .reader-content hr {
   border: none;
-  border-top: 1px solid var(--border);
+  border-top: 1px solid var(--legacy-border);
   margin: 24px 0;
 }
 
@@ -3671,7 +3869,7 @@ a {
 .reader-footnotes {
   margin: 24px 0 0;
   padding: 12px 16px;
-  border: 1px solid var(--border);
+  border: 1px solid var(--legacy-border);
   border-radius: 10px;
 }
 
@@ -3718,7 +3916,7 @@ a {
 
 .reader-content__paragraph-wrap--plain {
   background: var(--bg-surface);
-  border: 1px solid var(--border);
+  border: 1px solid var(--legacy-border);
 }
 
 /* Message-bubble look: accent-tinted instead of the neutral surface color, and an
@@ -3735,7 +3933,7 @@ a {
   margin-top: 6px;
   font-size: 11px;
   color: var(--text-muted);
-  font-family: var(--font-mono);
+  font-family: var(--legacy-font-mono);
   text-align: right;
 }
 
@@ -3847,7 +4045,7 @@ a {
   min-width: 180px;
   padding: 6px;
   background: var(--bg-surface);
-  border: 1px solid var(--border);
+  border: 1px solid var(--legacy-border);
   border-radius: 8px;
   box-shadow: 0 10px 24px rgba(0, 0, 0, 0.35);
   opacity: 0;
@@ -4024,7 +4222,7 @@ a {
   padding: 2px 8px;
   border-radius: 999px;
   background: var(--bg-surface);
-  border: 1px solid var(--border);
+  border: 1px solid var(--legacy-border);
   font-size: 12px;
   color: var(--text-secondary);
   white-space: nowrap;
@@ -4144,7 +4342,7 @@ a {
   top: 0;
   bottom: 0;
   width: calc(var(--side-width) + 10px);
-  border-left: 1px solid var(--border);
+  border-left: 1px solid var(--legacy-border);
   transition: border-left-color 0.1s ease;
 }
 
@@ -4241,7 +4439,7 @@ a {
   width: 20px;
   height: 20px;
   border-radius: 50%;
-  background: var(--accent);
+  background: var(--legacy-accent);
   color: var(--text-primary);
   font-size: 9px;
   font-weight: 600;
@@ -4319,7 +4517,7 @@ a {
 .paragraph-comment__body blockquote {
   margin: 0 0 8px;
   padding: 2px 0 2px 10px;
-  border-left: 2px solid var(--border);
+  border-left: 2px solid var(--legacy-border);
   color: var(--text-muted);
 }
 
@@ -4528,9 +4726,9 @@ img.paragraph-comment__attachment {
   width: 100%;
   min-height: 64px;
   padding: 8px 10px;
-  border: 1px solid var(--border);
+  border: 1px solid var(--legacy-border);
   border-radius: 6px;
-  background: var(--bg-page);
+  background: var(--legacy-bg-page);
   color: var(--text-primary);
   font-family: inherit;
   font-size: 13px;
@@ -4591,9 +4789,9 @@ img.paragraph-comment__attachment {
   align-items: center;
   gap: 6px;
   padding: 4px 8px;
-  border: 1px solid var(--border);
+  border: 1px solid var(--legacy-border);
   border-radius: 6px;
-  background: var(--bg-page);
+  background: var(--legacy-bg-page);
   font-size: 12px;
 }
 
@@ -4755,7 +4953,7 @@ img.paragraph-comment__attachment {
   margin-top: 28px;
   padding: 24px;
   background: var(--bg-surface);
-  border: 1px solid var(--border);
+  border: 1px solid var(--legacy-border);
   border-radius: 12px;
 }
 
@@ -4809,7 +5007,7 @@ img.paragraph-comment__attachment {
   margin-top: 10px;
   padding: 14px;
   background: var(--bg-surface);
-  border: 1px solid var(--border);
+  border: 1px solid var(--legacy-border);
   border-radius: 8px;
 }
 
@@ -4849,7 +5047,7 @@ img.paragraph-comment__attachment {
   height: 16px;
   margin: 0;
   position: relative;
-  border: 1px solid var(--border);
+  border: 1px solid var(--legacy-border);
   border-radius: 4px;
   background: var(--bg-surface);
   cursor: pointer;
@@ -4863,7 +5061,7 @@ img.paragraph-comment__attachment {
   top: 1px;
   width: 4px;
   height: 8px;
-  border: solid var(--bg-page);
+  border: solid var(--legacy-bg-page);
   border-width: 0 2px 2px 0;
   transform: rotate(45deg) scale(0);
   transition: transform 0.1s ease;
@@ -4945,7 +5143,7 @@ img.paragraph-comment__attachment {
   overflow-y: auto;
   padding: 24px;
   background: var(--bg-surface);
-  border: 1px solid var(--border);
+  border: 1px solid var(--legacy-border);
   border-radius: 12px;
   box-shadow: 0 20px 48px rgba(0, 0, 0, 0.4);
 }
@@ -4979,8 +5177,8 @@ img.paragraph-comment__attachment {
   left: 24px;
   padding: 3px 9px;
   border-radius: 999px;
-  background: var(--bg-page);
-  border: 1px solid var(--border);
+  background: var(--legacy-bg-page);
+  border: 1px solid var(--legacy-border);
   color: var(--text-muted);
   font-size: 12px;
   font-variant-numeric: tabular-nums;
@@ -5005,12 +5203,12 @@ img.paragraph-comment__attachment {
   min-width: 0;
   flex: 1 1 auto;
   padding: 0 8px;
-  border: 1px solid var(--border);
+  border: 1px solid var(--legacy-border);
   border-left: none;
   border-right: none;
   background: var(--bg-surface);
   color: var(--text-primary);
-  font-family: var(--font-mono);
+  font-family: var(--legacy-font-mono);
   font-size: 13px;
   text-align: center;
   /* The native up/down spinner can't be restyled in any engine (same limitation PR 54 hit
@@ -5032,10 +5230,10 @@ img.paragraph-comment__attachment {
   flex: 0 0 auto;
   width: 32px;
   height: 36px;
-  border: 1px solid var(--border);
+  border: 1px solid var(--legacy-border);
   background: var(--bg-surface);
   color: var(--text-secondary);
-  font-family: var(--font-mono);
+  font-family: var(--legacy-font-mono);
   font-size: 15px;
   line-height: 1;
   cursor: pointer;
@@ -5080,7 +5278,7 @@ img.paragraph-comment__attachment {
      to be previewing. */
   max-width: var(--reader-width);
   background: var(--bg-surface);
-  border: 1px solid var(--border);
+  border: 1px solid var(--legacy-border);
   border-radius: 8px;
   color: var(--text-secondary);
   font-family: var(--reader-font-family);
@@ -5108,7 +5306,7 @@ img.paragraph-comment__attachment {
 
 .reader-export__link {
   display: inline-block;
-  border: 1px solid var(--border);
+  border: 1px solid var(--legacy-border);
   border-radius: 6px;
   padding: 6px 14px;
   font-size: 12px;
@@ -5177,7 +5375,7 @@ img.paragraph-comment__attachment {
   justify-content: space-between;
   gap: 12px;
   background: var(--bg-surface);
-  border: 1px solid var(--border);
+  border: 1px solid var(--legacy-border);
   border-radius: 10px;
   padding: 14px 16px;
   text-decoration: none;
@@ -5192,7 +5390,7 @@ img.paragraph-comment__attachment {
 }
 
 .translation-choice__date {
-  font-family: var(--font-mono);
+  font-family: var(--legacy-font-mono);
   font-size: 12px;
   color: var(--text-muted);
   flex: 0 0 auto;
@@ -5219,7 +5417,7 @@ img.paragraph-comment__attachment {
 
 .download-status__bar {
   height: 3px;
-  background: var(--border);
+  background: var(--legacy-border);
   border-radius: 2px;
   overflow: hidden;
 }
@@ -5253,7 +5451,7 @@ img.paragraph-comment__attachment {
 
 .download-status__ambiguous-item {
   padding: 8px 10px;
-  border: 1px solid var(--border);
+  border: 1px solid var(--legacy-border);
   border-radius: 6px;
   background: var(--bg-surface);
 }
@@ -5305,7 +5503,7 @@ img.paragraph-comment__attachment {
   align-items: center;
   gap: 14px;
   padding: 12px 0;
-  border-bottom: 1px solid var(--border);
+  border-bottom: 1px solid var(--legacy-border);
   font-size: 13px;
 }
 
@@ -5329,7 +5527,7 @@ img.paragraph-comment__attachment {
 .downloads-list__fmt,
 .downloads-history__fmt {
   flex: 0 0 auto;
-  font-family: var(--font-mono);
+  font-family: var(--legacy-font-mono);
   color: var(--text-muted);
 }
 
@@ -5355,7 +5553,7 @@ img.paragraph-comment__attachment {
 .downloads-list__cancel {
   flex: 0 0 auto;
   background: none;
-  border: 1px solid var(--border);
+  border: 1px solid var(--legacy-border);
   border-radius: 5px;
   padding: 4px 10px;
   color: var(--text-muted);
@@ -5389,7 +5587,7 @@ img.paragraph-comment__attachment {
 
 .downloads-history__date {
   flex: 0 0 auto;
-  font-family: var(--font-mono);
+  font-family: var(--legacy-font-mono);
   color: var(--text-muted);
   font-size: 12px;
 }
@@ -5438,7 +5636,7 @@ img.paragraph-comment__attachment {
   font-weight: 800;
 }
 
-.activity-stats__value--accent {
+.activity-stats__value--legacy-accent {
   color: var(--accent-teal);
 }
 
@@ -5521,7 +5719,7 @@ img.paragraph-comment__attachment {
        on devices/browsers with no such reserved area. */
     padding-bottom: env(safe-area-inset-bottom, 0px);
     border-right: none;
-    border-top: 1px solid var(--border);
+    border-top: 1px solid var(--legacy-border);
     z-index: 40;
   }
 
@@ -5603,7 +5801,7 @@ img.paragraph-comment__attachment {
     gap: 12px;
     padding: 11px 16px;
     border-top: none;
-    border-bottom: 1px solid var(--border);
+    border-bottom: 1px solid var(--legacy-border);
     background: var(--bg-panel);
     z-index: 40;
   }
@@ -5828,7 +6026,7 @@ img.paragraph-comment__attachment {
   .settings-layout--mobile-js .settings-nav__link {
     white-space: normal;
     padding: 14px 16px;
-    border: 1px solid var(--border);
+    border: 1px solid var(--legacy-border);
     border-radius: 8px;
   }
 
@@ -5970,7 +6168,7 @@ img.paragraph-comment__attachment {
     margin: 0;
     padding: 14px 20px;
     background: var(--bg-panel);
-    border-top: 1px solid var(--border);
+    border-top: 1px solid var(--legacy-border);
     justify-content: space-between;
     z-index: 40;
   }
@@ -6038,7 +6236,7 @@ img.paragraph-comment__attachment {
   gap: 10px;
   padding: 10px 12px;
   background: var(--bg-surface);
-  border: 1px solid var(--border);
+  border: 1px solid var(--legacy-border);
   border-radius: 8px;
   box-shadow: 0 8px 20px rgba(0, 0, 0, 0.35);
   animation: download-ready-in 0.2s ease;
@@ -6101,7 +6299,7 @@ img.paragraph-comment__attachment {
   max-width: 320px;
   padding: 12px 14px;
   background: var(--bg-surface);
-  border: 1px solid var(--border);
+  border: 1px solid var(--legacy-border);
   border-radius: 8px;
   box-shadow: 0 8px 20px rgba(0, 0, 0, 0.35);
 }
@@ -6182,7 +6380,7 @@ img.paragraph-comment__attachment {
 .image-lightbox__nav {
   position: absolute;
   background: rgba(26, 25, 34, 0.7);
-  border: 1px solid var(--border);
+  border: 1px solid var(--legacy-border);
   color: var(--text-primary);
   font-size: 22px;
   line-height: 1;
@@ -6225,7 +6423,7 @@ img.paragraph-comment__attachment {
   gap: 12px;
   padding: 8px 14px;
   background: rgba(26, 25, 34, 0.7);
-  border: 1px solid var(--border);
+  border: 1px solid var(--legacy-border);
   border-radius: 999px;
 }
 
@@ -6242,7 +6440,7 @@ img.paragraph-comment__attachment {
 }
 
 .image-lightbox__counter {
-  font-family: var(--font-mono);
+  font-family: var(--legacy-font-mono);
   font-size: 12px;
   color: var(--text-secondary);
   min-width: 44px;
