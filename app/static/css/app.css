@@ -7213,3 +7213,361 @@ img.paragraph-comment__attachment {
   border-radius: var(--r-xs);
   box-shadow: var(--focus-ring);
 }
+
+/* Progress bar: 4px under grid cards (percent 11px), --lg 6px on library cards
+   (percent 15px/800). Width comes from an inline style="width: N%" on the fill, the
+   same way the pre-Aurora .reading-progress bars already do it. */
+.ui-progress {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.ui-progress__bar {
+  flex: 1;
+  height: 4px;
+  border-radius: 2px;
+  background: var(--border);
+  overflow: hidden;
+}
+
+.ui-progress__fill {
+  display: block;
+  min-width: 3px;
+  height: 100%;
+  border-radius: inherit;
+  background: var(--accent);
+}
+
+.ui-progress__pct {
+  color: var(--accent-text);
+  font: 700 11px/1 var(--font-ui);
+  font-variant-numeric: tabular-nums;
+}
+
+.ui-progress--lg {
+  gap: 10px;
+}
+
+.ui-progress--lg .ui-progress__bar {
+  height: 6px;
+  border-radius: 3px;
+}
+
+.ui-progress--lg .ui-progress__fill {
+  min-width: 4px;
+}
+
+.ui-progress--lg .ui-progress__pct {
+  min-width: 36px;
+  text-align: right;
+  font: 800 15px/1 var(--font-ui);
+}
+
+/* Title card (grid): 2:3 cover, optional corner action (quickview eye, «×» forget),
+   optional progress, name clamped to 2 lines - the full name goes in the link's
+   title/aria-label. */
+.ui-title-card {
+  display: flex;
+  flex-direction: column;
+  gap: var(--s-8);
+  min-width: 0;
+  color: var(--text-1);
+  text-decoration: none;
+}
+
+.ui-title-card__cover {
+  position: relative;
+  display: block;
+  aspect-ratio: 2 / 3;
+  border-radius: var(--r-lg);
+  background: var(--surface-1);
+  overflow: hidden;
+}
+
+.ui-title-card__img {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  transition: filter var(--dur-base) var(--ease);
+}
+
+.ui-title-card__link {
+  display: block;
+  border-radius: var(--r-lg);
+  color: inherit;
+  text-decoration: none;
+}
+
+.ui-title-card__link:focus-visible {
+  outline: none;
+}
+
+.ui-title-card__link:focus-visible .ui-title-card__cover,
+a.ui-title-card:focus-visible .ui-title-card__cover {
+  box-shadow: var(--focus-ring);
+}
+
+@media (hover: hover) {
+  .ui-title-card:hover .ui-title-card__img {
+    filter: brightness(1.08);
+  }
+}
+
+/* Corner action: visually 32px (or 28px --sm), always a 44px hit area. */
+.ui-title-card__action {
+  appearance: none;
+  position: absolute;
+  top: 0;
+  right: 0;
+  display: grid;
+  place-items: center;
+  width: 44px;
+  height: 44px;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: var(--text-1);
+  cursor: pointer;
+}
+
+.ui-title-card__action-chip {
+  display: grid;
+  place-items: center;
+  width: 32px;
+  height: 32px;
+  border-radius: var(--r-md);
+  background: rgba(11, 11, 20, 0.78);
+  transition: background-color var(--dur-base) var(--ease);
+}
+
+.ui-title-card__action--sm .ui-title-card__action-chip {
+  width: 28px;
+  height: 28px;
+  border-radius: 9px;
+}
+
+.ui-title-card__action-chip svg {
+  width: 16px;
+  height: 16px;
+}
+
+@media (hover: hover) {
+  .ui-title-card__action:hover .ui-title-card__action-chip {
+    background: rgba(11, 11, 20, 0.95);
+  }
+}
+
+.ui-title-card__action:focus-visible {
+  outline: none;
+}
+
+.ui-title-card__action:focus-visible .ui-title-card__action-chip {
+  box-shadow: var(--focus-ring);
+}
+
+.ui-title-card__name {
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+  font: 600 13px/1.3 var(--font-ui);
+  overflow-wrap: anywhere;
+}
+
+.ui-title-card__meta {
+  color: var(--text-3);
+  font: var(--type-body-sm);
+}
+
+/* Library card (horizontal): 72x108 cover, name, meta line, large progress. */
+.ui-library-card {
+  display: flex;
+  gap: 14px;
+  min-width: 0;
+  padding: var(--s-12);
+  border: 1px solid var(--border);
+  border-radius: var(--r-xl);
+  background: var(--surface-1);
+  color: var(--text-1);
+}
+
+.ui-library-card__cover {
+  position: relative;
+  flex: 0 0 auto;
+  width: 72px;
+  height: 108px;
+  border-radius: var(--r-sm);
+  background: var(--surface-2);
+  overflow: hidden;
+}
+
+.ui-library-card__cover img {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.ui-library-card__body {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  flex: 1;
+  min-width: 0;
+}
+
+.ui-library-card__name {
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+  font: 700 15px/1.3 var(--font-ui);
+  color: inherit;
+  text-decoration: none;
+  overflow-wrap: anywhere;
+}
+
+.ui-library-card__meta {
+  color: var(--text-3);
+  font: 500 13px/1.2 var(--font-ui);
+}
+
+.ui-library-card .ui-progress {
+  margin-top: auto;
+}
+
+/* Chips: links only (genres, tags, country -> catalog with a filter). */
+.ui-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--s-8);
+  align-items: center;
+}
+
+.ui-chip {
+  display: inline-flex;
+  align-items: center;
+  height: 30px;
+  padding: 0 var(--s-12);
+  border: 1px solid var(--border-strong);
+  border-radius: var(--r-sm);
+  background: transparent;
+  color: var(--text-1);
+  font: 600 13px/1 var(--font-ui);
+  text-decoration: none;
+  white-space: nowrap;
+  transition:
+    background-color var(--dur-base) var(--ease),
+    border-color var(--dur-base) var(--ease);
+}
+
+.ui-chip--filled {
+  border-color: transparent;
+  background: var(--surface-2);
+}
+
+@media (hover: hover) {
+  a.ui-chip:hover {
+    border-color: var(--border-strong);
+    background: var(--surface-3);
+    color: var(--text-1);
+  }
+}
+
+.ui-chip:focus-visible {
+  outline: none;
+  box-shadow: var(--focus-ring);
+}
+
+/* «Ещё N» - a text button next to the chips (a <summary> on the title page). */
+.ui-chip-more {
+  display: inline-flex;
+  align-items: center;
+  height: 30px;
+  padding: 0 10px;
+  color: var(--primary-text);
+  font: 700 13px/1 var(--font-ui);
+  cursor: pointer;
+  list-style: none;
+}
+
+.ui-chip-more::-webkit-details-marker {
+  display: none;
+}
+
+/* Status: text with a dot, never a chip. */
+.ui-status {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  color: var(--warning);
+  font: 600 13px/1 var(--font-ui);
+}
+
+.ui-status::before {
+  content: "";
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: currentColor;
+}
+
+.ui-status--accent {
+  color: var(--accent-text);
+}
+
+/* Count badge: coral for notifications, cyan for downloads. */
+.ui-badge {
+  display: inline-block;
+  min-width: 20px;
+  height: 20px;
+  padding: 0 6px;
+  border-radius: 10px;
+  background: var(--danger);
+  color: #1a0a10;
+  font: 800 11px/20px var(--font-ui);
+  text-align: center;
+  font-variant-numeric: tabular-nums;
+}
+
+.ui-badge--accent {
+  background: var(--accent);
+  color: var(--bg-page);
+}
+
+/* Skeleton: same size as what it stands in for. The sheen is decoration, so reduced
+   motion drops it rather than just shortening it. */
+.ui-skeleton {
+  display: block;
+  border-radius: var(--s-4);
+  background: var(--surface-2);
+}
+
+.ui-skeleton--cover {
+  aspect-ratio: 2 / 3;
+  border-radius: var(--r-lg);
+  background: linear-gradient(110deg, var(--surface-1) 30%, #1f1c30 50%, var(--surface-1) 70%);
+  background-size: 250% 100%;
+  animation: ui-skeleton-sheen 1.4s linear infinite;
+}
+
+.ui-skeleton--line {
+  height: 12px;
+}
+
+@keyframes ui-skeleton-sheen {
+  from {
+    background-position: 100% 0;
+  }
+  to {
+    background-position: -150% 0;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .ui-skeleton--cover {
+    animation: none;
+  }
+}
