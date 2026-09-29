@@ -1,175 +1,215 @@
 {% extends "base.html" %}
 {% block title %}Все тайтлы — RanobeLib Companion{% endblock %}
 {% block content %}
-{% include "_library_tabs.html" %}
-<header class="header" data-role="catalog-scroll-header">
-  <form class="search-form" id="catalog-search-form" method="get" action="/library/catalog">
-    <input
-      class="search-input"
-      type="text"
-      name="query"
-      placeholder="Поиск по каталогу…"
-      value="{{ query or '' }}"
+{#
+  PR 251 (Aurora Ink, CATALOG-DEFAULT/-FILTERS/-QUICKVIEW): tabs, a sticky
+  toolbar card (search · sort · «Фильтры · N» · «Искать»), the grid, and the filters
+  panel - a 292px column beside the grid on desktop, a bottom sheet on mobile, both
+  with a «Сбросить»/«Показать» footer.
+#}
+{% set filter_count = genres | length + countries | length %}
+{% set has_filters = all_genres or all_countries %}
+<div class="catalog-page">
+  {% set aurora_tabs = true %}
+  {% include "_library_tabs.html" %}
+  <header class="catalog-toolbar" data-role="catalog-scroll-header">
+    {# The form is display: contents - its fields sit in the toolbar row next to the
+       filters toggle, which stays outside it (PR 111), and «Искать» joins via form=. #}
+    <form class="catalog-toolbar__form" id="catalog-search-form" method="get" action="/library/catalog">
+      <label class="ui-input-group catalog-toolbar__search">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M11 18a7 7 0 1 0 0-14 7 7 0 0 0 0 14zM20 20l-4-4"/></svg>
+        <input
+          class="ui-input"
+          type="text"
+          name="query"
+          placeholder="Поиск по каталогу…"
+          aria-label="Поиск по каталогу"
+          value="{{ query or '' }}"
+        >
+      </label>
+      <span class="ui-select catalog-toolbar__sort">
+        <select name="sort" class="toc__export-format" aria-label="Сортировка">
+          {% for value, label in sort_options.items() %}
+          <option value="{{ value }}"{% if value == sort %} selected{% endif %}>{{ label }}</option>
+          {% endfor %}
+        </select>
+      </span>
+    </form>
+    {% if has_filters %}
+    <button
+      class="ui-btn catalog-toolbar__filters"
+      type="button"
+      data-role="catalog-filters-toggle"
+      aria-expanded="false"
+      aria-controls="catalog-filters-panel"
     >
-    <select name="sort" class="toc__export-format" aria-label="Сортировка">
-      {% for value, label in sort_options.items() %}
-      <option value="{{ value }}"{% if value == sort %} selected{% endif %}>{{ label }}</option>
-      {% endfor %}
-    </select>
-    <button class="search-button" type="submit">Искать</button>
-  </form>
-  {% if all_genres or all_countries %}
-  <button
-    class="header__filters-toggle"
-    type="button"
-    data-role="catalog-filters-toggle"
-    aria-expanded="false"
-    aria-controls="catalog-filters-panel"
-  >Фильтры</button>
+      <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M4 6h16M7 12h10M10 18h4"/></svg>
+      Фильтры
+      {% if filter_count %}<span class="ui-badge ui-badge--accent" aria-label="выбрано: {{ filter_count }}">{{ filter_count }}</span>{% endif %}
+    </button>
+    {% endif %}
+    <button class="ui-btn ui-btn--primary catalog-toolbar__submit" type="submit" form="catalog-search-form">Искать</button>
+  </header>
+  {% set active_filters = [] %}
+  {% if genres %}{% set _ = active_filters.append("Жанр" ~ ("ы" if genres | length > 1 else "") ~ ": " ~ (selected_genre_names | join(", "))) %}{% endif %}
+  {% if countries %}{% set _ = active_filters.append(("Страны" if countries | length > 1 else "Страна") ~ ": " ~ (selected_country_names | join(", "))) %}{% endif %}
+  {% if tags %}{% set _ = active_filters.append("Тег" ~ ("и" if tags | length > 1 else "") ~ ": " ~ (selected_tag_names | join(", "))) %}{% endif %}
+  {% if active_filters %}
+  <p class="catalog-page__hint">
+    {{ active_filters | join(" · ") }} ·
+    <a href="?query={{ query or '' }}&sort={{ sort }}">Сбросить фильтр{{ "ы" if active_filters | length > 1 else "" }}</a>
+  </p>
   {% endif %}
-</header>
-{% set active_filters = [] %}
-{% if genres %}{% set _ = active_filters.append("Жанр" ~ ("ы" if genres | length > 1 else "") ~ ": " ~ (selected_genre_names | join(", "))) %}{% endif %}
-{% if countries %}{% set _ = active_filters.append(("Страны" if countries | length > 1 else "Страна") ~ ": " ~ (selected_country_names | join(", "))) %}{% endif %}
-{% if tags %}{% set _ = active_filters.append("Тег" ~ ("и" if tags | length > 1 else "") ~ ": " ~ (selected_tag_names | join(", "))) %}{% endif %}
-{% if active_filters %}
-<p class="content__hint content__hint--page">
-  {{ active_filters | join(" · ") }} ·
-  <a href="?query={{ query or '' }}&sort={{ sort }}">Сбросить фильтр{{ "ы" if active_filters | length > 1 else "" }}</a>
-</p>
-{% endif %}
-{% if random_empty %}
-<p class="content__hint content__hint--page" role="status">Не нашлось ранобэ по этим фильтрам</p>
-{% endif %}
-<main class="content library-tabs-content catalog-layout">
-  <div class="catalog-layout__results">
-    <div
-      class="title-card-grid"
-      data-role="catalog-grid"
-      data-query="{{ query or '' }}"
-      data-sort="{{ sort }}"
-      data-genres="{{ genres | join(',') }}"
-      data-country="{{ countries | join(',') }}"
-      data-tags="{{ tags | join(',') }}"
-      data-next-page="{{ page + 1 if has_next_page else '' }}"
-    >
-      {% include "_catalog_cards.html" %}
-    </div>
-    <div class="title-card-grid__sentinel" data-role="catalog-sentinel" aria-hidden="true"></div>
-    <noscript>
-      {% if has_next_page %}
-      <p class="content__hint">
-        <a href="?query={{ query or '' }}&sort={{ sort }}{% for g in genres %}&genres={{ g }}{% endfor %}{% for c in countries %}&countries={{ c }}{% endfor %}{% for t in tags %}&tags={{ t }}{% endfor %}&page={{ page + 1 }}">Следующая страница</a>
-      </p>
+  {% if random_empty %}
+  <p class="catalog-page__hint" role="status">Не нашлось ранобэ по этим фильтрам</p>
+  {% endif %}
+  <main class="catalog-layout library-tabs-content">
+    <div class="catalog-layout__results">
+      {% if not items and not random_empty %}
+      <p class="ui-empty">Не нашлось ранобэ по этим фильтрам</p>
       {% endif %}
-    </noscript>
-  </div>
-  {% if all_genres or all_countries %}
-  <aside
-    class="catalog-filters"
-    data-role="catalog-filters"
-    id="catalog-filters-panel"
-    aria-label="Фильтры"
-  >
-    <div class="catalog-filters__header">
-      <h2 class="catalog-filters__title">Фильтры</h2>
-      <button
-        class="catalog-filters__close"
-        type="button"
-        data-role="catalog-filters-close"
-        aria-label="Закрыть фильтры"
-      >&times;</button>
+      <div
+        class="catalog-grid"
+        data-role="catalog-grid"
+        data-query="{{ query or '' }}"
+        data-sort="{{ sort }}"
+        data-genres="{{ genres | join(',') }}"
+        data-country="{{ countries | join(',') }}"
+        data-tags="{{ tags | join(',') }}"
+        data-next-page="{{ page + 1 if has_next_page else '' }}"
+      >
+        {% include "_catalog_cards.html" %}
+      </div>
+      <div class="catalog-grid__sentinel" data-role="catalog-sentinel" aria-hidden="true"></div>
+      <noscript>
+        {% if has_next_page %}
+        <p class="catalog-page__hint">
+          <a href="?query={{ query or '' }}&sort={{ sort }}{% for g in genres %}&genres={{ g }}{% endfor %}{% for c in countries %}&countries={{ c }}{% endfor %}{% for t in tags %}&tags={{ t }}{% endfor %}&page={{ page + 1 }}">Следующая страница</a>
+        </p>
+        {% endif %}
+      </noscript>
     </div>
-    {% if all_genres %}
-    <section
-      class="catalog-filters__section"
-      data-role="catalog-filters-section"
-      data-section-key="genres"
+    {% if has_filters %}
+    <div class="catalog-filters-scrim" data-role="catalog-filters-scrim" hidden></div>
+    <aside
+      class="catalog-filters"
+      data-role="catalog-filters"
+      id="catalog-filters-panel"
+      aria-label="Фильтры"
     >
-      <h3 class="catalog-filters__section-title">
+      <span class="catalog-filters__grabber" aria-hidden="true"></span>
+      <div class="catalog-filters__header">
+        <h2 class="catalog-filters__title">Фильтры</h2>
         <button
-          class="catalog-filters__section-toggle"
+          class="ui-icon-btn catalog-filters__close"
           type="button"
-          data-role="catalog-filters-section-toggle"
-          aria-expanded="true"
-          aria-controls="catalog-filters-genres-options"
-        >Жанры{% if genres %} ({{ genres | length }}){% endif %}</button>
-      </h3>
-      <div
-        class="catalog-filters__options"
-        id="catalog-filters-genres-options"
-        data-role="catalog-filters-section-options"
-      >
-        {% for genre in all_genres %}
-        <label class="ui-checkbox">
-          <input
-            type="checkbox"
-            name="genres"
-            value="{{ genre.id }}"
-            form="catalog-search-form"
-            {% if genre.id in genres %}checked{% endif %}
-          >
-          <span>{{ genre.name }}</span>
-        </label>
-        {% endfor %}
+          data-role="catalog-filters-close"
+          aria-label="Закрыть фильтры"
+        ><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M6 6l12 12M18 6 6 18"/></svg></button>
       </div>
-    </section>
-    {% endif %}
-    {% if all_countries %}
-    <section
-      class="catalog-filters__section"
-      data-role="catalog-filters-section"
-      data-section-key="countries"
-    >
-      <h3 class="catalog-filters__section-title">
-        <button
-          class="catalog-filters__section-toggle"
-          type="button"
-          data-role="catalog-filters-section-toggle"
-          aria-expanded="true"
-          aria-controls="catalog-filters-countries-options"
-        >Страны{% if countries %} ({{ countries | length }}){% endif %}</button>
-      </h3>
-      <div
-        class="catalog-filters__options"
-        id="catalog-filters-countries-options"
-        data-role="catalog-filters-section-options"
-      >
-        {% for country in all_countries %}
-        <label class="ui-checkbox">
-          <input
-            type="checkbox"
-            name="countries"
-            value="{{ country.id }}"
-            form="catalog-search-form"
-            {% if country.id in countries %}checked{% endif %}
+      <div class="catalog-filters__body">
+        {% if all_genres %}
+        <section
+          class="catalog-filters__section"
+          data-role="catalog-filters-section"
+          data-section-key="genres"
+        >
+          <h3 class="catalog-filters__section-title">
+            <button
+              class="catalog-filters__section-toggle"
+              type="button"
+              data-role="catalog-filters-section-toggle"
+              aria-expanded="true"
+              aria-controls="catalog-filters-genres-options"
+            >Жанры{% if genres %} ({{ genres | length }}){% endif %}</button>
+          </h3>
+          <div
+            class="catalog-filters__options"
+            id="catalog-filters-genres-options"
+            data-role="catalog-filters-section-options"
           >
-          <span>{{ country.name }}</span>
-        </label>
-        {% endfor %}
+            {% for genre in all_genres %}
+            <label class="ui-checkbox catalog-filters__option">
+              <input
+                type="checkbox"
+                name="genres"
+                value="{{ genre.id }}"
+                form="catalog-search-form"
+                {% if genre.id in genres %}checked{% endif %}
+              >
+              <span>{{ genre.name }}</span>
+            </label>
+            {% endfor %}
+          </div>
+        </section>
+        {% endif %}
+        {% if all_countries %}
+        <section
+          class="catalog-filters__section"
+          data-role="catalog-filters-section"
+          data-section-key="countries"
+        >
+          <h3 class="catalog-filters__section-title">
+            <button
+              class="catalog-filters__section-toggle"
+              type="button"
+              data-role="catalog-filters-section-toggle"
+              aria-expanded="true"
+              aria-controls="catalog-filters-countries-options"
+            >Страны{% if countries %} ({{ countries | length }}){% endif %}</button>
+          </h3>
+          <div
+            class="catalog-filters__options"
+            id="catalog-filters-countries-options"
+            data-role="catalog-filters-section-options"
+          >
+            {% for country in all_countries %}
+            <label class="ui-checkbox catalog-filters__option">
+              <input
+                type="checkbox"
+                name="countries"
+                value="{{ country.id }}"
+                form="catalog-search-form"
+                {% if country.id in countries %}checked{% endif %}
+              >
+              <span>{{ country.name }}</span>
+            </label>
+            {% endfor %}
+          </div>
+        </section>
+        {% endif %}
       </div>
-    </section>
+      {# «Сбросить» drops genres/countries only - the search, sort and any tag filter
+         (set from a title page badge, not from this panel) stay. #}
+      <div class="catalog-filters__foot">
+        <a
+          class="ui-btn ui-btn--quiet catalog-filters__reset"
+          href="?query={{ query | urlencode if query else '' }}&sort={{ sort }}{% for t in tags %}&tags={{ t }}{% endfor %}{% if tag_name %}&tag_name={{ tag_name | urlencode }}{% endif %}"
+        >Сбросить</a>
+        <button class="ui-btn catalog-filters__apply" type="submit" form="catalog-search-form">Показать</button>
+      </div>
+    </aside>
     {% endif %}
-  </aside>
-  {% endif %}
+  </main>
   <button
     type="button"
-    class="back-to-top"
+    class="ui-icon-btn back-to-top"
     data-role="catalog-back-to-top"
     aria-label="Наверх"
     hidden
-  >↑</button>
-  <script src="{{ url_for('static', path='js/catalog-scroll.js') }}" defer></script>
-  <script src="{{ url_for('static', path='js/catalog-header-scroll.js') }}" defer></script>
-  <script src="{{ url_for('static', path='js/catalog-back-to-top.js') }}" defer></script>
-  <script src="{{ url_for('static', path='js/custom-dropdown.js') }}" defer></script>
-  <script src="{{ url_for('static', path='js/catalog-random-redirect.js') }}" defer></script>
-  {% if all_genres or all_countries %}
-  <script src="{{ url_for('static', path='js/catalog-filters-toggle.js') }}" defer></script>
-  <script src="{{ url_for('static', path='js/catalog-filters-accordion.js') }}" defer></script>
-  {% endif %}
-  <script src="{{ url_for('static', path='js/title-quickview.js') }}" defer></script>
-  <script src="{{ url_for('static', path='js/image-lightbox.js') }}" defer></script>
-  <script src="{{ url_for('static', path='js/library-tabs-swipe.js') }}" defer></script>
-</main>
+  ><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m6 15 6-6 6 6"/></svg></button>
+</div>
+<script src="{{ url_for('static', path='js/catalog-scroll.js') }}" defer></script>
+<script src="{{ url_for('static', path='js/catalog-header-scroll.js') }}" defer></script>
+<script src="{{ url_for('static', path='js/catalog-back-to-top.js') }}" defer></script>
+<script src="{{ url_for('static', path='js/custom-dropdown.js') }}" defer></script>
+<script src="{{ url_for('static', path='js/catalog-random-redirect.js') }}" defer></script>
+<script src="{{ url_for('static', path='js/catalog-sort-autosubmit.js') }}" defer></script>
+{% if has_filters %}
+<script src="{{ url_for('static', path='js/catalog-filters-toggle.js') }}" defer></script>
+<script src="{{ url_for('static', path='js/catalog-filters-accordion.js') }}" defer></script>
+{% endif %}
+<script src="{{ url_for('static', path='js/title-quickview.js') }}" defer></script>
+<script src="{{ url_for('static', path='js/image-lightbox.js') }}" defer></script>
+<script src="{{ url_for('static', path='js/library-tabs-swipe.js') }}" defer></script>
 {% endblock %}

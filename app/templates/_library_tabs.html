@@ -1,4 +1,17 @@
+{#
+  PR 251: `aurora_tabs` (set by the including page) switches to the Aurora Ink tabs
+  component - the catalog has moved over, "Читаю" (library.html) follows in PR 252,
+  which drops the old branch. library-tabs-swipe.js still reads .library-tabs__link and
+  its --active modifier, so both variants keep them.
+#}
+{% if aurora_tabs %}
+<nav class="ui-tabs library-tabs--aurora" aria-label="Библиотека">
+  <a class="ui-tabs__link library-tabs__link{% if active_tab == 'reading' %} library-tabs__link--active{% endif %}" href="/library"{% if active_tab == 'reading' %} aria-current="page"{% endif %}>Читаю</a>
+  <a class="ui-tabs__link library-tabs__link{% if active_tab == 'catalog' %} library-tabs__link--active{% endif %}" href="/library/catalog"{% if active_tab == 'catalog' %} aria-current="page"{% endif %}>Все тайтлы</a>
+</nav>
+{% else %}
 <nav class="library-tabs">
   <a class="library-tabs__link{% if active_tab == 'reading' %} library-tabs__link--active{% endif %}" href="/library">Читаю</a>
   <a class="library-tabs__link{% if active_tab == 'catalog' %} library-tabs__link--active{% endif %}" href="/library/catalog">Все тайтлы</a>
 </nav>
+{% endif %}
