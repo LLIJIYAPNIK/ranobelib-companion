@@ -90,6 +90,7 @@
       </noscript>
     </div>
     {% if has_filters %}
+    <div class="catalog-filters-scrim" data-role="catalog-filters-scrim" hidden></div>
     <aside
       class="catalog-filters"
       data-role="catalog-filters"
@@ -203,6 +204,7 @@
 <script src="{{ url_for('static', path='js/catalog-back-to-top.js') }}" defer></script>
 <script src="{{ url_for('static', path='js/custom-dropdown.js') }}" defer></script>
 <script src="{{ url_for('static', path='js/catalog-random-redirect.js') }}" defer></script>
+<script src="{{ url_for('static', path='js/catalog-sort-autosubmit.js') }}" defer></script>
 {% if has_filters %}
 <script src="{{ url_for('static', path='js/catalog-filters-toggle.js') }}" defer></script>
 <script src="{{ url_for('static', path='js/catalog-filters-accordion.js') }}" defer></script>
