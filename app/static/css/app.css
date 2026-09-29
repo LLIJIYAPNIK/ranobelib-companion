@@ -63,6 +63,12 @@
   --primary: #7c3aed;
   --primary-pressed: #6d28d9;
   --primary-text: #b9a2ff;
+  /* PR 248: pressed/hover steps from the "02 Components" button matrix - not in the
+     Foundations table, but every button state reads them. */
+  --primary-active: #5b21b6;
+  --danger-hover: #f43f5e;
+  --danger-active: #e11d48;
+  --surface-pressed: #211e33;
   --accent: #22d3c5;
   --accent-text: #5eead4;
   --accent-soft: rgba(34, 211, 197, 0.1);
@@ -6467,4 +6473,169 @@ img.paragraph-comment__attachment {
     height: 36px;
     font-size: 18px;
   }
+}
+
+/* ==========================================================================
+   Aurora Ink components (PR 248) - section "02 Components" of the Claude Design
+   import "Webnovells - Aurora Ink - Final", built on the PR 247 tokens. Namespaced
+   .ui-* so they sit next to the pre-Aurora classes (.btn, .dropdown skin, ...) without
+   restyling them; each wave 31 screen PR moves its markup over, PR 267 drops the old.
+   ========================================================================== */
+
+/* Buttons: Primary / Secondary / Quiet / Destructive, 44px (sm 36, lg 52), radius 12.
+   One Primary per screen. Hover only on hover-capable pointers, touch gets :active.
+   Loading = disabled + aria-busy="true": keeps its width, only dims. */
+.ui-btn {
+  --ui-btn-bg: var(--surface-2);
+  --ui-btn-fg: var(--text-1);
+  --ui-btn-border: var(--border-strong);
+  --ui-btn-hover: var(--surface-3);
+  --ui-btn-active: var(--surface-pressed);
+  appearance: none;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--s-8);
+  height: 44px;
+  padding: 0 18px;
+  border: 1px solid var(--ui-btn-border);
+  border-radius: var(--r-lg);
+  background: var(--ui-btn-bg);
+  color: var(--ui-btn-fg);
+  font: var(--type-button);
+  white-space: nowrap;
+  text-decoration: none;
+  cursor: pointer;
+  transition:
+    background-color var(--dur-base) var(--ease),
+    color var(--dur-base) var(--ease),
+    opacity var(--dur-press) var(--ease);
+}
+
+.ui-btn--primary {
+  --ui-btn-bg: var(--primary);
+  --ui-btn-fg: #ffffff;
+  --ui-btn-border: transparent;
+  --ui-btn-hover: var(--primary-pressed);
+  --ui-btn-active: var(--primary-active);
+}
+
+.ui-btn--quiet {
+  --ui-btn-bg: transparent;
+  --ui-btn-fg: var(--text-2);
+  --ui-btn-border: transparent;
+  --ui-btn-hover: var(--surface-2);
+}
+
+.ui-btn--destructive {
+  --ui-btn-bg: var(--danger);
+  --ui-btn-fg: #1a0a10;
+  --ui-btn-border: transparent;
+  --ui-btn-hover: var(--danger-hover);
+  --ui-btn-active: var(--danger-active);
+}
+
+.ui-btn--sm {
+  height: 36px;
+  padding: 0 14px;
+  border-radius: var(--r-md);
+  font: var(--type-button-sm);
+}
+
+.ui-btn--lg {
+  height: 52px;
+  padding: 0 22px;
+  font-size: 16px;
+}
+
+.ui-btn--block {
+  width: 100%;
+}
+
+@media (hover: hover) {
+  .ui-btn:hover {
+    background: var(--ui-btn-hover);
+    color: var(--ui-btn-fg);
+  }
+}
+
+.ui-btn:active {
+  background: var(--ui-btn-active);
+}
+
+.ui-btn--destructive:active {
+  color: #ffffff;
+}
+
+.ui-btn:focus-visible {
+  outline: none;
+  box-shadow: var(--focus-ring);
+}
+
+.ui-btn:disabled,
+.ui-btn[aria-disabled="true"] {
+  background: var(--surface-2);
+  border-color: var(--border);
+  color: var(--disabled-text);
+  cursor: not-allowed;
+}
+
+.ui-btn--quiet:disabled,
+.ui-btn--quiet[aria-disabled="true"] {
+  background: transparent;
+  border-color: transparent;
+}
+
+/* Loading keeps the variant's own colors (it isn't "unavailable", just busy). */
+.ui-btn[aria-busy="true"] {
+  background: var(--ui-btn-bg);
+  border-color: var(--ui-btn-border);
+  color: var(--ui-btn-fg);
+  opacity: 0.75;
+  cursor: progress;
+}
+
+/* Icon-only button: 44x44, always with an aria-label. */
+.ui-icon-btn {
+  appearance: none;
+  position: relative;
+  display: inline-grid;
+  place-items: center;
+  flex: 0 0 auto;
+  width: 44px;
+  height: 44px;
+  padding: 0;
+  border: 0;
+  border-radius: var(--r-lg);
+  background: transparent;
+  color: var(--text-1);
+  cursor: pointer;
+  transition: background-color var(--dur-base) var(--ease), color var(--dur-base) var(--ease);
+}
+
+.ui-icon-btn svg {
+  width: 20px;
+  height: 20px;
+}
+
+@media (hover: hover) {
+  .ui-icon-btn:hover {
+    background: var(--surface-2);
+  }
+}
+
+.ui-icon-btn:active,
+.ui-icon-btn[aria-expanded="true"] {
+  background: var(--surface-pressed);
+}
+
+.ui-icon-btn:focus-visible {
+  outline: none;
+  box-shadow: var(--focus-ring);
+}
+
+.ui-icon-btn:disabled {
+  background: transparent;
+  color: var(--disabled);
+  cursor: not-allowed;
 }
