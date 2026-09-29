@@ -327,6 +327,15 @@ def test_show_library_counts_titles_in_the_heading(client: TestClient) -> None:
     assert '<span class="library-page__count">1 тайтл</span>' in response.text
 
 
+def test_add_by_url_error_keeps_the_reading_tab_active(client: TestClient) -> None:
+    _register(client)
+
+    response = client.post("/library/add", data={"url": "not a link"})
+
+    assert response.status_code == 400
+    assert 'href="/library" aria-current="page"' in response.text
+
+
 def test_show_library_empty_state(client: TestClient) -> None:
     _register(client)
 

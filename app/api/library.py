@@ -257,6 +257,7 @@ async def add_to_library_by_url(
             "library.html",
             {
                 "active_nav": "library",
+                "active_tab": "reading",
                 "items": items,
                 "error": "Не удалось распознать ссылку на тайтл",
                 "submitted_url": url,
