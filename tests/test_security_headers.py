@@ -45,6 +45,14 @@ def test_csp_allows_hotlinked_cover_and_chapter_image_hosts() -> None:
     assert "img-src 'self' https://ranobelib.me https://*.cdnlibs.org" in csp
 
 
+def test_csp_allows_google_fonts_stylesheet_and_files() -> None:
+    response = client.get("/health")
+
+    csp = response.headers["Content-Security-Policy"]
+    assert "https://fonts.googleapis.com" in csp.split("style-src", 1)[1].split(";", 1)[0]
+    assert "font-src 'self' https://fonts.gstatic.com" in csp
+
+
 def test_csp_denies_framing() -> None:
     response = client.get("/health")
 
