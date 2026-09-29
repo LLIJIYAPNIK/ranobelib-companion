@@ -6893,3 +6893,323 @@ img.paragraph-comment__attachment {
   border-width: 0 2px 2px 0;
   transform: rotate(45deg);
 }
+
+/* Checkbox: 20px box, violet when checked. Always the real <input type="checkbox">,
+   only its appearance is replaced. */
+.ui-checkbox {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  min-height: 24px;
+  color: var(--text-1);
+  font: 500 14px/1.3 var(--font-ui);
+  cursor: pointer;
+}
+
+.ui-checkbox input[type="checkbox"] {
+  appearance: none;
+  -webkit-appearance: none;
+  position: relative;
+  flex: 0 0 auto;
+  width: 20px;
+  height: 20px;
+  margin: 0;
+  border: 1.5px solid var(--disabled);
+  border-radius: var(--r-xs);
+  background: transparent;
+  cursor: pointer;
+  transition:
+    background-color var(--dur-press) var(--ease),
+    border-color var(--dur-press) var(--ease);
+}
+
+.ui-checkbox input[type="checkbox"]::after {
+  content: "";
+  position: absolute;
+  left: 5.5px;
+  top: 2px;
+  width: 5px;
+  height: 10px;
+  border: solid #ffffff;
+  border-width: 0 2px 2px 0;
+  transform: rotate(45deg);
+  opacity: 0;
+}
+
+.ui-checkbox input[type="checkbox"]:checked {
+  border-color: #8b5cf6;
+  background: #8b5cf6;
+}
+
+.ui-checkbox input[type="checkbox"]:checked::after {
+  opacity: 1;
+}
+
+.ui-checkbox input[type="checkbox"]:focus-visible {
+  outline: none;
+  box-shadow: var(--focus-ring);
+}
+
+.ui-checkbox:has(input:disabled) {
+  color: var(--disabled-text);
+  cursor: not-allowed;
+}
+
+.ui-checkbox input[type="checkbox"]:disabled {
+  border-style: dashed;
+  border-color: var(--border);
+  background: transparent;
+  cursor: not-allowed;
+}
+
+/* Switch: <input type="checkbox" role="switch"> - the same field a form already
+   submits, just drawn as a 44x26 toggle. */
+.ui-switch {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  min-height: 26px;
+  color: var(--text-1);
+  font: 500 14px/1.3 var(--font-ui);
+  cursor: pointer;
+}
+
+.ui-switch input[type="checkbox"] {
+  appearance: none;
+  -webkit-appearance: none;
+  position: relative;
+  flex: 0 0 auto;
+  width: 44px;
+  height: 26px;
+  margin: 0;
+  border: 0;
+  border-radius: 13px;
+  background: var(--border);
+  cursor: pointer;
+  transition: background-color var(--dur-base) var(--ease);
+}
+
+.ui-switch input[type="checkbox"]::before {
+  content: "";
+  position: absolute;
+  left: 3px;
+  top: 3px;
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  background: var(--text-3);
+  transition:
+    transform var(--dur-base) var(--ease),
+    background-color var(--dur-base) var(--ease);
+}
+
+.ui-switch input[type="checkbox"]:checked {
+  background: #1b6e68;
+}
+
+/* The knob moving is the state itself, so it isn't scaled by --motion-shift. */
+.ui-switch input[type="checkbox"]:checked::before {
+  background: var(--text-1);
+  transform: translateX(18px);
+}
+
+.ui-switch input[type="checkbox"]:focus-visible {
+  outline: none;
+  box-shadow: var(--focus-ring);
+}
+
+.ui-switch:has(input:disabled) {
+  color: var(--disabled-text);
+  cursor: not-allowed;
+}
+
+.ui-switch input[type="checkbox"]:disabled {
+  background: var(--r-surface);
+  box-shadow: inset 0 0 0 1px var(--border);
+  cursor: not-allowed;
+}
+
+.ui-switch input[type="checkbox"]:disabled::before {
+  display: none;
+}
+
+/* Range: 4px track, cyan fill, 22px knob. Firefox paints the fill itself
+   (::-moz-range-progress); WebKit needs --ui-range-fill, kept in sync by
+   ui-range.js. */
+.ui-range {
+  --ui-range-fill: 0%;
+  appearance: none;
+  -webkit-appearance: none;
+  width: 100%;
+  height: 24px;
+  margin: 0;
+  background: transparent;
+  cursor: pointer;
+}
+
+.ui-range::-webkit-slider-runnable-track {
+  height: 4px;
+  border-radius: 2px;
+  background: linear-gradient(
+    to right,
+    var(--accent) 0 var(--ui-range-fill),
+    var(--border) var(--ui-range-fill) 100%
+  );
+}
+
+.ui-range::-moz-range-track {
+  height: 4px;
+  border-radius: 2px;
+  background: var(--border);
+}
+
+.ui-range::-moz-range-progress {
+  height: 4px;
+  border-radius: 2px;
+  background: var(--accent);
+}
+
+.ui-range::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  width: 22px;
+  height: 22px;
+  margin-top: -9px;
+  border: 0;
+  border-radius: 50%;
+  background: var(--text-1);
+  box-shadow: 0 0 0 4px rgba(34, 211, 197, 0.25);
+}
+
+.ui-range::-moz-range-thumb {
+  width: 22px;
+  height: 22px;
+  border: 0;
+  border-radius: 50%;
+  background: var(--text-1);
+  box-shadow: 0 0 0 4px rgba(34, 211, 197, 0.25);
+}
+
+.ui-range:focus {
+  outline: none;
+}
+
+.ui-range:focus-visible::-webkit-slider-thumb {
+  box-shadow: var(--focus-ring);
+}
+
+.ui-range:focus-visible::-moz-range-thumb {
+  box-shadow: var(--focus-ring);
+}
+
+/* Label row above a range: name left, current value right. */
+.ui-range-label {
+  display: flex;
+  justify-content: space-between;
+  gap: var(--s-12);
+  font: 700 13px/1 var(--font-ui);
+  color: var(--text-2);
+}
+
+.ui-range-label output,
+.ui-range-label__value {
+  color: var(--text-1);
+}
+
+/* Segmented control: a radiogroup of real radios; the active segment is a raised
+   surface, never violet. */
+.ui-segmented {
+  display: flex;
+  gap: 3px;
+  padding: 3px;
+  border: 0;
+  border-radius: var(--r-md);
+  background: #12111f;
+  margin: 0;
+  min-width: 0;
+}
+
+.ui-segmented__item {
+  position: relative;
+  flex: 1;
+  min-width: 0;
+}
+
+.ui-segmented__item input {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  margin: 0;
+  opacity: 0;
+  cursor: pointer;
+}
+
+.ui-segmented__item span {
+  display: grid;
+  place-items: center;
+  height: 36px;
+  padding: 0 var(--s-8);
+  border-radius: var(--r-sm);
+  color: var(--text-3);
+  font: 600 13px/1 var(--font-ui);
+  white-space: nowrap;
+  transition:
+    background-color var(--dur-base) var(--ease),
+    color var(--dur-base) var(--ease);
+}
+
+@media (hover: hover) {
+  .ui-segmented__item input:not(:checked):hover + span {
+    color: var(--text-1);
+  }
+}
+
+.ui-segmented__item input:checked + span {
+  background: #2b2742;
+  color: var(--text-1);
+  font-weight: 700;
+}
+
+.ui-segmented__item input:focus-visible + span {
+  box-shadow: var(--focus-ring);
+}
+
+/* Tabs: links between routes (_library_tabs.html), active one has aria-current. */
+.ui-tabs {
+  display: flex;
+  gap: 28px;
+  border-bottom: 1px solid var(--divider);
+  overflow-x: auto;
+  scrollbar-width: none;
+}
+
+.ui-tabs__link {
+  display: flex;
+  align-items: center;
+  height: 44px;
+  color: var(--text-3);
+  font: 600 15px/1 var(--font-ui);
+  text-decoration: none;
+  white-space: nowrap;
+  transition:
+    color var(--dur-base) var(--ease),
+    box-shadow var(--dur-base) var(--ease);
+}
+
+@media (hover: hover) {
+  .ui-tabs__link:hover {
+    color: var(--text-1);
+  }
+}
+
+.ui-tabs__link[aria-current="page"] {
+  color: var(--text-1);
+  font-weight: 700;
+  box-shadow: inset 0 -2px 0 var(--accent);
+}
+
+.ui-tabs__link:focus-visible {
+  outline: none;
+  border-radius: var(--r-xs);
+  box-shadow: var(--focus-ring);
+}
