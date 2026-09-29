@@ -307,6 +307,15 @@ def test_show_library_anonymous_is_viewable_but_prompts_to_log_in(client: TestCl
     assert 'href="/library/catalog"' in response.text  # locked-state CTA (PR 15)
 
 
+def test_show_library_anonymous_gets_the_locked_state(client: TestClient) -> None:
+    """PR 252 (LOCKED): the shared locked_feature() macro, not the reading list."""
+    response = client.get("/library")
+
+    assert 'data-role="locked-feature"' in response.text
+    assert "Список читаемого скрыт" in response.text
+    assert 'data-role="library-titles"' not in response.text
+
+
 def test_show_library_counts_titles_in_the_heading(client: TestClient) -> None:
     """PR 252: "Читаю" is followed by the number of titles, with the right word form."""
     _register(client)

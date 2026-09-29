@@ -90,7 +90,7 @@ async def test_anonymous_visitor_sees_a_locked_screen_instead_of_the_profile(
     response = client.get("/profile")
 
     assert response.status_code == 200
-    assert 'class="locked-feature"' in response.text
+    assert 'data-role="locked-feature"' in response.text
     assert 'class="profile__avatar"' not in response.text
 
 
