@@ -2825,7 +2825,7 @@ html.shell-scroll-lock body {
 /* One shared hover treatment for every button-like element in the app - previously some
    had no hover feedback at all (.btn--primary, .btn--sm, .search-button,
    .locked-feature__cta) and others changed color/border instantly with no transition
-   (.btn--secondary, .reader-export__link).
+   (.btn--secondary, the old chapter export links).
 
    Gated to hover-capable devices (mouse/trackpad) - a plain :hover rule applies on tap
    on a touchscreen and only clears on the next unrelated tap, leaving the scaled-up/
@@ -2833,8 +2833,7 @@ html.shell-scroll-lock body {
 @media (hover: hover) {
   .btn--secondary:hover,
   .btn:hover,
-  .search-button:hover,
-  .reader-export__link:hover {
+  .search-button:hover {
     transform: scale(1.03);
     box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
   }
@@ -3009,108 +3008,9 @@ html.shell-scroll-lock body {
   font-weight: 700;
 }
 
-/* Reveal-on-scroll-up overlay (PR 52) - a compact duplicate of .reader-nav's controls
-   (back link, heading, prev/next) that reader-scroll-nav.js slides into view over the
-   chapter text on any upward scroll, so reaching them mid-chapter doesn't take a scroll
-   all the way back to the top.
-
-   PR 161: `position: fixed`, not the `sticky` this used to be - `sticky` never leaves
-   normal flow, so its own box (padding + line height) was permanently reserved at the
-   very top of `.main`, pushing `.reader-nav`/`.reader-content` down by that amount even
-   while `transform` hid it off-screen (translateY(-100%) only moves the already-laid-out
-   box, it doesn't collapse the space that box reserves) - an empty gap above the chapter
-   on every page load. `fixed` never reserves flow space at all, in any visibility state.
-   The tradeoff: unlike `sticky`, `fixed` doesn't automatically stay contained within
-   `.main`'s own box (that containment is what made PR 52 choose `sticky` over `fixed` in
-   the first place, to never overlap the sidebar) - reader-scroll-nav.js now tracks
-   `.main`'s live `getBoundingClientRect()` into `left`/`width` itself instead, so it
-   still lines up with `.main`'s column exactly, including through sidebar
-   expand/collapse (PR 39/48/49) and viewport resizes. `transform` still handles the
-   actual show/hide, layered independently on top of the position itself. */
-.reader-scroll-nav {
-  position: fixed;
-  top: 0;
-  z-index: 50;
-  display: flex;
-  align-items: center;
-  flex-wrap: wrap;
-  gap: 8px 20px;
-  padding: 14px 32px;
-  background: var(--bg-panel);
-  border-bottom: 1px solid var(--legacy-border);
-  transform: translateY(-100%);
-  transition: transform 0.25s ease;
-}
-
-.reader-scroll-nav--visible {
-  transform: translateY(0);
-}
-
-.reader-scroll-nav__heading {
-  flex: 1;
-  min-width: 0;
-  font-size: 14px;
-  font-weight: 700;
-  margin: 0;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-.reader-scroll-nav .reader-nav__adjacent {
-  flex: 0 0 auto;
-  margin-top: 0;
-}
-
-.reader-nav {
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-  padding-bottom: 20px;
-  margin-bottom: 20px;
-  border-bottom: 1px solid var(--legacy-border);
-}
-
-.reader-nav__back {
-  color: var(--text-muted);
-  text-decoration: none;
-  font-size: 13px;
-}
-
-.reader-nav__back:hover {
-  color: var(--accent-teal);
-}
-
-.reader-nav__heading {
-  font-size: 18px;
-  font-weight: 700;
-  margin: 0;
-}
-
-.reader-nav__adjacent {
-  display: flex;
-  justify-content: space-between;
-  gap: 12px;
-  margin-top: 4px;
-}
-
-.reader-nav__adjacent a {
-  color: var(--accent-teal);
-  text-decoration: none;
-  font-size: 13px;
-}
-
-.reader-nav__adjacent--bottom {
-  max-width: var(--reader-width);
-  margin: 24px auto 0;
-  padding-top: 20px;
-  border-top: 1px solid var(--legacy-border);
-}
-
 .reader-content {
   max-width: var(--reader-width);
   margin: 0 auto;
-  color: var(--text-secondary);
   font-family: var(--reader-font-family);
   font-size: var(--reader-font-size);
   line-height: var(--reader-line-height);
@@ -3160,13 +3060,6 @@ html.shell-scroll-lock body {
    the visitor actually turned the setting on, so this never affects default reading. */
 .reader-content__paragraph--hidden {
   display: none;
-}
-
-.reader-content__tap-hint {
-  color: var(--text-muted);
-  font-size: 13px;
-  text-align: center;
-  cursor: pointer;
 }
 
 /* PR 64: the background plate every revealed paragraph sits in - shared by both
@@ -4561,34 +4454,6 @@ img.paragraph-comment__attachment {
   margin: 0;
 }
 
-.reader-export {
-  display: flex;
-  align-items: center;
-  flex-wrap: wrap;
-  gap: 8px;
-  margin-top: 8px;
-}
-
-.reader-export__label {
-  font-size: 12px;
-  color: var(--text-muted);
-}
-
-.reader-export__link {
-  display: inline-block;
-  border: 1px solid var(--legacy-border);
-  border-radius: 6px;
-  padding: 6px 14px;
-  font-size: 12px;
-  color: var(--accent-teal);
-  text-decoration: none;
-  transition: transform 0.15s ease, box-shadow 0.15s ease, border-color 0.15s ease;
-}
-
-.reader-export__link:hover {
-  border-color: var(--accent-teal);
-}
-
 @keyframes translation-choice-in {
   from {
     opacity: 0;
@@ -5062,40 +4927,6 @@ img.paragraph-comment__attachment {
     font-size: 17px;
   }
 
-  .reader-nav__adjacent {
-    position: fixed;
-    left: 0;
-    right: 0;
-    bottom: 0;
-    margin: 0;
-    padding: 14px 20px;
-    background: var(--bg-panel);
-    border-top: 1px solid var(--legacy-border);
-    justify-content: space-between;
-    z-index: 40;
-  }
-
-  /* The top instance is already pinned to the bottom of the viewport above (immersive
-     reader mode, PR 19) - a second copy after the chapter content would just duplicate
-     it on screen at once, so it's mobile-only redundant here. */
-  .reader-nav__adjacent--bottom {
-    display: none;
-  }
-
-  /* PR 72: the reveal-on-scroll-up overlay (PR 52) adds more on top of an already
-     simplified mobile reader (PR 19) - chapter navigation is already always reachable
-     here via the fixed bottom bar (.reader-nav__adjacent above) and the in-flow top/
-     bottom nav, so a second, separate popup panel competing for the same space is more
-     clutter than convenience. reader-scroll-nav.js's own scroll listener still runs and
-     toggles --visible, harmlessly, since there's nothing left for it to reveal. */
-  .reader-scroll-nav {
-    display: none;
-  }
-
-  body.reader-page .main {
-    padding-top: 0;
-    padding-bottom: 56px;
-  }
 
 }
 
@@ -9241,5 +9072,644 @@ a.ui-title-card:focus-visible .ui-title-card__cover {
   .sidebar__strip-back:focus-visible {
     outline: none;
     box-shadow: var(--focus-ring);
+  }
+}
+
+/* ==========================================================================
+   Aurora Ink screens - reader (PR 254): READER-SCROLL / READER-TAP-FOCUS and M-READER-*.
+   One HUD (reader-hud.js toggles body.reader-hud-visible), the book column, the
+   end-of-chapter card, Tap Focus paragraph states and its one-time onboarding. Colors
+   come from the --r-* reader tokens (PR 247), so PR 255's themes only swap those.
+   ========================================================================== */
+body.reader-page {
+  background: var(--r-bg);
+}
+
+.reader-skip {
+  position: fixed;
+  top: -60px;
+  left: var(--s-8);
+  z-index: 95;
+  padding: 10px 14px;
+  border-radius: var(--r-md);
+  background: var(--surface-2);
+  color: var(--text-1);
+  font: 700 14px/1 var(--font-ui);
+  text-decoration: none;
+}
+
+.reader-skip:focus {
+  top: var(--s-8);
+  outline: none;
+  box-shadow: var(--focus-ring);
+}
+
+/* HUD: fixed, centered over the reading area beside the rail on desktop. */
+.reader-hud {
+  position: fixed;
+  top: 0;
+  left: calc(var(--sidebar-width) + (100vw - var(--sidebar-width)) / 2);
+  z-index: 60;
+  width: min(880px, calc(100vw - var(--sidebar-width) - 48px));
+  overflow: hidden;
+  border: 1px solid #1f1d30;
+  border-top: 0;
+  border-radius: 0 0 14px 14px;
+  background: var(--r-hud);
+  opacity: 0;
+  transform: translate(-50%, calc(-8px * var(--motion-shift)));
+  pointer-events: none;
+  transition:
+    opacity var(--dur-exit) var(--ease-exit),
+    transform var(--dur-exit) var(--ease-exit);
+}
+
+body.reader-hud-visible .reader-hud {
+  opacity: 1;
+  transform: translate(-50%, 0);
+  pointer-events: auto;
+  transition:
+    opacity var(--dur-base) var(--ease),
+    transform var(--dur-base) var(--ease);
+}
+
+.reader-hud__bar {
+  display: flex;
+  align-items: center;
+  gap: var(--s-4);
+  height: 60px;
+  padding: 0 10px;
+}
+
+.reader-hud__btn {
+  appearance: none;
+  display: grid;
+  place-items: center;
+  flex: 0 0 auto;
+  width: 44px;
+  height: 44px;
+  padding: 0;
+  border: 0;
+  border-radius: var(--r-lg);
+  background: transparent;
+  color: var(--text-1);
+  text-decoration: none;
+  cursor: pointer;
+  transition: background-color var(--dur-press) var(--ease);
+}
+
+.reader-hud__btn svg {
+  width: 20px;
+  height: 20px;
+}
+
+.reader-hud__btn--nav {
+  color: var(--text-2);
+}
+
+.reader-hud__btn--nav svg {
+  width: 18px;
+  height: 18px;
+}
+
+@media (hover: hover) {
+  .reader-hud__btn:hover,
+  .reader-hud__chapter:hover {
+    background: #211e33;
+  }
+}
+
+.reader-hud__btn:active,
+.reader-hud__btn[aria-expanded="true"] {
+  background: #262338;
+}
+
+.reader-hud__btn:focus-visible,
+.reader-hud__chapter:focus-visible {
+  outline: none;
+  box-shadow: 0 0 0 2px var(--r-hud), 0 0 0 4px var(--r-focus);
+}
+
+.reader-hud__aa {
+  font: 500 18px/1 var(--font-reader-serif);
+}
+
+.reader-hud__chapter {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  gap: var(--s-4);
+  flex: 0 1 auto;
+  min-width: 0;
+  height: 44px;
+  margin-right: auto;
+  padding: 0 var(--s-8);
+  border-radius: 10px;
+  color: var(--text-1);
+  text-decoration: none;
+}
+
+.reader-hud__chapter-line {
+  display: flex;
+  align-items: center;
+  gap: var(--s-8);
+  min-width: 0;
+  font: 700 15px/1 var(--font-ui);
+  white-space: nowrap;
+}
+
+.reader-hud__chapter-num {
+  flex: 0 0 auto;
+  color: var(--r-muted);
+  font-weight: 600;
+}
+
+.reader-hud__chapter-name {
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.reader-hud__chevron {
+  flex: 0 0 auto;
+  width: 14px;
+  height: 14px;
+  color: var(--r-muted);
+}
+
+.reader-hud__progress-text {
+  color: var(--r-muted);
+  font: 600 13px/1 var(--font-ui);
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+.reader-hud__progress-text--desktop {
+  margin-right: 6px;
+}
+
+.reader-hud__progress-text--mobile {
+  display: none;
+}
+
+.reader-hud__sep {
+  flex: 0 0 auto;
+  width: 1px;
+  height: 24px;
+  margin: 0 var(--s-4);
+  background: var(--border);
+}
+
+.reader-hud__track,
+.reader-hairline {
+  height: 2px;
+  background: var(--r-track);
+}
+
+.reader-hud__fill,
+.reader-hairline__fill {
+  display: block;
+  width: 0;
+  height: 100%;
+  background: var(--r-accent);
+  transition: width var(--dur-base) var(--ease);
+}
+
+/* Mobile-only pieces. */
+.reader-hud-bottom,
+.reader-hairline {
+  display: none;
+}
+
+/* Reading column. */
+.reader {
+  width: min(var(--reader-width), calc(100% - 64px));
+  margin: 0 auto;
+  padding: 112px 0 var(--s-64);
+}
+
+.reader:focus {
+  outline: none;
+}
+
+.reader__head {
+  display: flex;
+  flex-direction: column;
+  gap: var(--s-12);
+  margin-bottom: 36px;
+}
+
+.reader__kicker {
+  color: var(--r-muted);
+  font: 700 12px/1 var(--font-ui);
+  letter-spacing: var(--tracking-label);
+  text-transform: uppercase;
+}
+
+.reader__title {
+  margin: 0;
+  color: #f2effa;
+  font: var(--type-reader-title);
+  text-wrap: balance;
+  overflow-wrap: anywhere;
+}
+
+.reader-content {
+  color: var(--r-text);
+  text-wrap: pretty;
+}
+
+.reader-content a {
+  color: var(--r-accent);
+}
+
+/* Tap Focus, "book" style (the default): no plates - paragraphs read like a book,
+   already-read ones dim to --r-text-read, the newest gets a soft tint and a 2px accent
+   marker. */
+.reader-content--book .reader-content__paragraph-wrap {
+  position: relative;
+  margin: 0 0 18px;
+  padding: 0;
+  border-radius: 0;
+  transition:
+    color var(--dur-base) var(--ease),
+    background-color var(--dur-base) var(--ease);
+}
+
+.reader-content--book .reader-content__paragraph-wrap--read {
+  color: var(--r-text-read);
+}
+
+.reader-content--book .reader-content__paragraph-wrap--active {
+  margin: 0 -16px 18px;
+  padding: 10px 52px 10px 16px;
+  border-radius: 0 12px 12px 0;
+  background: var(--r-active-tint);
+  box-shadow: inset 2px 0 0 var(--r-accent);
+  color: #f4f1fb;
+}
+
+.reader-paragraph-more {
+  appearance: none;
+  position: absolute;
+  top: 6px;
+  right: 6px;
+  display: grid;
+  place-items: center;
+  width: 36px;
+  height: 36px;
+  padding: 0;
+  border: 0;
+  border-radius: var(--r-sm);
+  background: transparent;
+  color: var(--r-muted);
+  cursor: pointer;
+}
+
+.reader-paragraph-more svg {
+  width: 18px;
+  height: 18px;
+}
+
+@media (hover: hover) {
+  .reader-paragraph-more:hover {
+    background: var(--r-surface);
+    color: var(--r-text);
+  }
+}
+
+.reader-paragraph-more:focus-visible {
+  outline: none;
+  box-shadow: 0 0 0 2px var(--r-focus);
+}
+
+/* End-of-chapter card. */
+.reader-end {
+  display: flex;
+  flex-direction: column;
+  gap: var(--s-12);
+  margin-top: 30px;
+  padding: var(--s-20);
+  border-radius: var(--r-xl);
+  background: var(--r-surface);
+}
+
+.reader-end[hidden] {
+  display: none;
+}
+
+.reader-end:focus {
+  outline: none;
+}
+
+.reader-end__kicker {
+  color: var(--r-accent);
+  font: 800 12px/1 var(--font-ui);
+  letter-spacing: var(--tracking-label);
+  text-transform: uppercase;
+}
+
+.reader-end__title {
+  color: var(--text-1);
+  font: 800 20px/1.25 var(--font-ui);
+}
+
+.reader-end__meta {
+  color: var(--r-muted);
+  font: 500 14px/1.4 var(--font-ui);
+}
+
+.reader-end .ui-btn {
+  margin-top: var(--s-4);
+}
+
+.reader-end__toc {
+  align-self: center;
+  display: flex;
+  align-items: center;
+  min-height: 44px;
+  color: var(--text-2);
+  font: 700 14px/1 var(--font-ui);
+  text-decoration: none;
+}
+
+.reader-end__toc:focus-visible {
+  outline: none;
+  border-radius: var(--r-xs);
+  box-shadow: var(--focus-ring);
+}
+
+/* A stray tap past the last paragraph only highlights the card (160 ms). */
+.reader-end--flash {
+  animation: reader-end-flash 160ms var(--ease);
+}
+
+@keyframes reader-end-flash {
+  50% {
+    box-shadow: 0 0 0 2px var(--r-accent);
+  }
+}
+
+/* «⋯» sheet. */
+.reader-sheet .ui-list {
+  border: 0;
+  background: transparent;
+}
+
+/* Tap Focus onboarding (once per device). */
+.reader-onboarding {
+  position: fixed;
+  inset: 0;
+  z-index: 80;
+  background: rgba(8, 8, 14, 0.76);
+}
+
+.reader-onboarding[hidden] {
+  display: none;
+}
+
+.reader-onboarding__zones {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  grid-template-columns: 28% 24% 48%;
+}
+
+.reader-onboarding__zone {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 10px;
+  padding: 30vh 6px 0;
+  border-right: 1px dashed rgba(245, 243, 255, 0.25);
+  color: var(--text-2);
+  font: 500 12px/1.3 var(--font-ui);
+  text-align: center;
+}
+
+.reader-onboarding__zone:last-child {
+  border-right: 0;
+}
+
+.reader-onboarding__zone b {
+  color: var(--text-1);
+  font: 800 14px/1.25 var(--font-ui);
+}
+
+.reader-onboarding__icon {
+  display: grid;
+  place-items: center;
+  width: 44px;
+  height: 44px;
+  border-radius: 50%;
+  background: rgba(245, 243, 255, 0.1);
+  color: var(--text-1);
+}
+
+.reader-onboarding__icon svg {
+  width: 20px;
+  height: 20px;
+}
+
+.reader-onboarding__card {
+  position: absolute;
+  right: var(--s-16);
+  bottom: calc(42px + env(safe-area-inset-bottom, 0px));
+  left: var(--s-16);
+  display: flex;
+  flex-direction: column;
+  gap: var(--s-12);
+  max-width: 480px;
+  margin: 0 auto;
+  padding: 18px;
+  border: 1px solid var(--border);
+  border-radius: var(--r-xl);
+  background: var(--surface-2);
+}
+
+.reader-onboarding__title {
+  color: var(--text-1);
+  font: 800 16px/1.2 var(--font-ui);
+}
+
+.reader-onboarding__text {
+  color: var(--text-2);
+  font: 500 13px/1.5 var(--font-ui);
+}
+
+.reader-onboarding__foot {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--s-12);
+}
+
+.reader-onboarding__foot .ui-checkbox {
+  min-height: 44px;
+  color: #e4e0f2;
+  font: 600 13px/1.2 var(--font-ui);
+}
+
+.reader-onboarding__ok {
+  --ui-btn-bg: var(--text-1);
+  --ui-btn-fg: var(--bg-page);
+  --ui-btn-border: transparent;
+  --ui-btn-hover: #ffffff;
+  --ui-btn-active: #e4e0f2;
+  padding: 0 22px;
+  font-weight: 800;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .reader-hud,
+  body.reader-hud-visible .reader-hud {
+    transition: opacity 0ms;
+  }
+}
+
+@media (max-width: 767px) {
+  /* Full-width top bar (52px + safe area), chapter name over the progress. */
+  .reader-hud {
+    left: 0;
+    width: 100%;
+    padding-top: env(safe-area-inset-top, 0px);
+    border: 0;
+    border-bottom: 1px solid #1f1d30;
+    border-radius: 0;
+    transform: translateY(calc(-8px * var(--motion-shift)));
+  }
+
+  body.reader-hud-visible .reader-hud {
+    transform: none;
+  }
+
+  .reader-hud__bar {
+    gap: 2px;
+    height: 52px;
+    padding: 0 var(--s-4) 0 6px;
+  }
+
+  .reader-hud__btn svg {
+    width: 22px;
+    height: 22px;
+  }
+
+  .reader-hud__chapter {
+    flex: 1 1 auto;
+    align-items: flex-start;
+    padding: 0 6px;
+  }
+
+  .reader-hud__chapter-num {
+    color: var(--text-1);
+    font-weight: 700;
+  }
+
+  .reader-hud__chapter-sep,
+  .reader-hud__chapter-name,
+  .reader-hud__progress-text--desktop,
+  .reader-hud__btn--nav,
+  .reader-hud__sep {
+    display: none;
+  }
+
+  .reader-hud__progress-text--mobile {
+    display: block;
+    font-size: 12px;
+  }
+
+  .reader-hud-bottom {
+    position: fixed;
+    right: 0;
+    bottom: 0;
+    left: 0;
+    z-index: 60;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    height: calc(52px + env(safe-area-inset-bottom, 0px));
+    padding: 0 var(--s-8) env(safe-area-inset-bottom, 0px);
+    border-top: 1px solid #1f1d30;
+    background: var(--r-hud);
+    opacity: 0;
+    transform: translateY(calc(8px * var(--motion-shift)));
+    pointer-events: none;
+    transition:
+      opacity var(--dur-exit) var(--ease-exit),
+      transform var(--dur-exit) var(--ease-exit);
+  }
+
+  body.reader-hud-visible .reader-hud-bottom {
+    opacity: 1;
+    transform: none;
+    pointer-events: auto;
+    transition:
+      opacity var(--dur-base) var(--ease),
+      transform var(--dur-base) var(--ease);
+  }
+
+  .reader-hud-bottom__link {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    height: 44px;
+    padding: 0 var(--s-12);
+    border-radius: var(--r-lg);
+    color: var(--text-2);
+    font: 600 15px/1 var(--font-ui);
+    text-decoration: none;
+  }
+
+  .reader-hud-bottom__link svg {
+    width: 16px;
+    height: 16px;
+  }
+
+  .reader-hud-bottom__link:focus-visible {
+    outline: none;
+    box-shadow: 0 0 0 2px var(--r-focus);
+  }
+
+  /* 2px progress along the top edge while the HUD is away. */
+  .reader-hairline {
+    position: fixed;
+    top: env(safe-area-inset-top, 0px);
+    right: 0;
+    left: 0;
+    z-index: 55;
+    display: block;
+    background: var(--r-surface);
+    transition: opacity var(--dur-base) var(--ease);
+  }
+
+  .reader-hairline__fill {
+    opacity: 0.7;
+  }
+
+  body.reader-hud-visible .reader-hairline {
+    opacity: 0;
+  }
+
+  .reader {
+    width: auto;
+    padding: calc(env(safe-area-inset-top, 0px) + var(--s-16)) 22px calc(var(--s-64) + env(safe-area-inset-bottom, 0px));
+  }
+
+  .reader__head {
+    gap: 10px;
+    margin-bottom: 26px;
+  }
+
+  .reader-content--book .reader-content__paragraph-wrap--active {
+    margin: 0 -12px 18px;
+    padding: 8px 12px 40px;
+    border-radius: 0 10px 10px 0;
+  }
+
+  .reader-paragraph-more {
+    top: auto;
+    right: 4px;
+    bottom: 2px;
+    width: 44px;
+    height: 32px;
   }
 }
