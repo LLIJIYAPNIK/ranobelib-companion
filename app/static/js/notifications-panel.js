@@ -1,10 +1,7 @@
-// PR 168: sidebar bell + its flyout panel. The trigger is a real .sidebar__link (a
-// <button> with data-role instead of an <a href>, since it opens a panel rather than
-// navigating) so it gets the exact same collapsed/expanded 44px-icon-then-label treatment
-// as Главная/Библиотека/Загрузки/Активность/Настройки above it for free - no wrapper
-// element around it, unlike .profile-menu (that one needs position: relative as an
-// anchor point regardless; this one doesn't; see position() below, which anchors off the
-// sidebar's own edge instead of the trigger).
+// PR 168: sidebar bell + its flyout panel. Since PR 249 (Aurora Ink) the bell is
+// .sidebar__bell inside .sidebar__account - above the avatar at the bottom of the
+// desktop rail, next to it in the mobile top strip - and the panel opens beside the rail
+// on desktop (see position() below, which anchors off the sidebar's own edge).
 //
 // Portal/click-outside/Escape mechanics copied from profile-menu.js (PR 97) - same
 // .sidebar overflow-y: auto clipping problem, same fix (move the panel to <body>,
@@ -13,7 +10,7 @@
 // it's the sidebar's flyout there, not a dropdown hanging off one specific icon.
 //
 // PR 214: that desktop positioning doesn't carry over to mobile, where .sidebar itself
-// becomes the fixed, full-width bottom tab bar (PR 71) - sidebarRect.right below would
+// becomes the fixed, full-width bottom bar (PR 71; the Quiet Edge Bar since PR 249) - sidebarRect.right below would
 // then equal the full viewport width, placing the panel entirely off-screen to the right
 // instead of anywhere near the bell. The bell doesn't even live in .sidebar's own bottom
 // row on mobile any more (PR 213 moved it up into .sidebar__account), so "flush against
@@ -25,7 +22,7 @@
 (() => {
   const GAP = 8;
   const UNREAD_POLL_INTERVAL = 15000;
-  const mobileQuery = window.matchMedia("(max-width: 640px)");
+  const mobileQuery = window.matchMedia("(max-width: 767px)");
 
   const sidebar = document.querySelector('[data-role="sidebar"]');
   const trigger = document.querySelector('[data-role="notifications-trigger"]');
@@ -46,23 +43,27 @@
   function position() {
     if (mobileQuery.matches) {
       panel.style.left = "";
+      panel.style.bottom = "";
       panel.style.right = "12px";
-      panel.style.top = `calc(var(--mobile-account-height) + ${GAP}px)`;
+      panel.style.top = `calc(var(--mobile-account-height) + env(safe-area-inset-top, 0px) + ${GAP}px)`;
       return;
     }
+    // PR 249: the bell sits at the bottom of the rail, so the panel is anchored by its
+    // bottom edge (level with the bell) and grows upward - its height changes once
+    // loadRecent() fills the list, which a top-anchored panel would push off-screen.
     const sidebarRect = sidebar.getBoundingClientRect();
     const triggerRect = trigger.getBoundingClientRect();
     panel.style.right = "";
+    panel.style.top = "auto";
     panel.style.left = `${sidebarRect.right + GAP}px`;
-    const top = Math.min(triggerRect.top, window.innerHeight - panel.offsetHeight - GAP);
-    panel.style.top = `${Math.max(GAP, top)}px`;
+    panel.style.bottom = `${Math.max(GAP, window.innerHeight - triggerRect.bottom)}px`;
   }
 
   function open() {
     document.body.appendChild(panel);
     panel.style.position = "fixed";
-    position();
     panel.classList.add("notifications-panel--open");
+    position();
     trigger.setAttribute("aria-expanded", "true");
     window.addEventListener("resize", closeOnLayoutChange);
     window.addEventListener("scroll", closeOnLayoutChange, true);
@@ -77,6 +78,7 @@
     homeParent.insertBefore(panel, homeNextSibling);
     panel.style.position = "";
     panel.style.top = "";
+    panel.style.bottom = "";
     panel.style.left = "";
     panel.style.right = "";
     if (refocusTrigger) trigger.focus();

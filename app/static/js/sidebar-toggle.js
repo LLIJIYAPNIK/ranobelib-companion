@@ -1,5 +1,5 @@
-// Sidebar burger toggle (PR 39): expands the icon-only sidebar (PR 23/26) to show a
-// text label next to each icon. The chosen state is remembered in localStorage across
+// Sidebar toggle (PR 39): expands the 84px rail (icon over label, PR 249) to the 248px
+// one with labels beside the icons. The chosen state is remembered in localStorage across
 // page loads/navigations, since every page renders the sidebar collapsed by default
 // (server-rendered, no per-visitor state) and this is purely a client-side preference.
 (() => {
@@ -11,6 +11,7 @@
   function apply(expanded) {
     sidebar.classList.toggle("sidebar--expanded", expanded);
     toggle.setAttribute("aria-expanded", String(expanded));
+    toggle.setAttribute("aria-label", expanded ? "Свернуть меню" : "Развернуть меню");
   }
 
   apply(localStorage.getItem(STORAGE_KEY) === "1");
