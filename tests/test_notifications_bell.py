@@ -69,7 +69,7 @@ def test_notifications_bell_is_highlighted_on_the_full_notifications_page(
     response = logged_in_client.get("/notifications")
 
     assert response.status_code == 200
-    assert "sidebar__link--active" in _bell_tag(response.text)
+    assert "sidebar__bell--active" in _bell_tag(response.text)
 
 
 def test_notifications_bell_is_not_highlighted_on_other_pages(
@@ -77,4 +77,4 @@ def test_notifications_bell_is_not_highlighted_on_other_pages(
 ) -> None:
     response = logged_in_client.get("/settings/reading")
 
-    assert "sidebar__link--active" not in _bell_tag(response.text)
+    assert "sidebar__bell--active" not in _bell_tag(response.text)

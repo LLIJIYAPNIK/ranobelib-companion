@@ -179,12 +179,13 @@ def test_settings_page_offers_a_reveal_tempo_choice() -> None:
     )
 
 
-def test_sidebar_links_to_settings_page() -> None:
+def test_settings_page_marks_no_main_nav_section_active() -> None:
+    # PR 249: Настройки moved from the main list into the Account hub (logged-in only,
+    # see tests/test_sidebar.py), so none of Главная/Библиотека/Загрузки lights up here.
     response = client.get("/settings/reading")
 
     assert response.status_code == 200
-    assert 'href="/settings"' in response.text
-    assert "sidebar__link--active" in response.text
+    assert "sidebar__link--active" not in response.text
 
 
 def test_settings_page_offers_a_monospace_font_choice() -> None:
