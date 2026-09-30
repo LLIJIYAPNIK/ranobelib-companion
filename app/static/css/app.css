@@ -2120,10 +2120,9 @@ html.shell-scroll-lock body {
   margin: 24px 0;
 }
 
-/* PR 239: chapter-footnotes.js groups translator "↑ …" footnote paragraphs (wherever they
-   originally sat in the chapter) into this single collapsed block, appended at the end of
-   .reader-content - a bordered callout rather than plain running text, so it reads as
-   reference material set apart from the chapter itself. */
+/* PR 239/270: translator footnotes (Chapter.footnotes, rendered by chapter.html) as one
+   collapsed block at the end of .reader-content - a bordered callout rather than plain
+   running text, so it reads as reference material set apart from the chapter itself. */
 .reader-footnotes {
   margin: 24px 0 0;
   padding: 12px 16px;

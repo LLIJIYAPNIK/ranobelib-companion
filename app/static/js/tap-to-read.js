@@ -255,7 +255,7 @@
     return text ? text.split(/\s+/).length : 0;
   }
 
-  // PR 239: chapter-footnotes.js's grouped block is collapsed (a closed <details>) by
+  // PR 239/270: chapter.html's footnotes block is collapsed (a closed <details>) by
   // default - its footnote paragraphs aren't actually rendered, but .textContent still
   // includes them, so wordCount() above would otherwise count text nobody can currently
   // see. Without this, a chapter with many footnotes could turn this one wrap's tempo-

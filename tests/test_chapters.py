@@ -9,6 +9,7 @@ from fastapi.testclient import TestClient
 from ranobelib import (
     AuthRequiredError,
     ChapterNotFoundError,
+    Footnote,
     MultipleTranslationsError,
     RateLimitError,
 )
@@ -102,6 +103,42 @@ def test_read_chapter_renders_heading_and_content() -> None:
     assert "Начало" in response.text
     assert 'href="/titles/6712--test-novel"' in response.text
     assert "<p>Текст главы</p>" in response.text
+
+
+def test_read_chapter_renders_footnotes_as_last_child_of_the_article() -> None:
+    # PR 270: footnotes come from Chapter.footnotes, rendered server-side as one collapsed
+    # block - the article's last child, the shape tap-to-read.js/paragraph-menu.js expect.
+    chapter = Chapter(
+        id=1,
+        volume="1",
+        number="5",
+        content="<p>Текст главы</p>",
+        footnotes=[
+            Footnote(content="Первая <em>сноска</em>"),
+            Footnote(content="Вторая сноска"),
+        ],
+    )
+    with patch("app.services.client.RanobeLib", return_value=_FakeClient(chapter)):
+        response = client.get("/titles/6712--test-novel/chapters/1/5")
+
+    assert response.status_code == 200
+    text = response.text
+    details_at = text.index('<details class="reader-footnotes" data-role="reader-footnotes">')
+    assert text.index("<p>Текст главы</p>") < details_at
+    assert '<summary class="reader-footnotes__summary">Сноски</summary>' in text
+    assert "<p>Первая <em>сноска</em></p>" in text
+    assert text.index("<p>Первая <em>сноска</em></p>") < text.index("<p>Вторая сноска</p>")
+    between = text[text.index("</details>", details_at) : text.index("</article>")]
+    assert between.strip() == "</details>"
+
+
+def test_read_chapter_without_footnotes_renders_no_footnotes_block() -> None:
+    chapter = Chapter(id=1, volume="1", number="5", content="<p>x</p>")
+    with patch("app.services.client.RanobeLib", return_value=_FakeClient(chapter)):
+        response = client.get("/titles/6712--test-novel/chapters/1/5")
+
+    assert response.status_code == 200
+    assert 'data-role="reader-footnotes"' not in response.text
 
 
 def test_read_chapter_applies_reader_settings_without_inline_panel() -> None:
@@ -232,18 +269,15 @@ def test_read_chapter_includes_tap_to_read_script() -> None:
     assert "static/js/tap-to-read.js" in response.text
 
 
-def test_read_chapter_includes_footnotes_script_before_tap_to_read() -> None:
-    # PR 239: chapter-footnotes.js has to run before tap-to-read.js/paragraph-menu.js so
-    # both see the already-grouped .reader-content shape - see that script's own comment.
+def test_read_chapter_no_longer_loads_the_footnotes_heuristic_script() -> None:
+    # PR 270: footnotes are rendered server-side from Chapter.footnotes - the client-side
+    # "↑" heuristic (chapter-footnotes.js) is gone.
     chapter = Chapter(id=1, volume="1", number="5", content="<p>x</p>")
     with patch("app.services.client.RanobeLib", return_value=_FakeClient(chapter)):
         response = client.get("/titles/6712--test-novel/chapters/1/5")
 
     assert response.status_code == 200
-    assert "static/js/chapter-footnotes.js" in response.text
-    assert response.text.index("static/js/chapter-footnotes.js") < response.text.index(
-        "static/js/tap-to-read.js"
-    )
+    assert "chapter-footnotes.js" not in response.text
 
 
 def test_read_chapter_includes_reader_progress_script() -> None:
