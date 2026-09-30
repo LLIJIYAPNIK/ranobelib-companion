@@ -353,7 +353,7 @@ async def test_profile_has_an_edit_link_to_settings_account(client: TestClient) 
     response = client.get("/profile")
 
     assert response.status_code == 200
-    assert '<a class="btn btn--secondary" href="/settings/account">Редактировать</a>' in (
+    assert '<a class="ui-btn" href="/settings/account">Редактировать</a>' in (
         response.text
     )
 
@@ -452,7 +452,7 @@ async def test_public_profile_shows_the_library_grid(client: TestClient) -> None
 
     assert response.status_code == 200
     assert '<h2 class="profile-section__title">Библиотека</h2>' in response.text
-    assert 'class="title-card-grid"' in response.text
+    assert 'class="profile-grid"' in response.text
     assert "Test Novel" in response.text
 
 
@@ -466,7 +466,7 @@ async def test_public_profile_omits_both_new_sections_when_the_library_is_empty(
 
     assert response.status_code == 200
     assert "Читает сейчас" not in response.text
-    assert 'class="title-card-grid"' not in response.text
+    assert 'class="profile-grid"' not in response.text
     # Unlike those two, PR 136's calendar section always renders (an empty history is a
     # grid of empty cells, not an omitted section) - so it's the one case where the
     # reading-calendar-card section (PR 160) is expected even with nothing else on the
@@ -536,7 +536,7 @@ async def test_public_profile_shows_the_favorite_section_when_one_is_set(
 
     assert response.status_code == 200
     assert '<h2 class="profile-section__title">Избранное</h2>' in response.text
-    assert 'class="title-card title-card--favorite"' in response.text
+    assert 'class="profile-grid profile-grid--favorite"' in response.text
     assert "Test Novel" in response.text
 
 
@@ -553,7 +553,7 @@ async def test_public_profile_omits_the_favorite_section_when_nothing_is_favorit
 
     assert response.status_code == 200
     assert "Избранное" not in response.text
-    assert "title-card--favorite" not in response.text
+    assert "profile-grid--favorite" not in response.text
 
 
 async def test_public_profile_favorite_section_updates_after_a_new_favorite_is_chosen(
@@ -747,7 +747,7 @@ async def test_profile_shows_a_show_all_link_over_the_preview_limit(
     assert f'href="/profile/{alice_id}/friends"' in response.text
     assert "Показать всех" in response.text
     # only the preview limit's worth of rows actually render on the profile page itself
-    assert response.text.count('class="friend-row__link"') == _FRIEND_PREVIEW_LIMIT
+    assert response.text.count('class="ui-friend-row__link"') == _FRIEND_PREVIEW_LIMIT
 
 
 async def test_profile_friends_section_shows_on_the_owners_own_profile_too(
@@ -875,7 +875,7 @@ async def test_profile_friends_page_hides_the_list_from_others_when_opted_out(
     assert response.status_code == 200
     # Bob's own email legitimately appears in the page header regardless (he's the logged-
     # in viewer) - what must actually be absent is his row in the friend list itself.
-    assert 'friend-row__name">bob@example.com</span>' not in response.text
+    assert 'ui-friend-row__name">bob@example.com</span>' not in response.text
     assert "Пока нет друзей." in response.text
 
 

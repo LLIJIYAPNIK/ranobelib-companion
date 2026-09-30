@@ -2087,103 +2087,6 @@ html.shell-scroll-lock body {
   resize: vertical;
 }
 
-/* PR 92: /profile - read-only, so no .settings-form here, just the same avatar treatment
-   as .sidebar__avatar (PR 88) scaled up, next to the account's own display fields. */
-.profile {
-  display: flex;
-  align-items: flex-start;
-  gap: 24px;
-  margin-top: 20px;
-  max-width: 480px;
-}
-
-.profile__avatar {
-  flex: 0 0 auto;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  width: 96px;
-  height: 96px;
-  border-radius: 50%;
-  background: var(--legacy-accent);
-  color: var(--text-primary);
-  font-size: 32px;
-  font-weight: 600;
-}
-
-/* PR 173: opens image-lightbox.js's fullscreen viewer, same reasoning as
-   .title-hero__cover/img.paragraph-comment__attachment above - only the uploaded-avatar
-   <img> gets the cursor, never .profile__avatar itself, so the plain initials text (no
-   <img> at all, profile.html) doesn't look clickable when there's nothing to click open. */
-.profile__avatar img {
-  cursor: zoom-in;
-}
-
-.profile__info {
-  display: flex;
-  flex-direction: column;
-  align-items: flex-start;
-  gap: 8px;
-}
-
-.profile__name {
-  font-size: 20px;
-  font-weight: 700;
-  margin: 0;
-}
-
-.profile__bio {
-  color: var(--text-secondary);
-  font-size: 14px;
-  margin: 0;
-}
-
-.profile__meta {
-  color: var(--text-muted);
-  font-size: 13px;
-  margin: 0 0 8px;
-}
-
-/* PR 199: "Принять заявку"/"Отклонить" side by side under an incoming friend request on
-   someone else's profile - the other three friend_state branches only ever render one
-   form, so they don't need a row wrapper of their own. */
-.profile__friend-actions {
-  display: flex;
-  gap: 8px;
-}
-
-/* PR 122: "Читает сейчас"/"Библиотека" sections on /profile - same heading treatment as
-   .reader-settings-section__title, unlike .profile above these aren't capped to 480px
-   since the library grid needs the full content width. */
-.profile-section {
-  margin-top: 28px;
-}
-
-.profile-section__title {
-  font-size: 14px;
-  font-weight: 700;
-  color: var(--text-secondary);
-  margin: 0 0 12px;
-}
-
-.profile-current-read__name {
-  font-size: 16px;
-  font-weight: 700;
-  text-decoration: none;
-}
-
-@media (hover: hover) {
-  .profile-current-read__name:hover {
-    color: var(--accent-teal);
-  }
-}
-
-.profile-current-read__meta {
-  color: var(--text-muted);
-  font-size: 13px;
-  margin: 4px 0 0;
-}
-
 /* PR 160: GitHub-reference redesign of the heatmap below - shared cell/gap sizing so the
    month-label row, weekday column, day grid and legend swatches all line up on the same
    11px grid without repeating the magic numbers four times. */
@@ -2698,15 +2601,6 @@ html.shell-scroll-lock body {
   .title-card__quickview:hover {
     background: var(--accent-teal);
   }
-}
-
-/* PR 123: the one favorite title, singled out on the profile page's own "Избранное"
-   section - an accented frame around the whole card, same corner-radius language as the
-   card's own cover image, rather than a new component. */
-.title-card--favorite {
-  border: 2px solid var(--accent-orange);
-  border-radius: 12px;
-  padding: 8px;
 }
 
 .reading-progress {
@@ -10556,5 +10450,251 @@ body.reader-hud-visible .reader-hud {
   .notifications-page__title {
     font-size: 22px;
     line-height: 1;
+  }
+}
+
+/* ==========================================================================
+   Aurora Ink screens - profile (PR 260): PROFILE and its "Показать всех" friends page.
+   Header (88px avatar, name, bio, meta, action), the reading calendar as a card,
+   "Читает сейчас" + "Друзья (N)" side by side, then the title-card grids. Content
+   capped at 1080px (the friends page at 760px), as in the design.
+   ========================================================================== */
+.profile-page {
+  --profile-grid-min: 150px;
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 22px;
+  width: 100%;
+  max-width: calc(1080px + 2 * var(--s-40));
+  padding: var(--s-32) var(--s-40) var(--s-40);
+}
+
+.profile-page--narrow {
+  gap: var(--s-16);
+  max-width: calc(760px + 2 * var(--s-40));
+}
+
+/* The design leads with the user's name, not a "Профиль" heading - the h1 stays for
+   screen readers and the document outline. */
+.profile-page__title {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  margin: -1px;
+  padding: 0;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  white-space: nowrap;
+  border: 0;
+}
+
+.profile-page__heading {
+  margin: 0;
+  color: var(--text-1);
+  font: var(--type-h1);
+  overflow-wrap: anywhere;
+}
+
+.profile-page__back {
+  align-self: flex-start;
+  color: var(--text-3);
+  font: 600 14px/1.4 var(--font-ui);
+  text-decoration: none;
+}
+
+@media (hover: hover) {
+  .profile-page__back:hover {
+    color: var(--text-1);
+  }
+}
+
+.profile {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--s-20);
+}
+
+.profile__avatar {
+  display: grid;
+  place-items: center;
+  flex: 0 0 auto;
+  width: 88px;
+  height: 88px;
+  border: 2px solid var(--border);
+  border-radius: 50%;
+  background: var(--surface-3);
+  color: var(--text-2);
+  font: 800 28px/1 var(--font-ui);
+  overflow: hidden;
+}
+
+/* PR 173: opens image-lightbox.js's fullscreen viewer - only an uploaded avatar, never
+   the initials. */
+.profile__avatar img {
+  object-position: 50% 20%;
+  cursor: zoom-in;
+}
+
+.profile__info {
+  display: flex;
+  flex: 1 1 260px;
+  flex-direction: column;
+  gap: 6px;
+  min-width: 0;
+}
+
+.profile__name {
+  margin: 0;
+  color: var(--text-1);
+  font: 800 26px/1.15 var(--font-ui);
+  overflow-wrap: anywhere;
+}
+
+.profile__bio,
+.profile__bio-empty {
+  margin: 0;
+  color: var(--text-2);
+  font: 500 14px/1.5 var(--font-ui);
+  overflow-wrap: anywhere;
+}
+
+.profile__meta {
+  margin: 0;
+  color: var(--text-3);
+  font: 500 13px/1.4 var(--font-ui);
+}
+
+.profile__actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--s-8);
+}
+
+.profile__actions form {
+  margin: 0;
+}
+
+.profile-section {
+  display: flex;
+  flex-direction: column;
+  gap: var(--s-8);
+  min-width: 0;
+}
+
+.profile-section__title {
+  margin: 0;
+  color: var(--text-1);
+  font: 800 17px/1.2 var(--font-ui);
+}
+
+.profile-section:has(.profile-grid) {
+  gap: var(--s-12);
+}
+
+.reading-calendar-card {
+  gap: var(--s-12);
+  padding: 18px;
+  border: 1px solid var(--border);
+  border-radius: var(--r-xl);
+  background: var(--surface-1);
+  overflow: hidden;
+}
+
+.profile__columns {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 22px;
+}
+
+.profile__columns > .profile-section {
+  flex: 1 1 280px;
+}
+
+.profile-current-read__name {
+  align-self: flex-start;
+  color: var(--text-1);
+  font: 700 15px/1.3 var(--font-ui);
+  text-decoration: none;
+}
+
+@media (hover: hover) {
+  .profile-current-read__name:hover {
+    color: var(--accent-text);
+  }
+}
+
+.profile-current-read__meta {
+  margin: 0;
+  color: var(--text-3);
+  font: 500 13px/1 var(--font-ui);
+}
+
+.profile-friends {
+  display: flex;
+  flex-direction: column;
+}
+
+/* Friend row, compact (profile): 32px avatar, 14px name, no divider, no actions. */
+.ui-friend-row--compact {
+  padding: 0;
+  border-bottom: 0;
+}
+
+.ui-friend-row--compact .ui-friend-row__link {
+  gap: 10px;
+}
+
+.ui-friend-row--compact .ui-friend-row__avatar {
+  width: 32px;
+  height: 32px;
+  font-size: 11px;
+}
+
+.ui-friend-row--compact .ui-friend-row__name {
+  font: 700 14px/1.2 var(--font-ui);
+}
+
+.profile-section__more {
+  align-self: flex-start;
+  color: var(--primary-text);
+  font: 700 14px/1.4 var(--font-ui);
+  text-decoration: none;
+}
+
+.profile-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(var(--profile-grid-min), 1fr));
+  gap: 14px;
+  max-width: 720px;
+}
+
+@media (max-width: 1199px) {
+  .profile-page {
+    --profile-grid-min: 140px;
+    padding: 28px var(--s-32) var(--s-32);
+  }
+}
+
+@media (max-width: 767px) {
+  .profile-page {
+    --profile-grid-min: 100px;
+    padding: var(--s-4) var(--s-20) var(--s-8);
+  }
+
+  .profile-page__heading {
+    font-size: 22px;
+    line-height: 1.15;
+  }
+
+  /* The mobile strip has its own back button (strip_back_href). */
+  .profile-page__back {
+    display: none;
+  }
+
+  .profile__name {
+    font-size: 22px;
   }
 }
