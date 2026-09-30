@@ -1,25 +1,40 @@
 {% extends "base.html" %}
+{# Back to the title from the mobile strip. #}
+{% set strip_back_href = "/titles/" ~ slug_url %}
 {% block title %}Выбор перевода — RanobeLib Companion{% endblock %}
 {% block content %}
-<main class="content">
-  <div class="translation-choice">
-    <a class="translation-choice__back" href="/titles/{{ slug_url }}">← К оглавлению</a>
-    <h1 class="translation-choice__heading">Несколько переводов главы {{ number }}</h1>
-    <p class="translation-choice__hint">
-      У этой главы есть переводы от нескольких команд — выберите, какой открыть.
-    </p>
-    <ul class="translation-choice__list">
-      {% for branch in branches %}
-      <li>
-        <a class="translation-choice__link" href="{{ target_path }}?branch_id={{ branch.branch_id }}">
-          <span class="translation-choice__team">
-            {% if branch.teams %}{{ branch.teams | map(attribute="name") | join(", ") }}{% else %}{{ branch.user.username }}{% endif %}
-          </span>
-          <span class="translation-choice__date">{{ branch.created_at.strftime("%d.%m.%Y") }}</span>
-        </a>
-      </li>
-      {% endfor %}
-    </ul>
-  </div>
+{#
+  PR 266 (Aurora Ink): the MultipleTranslationsError page (app/exceptions.py). Marked
+  "не макетировался" in the design, so it's assembled from the "02 Components"
+  primitives only - the Dialog's card, head and body (as a page, not a <dialog>: this is
+  the response itself, there's nothing underneath to overlay) holding a List with one
+  row per translation (team or uploader, date, chevron). Same links as before:
+  target_path?branch_id=N.
+#}
+<main class="translation-page">
+  <section class="ui-dialog translation-choice" aria-labelledby="translation-choice-title">
+    <div class="ui-dialog__head">
+      <h1 class="ui-dialog__title" id="translation-choice-title">Несколько переводов главы {{ number }}</h1>
+      <a class="ui-icon-btn" href="/titles/{{ slug_url }}" aria-label="К оглавлению" title="К оглавлению"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M6 6l12 12M18 6 6 18"/></svg></a>
+    </div>
+    <div class="ui-dialog__body translation-choice__body">
+      <p class="translation-choice__hint">
+        У этой главы есть переводы от нескольких команд — выберите, какой открыть.
+      </p>
+      <ul class="ui-list">
+        {% for branch in branches %}
+        <li class="ui-list__item">
+          <a class="ui-list__row" href="{{ target_path }}?branch_id={{ branch.branch_id }}">
+            <span class="ui-list__main">
+              <span>{% if branch.teams %}{{ branch.teams | map(attribute="name") | join(", ") }}{% else %}{{ branch.user.username }}{% endif %}</span>
+              <span class="ui-list__meta">{{ branch.created_at.strftime("%d.%m.%Y") }}</span>
+            </span>
+            <svg class="translation-choice__chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 5l7 7-7 7"/></svg>
+          </a>
+        </li>
+        {% endfor %}
+      </ul>
+    </div>
+  </section>
 </main>
 {% endblock %}
