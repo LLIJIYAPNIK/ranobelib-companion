@@ -1,11 +1,18 @@
 {% extends "base.html" %}
 {% block title %}Ошибка — RanobeLib Companion{% endblock %}
 {% block content %}
-<main class="content">
-  <div class="error-page">
-    <span class="error-page__status">{{ status_code }}</span>
-    <p class="error-page__detail">{{ detail }}</p>
-    <a href="/">На главную</a>
-  </div>
+{#
+  PR 265 (Aurora Ink, ERROR-404): the code large and quiet, the user-facing `detail`
+  (app/exceptions.py) as the headline, capped at 48ch, and «На главную». Every error the
+  exception handler renders as a page (404 / 403 / 429 / 500) shares it - only
+  status_code and detail change; a 404 also gets the design's line about stale links.
+#}
+<main class="error-page">
+  <span class="error-page__status">{{ status_code }}</span>
+  <h1 class="error-page__detail">{{ detail }}</h1>
+  {% if status_code == 404 %}
+  <p class="error-page__hint">Возможно, ссылка устарела или тайтл был удалён с RanobeLib.</p>
+  {% endif %}
+  <a class="ui-btn" href="/">На главную</a>
 </main>
 {% endblock %}
