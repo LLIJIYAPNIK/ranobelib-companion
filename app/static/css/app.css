@@ -2572,25 +2572,6 @@ html.shell-scroll-lock body {
   margin: 0;
 }
 
-.error-page {
-  display: flex;
-  flex-direction: column;
-  gap: 12px;
-  align-items: flex-start;
-}
-
-.error-page__status {
-  font-family: var(--legacy-font-mono);
-  color: var(--text-muted);
-  font-size: 13px;
-  letter-spacing: 1px;
-}
-
-.error-page__detail {
-  font-size: 20px;
-  font-weight: 700;
-}
-
 .reader-content {
   max-width: var(--reader-width);
   margin: 0 auto;
@@ -10845,5 +10826,49 @@ body.reader-hud-visible .reader-hud {
 
   .auth-modal__panel .auth-tabs {
     margin-right: 0;
+  }
+}
+
+/* ==========================================================================
+   Aurora Ink screens - error page (PR 265): ERROR-404, and every other error the
+   exception handler renders as a page. Centred in the content area: the code large in
+   --border, the detail as the headline (max 48ch), a 404-only hint, «На главную».
+   ========================================================================== */
+.error-page {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 14px;
+  width: 100%;
+  padding: var(--s-32) var(--s-20) 72px;
+  text-align: center;
+}
+
+.error-page__status {
+  color: var(--border);
+  font: 800 96px/1 var(--font-ui);
+  letter-spacing: -0.04em;
+}
+
+.error-page__detail {
+  max-width: 48ch;
+  margin: 0;
+  color: var(--text-1);
+  font: 800 22px/1.25 var(--font-ui);
+  text-wrap: balance;
+}
+
+.error-page__hint {
+  max-width: 48ch;
+  margin: 0;
+  color: var(--text-2);
+  font: 500 15px/1.5 var(--font-ui);
+}
+
+@media (max-width: 767px) {
+  .error-page {
+    padding-bottom: var(--s-40);
   }
 }
