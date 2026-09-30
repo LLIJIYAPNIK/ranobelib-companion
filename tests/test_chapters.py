@@ -269,18 +269,15 @@ def test_read_chapter_includes_tap_to_read_script() -> None:
     assert "static/js/tap-to-read.js" in response.text
 
 
-def test_read_chapter_includes_footnotes_script_before_tap_to_read() -> None:
-    # PR 239: chapter-footnotes.js has to run before tap-to-read.js/paragraph-menu.js so
-    # both see the already-grouped .reader-content shape - see that script's own comment.
+def test_read_chapter_no_longer_loads_the_footnotes_heuristic_script() -> None:
+    # PR 270: footnotes are rendered server-side from Chapter.footnotes - the client-side
+    # "↑" heuristic (chapter-footnotes.js) is gone.
     chapter = Chapter(id=1, volume="1", number="5", content="<p>x</p>")
     with patch("app.services.client.RanobeLib", return_value=_FakeClient(chapter)):
         response = client.get("/titles/6712--test-novel/chapters/1/5")
 
     assert response.status_code == 200
-    assert "static/js/chapter-footnotes.js" in response.text
-    assert response.text.index("static/js/chapter-footnotes.js") < response.text.index(
-        "static/js/tap-to-read.js"
-    )
+    assert "chapter-footnotes.js" not in response.text
 
 
 def test_read_chapter_includes_reader_progress_script() -> None:
