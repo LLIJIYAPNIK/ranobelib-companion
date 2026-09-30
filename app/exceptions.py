@@ -21,6 +21,7 @@ from fastapi import FastAPI, Request
 from fastapi.encoders import jsonable_encoder
 from fastapi.responses import JSONResponse, Response
 from ranobelib import (
+    AccessBlockedError,
     AuthRequiredError,
     ChapterNotFoundError,
     MultipleTitleTranslationsError,
@@ -84,6 +85,14 @@ def build_error_response(exc: RanobeLibError) -> ErrorResponse:
 
     if isinstance(exc, AuthRequiredError):
         return ErrorResponse(403, {"detail": "Требуется авторизация — недоступно"})
+
+    if isinstance(exc, AccessBlockedError):
+        # The site's DDoS-Guard edge turned the request away before the API saw it - a
+        # temporary outage on their side, not a permissions problem, so 503 rather than
+        # AuthRequiredError's 403, and nothing in the text that hints at logging in.
+        return ErrorResponse(
+            503, {"detail": "ranobelib.me временно блокирует наши запросы, попробуйте позже"}
+        )
 
     if isinstance(exc, RateLimitError):
         return ErrorResponse(
