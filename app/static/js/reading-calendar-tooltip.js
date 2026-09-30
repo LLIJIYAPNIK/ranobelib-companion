@@ -10,6 +10,11 @@
   const tooltip = document.querySelector('[data-role="reading-calendar-tooltip"]');
   if (!calendar || !tooltip) return;
 
+  // PR 260 (M-PROFILE): where the year doesn't fit (phones), start scrolled to the most
+  // recent weeks - the end of the grid - rather than to last autumn. No-op when it fits.
+  const scroller = document.querySelector('[data-role="reading-calendar-scroll"]');
+  if (scroller) scroller.scrollLeft = scroller.scrollWidth;
+
   let activeCell = null;
 
   function position(cell) {

@@ -2198,10 +2198,13 @@ html.shell-scroll-lock body {
      swatches can reuse the same colors under their own class names, instead of the
      legend colliding with the "no level-N cell present" assertions the day grid's own
      classes are used for elsewhere. */
-  --reading-calendar-level-1: rgba(34, 211, 197, 0.28);
-  --reading-calendar-level-2: rgba(34, 211, 197, 0.5);
-  --reading-calendar-level-3: rgba(34, 211, 197, 0.75);
-  --reading-calendar-level-4: var(--accent-teal);
+  /* PR 260: the Aurora Ink ramp from the design - level 0 is --surface-2, 4 is
+     --accent-text, the teal steps between have no token of their own. */
+  --reading-calendar-level-0: var(--surface-2);
+  --reading-calendar-level-1: #134e4a;
+  --reading-calendar-level-2: #0f766e;
+  --reading-calendar-level-3: #14b8a6;
+  --reading-calendar-level-4: var(--accent-text);
 }
 
 /* Weekday column (left) + the scrollable months/day-grid stack (right) - only the latter
@@ -2220,9 +2223,8 @@ html.shell-scroll-lock body {
   /* Lines the first row (Sunday) up with the day grid's own first row, which sits below
      the months row + its gap inside .reading-calendar-scroll. */
   margin-top: calc(14px + var(--reading-calendar-gap));
-  font-size: 10px;
-  line-height: var(--reading-calendar-cell);
-  color: var(--text-muted);
+  font: 500 10px/var(--reading-calendar-cell) var(--font-ui);
+  color: var(--text-3);
   white-space: nowrap;
 }
 
@@ -2268,9 +2270,8 @@ html.shell-scroll-lock body {
   grid-auto-columns: var(--reading-calendar-cell);
   gap: var(--reading-calendar-gap);
   height: 14px;
-  font-size: 10px;
-  line-height: 14px;
-  color: var(--text-muted);
+  font: 500 10px/14px var(--font-ui);
+  color: var(--text-3);
   white-space: nowrap;
 }
 
@@ -2285,65 +2286,54 @@ html.shell-scroll-lock body {
   align-items: center;
   gap: 4px;
   justify-content: flex-start;
-  margin-top: 8px;
-  font-size: 11px;
-  color: var(--text-muted);
+  font: 500 12px/1 var(--font-ui);
+  color: var(--text-3);
 }
 
 .reading-calendar-legend__swatch {
   width: var(--reading-calendar-cell);
   height: var(--reading-calendar-cell);
   border-radius: 2px;
-  background: var(--bg-surface);
-  border: 1px solid var(--legacy-border);
+  background: var(--reading-calendar-level-0);
 }
 
 .reading-calendar-legend__swatch--level-1 {
   background: var(--reading-calendar-level-1);
-  border-color: transparent;
 }
 
 .reading-calendar-legend__swatch--level-2 {
   background: var(--reading-calendar-level-2);
-  border-color: transparent;
 }
 
 .reading-calendar-legend__swatch--level-3 {
   background: var(--reading-calendar-level-3);
-  border-color: transparent;
 }
 
 .reading-calendar-legend__swatch--level-4 {
   background: var(--reading-calendar-level-4);
-  border-color: transparent;
 }
 
 .reading-calendar__day {
-  width: 11px;
-  height: 11px;
+  width: var(--reading-calendar-cell);
+  height: var(--reading-calendar-cell);
   border-radius: 2px;
-  background: var(--bg-surface);
-  border: 1px solid var(--legacy-border);
+  background: var(--reading-calendar-level-0);
 }
 
 .reading-calendar__day--level-1 {
   background: var(--reading-calendar-level-1);
-  border-color: transparent;
 }
 
 .reading-calendar__day--level-2 {
   background: var(--reading-calendar-level-2);
-  border-color: transparent;
 }
 
 .reading-calendar__day--level-3 {
   background: var(--reading-calendar-level-3);
-  border-color: transparent;
 }
 
 .reading-calendar__day--level-4 {
   background: var(--reading-calendar-level-4);
-  border-color: transparent;
 }
 
 /* PR 160: custom tooltip replacing the native `title` attribute (see reading-calendar-
@@ -2356,13 +2346,12 @@ html.shell-scroll-lock body {
   z-index: 40;
   max-width: 240px;
   padding: 8px 10px;
-  background: var(--bg-surface);
-  border: 1px solid var(--legacy-border);
-  border-radius: 8px;
-  box-shadow: 0 10px 24px rgba(0, 0, 0, 0.35);
-  font-size: 12px;
-  line-height: 1.5;
-  color: var(--text-secondary);
+  background: var(--surface-2);
+  border: 1px solid var(--border);
+  border-radius: var(--r-md);
+  box-shadow: var(--shadow-popover);
+  font: 500 12px/1.5 var(--font-ui);
+  color: var(--text-2);
   white-space: pre-line;
   opacity: 0;
   pointer-events: none;
