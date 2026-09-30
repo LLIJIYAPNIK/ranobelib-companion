@@ -1,0 +1,50 @@
+{#
+  PR 255: reading-settings controls shared by /settings/reading and the reader's Aa
+  panel. Each one is a plain form control with data-setting="<key>", bound by
+  reader-settings.js to the same readerSettings object - so the two places can't drift
+  apart. `name` only has to be unique per page (radio groups).
+#}
+{% macro segmented(key, name, options, label) -%}
+<fieldset class="ui-segmented" aria-label="{{ label }}">
+  {% for value, text in options %}
+  <label class="ui-segmented__item">
+    <input type="radio" name="{{ name }}" value="{{ value }}" data-setting="{{ key }}">
+    <span>{{ text }}</span>
+  </label>
+  {% endfor %}
+</fieldset>
+{%- endmacro %}
+
+{% set READER_THEMES = [
+  ("aurora", "Aurora"),
+  ("amoled", "AMOLED"),
+  ("sepia", "Sepia"),
+  ("light", "Light"),
+  ("system", "System"),
+] %}
+
+{% macro themes(name) -%}
+<fieldset class="reader-themes" aria-label="Тема читалки">
+  {% for value, text in READER_THEMES %}
+  <label class="reader-theme">
+    <input type="radio" name="{{ name }}" value="{{ value }}" data-setting="theme">
+    <span class="reader-theme__swatch reader-theme__swatch--{{ value }}" aria-hidden="true">Aa</span>
+    <span class="reader-theme__name">{{ text }}</span>
+  </label>
+  {% endfor %}
+</fieldset>
+{%- endmacro %}
+
+{% macro font_size_stepper() -%}
+<span class="reader-stepper" role="group" aria-label="Размер шрифта">
+  <button type="button" class="reader-stepper__btn" data-setting-step="fontSize" data-step="-1" data-min="12" data-max="22" aria-label="Меньше">−</button>
+  <b class="reader-stepper__value" data-setting-value="fontSize" aria-live="polite">18</b>
+  <button type="button" class="reader-stepper__btn" data-setting-step="fontSize" data-step="1" data-min="12" data-max="22" aria-label="Больше">+</button>
+</span>
+{%- endmacro %}
+
+{% set LINE_HEIGHTS = [("1.5", "Плотный"), ("1.85", "Обычный"), ("2.2", "Свободный")] %}
+{% set WIDTHS = [("600", "Узкая"), ("720", "Обычная"), ("860", "Широкая")] %}
+{% set MARGINS = [("compact", "Компактные"), ("normal", "Обычные"), ("wide", "Широкие")] %}
+{% set MODES = [("scroll", "Прокрутка"), ("tap", "Tap Focus")] %}
+{% set PRESETS = [("instant", "Мгновенно"), ("smooth", "Плавно"), ("speed", "По скорости")] %}

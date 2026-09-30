@@ -1,22 +1,30 @@
 {% extends "base.html" %}
 {% block title %}Активность — RanobeLib Companion{% endblock %}
 {% block content %}
-<main class="content">
-  <h1 class="toc__title">Активность</h1>
-  {% if current_user %}
-  <p class="content__hint">За сегодня.</p>
+{#
+  PR 257 (Aurora Ink, ACTIVITY): "За сегодня." - three stat tiles, "Читали сегодня" as
+  a grid of Aurora title cards (quickview eye in the corner, "N глав сегодня" under the
+  name), then the same Download job row / History row as /downloads (PR 256). An empty
+  subsection is one hint line (.ui-empty). A guest gets the locked state instead.
+#}
+<main class="activity-page">
+  <div class="activity-page__head">
+    <h1 class="activity-page__title">Активность</h1>
+    {% if current_user %}<p class="activity-page__subtitle">За сегодня.</p>{% endif %}
+  </div>
 
+  {% if current_user %}
   <div class="activity-stats">
-    <div class="activity-stats__item">
-      <span class="activity-stats__value activity-stats__value--accent">{{ summary.chapters_read_today }}</span>
+    <div class="activity-stats__tile">
+      <b class="activity-stats__value activity-stats__value--accent">{{ summary.chapters_read_today }}</b>
       <span class="activity-stats__label">Глав прочитано</span>
     </div>
-    <div class="activity-stats__item">
-      <span class="activity-stats__value">{{ summary.active_time_label }}</span>
+    <div class="activity-stats__tile">
+      <b class="activity-stats__value">{{ summary.active_time_label }}</b>
       <span class="activity-stats__label">Активное время чтения</span>
     </div>
-    <div class="activity-stats__item">
-      <span class="activity-stats__value">{{ summary.downloads_today | length }}</span>
+    <div class="activity-stats__tile">
+      <b class="activity-stats__value">{{ summary.downloads_today | length }}</b>
       <span class="activity-stats__label">Скачано сегодня</span>
     </div>
   </div>
@@ -24,16 +32,26 @@
   <section class="downloads-section">
     <h2 class="downloads-section__title">Читали сегодня</h2>
     {% if summary.read_today %}
-    <div class="title-card-grid">
-      {% from "_title_card.html" import title_card %}
+    {% from "_title_card.html" import ui_title_card %}
+    <div class="activity-page__grid">
       {% for item in summary.read_today %}
-      {% call title_card(item.slug_url, item.name or item.slug_url, item.cover_url) %}
-      <span class="title-card__meta">{{ item.chapters_read }} глав сегодня</span>
+      {% set name = item.name or item.slug_url %}
+      {% call ui_title_card(item.slug_url, name, item.cover_url, meta=item.chapters_read ~ " глав сегодня", meta_accent=true) %}
+      <button
+        type="button"
+        class="ui-title-card__action"
+        data-role="title-quickview-trigger"
+        data-slug-url="{{ item.slug_url }}"
+        aria-label="Быстрый просмотр «{{ name }}»"
+        title="Быстрый просмотр"
+      >
+        <span class="ui-title-card__action-chip"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M2 12s4-7 10-7 10 7 10 7-4 7-10 7S2 12 2 12zM12 15a3 3 0 1 0 0-6 3 3 0 0 0 0 6z"/></svg></span>
+      </button>
       {% endcall %}
       {% endfor %}
     </div>
     {% else %}
-    <p class="content__hint">Сегодня ещё ничего не читали.</p>
+    <p class="ui-empty">Сегодня ещё ничего не читали.</p>
     {% endif %}
   </section>
 
@@ -43,7 +61,7 @@
     {% from "_active_downloads.html" import active_downloads_list with context %}
     {{ active_downloads_list(summary.active_jobs) }}
     {% else %}
-    <p class="content__hint">Сейчас ничего не скачивается.</p>
+    <p class="ui-empty">Сейчас ничего не скачивается.</p>
     {% endif %}
   </section>
 
@@ -53,7 +71,7 @@
     {% from "_download_history.html" import download_history_list with context %}
     {{ download_history_list(summary.downloads_today) }}
     {% else %}
-    <p class="content__hint">Сегодня ничего не скачивали.</p>
+    <p class="ui-empty">Сегодня ничего не скачивали.</p>
     {% endif %}
   </section>
   {% else %}

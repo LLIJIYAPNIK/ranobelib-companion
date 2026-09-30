@@ -43,6 +43,17 @@
 // scroll/tempo machinery PR 76/79 skip for it, just a one-time jump straight to whatever
 // was last revealed, so reopening an already-started chapter doesn't strand the visitor
 // at the top of a long backlog of already-read paragraphs.
+//
+// PR 254 (Aurora Ink "Tap Focus"): the tap is read by where it lands, across the whole
+// screen outside open layers - left 28% goes back one paragraph (undoing a stray tap),
+// the middle 24% toggles the reader HUD (reader-hud.js), the right 48% reveals the next
+// one. Space/↓/→ and ↑/← do the same from the keyboard. After the last paragraph a tap
+// only highlights the end-of-chapter card - switching chapters is its «Следующая глава»
+// button, never a stray tap (this used to jump straight on, PR 75). The newest paragraph
+// is the active one (soft tint + accent marker in the default "book" style, with «⋯»
+// opening paragraph-menu.js) and settles at about 45% of the screen height; everything
+// above it reads as already-read. "chat" and "plain" (PR 64) stay available. A one-time
+// onboarding overlay explains the zones.
 (() => {
   const SETTINGS_KEY = "readerSettings";
   const PROGRESS_KEY_PREFIX = "tapToReadProgress:";
@@ -76,12 +87,28 @@
   const settings = loadSettings();
   if (settings.tapToRead !== true) return;
 
-  const paragraphStyle = settings.paragraphStyle === "plain" ? "plain" : "chat";
-  const paragraphAnimation =
-    CSS_ANIMATIONS.has(settings.paragraphAnimation) || settings.paragraphAnimation === "typewriter"
-      ? settings.paragraphAnimation
+  const PARAGRAPH_STYLES = new Set(["book", "plain", "chat"]);
+  const paragraphStyle = PARAGRAPH_STYLES.has(settings.paragraphStyle)
+    ? settings.paragraphStyle
+    : "book";
+  const socialEnabled = settings.showParagraphSocial !== false;
+  function animationFrom(s) {
+    return CSS_ANIMATIONS.has(s.paragraphAnimation) || s.paragraphAnimation === "typewriter"
+      ? s.paragraphAnimation
       : "none";
-  const revealTempo = TEMPO_OPTIONS.has(settings.revealTempo) ? settings.revealTempo : "instant";
+  }
+  function tempoFrom(s) {
+    return TEMPO_OPTIONS.has(s.revealTempo) ? s.revealTempo : "instant";
+  }
+  // PR 255: the Aa panel's «Появление абзаца» applies to the next reveal, no reload.
+  let paragraphAnimation = animationFrom(settings);
+  let revealTempo = tempoFrom(settings);
+  document.addEventListener("reader-settings:change", (event) => {
+    const next = event.detail?.settings;
+    if (!next) return;
+    paragraphAnimation = animationFrom(next);
+    revealTempo = tempoFrom(next);
+  });
   const readingSpeedWpm = Number(settings.readingSpeedWpm) > 0 ? Number(settings.readingSpeedWpm) : DEFAULT_WPM;
 
   const content = document.querySelector('[data-role="chapter"]');
@@ -360,53 +387,78 @@
   };
 
   let revealedCount = 0;
-  let hint = null;
+  const endCard = document.querySelector('[data-role="reader-end-card"]');
+  const reducedMotion = window.matchMedia("(prefers-reduced-motion: reduce)");
+  const ZONE_BACK = 0.28;
+  const ZONE_HUD = 0.52;
+  const MOVE_TOLERANCE_PX = 10;
+  const LONG_PRESS_MS = 500;
+  const END_FLASH_MS = 160;
 
-  // PR 130: PR 76's original per-tap autoscroll used
-  // `lastRevealed.scrollIntoView({ block: "end" })` - technically scrolled, but "end"
-  // pins the *revealed paragraph's own* bottom edge exactly to the viewport's bottom
-  // edge, with zero clearance - the paragraph reads as jammed against the very bottom of
-  // the screen the instant it appears, rather than settling in with normal breathing
-  // room, and whatever's right after it in the DOM (the "Тапните, чтобы читать дальше"
-  // hint, afterReveal() below) ends up peeking into view too. Scrolling the whole
-  // document to its current bottom edge instead - not the paragraph's own edge - gives a
-  // clean, consistent landing regardless of how tall this particular paragraph happens to
-  // be. window.scrollTo() clamps to the real max scroll position on its own, so a short
-  // chapter (revealed content doesn't fill the viewport yet) never overscrolls past what's
-  // actually there.
-  function scrollToDocumentBottom() {
-    window.scrollTo({ top: document.documentElement.scrollHeight, behavior: "smooth" });
+  // Keeps the active paragraph around 45% of the viewport height (a tall one starts near
+  // the top instead, so its first lines stay on screen).
+  function settle(wrap, { instant = false } = {}) {
+    if (!wrap) return;
+    const rect = wrap.getBoundingClientRect();
+    const vh = window.innerHeight;
+    const targetTop = Math.max(vh * 0.12, vh * 0.45 - rect.height / 2);
+    const behavior = instant || reducedMotion.matches ? "auto" : "smooth";
+    window.scrollBy({ top: rect.top - targetTop, behavior });
   }
 
-  // Either shows the "tap to continue" hint, or removes it for good once every paragraph
-  // in the chapter is revealed - shared tail end of both the instant reveal() below and
-  // PR 79's tempo-driven revealNextWithTempo().
+  function emit(name, detail) {
+    document.dispatchEvent(new CustomEvent(name, { detail }));
+  }
+
+  // «⋯» on the active paragraph opens the same menu as a right-click / long press:
+  // paragraph-menu.js listens for "contextmenu" on .reader-content and works out the
+  // paragraph from the event target, so a synthetic one from inside the wrap is enough.
+  let moreButton = null;
+  function paragraphMoreButton() {
+    if (moreButton) return moreButton;
+    moreButton = document.createElement("button");
+    moreButton.type = "button";
+    moreButton.className = "reader-paragraph-more";
+    moreButton.setAttribute("aria-label", "Действия с абзацем");
+    moreButton.innerHTML =
+      '<svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><circle cx="5" cy="12" r="1.8"/><circle cx="12" cy="12" r="1.8"/><circle cx="19" cy="12" r="1.8"/></svg>';
+    moreButton.addEventListener("click", (event) => {
+      event.stopPropagation(); // paragraph-menu.js closes on any document click
+      const rect = moreButton.getBoundingClientRect();
+      moreButton.dispatchEvent(
+        new MouseEvent("contextmenu", {
+          bubbles: true,
+          cancelable: true,
+          clientX: rect.left,
+          clientY: rect.bottom,
+        })
+      );
+    });
+    return moreButton;
+  }
+
+  // Active = the newest revealed paragraph; everything before it is read. The end card
+  // only shows once the last paragraph is out.
   function afterReveal() {
-    if (revealedCount >= wraps.length) {
-      hint?.remove();
-      return;
+    wraps.forEach((wrap, i) => {
+      wrap.classList.toggle("reader-content__paragraph-wrap--active", i === revealedCount - 1);
+      wrap.classList.toggle("reader-content__paragraph-wrap--read", i < revealedCount - 1);
+    });
+    const active = wraps[revealedCount - 1];
+    if (socialEnabled && active && paragraphStyle === "book") {
+      active.appendChild(paragraphMoreButton());
     }
-    if (!hint) {
-      hint = document.createElement("p");
-      hint.className = "reader-content__tap-hint";
-      hint.textContent = "Тапните, чтобы читать дальше";
-    }
-    content.appendChild(hint); // keep it last, after whatever was just revealed
+    if (endCard) endCard.hidden = revealedCount < wraps.length;
+    emit("reader:progress", { revealed: revealedCount, total: wraps.length });
   }
 
-  // `scroll` is only true for a tap-triggered reveal (see the click handler below) - the
-  // initial reveal(loadRevealedCount()) on page load restores possibly many paragraphs
-  // at once from saved progress, and jumping the page around right after load there would
-  // fight with wherever the browser/reader itself puts the initial scroll position, not
-  // help it.
+  // `scroll` is only true for a tap-triggered reveal - restoring saved progress on load
+  // settles once, without animation, after everything is revealed.
   function reveal(count, { scroll = false } = {}) {
     let lastRevealed = null;
     for (let i = revealedCount; i < count; i++) {
       const wrap = wraps[i];
-      // PR 239: same "don't type out invisible, collapsed footnote text" reasoning as
-      // computeTempoDurationMs's own isFootnotesWrap() guard above - this is the older,
-      // non-tempo typewriter animation (PR 65), not PR 79's tempo runners, but it walks
-      // the exact same hidden text nodes.
+      // PR 239: don't type out invisible, collapsed footnote text.
       const pendingTypewriter =
         paragraphAnimation === "typewriter" && !isFootnotesWrap(wrap)
           ? prepareTypewriter(wrap)
@@ -425,112 +477,146 @@
       lastRevealed = wrap;
     }
     revealedCount = count;
-
-    if (scroll && lastRevealed) {
-      scrollToDocumentBottom();
-    }
-
     afterReveal();
+    if (scroll && lastRevealed) settle(lastRevealed);
   }
 
-  // PR 79: the tap-triggered, tempo-paced counterpart to reveal() above - always exactly
-  // one new paragraph (the click handler only ever advances by one), stretched over
-  // computeTempoDurationMs() instead of appearing all at once. Falls back to the instant
-  // reveal() for a paragraph with nothing to time (e.g. a bare <img>, wordCount() === 0).
+  // PR 79: the tempo-paced counterpart to reveal() - always exactly one new paragraph,
+  // stretched over computeTempoDurationMs(). Falls back to reveal() when there's nothing
+  // to time (e.g. a bare <img>) or motion is reduced.
   function revealNextWithTempo(count) {
     const wrap = wraps[revealedCount];
-    const durationMs = computeTempoDurationMs(wrap);
+    const durationMs = reducedMotion.matches ? 0 : computeTempoDurationMs(wrap);
     if (durationMs === 0) {
       reveal(count, { scroll: true });
       return;
     }
 
     wrap.classList.remove("reader-content__paragraph--hidden");
-    scrollToDocumentBottom();
+    revealedCount = count;
+    afterReveal();
+    settle(wrap);
 
-    // stampTime() only runs once the tempo reveal is done, not before - every runner
-    // walks wrap's own text nodes (to split into words or capture for typewriter-speed),
-    // and the timestamp span's own text ("16:45") would otherwise get counted as part of
-    // the paragraph and end up revealed/typed right alongside it.
-    TEMPO_RUNNERS[revealTempo](wrap, durationMs, () => {
-      stampTime(wrap);
-      revealedCount = count;
-      afterReveal();
-    });
+    // stampTime() only once the tempo reveal is done - every runner walks the wrap's own
+    // text nodes, and the timestamp's text would otherwise be revealed along with it.
+    TEMPO_RUNNERS[revealTempo](wrap, durationMs, () => stampTime(wrap));
   }
 
-  // PR 75: what a tap does once every paragraph in this chapter is already revealed -
-  // move on to the next chapter, same as clicking the ordinary "Следующая глава ›" link
-  // (_chapter_nav.html tags it data-role="next-chapter-link" for exactly this), or, if
-  // this was the title's last chapter (no such link anywhere on the page), back to the
-  // title page with a "Тайтл прочитан" notice.
-  function goPastLastParagraph() {
-    const nextLink = document.querySelector('[data-role="next-chapter-link"]');
-    if (nextLink) {
-      location.href = nextLink.href;
+  function next() {
+    if (revealedCount >= wraps.length) {
+      flashEndCard();
       return;
     }
-    const slugUrl = content.dataset.slugUrl;
-    location.href = slugUrl ? `/titles/${slugUrl}?finished=1` : "/";
+    const count = revealedCount + 1;
+    saveProgress(count);
+    emit("reader:reveal");
+    if (revealTempo === "instant") reveal(count, { scroll: true });
+    else revealNextWithTempo(count);
   }
 
-  content.classList.add("reader-content--tap-to-read");
+  // Left zone: take the newest paragraph back (a stray tap), never below the first.
+  function back() {
+    if (revealedCount <= 1) return;
+    const wrap = wraps[revealedCount - 1];
+    wrap.classList.add("reader-content__paragraph--hidden");
+    wrap.querySelectorAll(".reader-content__paragraph-time").forEach((el) => el.remove());
+    revealedCount -= 1;
+    saveProgress(revealedCount);
+    afterReveal();
+    settle(wraps[revealedCount - 1]);
+  }
+
+  function flashEndCard() {
+    if (!endCard) return;
+    endCard.hidden = false;
+    endCard.scrollIntoView({ block: "nearest", behavior: reducedMotion.matches ? "auto" : "smooth" });
+    endCard.classList.remove("reader-end--flash");
+    void endCard.offsetWidth; // restart the animation on a repeat tap
+    endCard.classList.add("reader-end--flash");
+    setTimeout(() => endCard.classList.remove("reader-end--flash"), END_FLASH_MS);
+  }
+
+  content.classList.add("reader-content--tap-to-read", `reader-content--${paragraphStyle}`);
   const initialRevealedCount = loadRevealedCount();
   reveal(initialRevealedCount);
 
-  // PR 129: same "land where you left off" restore as reader-progress.js's non-tap
-  // mode, applied to the freshly-revealed wraps here instead of plain paragraphs.
-  // loadRevealedCount() always floors at 1 (the first paragraph reveals by default even
-  // with nothing saved), so it alone can't tell "nothing saved yet" apart from "really
-  // did save revealed: 1" - re-checking readStoredProgress() directly is what decides
-  // whether to scroll at all, so a chapter with no saved progress stays at the natural
-  // top-of-page start instead of getting a pointless nudge toward the first paragraph
-  // it's already showing. `block: "start"` plus a small upward nudge, not "center"/"end"
-  // - reading continues *downward* from here, so the restored paragraph belongs near the
-  // top of the viewport with room below it, not centered or flush at the bottom.
-  if (readStoredProgress()) {
-    wraps[initialRevealedCount - 1].scrollIntoView({ block: "start" });
-    window.scrollBy(0, -24);
-  }
+  // PR 129: reopening an already-started chapter lands on the last revealed paragraph.
+  if (readStoredProgress()) settle(wraps[initialRevealedCount - 1], { instant: true });
 
-  // PR 73: the tap zone is the whole reading area (<main class="content">, which chapter.html
-  // wraps .reader-content in), not just .reader-content itself - that element is only ever
-  // as tall as the paragraphs revealed so far and only as wide as --reader-width, so a tap
-  // beside the text column or below the last revealed paragraph (before the page has scrolled
-  // enough to fill the viewport) used to miss it entirely. Falls back to .reader-content if
-  // the expected wrapper isn't there for some reason, rather than not working at all.
-  const tapZone = content.closest("main.content") || content;
+  // --- taps ----------------------------------------------------------------------------
+  // Anything interactive, and every layer above the text, keeps its own behavior. PR 74:
+  // images open image-lightbox.js. PR 146: the reactions/comments UI (composer textarea,
+  // emoji picker, ...) is excluded as whole containers.
+  const NOT_A_TAP =
+    "a, button, input, textarea, select, label, img, sup, summary, dialog, [contenteditable], " +
+    "[role='toolbar'], [role='dialog'], .reader-hud-bottom, .reader-end, .reader-onboarding, " +
+    ".paragraph-reactions, .paragraph-comments, .paragraph-reactions-host, .paragraph-menu__panel, " +
+    ".image-lightbox";
+  const OPEN_LAYER = "dialog[open], .paragraph-menu__panel--open, .image-lightbox--open";
 
-  tapZone.addEventListener("click", (event) => {
-    // Links and buttons - the back-to-ToC link, prev/next chapter nav, per-chapter export
-    // links - keep their own behavior; a tap on them shouldn't also advance the reveal.
-    // Images too (PR 74): image-lightbox.js opens its fullscreen viewer on the same tap,
-    // no longer disabling itself just because tap-to-read is on - without this exclusion
-    // that same tap would also silently reveal the next paragraph behind the lightbox.
-    // PR 146: the reactions/comments containers (.paragraph-reactions-host wraps a
-    // paragraph elsewhere, but in tap-to-read mode paragraph-menu.js reuses this same
-    // .reader-content__paragraph-wrap as the host, so .paragraph-reactions and
-    // .paragraph-comments end up as siblings of the paragraph text inside it) hold
-    // elements a tag/button/img check alone doesn't catch - e.g. the comment composer's
-    // <textarea>, which isn't any of those three. Excluding the whole containers instead
-    // of chasing individual tags keeps this working as PR 148-151 add more interactive
-    // pieces (emoji picker, GIF search, attachments) inside the same composer.
-    if (
-      event.target.closest(
-        "a, button, img, .paragraph-reactions, .paragraph-comments, .paragraph-reactions-host"
-      )
-    )
-      return;
-    if (revealedCount >= wraps.length) {
-      goPastLastParagraph();
-      return;
-    }
-    const next = revealedCount + 1;
-    saveProgress(next);
-    if (revealTempo === "instant") {
-      reveal(next, { scroll: true });
-    } else {
-      revealNextWithTempo(next);
+  let press = null;
+  document.addEventListener("pointerdown", (event) => {
+    if (!event.isPrimary || event.button > 0) return;
+    press = { x: event.clientX, y: event.clientY, t: Date.now(), target: event.target };
+  });
+
+  document.addEventListener("pointerup", (event) => {
+    const start = press;
+    press = null;
+    if (!start || !event.isPrimary) return;
+    if (Math.hypot(event.clientX - start.x, event.clientY - start.y) > MOVE_TOLERANCE_PX) return;
+    if (Date.now() - start.t >= LONG_PRESS_MS) return;
+    if (start.target.closest(NOT_A_TAP) || event.target.closest(NOT_A_TAP)) return;
+    if (String(window.getSelection() || "").trim()) return;
+    if (document.querySelector(OPEN_LAYER)) return;
+
+    const x = event.clientX / window.innerWidth;
+    if (x < ZONE_BACK) back();
+    else if (x < ZONE_HUD) emit("reader:toggle-hud");
+    else next();
+  });
+
+  // --- keyboard ------------------------------------------------------------------------
+  document.addEventListener("keydown", (event) => {
+    if (event.ctrlKey || event.metaKey || event.altKey) return;
+    if (event.target.closest("input, textarea, select, button, a, [contenteditable]")) return;
+    if (document.querySelector(OPEN_LAYER)) return;
+    if (event.key === " " || event.key === "ArrowDown" || event.key === "ArrowRight") {
+      event.preventDefault();
+      next();
+    } else if (event.key === "ArrowUp" || event.key === "ArrowLeft") {
+      event.preventDefault();
+      back();
     }
   });
+
+  // --- onboarding (once per device) -----------------------------------------------------
+  const ONBOARDING_KEY = "readerTapFocusOnboarded";
+  const onboarding = document.querySelector('[data-role="reader-onboarding"]');
+  let onboarded = false;
+  try {
+    onboarded = localStorage.getItem(ONBOARDING_KEY) === "1";
+  } catch {
+    onboarded = true; // storage blocked - don't show it on every chapter
+  }
+  if (onboarding && !onboarded) {
+    const ok = onboarding.querySelector('[data-role="reader-onboarding-ok"]');
+    const dismiss = onboarding.querySelector('[data-role="reader-onboarding-dismiss"]');
+    onboarding.hidden = false;
+    ok?.focus();
+    const finish = () => {
+      if (dismiss?.checked) {
+        try {
+          localStorage.setItem(ONBOARDING_KEY, "1");
+        } catch {
+          // storage blocked - it just shows again next time
+        }
+      }
+      onboarding.hidden = true;
+    };
+    ok?.addEventListener("click", finish);
+    onboarding.addEventListener("keydown", (event) => {
+      if (event.key === "Escape") finish();
+    });
+  }
 })();

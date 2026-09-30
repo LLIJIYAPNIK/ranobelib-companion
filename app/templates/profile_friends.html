@@ -1,18 +1,25 @@
 {% extends "base.html" %}
+{# PR 260: back to the profile from the mobile strip. #}
+{% set strip_back_href = "/profile/" ~ profile_user.id %}
 {% block title %}Друзья — {{ profile_user.nickname or profile_user.email }} — RanobeLib Companion{% endblock %}
 {% block content %}
-{% from "_friend_row.html" import friend_row %}
-<main class="content">
-  <p class="content__hint"><a href="/profile/{{ profile_user.id }}">← Назад к профилю</a></p>
-  <h1 class="toc__title">Друзья — {{ profile_user.nickname or profile_user.email }}</h1>
+{#
+  PR 260 (Aurora Ink, PROFILE -> "Показать всех"): the whole friend list of one profile
+  as plain Friend rows (PR 258's component, read-only here). Not mocked in the design -
+  same page frame and rows as /friends.
+#}
+{% from "_friend_row.html" import ui_friend_row %}
+<main class="profile-page profile-page--narrow">
+  <a class="profile-page__back" href="/profile/{{ profile_user.id }}">← Назад к профилю</a>
+  <h1 class="profile-page__heading">Друзья — {{ profile_user.nickname or profile_user.email }}</h1>
   {% if friends %}
-  <div class="friend-list">
+  <div class="friends-section__list friends-section__list--plain">
     {% for friend in friends %}
-    {% call friend_row(friend) %}{% endcall %}
+    {% call ui_friend_row(friend) %}{% endcall %}
     {% endfor %}
   </div>
   {% else %}
-  <p class="content__hint">Пока нет друзей.</p>
+  <p class="ui-empty">Пока нет друзей.</p>
   {% endif %}
 </main>
 {% endblock %}

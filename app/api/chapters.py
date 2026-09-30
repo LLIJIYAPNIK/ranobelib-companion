@@ -41,6 +41,7 @@ from app.db.reactions import (
 )
 from app.db.users import User
 from app.markdown_render import render_comment_body
+from app.reading_progress import reading_progress_percent
 from app.services.client import open_client
 from app.services.exports import available_export_formats
 from app.templating import templates
@@ -60,6 +61,12 @@ async def read_chapter(
     async with open_client(slug_url) as lib:
         chapter = await lib.get_chapter(volume, number, branch_id=branch_id)
         volumes = await lib.get_table_of_contents()
+        # PR 253/254: the end-of-chapter card names what comes next - the next chapter,
+        # or, after the title's last chapter, the title itself («Тайтл прочитан»). Only
+        # that last case needs get_info(), so every other chapter keeps its two calls.
+        position = _chapter_position(volumes, str(volume), number)
+        is_last = position is not None and position[0] == position[1] - 1
+        title = await lib.get_info() if is_last else None
     if current_user is not None:
         # PR 35: opening any chapter adds the title to the library if it isn't there
         # yet, same as clicking "Добавить в библиотеку" - add_entry() is idempotent
@@ -75,6 +82,9 @@ async def read_chapter(
             # not a library-membership check (see app/db/activity.py).
             await record_chapter_read(conn, current_user.id, slug_url, str(volume), number)
     prev_url, next_url = _adjacent_chapter_urls(slug_url, volumes, str(volume), number)
+    chapters = [(vol.number, ch) for vol in volumes for ch in vol.chapters]
+    next_chapter = chapters[position[0] + 1][1] if position and not is_last else None
+    prev_chapter = chapters[position[0] - 1][1] if position and position[0] > 0 else None
     return templates.TemplateResponse(
         request,
         "chapter.html",
@@ -83,6 +93,13 @@ async def read_chapter(
             "chapter": chapter,
             "prev_url": prev_url,
             "next_url": next_url,
+            "next_chapter": next_chapter,
+            "prev_chapter": prev_chapter,
+            # Share of the title read once this chapter is done - the end card's «тайтл
+            # прочитан на N%», same measure as the title page's progress.
+            "title_percent": reading_progress_percent(volumes, str(volume), number),
+            "is_last_chapter": is_last,
+            "title_name": (title.rus_name or title.name) if title is not None else None,
             "branch_id": branch_id,
             "export_formats": available_export_formats(),
         },
@@ -407,6 +424,16 @@ def _adjacent_chapter_urls(
     prev_url = _chapter_url(slug_url, flat[index - 1]) if index > 0 else None
     next_url = _chapter_url(slug_url, flat[index + 1]) if index < len(flat) - 1 else None
     return prev_url, next_url
+
+
+def _chapter_position(volumes: list[Volume], volume: str, number: str) -> tuple[int, int] | None:
+    """(index, total) of this chapter in the SDK's own chapter order, or None when it isn't
+    in the table of contents at all (then there's no "next" or "last" to speak of)."""
+    flat = [(vol.number, chapter.number) for vol in volumes for chapter in vol.chapters]
+    try:
+        return flat.index((volume, number)), len(flat)
+    except ValueError:
+        return None
 
 
 def _chapter_url(slug_url: str, key: tuple[str, str]) -> str:

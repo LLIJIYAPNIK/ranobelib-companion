@@ -2,35 +2,71 @@
 {% block title %}Глава {{ chapter.number }} — RanobeLib Companion{% endblock %}
 {% block head_extra %}
 <script src="{{ url_for('static', path='js/scroll-restoration.js') }}"></script>
+<script src="{{ url_for('static', path='js/reader-theme-early.js') }}"></script>
 {% endblock %}
 {% block body_class %}reader-page{% endblock %}
-{% from "_chapter_nav.html" import chapter_nav %}
 {% block content %}
-<div class="reader-scroll-nav" data-role="reader-scroll-nav">
-  <a class="reader-nav__back" href="/titles/{{ slug_url }}">← К оглавлению</a>
-  <h2 class="reader-scroll-nav__heading">
-    Глава {{ chapter.number }}{% if chapter.name %} · {{ chapter.name }}{% endif %}
-  </h2>
-  {{ chapter_nav(prev_url, next_url) }}
-</div>
-<main class="content">
-  <div class="reader-nav">
-    <a class="reader-nav__back" href="/titles/{{ slug_url }}">← К оглавлению</a>
-    <h1 class="reader-nav__heading">
-      Глава {{ chapter.number }}{% if chapter.name %} · {{ chapter.name }}{% endif %}
-    </h1>
-    {{ chapter_nav(prev_url, next_url) }}
-    {% if export_formats %}
-    <div class="reader-export">
-      <span class="reader-export__label">Скачать главу:</span>
-      {% for fmt in export_formats %}
-      <a
-        class="reader-export__link"
-        href="/titles/{{ slug_url }}/chapters/{{ chapter.volume }}/{{ chapter.number }}/export?fmt={{ fmt }}{% if branch_id %}&branch_id={{ branch_id }}{% endif %}"
-      >{{ fmt | upper }}</a>
-      {% endfor %}
-    </div>
+{#
+  PR 254 (Aurora Ink, READER-*): one HUD instead of the old in-flow .reader-nav plus the
+  reveal-on-scroll-up copy (it keeps data-role="reader-scroll-nav"), a book column, and an
+  end-of-chapter card in place of the bottom prev/next links. reader-hud.js shows/hides
+  the HUD and fills its progress; tap-to-read.js runs Tap Focus when that mode is on.
+#}
+{% set chapter_label = "Глава " ~ chapter.number %}
+{% set export_url = "/titles/" ~ slug_url ~ "/chapters/" ~ chapter.volume ~ "/" ~ chapter.number ~ "/export" %}
+<a class="reader-skip" href="#reader-text">К тексту</a>
+
+<header class="reader-hud" data-role="reader-scroll-nav" role="toolbar" aria-label="Управление читалкой">
+  <div class="reader-hud__bar">
+    <a class="reader-hud__btn" href="/titles/{{ slug_url }}" aria-label="Назад к тайтлу">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M15 5l-7 7 7 7"/></svg>
+    </a>
+    <a class="reader-hud__chapter" href="/titles/{{ slug_url }}#title-panel-toc" data-role="reader-toc-link" aria-label="{{ chapter_label }}, открыть оглавление">
+      <span class="reader-hud__chapter-line">
+        <span class="reader-hud__chapter-num">{{ chapter_label }}{% if chapter.name %}<span class="reader-hud__chapter-sep"> ·</span>{% endif %}</span>
+        {% if chapter.name %}<span class="reader-hud__chapter-name">{{ chapter.name }}</span>{% endif %}
+        <svg class="reader-hud__chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" aria-hidden="true"><path d="m6 9 6 6 6-6"/></svg>
+      </span>
+      <span class="reader-hud__progress-text reader-hud__progress-text--mobile" data-role="reader-progress-text" aria-hidden="true">0%</span>
+    </a>
+    <span class="reader-hud__progress-text reader-hud__progress-text--desktop" data-role="reader-progress-text">0%</span>
+    {% if prev_url %}
+    <a class="reader-hud__btn reader-hud__btn--nav" href="{{ prev_url }}" aria-label="Предыдущая глава">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M15 5l-7 7 7 7"/></svg>
+    </a>
     {% endif %}
+    {% if next_url %}
+    <a class="reader-hud__btn reader-hud__btn--nav" href="{{ next_url }}" aria-label="Следующая глава">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m9 6 6 6-6 6"/></svg>
+    </a>
+    {% endif %}
+    <span class="reader-hud__sep" aria-hidden="true"></span>
+    <a class="reader-hud__btn reader-hud__aa" href="/settings/reading" data-role="reader-aa" aria-label="Настройки чтения (A)">Aa</a>
+    {% if export_formats %}
+    <button class="reader-hud__btn" type="button" data-role="reader-more-trigger" aria-haspopup="dialog" aria-label="Ещё: скачать главу">
+      <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><circle cx="5" cy="12" r="2"/><circle cx="12" cy="12" r="2"/><circle cx="19" cy="12" r="2"/></svg>
+    </button>
+    {% endif %}
+  </div>
+  <div class="reader-hud__track" aria-hidden="true"><span class="reader-hud__fill" data-role="reader-progress-fill"></span></div>
+</header>
+
+{# Mobile: chapter links along the bottom while the HUD is up, and a 2px progress
+   hairline while it's hidden. #}
+<nav class="reader-hud-bottom" data-role="reader-hud-bottom" aria-label="Соседние главы">
+  {% if prev_url %}
+  <a class="reader-hud-bottom__link" href="{{ prev_url }}"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M15 5l-7 7 7 7"/></svg>{% if prev_chapter %}Глава {{ prev_chapter.number }}{% else %}Предыдущая{% endif %}</a>
+  {% else %}<span></span>{% endif %}
+  {% if next_url %}
+  <a class="reader-hud-bottom__link" href="{{ next_url }}">{% if next_chapter %}Глава {{ next_chapter.number }}{% else %}Следующая{% endif %}<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="m9 6 6 6-6 6"/></svg></a>
+  {% endif %}
+</nav>
+<div class="reader-hairline" aria-hidden="true"><span class="reader-hairline__fill" data-role="reader-progress-fill"></span></div>
+
+<main class="reader" id="reader-text" tabindex="-1">
+  <div class="reader__head">
+    <span class="reader__kicker">Том {{ chapter.volume }} · Глава {{ chapter.number }}</span>
+    <h1 class="reader__title">{{ chapter.name or chapter_label }}</h1>
   </div>
   {#
     Rendered as real HTML (bypassing Jinja's autoescape), not as escaped text.
@@ -48,16 +84,149 @@
   >
     {{ chapter.content | safe }}
   </article>
-  {{ chapter_nav(prev_url, next_url, extra_class="reader-nav__adjacent--bottom") }}
+
+  {# End-of-chapter card: the way on to the next chapter - a stray tap in Tap Focus only
+     highlights it, it never switches chapters by itself. #}
+  <section class="reader-end" data-role="reader-end-card" aria-label="Конец главы" tabindex="-1">
+    {% if next_url %}
+    <span class="reader-end__kicker">Глава закончена</span>
+    <b class="reader-end__title">Далее — {% if next_chapter %}глава {{ next_chapter.number }}{% else %}следующая глава{% endif %}</b>
+    {% if title_percent is not none %}
+    <span class="reader-end__meta">Том {{ chapter.volume }} · тайтл прочитан на {{ title_percent }}%</span>
+    {% endif %}
+    <a class="ui-btn ui-btn--primary ui-btn--lg ui-btn--block" href="{{ next_url }}" data-role="next-chapter-link">Следующая глава</a>
+    <a class="reader-end__toc" href="/titles/{{ slug_url }}#title-panel-toc">К оглавлению</a>
+    {% elif is_last_chapter %}
+    <span class="reader-end__kicker">Тайтл прочитан</span>
+    <b class="reader-end__title">{{ title_name }}</b>
+    <span class="reader-end__meta">Это последняя доступная глава.</span>
+    <a class="ui-btn ui-btn--primary ui-btn--lg ui-btn--block" href="/titles/{{ slug_url }}?finished=1">К странице тайтла</a>
+    {% else %}
+    <span class="reader-end__kicker">Глава закончена</span>
+    <a class="ui-btn ui-btn--lg ui-btn--block" href="/titles/{{ slug_url }}#title-panel-toc">К оглавлению</a>
+    {% endif %}
+  </section>
 </main>
+
+{% if export_formats %}
+<dialog class="ui-dialog ui-dialog--sheet reader-sheet" data-role="reader-more-sheet" aria-labelledby="reader-more-title">
+  <span class="ui-dialog__grabber" aria-hidden="true"></span>
+  <div class="ui-dialog__head">
+    <h2 class="ui-dialog__title" id="reader-more-title">Скачать главу</h2>
+    <button type="button" class="ui-icon-btn" data-role="reader-sheet-close" aria-label="Закрыть"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M6 6l12 12M18 6 6 18"/></svg></button>
+  </div>
+  <div class="ui-dialog__body">
+    <ul class="ui-list reader-sheet__formats">
+      {% for fmt in export_formats %}
+      <li class="ui-list__item">
+        <a class="ui-list__row" href="{{ export_url }}?fmt={{ fmt }}{% if branch_id %}&branch_id={{ branch_id }}{% endif %}">
+          <span class="ui-list__main">{{ fmt | upper }}</span>
+          <span class="ui-list__meta">{{ chapter_label }}</span>
+        </a>
+      </li>
+      {% endfor %}
+    </ul>
+  </div>
+</dialog>
+{% endif %}
+
+{# PR 255: Aa - quick reading settings over the text (READER-TAP-FOCUS popover on
+   desktop, M-READER-SETTINGS sheet on mobile). Same controls and same stored object as
+   /settings/reading; changes apply immediately. #}
+{% from "_reader_controls.html" import segmented, themes, font_size_stepper, LINE_HEIGHTS, WIDTHS, MARGINS, MODES, PRESETS %}
+<dialog class="ui-dialog ui-dialog--sheet reader-aa" data-role="reader-aa-panel" aria-labelledby="reader-aa-title">
+  <span class="ui-dialog__grabber" aria-hidden="true"></span>
+  <div class="reader-aa__head">
+    <h2 class="reader-aa__title" id="reader-aa-title">Настройки чтения</h2>
+    <button type="button" class="ui-icon-btn reader-aa__close" data-role="reader-aa-close" aria-label="Закрыть (Esc)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M6 6l12 12M18 6 6 18"/></svg></button>
+  </div>
+  <div class="reader-aa__body">
+    <div class="reader-aa__row">
+      <span class="reader-aa__label">Тема</span>
+      {{ themes("aa-theme") }}
+    </div>
+    {# Same key twice - short labels fit the desktop popover, the sheet has room for the
+       full ones; only one row shows per viewport. #}
+    <div class="reader-aa__row reader-aa__row--desktop">
+      <span class="reader-aa__label">Шрифт и размер</span>
+      <div class="reader-aa__type">
+        {{ segmented("fontFamily", "aa-font-d", [("serif", "Serif"), ("sans", "Sans")], "Шрифт") }}
+        {{ font_size_stepper() }}
+      </div>
+    </div>
+    <div class="reader-aa__row reader-aa__row--mobile">
+      <span class="reader-aa__label">Шрифт и размер</span>
+      <div class="reader-aa__type">
+        {{ segmented("fontFamily", "aa-font-m", [("serif", "С засечками"), ("sans", "Без засечек")], "Шрифт") }}
+        {{ font_size_stepper() }}
+      </div>
+    </div>
+    <div class="reader-aa__row">
+      <span class="reader-aa__label">Интервал</span>
+      {{ segmented("lineHeight", "aa-line", LINE_HEIGHTS, "Межстрочный интервал") }}
+    </div>
+    <div class="reader-aa__row reader-aa__row--desktop">
+      <span class="reader-aa__label">Ширина колонки</span>
+      {{ segmented("width", "aa-width", WIDTHS, "Ширина колонки") }}
+    </div>
+    <div class="reader-aa__row reader-aa__row--mobile">
+      <span class="reader-aa__label">Поля</span>
+      {{ segmented("margins", "aa-margins", MARGINS, "Поля") }}
+    </div>
+    <div class="reader-aa__row">
+      <span class="reader-aa__label">Режим</span>
+      {{ segmented("readerMode", "aa-mode", MODES, "Режим чтения") }}
+    </div>
+    <div class="reader-aa__row">
+      <span class="reader-aa__label">Появление абзаца</span>
+      {{ segmented("revealPreset", "aa-preset", PRESETS, "Появление абзаца") }}
+    </div>
+    <label class="reader-aa__row reader-aa__row--switch ui-switch">
+      <span class="reader-aa__label">Реакции и комментарии у абзацев</span>
+      <input type="checkbox" role="switch" data-setting="showParagraphSocial">
+    </label>
+  </div>
+  <div class="reader-aa__foot">
+    <a class="reader-aa__more" href="/settings/reading">Дополнительно ›</a>
+    <button type="button" class="reader-aa__reset" data-role="reader-settings-reset">Сбросить настройки</button>
+  </div>
+</dialog>
+
+{# Tap Focus onboarding (M-READER-ONBOARDING): shown once per device by tap-to-read.js
+   the first time Tap Focus is on. #}
+<div class="reader-onboarding" data-role="reader-onboarding" hidden>
+  <div class="reader-onboarding__zones" aria-hidden="true">
+    <div class="reader-onboarding__zone">
+      <span class="reader-onboarding__icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 5l-7 7 7 7"/></svg></span>
+      <b>Назад на абзац</b><span>отменить случайный тап</span>
+    </div>
+    <div class="reader-onboarding__zone">
+      <span class="reader-onboarding__icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 6h16M4 12h16M4 18h16"/></svg></span>
+      <b>Показать управление</b><span>HUD и Aa</span>
+    </div>
+    <div class="reader-onboarding__zone">
+      <span class="reader-onboarding__icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m9 6 6 6-6 6"/></svg></span>
+      <b>Читать дальше</b><span>следующий абзац</span>
+    </div>
+  </div>
+  <div class="reader-onboarding__card" role="dialog" aria-modal="true" aria-labelledby="reader-onboarding-title">
+    <b class="reader-onboarding__title" id="reader-onboarding-title">Tap Focus: абзац за абзацем</b>
+    <span class="reader-onboarding__text">Прокрутка работает как обычно. Долгое нажатие на абзац — реакции и комментарии.</span>
+    <div class="reader-onboarding__foot">
+      <label class="ui-checkbox"><input type="checkbox" data-role="reader-onboarding-dismiss" checked><span>Больше не показывать</span></label>
+      <button type="button" class="ui-btn reader-onboarding__ok" data-role="reader-onboarding-ok">Понятно</button>
+    </div>
+  </div>
+</div>
+
 {% if current_user %}
 <script src="{{ url_for('static', path='js/activity-heartbeat.js') }}" defer></script>
 {% endif %}
 <script src="{{ url_for('static', path='js/reader-settings.js') }}" defer></script>
-<script src="{{ url_for('static', path='js/reader-scroll-nav.js') }}" defer></script>
 <script src="{{ url_for('static', path='js/chapter-footnotes.js') }}" defer></script>
 <script src="{{ url_for('static', path='js/tap-to-read.js') }}" defer></script>
 <script src="{{ url_for('static', path='js/reader-progress.js') }}" defer></script>
+<script src="{{ url_for('static', path='js/reader-hud.js') }}" defer></script>
 <script src="{{ url_for('static', path='js/image-lightbox.js') }}" defer></script>
 <script src="{{ url_for('static', path='js/paragraph-menu.js') }}" defer></script>
 {% endblock %}

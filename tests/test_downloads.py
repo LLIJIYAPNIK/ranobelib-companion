@@ -331,7 +331,7 @@ def test_show_download_status_renders_running_progress() -> None:
     response = client.get(f"/titles/6712--test-novel/download/{job.id}")
 
     assert response.status_code == 200
-    assert "Глава 3 из 10" in response.text
+    assert "Скачивание · 3 из 10 глав" in response.text
     assert "width: 30.0%" in response.text
     assert (
         f'data-status-url="/titles/6712--test-novel/download/{job.id}/status"'

@@ -1,6 +1,6 @@
-// PR 217: swipe gesture handling for the mobile bottom tab bar (.sidebar > .sidebar__link),
-// extending PR 211's own swipe between the two library tabs to all five main navigation
-// sections. Same pointerdown/pointerup approach as library-tabs-swipe.js, for the same
+// PR 217: swipe gesture handling for the mobile bottom tab bar - the Quiet Edge Bar since
+// PR 249, three sections (two for a guest) instead of five - extending PR 211's own swipe
+// between the two library tabs to the main navigation. Same pointerdown/pointerup approach as library-tabs-swipe.js, for the same
 // reason (a mouse drag in a desktop-width emulator works too, and a real vertical scroll
 // never delivers "pointerup" so this never has to fight page scrolling).
 //
@@ -14,7 +14,7 @@
   const sidebar = document.querySelector(".sidebar");
   if (!main || !sidebar) return;
 
-  const mobileQuery = window.matchMedia("(max-width: 640px)");
+  const mobileQuery = window.matchMedia("(max-width: 767px)");
   const MIN_DISTANCE = 60;
   // Same system-gesture reasoning as library-tabs-swipe.js's own EDGE_EXCLUSION.
   const EDGE_EXCLUSION = 24;
@@ -46,9 +46,13 @@
     // scroll flick would fail this even in the rare case it still delivers "pointerup".
     if (Math.abs(deltaX) < MIN_DISTANCE || Math.abs(deltaX) < Math.abs(deltaY)) return;
 
-    const navLinks = [...sidebar.querySelectorAll(":scope > .sidebar__link")];
+    // Only the links actually shown in the bar - a guest's Загрузки is desktop-only
+    // (PR 249), and swiping onto a hidden section would be a jump to nowhere visible.
+    const navLinks = [...sidebar.querySelectorAll(".sidebar__nav > .sidebar__link")].filter(
+      (link) => link.offsetParent !== null
+    );
     const activeIndex = navLinks.findIndex((link) => link.classList.contains("sidebar__link--active"));
-    // The current page isn't one of the five main sections (e.g. a chapter or title page) -
+    // The current page isn't one of the main sections (e.g. a chapter or title page) -
     // nothing to "pull toward" in that case.
     if (activeIndex === -1) return;
 

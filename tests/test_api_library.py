@@ -175,11 +175,14 @@ async def test_title_page_shows_reading_progress_for_library_entry(client: TestC
         response = client.get("/titles/6712--test-novel/data")
 
     assert response.status_code == 200
-    assert "Прочитано 75%" in response.text  # 3 of 4 chapters
+    assert 'aria-label="Прочитано 75%"' in response.text  # 3 of 4 chapters
     assert 'style="width: 75%"' in response.text
     # PR 240: same last-read chapter the progress bar above is based on.
     assert 'href="/titles/6712--test-novel/chapters/1/3"' in response.text
-    assert "Продолжить чтение (Глава 3)" in response.text
+    assert "Продолжить · Глава 3" in response.text
+    # PR 253: the TOC marks the chapters before it as read and this one as current.
+    assert 'aria-current="step"' in response.text
+    assert response.text.count("toc__chapter--read") == 2
 
 
 def test_title_page_omits_reading_progress_when_not_in_library(client: TestClient) -> None:
@@ -190,8 +193,8 @@ def test_title_page_omits_reading_progress_when_not_in_library(client: TestClien
 
     assert response.status_code == 200
     assert "Прочитано" not in response.text
-    assert 'class="reading-progress' not in response.text
-    assert "Продолжить чтение" not in response.text
+    assert 'class="title-progress' not in response.text
+    assert "Продолжить ·" not in response.text
 
 
 async def test_title_page_omits_continue_reading_link_when_last_read_chapter_is_gone(
@@ -222,7 +225,8 @@ async def test_title_page_omits_continue_reading_link_when_last_read_chapter_is_
 
     assert response.status_code == 200
     assert "Прочитано" not in response.text
-    assert "Продолжить чтение" not in response.text
+    assert "Продолжить ·" not in response.text
+    assert 'aria-current="step"' not in response.text
 
 
 def test_add_is_idempotent(client: TestClient) -> None:
@@ -307,6 +311,35 @@ def test_show_library_anonymous_is_viewable_but_prompts_to_log_in(client: TestCl
     assert 'href="/library/catalog"' in response.text  # locked-state CTA (PR 15)
 
 
+def test_show_library_anonymous_gets_the_locked_state(client: TestClient) -> None:
+    """PR 252 (LOCKED): the shared locked_feature() macro, not the reading list."""
+    response = client.get("/library")
+
+    assert 'data-role="locked-feature"' in response.text
+    assert "Список читаемого скрыт" in response.text
+    assert 'data-role="library-titles"' not in response.text
+
+
+def test_show_library_counts_titles_in_the_heading(client: TestClient) -> None:
+    """PR 252: "Читаю" is followed by the number of titles, with the right word form."""
+    _register(client)
+    title = _fake_title()
+    with patch("app.services.client.RanobeLib", return_value=_FakeClient(title)):
+        client.post("/library/6712--test-novel/add")
+        response = client.get("/library")
+
+    assert '<span class="library-page__count">1 тайтл</span>' in response.text
+
+
+def test_add_by_url_error_keeps_the_reading_tab_active(client: TestClient) -> None:
+    _register(client)
+
+    response = client.post("/library/add", data={"url": "not a link"})
+
+    assert response.status_code == 400
+    assert 'href="/library" aria-current="page"' in response.text
+
+
 def test_show_library_empty_state(client: TestClient) -> None:
     _register(client)
 
@@ -369,8 +402,10 @@ async def test_show_library_renders_reading_progress_bar(client: TestClient) -> 
         response = client.get("/library")
 
     assert response.status_code == 200
-    assert 'class="reading-progress"' in response.text
+    assert 'class="ui-progress ui-progress--lg"' in response.text
     assert 'style="width: 50%"' in response.text  # 2 of 4 chapters
+    # PR 252: the percent is also shown as text next to the bar.
+    assert '<span class="ui-progress__pct">50%</span>' in response.text
 
 
 def test_show_library_omits_progress_bar_for_unopened_titles(client: TestClient) -> None:
@@ -383,7 +418,7 @@ def test_show_library_omits_progress_bar_for_unopened_titles(client: TestClient)
 
     assert response.status_code == 200
     assert "Ещё не начали читать" in response.text
-    assert 'class="reading-progress"' not in response.text
+    assert 'class="ui-progress' not in response.text
 
 
 def test_show_library_prefers_russian_name(client: TestClient) -> None:
@@ -669,7 +704,6 @@ def test_show_library_renders_the_favorite_star_button(client: TestClient) -> No
         response = client.get("/library")
 
     assert response.status_code == 200
-    assert 'class="title-card__favorite title-card__favorite--active"' in response.text
     favorite_slug = re.search(
         r'data-slug-url="([^"]+)"\s+aria-pressed="true"', response.text
     ).group(1)

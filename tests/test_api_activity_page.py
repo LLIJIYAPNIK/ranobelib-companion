@@ -141,7 +141,7 @@ def test_show_activity_shows_active_job(client: TestClient) -> None:
 
     assert response.status_code == 200
     assert f'data-job-id="{job.id}"' in response.text
-    assert "Глава 3 из 10" in response.text
+    assert "Скачивание · 3 из 10 глав" in response.text
     assert "static/js/downloads-status.js" in response.text
 
 

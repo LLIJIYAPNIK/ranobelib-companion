@@ -160,6 +160,7 @@ async def show_catalog(
             "selected_country_names": [country_names_by_id.get(c, str(c)) for c in countries],
             "tags": tags,
             "selected_tag_names": selected_tag_names,
+            "tag_name": tag_name,
             "random_empty": random_empty,
         },
     )
@@ -256,6 +257,7 @@ async def add_to_library_by_url(
             "library.html",
             {
                 "active_nav": "library",
+                "active_tab": "reading",
                 "items": items,
                 "error": "Не удалось распознать ссылку на тайтл",
                 "submitted_url": url,

@@ -6,6 +6,7 @@ from ranobelib import RanobeLibError, RateLimitError, TitleNotFoundError
 from ranobelib.models import Chapter, Country, Cover, Genre, Label, Tag, Title, Volume
 
 from app.main import app
+from app.services.exports import available_export_formats
 
 client = TestClient(app, follow_redirects=False)
 
@@ -114,6 +115,39 @@ def test_open_title_rate_limited() -> None:
     assert response.json() == {
         "detail": "ranobelib сейчас ограничивает запросы, попробуйте позже"
     }
+
+
+def test_open_title_unknown_title_renders_the_404_page() -> None:
+    # PR 265 (ERROR-404): a pasted link to a title ranobelib.me doesn't have, opened in the
+    # browser, lands on error.html - the code, the mapped detail, the stale-link hint and
+    # the way home.
+    exc = TitleNotFoundError("99999--no-such-title")
+    with patch("app.services.client.RanobeLib", return_value=_RaisingClient(exc)):
+        response = client.get(
+            "/titles/open",
+            params={"url": "https://ranobelib.me/ru/book/99999--no-such-title"},
+            headers={"accept": "text/html"},
+        )
+
+    assert response.status_code == 404
+    assert '<span class="error-page__status">404</span>' in response.text
+    assert '<h1 class="error-page__detail">Тайтл не найден, проверьте ссылку</h1>' in response.text
+    assert "Возможно, ссылка устарела" in response.text
+    assert '<a class="ui-btn" href="/">На главную</a>' in response.text
+
+
+def test_error_page_hint_is_404_only() -> None:
+    exc = RateLimitError(retry_after=30)
+    with patch("app.services.client.RanobeLib", return_value=_RaisingClient(exc)):
+        response = client.get(
+            "/titles/open",
+            params={"url": "https://ranobelib.me/ru/book/6712--test-novel"},
+            headers={"accept": "text/html"},
+        )
+
+    assert response.status_code == 429
+    assert "ranobelib сейчас ограничивает запросы" in response.text
+    assert "Возможно, ссылка устарела" not in response.text
 
 
 # --- PR 203: show_title() itself - a skeleton, no SDK call, never hangs/errors ----------
@@ -327,7 +361,7 @@ def test_title_data_uses_russian_name_as_the_primary_heading() -> None:
     assert response.status_code == 200
     assert 'data-display-name="Тестовый роман"' in response.text
     assert '<h1 class="title-hero__name">Тестовый роман</h1>' in response.text
-    assert '<p class="title-hero__alt-name">Test Novel</p>' in response.text
+    assert 'class="title-hero__alt-name" title="Test Novel">Test Novel</p>' in response.text
     assert 'alt="Обложка «Тестовый роман»"' in response.text
 
 
@@ -416,8 +450,9 @@ def test_title_data_tags_link_to_the_filtered_catalog() -> None:
         response = client.get("/titles/6712--test-novel/data")
 
     assert response.status_code == 200
-    assert f'href="/library/catalog?tags=1&tag_name={quote("Реинкарнация")}"' in response.text
-    assert f'href="/library/catalog?tags=2&tag_name={quote("Магия")}"' in response.text
+    # PR 253: built as a chip href in Jinja, so the & is attribute-escaped (same URL).
+    assert f'href="/library/catalog?tags=1&amp;tag_name={quote("Реинкарнация")}"' in response.text
+    assert f'href="/library/catalog?tags=2&amp;tag_name={quote("Магия")}"' in response.text
     assert '<span class="badge badge--muted">Реинкарнация</span>' not in response.text
 
 
@@ -429,7 +464,7 @@ def test_title_data_country_links_to_the_filtered_catalog() -> None:
 
     assert response.status_code == 200
     assert (
-        '<a class="badge badge--link" href="/library/catalog?countries=1">Япония</a>'
+        '<a class="ui-chip title-chip" href="/library/catalog?countries=1">Япония</a>'
         in response.text
     )
 
@@ -590,3 +625,64 @@ def test_title_data_unmapped_error_hides_the_message() -> None:
     assert response.status_code == 500
     assert response.json()["detail"] == "Внутренняя ошибка, попробуйте позже"
     assert "some internal SDK detail" not in response.text
+
+
+# --- PR 253: Aurora Ink title page -----------------------------------------------------
+
+
+def test_title_data_offers_the_first_chapter_when_there_is_no_progress() -> None:
+    title = _fake_title()
+    volumes = [
+        Volume(
+            number="2",
+            chapters=[
+                Chapter(id=1, volume="2", number="10"),
+                Chapter(id=2, volume="2", number="11"),
+            ],
+        )
+    ]
+    with patch("app.services.client.RanobeLib", return_value=_FakeClient(title, volumes)):
+        response = client.get("/titles/6712--test-novel/data")
+
+    assert "Читать · Глава 10" in response.text
+    assert 'href="/titles/6712--test-novel/chapters/2/10"' in response.text
+
+
+def test_title_data_guest_library_actions_open_the_auth_modal() -> None:
+    title = _fake_title()
+    with patch("app.services.client.RanobeLib", return_value=_FakeClient(title)):
+        response = client.get("/titles/6712--test-novel/data")
+
+    assert 'href="/login" data-role="auth-modal-trigger"' in response.text
+    assert 'action="/library/6712--test-novel/add"' not in response.text
+    # No remove confirmation for someone who has nothing to remove.
+    assert 'data-role="title-remove-sheet"' not in response.text
+
+
+def test_title_data_shows_six_chips_and_folds_the_rest_into_details() -> None:
+    genres = [Genre(id=i, name=f"Жанр {i}") for i in range(1, 10)]
+    title = _fake_title().model_copy(update={"genres": genres})
+    with patch("app.services.client.RanobeLib", return_value=_FakeClient(title)):
+        response = client.get("/titles/6712--test-novel/data")
+
+    assert '<summary class="ui-chip-more">Ещё 3</summary>' in response.text
+    details = response.text[response.text.index("<details") :]
+    assert 'href="/library/catalog?genres=7"' in details
+    assert 'href="/library/catalog?genres=6"' not in details
+
+
+def test_title_data_mobile_sheets_offer_every_export_format() -> None:
+    title = _fake_title()
+    with patch("app.services.client.RanobeLib", return_value=_FakeClient(title)):
+        response = client.get("/titles/6712--test-novel/data")
+
+    sheet = response.text[response.text.index('data-role="title-format-sheet"') :]
+    for fmt in available_export_formats():
+        assert f'name="fmt" value="{fmt}"' in sheet
+
+
+def test_show_title_puts_a_back_button_in_the_mobile_strip() -> None:
+    response = client.get("/titles/6712--test-novel")
+
+    assert 'data-role="strip-back"' in response.text
+    assert "sidebar__strip-brand" not in response.text

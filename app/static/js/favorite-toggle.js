@@ -3,9 +3,9 @@
 // app/api/library.py's toggle_favorite()) without a page reload, same delegation
 // pattern as recent-titles-forget.js.
 //
-// The button sits inside the card's own <a> (title_card()'s caller block) so a click on
-// it would otherwise also navigate to the title page - preventDefault()/stopPropagation()
-// before the fetch stops that.
+// Since PR 252 the star sits beside the cover link rather than inside a card <a>, and
+// its state is aria-pressed alone (the CSS styles [aria-pressed="true"]) - no separate
+// --active class to keep in sync.
 //
 // Exactly one favorite per user (app/db/library.py's set_favorite() clears every other
 // row server-side) - marking a title favorite here has to clear the star on whichever
@@ -15,7 +15,6 @@
   if (!grid) return;
 
   function setButtonState(button, isFavorite) {
-    button.classList.toggle("title-card__favorite--active", isFavorite);
     button.setAttribute("aria-pressed", isFavorite ? "true" : "false");
     const label = isFavorite ? "Убрать из избранного" : "Добавить в избранное";
     button.setAttribute("aria-label", label);
@@ -39,7 +38,7 @@
       const { is_favorite: isFavorite } = await response.json();
       if (isFavorite) {
         const previouslyActive = grid.querySelectorAll(
-          '[data-role="favorite-toggle-trigger"].title-card__favorite--active'
+          '[data-role="favorite-toggle-trigger"][aria-pressed="true"]'
         );
         for (const other of previouslyActive) {
           if (other !== button) setButtonState(other, false);

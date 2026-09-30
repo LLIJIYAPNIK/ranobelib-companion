@@ -1,17 +1,20 @@
+{#
+  PR 252 (Aurora Ink, LOCKED): a feature that needs an account, shown to a guest in
+  place of the page's content - lock tile, title, the caller's text (with its sign-in
+  links) and a secondary CTA, centered as a page-level state (.ui-locked--page).
+  data-role="locked-feature" is the stable hook; the class is only the look.
+#}
 {% macro locked_feature(title, cta_href, cta_label) %}
-<div class="locked-feature">
-  <div class="locked-feature__icon" aria-hidden="true">
-    <span class="locked-feature__icon-shackle"></span>
-    <span class="locked-feature__icon-body"></span>
-    <span class="locked-feature__icon-keyhole"></span>
-    <span class="locked-feature__icon-keyhole-stem"></span>
-  </div>
-  <div class="locked-feature__copy">
-    <p class="locked-feature__title">{{ title }}</p>
-    <p class="locked-feature__text">
+<section class="ui-locked ui-locked--page" data-role="locked-feature">
+  <span class="ui-locked__icon" aria-hidden="true">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M6 11h12v10H6zM8.5 11V8a3.5 3.5 0 0 1 7 0v3"/></svg>
+  </span>
+  <div class="ui-locked__copy">
+    <h2 class="ui-locked__title">{{ title }}</h2>
+    <p class="ui-locked__text">
       {{ caller() }}
     </p>
   </div>
-  <a href="{{ cta_href }}" class="locked-feature__cta">{{ cta_label }}</a>
-</div>
+  <a href="{{ cta_href }}" class="ui-btn ui-locked__cta">{{ cta_label }}</a>
+</section>
 {% endmacro %}

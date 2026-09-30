@@ -49,7 +49,7 @@
       toast.append(text);
 
       const link = document.createElement("a");
-      link.className = "btn btn--sm";
+      link.className = "ui-btn ui-btn--primary ui-btn--sm";
       link.href = job.file_url;
       link.textContent = "Скачать";
       link.addEventListener("click", () => dismiss(job.job_id));

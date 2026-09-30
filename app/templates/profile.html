@@ -1,9 +1,19 @@
 {% extends "base.html" %}
+{# PR 260 (M-PROFILE): back button in the mobile strip. #}
+{% set strip_back_href = "/" %}
 {% block title %}Профиль — RanobeLib Companion{% endblock %}
 {% block content %}
-{% from "_friend_row.html" import friend_row, friend_request_actions %}
-<main class="content">
-  <h1 class="toc__title">Профиль</h1>
+{#
+  PR 260 (Aurora Ink, PROFILE): header (88px avatar, name, bio or hint, meta, and
+  «Редактировать» / the friend-request buttons), the reading calendar card, "Читает
+  сейчас" and "Друзья (N)" side by side, then "Избранное" and "Библиотека" as grids of
+  Aurora title cards. Sections hidden by the owner's privacy settings aren't rendered at
+  all (app/api/profile.py). A guest looking at /profile gets the locked state.
+#}
+{% from "_friend_row.html" import ui_friend_row, ui_friend_request_actions %}
+{% from "_title_card.html" import ui_title_card %}
+<main class="profile-page">
+  <h1 class="profile-page__title">Профиль</h1>
   {% if profile_user %}
   <div class="profile">
     <div class="profile__avatar" aria-hidden="true">{% if avatar_url(profile_user) %}<img class="avatar-img" src="{{ avatar_url(profile_user) }}" alt="">{% else %}{{ avatar_initials(profile_user) }}{% endif %}</div>
@@ -12,13 +22,15 @@
       {% if profile_user.bio %}
       <p class="profile__bio">{{ profile_user.bio }}</p>
       {% else %}
-      <p class="content__hint">Пользователь пока не рассказал о себе.</p>
+      <p class="profile__bio-empty">Пользователь пока не рассказал о себе.</p>
       {% endif %}
       <p class="profile__meta">На сайте с {{ registered_at }} · Комментариев: {{ comment_count }}</p>
+    </div>
+    <div class="profile__actions">
       {% if is_own_profile %}
-      <a class="btn btn--secondary" href="/settings/account">Редактировать</a>
+      <a class="ui-btn" href="/settings/account">Редактировать</a>
       {% else %}
-      {{ friend_request_actions(profile_user.id, friend_state, next_url="/profile/" ~ profile_user.id) }}
+      {{ ui_friend_request_actions(profile_user.id, friend_state, next_url="/profile/" ~ profile_user.id, sm=false) }}
       {% endif %}
     </div>
   </div>
@@ -31,7 +43,7 @@
         <span>{{ weekday }}</span>
         {% endfor %}
       </div>
-      <div class="reading-calendar-scroll">
+      <div class="reading-calendar-scroll" data-role="reading-calendar-scroll">
         <div class="reading-calendar-months" aria-hidden="true">
           {% for month in reading_calendar.month_labels %}
           <span>{{ month }}</span>
@@ -64,72 +76,72 @@
     <div class="reading-calendar-tooltip" data-role="reading-calendar-tooltip" role="tooltip"></div>
   </section>
 
-  {% if currently_reading %}
-  <section class="profile-section">
-    <h2 class="profile-section__title">Читает сейчас</h2>
-    <a class="profile-current-read__name" href="/titles/{{ currently_reading.entry.slug_url }}">{{ currently_reading.name or currently_reading.entry.slug_url }}</a>
-    <p class="profile-current-read__meta">
-      Том {{ currently_reading.entry.last_read_volume }}, глава {{ currently_reading.entry.last_read_number }}
-    </p>
-  </section>
+  {% if currently_reading or friend_preview %}
+  <div class="profile__columns">
+    {% if currently_reading %}
+    <section class="profile-section">
+      <h2 class="profile-section__title">Читает сейчас</h2>
+      <a class="profile-current-read__name" href="/titles/{{ currently_reading.entry.slug_url }}">{{ currently_reading.name or currently_reading.entry.slug_url }}</a>
+      <p class="profile-current-read__meta">
+        Том {{ currently_reading.entry.last_read_volume }}, глава {{ currently_reading.entry.last_read_number }}
+      </p>
+    </section>
+    {% endif %}
+
+    {% if friend_preview %}
+    <section class="profile-section">
+      <h2 class="profile-section__title">Друзья{% if friend_count %} ({{ friend_count }}){% endif %}</h2>
+      <div class="profile-friends">
+        {% for friend in friend_preview %}
+        {% call ui_friend_row(friend, compact=true) %}{% endcall %}
+        {% endfor %}
+      </div>
+      {% if friend_count > friend_preview|length %}
+      <a class="profile-section__more" href="/profile/{{ profile_user.id }}/friends">Показать всех →</a>
+      {% endif %}
+    </section>
+    {% endif %}
+  </div>
   {% endif %}
 
   {% if favorite_item %}
   <section class="profile-section">
     <h2 class="profile-section__title">Избранное</h2>
-    <div class="title-card-grid">
-      {% from "_title_card.html" import title_card %}
-      {% call title_card(favorite_item.entry.slug_url, favorite_item.name or favorite_item.entry.slug_url, favorite_item.cover_url, extra_class="title-card--favorite") %}
-      {% if favorite_item.entry.last_read_volume %}
-      <span class="title-card__meta">
-        Том {{ favorite_item.entry.last_read_volume }}, глава {{ favorite_item.entry.last_read_number }}
-      </span>
-      {% if favorite_item.progress_percent is not none %}
-      <div class="reading-progress" aria-hidden="true">
-        <div class="reading-progress__fill" style="width: {{ favorite_item.progress_percent }}%"></div>
-      </div>
-      {% endif %}
-      {% else %}
-      <span class="title-card__meta title-card__meta--muted">Ещё не начали читать</span>
-      {% endif %}
+    <div class="profile-grid profile-grid--favorite">
+      {% set name = favorite_item.name or favorite_item.entry.slug_url %}
+      {% call ui_title_card(favorite_item.entry.slug_url, name, favorite_item.cover_url, favorite_item.progress_percent) %}
+      <button
+        type="button"
+        class="ui-title-card__action"
+        data-role="title-quickview-trigger"
+        data-slug-url="{{ favorite_item.entry.slug_url }}"
+        aria-label="Быстрый просмотр «{{ name }}»"
+        title="Быстрый просмотр"
+      >
+        <span class="ui-title-card__action-chip"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M2 12s4-7 10-7 10 7 10 7-4 7-10 7S2 12 2 12zM12 15a3 3 0 1 0 0-6 3 3 0 0 0 0 6z"/></svg></span>
+      </button>
       {% endcall %}
     </div>
-  </section>
-  {% endif %}
-
-  {% if friend_preview %}
-  <section class="profile-section">
-    <h2 class="profile-section__title">Друзья{% if friend_count %} ({{ friend_count }}){% endif %}</h2>
-    <div class="friend-list">
-      {% for friend in friend_preview %}
-      {% call friend_row(friend) %}{% endcall %}
-      {% endfor %}
-    </div>
-    {% if friend_count > friend_preview|length %}
-    <p class="content__hint"><a href="/profile/{{ profile_user.id }}/friends">Показать всех →</a></p>
-    {% endif %}
   </section>
   {% endif %}
 
   {% if library_items %}
   <section class="profile-section">
     <h2 class="profile-section__title">Библиотека</h2>
-    <div class="title-card-grid">
-      {% from "_title_card.html" import title_card %}
+    <div class="profile-grid">
       {% for item in library_items %}
-      {% call title_card(item.entry.slug_url, item.name or item.entry.slug_url, item.cover_url) %}
-      {% if item.entry.last_read_volume %}
-      <span class="title-card__meta">
-        Том {{ item.entry.last_read_volume }}, глава {{ item.entry.last_read_number }}
-      </span>
-      {% if item.progress_percent is not none %}
-      <div class="reading-progress" aria-hidden="true">
-        <div class="reading-progress__fill" style="width: {{ item.progress_percent }}%"></div>
-      </div>
-      {% endif %}
-      {% else %}
-      <span class="title-card__meta title-card__meta--muted">Ещё не начали читать</span>
-      {% endif %}
+      {% set name = item.name or item.entry.slug_url %}
+      {% call ui_title_card(item.entry.slug_url, name, item.cover_url, item.progress_percent) %}
+      <button
+        type="button"
+        class="ui-title-card__action"
+        data-role="title-quickview-trigger"
+        data-slug-url="{{ item.entry.slug_url }}"
+        aria-label="Быстрый просмотр «{{ name }}»"
+        title="Быстрый просмотр"
+      >
+        <span class="ui-title-card__action-chip"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M2 12s4-7 10-7 10 7 10 7-4 7-10 7S2 12 2 12zM12 15a3 3 0 1 0 0-6 3 3 0 0 0 0 6z"/></svg></span>
+      </button>
       {% endcall %}
       {% endfor %}
     </div>

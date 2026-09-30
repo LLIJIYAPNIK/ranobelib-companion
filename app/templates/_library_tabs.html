@@ -1,4 +1,6 @@
-<nav class="library-tabs">
-  <a class="library-tabs__link{% if active_tab == 'reading' %} library-tabs__link--active{% endif %}" href="/library">Читаю</a>
-  <a class="library-tabs__link{% if active_tab == 'catalog' %} library-tabs__link--active{% endif %}" href="/library/catalog">Все тайтлы</a>
+{# "Читаю" / "Все тайтлы" on the Aurora Ink tabs component (PR 251/252).
+   library-tabs-swipe.js reads .library-tabs__link and its --active modifier. #}
+<nav class="ui-tabs" aria-label="Библиотека">
+  <a class="ui-tabs__link library-tabs__link{% if active_tab == 'reading' %} library-tabs__link--active{% endif %}" href="/library"{% if active_tab == 'reading' %} aria-current="page"{% endif %}>Читаю</a>
+  <a class="ui-tabs__link library-tabs__link{% if active_tab == 'catalog' %} library-tabs__link--active{% endif %}" href="/library/catalog"{% if active_tab == 'catalog' %} aria-current="page"{% endif %}>Все тайтлы</a>
 </nav>

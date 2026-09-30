@@ -1,27 +1,37 @@
+{#
+  PR 256 (Aurora Ink, DOWNLOADS): History row - the slug (a link to the ready file, or to
+  the title once it's gone), a meta line "FMT  status  date", "Скачать" while the file
+  is still waiting to be picked up, and a trash icon button. .downloads-history/__item
+  and data-role="delete-history-entry" are what download-history-delete.js reads.
+#}
 {% macro download_history_list(entries, ready_files={}) %}
 <ul class="downloads-history">
   {% for entry in entries %}
   <li class="downloads-history__item" data-entry-id="{{ entry.id }}">
-    <a class="downloads-history__link" href="{{ ready_files[entry.id] if entry.id in ready_files else '/titles/' ~ entry.slug_url }}">{{ entry.slug_url }}</a>
-    <span class="downloads-history__fmt">{{ entry.fmt | upper }}</span>
-    <span class="downloads-history__status{% if entry.status == 'error' %} downloads-history__status--error{% endif %}">
-      {% if entry.status == "done" %}Готово{% if entry.chapter_count %} · {{ entry.chapter_count }} глав{% endif %}
-      {% elif entry.status == "cancelled" %}Отменено{% if entry.chapter_count %} · {{ entry.chapter_count }} глав{% endif %}
-      {% else %}{{ entry.error or "Ошибка" }}
-      {% endif %}
-    </span>
-    <span class="downloads-history__date">{{ entry.finished_at[:16].replace("T", " ") }}</span>
+    <div class="downloads-history__copy">
+      <a class="downloads-history__link" href="{{ ready_files[entry.id] if entry.id in ready_files else '/titles/' ~ entry.slug_url }}">{{ entry.slug_url }}</a>
+      <span class="downloads-history__meta">
+        <span class="downloads-history__fmt">{{ entry.fmt | upper }}</span>
+        <span class="downloads-history__status{% if entry.status == 'error' %} downloads-history__status--error{% endif %}">
+          {%- if entry.status == "done" %}Готово{% if entry.chapter_count %} · {{ entry.chapter_count }} глав{% endif %}
+          {%- elif entry.status == "cancelled" %}Отменено{% if entry.chapter_count %} · {{ entry.chapter_count }} глав{% endif %}
+          {%- else %}{{ entry.error or "Ошибка" }}
+          {%- endif -%}
+        </span>
+        <span class="downloads-history__date">{{ entry.finished_at[:16].replace("T", " ") }}</span>
+      </span>
+    </div>
     {% if entry.id in ready_files %}
-    <a class="downloads-history__download btn btn--sm" href="{{ ready_files[entry.id] }}">Скачать</a>
+    <a class="ui-btn ui-btn--sm downloads-history__download" href="{{ ready_files[entry.id] }}">Скачать</a>
     {% endif %}
     <button
       type="button"
-      class="downloads-history__delete"
+      class="ui-icon-btn downloads-history__delete"
       data-role="delete-history-entry"
       data-entry-id="{{ entry.id }}"
-      aria-label="Удалить запись из истории"
+      aria-label="Удалить из истории"
       title="Удалить запись"
-    >×</button>
+    ><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 6h14M9 6V4h6v2M7 6l1 14h8l1-14"/></svg></button>
   </li>
   {% endfor %}
 </ul>

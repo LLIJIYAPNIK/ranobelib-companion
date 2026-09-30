@@ -1,124 +1,149 @@
 {% extends "settings_layout.html" %}
 {% block title %}Настройки чтения — RanobeLib Companion{% endblock %}
 {% block settings_content %}
+{#
+  PR 255 (Aurora Ink, SETTINGS-READING): Текст · Тема читалки · Режим чтения · Скорость
+  чтения, then a live preview. Segments replace the old selects for the everyday choices
+  (same data-setting keys); the fine-grained paragraph style / animation / tempo selects
+  and the comment size live on under «Дополнительно». The reader's Aa panel uses the
+  same controls (_reader_controls.html) and the same stored object.
+#}
+{% from "_reader_controls.html" import segmented, themes, LINE_HEIGHTS, MARGINS, MODES, PRESETS %}
   <div class="reader-settings-page" data-role="reader-settings">
-    <section class="reader-settings-section">
-      <h2 class="reader-settings-section__title">Типографика</h2>
-      <div class="reader-settings__panel">
-        <label class="reader-settings__field">
-          <span>Шрифт</span>
-          <select class="toc__export-format" data-setting="fontFamily">
-            <option value="sans">Без засечек</option>
-            <option value="serif">С засечками</option>
-            <option value="mono">Моноширинный</option>
-          </select>
+    <section class="reader-settings-card">
+      <h2 class="reader-settings-card__title">Текст</h2>
+      <div class="reader-settings-row">
+        <span class="reader-settings-row__label">Шрифт</span>
+        {{ segmented("fontFamily", "set-font", [("sans", "Без засечек"), ("serif", "С засечками"), ("mono", "Моно")], "Шрифт") }}
+      </div>
+      <div class="reader-settings-row">
+        <label class="reader-settings-row__head" for="fontSize">
+          <span class="reader-settings-row__label">Размер шрифта</span>
+          <span class="reader-settings-row__value"><output for="fontSize"></output> px</span>
         </label>
-        <label class="reader-settings__field">
-          <span>Размер шрифта — <output for="fontSize"></output>px</span>
-          <input type="range" id="fontSize" data-setting="fontSize" min="12" max="22" step="1">
+        <input class="ui-range" type="range" id="fontSize" data-setting="fontSize" min="12" max="22" step="1">
+      </div>
+      <div class="reader-settings-row">
+        <span class="reader-settings-row__label">Межстрочный интервал</span>
+        {{ segmented("lineHeight", "set-line", LINE_HEIGHTS, "Межстрочный интервал") }}
+      </div>
+      <div class="reader-settings-row">
+        <label class="reader-settings-row__head" for="width">
+          <span class="reader-settings-row__label">Ширина колонки (компьютер)</span>
+          <span class="reader-settings-row__value"><output for="width"></output> px</span>
         </label>
-        <label class="reader-settings__field">
-          <span>Межстрочный интервал</span>
-          <select class="toc__export-format" data-setting="lineHeight">
-            <option value="1.5">Плотный</option>
-            <option value="1.85">Обычный</option>
-            <option value="2.2">Свободный</option>
-          </select>
-        </label>
-        <label class="reader-settings__field">
-          <span>Ширина области чтения — <output for="width"></output>px</span>
-          <input type="range" id="width" data-setting="width" min="420" max="1200" step="20">
-        </label>
+        <input class="ui-range" type="range" id="width" data-setting="width" min="420" max="1200" step="20">
+      </div>
+      <div class="reader-settings-row">
+        <span class="reader-settings-row__label">Поля (телефон)</span>
+        {{ segmented("margins", "set-margins", MARGINS, "Поля на телефоне") }}
       </div>
     </section>
 
-    <section class="reader-settings-section">
-      <h2 class="reader-settings-section__title">Реакции и комментарии</h2>
-      <div class="reader-settings__panel">
-        <label class="reader-settings__field reader-settings__field--checkbox">
-          <input type="checkbox" class="reader-settings__toggle" data-setting="showParagraphSocial">
-          <span>Показывать реакции и комментарии под абзацами</span>
-        </label>
-        <label class="reader-settings__field">
-          <span>Размер шрифта комментариев — <output for="commentFontSize"></output>px</span>
-          <input type="range" id="commentFontSize" data-setting="commentFontSize" min="12" max="18" step="1">
-        </label>
-      </div>
+    <section class="reader-settings-card">
+      <h2 class="reader-settings-card__title">Тема читалки</h2>
+      {{ themes("set-theme") }}
     </section>
 
-    <section class="reader-settings-section">
-      <h2 class="reader-settings-section__title">Чтение с помощью тапа</h2>
-      <div class="reader-settings__panel">
-        <label class="reader-settings__field reader-settings__field--checkbox">
-          <input type="checkbox" class="reader-settings__toggle" data-setting="tapToRead">
-          <span>Раскрывать абзацы по одному тапом или кликом</span>
-        </label>
-        <label class="reader-settings__field">
-          <span>Стиль раскрытого абзаца</span>
-          <select class="toc__export-format" data-setting="paragraphStyle">
-            <option value="chat">В стиле переписки</option>
-            <option value="plain">Просто прямоугольник</option>
-          </select>
-        </label>
-        <label class="reader-settings__field">
-          <span>Анимация появления абзаца</span>
-          <select class="toc__export-format" data-setting="paragraphAnimation">
-            <option value="none">Без анимации</option>
-            <option value="slide-up">Снизу вверх</option>
-            <option value="slide-left">Слева направо (с рывком)</option>
-            <option value="fade">Проявление</option>
-            <option value="typewriter">Печатная машинка</option>
-            <option value="blur-focus">Фокусировка</option>
-          </select>
-        </label>
-        <label class="reader-settings__field">
-          <span>Темп появления текста</span>
-          <select class="toc__export-format" data-setting="revealTempo">
-            <option value="instant">Мгновенно</option>
-            <option value="word-by-word">Слово за словом</option>
-            <option value="typewriter-speed">Печатная машинка по скорости</option>
-            <option value="line-by-line">Построчно</option>
-            <option value="highlight-sweep">Плавное выделение</option>
-            <option value="word-dissolve">Растворение слов</option>
-          </select>
-        </label>
+    <section class="reader-settings-card">
+      <h2 class="reader-settings-card__title">Режим чтения</h2>
+      <div class="reader-settings-row">
+        <span class="reader-settings-row__label">Режим</span>
+        {{ segmented("readerMode", "set-mode", MODES, "Режим чтения") }}
+        <span class="reader-settings-row__hint">Tap Focus раскрывает абзацы по одному тапом или клавишей.</span>
       </div>
+      <div class="reader-settings-row">
+        <span class="reader-settings-row__label">Появление абзаца</span>
+        {{ segmented("revealPreset", "set-preset", PRESETS, "Появление абзаца") }}
+      </div>
+      <label class="reader-settings-row reader-settings-row--switch ui-switch">
+        <span>Реакции и комментарии под абзацами</span>
+        <input type="checkbox" role="switch" data-setting="showParagraphSocial">
+      </label>
+      <details class="reader-settings-more">
+        <summary class="reader-settings-more__summary">Дополнительно · стиль, анимация, темп, размер комментариев</summary>
+        <div class="reader-settings-more__body">
+          <label class="reader-settings-row">
+            <span class="reader-settings-row__label">Стиль раскрытого абзаца</span>
+            <span class="ui-select">
+              <select class="toc__export-format" data-setting="paragraphStyle">
+                <option value="book">Книжный (по умолчанию)</option>
+                <option value="chat">В стиле переписки</option>
+                <option value="plain">Просто прямоугольник</option>
+              </select>
+            </span>
+          </label>
+          <label class="reader-settings-row">
+            <span class="reader-settings-row__label">Анимация появления абзаца</span>
+            <span class="ui-select">
+              <select class="toc__export-format" data-setting="paragraphAnimation">
+                <option value="none">Без анимации</option>
+                <option value="slide-up">Снизу вверх</option>
+                <option value="slide-left">Слева направо (с рывком)</option>
+                <option value="fade">Проявление</option>
+                <option value="typewriter">Печатная машинка</option>
+                <option value="blur-focus">Фокусировка</option>
+              </select>
+            </span>
+          </label>
+          <label class="reader-settings-row">
+            <span class="reader-settings-row__label">Темп появления текста</span>
+            <span class="ui-select">
+              <select class="toc__export-format" data-setting="revealTempo">
+                <option value="instant">Мгновенно</option>
+                <option value="word-by-word">Слово за словом</option>
+                <option value="typewriter-speed">Печатная машинка по скорости</option>
+                <option value="line-by-line">Построчно</option>
+                <option value="highlight-sweep">Плавное выделение</option>
+                <option value="word-dissolve">Растворение слов</option>
+              </select>
+            </span>
+          </label>
+          <div class="reader-settings-row">
+            <label class="reader-settings-row__head" for="commentFontSize">
+              <span class="reader-settings-row__label">Размер шрифта комментариев</span>
+              <span class="reader-settings-row__value"><output for="commentFontSize"></output> px</span>
+            </label>
+            <input class="ui-range" type="range" id="commentFontSize" data-setting="commentFontSize" min="12" max="18" step="1">
+          </div>
+        </div>
+      </details>
+    </section>
 
-      <div class="reading-speed-test" data-role="reading-speed-test">
-        <h3 class="reader-settings-subsection__title">Скорость чтения</h3>
-        <p class="content__hint">
-          Текущее значение:
-          <span data-role="reading-speed-value">не задано</span>
+    <section class="reader-settings-card reader-settings-card--speed reading-speed-test" data-role="reading-speed-test">
+      <div class="reader-settings-card__intro">
+        <h2 class="reader-settings-card__title">Скорость чтения</h2>
+        <p class="reader-settings-row__hint">
+          Текущее значение: <span data-role="reading-speed-value">не задано</span> · для «По скорости»
         </p>
-        <button type="button" class="btn btn--secondary" data-role="reading-speed-start">
-          Пройти тест
-        </button>
-        <label class="reader-settings__field reading-speed-test__manual-field">
-          <span>Или укажите вручную, слов/мин</span>
-          <span class="reading-speed-test__stepper">
-            <button
-              type="button"
-              class="reading-speed-test__stepper-btn"
-              data-role="reading-speed-manual-decrement"
-              aria-label="Уменьшить скорость чтения"
-            >−</button>
-            <input
-              type="number"
-              data-role="reading-speed-manual-input"
-              min="50"
-              max="1000"
-              step="10"
-              placeholder="слов/мин"
-            >
-            <button
-              type="button"
-              class="reading-speed-test__stepper-btn"
-              data-role="reading-speed-manual-increment"
-              aria-label="Увеличить скорость чтения"
-            >+</button>
-          </span>
-        </label>
       </div>
+      <button type="button" class="ui-btn" data-role="reading-speed-start">Пройти тест</button>
+      <label class="reading-speed-test__manual-field">
+        <span class="reading-speed-test__manual-label">Или укажите вручную, слов/мин</span>
+        <span class="reading-speed-test__stepper">
+          <button
+            type="button"
+            class="reading-speed-test__stepper-btn"
+            data-role="reading-speed-manual-decrement"
+            aria-label="Уменьшить скорость чтения"
+          >−</button>
+          <input
+            type="number"
+            data-role="reading-speed-manual-input"
+            min="50"
+            max="1000"
+            step="10"
+            placeholder="слов/мин"
+            aria-label="Скорость чтения, слов в минуту"
+          >
+          <button
+            type="button"
+            class="reading-speed-test__stepper-btn"
+            data-role="reading-speed-manual-increment"
+            aria-label="Увеличить скорость чтения"
+          >+</button>
+        </span>
+      </label>
 
       <div class="reading-speed-modal" data-role="reading-speed-modal">
         <div class="reading-speed-modal__panel" role="dialog" aria-modal="true" aria-label="Тест скорости чтения">
@@ -129,16 +154,20 @@
         </div>
       </div>
     </section>
-  </div>
-  <div class="reader-settings-preview" data-role="reader-settings-preview">
-    <p>
-      Так будет выглядеть текст главы с выбранными настройками. Меняйте параметры
-      слева — пример обновляется сразу, без сохранения и перезагрузки страницы.
-    </p>
+
+    <div class="reader-settings-preview" data-role="reader-settings-preview">
+      <p>
+        Так будет выглядеть текст главы с выбранными настройками — пример обновляется
+        сразу, без сохранения и перезагрузки.
+      </p>
+    </div>
+
+    <button type="button" class="reader-settings-reset" data-role="reader-settings-reset">Сбросить настройки</button>
   </div>
 {% endblock %}
 {% block settings_scripts %}
 <script src="{{ url_for('static', path='js/reader-settings.js') }}" defer></script>
 <script src="{{ url_for('static', path='js/custom-dropdown.js') }}" defer></script>
+<script src="{{ url_for('static', path='js/ui-range.js') }}" defer></script>
 <script src="{{ url_for('static', path='js/reading-speed-test.js') }}" defer></script>
 {% endblock %}

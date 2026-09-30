@@ -1,68 +1,87 @@
 {% extends "base.html" %}
+{% set strip_back_href = "/titles/" ~ slug_url %}
 {% block title %}Скачивание {{ slug_url }} — RanobeLib Companion{% endblock %}
 {% block content %}
-<main class="content">
-  <div
-    class="download-status"
-    data-status-url="/titles/{{ slug_url }}/download/{{ job.id }}/status"
-  >
-    <a class="reader-nav__back" href="/titles/{{ slug_url }}">← К оглавлению</a>
-    <h1 class="download-status__heading">Скачивание тайтла целиком</h1>
+{#
+  PR 256 (Aurora Ink, "02 · Download progress"): the title-wide download's own page.
+  While it runs - the Download progress card (status-text + eta-text over a 6px
+  bar-fill, updated by download-status.js); done - the card full plus "Скачать файл";
+  error - an error notice; needs_translation - the variant form first (PR 206), then
+  the chapters that need it. On mobile the strip's back button replaces the in-page one.
+#}
+<main class="downloads-page download-status" data-status-url="/titles/{{ slug_url }}/download/{{ job.id }}/status">
+  <a class="ui-btn ui-btn--quiet ui-btn--sm download-status__back" href="/titles/{{ slug_url }}">
+    <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M15 5l-7 7 7 7"/></svg>К оглавлению
+  </a>
+  <div class="download-status__head">
+    <h1 class="downloads-page__title">Скачивание тайтла целиком</h1>
+    <span class="download-status__slug">{{ slug_url }} · {{ job.fmt | upper }}</span>
+  </div>
 
-    {% if job.status == "needs_translation" %}
+  {% if job.status == "needs_translation" %}
+  <section class="download-status__choice">
     <p class="download-status__text">
       У {{ job.ambiguous_chapters | length }} глав несколько переводов — выберите один
       вариант перевода для всего тайтла.
     </p>
-    <form method="post" action="/titles/{{ slug_url }}/download/{{ job.id }}/retry" class="download-status__retry">
-      <select name="translation_index" class="toc__export-format" aria-label="Вариант перевода">
-        {% for index in range(max_branches) %}
-        <option value="{{ index }}">Вариант {{ index + 1 }}</option>
-        {% endfor %}
-      </select>
-      <button type="submit" class="btn btn--primary">Скачать с этим переводом</button>
-    </form>
-    <form method="post" action="/titles/{{ slug_url }}/download/{{ job.id }}/cancel" class="download-status__cancel-form">
-      <button type="submit" class="btn btn--secondary">Отменить</button>
-    </form>
-    <script src="{{ url_for('static', path='js/custom-dropdown.js') }}" defer></script>
-    <ul class="download-status__ambiguous">
-      {% for chapter in job.ambiguous_chapters %}
-      <li class="download-status__ambiguous-item">
-        <span class="download-status__ambiguous-chapter">Том {{ chapter.volume }}, глава {{ chapter.number }}</span>
-        <span class="download-status__ambiguous-branches">
-          {% for branch in chapter.branches %}{{ loop.index }}) {% if branch.teams %}{{ branch.teams | map(attribute="name") | join(", ") }}{% else %}{{ branch.user.username }}{% endif %}{% if not loop.last %} · {% endif %}{% endfor %}
+    <div class="download-status__actions">
+      <form method="post" action="/titles/{{ slug_url }}/download/{{ job.id }}/retry" class="download-status__retry">
+        <span class="ui-select">
+          <select name="translation_index" class="toc__export-format" aria-label="Вариант перевода">
+            {% for index in range(max_branches) %}
+            <option value="{{ index }}">Вариант {{ index + 1 }}</option>
+            {% endfor %}
+          </select>
         </span>
-      </li>
-      {% endfor %}
-    </ul>
-    {% else %}
-    <div class="download-status__bar">
-      <div
-        class="download-status__bar-fill"
-        data-role="bar-fill"
-        style="width: {{ (job.completed / job.total * 100) if job.total else 0 }}%"
-      ></div>
+        <button type="submit" class="ui-btn ui-btn--primary">Скачать с этим переводом</button>
+      </form>
+      <form method="post" action="/titles/{{ slug_url }}/download/{{ job.id }}/cancel" class="download-status__cancel-form">
+        <button type="submit" class="ui-btn">Отменить</button>
+      </form>
     </div>
-    <p class="download-status__text{% if job.status == 'error' %} download-status__text--error{% endif %}" data-role="status-text">
-      {% if job.status == "queued" %}В очереди…
-      {% elif job.status == "running" %}{% if job.total %}Глава {{ job.completed }} из {{ job.total }}{% else %}Начинаем скачивание…{% endif %}
-      {% elif job.status == "exporting" %}Сборка файла…
-      {% elif job.status == "done" %}Готово
-      {% elif job.status == "error" %}{{ job.error }}
-      {% elif job.status == "cancelled" %}Отменено
-      {% endif %}
-    </p>
-    <p class="download-status__eta" data-role="eta-text"></p>
-    {% if job.status == "done" %}
-    <a class="btn btn--primary" href="/titles/{{ slug_url }}/download/{{ job.id }}/file">Скачать файл</a>
-    {% elif job.status in ("queued", "running", "exporting") %}
-    <form method="post" action="/titles/{{ slug_url }}/download/{{ job.id }}/cancel" class="download-status__cancel-form">
-      <button type="submit" class="btn btn--secondary">Отменить</button>
-    </form>
-    {% endif %}
-    {% endif %}
+  </section>
+  <script src="{{ url_for('static', path='js/custom-dropdown.js') }}" defer></script>
+  <ul class="download-status__ambiguous">
+    {% for chapter in job.ambiguous_chapters %}
+    <li class="download-status__ambiguous-item">
+      <span class="download-status__ambiguous-chapter">Том {{ chapter.volume }}, глава {{ chapter.number }}</span>
+      <span class="download-status__ambiguous-branches">
+        {% for branch in chapter.branches %}{{ loop.index }}) {% if branch.teams %}{{ branch.teams | map(attribute="name") | join(", ") }}{% else %}{{ branch.user.username }}{% endif %}{% if not loop.last %} · {% endif %}{% endfor %}
+      </span>
+    </li>
+    {% endfor %}
+  </ul>
+  {% elif job.status == "error" %}
+  <p class="ui-notice ui-notice--error" data-role="status-text">{{ job.error }}</p>
+  {% else %}
+  <div class="ui-download-progress">
+    <div class="ui-download-progress__head">
+      <span data-role="status-text">
+        {%- if job.status == "queued" %}В очереди…
+        {%- elif job.status == "running" %}{% if job.total %}Скачивание · {{ job.completed }} из {{ job.total }} глав{% else %}Начинаем скачивание…{% endif %}
+        {%- elif job.status == "exporting" %}Сборка файла…
+        {%- elif job.status == "done" %}Готово
+        {%- elif job.status == "cancelled" %}Отменено
+        {%- endif -%}
+      </span>
+      <span class="ui-download-progress__eta" data-role="eta-text"></span>
+    </div>
+    <span class="ui-progress__bar">
+      <span
+        class="ui-progress__fill"
+        data-role="bar-fill"
+        style="width: {{ 100 if job.status == 'done' else ((job.completed / job.total * 100) if job.total else 0) }}%"
+      ></span>
+    </span>
   </div>
+  {% if job.status == "done" %}
+  <a class="ui-btn ui-btn--primary download-status__file" href="/titles/{{ slug_url }}/download/{{ job.id }}/file">Скачать файл</a>
+  {% elif job.status in ("queued", "running", "exporting") %}
+  <form method="post" action="/titles/{{ slug_url }}/download/{{ job.id }}/cancel" class="download-status__cancel-form">
+    <button type="submit" class="ui-btn">Отменить</button>
+  </form>
+  {% endif %}
+  {% endif %}
   {% if job.status not in ("done", "error", "needs_translation", "cancelled") %}
   <script src="{{ url_for('static', path='js/download-status.js') }}" defer></script>
   {% endif %}

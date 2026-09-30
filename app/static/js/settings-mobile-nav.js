@@ -8,8 +8,12 @@
 // the back link, which clears it) the list is shown instead, same as landing here fresh.
 // Without JS, .settings-nav and .settings-content both stay visible per app.css's plain
 // mobile fallback (the pre-PR-104 horizontal tab row) - this is a pure enhancement on top.
+//
+// PR 261 (Aurora Ink): the breakpoint follows the rest of the mobile shell (767px - the
+// top strip and Quiet Edge Bar) instead of the old 640px, so a 700px-wide phone in
+// landscape gets the M-SETTINGS list rather than a cramped desktop nav column.
 (() => {
-  const MOBILE_BREAKPOINT = "(max-width: 640px)";
+  const MOBILE_BREAKPOINT = "(max-width: 767px)";
   const STORAGE_KEY = "settingsMobileDetail";
 
   const layout = document.querySelector('[data-role="settings-layout"]');

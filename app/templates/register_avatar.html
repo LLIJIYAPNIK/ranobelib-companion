@@ -1,49 +1,57 @@
 {% extends "base.html" %}
 {% block title %}Добавить аватар — RanobeLib Companion{% endblock %}
 {% block content %}
-<header class="header">
-  <h1 class="toc__title">Хотите добавить аватар?</h1>
-</header>
-<main class="content">
-  <p class="content__hint">
-    Необязательно — можно сделать это позже в настройках аккаунта.
-  </p>
-  {% if avatar_error %}
-  <p class="form-error">{{ avatar_error }}</p>
-  {% endif %}
-  <form
-    class="settings-form settings-form--avatar"
-    method="post"
-    action="/register/avatar"
-    enctype="multipart/form-data"
-    data-role="avatar-upload-form"
-  >
-    <label class="avatar-upload" aria-label="Загрузить аватар" data-role="avatar-upload-trigger">
-      <span class="avatar-upload__preview" data-role="avatar-upload-preview">
-        {% if avatar_url(current_user) %}
-        <img class="avatar-img" src="{{ avatar_url(current_user) }}" alt="">
-        {% else %}
-        <span class="avatar-upload__initials">{{ avatar_initials(current_user) }}</span>
-        {% endif %}
-      </span>
-      <span class="avatar-upload__overlay" aria-hidden="true">
-        <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
-          <path d="M12 20h9"/>
-          <path d="M16.5 3.5a2.12 2.12 0 0 1 3 3L7 19l-4 1 1-4Z"/>
-        </svg>
-      </span>
-      <input
-        class="avatar-upload__input"
-        id="register-avatar"
-        type="file"
-        name="avatar"
-        accept="image/png,image/jpeg,image/webp"
-        data-role="avatar-upload-input"
-        required
-      >
-    </label>
-  </form>
-  <p class="content__hint content__hint--auth"><a href="/">Пропустить</a></p>
+{#
+  PR 262 (Aurora Ink): the optional avatar step after registration. Not mocked in the
+  design - it's the auth card's form column on its own, with the settings page's avatar
+  row (80px circle with a pen badge, the circle is the file picker - avatar-upload.js).
+#}
+<main class="auth-page">
+  <div class="auth-card auth-card--single">
+    <div class="auth-card__form">
+      <h1 class="auth-card__title">Хотите добавить аватар?</h1>
+      <p class="auth-card__text">Необязательно — можно сделать это позже в настройках аккаунта.</p>
+      {% if avatar_error %}
+      <p class="ui-notice ui-notice--error">{{ avatar_error }}</p>
+      {% endif %}
+      <div class="avatar-row">
+        <form
+          class="settings-form--avatar"
+          method="post"
+          action="/register/avatar"
+          enctype="multipart/form-data"
+          data-role="avatar-upload-form"
+        >
+          <label class="avatar-upload" aria-label="Загрузить аватар" data-role="avatar-upload-trigger">
+            <span class="avatar-upload__preview" data-role="avatar-upload-preview">
+              {% if avatar_url(current_user) %}
+              <img class="avatar-img" src="{{ avatar_url(current_user) }}" alt="">
+              {% else %}
+              <span class="avatar-upload__initials">{{ avatar_initials(current_user) }}</span>
+              {% endif %}
+            </span>
+            <span class="avatar-upload__overlay" aria-hidden="true">
+              <svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M12 20h9"/>
+                <path d="M16.5 3.5a2.12 2.12 0 0 1 3 3L7 19l-4 1 1-4Z"/>
+              </svg>
+            </span>
+            <input
+              class="avatar-upload__input"
+              id="register-avatar"
+              type="file"
+              name="avatar"
+              accept="image/png,image/jpeg,image/webp"
+              data-role="avatar-upload-input"
+              required
+            >
+          </label>
+        </form>
+        <p class="avatar-row__hint">Нажмите на кружок, чтобы выбрать фото · PNG, JPEG, WebP</p>
+      </div>
+      <p class="auth-card__skip"><a href="/">Пропустить</a></p>
+    </div>
+  </div>
 </main>
 <script src="{{ url_for('static', path='js/avatar-upload.js') }}" defer></script>
 {% endblock %}

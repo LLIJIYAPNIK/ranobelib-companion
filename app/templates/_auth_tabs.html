@@ -1,4 +1,4 @@
 <div class="auth-tabs">
-  <a class="auth-tabs__link{% if active_tab == 'login' %} auth-tabs__link--active{% endif %}" href="/login">Вход</a>
-  <a class="auth-tabs__link{% if active_tab == 'register' %} auth-tabs__link--active{% endif %}" href="/register">Регистрация</a>
+  <a class="auth-tabs__link{% if active_tab == 'login' %} auth-tabs__link--active{% endif %}" href="/login"{% if active_tab == 'login' %} aria-current="page"{% endif %}>Вход</a>
+  <a class="auth-tabs__link{% if active_tab == 'register' %} auth-tabs__link--active{% endif %}" href="/register"{% if active_tab == 'register' %} aria-current="page"{% endif %}>Регистрация</a>
 </div>

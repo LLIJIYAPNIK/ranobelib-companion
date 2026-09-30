@@ -1,3 +1,4 @@
+import re
 from collections.abc import Iterator
 from pathlib import Path
 
@@ -47,52 +48,86 @@ def test_sidebar_applies_saved_expanded_state_synchronously_before_first_paint()
     response = client.get("/")
 
     assert response.status_code == 200
-    nav_start = response.text.index('<nav class="sidebar" data-role="sidebar">')
+    nav_start = response.text.index('<nav class="sidebar" data-role="sidebar"')
     toggle_start = response.text.index('data-role="sidebar-toggle"')
     inline_script = response.text[nav_start:toggle_start]
     assert "<script src=" in inline_script
     assert "static/js/sidebar-expand-init.js" in inline_script
 
 
-def test_sidebar_renders_a_text_label_next_to_each_nav_icon() -> None:
+def test_sidebar_main_list_is_home_library_downloads_only() -> None:
+    # PR 249 (Aurora Ink): Активность/Друзья/Настройки moved into the Account hub, so the
+    # main list - desktop rail and mobile Quiet Edge Bar alike - is just these three.
     response = client.get("/")
 
     assert response.status_code == 200
-    for label in ("Главная", "Библиотека", "Загрузки", "Активность", "Друзья", "Настройки"):
-        assert f'<span class="sidebar__label">{label}</span>' in response.text
+    nav = response.text[response.text.index('class="sidebar__nav"') : response.text.index(
+        'class="sidebar__account"'
+    )]
+    for label in ("Главная", "Библиотека", "Загрузки"):
+        assert f'<span class="sidebar__label">{label}</span>' in nav
+    for label in ("Активность", "Друзья", "Настройки", "Уведомления"):
+        assert label not in nav
 
 
-def test_sidebar_friends_link_points_at_the_friends_page() -> None:
+def test_guest_quiet_edge_bar_shows_catalog_and_hides_downloads_on_mobile() -> None:
+    # Quiet Edge Bar for a guest is «Главная · Каталог»: the library link carries a
+    # mobile-only «Каталог» label and Загрузки is desktop-only.
     response = client.get("/")
+
+    assert '<span class="sidebar__label-mobile">Каталог</span>' in response.text
+    assert "sidebar__link--desktop-only" in response.text
+
+
+def test_logged_in_quiet_edge_bar_keeps_downloads_on_mobile(
+    logged_in_client: TestClient,
+) -> None:
+    response = logged_in_client.get("/")
+
+    assert "sidebar__link--desktop-only" not in response.text
+    assert "sidebar__label-mobile" not in response.text
+
+
+def test_active_nav_link_is_marked_current() -> None:
+    response = client.get("/")
+
+    assert (
+        '<a class="sidebar__link sidebar__link--active" href="/" aria-current="page">'
+        in response.text
+    )
+
+
+def test_account_hub_friends_link_points_at_the_friends_page(
+    logged_in_client: TestClient,
+) -> None:
+    response = logged_in_client.get("/")
 
     assert response.status_code == 200
     assert 'href="/friends"' in response.text
 
 
 def test_sidebar_wires_the_mobile_account_strip_script() -> None:
-    # PR 213: mobile-account-strip.js reparents the Settings link (and, for a logged-in
-    # visitor, the notifications bell) into the empty .sidebar__account-actions container
-    # once the mobile breakpoint matches - present for every visitor, since the Settings
-    # link itself isn't gated behind login.
+    # PR 249: mobile-account-strip.js now only drives the top strip's scroll background;
+    # the container it used to reparent into stays, rendered for every visitor.
     response = client.get("/")
 
     assert response.status_code == 200
-    assert 'data-role="settings-link"' in response.text
     assert 'data-role="sidebar-account-actions"' in response.text
     assert "static/js/mobile-account-strip.js" in response.text
 
 
-def test_mobile_account_strip_script_runs_before_notifications_panel_script(
+def test_notifications_bell_is_rendered_inside_the_account_actions(
     logged_in_client: TestClient,
 ) -> None:
-    # mobile-account-strip.js must reparent the notifications bell's home position before
-    # notifications-panel.js ever records it (see mobile-account-strip.js's own comment on
-    # why) - both are `defer`, so document order is what decides execution order.
+    # PR 249: the bell lives in .sidebar__account from the start (desktop rail footer and
+    # mobile top strip alike) instead of being reparented there by JS on mobile.
     response = logged_in_client.get("/")
 
     assert response.status_code == 200
-    assert response.text.index("static/js/mobile-account-strip.js") < response.text.index(
-        "static/js/notifications-panel.js"
+    actions = response.text.index('data-role="sidebar-account-actions"')
+    assert actions < response.text.index('data-role="notifications-trigger"')
+    assert response.text.index('data-role="notifications-panel"') < response.text.index(
+        'data-role="profile-menu"'
     )
 
 
@@ -136,18 +171,35 @@ def test_anonymous_visitor_gets_no_profile_menu() -> None:
     assert "static/js/profile-menu.js" not in response.text
 
 
-def test_profile_menu_links_to_profile_library_and_settings(
+def test_profile_menu_is_the_account_hub(
     logged_in_client: TestClient,
 ) -> None:
+    # PR 249 (Aurora Ink): Профиль · Активность · Друзья · Настройки · Выйти; «Читаю» is
+    # gone, Настройки carries data-role="settings-link" now that it lives here.
     response = logged_in_client.get("/")
 
     assert response.status_code == 200
-    for label, href in (
-        ("Профиль", "/profile"),
-        ("Читаю", "/library"),
-        ("Настройки", "/settings"),
-    ):
-        assert f'<a class="profile-menu__item" href="{href}">{label}</a>' in response.text
+    panel = response.text[response.text.index('data-role="profile-menu-panel"') :]
+    assert '<a class="profile-menu__head" href="/profile">' in panel
+    for href, label in (("/activity", "Активность"), ("/friends", "Друзья")):
+        assert re.search(
+            rf'<a class="profile-menu__item" href="{href}">.*?</svg>{label}</a>', panel
+        )
+    assert re.search(
+        r'<a class="profile-menu__item" href="/settings" data-role="settings-link">'
+        r".*?</svg>Настройки</a>",
+        panel,
+    )
+    assert "Читаю" not in panel[: panel.index("</form>")]
+
+
+def test_account_hub_marks_the_current_section(logged_in_client: TestClient) -> None:
+    response = logged_in_client.get("/settings/reading")
+
+    assert (
+        '<a class="profile-menu__item" href="/settings" data-role="settings-link"'
+        ' aria-current="page">' in response.text
+    )
 
 
 def test_profile_menu_lets_you_log_out(logged_in_client: TestClient) -> None:
@@ -155,4 +207,8 @@ def test_profile_menu_lets_you_log_out(logged_in_client: TestClient) -> None:
 
     assert response.status_code == 200
     assert '<form class="profile-menu__form" method="post" action="/logout">' in response.text
-    assert '<button class="profile-menu__item" type="submit">Выйти</button>' in response.text
+    assert re.search(
+        r'<button class="profile-menu__item profile-menu__item--danger" type="submit">'
+        r".*?</svg>Выйти</button>",
+        response.text,
+    )

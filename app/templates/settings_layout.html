@@ -16,29 +16,44 @@
 </style>
 {% endblock %}
 {% block content %}
-<main class="content">
-  <h1 class="toc__title">Настройки</h1>
+{#
+  PR 261 (Aurora Ink, SETTINGS-*): "Настройки", then the section nav (200px column,
+  active = --surface-selected with a cyan edge) beside the section's cards, capped at
+  680px. On phones (settings-mobile-nav.js) the nav is the M-SETTINGS list - each section
+  with its one-line summary and a chevron - and a section opens with a back button and its
+  own title instead of "Настройки".
+#}
+{% set settings_sections = [
+  ("account", "Аккаунт", "Аватар, данные профиля, приватность"),
+  ("security", "Безопасность", "Пароль"),
+  ("notifications", "Уведомления", "Колокольчик, «Не беспокоить»"),
+  ("reading", "Чтение", "Шрифт, тема, Tap Focus, скорость чтения"),
+] %}
+<main class="settings-page">
+  <h1 class="settings-page__title">Настройки</h1>
   <div class="settings-layout" data-role="settings-layout">
     <nav class="settings-nav" data-role="settings-nav" aria-label="Разделы настроек">
+      {% for key, label, summary in settings_sections %}
       <a
-        class="settings-nav__link{% if active_settings_section == 'account' %} settings-nav__link--active{% endif %}"
-        href="/settings/account"
-      >Аккаунт</a>
-      <a
-        class="settings-nav__link{% if active_settings_section == 'security' %} settings-nav__link--active{% endif %}"
-        href="/settings/security"
-      >Безопасность</a>
-      <a
-        class="settings-nav__link{% if active_settings_section == 'notifications' %} settings-nav__link--active{% endif %}"
-        href="/settings/notifications"
-      >Уведомления</a>
-      <a
-        class="settings-nav__link{% if active_settings_section == 'reading' %} settings-nav__link--active{% endif %}"
-        href="/settings/reading"
-      >Чтение</a>
+        class="settings-nav__link{% if active_settings_section == key %} settings-nav__link--active{% endif %}"
+        href="/settings/{{ key }}"
+        {% if active_settings_section == key %}aria-current="page"{% endif %}
+      >
+        <span class="settings-nav__text">
+          <span class="settings-nav__label">{{ label }}</span>
+          <span class="settings-nav__summary">{{ summary }}</span>
+        </span>
+        <svg class="settings-nav__chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 5l7 7-7 7"/></svg>
+      </a>
+      {% endfor %}
     </nav>
     <div class="settings-content">
-      <a class="settings-back" data-role="settings-back" href="/settings" hidden>← Разделы</a>
+      <div class="settings-content__head">
+        <a class="settings-back" data-role="settings-back" href="/settings" aria-label="Разделы настроек" hidden><svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M15 5l-7 7 7 7"/></svg></a>
+        {% for key, label, summary in settings_sections if active_settings_section == key %}
+        <h2 class="settings-content__title">{{ label }}</h2>
+        {% endfor %}
+      </div>
       {% block settings_content %}{% endblock %}
     </div>
   </div>

@@ -21,7 +21,9 @@
   const RUNNING_LABELS = {
     queued: () => "В очереди…",
     running: (data) =>
-      data.total ? `Глава ${data.completed} из ${data.total}` : "Начинаем скачивание…",
+      data.total
+        ? `Скачивание · ${data.completed} из ${data.total} глав`
+        : "Начинаем скачивание…",
     exporting: () => "Сборка файла…",
   };
 
@@ -56,7 +58,7 @@
     if (etaText) {
       etaText.textContent =
         data.status === "running" && data.eta_seconds != null
-          ? `Осталось ≈ ${formatEta(data.eta_seconds)}`
+          ? `≈ ${formatEta(data.eta_seconds)}`
           : "";
     }
 

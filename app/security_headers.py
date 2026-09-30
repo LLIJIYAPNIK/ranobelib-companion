@@ -27,6 +27,10 @@ read-only, see CLAUDE.md "Что явно не делать" - this app never re
 two hosts already trusted by the image-download proxy's own allowlist
 (``app/api/images.py``'s ``_ALLOWED_HOSTS``).
 
+``fonts.googleapis.com`` (the stylesheet) and ``fonts.gstatic.com`` (the font files it
+points at) are the Aurora Ink redesign's webfonts (PR 247) - Manrope, Literata, Golos
+Text, JetBrains Mono - loaded by ``base.html`` through Google's ordinary ``<link>``.
+
 ``Strict-Transport-Security`` is gated on ``Settings.is_production`` (PR 187) - sending
 it unconditionally would tell a browser to force HTTPS for this host, which permanently
 breaks a plain ``http://localhost`` dev server until the browser's HSTS cache for it
@@ -46,7 +50,8 @@ from app.config import get_settings
 _CONTENT_SECURITY_POLICY = (
     "default-src 'self'; "
     "script-src 'self'; "
-    "style-src 'self' 'unsafe-inline'; "
+    "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; "
+    "font-src 'self' https://fonts.gstatic.com; "
     "img-src 'self' https://ranobelib.me https://*.cdnlibs.org; "
     "object-src 'none'; "
     "base-uri 'self'; "
