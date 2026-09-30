@@ -1,33 +1,39 @@
 {% extends "settings_layout.html" %}
 {% block title %}Безопасность — Настройки — RanobeLib Companion{% endblock %}
 {% block settings_content %}
+{#
+  PR 261 (Aurora Ink, SETTINGS-SECURITY): "Изменение пароля" - three ui-field password
+  inputs with their show/hide toggle (_password_field.html, password-toggle.js).
+#}
   {% from "_password_field.html" import password_input %}
   {% if current_user %}
+  <div class="settings-sections">
   <section class="settings-card">
-    <h2 class="reader-settings-section__title">Изменение пароля</h2>
+    <h2 class="settings-card__title">Изменение пароля</h2>
     {% if saved %}
-    <p class="content__notice content__notice--success">Пароль изменён</p>
+    <p class="ui-notice">Пароль изменён</p>
     {% endif %}
     {% if error %}
-    <p class="form-error">{{ error }}</p>
+    <p class="ui-notice ui-notice--error">{{ error }}</p>
     {% endif %}
     <form class="settings-form" method="post" action="/settings/security">
-      <div class="auth-form__field">
-        <label class="auth-form__label" for="security-current-password">Текущий пароль</label>
-        {{ password_input("security-current-password", "current_password") }}
+      <div class="ui-field">
+        <label class="ui-field__label" for="security-current-password">Текущий пароль</label>
+        {{ password_input("security-current-password", "current_password", input_class="ui-input") }}
       </div>
-      <div class="auth-form__field">
-        <label class="auth-form__label" for="security-new-password">Новый пароль</label>
-        {{ password_input("security-new-password", "new_password", minlength=8) }}
-        <p class="auth-form__hint">Минимум 8 символов, лучше 12+</p>
+      <div class="ui-field">
+        <label class="ui-field__label" for="security-new-password">Новый пароль</label>
+        {{ password_input("security-new-password", "new_password", minlength=8, input_class="ui-input") }}
+        <p class="ui-field__hint">Минимум 8 символов, лучше 12+</p>
       </div>
-      <div class="auth-form__field">
-        <label class="auth-form__label" for="security-new-password-confirm">Повторите новый пароль</label>
-        {{ password_input("security-new-password-confirm", "new_password_confirm") }}
+      <div class="ui-field">
+        <label class="ui-field__label" for="security-new-password-confirm">Повторите новый пароль</label>
+        {{ password_input("security-new-password-confirm", "new_password_confirm", input_class="ui-input") }}
       </div>
-      <button class="btn btn--primary" type="submit">Сохранить</button>
+      <button class="ui-btn ui-btn--primary settings-form__submit" type="submit">Сохранить</button>
     </form>
   </section>
+  </div>
   {% else %}
   {% from "_locked_feature.html" import locked_feature %}
   {% call locked_feature("Безопасность скрыта", "/login", "Войти") %}

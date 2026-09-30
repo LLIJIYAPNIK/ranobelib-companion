@@ -53,9 +53,10 @@ def test_logged_in_visitor_sees_both_toggles_checked_by_default(client: TestClie
 
     assert response.status_code == 200
     assert (
-        '<input type="checkbox" name="notifications_enabled" checked>' in response.text
+        '<input type="checkbox" role="switch" name="notifications_enabled" checked>'
+        in response.text
     )
-    assert '<input type="checkbox" name="do_not_disturb" >' in response.text
+    assert '<input type="checkbox" role="switch" name="do_not_disturb" >' in response.text
 
 
 def test_update_notifications_saves_both_flags(client: TestClient) -> None:
@@ -67,8 +68,11 @@ def test_update_notifications_saves_both_flags(client: TestClient) -> None:
 
     assert response.status_code == 200
     assert "Настройки уведомлений сохранены" in response.text
-    assert '<input type="checkbox" name="notifications_enabled" checked>' in response.text
-    assert '<input type="checkbox" name="do_not_disturb" checked>' in response.text
+    assert (
+        '<input type="checkbox" role="switch" name="notifications_enabled" checked>'
+        in response.text
+    )
+    assert '<input type="checkbox" role="switch" name="do_not_disturb" checked>' in response.text
 
 
 def test_unchecking_notifications_enabled_persists(client: TestClient) -> None:
@@ -79,7 +83,7 @@ def test_unchecking_notifications_enabled_persists(client: TestClient) -> None:
     client.post("/settings/notifications", data={})
     response = client.get("/settings/notifications")
 
-    assert '<input type="checkbox" name="notifications_enabled" >' in response.text
+    assert '<input type="checkbox" role="switch" name="notifications_enabled" >' in response.text
 
 
 def test_bell_is_visible_by_default(client: TestClient) -> None:

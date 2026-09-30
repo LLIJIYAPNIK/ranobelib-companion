@@ -48,7 +48,7 @@ def test_logged_in_visitor_sees_a_password_change_section_heading(
     response = client.get("/settings/security")
 
     assert response.status_code == 200
-    assert '<h2 class="reader-settings-section__title">Изменение пароля</h2>' in response.text
+    assert '<h2 class="settings-card__title">Изменение пароля</h2>' in response.text
 
 
 def test_anonymous_post_is_redirected_to_login(client: TestClient) -> None:
