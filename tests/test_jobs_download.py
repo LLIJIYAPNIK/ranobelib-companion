@@ -5,6 +5,7 @@ from datetime import UTC, datetime
 
 import pytest
 from ranobelib import (
+    AccessBlockedError,
     AuthRequiredError,
     DownloadTitleInterruptedError,
     MultipleTitleTranslationsError,
@@ -325,6 +326,37 @@ async def test_run_download_job_does_not_retry_download_interrupted_by_other_cau
     assert fake.download_calls == 1
     assert sleeps == []
     assert job.error == "Требуется авторизация — недоступно (скачано 2 из 5 глав)"
+
+
+async def test_run_download_job_keeps_partial_progress_when_blocked_by_site_protection(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    # PR 269: download_title() wraps AccessBlockedError in DownloadTitleInterruptedError
+    # like any other mid-download failure. The job must not retry it (resending gets the
+    # same answer), must keep "N of M" in the message and must name the block, not
+    # authorization.
+    exc = _interrupted(
+        "6712--test-novel",
+        completed=2,
+        total=5,
+        cause=AccessBlockedError("https://api.cdnlibs.org/api/manga/6712--test-novel"),
+    )
+    fake = _FakeClient(exc=exc)
+    monkeypatch.setattr("app.jobs.download.open_client", lambda slug_url: fake)
+    sleeps: list[float] = []
+
+    async def fake_sleep(delay: float) -> None:
+        sleeps.append(delay)
+
+    job = _job()
+    await run_download_job(job, sleep=fake_sleep)
+
+    assert job.status == "error"
+    assert fake.download_calls == 1
+    assert sleeps == []
+    assert job.error == (
+        "ranobelib.me временно блокирует наши запросы, попробуйте позже (скачано 2 из 5 глав)"
+    )
 
 
 async def test_run_download_job_maps_unexpected_error(monkeypatch: pytest.MonkeyPatch) -> None:
