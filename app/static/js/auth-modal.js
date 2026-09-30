@@ -69,7 +69,7 @@
       const response = await fetch(url, { headers: AJAX_HEADERS });
       body.innerHTML = await response.text();
     } catch {
-      body.innerHTML = '<p class="form-error">Не удалось загрузить форму</p>';
+      body.innerHTML = '<p class="ui-notice ui-notice--error">Не удалось загрузить форму</p>';
     }
     wire();
   }

@@ -19,16 +19,16 @@
     <form class="settings-form" method="post" action="/settings/security">
       <div class="ui-field">
         <label class="ui-field__label" for="security-current-password">Текущий пароль</label>
-        {{ password_input("security-current-password", "current_password", input_class="ui-input") }}
+        {{ password_input("security-current-password", "current_password") }}
       </div>
       <div class="ui-field">
         <label class="ui-field__label" for="security-new-password">Новый пароль</label>
-        {{ password_input("security-new-password", "new_password", minlength=8, input_class="ui-input") }}
+        {{ password_input("security-new-password", "new_password", minlength=8) }}
         <p class="ui-field__hint">Минимум 8 символов, лучше 12+</p>
       </div>
       <div class="ui-field">
         <label class="ui-field__label" for="security-new-password-confirm">Повторите новый пароль</label>
-        {{ password_input("security-new-password-confirm", "new_password_confirm", input_class="ui-input") }}
+        {{ password_input("security-new-password-confirm", "new_password_confirm") }}
       </div>
       <button class="ui-btn ui-btn--primary settings-form__submit" type="submit">Сохранить</button>
     </form>

@@ -35,7 +35,7 @@
     <p class="ui-notice ui-notice--error">{{ error }}</p>
     {% endif %}
     {% if mode == "register" %}
-    <form class="auth-form auth-form--aurora" method="post" action="/register" data-role="auth-form">
+    <form class="auth-form" method="post" action="/register" data-role="auth-form">
       <div class="ui-field">
         <label class="ui-field__label" for="register-nickname">Никнейм</label>
         <input
@@ -63,17 +63,17 @@
       </div>
       <div class="ui-field">
         <label class="ui-field__label" for="register-password">Пароль</label>
-        {{ password_input("register-password", "password", minlength=8, input_class="ui-input") }}
+        {{ password_input("register-password", "password", minlength=8) }}
         <p class="ui-field__hint">Минимум 8 символов, лучше 12+</p>
       </div>
       <div class="ui-field">
         <label class="ui-field__label" for="register-password-confirm">Повторите пароль</label>
-        {{ password_input("register-password-confirm", "password_confirm", input_class="ui-input") }}
+        {{ password_input("register-password-confirm", "password_confirm") }}
       </div>
       <button class="ui-btn ui-btn--primary ui-btn--block auth-form__submit" type="submit">Зарегистрироваться</button>
     </form>
     {% else %}
-    <form class="auth-form auth-form--aurora" method="post" action="/login" data-role="auth-form">
+    <form class="auth-form" method="post" action="/login" data-role="auth-form">
       <div class="ui-field">
         <label class="ui-field__label" for="login-email">Email</label>
         <input
@@ -89,7 +89,7 @@
       </div>
       <div class="ui-field">
         <label class="ui-field__label" for="login-password">Пароль</label>
-        {{ password_input("login-password", "password", input_class="ui-input") }}
+        {{ password_input("login-password", "password") }}
       </div>
       <div class="auth-form__row">
         <label class="ui-checkbox auth-form__remember">
