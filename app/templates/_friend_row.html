@@ -1,67 +1,13 @@
-{# One row of a friend/friend-request list - PR 199's own component, extracted out of
-   friends.html so PR 201's read-only friend preview on profile.html can reuse the exact
-   same markup/classes instead of a second, near-identical version. `entry` just needs a
-   `.user` (FriendUser: id/display_name/avatar_url/avatar_initials) - FriendEntry and
-   FriendRequestEntry (app/db/friendships.py) both shape up that way. Action buttons (if
-   any) are the caller's block - a read-only listing simply calls this with an empty body. #}
-{% macro friend_row(entry) %}
-<div class="friend-row">
-  <a class="friend-row__link" href="/profile/{{ entry.user.id }}">
-    <span class="friend-row__avatar">
-      {% if entry.user.avatar_url %}<img class="avatar-img" src="{{ entry.user.avatar_url }}" alt="">{% else %}{{ entry.user.avatar_initials }}{% endif %}
-    </span>
-    <span class="friend-row__name">{{ entry.user.display_name }}</span>
-  </a>
-  <div class="friend-row__actions">
-    {{ caller() }}
-  </div>
-</div>
-{% endmacro %}
-
-{# The "Добавить в друзья" button and its three alternative states, extracted out of
-   profile.html (PR 199) so the "Друзья" page's own nickname search (PR 209) can render
-   the exact same button for each search result instead of a second, near-identical
-   version. `next_url`, if given, round-trips back to the caller's own page after the
-   POST (profile.html passes its own URL); omitted entirely for a caller like the search
-   results below that's already happy with the plain default (see _safe_next() in
-   app/api/friendships.py) each of these three actions falls back to. #}
-{% macro friend_request_actions(other_user_id, state, next_url=none) %}
-{% if state == "none" %}
-<form method="post" action="/friends/{{ other_user_id }}/request">
-  {% if next_url %}<input type="hidden" name="next" value="{{ next_url }}">{% endif %}
-  <button class="btn btn--secondary" type="submit">Добавить в друзья</button>
-</form>
-{% elif state == "outgoing" %}
-<form method="post" action="/friends/{{ other_user_id }}/remove">
-  {% if next_url %}<input type="hidden" name="next" value="{{ next_url }}">{% endif %}
-  <button class="btn btn--secondary" type="submit" title="Нажмите, чтобы отменить заявку">Заявка отправлена</button>
-</form>
-{% elif state == "incoming" %}
-<div class="profile__friend-actions">
-  <form method="post" action="/friends/{{ other_user_id }}/accept">
-    {% if next_url %}<input type="hidden" name="next" value="{{ next_url }}">{% endif %}
-    <button class="btn" type="submit">Принять заявку</button>
-  </form>
-  <form method="post" action="/friends/{{ other_user_id }}/remove">
-    {% if next_url %}<input type="hidden" name="next" value="{{ next_url }}">{% endif %}
-    <button class="btn btn--secondary" type="submit">Отклонить</button>
-  </form>
-</div>
-{% elif state == "friends" %}
-<p class="content__hint">Вы в друзьях</p>
-{% elif state == "self" %}
-<p class="content__hint">Это вы</p>
-{% endif %}
-{% endmacro %}
-
 {#
   PR 258 (Aurora Ink, FRIENDS): the "02 Components" Friend row - 40px avatar (photo or
-  initials), the name (ellipsis on a long nickname) and the caller's actions. The avatar
-  and name link to the profile, as friend_row() above does. `card` is the boxed row the
+  initials), the name (ellipsis on a long nickname) and the caller's actions (a
+  FriendEntry / FriendRequestEntry / FriendSearchResult - anything with a `.user`). The
+  avatar and name link to the profile. `card` is the boxed row the
   design uses for requests and search results, without it a plain row with a divider
   (the friend list itself). PR 260: `compact` is the profile's short friend list - 32px
   avatar, no divider, no actions. A read-only caller passes an empty block and gets no
-  actions container at all. friend_row() is unused since PR 260, PR 267 drops it.
+  actions container at all. PR 267 removed the pre-Aurora friend_row() /
+  friend_request_actions() these replaced.
 #}
 {% macro ui_friend_row(entry, card=false, compact=false) %}
 {% set actions = caller() %}
@@ -80,9 +26,10 @@
 </div>
 {% endmacro %}
 
-{# friend_request_actions() in the Aurora look for a ui_friend_row() - sm buttons (one
-   secondary, the rest quiet), the settled states as a muted label. Same forms, actions
-   and wording, so the backend and the tests see no difference. PR 260: sm=false gives
+{# The "Добавить в друзья" button and its alternative states (PR 199/209) in the Aurora
+   look for a ui_friend_row() - sm buttons (one secondary, the rest quiet), the settled
+   states as a muted label. `next_url`, if given, round-trips back to the caller's page
+   after the POST (see _safe_next() in app/api/friendships.py). PR 260: sm=false gives
    the full 44px buttons for the profile header. #}
 {% macro ui_friend_request_actions(other_user_id, state, next_url=none, sm=true) %}
 {% set size = " ui-btn--sm" if sm else "" %}
