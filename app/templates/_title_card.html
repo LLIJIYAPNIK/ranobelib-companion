@@ -33,8 +33,10 @@
   pointer users only (tabindex -1, aria-hidden) - the cover link already carries the full
   name as its aria-label. title_card() stays for the screens wave 31 hasn't moved yet;
   PR 267 drops it.
+  PR 257: `meta` is an optional line under the name (e.g. "N глав сегодня" on
+  /activity), `meta_accent` paints it in --accent-text as the design does there.
 #}
-{% macro ui_title_card(slug_url, name, cover_url=none, progress_percent=none) %}
+{% macro ui_title_card(slug_url, name, cover_url=none, progress_percent=none, meta=none, meta_accent=false) %}
 <div class="ui-title-card">
   <div class="ui-title-card__cover">
     <a class="ui-title-card__link" href="/titles/{{ slug_url }}" aria-label="{{ name }}">
@@ -51,5 +53,8 @@
   </div>
   {% endif %}
   <a class="ui-title-card__link ui-title-card__name" href="/titles/{{ slug_url }}" title="{{ name }}" tabindex="-1" aria-hidden="true">{{ name }}</a>
+  {% if meta %}
+  <span class="ui-title-card__meta{% if meta_accent %} ui-title-card__meta--accent{% endif %}">{{ meta }}</span>
+  {% endif %}
 </div>
 {% endmacro %}
