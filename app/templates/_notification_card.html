@@ -12,7 +12,10 @@
    click handler reads to know which row a click on either button belongs to.
 
    PR 199: friend_request/friend_accept aren't about a comment at all (comment_url is
-   always None for them) - they link to the actor's own profile instead. #}
+   always None for them) - they link to the actor's own profile instead.
+
+   PR 259 (Aurora Ink): same markup and classes, restyled as the "02 Components"
+   Notification card - 16px icons as in the design. #}
 {% macro notification_card(n) %}
 {% set link_url = n.comment_url or (("/profile/" ~ n.actor_user_id) if n.kind in ("friend_request", "friend_accept") else none) %}
 <div class="notifications-panel__item{% if not n.is_read %} notifications-panel__item--unread{% endif %}" data-notification-id="{{ n.id }}">
@@ -36,13 +39,13 @@
   <div class="notifications-panel__actions">
     {% if not n.is_read %}
     <button type="button" class="notifications-panel__action" data-role="notification-mark-read" title="Отметить прочитанным" aria-label="Отметить прочитанным">
-      <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+      <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
         <path d="M4 12.5 9.5 18 20 6"/>
       </svg>
     </button>
     {% endif %}
     <button type="button" class="notifications-panel__action" data-role="notification-delete" title="Удалить" aria-label="Удалить">
-      <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+      <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
         <path d="M5 6h14"/>
         <path d="M9 6V4h6v2"/>
         <path d="M7 6l1 14h8l1-14"/>

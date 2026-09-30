@@ -158,12 +158,12 @@
   // THUMB_ICON - one shared constant per icon rather than building each <svg> node by
   // node through the namespaced DOM API.
   const CHECK_ICON =
-    '<svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" ' +
+    '<svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" ' +
     'stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">' +
     '<path d="M4 12.5 9.5 18 20 6"/></svg>';
   const TRASH_ICON =
-    '<svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" ' +
-    'stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">' +
+    '<svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" ' +
+    'stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">' +
     '<path d="M5 6h14"/><path d="M9 6V4h6v2"/><path d="M7 6l1 14h8l1-14"/></svg>';
 
   // PR 170: mark-read/delete live outside the link now (own .notifications-panel__actions
