@@ -30,7 +30,7 @@ def test_settings_nav_lists_all_three_sections_and_highlights_the_current_one() 
         ("Безопасность", "/settings/security"),
     ):
         assert f'href="{href}"' in response.text
-        assert f">{label}</a>" in response.text
+        assert f'settings-nav__label">{label}</span>' in response.text
     # Only the current tab (Чтение) is marked active, not all three.
     assert response.text.count("settings-nav__link--active") == 1
 
