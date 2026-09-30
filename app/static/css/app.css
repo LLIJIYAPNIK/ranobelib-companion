@@ -5866,6 +5866,11 @@ a.ui-title-card:focus-visible .ui-title-card__cover {
   font: var(--type-body-sm);
 }
 
+.ui-title-card__meta--accent {
+  color: var(--accent-text);
+  font: 600 12px/1.2 var(--font-ui);
+}
+
 /* Library card (horizontal): 72x108 cover, name, meta line, large progress. */
 .ui-library-card {
   display: flex;
