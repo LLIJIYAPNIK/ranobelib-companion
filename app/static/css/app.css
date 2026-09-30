@@ -10790,6 +10790,12 @@ body.reader-hud-visible .reader-hud {
   margin: 0;
 }
 
+/* PR 263: a lone "next step" link in the form column (reset / verify screens) keeps its
+   text width instead of stretching across the column. */
+.auth-card__form > .auth-form__link {
+  align-self: flex-start;
+}
+
 .auth-card__skip a,
 .auth-form__link {
   display: inline-flex;
