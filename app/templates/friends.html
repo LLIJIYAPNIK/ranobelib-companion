@@ -1,56 +1,63 @@
 {% extends "base.html" %}
 {% block title %}Друзья — RanobeLib Companion{% endblock %}
 {% block content %}
-{% from "_friend_row.html" import friend_row, friend_request_actions %}
-<main class="content">
-  <h1 class="toc__title">Друзья</h1>
+{#
+  PR 258 (Aurora Ink, FRIENDS): intro, nickname search (field with icon + Primary
+  «Искать»), then search results / incoming / outgoing requests as boxed Friend rows and
+  the friend list as plain divided rows under "Друзья · N". An empty state is one
+  .ui-empty line. A guest gets the locked state instead.
+#}
+{% from "_friend_row.html" import ui_friend_row, ui_friend_request_actions %}
+<main class="friends-page">
+  <h1 class="friends-page__title">Друзья</h1>
   {% if current_user %}
-  <p class="content__hint">
-    Здесь можно находить знакомых читателей, отправлять и принимать заявки в друзья и
-    видеть их активность на главной странице (если это разрешено настройками
-    приватности) — ищите по нику через строку поиска ниже.
-    {{ friends_summary }}
+  <p class="friends-page__intro">
+    Находите знакомых читателей, отправляйте и принимайте заявки и видьте их активность
+    на главной — если это разрешено настройками приватности.
   </p>
-  <form class="search-form" method="get" action="/friends">
-    <input
-      class="search-input"
-      type="text"
-      name="query"
-      value="{{ query or '' }}"
-      placeholder="Ник пользователя"
-      aria-label="Поиск пользователей по нику"
-    >
-    <button class="search-button" type="submit">Искать</button>
+  <form class="ui-input-row" method="get" action="/friends">
+    <label class="ui-input-group">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M11 18a7 7 0 1 0 0-14 7 7 0 0 0 0 14zM20 20l-4-4"/></svg>
+      <input
+        class="ui-input"
+        type="text"
+        name="query"
+        value="{{ query or '' }}"
+        placeholder="Ник пользователя"
+        aria-label="Поиск пользователей по нику"
+      >
+    </label>
+    <button class="ui-btn ui-btn--primary" type="submit">Искать</button>
   </form>
 
   {% if query %}
-  <section class="profile-section">
-    <h2 class="profile-section__title">Результаты поиска</h2>
+  <section class="friends-section">
+    <h2 class="friends-section__title">Результаты поиска</h2>
     {% if search_results %}
-    <div class="friend-list">
+    <div class="friends-section__list">
       {% for result in search_results %}
-      {% call friend_row(result) %}
-      {{ friend_request_actions(result.user.id, result.state) }}
+      {% call ui_friend_row(result, card=true) %}
+      {{ ui_friend_request_actions(result.user.id, result.state) }}
       {% endcall %}
       {% endfor %}
     </div>
     {% else %}
-    <p class="content__hint">Никого не нашли по запросу «{{ query }}».</p>
+    <p class="ui-empty">Никого не нашли по запросу «{{ query }}».</p>
     {% endif %}
   </section>
   {% endif %}
 
   {% if incoming_requests %}
-  <section class="profile-section">
-    <h2 class="profile-section__title">Заявки в друзья</h2>
-    <div class="friend-list">
+  <section class="friends-section">
+    <h2 class="friends-section__title">Заявки в друзья</h2>
+    <div class="friends-section__list">
       {% for req in incoming_requests %}
-      {% call friend_row(req) %}
+      {% call ui_friend_row(req, card=true) %}
       <form method="post" action="/friends/{{ req.user.id }}/accept">
-        <button class="btn btn--sm" type="submit">Принять</button>
+        <button class="ui-btn ui-btn--sm" type="submit">Принять</button>
       </form>
       <form method="post" action="/friends/{{ req.user.id }}/remove">
-        <button class="btn btn--secondary btn--sm" type="submit">Отклонить</button>
+        <button class="ui-btn ui-btn--quiet ui-btn--sm" type="submit">Отклонить</button>
       </form>
       {% endcall %}
       {% endfor %}
@@ -59,13 +66,13 @@
   {% endif %}
 
   {% if outgoing_requests %}
-  <section class="profile-section">
-    <h2 class="profile-section__title">Отправленные заявки</h2>
-    <div class="friend-list">
+  <section class="friends-section">
+    <h2 class="friends-section__title">Отправленные заявки</h2>
+    <div class="friends-section__list">
       {% for req in outgoing_requests %}
-      {% call friend_row(req) %}
+      {% call ui_friend_row(req, card=true) %}
       <form method="post" action="/friends/{{ req.user.id }}/remove">
-        <button class="btn btn--secondary btn--sm" type="submit">Отменить</button>
+        <button class="ui-btn ui-btn--quiet ui-btn--sm" type="submit">Отменить</button>
       </form>
       {% endcall %}
       {% endfor %}
@@ -73,19 +80,20 @@
   </section>
   {% endif %}
 
-  <section class="profile-section">
+  <section class="friends-section">
+    <h2 class="friends-section__title">Друзья{% if friends %} · {{ friends | length }}{% endif %}</h2>
     {% if friends %}
-    <div class="friend-list">
+    <div class="friends-section__list friends-section__list--plain">
       {% for friend in friends %}
-      {% call friend_row(friend) %}
+      {% call ui_friend_row(friend) %}
       <form method="post" action="/friends/{{ friend.user.id }}/remove">
-        <button class="btn btn--secondary btn--sm" type="submit">Удалить</button>
+        <button class="ui-btn ui-btn--quiet ui-btn--sm" type="submit">Удалить</button>
       </form>
       {% endcall %}
       {% endfor %}
     </div>
     {% else %}
-    <p class="content__hint">Пока нет друзей.</p>
+    <p class="ui-empty">Друзей пока нет — используйте поиск выше, чтобы найти знакомых читателей.</p>
     {% endif %}
   </section>
   {% else %}
