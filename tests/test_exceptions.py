@@ -3,6 +3,7 @@ from datetime import UTC, datetime
 from fastapi import FastAPI
 from fastapi.testclient import TestClient
 from ranobelib import (
+    AccessBlockedError,
     AuthRequiredError,
     ChapterNotFoundError,
     MultipleTitleTranslationsError,
@@ -97,6 +98,18 @@ def test_auth_required() -> None:
 
     assert response.status_code == 403
     assert response.json() == {"detail": "Требуется авторизация — недоступно"}
+
+
+def test_access_blocked_is_not_reported_as_auth_required() -> None:
+    exc = AccessBlockedError("https://api.cdnlibs.org/api/manga/123--slug")
+    response = _client_raising(exc).get("/raise")
+
+    assert response.status_code == 503
+    assert response.json() == {
+        "detail": "ranobelib.me временно блокирует наши запросы, попробуйте позже"
+    }
+    assert "авторизац" not in response.text.lower()
+    assert "cdnlibs" not in response.text
 
 
 def test_rate_limit() -> None:
