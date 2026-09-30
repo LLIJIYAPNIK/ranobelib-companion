@@ -1499,141 +1499,6 @@ html.shell-scroll-lock body {
   box-shadow: var(--focus-ring);
 }
 
-/* PR 199: /friends - a plain vertical list of user rows (incoming/outgoing requests,
-   accepted friends), same visual language as .notifications-panel__item above (avatar +
-   name row, hover tint) but its own classes rather than reusing those directly - this
-   list's rows carry labeled text action buttons (.btn), not the notification list's
-   icon-only mark-read/delete pair, and have no unread/read distinction of their own. */
-.friend-list {
-  display: flex;
-  flex-direction: column;
-  gap: 4px;
-  max-width: 640px;
-}
-
-.friend-row {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  padding: 8px 12px;
-  border-radius: 8px;
-  transition: background-color 0.1s ease;
-}
-
-@media (hover: hover) {
-  .friend-row:hover {
-    background: rgba(34, 211, 197, 0.08);
-  }
-}
-
-.friend-row__link {
-  display: flex;
-  align-items: center;
-  flex: 1;
-  min-width: 0;
-  gap: 10px;
-  color: inherit;
-  text-decoration: none;
-}
-
-.friend-row__avatar {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  flex: 0 0 auto;
-  width: 32px;
-  height: 32px;
-  border-radius: 50%;
-  background: var(--legacy-accent);
-  color: var(--text-primary);
-  font-size: 12px;
-  font-weight: 600;
-  overflow: hidden;
-}
-
-.friend-row__name {
-  font-size: 14px;
-  font-weight: 600;
-  color: var(--text-primary);
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-.friend-row__actions {
-  display: flex;
-  flex: 0 0 auto;
-  gap: 8px;
-}
-
-
-
-.header {
-  display: flex;
-  align-items: center;
-  gap: 16px;
-  padding: 20px 32px;
-  border-bottom: 1px solid var(--legacy-border);
-}
-
-.search-form {
-  flex: 1;
-  max-width: 480px;
-  display: flex;
-  gap: 8px;
-}
-
-.search-input {
-  flex: 1;
-  height: 36px;
-  border: 1px solid var(--legacy-border);
-  border-radius: 6px;
-  background: var(--bg-surface);
-  color: var(--text-primary);
-  font-family: var(--legacy-font-mono);
-  font-size: 13px;
-  padding: 0 12px;
-}
-
-.search-input::placeholder {
-  color: var(--text-muted);
-}
-
-.search-input:focus-visible {
-  border-color: var(--accent-teal);
-  box-shadow: 0 0 0 3px rgba(34, 211, 197, 0.18);
-  outline: none;
-}
-
-.search-button {
-  height: 36px;
-  padding: 0 18px;
-  border: none;
-  border-radius: 6px;
-  background: var(--legacy-accent);
-  color: var(--text-primary);
-  font-size: 13px;
-  font-weight: 600;
-  cursor: pointer;
-  transition: transform 0.15s ease, box-shadow 0.15s ease;
-}
-
-.content {
-  flex: 1;
-  padding: 24px 32px;
-}
-
-.content__hint {
-  color: var(--text-muted);
-  font-size: 13px;
-  line-height: 1.6;
-}
-
-.content__hint code {
-  font-family: var(--legacy-font-mono);
-  color: var(--text-secondary);
-}
-
 /* Auth forms (sign-in card, reset, verify - PR 262-264): a column of ui-field rows and a
    Primary submit inside .auth-card__form. */
 .auth-form {
@@ -1978,136 +1843,6 @@ html.shell-scroll-lock body {
   }
 }
 
-.recent__title {
-  font-size: 16px;
-  font-weight: 700;
-  margin: 24px 0 12px;
-}
-
-/* PR 198: the left column of the home page's two-column layout; the right column -
-   friends activity, PR 200 - is .home-columns__friends below, present only for a logged-in
-   visitor with at least one friend (see index.html's own `{% if friend_activity %}`). */
-.home-columns {
-  display: flex;
-  align-items: flex-start;
-  gap: 32px;
-}
-
-.home-columns__primary {
-  flex: 1;
-  min-width: 0;
-}
-
-/* PR 200: fixed-width sidebar column, unlike .home-columns__primary's flexible one - a
-   friend-activity card reads better at a stable width than stretched to fill leftover
-   space next to a short "Недавние" grid. */
-.home-columns__friends {
-  flex: 0 0 320px;
-  min-width: 0;
-}
-
-.friend-activity-list {
-  display: flex;
-  flex-direction: column;
-  gap: 12px;
-  margin-top: 8px;
-}
-
-/* Same card language as .home-empty/.profile-section - a bordered surface, not a second
-   set of card styles. */
-.friend-activity-card {
-  padding: 16px;
-  border: 1px solid var(--legacy-border);
-  border-radius: 12px;
-  background: var(--bg-surface);
-}
-
-.friend-activity-card__header {
-  margin: -4px -4px 10px;
-}
-
-.friend-activity-card__streak {
-  margin: 0 0 8px;
-  font-size: 13px;
-  color: var(--text-secondary);
-}
-
-.friend-activity-card__reading {
-  margin: 0 0 8px;
-  font-size: 13px;
-  color: var(--text-secondary);
-}
-
-.friend-activity-card__reading a {
-  color: var(--text-primary);
-  font-weight: 600;
-}
-
-.friend-activity-card__comments {
-  display: flex;
-  flex-direction: column;
-  gap: 6px;
-  margin: 0;
-  padding: 0;
-  list-style: none;
-}
-
-.friend-activity-card__comments a {
-  display: block;
-  overflow: hidden;
-  font-size: 13px;
-  line-height: 1.4;
-  color: var(--text-secondary);
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-/* PR 200: stacked vertically on mobile - "Недавние"/empty state first, friend activity
-   below it - rather than squeezed into a second, half-width column (same "sequential
-   sections, not narrow side-by-side columns" approach PR 104 already took for mobile
-   settings). */
-@media (max-width: 640px) {
-  .home-columns {
-    flex-direction: column;
-  }
-
-  .home-columns__friends {
-    flex-basis: auto;
-    width: 100%;
-  }
-}
-
-/* Meaningful empty state for a first-time visitor / fresh account with no "Недавние"
-   entries yet (PR 198) - explains what the page is for and, separately, that this site
-   is a thin layer over the public RanobeLib API rather than its own content source
-   (same distinction CLAUDE.md already draws for developers, just also said out loud to
-   visitors here). Same card language as the locked state, left-aligned rather than
-   centered since this replaces a left-aligned section, not a full-page state. */
-.home-empty {
-  max-width: 480px;
-  margin-top: 8px;
-  padding: 24px;
-  border: 1px solid var(--legacy-border);
-  border-radius: 12px;
-  background: var(--bg-surface);
-}
-
-.home-empty__text {
-  margin: 0 0 12px;
-  font-size: 14px;
-  line-height: 1.6;
-  color: var(--text-secondary);
-}
-
-.home-empty__text:last-child {
-  margin-bottom: 0;
-}
-
-.home-empty__text--muted {
-  font-size: 13px;
-  color: var(--text-muted);
-}
-
 @keyframes library-tabs-content-in {
   from {
     opacity: 0;
@@ -2127,181 +1862,6 @@ html.shell-scroll-lock body {
    below the mobile breakpoint. */
 .library-tabs-content {
   animation: library-tabs-content-in 0.18s ease-out;
-}
-
-.title-card-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
-  gap: 20px;
-  margin-top: 16px;
-}
-
-.title-card {
-  position: relative;
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-  text-decoration: none;
-  color: inherit;
-  /* PR 60: the sidebar's width transition (.sidebar, PR 39) resizes .content on every
-     animation frame, which forces .title-card-grid's auto-fill columns to relayout every
-     card in it - fine for one page of cards, but infinite scroll (PR 15/24) never trims
-     the DOM, so a catalog scrolled through a while accumulates hundreds of them and the
-     transition visibly janks. content-visibility skips layout/paint entirely for cards
-     currently far outside the viewport, so a reflow-triggering event like this only ever
-     costs what's actually on screen, however many more are loaded below. The
-     contain-intrinsic-size fallback keeps the grid's row heights (and thus scrollbar/
-     scroll position) stable before a card has ever been rendered once; the `auto` keyword
-     switches to remembering each card's real rendered height afterwards, since it varies
-     with title length and isn't safe to hardcode.  */
-  content-visibility: auto;
-  contain-intrinsic-size: auto 260px;
-}
-
-/* PR 141: <img> can't take generated content (::before/::after) in any browser, so the
-   darkening overlay below lives on this wrapping <span> instead (_title_card.html) -
-   its own overflow:hidden is also what stops the zoomed .title-card__cover below from
-   spilling out past the card's rounded corners. Wraps the no-cover placeholder <div>
-   the same way (_title_card.html's other branch) rather than only the <img> case, so
-   both react to hover identically instead of one silently doing nothing. */
-.title-card__cover-wrap {
-  position: relative;
-  overflow: hidden;
-  border-radius: 8px;
-}
-
-.title-card__cover-wrap::after {
-  content: "";
-  position: absolute;
-  inset: 0;
-  background: linear-gradient(to top, rgba(0, 0, 0, 0.45), rgba(0, 0, 0, 0) 60%);
-  opacity: 0;
-  transition: opacity 0.2s ease;
-}
-
-@media (hover: hover) {
-  .title-card:hover .title-card__cover-wrap::after {
-    opacity: 1;
-  }
-
-  .title-card:hover .title-card__cover {
-    transform: scale(1.05);
-  }
-}
-
-.title-card__cover {
-  width: 100%;
-  aspect-ratio: 2 / 3;
-  border-radius: 8px;
-  object-fit: cover;
-  background: var(--bg-surface);
-  transition: transform 0.2s ease;
-}
-
-.title-card__name {
-  font-size: 13px;
-  font-weight: 600;
-  color: var(--text-primary);
-  line-height: 1.4;
-  display: -webkit-box;
-  -webkit-line-clamp: 3;
-  -webkit-box-orient: vertical;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  overflow-wrap: break-word;
-}
-
-.title-card:hover .title-card__name {
-  color: var(--accent-teal);
-}
-
-.title-card__status {
-  align-self: flex-start;
-}
-
-.title-card__meta {
-  font-size: 12px;
-  color: var(--text-secondary);
-}
-
-.title-card__meta--muted {
-  color: var(--text-muted);
-}
-
-.title-card__remove {
-  position: absolute;
-  top: 6px;
-  right: 6px;
-  width: 24px;
-  height: 24px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  background: rgba(0, 0, 0, 0.55);
-  border: none;
-  border-radius: 50%;
-  color: #fff;
-  font-size: 16px;
-  line-height: 1;
-  cursor: pointer;
-  transition: background 0.15s ease;
-  /* Bug fix: .title-card__cover-wrap (PR 141) is position:relative for its own ::after
-     overlay, which put it in the same z-index:auto positioned stacking layer as this
-     button - since it sits later in _title_card.html than .title-card__quickview, it
-     started painting (and intercepting clicks) on top of that one specifically, purely
-     because of DOM order. This button and the old favorite star (PR 123) happened to come
-     after the wrap in the DOM so were unaffected by that particular ordering, but an
-     explicit z-index here removes the dependency on DOM order for any of the three
-     corner buttons, not just the one that broke. */
-  z-index: 1;
-}
-
-@media (hover: hover) {
-  .title-card__remove:hover {
-    background: var(--accent-orange);
-  }
-}
-
-/* PR 117: "quick view" trigger - top-left corner so it never collides with
-   .title-card__remove (top-right, "Недавние" only). Same circular-button treatment. */
-.title-card__quickview {
-  position: absolute;
-  top: 6px;
-  left: 6px;
-  width: 24px;
-  height: 24px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  background: rgba(0, 0, 0, 0.55);
-  border: none;
-  border-radius: 50%;
-  color: #fff;
-  cursor: pointer;
-  transition: background 0.15s ease;
-  /* See the matching comment on .title-card__remove above - this is the one of the three
-     corner buttons that actually sits *before* .title-card__cover-wrap in the DOM
-     (_title_card.html), so it's the one that was genuinely unclickable without this. */
-  z-index: 1;
-}
-
-@media (hover: hover) {
-  .title-card__quickview:hover {
-    background: var(--accent-teal);
-  }
-}
-
-.reading-progress {
-  height: 3px;
-  background: var(--legacy-border);
-  border-radius: 2px;
-  overflow: hidden;
-}
-
-.reading-progress__fill {
-  height: 100%;
-  background: var(--accent-teal);
-  border-radius: 2px;
 }
 
 /* PR 218: same fixed-overlay/backdrop-click/Escape/close-button pattern as
@@ -2390,15 +1950,6 @@ html.shell-scroll-lock body {
   transition: transform 0.15s ease, box-shadow 0.15s ease, border-color 0.15s ease;
 }
 
-.btn--primary {
-  background: var(--legacy-accent);
-}
-
-.btn--secondary {
-  background: transparent;
-  border: 1px solid var(--legacy-border);
-}
-
 /* PR 138: the "Сохранить" buttons on every /settings/* form had no focus-visible ring at
    all, unlike the inputs/checkboxes right above them in the same forms - a keyboard user
    tabbing through a settings form lost the focus indicator entirely on reaching the
@@ -2409,27 +1960,19 @@ html.shell-scroll-lock body {
   box-shadow: 0 0 0 3px rgba(34, 211, 197, 0.35);
 }
 
-/* One shared hover treatment for every button-like element in the app - previously some
-   had no hover feedback at all (.btn--primary, .btn--sm, .search-button,
-   .locked-feature__cta) and others changed color/border instantly with no transition
-   (.btn--secondary, the old chapter export links).
+/* One shared hover treatment for the remaining pre-Aurora .btn buttons (cookie notice,
+   comment composer) - the Aurora .ui-btn has its own hover rules (PR 248).
 
    Gated to hover-capable devices (mouse/trackpad) - a plain :hover rule applies on tap
    on a touchscreen and only clears on the next unrelated tap, leaving the scaled-up/
    shadowed state "stuck" until then (same issue fixed for the sidebar in PR 42). */
 @media (hover: hover) {
-  .btn--secondary:hover,
-  .btn:hover,
-  .search-button:hover {
+  .btn:hover {
     transform: scale(1.03);
     box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
   }
 
   .toc__export-format:hover {
-    border-color: var(--accent-teal);
-  }
-
-  .reader-settings__toggle:hover:not(:checked) {
     border-color: var(--accent-teal);
   }
 }
@@ -2441,15 +1984,6 @@ html.shell-scroll-lock body {
   font-size: 11px;
   font-weight: 600;
   background: var(--legacy-accent);
-}
-
-/* PR 199: .btn--sm's own `background` above otherwise wins over .btn--secondary's
-   `transparent` (both single-class selectors, .btn--sm just happens to come second in the
-   file) - the friend-row action buttons (friends.html) are the first place this codebase
-   combines the two, so the collision was never visible before. Two classes here beats
-   .btn--sm's one regardless of source order. */
-.btn--sm.btn--secondary {
-  background: transparent;
 }
 
 .toc__export-format {
@@ -2558,12 +2092,6 @@ html.shell-scroll-lock body {
 .dropdown__option--selected {
   color: var(--accent-teal);
   font-weight: 600;
-}
-
-.toc__title {
-  font-size: 18px;
-  font-weight: 700;
-  margin: 0;
 }
 
 .reader-content {
@@ -3566,87 +3094,6 @@ img.paragraph-comment__attachment {
   color: var(--text-muted);
 }
 
-.reader-settings__field {
-  display: flex;
-  flex-direction: column;
-  gap: 4px;
-  font-size: 12px;
-  color: var(--text-muted);
-}
-
-.reader-settings__field input[type="range"] {
-  accent-color: var(--accent-teal);
-  width: 100%;
-}
-
-/* PR 63: the tap-to-read switch is a checkbox, not a text/range/select field like the
-   rest of .reader-settings__field - row layout (box next to its label) instead of the
-   stacked "label above control" the others use. */
-.reader-settings__field--checkbox {
-  flex-direction: row;
-  align-items: center;
-  gap: 8px;
-  font-size: 13px;
-  color: var(--text-secondary);
-  cursor: pointer;
-}
-
-/* Same custom checkmark PR 53/59 already gave the catalog genre and chapter-selection
-   checkboxes - kept as its own class (not reusing theirs) since neither of those names
-   fits a general-purpose settings toggle. */
-.reader-settings__toggle {
-  appearance: none;
-  -webkit-appearance: none;
-  flex: 0 0 auto;
-  width: 16px;
-  height: 16px;
-  margin: 0;
-  position: relative;
-  border: 1px solid var(--legacy-border);
-  border-radius: 4px;
-  background: var(--bg-surface);
-  cursor: pointer;
-  transition: border-color 0.15s ease, background-color 0.15s ease, box-shadow 0.15s ease;
-}
-
-.reader-settings__toggle::after {
-  content: "";
-  position: absolute;
-  left: 4px;
-  top: 1px;
-  width: 4px;
-  height: 8px;
-  border: solid var(--legacy-bg-page);
-  border-width: 0 2px 2px 0;
-  transform: rotate(45deg) scale(0);
-  transition: transform 0.1s ease;
-}
-
-.reader-settings__toggle:checked {
-  background: var(--accent-teal);
-  border-color: var(--accent-teal);
-}
-
-.reader-settings__toggle:checked::after {
-  transform: rotate(45deg) scale(1);
-}
-
-.reader-settings__toggle:focus-visible {
-  outline: none;
-  border-color: var(--accent-teal);
-  box-shadow: 0 0 0 3px rgba(34, 211, 197, 0.18);
-}
-
-/* Reading-speed test (PR 77) - nested inside the "Чтение с помощью тапа" section rather
-   than getting its own top-level .reader-settings-section, since it's a sub-feature of
-   tap-to-read (its result only matters to PR 79's tempo animations, also scoped there). */
-.reader-settings-subsection__title {
-  font-size: 13px;
-  font-weight: 700;
-  color: var(--text-secondary);
-  margin: 20px 0 8px;
-}
-
 .reading-speed-test__status {
   color: var(--text-muted);
   font-size: 13px;
@@ -3739,9 +3186,8 @@ img.paragraph-comment__attachment {
   font-variant-numeric: tabular-nums;
 }
 
-/* PR 78: manual readingSpeedWpm entry, independent of the test above - same field-label
-   layout as the rest of .reader-settings__field, just its own input instead of a
-   <select>/<input type="range"> since a typed number is the whole point here. */
+/* PR 78: manual readingSpeedWpm entry, independent of the test above - a label above its
+   own number input, since a typed number is the whole point here. */
 .reading-speed-test__manual-field {
   margin-top: 14px;
   max-width: 200px;
@@ -3822,44 +3268,6 @@ img.paragraph-comment__attachment {
   border-color: var(--accent-teal);
   box-shadow: 0 0 0 3px rgba(34, 211, 197, 0.18);
   outline: none;
-}
-
-/* Mobile breakpoint — layout adapted from the "Mobile Home" / "Mobile Title Page" /
-   "Mobile Reader" / "Mobile Downloads" frames in the Claude Design import (see
-   CLAUDE.md, "Дизайн"). Sidebar becomes a bottom tab bar, matching those frames;
-   account controls move to a slim fixed top strip, which isn't covered by any of
-   the mobile frames, extended here from the same visual language. */
-@media (max-width: 640px) {
-  .header {
-    padding: 14px 16px;
-    flex-wrap: wrap;
-  }
-
-  .content {
-    padding: 16px;
-  }
-
-  .content__hint--page {
-    padding: 0 16px;
-  }
-
-  .search-form {
-    max-width: none;
-    flex-wrap: wrap;
-  }
-
-  .search-input {
-    flex: 1 1 100%;
-  }
-
-  .title-card-grid {
-    grid-template-columns: repeat(auto-fill, minmax(100px, 1fr));
-    gap: 10px;
-  }
-
-  .title-card__name {
-    font-size: 11px;
-  }
 }
 
 /* Global "file ready" toasts (PR 50) - rendered by download-ready.js from
@@ -4893,8 +4301,7 @@ img.paragraph-comment__attachment {
 }
 
 /* Progress bar: 4px under grid cards (percent 11px), --lg 6px on library cards
-   (percent 15px/800). Width comes from an inline style="width: N%" on the fill, the
-   same way the pre-Aurora .reading-progress bars already do it. */
+   (percent 15px/800). Width comes from an inline style="width: N%" on the fill. */
 .ui-progress {
   display: flex;
   align-items: center;
