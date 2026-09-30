@@ -195,13 +195,11 @@ async def test_friends_page_lists_incoming_outgoing_and_accepted(client: TestCli
     assert "carol@example.com" in response.text  # incoming request row
     assert "alice@example.com" in response.text  # outgoing request row
     assert "dave@example.com" in response.text  # accepted friend row
-    # PR 215: the friend count moved into the intro paragraph, replacing the redundant
-    # "Друзья" heading that used to sit directly above the list.
-    assert "Сейчас у вас 1 друг." in response.text
-    assert '<h2 class="profile-section__title">Друзья</h2>' not in response.text
+    # PR 258 (Aurora Ink, FRIENDS): the count sits in the list's own heading again.
+    assert '<h2 class="friends-section__title">Друзья · 1</h2>' in response.text
 
 
-async def test_friends_page_with_no_friends_shows_intro_hint_not_a_bare_heading(
+async def test_friends_page_with_no_friends_shows_the_empty_hint(
     client: TestClient,
 ) -> None:
     _register(client, "alice@example.com")
@@ -212,7 +210,7 @@ async def test_friends_page_with_no_friends_shows_intro_hint_not_a_bare_heading(
     assert "Друзей пока нет — используйте поиск выше, чтобы найти знакомых читателей." in (
         response.text
     )
-    assert '<h2 class="profile-section__title">Друзья</h2>' not in response.text
+    assert '<h2 class="friends-section__title">Друзья</h2>' in response.text
 
 
 async def test_sending_a_friend_request_notifies_the_recipient(client: TestClient) -> None:
@@ -293,7 +291,7 @@ async def test_friends_search_finds_a_matching_nickname(client: TestClient) -> N
     # PR 223: a bare "Bob" not in response.text substring check also caught the sidebar
     # account row's own display of the logged-in searcher's name (Bob, in this test) -
     # scope this to the actual search-result row instead.
-    assert '<span class="friend-row__name">Bob</span>' not in response.text
+    assert '<span class="ui-friend-row__name">Bob</span>' not in response.text
     assert "Добавить в друзья" in response.text
 
 

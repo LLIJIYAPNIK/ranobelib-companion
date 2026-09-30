@@ -10317,3 +10317,153 @@ body.reader-hud-visible .reader-hud {
     line-height: 1;
   }
 }
+
+/* ==========================================================================
+   Aurora Ink screens - friends (PR 258): FRIENDS. Intro, nickname search, then the
+   request/search sections as boxed Friend rows and "Друзья · N" as plain divided rows.
+   Content capped at 760px, as in the design.
+   ========================================================================== */
+.friends-page {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: var(--s-20);
+  width: 100%;
+  max-width: calc(760px + 2 * var(--s-40));
+  padding: var(--s-32) var(--s-40) var(--s-40);
+}
+
+.friends-page__title {
+  margin: 0;
+  color: var(--text-1);
+  font: var(--type-h1);
+}
+
+.friends-page__intro {
+  max-width: 640px;
+  margin: 0;
+  color: var(--text-2);
+  font: 500 14px/1.55 var(--font-ui);
+}
+
+.friends-section {
+  display: flex;
+  flex-direction: column;
+  gap: var(--s-8);
+}
+
+.friends-section__title {
+  margin: 0;
+  color: var(--text-1);
+  font: 800 17px/1.2 var(--font-ui);
+}
+
+.friends-section__list {
+  display: flex;
+  flex-direction: column;
+  gap: var(--s-8);
+}
+
+.friends-section__list--plain {
+  gap: 0;
+}
+
+/* Friend row: 40px avatar, name with ellipsis, actions on the right. Plain = a divided
+   row (the friend list), --card = boxed (requests, search results). When the name
+   would get narrower than ~120px (two actions on a phone) the actions wrap under it,
+   still right-aligned, instead of squeezing the name to one letter. */
+.ui-friend-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--s-4) var(--s-12);
+  min-width: 0;
+  padding: 6px 0;
+  border-bottom: 1px solid var(--divider);
+}
+
+.ui-friend-row--card {
+  padding: 10px var(--s-12);
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  background: var(--surface-1);
+}
+
+.ui-friend-row__link {
+  display: flex;
+  align-items: center;
+  gap: var(--s-12);
+  flex: 1 1 120px;
+  min-width: 0;
+  min-height: 44px;
+  border-radius: var(--r-md);
+  color: var(--text-1);
+  text-decoration: none;
+}
+
+.ui-friend-row__link:focus-visible {
+  outline: none;
+  box-shadow: var(--focus-ring);
+}
+
+.ui-friend-row__avatar {
+  display: grid;
+  place-items: center;
+  flex: 0 0 auto;
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  background: var(--surface-3);
+  color: var(--text-2);
+  font: 800 13px/1 var(--font-ui);
+  overflow: hidden;
+}
+
+.ui-friend-row__name {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font: 700 15px/1.2 var(--font-ui);
+}
+
+@media (hover: hover) {
+  .ui-friend-row__link:hover .ui-friend-row__name {
+    color: var(--accent-text);
+  }
+}
+
+.ui-friend-row__actions {
+  display: flex;
+  flex: 0 0 auto;
+  align-items: center;
+  gap: var(--s-4);
+  margin-left: auto;
+}
+
+.ui-friend-row__actions form {
+  margin: 0;
+}
+
+.ui-friend-row__state {
+  padding: 0 var(--s-8);
+  color: var(--text-3);
+  font: 600 13px/1 var(--font-ui);
+}
+
+@media (max-width: 1199px) {
+  .friends-page {
+    padding: 28px var(--s-32) var(--s-32);
+  }
+}
+
+@media (max-width: 767px) {
+  .friends-page {
+    padding: var(--s-4) var(--s-20) var(--s-8);
+  }
+
+  .friends-page__title {
+    font-size: 22px;
+    line-height: 1;
+  }
+}
