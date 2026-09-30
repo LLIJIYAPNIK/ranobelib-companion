@@ -53,3 +53,55 @@
 <p class="content__hint">Это вы</p>
 {% endif %}
 {% endmacro %}
+
+{#
+  PR 258 (Aurora Ink, FRIENDS): the "02 Components" Friend row - 40px avatar (photo or
+  initials), the name (ellipsis on a long nickname) and the caller's actions. The avatar
+  and name link to the profile, as friend_row() above does. `card` is the boxed row the
+  design uses for requests and search results, without it a plain row with a divider
+  (the friend list itself). friend_row() stays for profile.html until PR 260 moves it,
+  PR 267 drops it.
+#}
+{% macro ui_friend_row(entry, card=false) %}
+<div class="ui-friend-row{% if card %} ui-friend-row--card{% endif %}">
+  <a class="ui-friend-row__link" href="/profile/{{ entry.user.id }}">
+    <span class="ui-friend-row__avatar">
+      {% if entry.user.avatar_url %}<img class="avatar-img" src="{{ entry.user.avatar_url }}" alt="">{% else %}{{ entry.user.avatar_initials }}{% endif %}
+    </span>
+    <span class="ui-friend-row__name">{{ entry.user.display_name }}</span>
+  </a>
+  <div class="ui-friend-row__actions">
+    {{ caller() }}
+  </div>
+</div>
+{% endmacro %}
+
+{# friend_request_actions() in the Aurora look for a ui_friend_row() - sm buttons (one
+   secondary, the rest quiet), the settled states as a muted label. Same forms, actions
+   and wording, so the backend and the tests see no difference. #}
+{% macro ui_friend_request_actions(other_user_id, state, next_url=none) %}
+{% if state == "none" %}
+<form method="post" action="/friends/{{ other_user_id }}/request">
+  {% if next_url %}<input type="hidden" name="next" value="{{ next_url }}">{% endif %}
+  <button class="ui-btn ui-btn--sm" type="submit">Добавить в друзья</button>
+</form>
+{% elif state == "outgoing" %}
+<form method="post" action="/friends/{{ other_user_id }}/remove">
+  {% if next_url %}<input type="hidden" name="next" value="{{ next_url }}">{% endif %}
+  <button class="ui-btn ui-btn--quiet ui-btn--sm" type="submit" title="Нажмите, чтобы отменить заявку">Заявка отправлена</button>
+</form>
+{% elif state == "incoming" %}
+<form method="post" action="/friends/{{ other_user_id }}/accept">
+  {% if next_url %}<input type="hidden" name="next" value="{{ next_url }}">{% endif %}
+  <button class="ui-btn ui-btn--sm" type="submit">Принять заявку</button>
+</form>
+<form method="post" action="/friends/{{ other_user_id }}/remove">
+  {% if next_url %}<input type="hidden" name="next" value="{{ next_url }}">{% endif %}
+  <button class="ui-btn ui-btn--quiet ui-btn--sm" type="submit">Отклонить</button>
+</form>
+{% elif state == "friends" %}
+<span class="ui-friend-row__state">Вы в друзьях</span>
+{% elif state == "self" %}
+<span class="ui-friend-row__state">Это вы</span>
+{% endif %}
+{% endmacro %}
