@@ -10886,6 +10886,44 @@ body.reader-hud-visible .reader-hud {
   font-size: 15px;
 }
 
+/* AUTH-VERIFY (PR 264): the address in the explanation, and "Письмо не пришло? …" with
+   its resend <button> set inline as a link. */
+.auth-card__text strong {
+  color: var(--text-1);
+}
+
+.auth-form__resend {
+  margin: 0;
+}
+
+.auth-form__resend-text {
+  margin: 0;
+  color: var(--text-3);
+  font: 500 13px/1.5 var(--font-ui);
+}
+
+.auth-form__inline-button {
+  padding: 0;
+  border: 0;
+  border-radius: var(--r-xs);
+  background: none;
+  color: var(--primary-text);
+  font: 600 13px/1.5 var(--font-ui);
+  cursor: pointer;
+}
+
+@media (hover: hover) {
+  .auth-form__inline-button:hover {
+    text-decoration: underline;
+    text-underline-offset: 3px;
+  }
+}
+
+.auth-form__inline-button:focus-visible {
+  outline: none;
+  box-shadow: var(--focus-ring);
+}
+
 /* Avatar step (register_avatar.html): the settings avatar circle + a hint beside it. */
 .avatar-row {
   display: flex;

@@ -6,45 +6,51 @@
   States: the code form (default, needs `pending_email` - the account waiting in this
   session), plus `message`/`error` above it; and `invalid` for a dead link from the email.
   get_valid_token() doesn't say why a link is dead, so neither does this page.
+
+  PR 264 (Aurora Ink, AUTH-VERIFY): the PR 262 auth card - "Подтверждение email" over the
+  explanation with the address in bold, the code as a ui-field input, a 48px Primary
+  «Подтвердить» and the resend line with its inline button. Only the look changed: same
+  forms, routes and hooks (verify-email-form, verify-email-resend) as PR 246.
 #}
 {% extends "base.html" %}
+{# M-AUTH-VERIFY: back button in the mobile strip. #}
+{% set strip_back_href = "/login" %}
 {% block title %}Подтверждение email — RanobeLib Companion{% endblock %}
 {% block content %}
-<main class="content">
+<main class="auth-page">
   <div class="auth-card">
     <div class="auth-card__intro">
-      <div class="auth-card__brand">webnovells</div>
-      <p class="auth-card__pitch">
-        Подтвердите email, чтобы войти в аккаунт.
-      </p>
+      <div class="auth-card__brand">webnovells<span class="auth-card__brand-dot" aria-hidden="true"></span></div>
+      <p class="auth-card__pitch">Подтвердите email, чтобы войти в аккаунт.</p>
     </div>
     <div class="auth-card__form">
+      <h1 class="auth-card__title">Подтверждение email</h1>
       {% if invalid %}
-      <p class="form-error">Ссылка недействительна, уже использована или устарела.</p>
+      <p class="ui-notice ui-notice--error">Ссылка недействительна, уже использована или устарела.</p>
       {% if pending_email %}
-      <p class="auth-form__hint"><a href="/verify-email">Ввести код или отправить письмо заново</a></p>
+      <a class="auth-form__link" href="/verify-email">Ввести код или отправить письмо заново</a>
       {% else %}
-      <p class="auth-form__hint">
+      <p class="auth-card__text">
         Войдите — если email ещё не подтверждён, можно будет отправить письмо заново.
       </p>
-      <p class="auth-form__hint"><a href="/login">Войти</a></p>
+      <a class="ui-btn ui-btn--primary ui-btn--block auth-form__submit" href="/login">Войти</a>
       {% endif %}
       {% else %}
-      <p class="auth-form__hint">
+      <p class="auth-card__text">
         Мы отправили письмо на <strong>{{ pending_email }}</strong>. Перейдите по ссылке из
         письма или введите код из него.
       </p>
       {% if message %}
-      <p class="content__notice content__notice--success">{{ message }}</p>
+      <p class="ui-notice">{{ message }}</p>
       {% endif %}
       {% if error %}
-      <p class="form-error">{{ error }}</p>
+      <p class="ui-notice ui-notice--error">{{ error }}</p>
       {% endif %}
-      <form class="auth-form" method="post" action="/verify-email" data-role="verify-email-form">
-        <div class="auth-form__field">
-          <label class="auth-form__label" for="verify-email-code">Код из письма</label>
+      <form class="auth-form auth-form--aurora" method="post" action="/verify-email" data-role="verify-email-form">
+        <div class="ui-field">
+          <label class="ui-field__label" for="verify-email-code">Код из письма</label>
           <input
-            class="auth-form__input"
+            class="ui-input"
             id="verify-email-code"
             type="text"
             name="code"
@@ -56,12 +62,12 @@
             autofocus
           >
         </div>
-        <button class="btn btn--primary" type="submit">Подтвердить</button>
+        <button class="ui-btn ui-btn--primary ui-btn--block auth-form__submit" type="submit">Подтвердить</button>
       </form>
-      <form method="post" action="/verify-email/resend" data-role="verify-email-resend">
-        <p class="auth-form__hint">
+      <form class="auth-form__resend" method="post" action="/verify-email/resend" data-role="verify-email-resend">
+        <p class="auth-form__resend-text">
           Письмо не пришло? Проверьте «Спам» или
-          <button class="auth-form__link-button" type="submit">отправьте его ещё раз</button>.
+          <button class="auth-form__inline-button" type="submit">отправьте его ещё раз</button>.
         </p>
       </form>
       {% endif %}
