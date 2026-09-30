@@ -1,7 +1,9 @@
 {% extends "base.html" %}
+{# PR 262 (M-AUTH-*): back button in the mobile strip. #}
+{% set strip_back_href = "/" %}
 {% block title %}Вход — RanobeLib Companion{% endblock %}
 {% block content %}
-<main class="content">
+<main class="auth-page">
   {% include "_auth_card.html" %}
 </main>
 {% endblock %}

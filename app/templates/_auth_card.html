@@ -11,11 +11,16 @@
   also passes `active_tab` with the same value (PR 219) so `_auth_tabs.html` can highlight
   the current tab - kept as a separate key from `mode` rather than reusing it, since the
   two serve different templates for different reasons.
+
+  PR 262 (Aurora Ink, AUTH-LOGIN / AUTH-REGISTER): the design's card - the intro column
+  (brand, pitch, perks and disclaimer; only brand + pitch on phones) beside the form
+  column with segmented tabs, ui-field inputs, «Запомнить меня» / «Забыли пароль?» on one
+  row and a 48px Primary submit. Same forms, field names and hooks as before.
 #}
 {% from "_password_field.html" import password_input %}
 <div class="auth-card">
   <div class="auth-card__intro">
-    <div class="auth-card__brand">webnovells</div>
+    <div class="auth-card__brand">webnovells<span class="auth-card__brand-dot" aria-hidden="true"></span></div>
     <p class="auth-card__pitch">Читать можно и без аккаунта. С аккаунтом — удобнее.</p>
     <ul class="auth-card__perks">
       <li>Своя библиотека и избранное</li>
@@ -27,14 +32,14 @@
   <div class="auth-card__form">
     {% include "_auth_tabs.html" %}
     {% if error %}
-    <p class="form-error">{{ error }}</p>
+    <p class="ui-notice ui-notice--error">{{ error }}</p>
     {% endif %}
     {% if mode == "register" %}
-    <form class="auth-form" method="post" action="/register" data-role="auth-form">
-      <div class="auth-form__field">
-        <label class="auth-form__label" for="register-nickname">Никнейм</label>
+    <form class="auth-form auth-form--aurora" method="post" action="/register" data-role="auth-form">
+      <div class="ui-field">
+        <label class="ui-field__label" for="register-nickname">Никнейм</label>
         <input
-          class="auth-form__input"
+          class="ui-input"
           id="register-nickname"
           type="text"
           name="nickname"
@@ -43,10 +48,10 @@
           placeholder="Необязательно"
         >
       </div>
-      <div class="auth-form__field">
-        <label class="auth-form__label" for="register-email">Email</label>
+      <div class="ui-field">
+        <label class="ui-field__label" for="register-email">Email</label>
         <input
-          class="auth-form__input"
+          class="ui-input"
           id="register-email"
           type="email"
           name="email"
@@ -56,23 +61,23 @@
           autofocus
         >
       </div>
-      <div class="auth-form__field">
-        <label class="auth-form__label" for="register-password">Пароль</label>
-        {{ password_input("register-password", "password", minlength=8) }}
-        <p class="auth-form__hint">Минимум 8 символов, лучше 12+</p>
+      <div class="ui-field">
+        <label class="ui-field__label" for="register-password">Пароль</label>
+        {{ password_input("register-password", "password", minlength=8, input_class="ui-input") }}
+        <p class="ui-field__hint">Минимум 8 символов, лучше 12+</p>
       </div>
-      <div class="auth-form__field">
-        <label class="auth-form__label" for="register-password-confirm">Повторите пароль</label>
-        {{ password_input("register-password-confirm", "password_confirm") }}
+      <div class="ui-field">
+        <label class="ui-field__label" for="register-password-confirm">Повторите пароль</label>
+        {{ password_input("register-password-confirm", "password_confirm", input_class="ui-input") }}
       </div>
-      <button class="ui-btn ui-btn--primary ui-btn--block" type="submit">Зарегистрироваться</button>
+      <button class="ui-btn ui-btn--primary ui-btn--block auth-form__submit" type="submit">Зарегистрироваться</button>
     </form>
     {% else %}
-    <form class="auth-form" method="post" action="/login" data-role="auth-form">
-      <div class="auth-form__field">
-        <label class="auth-form__label" for="login-email">Email</label>
+    <form class="auth-form auth-form--aurora" method="post" action="/login" data-role="auth-form">
+      <div class="ui-field">
+        <label class="ui-field__label" for="login-email">Email</label>
         <input
-          class="auth-form__input"
+          class="ui-input"
           id="login-email"
           type="email"
           name="email"
@@ -82,16 +87,18 @@
           autofocus
         >
       </div>
-      <div class="auth-form__field">
-        <label class="auth-form__label" for="login-password">Пароль</label>
-        {{ password_input("login-password", "password") }}
+      <div class="ui-field">
+        <label class="ui-field__label" for="login-password">Пароль</label>
+        {{ password_input("login-password", "password", input_class="ui-input") }}
       </div>
-      <label class="auth-form__field auth-form__field--checkbox">
-        <input id="login-remember" type="checkbox" name="remember_me">
-        <span>Запомнить меня</span>
-      </label>
-      <p class="auth-form__hint"><a href="/password-reset">Забыли пароль?</a></p>
-      <button class="ui-btn ui-btn--primary ui-btn--block" type="submit">Войти</button>
+      <div class="auth-form__row">
+        <label class="ui-checkbox auth-form__remember">
+          <input id="login-remember" type="checkbox" name="remember_me">
+          <span>Запомнить меня</span>
+        </label>
+        <a class="auth-form__link" href="/password-reset">Забыли пароль?</a>
+      </div>
+      <button class="ui-btn ui-btn--primary ui-btn--block auth-form__submit" type="submit">Войти</button>
     </form>
     {% endif %}
     <script src="{{ url_for('static', path='js/disable-mobile-autofocus.js') }}"></script>

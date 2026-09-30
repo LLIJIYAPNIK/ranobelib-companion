@@ -15,7 +15,11 @@
   overlay.className = "auth-modal";
   overlay.innerHTML =
     '<div class="auth-modal__panel" role="dialog" aria-modal="true" aria-label="Вход или регистрация">' +
-    '<button type="button" class="auth-modal__close" aria-label="Закрыть">&times;</button>' +
+    // PR 262: an icon button (the design's 44px ×) rather than the &times; glyph.
+    '<button type="button" class="auth-modal__close" aria-label="Закрыть">' +
+    '<svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" ' +
+    'stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M6 6l12 12M18 6 6 18"/></svg>' +
+    "</button>" +
     '<div class="auth-modal__body" data-role="auth-modal-body"></div>' +
     "</div>";
   document.body.appendChild(overlay);

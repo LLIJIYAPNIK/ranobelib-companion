@@ -1684,157 +1684,6 @@ html.shell-scroll-lock body {
   margin-bottom: 16px;
 }
 
-/* PR 215: /login and /register's card, replacing the old single centered form - a left
-   marketing column (why bother with an account at all) next to the actual form, matching
-   the imported Claude Design auth screen. */
-.auth-card {
-  display: flex;
-  max-width: 660px;
-  margin: 24px auto 0;
-  background: var(--bg-surface);
-  border: 1px solid var(--legacy-border);
-  border-radius: 12px;
-  overflow: hidden;
-}
-
-.auth-card__intro {
-  flex: 0 0 260px;
-  width: 260px;
-  padding: 26px 24px;
-  background: var(--bg-panel);
-  border-right: 1px solid var(--legacy-border);
-  display: flex;
-  flex-direction: column;
-  gap: 18px;
-}
-
-.auth-card__brand {
-  font-family: var(--legacy-font-mono);
-  font-size: 11px;
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
-  color: var(--text-muted);
-}
-
-.auth-card__pitch {
-  margin: 0;
-  font-size: 16px;
-  font-weight: 700;
-  line-height: 1.45;
-  color: var(--text-primary);
-}
-
-.auth-card__perks {
-  display: flex;
-  flex-direction: column;
-  gap: 14px;
-  margin: 2px 0 0;
-  padding: 0;
-  list-style: none;
-}
-
-.auth-card__perks li {
-  position: relative;
-  padding-left: 16px;
-  font-size: 13px;
-  line-height: 1.5;
-  color: var(--text-secondary);
-}
-
-.auth-card__perks li::before {
-  content: "";
-  position: absolute;
-  left: 0;
-  top: 6px;
-  width: 6px;
-  height: 6px;
-  border-radius: 2px;
-  background: var(--accent-teal);
-}
-
-.auth-card__disclaimer {
-  margin: auto 0 0;
-  font-size: 11px;
-  line-height: 1.6;
-  color: var(--text-muted);
-}
-
-.auth-card__form {
-  flex: 1;
-  min-width: 0;
-  padding: 26px;
-}
-
-.auth-tabs {
-  display: flex;
-  gap: 6px;
-  margin-right: 38px;
-  padding: 4px;
-  background: var(--bg-panel);
-  border: 1px solid var(--legacy-border);
-  border-radius: 10px;
-}
-
-.auth-tabs__link {
-  flex: 1;
-  padding: 8px 0;
-  border-radius: 7px;
-  text-align: center;
-  text-decoration: none;
-  font-size: 13px;
-  font-weight: 600;
-  color: var(--text-muted);
-  transition: background-color 0.15s ease, color 0.15s ease;
-}
-
-.auth-tabs__link--active {
-  background: rgba(34, 211, 197, 0.12);
-  color: var(--text-primary);
-}
-
-@media (hover: hover) {
-  .auth-tabs__link:hover {
-    color: var(--text-secondary);
-  }
-
-  .auth-tabs__link--active:hover {
-    color: var(--text-primary);
-  }
-}
-
-@media (max-width: 640px) {
-  /* PR 221: keep the same rounded, bordered card as desktop on mobile - just
-     stacked into one column - instead of stretching it edge-to-edge with
-     square corners. .auth-modal__panel .auth-card (further below) still
-     zeroes this margin back out when the card is shown inside the
-     login/register modal, since that overlay already supplies its own inset
-     padding. */
-  .auth-card {
-    flex-direction: column;
-    max-width: none;
-    margin: 16px;
-  }
-
-  /* PR 222: the form is what a returning visitor actually needs - put it
-     first on mobile instead of making them scroll past the marketing intro
-     to reach it. The DOM order stays as-is (desktop's row layout still needs
-     intro-then-form), this only reorders how they stack visually below the
-     640px breakpoint. */
-  .auth-card__form {
-    order: -1;
-  }
-
-  .auth-card__intro {
-    width: auto;
-    border-right: none;
-    border-top: 1px solid var(--legacy-border);
-  }
-
-  .auth-tabs {
-    margin-right: 0;
-  }
-}
-
 .auth-form {
   display: flex;
   flex-direction: column;
@@ -1855,61 +1704,6 @@ html.shell-scroll-lock body {
   color: var(--text-secondary);
   font-size: 12px;
   margin: 0;
-}
-
-.auth-form__field--checkbox {
-  flex-direction: row;
-  align-items: center;
-  gap: 8px;
-  font-size: 13px;
-  color: var(--text-secondary);
-  cursor: pointer;
-}
-
-/* Same custom checkmark PR 53/59/63 already gave the genre, chapter-selection and
-   reader-settings checkboxes - "Запомнить меня" was the one remaining browser-default
-   checkbox left over from PR 36. */
-.auth-form__field--checkbox input {
-  appearance: none;
-  -webkit-appearance: none;
-  flex: 0 0 auto;
-  width: 16px;
-  height: 16px;
-  margin: 0;
-  position: relative;
-  border: 1px solid var(--legacy-border);
-  border-radius: 4px;
-  background: var(--bg-surface);
-  cursor: pointer;
-  transition: border-color 0.15s ease, background-color 0.15s ease, box-shadow 0.15s ease;
-}
-
-.auth-form__field--checkbox input::after {
-  content: "";
-  position: absolute;
-  left: 4px;
-  top: 1px;
-  width: 4px;
-  height: 8px;
-  border: solid var(--legacy-bg-page);
-  border-width: 0 2px 2px 0;
-  transform: rotate(45deg) scale(0);
-  transition: transform 0.1s ease;
-}
-
-.auth-form__field--checkbox input:checked {
-  background: var(--accent-teal);
-  border-color: var(--accent-teal);
-}
-
-.auth-form__field--checkbox input:checked::after {
-  transform: rotate(45deg) scale(1);
-}
-
-.auth-form__field--checkbox input:focus-visible {
-  outline: none;
-  border-color: var(--accent-teal);
-  box-shadow: 0 0 0 3px rgba(34, 211, 197, 0.18);
 }
 
 .auth-form__label {
@@ -2640,34 +2434,50 @@ html.shell-scroll-lock body {
 .auth-modal__panel {
   position: relative;
   width: 100%;
-  max-width: 660px;
+  max-width: 860px;
   max-height: 90vh;
   overflow-y: auto;
+  border-radius: 20px;
 }
 
 .auth-modal__panel .auth-card {
   margin: 0;
 }
 
+/* PR 262: a 44px icon button in the form column's top-right corner - the tabs leave
+   room for it (.auth-modal__panel .auth-tabs, below). */
 .auth-modal__close {
   position: absolute;
-  top: 12px;
-  right: 12px;
+  top: 18px;
+  right: 18px;
   z-index: 1;
-  background: none;
-  border: none;
-  padding: 4px;
-  color: var(--text-muted);
-  font-size: 20px;
-  line-height: 1;
+  display: grid;
+  place-items: center;
+  width: 44px;
+  height: 44px;
+  padding: 0;
+  border: 0;
+  border-radius: var(--r-lg);
+  background: transparent;
+  color: var(--text-3);
   cursor: pointer;
-  transition: color 0.15s ease;
+  transition: background-color var(--dur-base) var(--ease), color var(--dur-base) var(--ease);
 }
 
 @media (hover: hover) {
   .auth-modal__close:hover {
-    color: var(--accent-teal);
+    background: var(--surface-2);
+    color: var(--text-1);
   }
+}
+
+.auth-modal__close:focus-visible {
+  outline: none;
+  box-shadow: var(--focus-ring);
+}
+
+.auth-modal__panel .auth-tabs {
+  margin-right: 44px;
 }
 
 .btn {
@@ -2726,10 +2536,6 @@ html.shell-scroll-lock body {
   }
 
   .reader-settings__toggle:hover:not(:checked) {
-    border-color: var(--accent-teal);
-  }
-
-  .auth-form__field--checkbox:hover input:not(:checked) {
     border-color: var(--accent-teal);
   }
 
@@ -10690,31 +10496,37 @@ body.reader-hud-visible .reader-hud {
   gap: 18px;
 }
 
-.settings-card--avatar .avatar-upload {
+.settings-card--avatar .avatar-upload,
+.avatar-row .avatar-upload {
   flex: 0 0 auto;
   width: 80px;
   height: 80px;
 }
 
-.settings-card--avatar .avatar-upload:focus-within {
+.settings-card--avatar .avatar-upload:focus-within,
+.avatar-row .avatar-upload:focus-within {
   outline: none;
   box-shadow: var(--focus-ring);
 }
 
-.settings-card--avatar .avatar-upload__preview {
+.settings-card--avatar .avatar-upload__preview,
+.avatar-row .avatar-upload__preview {
   background: var(--surface-3);
   color: var(--text-2);
 }
 
-.settings-card--avatar .avatar-upload__preview .avatar-img {
+.settings-card--avatar .avatar-upload__preview .avatar-img,
+.avatar-row .avatar-upload__preview .avatar-img {
   object-position: 50% 20%;
 }
 
-.settings-card--avatar .avatar-upload__initials {
+.settings-card--avatar .avatar-upload__initials,
+.avatar-row .avatar-upload__initials {
   font: 800 26px/1 var(--font-ui);
 }
 
-.settings-card--avatar .avatar-upload__overlay {
+.settings-card--avatar .avatar-upload__overlay,
+.avatar-row .avatar-upload__overlay {
   inset: auto -2px -2px auto;
   width: 32px;
   height: 32px;
@@ -10726,7 +10538,8 @@ body.reader-hud-visible .reader-hud {
 }
 
 @media (hover: hover) {
-  .settings-card--avatar .avatar-upload:hover .avatar-upload__overlay {
+  .settings-card--avatar .avatar-upload:hover .avatar-upload__overlay,
+  .avatar-row .avatar-upload:hover .avatar-upload__overlay {
     background: var(--surface-3);
   }
 }
@@ -10863,5 +10676,260 @@ body.reader-hud-visible .reader-hud {
 
   .settings-card {
     padding: 18px var(--s-16);
+  }
+}
+
+/* ==========================================================================
+   Aurora Ink screens - auth (PR 262): AUTH-LOGIN / AUTH-REGISTER, the same card in the
+   auth modal (auth-modal.js), and the avatar step after registration. The card is an
+   intro column (brand, pitch, perks, disclaimer) beside the form column; on phones only
+   brand + pitch stay, above the form. The reset/verify pages (PR 263/264) reuse the card
+   shell with their own contents.
+   ========================================================================== */
+.auth-page {
+  flex: 1;
+  display: flex;
+  align-items: flex-start;
+  justify-content: center;
+  width: 100%;
+  padding: var(--s-32) var(--s-40) var(--s-40);
+}
+
+.auth-card {
+  display: flex;
+  flex-wrap: wrap;
+  width: 100%;
+  max-width: 860px;
+  margin: 0 auto;
+  border: 1px solid var(--border);
+  border-radius: 20px;
+  background: var(--surface-1);
+  color: var(--text-1);
+  overflow: hidden;
+}
+
+.auth-card--single {
+  max-width: 480px;
+}
+
+.auth-card__intro {
+  display: flex;
+  flex: 1 1 300px;
+  flex-direction: column;
+  gap: var(--s-12);
+  padding: 28px;
+  /* The design's intro panel - the Aurora reader surface, no UI token of its own. */
+  background: #17152a;
+}
+
+.auth-card__brand {
+  display: flex;
+  align-items: center;
+  gap: 3px;
+  color: var(--text-1);
+  font: 800 22px/1 var(--font-ui);
+}
+
+.auth-card__brand-dot {
+  width: 6px;
+  height: 6px;
+  margin-top: 10px;
+  border-radius: 50%;
+  background: var(--accent);
+}
+
+.auth-card__pitch {
+  margin: 0;
+  color: var(--text-1);
+  font: 700 17px/1.4 var(--font-ui);
+}
+
+.auth-card__perks {
+  display: flex;
+  flex-direction: column;
+  gap: var(--s-8);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  color: var(--text-2);
+  font: 500 14px/1.4 var(--font-ui);
+}
+
+.auth-card__perks li::before {
+  content: "— ";
+}
+
+.auth-card__disclaimer {
+  margin: auto 0 0;
+  color: var(--text-3);
+  font: 500 12px/1.4 var(--font-ui);
+}
+
+.auth-card__form {
+  display: flex;
+  flex: 1 1 340px;
+  flex-direction: column;
+  gap: 14px;
+  min-width: 0;
+  padding: 28px;
+}
+
+.auth-card__title {
+  margin: 0;
+  color: var(--text-1);
+  font: 800 20px/1.2 var(--font-ui);
+}
+
+.auth-card__text {
+  margin: 0;
+  color: var(--text-2);
+  font: 500 14px/1.5 var(--font-ui);
+}
+
+.auth-card__skip {
+  margin: 0;
+}
+
+.auth-card__skip a,
+.auth-form__link {
+  display: inline-flex;
+  align-items: center;
+  min-height: 44px;
+  color: var(--primary-text);
+  font: 600 14px/1 var(--font-ui);
+  text-decoration: none;
+}
+
+@media (hover: hover) {
+  .auth-card__skip a:hover,
+  .auth-form__link:hover {
+    text-decoration: underline;
+    text-underline-offset: 3px;
+  }
+}
+
+.auth-card__skip a:focus-visible,
+.auth-form__link:focus-visible {
+  outline: none;
+  border-radius: var(--r-xs);
+  box-shadow: var(--focus-ring);
+}
+
+/* Вход / Регистрация: a segmented control of two links. */
+.auth-tabs {
+  display: flex;
+  gap: 3px;
+  padding: 3px;
+  border-radius: var(--r-lg);
+  background: var(--bg-page);
+}
+
+.auth-tabs__link {
+  display: grid;
+  flex: 1;
+  place-items: center;
+  height: 40px;
+  border-radius: 9px;
+  color: var(--text-2);
+  font: 600 14px/1 var(--font-ui);
+  text-decoration: none;
+  transition: background-color var(--dur-base) var(--ease), color var(--dur-base) var(--ease);
+}
+
+@media (hover: hover) {
+  .auth-tabs__link:hover {
+    color: var(--text-1);
+  }
+}
+
+.auth-tabs__link:focus-visible {
+  outline: none;
+  box-shadow: var(--focus-ring);
+}
+
+.auth-tabs__link--active {
+  background: var(--surface-3);
+  color: var(--text-1);
+  font-weight: 700;
+}
+
+.auth-form--aurora {
+  gap: 14px;
+  max-width: none;
+  margin: 0;
+}
+
+.auth-form--aurora .ui-input {
+  background: var(--bg-page);
+}
+
+.auth-form__row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--s-8);
+}
+
+.auth-form__remember {
+  min-height: 44px;
+}
+
+.auth-form__submit {
+  height: 48px;
+  font-size: 15px;
+}
+
+/* Avatar step (register_avatar.html): the settings avatar circle + a hint beside it. */
+.avatar-row {
+  display: flex;
+  align-items: center;
+  gap: 18px;
+}
+
+.avatar-row__hint {
+  margin: 0;
+  color: var(--text-3);
+  font: 500 13px/1.4 var(--font-ui);
+}
+
+@media (max-width: 1199px) {
+  .auth-page {
+    padding: 28px var(--s-32) var(--s-32);
+  }
+}
+
+@media (max-width: 767px) {
+  .auth-page {
+    padding: var(--s-4) var(--s-20) var(--s-8);
+  }
+
+  .auth-card__intro,
+  .auth-card__form {
+    padding: var(--s-20);
+  }
+
+  .auth-card__intro {
+    gap: var(--s-8);
+  }
+
+  /* M-AUTH-*: brand + pitch only, the form right below. */
+  .auth-card__perks,
+  .auth-card__disclaimer {
+    display: none;
+  }
+
+  .auth-modal {
+    padding: var(--s-12);
+  }
+
+  /* Stacked, the close button sits in the intro strip, clear of the tabs. */
+  .auth-modal__close {
+    top: 10px;
+    right: 10px;
+  }
+
+  .auth-modal__panel .auth-tabs {
+    margin-right: 0;
   }
 }
