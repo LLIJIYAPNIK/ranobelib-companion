@@ -1,8 +1,16 @@
 {% extends "base.html" %}
+{# PR 259 (M-NOTIFICATIONS): back button in the mobile strip - a history step when the
+   visitor came from one of our pages (mobile-account-strip.js), home otherwise. #}
+{% set strip_back_href = "/" %}
 {% block title %}Уведомления — RanobeLib Companion{% endblock %}
 {% block content %}
-<main class="content">
-  <h1 class="toc__title">Уведомления</h1>
+{#
+  PR 259 (Aurora Ink, NOTIFICATIONS): a list of Notification cards - unread ones tinted,
+  mark-read (cyan) and delete as 44px icon buttons - with the same infinite scroll
+  (notifications-page.js) and actions (notifications-actions.js) as before.
+#}
+<main class="notifications-page">
+  <h1 class="notifications-page__title">Уведомления</h1>
   <div
     class="notifications-page__list"
     data-role="notifications-page-list"
@@ -13,7 +21,7 @@
   <div class="notifications-page__sentinel" data-role="notifications-page-sentinel" aria-hidden="true"></div>
   <noscript>
     {% if has_next_page %}
-    <p class="content__hint"><a href="?page={{ page + 1 }}">Следующая страница</a></p>
+    <p class="ui-empty"><a href="?page={{ page + 1 }}">Следующая страница</a></p>
     {% endif %}
   </noscript>
 </main>

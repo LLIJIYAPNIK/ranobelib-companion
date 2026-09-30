@@ -1566,23 +1566,6 @@ html.shell-scroll-lock body {
   gap: 8px;
 }
 
-/* PR 169: "Все уведомления" (notifications.html) - a plain vertical list of the same
-   .notifications-panel__item cards the bell's flyout uses (see _notification_card.html),
-   just laid out full-width in the page column instead of inside a 340px popover, and
-   capped at a comfortable reading width rather than stretching edge to edge. */
-.notifications-page__list {
-  display: flex;
-  flex-direction: column;
-  max-width: 640px;
-}
-
-.notifications-page__list .notifications-panel__item {
-  border-radius: 8px;
-}
-
-.notifications-page__sentinel {
-  height: 1px;
-}
 
 
 .header {
@@ -10480,6 +10463,108 @@ body.reader-hud-visible .reader-hud {
   }
 
   .friends-page__title {
+    font-size: 22px;
+    line-height: 1;
+  }
+}
+
+/* ==========================================================================
+   Aurora Ink screens - notifications (PR 259): NOTIFICATIONS. The same Notification
+   cards as the popover at full size - 40px avatar, text unclamped, 44px icon buttons -
+   with 6px between cards. Content capped at 760px, as in the design.
+   ========================================================================== */
+.notifications-page {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: var(--s-16);
+  width: 100%;
+  max-width: calc(760px + 2 * var(--s-40));
+  padding: var(--s-32) var(--s-40) var(--s-40);
+}
+
+.notifications-page__title {
+  margin: 0;
+  color: var(--text-1);
+  font: var(--type-h1);
+}
+
+.notifications-page__list {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.notifications-page__list .notifications-panel__item {
+  padding: 10px 6px 10px var(--s-12);
+  border-radius: 14px;
+}
+
+@media (hover: hover) {
+  .notifications-page__list .notifications-panel__item:hover {
+    background: var(--surface-1);
+  }
+}
+
+.notifications-page__list .notifications-panel__item--unread,
+.notifications-page__list .notifications-panel__item--unread:hover {
+  background: rgba(34, 211, 197, 0.06);
+}
+
+.notifications-page__list .notifications-panel__item-link {
+  gap: var(--s-12);
+  padding: 2px 0;
+}
+
+.notifications-page__list .notifications-panel__avatar {
+  width: 40px;
+  height: 40px;
+  font-size: 13px;
+}
+
+.notifications-page__list .notifications-panel__body {
+  gap: 5px;
+}
+
+.notifications-page__list .notifications-panel__text {
+  display: block;
+  font-size: 14px;
+  line-height: 1.45;
+}
+
+.notifications-page__list .notifications-panel__time {
+  font-size: 12px;
+}
+
+.notifications-page__list .notifications-panel__actions {
+  margin: 0;
+}
+
+.notifications-page__list .notifications-panel__action {
+  width: 44px;
+  height: 44px;
+}
+
+.notifications-page__list .notifications-panel__empty {
+  padding: 0;
+}
+
+.notifications-page__sentinel {
+  height: 1px;
+}
+
+@media (max-width: 1199px) {
+  .notifications-page {
+    padding: 28px var(--s-32) var(--s-32);
+  }
+}
+
+@media (max-width: 767px) {
+  .notifications-page {
+    padding: var(--s-4) var(--s-20) var(--s-8);
+  }
+
+  .notifications-page__title {
     font-size: 22px;
     line-height: 1;
   }
