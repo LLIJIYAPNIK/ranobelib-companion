@@ -83,6 +83,21 @@
     data-user-id="{{ current_user.id if current_user else '' }}"
   >
     {{ chapter.content | safe }}
+    {#
+      PR 270: translator footnotes come from Chapter.footnotes (SDK 0.10.0+) - content no
+      longer carries them. One collapsed block, the article's last child, so tap-to-read.js
+      reveals it as a single step and paragraph-menu.js's paragraph_index never counts it
+      among the chapter's paragraphs. Footnote.content is sanitized inline HTML (same tag
+      set as content), without the wrapping <p> or leading "↑".
+    #}
+    {% if chapter.footnotes %}
+    <details class="reader-footnotes" data-role="reader-footnotes">
+      <summary class="reader-footnotes__summary">Сноски</summary>
+      {% for footnote in chapter.footnotes %}
+      <p>{{ footnote.content | safe }}</p>
+      {% endfor %}
+    </details>
+    {% endif %}
   </article>
 
   {# End-of-chapter card: the way on to the next chapter - a stray tap in Tap Focus only
