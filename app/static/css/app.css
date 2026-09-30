@@ -2,8 +2,10 @@
    "Concept 3 - Media Collection Dashboard" (see CLAUDE.md, "Дизайн").
    PR 247: the four names Aurora Ink's tokens reuse with different values (--bg-page,
    --border, --accent, --font-mono) are renamed --legacy-* here, same values, so both
-   palettes coexist while wave 31 moves each screen over; the legacy set goes away in
-   PR 267 together with the old markup that still reads it. */
+   palettes coexist. PR 267: every screen is on Aurora Ink now, but this set still
+   styles the pieces wave 31 didn't redesign - paragraph comments / reactions / menu,
+   the reading-speed test and modal, the image lightbox, footnotes, the custom dropdown
+   skin, the cookie notice's .btn and the scrollbar. It goes once those move over. */
 
 :root {
   --legacy-bg-page: #0e0d14;
