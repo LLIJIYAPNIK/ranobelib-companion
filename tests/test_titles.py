@@ -117,6 +117,39 @@ def test_open_title_rate_limited() -> None:
     }
 
 
+def test_open_title_unknown_title_renders_the_404_page() -> None:
+    # PR 265 (ERROR-404): a pasted link to a title ranobelib.me doesn't have, opened in the
+    # browser, lands on error.html - the code, the mapped detail, the stale-link hint and
+    # the way home.
+    exc = TitleNotFoundError("99999--no-such-title")
+    with patch("app.services.client.RanobeLib", return_value=_RaisingClient(exc)):
+        response = client.get(
+            "/titles/open",
+            params={"url": "https://ranobelib.me/ru/book/99999--no-such-title"},
+            headers={"accept": "text/html"},
+        )
+
+    assert response.status_code == 404
+    assert '<span class="error-page__status">404</span>' in response.text
+    assert '<h1 class="error-page__detail">Тайтл не найден, проверьте ссылку</h1>' in response.text
+    assert "Возможно, ссылка устарела" in response.text
+    assert '<a class="ui-btn" href="/">На главную</a>' in response.text
+
+
+def test_error_page_hint_is_404_only() -> None:
+    exc = RateLimitError(retry_after=30)
+    with patch("app.services.client.RanobeLib", return_value=_RaisingClient(exc)):
+        response = client.get(
+            "/titles/open",
+            params={"url": "https://ranobelib.me/ru/book/6712--test-novel"},
+            headers={"accept": "text/html"},
+        )
+
+    assert response.status_code == 429
+    assert "ranobelib сейчас ограничивает запросы" in response.text
+    assert "Возможно, ссылка устарела" not in response.text
+
+
 # --- PR 203: show_title() itself - a skeleton, no SDK call, never hangs/errors ----------
 
 
