@@ -9,11 +9,13 @@ from fastapi import APIRouter, Depends, Request
 from fastapi.responses import HTMLResponse, Response
 from ranobelib import RanobeLibError
 
-from app.api.library import currently_reading_for_users
+from app.api.activity import ActivitySummary, build_activity_summary
+from app.api.library import currently_reading_for_users, library_items_for_user
 from app.auth.dependencies import get_current_user
 from app.db.activity import daily_reading_activity, reading_streak_days
 from app.db.comments import RecentComment, list_recent_comments_by_user
 from app.db.connection import connection
+from app.db.downloads import DownloadHistoryEntry, list_download_history
 from app.db.friendships import FriendUser, list_friends
 from app.db.library import get_entry
 from app.db.users import User, get_user_by_id
@@ -47,20 +49,57 @@ class FriendActivityCard:
         return bool(self.currently_reading or self.recent_comments or self.streak_days > 0)
 
 
+@dataclass(frozen=True)
+class HomeDashboard:
+    """The signed-in dashboard sections introduced by PR 273.
+
+    All values come from the existing library, activity and download stores. The home
+    page only composes them; it doesn't create a second progress or activity model.
+    """
+
+    reading: list[dict[str, object]]
+    summary: ActivitySummary
+    recent_downloads: list[DownloadHistoryEntry]
+
+    @property
+    def hero(self) -> dict[str, object] | None:
+        return self.reading[0] if self.reading else None
+
+
 @router.get("/")
 async def home(
     request: Request,
     user: Annotated[User | None, Depends(get_current_user)],
 ) -> HTMLResponse:
+    dashboard = await _home_dashboard(user)
     return templates.TemplateResponse(
         request,
         "index.html",
         {
             "active_nav": "home",
+            "dashboard": dashboard,
             "recent": await _recent_with_progress(request, user),
             "friend_activity": await _friend_activity_cards(user),
         },
     )
+
+
+async def _home_dashboard(user: User | None) -> HomeDashboard | None:
+    """Build the authenticated home dashboard from existing public service helpers."""
+    if user is None:
+        return None
+    async with connection() as conn:
+        library_items = await library_items_for_user(user, conn)
+        reading = [
+            item
+            for item in library_items
+            if item["entry"].last_read_at is not None  # type: ignore[union-attr]
+        ][:3]
+        return HomeDashboard(
+            reading=reading,
+            summary=await build_activity_summary(user, conn),
+            recent_downloads=await list_download_history(conn, user.id, limit=3),
+        )
 
 
 @router.post("/recent/{slug_url}/forget", response_model=None)
