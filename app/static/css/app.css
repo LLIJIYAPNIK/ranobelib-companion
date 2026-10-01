@@ -11424,6 +11424,833 @@ body.reader-hud-visible .reader-hud {
 }
 
 /* ==========================================================================
+   Webnovells Redesign - friends (PR 278, screen A6) on the --wn-* tokens from PR 272:
+   heading + search, tabs with counts, friend / request cards and the invite card in an
+   8-column main area, "Заявки" and "Приватность" in a 4-column side.
+   ========================================================================== */
+.wn-friends {
+  max-width: none;
+  gap: var(--wn-space-3);
+  font-family: var(--wn-font-ui);
+}
+
+.wn-friends__head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  gap: var(--wn-space-3);
+}
+
+.wn-friends__heading {
+  display: flex;
+  flex: 1 1 360px;
+  flex-direction: column;
+  gap: var(--wn-space-1);
+  min-width: 0;
+}
+
+.wn-friends__title {
+  margin: 0;
+  color: #f2f0f7;
+  font: var(--wn-weight-extra-bold) 32px/1.1 var(--wn-font-ui);
+  letter-spacing: -0.02em;
+}
+
+.wn-friends__intro {
+  max-width: 640px;
+  margin: 0;
+  color: var(--wn-text-secondary);
+  font: var(--wn-weight-medium) 15px/1.5 var(--wn-font-ui);
+  text-wrap: pretty;
+}
+
+.wn-friends-link,
+.wn-friends-card__aside a {
+  color: #b7a6ff;
+  font: var(--wn-weight-semi-bold) 14px/1.4 var(--wn-font-ui);
+  text-decoration: none;
+}
+
+@media (hover: hover) {
+  .wn-friends-link:hover,
+  .wn-friends-card__aside a:hover {
+    color: #d3c8ff;
+  }
+}
+
+.wn-friends-link:focus-visible,
+.wn-friends-card__aside a:focus-visible {
+  outline: none;
+  border-radius: 4px;
+  box-shadow: var(--wn-focus-ring);
+}
+
+.wn-friends-note {
+  margin: 0;
+  color: var(--wn-text-secondary);
+  font: var(--wn-weight-medium) 14px/1.5 var(--wn-font-ui);
+  text-wrap: pretty;
+}
+
+/* Search: the field takes the purple focus ring from the design. */
+.wn-friends-search {
+  display: flex;
+  gap: 12px;
+  width: 560px;
+  max-width: 100%;
+}
+
+.wn-friends-search__field {
+  position: relative;
+  display: flex;
+  flex: 1;
+  align-items: center;
+  color: var(--wn-text-muted);
+}
+
+.wn-friends-search__field svg {
+  position: absolute;
+  left: 16px;
+  width: 18px;
+  height: 18px;
+  pointer-events: none;
+}
+
+.wn-friends-search__field input {
+  width: 100%;
+  height: 48px;
+  padding: 0 16px 0 44px;
+  border: 1px solid var(--wn-border-strong);
+  border-radius: var(--wn-radius-md);
+  outline: none;
+  background: var(--wn-surface);
+  color: var(--wn-text);
+  font: var(--wn-weight-medium) 15px/1 var(--wn-font-ui);
+  caret-color: var(--wn-primary);
+  transition:
+    border-color 160ms ease,
+    box-shadow 160ms ease;
+}
+
+.wn-friends-search__field input::placeholder {
+  color: var(--wn-text-muted);
+  opacity: 1;
+}
+
+.wn-friends-search__field input:focus {
+  border-color: var(--wn-primary);
+  box-shadow: 0 0 0 3px rgb(122 82 244 / 18%);
+}
+
+.wn-friends-search .wn-btn {
+  min-height: 48px;
+  padding: 0 22px;
+  font-size: 15px;
+}
+
+/* Search results: compact rows with the existing request actions (PR 199/209). */
+.wn-friends-results {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.wn-friends-section-title {
+  margin: 0;
+  color: var(--wn-text);
+  font: var(--wn-weight-bold) 18px/1.2 var(--wn-font-ui);
+}
+
+.wn-friends-results__list {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(min(100%, 360px), 1fr));
+  gap: 12px;
+}
+
+.wn-friends-result {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 14px var(--wn-space-2);
+  border: 1px solid var(--wn-border);
+  border-radius: var(--wn-radius-md);
+  background: var(--wn-surface);
+}
+
+.wn-friends-result__actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--wn-space-1);
+}
+
+.wn-friends-result__actions .ui-btn {
+  min-height: 36px;
+  padding: 0 14px;
+  border: 1px solid var(--wn-border-strong);
+  border-radius: 10px;
+  background: rgb(255 255 255 / 4%);
+  color: var(--wn-text);
+  font: var(--wn-weight-bold) 13px/1 var(--wn-font-ui);
+  box-shadow: none;
+}
+
+.wn-friends-result__actions .ui-btn--quiet {
+  border-color: transparent;
+  background: transparent;
+  color: var(--wn-text-secondary);
+}
+
+.wn-friends-result__actions .ui-friend-row__state {
+  color: var(--wn-text-muted);
+  font: var(--wn-weight-semi-bold) 13px/1 var(--wn-font-ui);
+}
+
+/* Tabs with counts: teal underline and teal count on the current tab. */
+.wn-friends-tabs {
+  display: flex;
+  gap: 28px;
+  overflow-x: auto;
+  border-bottom: 1px solid #22202d;
+  scrollbar-width: none;
+}
+
+.wn-friends-tabs__link {
+  display: inline-flex;
+  flex: none;
+  align-items: center;
+  gap: var(--wn-space-1);
+  margin-bottom: -1px;
+  padding: 0 0 14px;
+  border-bottom: 2px solid transparent;
+  color: var(--wn-text-secondary);
+  font: var(--wn-weight-semi-bold) 16px/1 var(--wn-font-ui);
+  text-decoration: none;
+  white-space: nowrap;
+}
+
+@media (hover: hover) {
+  .wn-friends-tabs__link:hover {
+    color: var(--wn-text);
+  }
+}
+
+.wn-friends-tabs__link[aria-current="page"] {
+  border-bottom-color: var(--wn-teal);
+  color: #f2f0f7;
+  font-weight: var(--wn-weight-bold);
+}
+
+.wn-friends-tabs__link:focus-visible {
+  outline: none;
+  border-radius: 4px;
+  box-shadow: var(--wn-focus-ring);
+}
+
+.wn-friends-tabs__count {
+  padding: 3px 7px;
+  border-radius: 999px;
+  background: #1e1d29;
+  color: var(--wn-text-secondary);
+  font: var(--wn-weight-bold) 13px/1 var(--wn-font-ui);
+}
+
+.wn-friends-tabs__link[aria-current="page"] .wn-friends-tabs__count {
+  background: rgb(61 214 195 / 14%);
+  color: var(--wn-teal);
+}
+
+/* Layout: cards 8 columns (two per row), side 4. */
+.wn-friends__layout {
+  display: grid;
+  grid-template-columns: repeat(12, minmax(0, 1fr));
+  gap: var(--wn-space-3);
+  align-items: start;
+}
+
+.wn-friends__main {
+  grid-column: span 8;
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  align-content: start;
+  gap: var(--wn-space-3);
+}
+
+.wn-friends__side {
+  grid-column: span 4;
+  display: flex;
+  flex-direction: column;
+  gap: var(--wn-space-3);
+}
+
+.wn-friends-avatar {
+  display: grid;
+  flex: none;
+  place-items: center;
+  width: 40px;
+  height: 40px;
+  overflow: hidden;
+  border-radius: 50%;
+  background: var(--wn-surface-raised);
+  color: var(--wn-text);
+  font: var(--wn-weight-bold) 13px/1 var(--wn-font-ui);
+}
+
+.wn-friends-avatar--lg {
+  width: 60px;
+  height: 60px;
+  font-size: 18px;
+}
+
+.wn-friends-avatar img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+/* Friend / request card. */
+.wn-friend-card {
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+  min-width: 0;
+  padding: 20px;
+  border: 1px solid var(--wn-border);
+  border-radius: var(--wn-radius-lg);
+  background: var(--wn-surface);
+  transition: border-color 160ms ease;
+}
+
+@media (hover: hover) {
+  .wn-friend-card:hover {
+    border-color: #3a3650;
+  }
+}
+
+.wn-friend-card__head {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+}
+
+.wn-friend-card__who {
+  display: flex;
+  flex: 1;
+  align-items: center;
+  gap: 14px;
+  min-width: 0;
+  border-radius: var(--wn-radius-sm);
+  text-decoration: none;
+}
+
+.wn-friend-card__who:focus-visible {
+  outline: none;
+  box-shadow: var(--wn-focus-ring);
+}
+
+.wn-friend-card__copy {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  min-width: 0;
+}
+
+.wn-friend-card__name {
+  overflow: hidden;
+  color: var(--wn-text);
+  font: var(--wn-weight-bold) 17px/1.1 var(--wn-font-ui);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+@media (hover: hover) {
+  .wn-friend-card__who:hover .wn-friend-card__name {
+    color: #ffffff;
+  }
+}
+
+.wn-friend-card__sub {
+  color: var(--wn-text-muted);
+  font: var(--wn-weight-medium) 14px/1.2 var(--wn-font-ui);
+}
+
+.wn-friend-card__reading {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 14px;
+  border: 1px solid #1f1e2a;
+  border-radius: var(--wn-radius-md);
+  background: #17171f;
+}
+
+.wn-friend-card__cover {
+  display: block;
+  flex: none;
+  width: 36px;
+  height: 54px;
+  overflow: hidden;
+  border-radius: 6px;
+  background: var(--wn-surface-raised);
+}
+
+.wn-friend-card__cover img {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  object-position: top;
+}
+
+.wn-friend-card__cover--empty {
+  border: 1px solid #2a2838;
+  background: repeating-linear-gradient(135deg, #1c1b27 0 6px, #211f2e 6px 12px);
+}
+
+.wn-friend-card__reading-copy {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  min-width: 0;
+}
+
+.wn-friend-card__eyebrow {
+  color: var(--wn-text-muted);
+  font: var(--wn-weight-semi-bold) 12px/1 var(--wn-font-ui);
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.wn-friend-card__title {
+  overflow: hidden;
+  color: var(--wn-text);
+  font: var(--wn-weight-semi-bold) 14px/1.3 var(--wn-font-ui);
+  text-decoration: none;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.wn-friend-card__chapter {
+  color: var(--wn-text-secondary);
+  font: var(--wn-weight-medium) 14px/1.3 var(--wn-font-ui);
+}
+
+.wn-friend-card__actions {
+  display: flex;
+  gap: var(--wn-space-1);
+  margin-top: auto;
+}
+
+.wn-friend-card__actions form {
+  display: flex;
+}
+
+.wn-friend-card__actions > :first-child {
+  flex: 1;
+}
+
+.wn-friend-card__actions .wn-btn {
+  width: 100%;
+  min-height: 40px;
+  border-radius: 10px;
+}
+
+.wn-friends-secondary {
+  display: flex;
+  flex: 1;
+  align-items: center;
+  justify-content: center;
+  height: 40px;
+  border: 1px solid var(--wn-border-strong);
+  border-radius: 10px;
+  background: rgb(255 255 255 / 4%);
+  color: var(--wn-text);
+  font: var(--wn-weight-bold) 14px/1 var(--wn-font-ui);
+  text-decoration: none;
+  transition: background-color 160ms ease;
+}
+
+@media (hover: hover) {
+  .wn-friends-secondary:hover {
+    background: rgb(255 255 255 / 9%);
+    color: var(--wn-text);
+  }
+}
+
+.wn-friends-quiet {
+  appearance: none;
+  height: 40px;
+  padding: 0 14px;
+  border: 1px solid transparent;
+  border-radius: 10px;
+  background: transparent;
+  color: var(--wn-text-secondary);
+  font: var(--wn-weight-semi-bold) 14px/1 var(--wn-font-ui);
+  cursor: pointer;
+  transition:
+    background-color 160ms ease,
+    border-color 160ms ease,
+    color 160ms ease;
+}
+
+@media (hover: hover) {
+  .wn-friends-quiet:hover {
+    background: rgb(255 255 255 / 5%);
+    color: var(--wn-text);
+  }
+
+  .wn-friends-quiet--danger:hover {
+    border-color: rgb(242 104 122 / 30%);
+    background: rgb(242 104 122 / 6%);
+    color: #f2879a;
+  }
+}
+
+.wn-friends-secondary:focus-visible,
+.wn-friends-quiet:focus-visible,
+.wn-friends-mini:focus-visible,
+.wn-friends-invite__nick button:focus-visible {
+  outline: none;
+  box-shadow: var(--wn-focus-ring);
+}
+
+/* Invite card. */
+.wn-friends-invite {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  gap: 14px;
+  min-width: 0;
+  padding: var(--wn-space-3);
+  border: 1.5px dashed #2e2b40;
+  border-radius: var(--wn-radius-lg);
+}
+
+.wn-friends-invite__icon {
+  display: grid;
+  place-items: center;
+  width: 48px;
+  height: 48px;
+  border-radius: 14px;
+  background: rgb(61 214 195 / 10%);
+  color: var(--wn-teal);
+}
+
+.wn-friends-invite__icon svg {
+  width: 22px;
+  height: 22px;
+}
+
+.wn-friends-invite__title {
+  margin: 0;
+  color: var(--wn-text);
+  font: var(--wn-weight-bold) 17px/1.3 var(--wn-font-ui);
+}
+
+.wn-friends-invite__nick {
+  display: flex;
+  align-items: center;
+  gap: var(--wn-space-1);
+  height: 44px;
+  padding: 0 6px 0 14px;
+  border: 1px solid #2a2838;
+  border-radius: 10px;
+  background: var(--wn-surface);
+}
+
+.wn-friends-invite__nick span {
+  flex: 1;
+  overflow: hidden;
+  color: var(--wn-text);
+  font: var(--wn-type-technical);
+  font-size: 14px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.wn-friends-invite__nick button {
+  appearance: none;
+  height: 32px;
+  padding: 0 12px;
+  border: 0;
+  border-radius: var(--wn-radius-sm);
+  background: #232230;
+  color: var(--wn-text);
+  font: var(--wn-weight-bold) 13px/1 var(--wn-font-ui);
+  cursor: pointer;
+}
+
+@media (hover: hover) {
+  .wn-friends-invite__nick button:hover {
+    background: #2c2a3b;
+  }
+}
+
+/* Empty states. */
+.wn-friends-empty {
+  grid-column: 1 / -1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 10px;
+  padding: var(--wn-space-5) var(--wn-space-3);
+  border: 1px solid var(--wn-border);
+  border-radius: var(--wn-radius-lg);
+  background: var(--wn-surface);
+  text-align: center;
+}
+
+.wn-friends-empty--compact {
+  padding: var(--wn-space-3) var(--wn-space-1);
+  border: 0;
+  background: transparent;
+}
+
+.wn-friends-empty__icon {
+  color: #5e5a70;
+}
+
+.wn-friends-empty__icon svg {
+  width: 28px;
+  height: 28px;
+}
+
+.wn-friends-empty b {
+  color: #cfcbdd;
+  font: var(--wn-weight-bold) 15px/1.2 var(--wn-font-ui);
+}
+
+.wn-friends-empty > span:last-child {
+  max-width: 420px;
+  color: var(--wn-text-muted);
+  font: var(--wn-weight-medium) 14px/1.45 var(--wn-font-ui);
+}
+
+/* Side cards. */
+.wn-friends-card {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  padding: 22px 24px;
+  border: 1px solid var(--wn-border);
+  border-radius: var(--wn-radius-lg);
+  background: var(--wn-surface);
+}
+
+.wn-friends-card__head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--wn-space-1);
+}
+
+.wn-friends-card__title {
+  margin: 0;
+  color: var(--wn-text);
+  font: var(--wn-weight-bold) 18px/1 var(--wn-font-ui);
+}
+
+.wn-friends-card__aside {
+  margin-left: auto;
+  color: var(--wn-text-muted);
+  font: var(--wn-weight-semi-bold) 13px/1 var(--wn-font-ui);
+}
+
+.wn-friends-card__aside a {
+  font-size: 13px;
+}
+
+.wn-friends-requests {
+  display: flex;
+  flex-direction: column;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.wn-friends-request {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px 12px;
+  padding: 12px 0;
+  border-top: 1px solid #1e1d29;
+}
+
+.wn-friends-request:first-child {
+  border-top: 0;
+  padding-top: 0;
+}
+
+/* A minimum width, so on a narrow card the buttons wrap below the name instead of
+   squeezing it into an ellipsis. */
+.wn-friends-request .wn-friend-card__who {
+  flex: 1 1 180px;
+  gap: 12px;
+}
+
+.wn-friends-request .wn-friend-card__name {
+  font-size: 15px;
+}
+
+.wn-friends-request .wn-friend-card__sub {
+  font-size: 13px;
+}
+
+.wn-friends-request__actions {
+  display: flex;
+  gap: 6px;
+}
+
+.wn-friends-mini {
+  appearance: none;
+  height: 32px;
+  padding: 0 12px;
+  border: 1px solid var(--wn-border-strong);
+  border-radius: var(--wn-radius-sm);
+  background: transparent;
+  color: var(--wn-text-secondary);
+  font: var(--wn-weight-bold) 13px/1 var(--wn-font-ui);
+  cursor: pointer;
+}
+
+.wn-friends-mini--accept {
+  border-color: transparent;
+  background: rgb(61 214 195 / 14%);
+  color: var(--wn-teal);
+}
+
+@media (hover: hover) {
+  .wn-friends-mini:hover {
+    color: var(--wn-text);
+  }
+
+  .wn-friends-mini--accept:hover {
+    background: rgb(61 214 195 / 22%);
+    color: var(--wn-teal);
+  }
+}
+
+.wn-friends-privacy {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--wn-space-2);
+}
+
+.wn-friends-privacy__label {
+  color: var(--wn-text-secondary);
+  font: var(--wn-weight-medium) 14px/1.45 var(--wn-font-ui);
+}
+
+/* Switch: teal when on, as in the design. A submit button, so it works without JS. */
+.wn-switch {
+  appearance: none;
+  position: relative;
+  flex: none;
+  width: 40px;
+  height: 24px;
+  padding: 0;
+  border: 0;
+  border-radius: 12px;
+  background: var(--wn-border-strong);
+  cursor: pointer;
+  transition: background-color 160ms ease;
+}
+
+.wn-switch__thumb {
+  position: absolute;
+  top: 3px;
+  left: 3px;
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  background: var(--wn-text-secondary);
+  transition:
+    transform 160ms ease,
+    background-color 160ms ease;
+}
+
+.wn-switch[aria-checked="true"] {
+  background: var(--wn-teal);
+}
+
+.wn-switch[aria-checked="true"] .wn-switch__thumb {
+  background: var(--wn-canvas);
+  transform: translateX(16px);
+}
+
+.wn-switch:focus-visible {
+  outline: none;
+  box-shadow: var(--wn-focus-ring);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .wn-switch,
+  .wn-switch__thumb {
+    transition: none;
+  }
+}
+
+@media (max-width: 1199px) {
+  .wn-friends-search {
+    width: 100%;
+  }
+
+  .wn-friends__main,
+  .wn-friends__side {
+    grid-column: 1 / -1;
+  }
+
+  .wn-friends__side {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    align-items: start;
+  }
+}
+
+@media (max-width: 767px) {
+  .wn-friends__title {
+    font-size: 26px;
+  }
+
+  .wn-friends-search .wn-btn {
+    padding: 0 16px;
+  }
+
+  .wn-friends-tabs {
+    gap: 20px;
+  }
+
+  .wn-friends-tabs__link {
+    font-size: 15px;
+  }
+
+  .wn-friends__main,
+  .wn-friends__side {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 12px;
+  }
+
+  .wn-friends__layout {
+    gap: 12px;
+  }
+
+  .wn-friend-card {
+    padding: var(--wn-space-2);
+  }
+
+  .wn-friends-card {
+    padding: 18px var(--wn-space-2);
+  }
+
+  .wn-friends-result {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+}
+
+/* ==========================================================================
    Aurora Ink screens - notifications (PR 259): NOTIFICATIONS. The same Notification
    cards as the popover at full size - 40px avatar, text unclamped, 44px icon buttons -
    with 6px between cards. Content capped at 760px, as in the design.
