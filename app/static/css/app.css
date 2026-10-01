@@ -9667,6 +9667,687 @@ body.reader-hud-visible .reader-hud {
 }
 
 /* ==========================================================================
+   Webnovells Redesign - profile (PR 277, screen A5) on the --wn-* tokens from PR 272:
+   hero with the avatar blurred behind it, stat pills, the reading calendar on the new
+   palette (same PR 136/160 markup, only its --reading-calendar-* variables change),
+   "Читает сейчас" / "Друзья" / "Избранное" in a 5/3/4 row and the library preview.
+   ========================================================================== */
+.wn-profile {
+  max-width: none;
+  gap: var(--wn-space-3);
+  font-family: var(--wn-font-ui);
+}
+
+.wn-profile-link {
+  color: #b7a6ff;
+  font: var(--wn-weight-bold) 15px/1 var(--wn-font-ui);
+  text-decoration: none;
+  white-space: nowrap;
+}
+
+@media (hover: hover) {
+  .wn-profile-link:hover {
+    color: #d3c8ff;
+  }
+}
+
+.wn-profile-link:focus-visible {
+  outline: none;
+  border-radius: 4px;
+  box-shadow: var(--wn-focus-ring);
+}
+
+/* Hero: the avatar, blurred and dimmed, behind a dark left-to-right scrim. */
+.wn-profile-hero {
+  position: relative;
+  overflow: hidden;
+  border: 1px solid #2a2838;
+  border-radius: var(--wn-radius-xl);
+  background:
+    radial-gradient(circle at 15% 30%, rgb(122 82 244 / 28%), transparent 55%),
+    radial-gradient(circle at 70% 80%, rgb(61 214 195 / 14%), transparent 50%),
+    var(--wn-surface);
+  isolation: isolate;
+}
+
+.wn-profile-hero__backdrop {
+  position: absolute;
+  inset: -80px;
+  z-index: -2;
+  width: calc(100% + 160px);
+  height: calc(100% + 160px);
+  object-fit: cover;
+  filter: blur(64px) saturate(0.6) brightness(0.55);
+}
+
+.wn-profile-hero__scrim {
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  background: linear-gradient(90deg, rgb(12 12 18 / 90%), rgb(12 12 18 / 72%));
+}
+
+.wn-profile-hero__content {
+  display: flex;
+  align-items: center;
+  gap: 28px;
+  padding: var(--wn-space-4);
+}
+
+.wn-profile-hero__ring {
+  flex: none;
+  width: 120px;
+  height: 120px;
+  padding: 4px;
+  border-radius: 50%;
+  background: var(--wn-canvas);
+  box-shadow: 0 0 0 2px var(--wn-teal);
+}
+
+.wn-profile-hero__ring > .profile__avatar {
+  display: grid;
+  place-items: center;
+  width: 100%;
+  height: 100%;
+  overflow: hidden;
+  border-radius: 50%;
+  background: var(--wn-surface-raised);
+  color: var(--wn-text);
+  font: var(--wn-weight-extra-bold) 36px/1 var(--wn-font-ui);
+}
+
+.wn-profile-hero__ring > .profile__avatar img {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  cursor: zoom-in;
+}
+
+.wn-profile-hero__info {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  gap: 10px;
+  min-width: 0;
+}
+
+.wn-profile-hero__name {
+  margin: 0;
+  color: #f6f4fa;
+  font: var(--wn-weight-extra-bold) 36px/1.05 var(--wn-font-ui);
+  letter-spacing: -0.01em;
+  overflow-wrap: anywhere;
+}
+
+.wn-profile-hero__bio,
+.wn-profile-hero .profile__bio {
+  margin: 0;
+  color: #cfcbdd;
+  font: var(--wn-weight-medium) 16px/1.4 var(--wn-font-ui);
+  white-space: pre-line;
+  overflow-wrap: anywhere;
+}
+
+.wn-profile-hero__bio--empty {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 4px 10px;
+  white-space: normal;
+}
+
+.wn-profile-hero__meta {
+  margin: 0;
+  color: #a9a5ba;
+  font: var(--wn-weight-medium) 14px/1.3 var(--wn-font-ui);
+}
+
+.wn-profile-stats {
+  display: flex;
+  align-self: flex-start;
+  flex-wrap: wrap;
+  gap: 1px;
+  margin: 10px 0 0;
+  overflow: hidden;
+  border-radius: 14px;
+  background: rgb(255 255 255 / 8%);
+}
+
+.wn-profile-stats__item {
+  display: flex;
+  flex-direction: column-reverse;
+  justify-content: flex-end;
+  gap: var(--wn-space-1);
+  min-width: 112px;
+  padding: var(--wn-space-2) 22px;
+  background: rgb(12 12 18 / 70%);
+}
+
+.wn-profile-stats__value {
+  margin: 0;
+  color: #f2f0f7;
+  font: var(--wn-weight-extra-bold) 26px/1 var(--wn-font-ui);
+  white-space: nowrap;
+}
+
+.wn-profile-stats__label {
+  color: #a9a5ba;
+  font: var(--wn-weight-medium) 13px/1 var(--wn-font-ui);
+}
+
+.wn-profile-hero__actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-self: flex-start;
+  gap: var(--wn-space-1);
+}
+
+.wn-profile-edit {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--wn-space-1);
+  height: 44px;
+  padding: 0 18px;
+  border: 1px solid rgb(255 255 255 / 18%);
+  border-radius: var(--wn-radius-md);
+  background: rgb(255 255 255 / 6%);
+  color: #f2f0f7;
+  font: var(--wn-weight-bold) 15px/1 var(--wn-font-ui);
+  text-decoration: none;
+  white-space: nowrap;
+  transition: background-color 160ms ease;
+}
+
+.wn-profile-edit svg {
+  width: 16px;
+  height: 16px;
+}
+
+@media (hover: hover) {
+  .wn-profile-edit:hover {
+    background: rgb(255 255 255 / 11%);
+    color: #f2f0f7;
+  }
+}
+
+.wn-profile-edit:focus-visible {
+  outline: none;
+  box-shadow: var(--wn-focus-ring);
+}
+
+/* Cards. */
+.wn-profile-card {
+  display: flex;
+  flex-direction: column;
+  gap: var(--wn-space-2);
+  min-width: 0;
+  padding: 22px 24px;
+  border: 1px solid var(--wn-border);
+  border-radius: var(--wn-radius-lg);
+  background: var(--wn-surface);
+}
+
+.wn-profile-card__head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 8px 12px;
+}
+
+.wn-profile-card__title {
+  margin: 0;
+  color: var(--wn-text);
+  font: var(--wn-weight-bold) 18px/1.2 var(--wn-font-ui);
+}
+
+.wn-profile-card__aside,
+.wn-profile-card__count {
+  color: var(--wn-text-muted);
+  font: var(--wn-weight-semi-bold) 14px/1 var(--wn-font-ui);
+}
+
+.wn-profile-card__count {
+  margin-left: -4px;
+}
+
+.wn-profile-card__more {
+  margin-left: auto;
+  font-size: 14px;
+  font-weight: var(--wn-weight-semi-bold);
+}
+
+/* Reading calendar: the PR 160 grid, re-skinned through its own variables. */
+/* Cells sized so ~53 weekly columns fill the card at the 1440 design width, as in the
+   mockup; narrower screens step down and the grid scrolls (PR 160) when it must. */
+.wn-profile .reading-calendar-card {
+  --reading-calendar-cell: 16px;
+  --reading-calendar-gap: 4px;
+  --reading-calendar-level-0: #1c1b26;
+  --reading-calendar-level-1: rgb(61 214 195 / 28%);
+  --reading-calendar-level-2: rgb(61 214 195 / 50%);
+  --reading-calendar-level-3: rgb(61 214 195 / 75%);
+  --reading-calendar-level-4: var(--wn-teal);
+}
+
+.wn-profile .reading-calendar-card .reading-calendar-legend {
+  margin-left: auto;
+  gap: 5px;
+  color: var(--wn-text-muted);
+  font: var(--wn-weight-medium) 13px/1 var(--wn-font-ui);
+}
+
+.wn-profile .reading-calendar-legend__swatch {
+  width: 14px;
+  height: 14px;
+  border-radius: 4px;
+}
+
+.wn-profile .reading-calendar__day {
+  border-radius: 4px;
+}
+
+.wn-profile .reading-calendar-weekdays,
+.wn-profile .reading-calendar-months {
+  color: var(--wn-text-muted);
+  font-family: var(--wn-font-ui);
+  font-size: 12px;
+}
+
+.wn-profile .reading-calendar-weekdays {
+  margin-top: calc(16px + var(--reading-calendar-gap));
+}
+
+.wn-profile .reading-calendar-months {
+  height: 16px;
+  line-height: 16px;
+}
+
+@media (min-width: 1400px) {
+  .wn-profile .reading-calendar-card {
+    --reading-calendar-cell: 18px;
+  }
+}
+
+/* "Читает сейчас" 5 / "Друзья" 3 / "Избранное" 4. */
+.wn-profile__row {
+  display: grid;
+  grid-template-columns: repeat(12, minmax(0, 1fr));
+  gap: var(--wn-space-3);
+}
+
+.wn-profile-current {
+  grid-column: span 5;
+}
+
+.wn-profile-friends {
+  grid-column: span 3;
+}
+
+.wn-profile-favorite {
+  grid-column: span 4;
+}
+
+.wn-profile-cover {
+  display: block;
+  flex: none;
+  overflow: hidden;
+  background: var(--wn-surface-raised);
+}
+
+.wn-profile-cover img {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  object-position: top;
+}
+
+.wn-profile-current__body {
+  display: flex;
+  gap: 18px;
+}
+
+.wn-profile-current__cover {
+  width: 96px;
+  height: 144px;
+  border-radius: 10px;
+}
+
+.wn-profile-current__copy {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  gap: var(--wn-space-1);
+  min-width: 0;
+}
+
+.wn-profile-current__name {
+  color: var(--wn-text);
+  font: var(--wn-weight-bold) 17px/1.3 var(--wn-font-ui);
+  text-decoration: none;
+}
+
+.wn-profile-current__meta {
+  margin: 0;
+  color: var(--wn-text-secondary);
+  font: var(--wn-weight-medium) 14px/1.2 var(--wn-font-ui);
+}
+
+.wn-profile-current__spacer {
+  flex: 1;
+}
+
+.wn-profile-progress {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.wn-profile-progress__bar {
+  flex: 1;
+  height: 5px;
+  overflow: hidden;
+  border-radius: 3px;
+  background: #262433;
+}
+
+.wn-profile-progress__fill {
+  display: block;
+  height: 100%;
+  border-radius: 3px;
+  background: var(--wn-teal);
+}
+
+.wn-profile-progress__pct {
+  color: var(--wn-teal);
+  font: var(--wn-weight-extra-bold) 14px/1 var(--wn-font-ui);
+}
+
+.wn-profile-friends__list {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.wn-profile-friend {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  min-width: 0;
+  border-radius: var(--wn-radius-sm);
+  text-decoration: none;
+}
+
+.wn-profile-friend:focus-visible {
+  outline: none;
+  box-shadow: var(--wn-focus-ring);
+}
+
+.wn-profile-friend__avatar {
+  display: grid;
+  flex: none;
+  place-items: center;
+  width: 44px;
+  height: 44px;
+  overflow: hidden;
+  border-radius: 50%;
+  background: var(--wn-surface-raised);
+  color: var(--wn-text);
+  font: var(--wn-weight-bold) 14px/1 var(--wn-font-ui);
+}
+
+.wn-profile-friend__avatar img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.wn-profile-friend__copy {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  min-width: 0;
+}
+
+.wn-profile-friend__name,
+.wn-profile-friend__sub {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.wn-profile-friend__name {
+  color: var(--wn-text);
+  font: var(--wn-weight-bold) 15px/1.1 var(--wn-font-ui);
+}
+
+@media (hover: hover) {
+  .wn-profile-friend:hover .wn-profile-friend__name,
+  .wn-profile-current__name:hover,
+  .wn-profile-favorite__body:hover .wn-profile-favorite__name,
+  .wn-profile-poster:hover .wn-profile-poster__name {
+    color: #ffffff;
+  }
+}
+
+.wn-profile-friend__sub {
+  color: var(--wn-text-muted);
+  font: var(--wn-weight-medium) 13px/1.1 var(--wn-font-ui);
+}
+
+.wn-profile-favorite__body {
+  display: flex;
+  align-items: center;
+  gap: var(--wn-space-2);
+  border-radius: var(--wn-radius-sm);
+  text-decoration: none;
+}
+
+.wn-profile-favorite__body:focus-visible {
+  outline: none;
+  box-shadow: var(--wn-focus-ring);
+}
+
+.wn-profile-favorite__cover {
+  width: 64px;
+  height: 96px;
+  border-radius: var(--wn-radius-sm);
+}
+
+.wn-profile-favorite__copy {
+  display: flex;
+  flex-direction: column;
+  gap: var(--wn-space-1);
+  min-width: 0;
+}
+
+.wn-profile-favorite__name {
+  color: var(--wn-text);
+  font: var(--wn-weight-bold) 15px/1.3 var(--wn-font-ui);
+}
+
+.wn-profile-favorite__badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  color: #f2c14e;
+  font: var(--wn-weight-semi-bold) 13px/1 var(--wn-font-ui);
+}
+
+.wn-profile-favorite__badge svg {
+  width: 13px;
+  height: 13px;
+  fill: currentColor;
+}
+
+/* Library preview: up to seven covers with their progress. */
+.wn-profile-library {
+  display: flex;
+  flex-direction: column;
+  gap: var(--wn-space-2);
+}
+
+.wn-profile-library__title {
+  margin: 0;
+  color: var(--wn-text);
+  font: var(--wn-weight-extra-bold) 20px/1 var(--wn-font-ui);
+}
+
+.wn-profile-library__grid {
+  display: grid;
+  grid-template-columns: repeat(7, minmax(0, 1fr));
+  gap: 20px;
+}
+
+.wn-profile-poster {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  min-width: 0;
+  border-radius: var(--wn-radius-md);
+  text-decoration: none;
+}
+
+.wn-profile-poster:focus-visible {
+  outline: none;
+  box-shadow: var(--wn-focus-ring);
+}
+
+.wn-profile-poster__cover {
+  aspect-ratio: 2 / 3;
+  border-radius: var(--wn-radius-md);
+  box-shadow: 0 0 0 1px rgb(255 255 255 / 8%);
+}
+
+.wn-profile-poster .wn-profile-progress {
+  gap: var(--wn-space-1);
+}
+
+.wn-profile-poster .wn-profile-progress__bar {
+  height: 4px;
+}
+
+.wn-profile-poster .wn-profile-progress__pct {
+  font-size: 12px;
+}
+
+.wn-profile-poster__name {
+  display: -webkit-box;
+  overflow: hidden;
+  color: #e4e1ec;
+  font: var(--wn-weight-bold) 14px/1.35 var(--wn-font-ui);
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+}
+
+@media (max-width: 1199px) {
+  /* Four pills no longer fit beside the avatar: a 2 x 2 grid, so the gaps between
+     them stay hairlines instead of an empty block where a wrapped row ends. */
+  .wn-profile-stats {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(112px, 1fr));
+  }
+
+  .wn-profile-current {
+    grid-column: 1 / -1;
+  }
+
+  .wn-profile-friends {
+    grid-column: span 6;
+  }
+
+  .wn-profile-favorite {
+    grid-column: span 6;
+  }
+
+  .wn-profile-library__grid {
+    grid-template-columns: repeat(5, minmax(0, 1fr));
+  }
+
+  .wn-profile .reading-calendar-card {
+    --reading-calendar-cell: 13px;
+    --reading-calendar-gap: 3px;
+  }
+}
+
+@media (max-width: 767px) {
+  .wn-profile-hero__content {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: var(--wn-space-2);
+    padding: var(--wn-space-3) var(--wn-space-2);
+  }
+
+  .wn-profile-hero__ring {
+    width: 92px;
+    height: 92px;
+    padding: 3px;
+  }
+
+  .wn-profile-hero__name {
+    font-size: 28px;
+  }
+
+  .wn-profile-hero__bio,
+  .wn-profile-hero .profile__bio {
+    font-size: 15px;
+  }
+
+  .wn-profile-stats {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    align-self: stretch;
+  }
+
+  .wn-profile-stats__item {
+    min-width: 0;
+    padding: 14px var(--wn-space-2);
+  }
+
+  .wn-profile-stats__value {
+    font-size: 22px;
+  }
+
+  .wn-profile-card {
+    padding: 18px var(--wn-space-2);
+  }
+
+  .wn-profile .reading-calendar-card .reading-calendar-legend {
+    order: 3;
+    width: 100%;
+    margin-left: 0;
+  }
+
+  .wn-profile .reading-calendar-card {
+    --reading-calendar-cell: 12px;
+    --reading-calendar-gap: 3px;
+  }
+
+  .wn-profile__row {
+    gap: 12px;
+  }
+
+  .wn-profile-friends,
+  .wn-profile-favorite {
+    grid-column: 1 / -1;
+  }
+
+  .wn-profile-current__cover {
+    width: 80px;
+    height: 120px;
+  }
+
+  .wn-profile-library__grid {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 12px;
+  }
+}
+
+/* ==========================================================================
    Aurora Ink screens - settings (PR 261): SETTINGS-ACCOUNT / -SECURITY /
    -NOTIFICATIONS and the shell /settings/reading (PR 255) sits in. "Настройки", a 200px
    section nav (active: --surface-selected + cyan edge) beside cards capped at 680px.
