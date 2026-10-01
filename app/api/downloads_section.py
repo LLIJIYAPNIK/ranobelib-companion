@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+from dataclasses import dataclass
+from datetime import datetime
 from typing import Annotated, Any
 
 from fastapi import APIRouter, Depends, HTTPException, Request
@@ -11,7 +13,12 @@ from psycopg import AsyncConnection
 from app.auth.dependencies import get_current_user, require_current_user
 from app.config import get_settings
 from app.db.connection import connection, get_connection
-from app.db.downloads import DownloadHistoryEntry, delete_entry, list_download_history
+from app.db.downloads import (
+    DownloadHistoryEntry,
+    clear_history,
+    delete_entry,
+    list_download_history,
+)
 from app.db.users import User
 from app.jobs.eta import estimate_remaining_seconds
 from app.jobs.models import DownloadJob
@@ -24,6 +31,13 @@ from app.jobs.store import (
 from app.templating import templates
 
 router = APIRouter(prefix="/downloads")
+
+
+@dataclass(frozen=True)
+class DownloadHistoryGroup:
+    date: str
+    label: str
+    entries: list[DownloadHistoryEntry]
 
 
 @router.get("")
@@ -59,6 +73,7 @@ async def show_downloads(
             "active_nav": "downloads",
             "active_jobs": active_jobs,
             "history": history,
+            "history_groups": _group_history(history),
             "ready_files": ready_files,
         },
     )
@@ -93,6 +108,30 @@ async def delete_download_history_entry(
     if not await delete_entry(conn, entry_id, user.id):
         raise HTTPException(status_code=404, detail="Запись не найдена")
     return Response(status_code=204)
+
+
+@router.delete("/history")
+async def clear_download_history(
+    user: Annotated[User, Depends(require_current_user)],
+    conn: Annotated[AsyncConnection, Depends(get_connection)],
+) -> Response:
+    await clear_history(conn, user.id)
+    return Response(status_code=204)
+
+
+def _group_history(entries: list[DownloadHistoryEntry]) -> list[DownloadHistoryGroup]:
+    groups: list[DownloadHistoryGroup] = []
+    for entry in entries:
+        day = entry.finished_at[:10]
+        if groups and groups[-1].date == day:
+            groups[-1].entries.append(entry)
+            continue
+        try:
+            label = datetime.fromisoformat(day).strftime("%d.%m.%Y")
+        except ValueError:
+            label = day
+        groups.append(DownloadHistoryGroup(day, label, [entry]))
+    return groups
 
 
 def _job_summary(job: DownloadJob) -> dict[str, Any]:

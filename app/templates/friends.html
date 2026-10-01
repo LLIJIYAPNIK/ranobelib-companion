@@ -2,100 +2,243 @@
 {% block title %}Друзья — RanobeLib Companion{% endblock %}
 {% block content %}
 {#
-  PR 258 (Aurora Ink, FRIENDS): intro, nickname search (field with icon + Primary
-  «Искать»), then search results / incoming / outgoing requests as boxed Friend rows and
-  the friend list as plain divided rows under "Друзья · N". An empty state is one
-  .ui-empty line. A guest gets the locked state instead.
+  PR 278 (Webnovells Redesign, screen A6): heading + intro with the nickname search,
+  search results, tabs with counts (Друзья / Входящие / Исходящие, ?tab=), the active
+  list in the main column - friend cards with a "Читает" preview, Профиль / Удалить, and
+  the «Позовите знакомых» invite card with the copyable nickname (friends-invite-copy.js)
+  - and a side column with every pending request ("Заявки") and the "Приватность" card,
+  whose switch flips show_currently_reading (POST /friends/privacy). A guest gets the
+  locked state instead.
 #}
-{% from "_friend_row.html" import ui_friend_row, ui_friend_request_actions %}
-<main class="friends-page">
-  <h1 class="friends-page__title">Друзья</h1>
+{% from "_friend_row.html" import ui_friend_request_actions %}
+{% macro avatar(user, size_class) -%}
+<span class="wn-friends-avatar {{ size_class }}">{% if user.avatar_url %}<img class="avatar-img" src="{{ user.avatar_url }}" alt="">{% else %}{{ user.avatar_initials }}{% endif %}</span>
+{%- endmacro %}
+{% macro since_label(iso) -%}
+{{ iso[8:10] }}.{{ iso[5:7] }}.{{ iso[:4] }}
+{%- endmacro %}
+{% macro inbox_icon() -%}
+<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M22 12h-6l-2 3h-4l-2-3H2"/><path d="M5.5 5h13L22 12v6a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2v-6z"/></svg>
+{%- endmacro %}
+{% macro request_card(req, kind) -%}
+<article class="wn-friend-card wn-friend-card--request">
+  <div class="wn-friend-card__head">
+    <a class="wn-friend-card__who" href="/profile/{{ req.user.id }}">
+      {{ avatar(req.user, "wn-friends-avatar--lg") }}
+      <span class="wn-friend-card__copy">
+        <span class="wn-friend-card__name">{{ req.user.display_name }}</span>
+        <span class="wn-friend-card__sub">{{ "Хочет добавить вас в друзья" if kind == "incoming" else "Заявка отправлена" }}</span>
+      </span>
+    </a>
+  </div>
+  <div class="wn-friend-card__actions">
+    {% if kind == "incoming" %}
+    <form method="post" action="/friends/{{ req.user.id }}/accept"><input type="hidden" name="next" value="/friends?tab=incoming"><button class="wn-btn wn-btn--primary" type="submit">Принять</button></form>
+    <form method="post" action="/friends/{{ req.user.id }}/remove"><input type="hidden" name="next" value="/friends?tab=incoming"><button class="wn-friends-quiet" type="submit">Отклонить</button></form>
+    {% else %}
+    <a class="wn-friends-secondary" href="/profile/{{ req.user.id }}">Профиль</a>
+    <form method="post" action="/friends/{{ req.user.id }}/remove"><input type="hidden" name="next" value="/friends?tab=outgoing"><button class="wn-friends-quiet" type="submit">Отменить</button></form>
+    {% endif %}
+  </div>
+</article>
+{%- endmacro %}
+<main class="friends-page wn-friends">
+  <div class="wn-friends__head">
+    <div class="wn-friends__heading">
+      <h1 class="wn-friends__title">Друзья</h1>
+      {% if current_user %}
+      <p class="wn-friends__intro">
+        Находите знакомых читателей, отправляйте и принимайте заявки и видьте их активность
+        на главной — если это разрешено настройками приватности.
+      </p>
+      {% endif %}
+    </div>
+    {% if current_user %}
+    <form class="wn-friends-search" method="get" action="/friends">
+      <label class="wn-friends-search__field">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="m21 21-4.3-4.3"/></svg>
+        <input
+          type="text"
+          name="query"
+          value="{{ query or '' }}"
+          placeholder="Ник пользователя"
+          aria-label="Поиск пользователей по нику"
+          autocomplete="off"
+        >
+      </label>
+      <button class="wn-btn wn-btn--primary" type="submit">Искать</button>
+    </form>
+    {% endif %}
+  </div>
+
   {% if current_user %}
-  <p class="friends-page__intro">
-    Находите знакомых читателей, отправляйте и принимайте заявки и видьте их активность
-    на главной — если это разрешено настройками приватности.
-  </p>
-  <form class="ui-input-row" method="get" action="/friends">
-    <label class="ui-input-group">
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M11 18a7 7 0 1 0 0-14 7 7 0 0 0 0 14zM20 20l-4-4"/></svg>
-      <input
-        class="ui-input"
-        type="text"
-        name="query"
-        value="{{ query or '' }}"
-        placeholder="Ник пользователя"
-        aria-label="Поиск пользователей по нику"
-      >
-    </label>
-    <button class="ui-btn ui-btn--primary" type="submit">Искать</button>
-  </form>
-
   {% if query %}
-  <section class="friends-section">
-    <h2 class="friends-section__title">Результаты поиска</h2>
+  <section class="wn-friends-results" aria-labelledby="friends-results-title">
+    <h2 class="wn-friends-section-title" id="friends-results-title">Результаты поиска</h2>
     {% if search_results %}
-    <div class="friends-section__list">
+    <div class="wn-friends-results__list">
       {% for result in search_results %}
-      {% call ui_friend_row(result, card=true) %}
-      {{ ui_friend_request_actions(result.user.id, result.state) }}
-      {% endcall %}
+      <div class="wn-friends-result">
+        <a class="wn-friend-card__who" href="/profile/{{ result.user.id }}">
+          {{ avatar(result.user, "") }}
+          <span class="wn-friend-card__name">{{ result.user.display_name }}</span>
+        </a>
+        <div class="wn-friends-result__actions">
+          {{ ui_friend_request_actions(result.user.id, result.state, next_url="/friends?query=" ~ (query | urlencode)) }}
+        </div>
+      </div>
       {% endfor %}
     </div>
     {% else %}
-    <p class="ui-empty">Никого не нашли по запросу «{{ query }}».</p>
+    <p class="wn-friends-note">Никого не нашли по запросу «{{ query }}».</p>
     {% endif %}
   </section>
   {% endif %}
 
-  {% if incoming_requests %}
-  <section class="friends-section">
-    <h2 class="friends-section__title">Заявки в друзья</h2>
-    <div class="friends-section__list">
-      {% for req in incoming_requests %}
-      {% call ui_friend_row(req, card=true) %}
-      <form method="post" action="/friends/{{ req.user.id }}/accept">
-        <button class="ui-btn ui-btn--sm" type="submit">Принять</button>
-      </form>
-      <form method="post" action="/friends/{{ req.user.id }}/remove">
-        <button class="ui-btn ui-btn--quiet ui-btn--sm" type="submit">Отклонить</button>
-      </form>
-      {% endcall %}
-      {% endfor %}
-    </div>
-  </section>
-  {% endif %}
+  <nav class="wn-friends-tabs" aria-label="Друзья и заявки">
+    {% for key, label, count in [("friends", "Друзья", friends | length), ("incoming", "Входящие", incoming_requests | length), ("outgoing", "Исходящие", outgoing_requests | length)] %}
+    <a class="wn-friends-tabs__link" href="/friends{% if key != 'friends' %}?tab={{ key }}{% endif %}"{% if tab == key %} aria-current="page"{% endif %}>{{ label }}<span class="wn-friends-tabs__count">{{ count }}</span></a>
+    {% endfor %}
+  </nav>
 
-  {% if outgoing_requests %}
-  <section class="friends-section">
-    <h2 class="friends-section__title">Отправленные заявки</h2>
-    <div class="friends-section__list">
-      {% for req in outgoing_requests %}
-      {% call ui_friend_row(req, card=true) %}
-      <form method="post" action="/friends/{{ req.user.id }}/remove">
-        <button class="ui-btn ui-btn--quiet ui-btn--sm" type="submit">Отменить</button>
-      </form>
-      {% endcall %}
-      {% endfor %}
-    </div>
-  </section>
-  {% endif %}
-
-  <section class="friends-section">
-    <h2 class="friends-section__title">Друзья{% if friends %} · {{ friends | length }}{% endif %}</h2>
-    {% if friends %}
-    <div class="friends-section__list friends-section__list--plain">
+  <div class="wn-friends__layout">
+    <div class="wn-friends__main" data-role="friends-list">
+      {% if tab == "friends" %}
       {% for friend in friends %}
-      {% call ui_friend_row(friend) %}
-      <form method="post" action="/friends/{{ friend.user.id }}/remove">
-        <button class="ui-btn ui-btn--quiet ui-btn--sm" type="submit">Удалить</button>
-      </form>
-      {% endcall %}
+      {% set reading = friend_reading.get(friend.user.id) %}
+      <article class="wn-friend-card">
+        <div class="wn-friend-card__head">
+          <a class="wn-friend-card__who" href="/profile/{{ friend.user.id }}">
+            {{ avatar(friend.user, "wn-friends-avatar--lg") }}
+            <span class="wn-friend-card__copy">
+              <span class="wn-friend-card__name">{{ friend.user.display_name }}</span>
+              <span class="wn-friend-card__sub">В друзьях с {{ since_label(friend.since) }}</span>
+            </span>
+          </a>
+        </div>
+        <div class="wn-friend-card__reading">
+          {% if reading %}
+          <a class="wn-friend-card__cover" href="/titles/{{ reading.entry.slug_url }}" tabindex="-1" aria-hidden="true">{% if reading.cover_url %}<img src="{{ reading.cover_url }}" alt="" loading="lazy">{% endif %}</a>
+          <span class="wn-friend-card__reading-copy">
+            <span class="wn-friend-card__eyebrow">Читает</span>
+            <a class="wn-friend-card__title" href="/titles/{{ reading.entry.slug_url }}">{{ reading.name or reading.entry.slug_url }}</a>
+            {% if reading.entry.last_read_volume %}<span class="wn-friend-card__chapter">Том {{ reading.entry.last_read_volume }}, глава {{ reading.entry.last_read_number }}</span>{% endif %}
+          </span>
+          {% else %}
+          <span class="wn-friend-card__cover wn-friend-card__cover--empty" aria-hidden="true"></span>
+          <span class="wn-friend-card__reading-copy">
+            <span class="wn-friend-card__eyebrow">Читает</span>
+            <span class="wn-friend-card__chapter">Пока нет активности</span>
+          </span>
+          {% endif %}
+        </div>
+        <div class="wn-friend-card__actions">
+          <a class="wn-friends-secondary" href="/profile/{{ friend.user.id }}">Профиль</a>
+          <form method="post" action="/friends/{{ friend.user.id }}/remove">
+            <button class="wn-friends-quiet wn-friends-quiet--danger" type="submit">Удалить</button>
+          </form>
+        </div>
+      </article>
       {% endfor %}
+      <section class="wn-friends-invite" aria-labelledby="friends-invite-title">
+        <span class="wn-friends-invite__icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" aria-hidden="true"><circle cx="9" cy="8" r="4"/><path d="M2 21a7 7 0 0 1 14 0M19 8v6M16 11h6"/></svg></span>
+        <h2 class="wn-friends-invite__title" id="friends-invite-title">{% if friends %}Позовите знакомых читателей{% else %}Друзей пока нет{% endif %}</h2>
+        {% if current_user.nickname %}
+        <p class="wn-friends-note">Поделитесь своим ником — по нему вас найдут через поиск выше.</p>
+        <div class="wn-friends-invite__nick">
+          <span data-role="friends-invite-nickname">{{ current_user.nickname }}</span>
+          <button type="button" data-role="friends-invite-copy" data-copy="{{ current_user.nickname }}">Копировать</button>
+        </div>
+        {% else %}
+        <p class="wn-friends-note">Чтобы вас могли найти через поиск, задайте ник в <a class="wn-friends-link" href="/settings/account">настройках аккаунта</a>.</p>
+        {% endif %}
+      </section>
+      {% elif tab == "incoming" %}
+      {% for req in incoming_requests %}{{ request_card(req, "incoming") }}{% endfor %}
+      {% if not incoming_requests %}
+      <div class="wn-friends-empty">
+        <span class="wn-friends-empty__icon">{{ inbox_icon() }}</span>
+        <b>Новых заявок нет</b>
+        <span>Когда кто-то добавит вас, заявка появится здесь — принять или отклонить можно в один клик.</span>
+      </div>
+      {% endif %}
+      {% else %}
+      {% for req in outgoing_requests %}{{ request_card(req, "outgoing") }}{% endfor %}
+      {% if not outgoing_requests %}
+      <div class="wn-friends-empty">
+        <span class="wn-friends-empty__icon">{{ inbox_icon() }}</span>
+        <b>Отправленных заявок нет</b>
+        <span>Найдите читателя по нику через поиск выше и нажмите «Добавить в друзья».</span>
+      </div>
+      {% endif %}
+      {% endif %}
     </div>
-    {% else %}
-    <p class="ui-empty">Друзей пока нет — используйте поиск выше, чтобы найти знакомых читателей.</p>
-    {% endif %}
-  </section>
+
+    <aside class="wn-friends__side">
+      <section class="wn-friends-card" aria-labelledby="friends-requests-title">
+        <div class="wn-friends-card__head">
+          <h2 class="wn-friends-card__title" id="friends-requests-title">Заявки</h2>
+          <span class="wn-friends-card__aside"><a href="/friends?tab=incoming">входящие</a> · <a href="/friends?tab=outgoing">исходящие</a></span>
+        </div>
+        {% if incoming_requests or outgoing_requests %}
+        <ul class="wn-friends-requests">
+          {% for req in incoming_requests %}
+          <li class="wn-friends-request">
+            <a class="wn-friend-card__who" href="/profile/{{ req.user.id }}">
+              {{ avatar(req.user, "") }}
+              <span class="wn-friend-card__copy">
+                <span class="wn-friend-card__name">{{ req.user.display_name }}</span>
+                <span class="wn-friend-card__sub">Входящая заявка</span>
+              </span>
+            </a>
+            <div class="wn-friends-request__actions">
+              <form method="post" action="/friends/{{ req.user.id }}/accept"><button class="wn-friends-mini wn-friends-mini--accept" type="submit">Принять</button></form>
+              <form method="post" action="/friends/{{ req.user.id }}/remove"><button class="wn-friends-mini" type="submit">Отклонить</button></form>
+            </div>
+          </li>
+          {% endfor %}
+          {% for req in outgoing_requests %}
+          <li class="wn-friends-request">
+            <a class="wn-friend-card__who" href="/profile/{{ req.user.id }}">
+              {{ avatar(req.user, "") }}
+              <span class="wn-friend-card__copy">
+                <span class="wn-friend-card__name">{{ req.user.display_name }}</span>
+                <span class="wn-friend-card__sub">Заявка отправлена</span>
+              </span>
+            </a>
+            <div class="wn-friends-request__actions">
+              <form method="post" action="/friends/{{ req.user.id }}/remove"><button class="wn-friends-mini" type="submit">Отменить</button></form>
+            </div>
+          </li>
+          {% endfor %}
+        </ul>
+        {% else %}
+        <div class="wn-friends-empty wn-friends-empty--compact">
+          <span class="wn-friends-empty__icon">{{ inbox_icon() }}</span>
+          <b>Новых заявок нет</b>
+          <span>Когда кто-то добавит вас, заявка появится здесь — принять или отклонить можно в один клик.</span>
+        </div>
+        {% endif %}
+      </section>
+
+      <section class="wn-friends-card" aria-labelledby="friends-privacy-title">
+        <h2 class="wn-friends-card__title" id="friends-privacy-title">Приватность</h2>
+        <form class="wn-friends-privacy" method="post" action="/friends/privacy">
+          <span class="wn-friends-privacy__label" id="friends-privacy-label">Показывать, что я сейчас читаю — друзьям на главной и всем в профиле</span>
+          <input type="hidden" name="show_currently_reading" value="{{ 'false' if current_user.show_currently_reading else 'true' }}">
+          <button
+            class="wn-switch"
+            type="submit"
+            role="switch"
+            aria-checked="{{ 'true' if current_user.show_currently_reading else 'false' }}"
+            aria-labelledby="friends-privacy-label"
+            data-role="friends-privacy-switch"
+          ><span class="wn-switch__thumb"></span></button>
+        </form>
+        <a class="wn-friends-link" href="/settings/account">Настройки приватности →</a>
+      </section>
+    </aside>
+  </div>
   {% else %}
   {% from "_locked_feature.html" import locked_feature %}
   {% call locked_feature("Друзья скрыты", "/login", "Войти") %}
@@ -104,4 +247,5 @@
   {% endcall %}
   {% endif %}
 </main>
+<script src="{{ url_for('static', path='js/friends-invite-copy.js') }}" defer></script>
 {% endblock %}

@@ -1,18 +1,14 @@
 {% extends "base.html" %}
 {% block title %}RanobeLib Companion{% endblock %}
 {% block content %}
-{#
-  PR 250 (Aurora Ink, HOME-GUEST/HOME-AUTH/HOME-EMPTY): link field, then - for a guest
-  only - the sign-in banner, then "Недавние" (or the empty card) with friend activity
-  in a right-hand column that wraps under it when there's no room.
-#}
 {% from "_title_card.html" import ui_title_card %}
-<main class="home">
-  <form class="home__open ui-input-row" method="get" action="/titles/open">
-    <label class="ui-input-group">
+<main class="home wn-home">
+  <form class="home__open wn-home__open" method="get" action="/titles/open">
+    <label class="wn-home__open-field">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M10 14a5 5 0 0 0 7 0l3-3a5 5 0 0 0-7-7l-1 1M14 10a5 5 0 0 0-7 0l-3 3a5 5 0 0 0 7 7l1-1"/></svg>
       <input
-        class="ui-input"
+        id="home-open-url"
+        class="wn-field__control wn-home__open-control"
         type="text"
         name="url"
         placeholder="Вставьте ссылку на тайтл ranobelib.me…"
@@ -23,97 +19,177 @@
         autofocus
       >
     </label>
-    <button class="ui-btn ui-btn--primary" type="submit">Открыть</button>
+    <button class="wn-btn wn-btn--primary" type="submit">Открыть</button>
   </form>
   <script src="{{ url_for('static', path='js/disable-mobile-autofocus.js') }}"></script>
   {% if error %}
-  <p class="home__error ui-field__error" id="home-open-error" role="alert">{{ error }}</p>
+  <p class="wn-field__caption wn-home__error" id="home-open-error" role="alert">{{ error }}</p>
   {% endif %}
 
   {% if not current_user %}
-  {# Same pitch as the sign-in card (_auth_card.html); the links open that card in the
-     auth modal, and stay plain /login and /register links without JS. #}
   <section class="home-guest" aria-label="Аккаунт">
     <div class="home-guest__copy">
-      <b class="home-guest__title">Читать можно и без аккаунта. С аккаунтом — удобнее.</b>
-      <span class="home-guest__text">Своя библиотека и избранное, прогресс чтения и календарь активности, загрузки с историей.</span>
+      <b class="home-guest__title">Читайте где угодно — продолжайте с того же места</b>
+      <span class="home-guest__text">Аккаунт сохранит библиотеку, прогресс, загрузки и активность.</span>
     </div>
     <div class="home-guest__actions">
-      <a class="ui-btn" href="/login" data-role="auth-modal-trigger">Войти</a>
-      <a class="ui-btn ui-btn--quiet home-guest__register" href="/register" data-role="auth-modal-trigger">Создать аккаунт</a>
+      <a class="wn-btn wn-btn--secondary" href="/login" data-role="auth-modal-trigger">Войти</a>
+      <a class="wn-btn wn-btn--primary" href="/register" data-role="auth-modal-trigger">Создать аккаунт</a>
+    </div>
+  </section>
+  {% else %}
+  <div class="wn-home__stage">
+    {% if dashboard.hero %}
+    {% set hero = dashboard.hero %}
+    {% set hero_entry = hero.entry %}
+    {% set hero_name = hero.name or hero_entry.slug_url %}
+    <section class="wn-home-hero" aria-labelledby="continue-reading-title">
+      {% if hero.cover_url %}
+      <img class="wn-home-hero__backdrop" src="{{ hero.cover_url }}" alt="">
+      {% endif %}
+      <div class="wn-home-hero__scrim"></div>
+      <div class="wn-home-hero__content">
+        <a class="wn-home-hero__cover" href="/titles/{{ hero_entry.slug_url }}" aria-label="{{ hero_name }}">
+          {% if hero.cover_url %}<img src="{{ hero.cover_url }}" alt="">{% endif %}
+        </a>
+        <div class="wn-home-hero__copy">
+          <span class="wn-home-hero__eyebrow">Продолжить чтение</span>
+          <h1 class="wn-home-hero__title" id="continue-reading-title">{{ hero_name }}</h1>
+          <p class="wn-home-hero__chapter">Том {{ hero_entry.last_read_volume }} · Глава {{ hero_entry.last_read_number }}</p>
+          {% if hero.progress_percent is not none %}
+          <div class="wn-home-progress ui-progress" aria-label="Прочитано {{ hero.progress_percent }}%">
+            <div class="wn-home-progress__label"><span>Прочитано</span><b>{{ hero.progress_percent }}%</b></div>
+            <span class="ui-progress__bar"><span class="ui-progress__fill" style="width: {{ hero.progress_percent }}%"></span></span>
+          </div>
+          {% endif %}
+          <div class="wn-home-hero__actions">
+            <a class="wn-btn wn-btn--primary" href="/titles/{{ hero_entry.slug_url }}/chapters/{{ hero_entry.last_read_volume }}/{{ hero_entry.last_read_number }}">Продолжить · Глава {{ hero_entry.last_read_number }}</a>
+            <a class="wn-btn wn-btn--secondary" href="/titles/{{ hero_entry.slug_url }}">Оглавление</a>
+          </div>
+        </div>
+      </div>
+    </section>
+    {% else %}
+    <section class="wn-home-hero wn-home-hero--empty" data-role="home-reading-empty">
+      <span class="wn-home-hero__eyebrow">Ваша следующая история</span>
+      <h1 class="wn-home-hero__title">Начните читать — продолжение появится здесь</h1>
+      <p class="wn-home-hero__chapter">Откройте тайтл по ссылке или выберите его в каталоге.</p>
+      <a class="wn-btn wn-btn--primary" href="/library/catalog">Открыть каталог</a>
+    </section>
+    {% endif %}
+
+    <aside class="wn-home__rail">
+      <section class="wn-home-today" aria-labelledby="today-title">
+        <div class="wn-home-section-head">
+          <h2 id="today-title">Сегодня</h2>
+          <a href="/activity">Активность</a>
+        </div>
+        <div class="wn-home-today__stats">
+          <div><b>{{ dashboard.summary.chapters_read_today }}</b><span>глав<br>прочитано</span></div>
+          <div><b>{{ dashboard.summary.active_time_label }}</b><span>активного<br>чтения</span></div>
+          <div><b>{{ dashboard.summary.downloads_today | length }}</b><span>скачано<br>сегодня</span></div>
+        </div>
+      </section>
+
+      {% if friend_activity %}
+      <section class="home__friends" aria-labelledby="friends-activity-title">
+        <div class="wn-home-section-head">
+          <h2 id="friends-activity-title">Активность друзей</h2>
+          <a href="/friends">Все</a>
+        </div>
+        {% for card in friend_activity %}
+        <article class="home-friend">
+          <a class="home-friend__who" href="/profile/{{ card.friend.id }}">
+            <span class="home-friend__avatar">
+              {% if card.friend.avatar_url %}<img class="avatar-img" src="{{ card.friend.avatar_url }}" alt="">{% else %}{{ card.friend.avatar_initials }}{% endif %}
+            </span>
+            <span class="wn-home-friend__copy">
+              <b class="home-friend__name">{{ card.friend.display_name }}</b>
+              {% if card.currently_reading %}<span>Читает · {{ card.currently_reading.name or card.currently_reading.entry.slug_url }}</span>{% elif card.streak_label %}<span>{{ card.streak_label }}</span>{% elif card.recent_comments %}<span>Недавний комментарий</span>{% else %}<span class="home-friend__none">Пока нет активности</span>{% endif %}
+            </span>
+          </a>
+          {% if card.recent_comments %}
+          <ul class="home-friend__comments wn-home-friend__comments">
+            {% for comment in card.recent_comments %}
+            <li><a href="{{ comment.url }}">{{ comment.body_excerpt }}</a></li>
+            {% endfor %}
+          </ul>
+          {% endif %}
+        </article>
+        {% endfor %}
+      </section>
+      {% endif %}
+    </aside>
+  </div>
+
+  {% if dashboard.reading %}
+  <section class="wn-home__section" aria-labelledby="reading-title">
+    <div class="wn-home-section-head wn-home-section-head--large">
+      <div><h2 id="reading-title">Читаю</h2><span>{{ dashboard.reading | length }} тайтла</span></div>
+      <a href="/library">Вся библиотека →</a>
+    </div>
+    <div class="wn-home-reading">
+      {% for item in dashboard.reading %}
+      {% set entry = item.entry %}
+      {% set item_name = item.name or entry.slug_url %}
+      <a class="wn-home-reading-card" href="/titles/{{ entry.slug_url }}">
+        <span class="wn-home-reading-card__cover">{% if item.cover_url %}<img src="{{ item.cover_url }}" alt="" loading="lazy">{% endif %}</span>
+        <span class="wn-home-reading-card__body">
+          <b>{{ item_name }}</b>
+          <span>Том {{ entry.last_read_volume }}, глава {{ entry.last_read_number }}</span>
+          {% if item.progress_percent is not none %}
+          <span class="wn-home-reading-card__progress"><i><i style="width: {{ item.progress_percent }}%"></i></i><em>{{ item.progress_percent }}%</em></span>
+          {% endif %}
+        </span>
+      </a>
+      {% endfor %}
     </div>
   </section>
   {% endif %}
+  {% endif %}
 
-  <div class="home__columns">
-    <div class="home__primary">
-      {% if recent %}
-      <section class="home__section">
-        <h2 class="home__heading">Недавние</h2>
-        <div class="home__grid" data-role="recent-titles">
-          {% for item in recent %}
-          {% call ui_title_card(item.slug_url, item.name, item.cover_url, item.progress_percent) %}
-          <button
-            type="button"
-            class="ui-title-card__action ui-title-card__action--sm"
-            data-role="forget-recent-title"
-            data-slug-url="{{ item.slug_url }}"
-            aria-label="Убрать «{{ item.name }}» из недавних"
-            title="Убрать из недавних"
-          >
-            <span class="ui-title-card__action-chip"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" aria-hidden="true"><path d="M6 6l12 12M18 6 6 18"/></svg></span>
-          </button>
-          {% endcall %}
-          {% endfor %}
-        </div>
-      </section>
-      {% else %}
-      <section class="home-empty-card" data-role="home-empty">
-        <h2 class="home-empty-card__title">Здесь появятся недавно открытые тайтлы</h2>
-        <p class="home-empty-card__text">Вставьте ссылку на тайтл ranobelib.me в поле выше, чтобы начать.</p>
-        <p class="home-empty-card__note">
-          Сайт — веб-интерфейс поверх публичного API RanobeLib, а не самостоятельный источник
-          контента: все тайтлы и главы загружаются напрямую с ranobelib.me.
-        </p>
-        <a class="ui-btn home-empty-card__cta" href="/library/catalog">Открыть каталог</a>
-      </section>
-      {% endif %}
+  <section class="home__section wn-home__section" aria-labelledby="recent-title">
+    <div class="wn-home-section-head wn-home-section-head--large">
+      <h2 id="recent-title">Недавние</h2>
     </div>
-
-    {% if friend_activity %}
-    <aside class="home__friends">
-      <h2 class="home__heading">Активность друзей</h2>
-      {% for card in friend_activity %}
-      <section class="home-friend">
-        <a class="home-friend__who" href="/profile/{{ card.friend.id }}">
-          <span class="home-friend__avatar">
-            {% if card.friend.avatar_url %}<img class="avatar-img" src="{{ card.friend.avatar_url }}" alt="">{% else %}{{ card.friend.avatar_initials }}{% endif %}
-          </span>
-          <b class="home-friend__name">{{ card.friend.display_name }}</b>
-        </a>
-        {% if card.streak_label %}
-        <span class="home-friend__streak">{{ card.streak_label }}</span>
-        {% endif %}
-        {% if card.currently_reading %}
-        <span class="home-friend__reading">
-          Читает: <a href="/titles/{{ card.currently_reading.entry.slug_url }}">{{ card.currently_reading.name or card.currently_reading.entry.slug_url }}</a>
-        </span>
-        {% endif %}
-        {% if card.recent_comments %}
-        <ul class="home-friend__comments">
-          {% for comment in card.recent_comments %}
-          <li><a href="{{ comment.url }}">{{ comment.body_excerpt }}</a></li>
-          {% endfor %}
-        </ul>
-        {% endif %}
-        {% if not card.has_activity %}
-        <span class="home-friend__none">Пока нет активности</span>
-        {% endif %}
-      </section>
+    {% if recent %}
+    <div class="home__grid wn-home__recent-grid" data-role="recent-titles">
+      {% for item in recent %}
+      {% call ui_title_card(item.slug_url, item.name, item.cover_url, item.progress_percent) %}
+      <button type="button" class="ui-title-card__action ui-title-card__action--sm" data-role="forget-recent-title" data-slug-url="{{ item.slug_url }}" aria-label="Убрать «{{ item.name }}» из недавних" title="Убрать из недавних"><span class="ui-title-card__action-chip"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" aria-hidden="true"><path d="M6 6l12 12M18 6 6 18"/></svg></span></button>
+      {% endcall %}
       {% endfor %}
-    </aside>
+      <a class="wn-home-open-card" href="#home-open-url" data-role="focus-open-title">
+        <span>+</span><b>Открыть новый тайтл</b><small>по ссылке ranobelib.me</small>
+      </a>
+    </div>
+    {% else %}
+    <section class="home-empty-card wn-home-empty-card" data-role="home-empty">
+      <h2 class="home-empty-card__title">Здесь появятся недавно открытые тайтлы</h2>
+      <p class="home-empty-card__text">Вставьте ссылку на тайтл ranobelib.me в поле выше, чтобы начать.</p>
+      <p class="home-empty-card__note">Все тайтлы и главы загружаются напрямую через публичный API RanobeLib.</p>
+      <a class="wn-btn wn-btn--secondary home-empty-card__cta" href="/library/catalog">Открыть каталог</a>
+    </section>
     {% endif %}
-  </div>
+  </section>
+
+  {% if current_user and dashboard.recent_downloads %}
+  <section class="wn-home__section" aria-labelledby="latest-downloads-title">
+    <div class="wn-home-section-head wn-home-section-head--large">
+      <h2 id="latest-downloads-title">Последние загрузки</h2>
+      <a href="/downloads">Все загрузки →</a>
+    </div>
+    <div class="wn-home-downloads">
+      {% for item in dashboard.recent_downloads %}
+      <a href="/titles/{{ item.slug_url }}" class="wn-home-download">
+        <span class="wn-home-download__icon">{{ item.fmt | upper }}</span>
+        <span><b>{{ item.slug_url }}</b><small>{% if item.chapter_count is not none %}{{ item.chapter_count }} глав · {% endif %}{{ item.finished_at[:10] }}</small></span>
+        <em class="wn-home-download__status{% if item.status == 'error' %} wn-home-download__status--error{% endif %}">{{ "Готово" if item.status == "done" else "Ошибка" }}</em>
+      </a>
+      {% endfor %}
+    </div>
+  </section>
+  {% endif %}
 </main>
 <script src="{{ url_for('static', path='js/recent-titles-forget.js') }}" defer></script>
 <script src="{{ url_for('static', path='js/image-lightbox.js') }}" defer></script>

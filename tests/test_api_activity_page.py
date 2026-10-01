@@ -1,11 +1,13 @@
 """GET /activity - the "Активность" page (see app/api/activity.py, show_activity)."""
 
+import re
 from collections.abc import Iterator
+from datetime import UTC, datetime, timedelta
 from unittest.mock import patch
 
 import pytest
 from fastapi.testclient import TestClient
-from ranobelib.models import Cover, Label, Title
+from ranobelib.models import Chapter, Cover, Label, Title, Volume
 
 import app.jobs.store as job_store
 from app.config import get_settings
@@ -37,8 +39,9 @@ def _register(client: TestClient, email: str = "alice@example.com") -> None:
 
 
 class _FakeClient:
-    def __init__(self, title: Title) -> None:
+    def __init__(self, title: Title, volumes: list[Volume] | None = None) -> None:
         self._title = title
+        self._volumes = volumes or []
 
     async def __aenter__(self) -> "_FakeClient":
         return self
@@ -48,6 +51,9 @@ class _FakeClient:
 
     async def get_info(self) -> Title:
         return self._title
+
+    async def get_table_of_contents(self) -> list[Volume]:
+        return self._volumes
 
 
 def _fake_title(slug_url: str = "6712--test-novel") -> Title:
@@ -94,7 +100,7 @@ async def test_show_activity_shows_chapters_read_today(client: TestClient) -> No
 
     assert response.status_code == 200
     assert "Test Novel" in response.text
-    assert "2 глав сегодня" in response.text
+    assert "2 главы сегодня" in response.text
 
 
 async def test_show_activity_prefers_russian_name(client: TestClient) -> None:
@@ -150,8 +156,129 @@ async def test_show_activity_shows_downloads_today(client: TestClient) -> None:
     async with connection() as conn:
         await record_download(conn, 1, "6712--test-novel", "epub", "done", 42, None)
 
-    response = client.get("/activity")
+    with patch("app.services.client.RanobeLib", return_value=_FakeClient(_fake_title())):
+        response = client.get("/activity")
 
     assert response.status_code == 200
     assert "6712--test-novel" in response.text
     assert "42 глав" in response.text
+
+
+# PR 276 (Webnovells Redesign, screen A4).
+
+
+def test_show_activity_period_switch_marks_the_current_period(client: TestClient) -> None:
+    _register(client)
+
+    response = client.get("/activity?period=7d")
+
+    assert response.status_code == 200
+    assert 'href="/activity?period=7d" aria-current="page">7 дней</a>' in response.text
+    assert 'href="/activity">Сегодня</a>' in response.text
+
+
+def test_show_activity_rejects_an_unknown_period(client: TestClient) -> None:
+    _register(client)
+
+    assert client.get("/activity?period=year").status_code == 422
+
+
+async def test_show_activity_metrics_follow_the_period(client: TestClient) -> None:
+    """A read 3 days ago counts for "7 дней" but not for "Сегодня"."""
+    _register(client)  # user id 1
+    async with connection() as conn:
+        await record_chapter_read(conn, 1, "6712--test-novel", "1", "5")
+        await conn.execute(
+            "UPDATE activity_events SET created_at = %s",
+            ((datetime.now(UTC) - timedelta(days=3)).isoformat(),),
+        )
+
+    with patch("app.services.client.RanobeLib", return_value=_FakeClient(_fake_title())):
+        today = client.get("/activity")
+        week = client.get("/activity?period=7d")
+
+    chapters_today = re.search(
+        r"Глав прочитано</span>\s*<span[^>]*>(\d+)", today.text
+    ).group(1)
+    chapters_week = re.search(r"Глав прочитано</span>\s*<span[^>]*>(\d+)", week.text).group(1)
+    assert chapters_today == "0"
+    assert chapters_week == "1"
+    assert "1 день с чтением" in week.text  # "За последний год"
+
+
+async def test_show_activity_chart_covers_30_days(client: TestClient) -> None:
+    _register(client)  # user id 1
+    async with connection() as conn:
+        await record_heartbeat(conn, 1, "6712--test-novel", 6 * 60)
+
+    response = client.get("/activity")
+
+    assert response.text.count("wn-activity-chart__bar") - response.text.count(
+        "wn-activity-chart__bar--"
+    ) == 30
+    assert "wn-activity-chart__bar--filled wn-activity-chart__bar--today" in response.text
+    assert "6 мин · 1 день с чтением" in response.text
+
+
+async def test_show_activity_event_feed_merges_reads_and_downloads(client: TestClient) -> None:
+    _register(client)  # user id 1
+    volumes = [
+        Volume(number="1", chapters=[Chapter(id=5, volume="1", number="5", name="Начало")])
+    ]
+    async with connection() as conn:
+        await record_download(conn, 1, "6712--test-novel", "epub", "error", None, "boom")
+        await record_chapter_read(conn, 1, "6712--test-novel", "1", "5")
+
+    with patch(
+        "app.services.client.RanobeLib", return_value=_FakeClient(_fake_title(), volumes)
+    ):
+        response = client.get("/activity")
+
+    feed = response.text[response.text.index('data-role="activity-events"') :]
+    read_at = feed.index("Прочитана глава 5 · Test Novel")
+    failed_at = feed.index("Не удалось скачать EPUB · Test Novel")
+    assert read_at < failed_at  # newest first
+    assert "Том 1 · Начало" in feed
+    assert 'href="/titles/6712--test-novel/chapters/1/5"' in feed
+    assert "boom" not in feed  # the feed says "Ошибка загрузки", not the raw error
+
+
+async def test_show_activity_read_today_card_links_to_the_last_chapter(
+    client: TestClient,
+) -> None:
+    _register(client)  # user id 1
+    async with connection() as conn:
+        await record_chapter_read(conn, 1, "6712--test-novel", "2", "9")
+
+    with patch("app.services.client.RanobeLib", return_value=_FakeClient(_fake_title())):
+        response = client.get("/activity")
+
+    assert "Том 2, глава 9" in response.text
+    assert "1 глава сегодня" in response.text
+    assert '<a class="wn-activity-link" href="/titles/6712--test-novel/chapters/2/9">' in (
+        response.text
+    )
+
+
+async def test_show_activity_mentions_the_last_download_date(client: TestClient) -> None:
+    _register(client)  # user id 1
+    async with connection() as conn:
+        await record_download(conn, 1, "6712--test-novel", "epub", "done", 3, None)
+        await conn.execute(
+            "UPDATE download_history SET finished_at = '2026-09-06T19:17:00+00:00'"
+        )
+
+    with patch("app.services.client.RanobeLib", return_value=_FakeClient(_fake_title())):
+        response = client.get("/activity")
+
+    assert "Сегодня ничего не скачивали. Последняя загрузка — 6 сентября." in response.text
+    assert "Последняя загрузка 06.09" in response.text
+
+
+def test_show_activity_without_any_reading_shows_zero_minutes(client: TestClient) -> None:
+    _register(client)
+
+    response = client.get("/activity")
+
+    assert "&lt;1" not in response.text
+    assert "0 мин · 0 дней с чтением" in response.text

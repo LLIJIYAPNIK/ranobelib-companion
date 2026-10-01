@@ -353,7 +353,7 @@ async def test_profile_has_an_edit_link_to_settings_account(client: TestClient) 
     response = client.get("/profile")
 
     assert response.status_code == 200
-    assert '<a class="ui-btn" href="/settings/account">Редактировать</a>' in (
+    assert '<a class="wn-profile-edit" href="/settings/account">' in (
         response.text
     )
 
@@ -417,9 +417,9 @@ async def test_public_profile_shows_currently_reading_when_a_position_is_recorde
         response = client.get(f"/profile/{alice_id}")
 
     assert response.status_code == 200
-    assert 'class="profile-section__title"' in response.text
+    assert 'id="profile-current-title"' in response.text
     assert "Читает сейчас" in response.text
-    assert '<a class="profile-current-read__name" href="/titles/6712--test-novel">' in (
+    assert '<a class="wn-profile-current__name" href="/titles/6712--test-novel">' in (
         response.text
     )
     assert "Test Novel" in response.text
@@ -451,8 +451,8 @@ async def test_public_profile_shows_the_library_grid(client: TestClient) -> None
         response = client.get(f"/profile/{alice_id}")
 
     assert response.status_code == 200
-    assert '<h2 class="profile-section__title">Библиотека</h2>' in response.text
-    assert 'class="profile-grid"' in response.text
+    assert 'id="profile-library-title">Библиотека</h2>' in response.text
+    assert 'data-role="profile-library"' in response.text
     assert "Test Novel" in response.text
 
 
@@ -466,12 +466,12 @@ async def test_public_profile_omits_both_new_sections_when_the_library_is_empty(
 
     assert response.status_code == 200
     assert "Читает сейчас" not in response.text
-    assert 'class="profile-grid"' not in response.text
+    assert 'data-role="profile-library"' not in response.text
     # Unlike those two, PR 136's calendar section always renders (an empty history is a
     # grid of empty cells, not an omitted section) - so it's the one case where the
     # reading-calendar-card section (PR 160) is expected even with nothing else on the
     # page.
-    assert response.text.count('class="profile-section reading-calendar-card"') == 1
+    assert response.text.count('reading-calendar-card"') == 1
     # PR 160: the section's own header is now the data-driven "N ч M мин чтения за
     # последний год" phrase, not a static "Календарь чтения" label - "0 мин" for a user
     # with no reading history at all, never omitted or blank.
@@ -498,7 +498,7 @@ async def test_public_profile_is_the_same_for_the_owner_and_a_different_visitor(
 
     assert response.status_code == 200
     assert "Читает сейчас" in response.text
-    assert '<h2 class="profile-section__title">Библиотека</h2>' in response.text
+    assert 'id="profile-library-title">Библиотека</h2>' in response.text
     assert "Том 1, глава 5" in response.text
 
 
@@ -535,8 +535,8 @@ async def test_public_profile_shows_the_favorite_section_when_one_is_set(
         response = client.get(f"/profile/{alice_id}")
 
     assert response.status_code == 200
-    assert '<h2 class="profile-section__title">Избранное</h2>' in response.text
-    assert 'class="profile-grid profile-grid--favorite"' in response.text
+    assert 'id="profile-favorite-title">Избранное</h2>' in response.text
+    assert 'class="wn-profile-favorite__body"' in response.text
     assert "Test Novel" in response.text
 
 
@@ -553,7 +553,7 @@ async def test_public_profile_omits_the_favorite_section_when_nothing_is_favorit
 
     assert response.status_code == 200
     assert "Избранное" not in response.text
-    assert "profile-grid--favorite" not in response.text
+    assert "wn-profile-favorite__body" not in response.text
 
 
 async def test_public_profile_favorite_section_updates_after_a_new_favorite_is_chosen(
@@ -575,7 +575,7 @@ async def test_public_profile_favorite_section_updates_after_a_new_favorite_is_c
         response = client.get(f"/profile/{alice_id}")
 
     assert response.status_code == 200
-    favorite_section = response.text.split('<h2 class="profile-section__title">Избранное</h2>')[
+    favorite_section = response.text.split('id="profile-favorite-title">Избранное</h2>')[
         1
     ].split("</section>")[0]
     assert "1--first" not in favorite_section
@@ -636,10 +636,10 @@ async def test_privacy_flags_gate_sections_for_a_non_owner_visitor(
 
     assert response.status_code == 200
     assert ("Читает сейчас" in response.text) is show_reading
-    assert ('<h2 class="profile-section__title">Избранное</h2>' in response.text) is (
+    assert ('id="profile-favorite-title">Избранное</h2>' in response.text) is (
         show_favorite
     )
-    assert ('<h2 class="profile-section__title">Библиотека</h2>' in response.text) is (
+    assert ('id="profile-library-title">Библиотека</h2>' in response.text) is (
         show_library
     )
 
@@ -655,8 +655,8 @@ async def test_privacy_flags_do_not_affect_the_owners_own_view(client: TestClien
 
     assert response.status_code == 200
     assert "Читает сейчас" in response.text
-    assert '<h2 class="profile-section__title">Избранное</h2>' in response.text
-    assert '<h2 class="profile-section__title">Библиотека</h2>' in response.text
+    assert 'id="profile-favorite-title">Избранное</h2>' in response.text
+    assert 'id="profile-library-title">Библиотека</h2>' in response.text
 
 
 async def test_privacy_flags_default_to_showing_everything(client: TestClient) -> None:
@@ -673,8 +673,8 @@ async def test_privacy_flags_default_to_showing_everything(client: TestClient) -
 
     assert response.status_code == 200
     assert "Читает сейчас" in response.text
-    assert '<h2 class="profile-section__title">Избранное</h2>' in response.text
-    assert '<h2 class="profile-section__title">Библиотека</h2>' in response.text
+    assert 'id="profile-favorite-title">Избранное</h2>' in response.text
+    assert 'id="profile-library-title">Библиотека</h2>' in response.text
 
 
 # --- PR 201: "Друзья" section on the profile page + its full-list page ------------------
@@ -694,7 +694,7 @@ async def test_profile_omits_friends_section_without_any_friends(client: TestCli
     response = client.get("/profile")
 
     assert response.status_code == 200
-    assert '<h2 class="profile-section__title">Друзья' not in response.text
+    assert 'id="profile-friends-title"' not in response.text
 
 
 async def test_profile_shows_a_friend_preview_with_a_count(client: TestClient) -> None:
@@ -707,7 +707,8 @@ async def test_profile_shows_a_friend_preview_with_a_count(client: TestClient) -
     response = client.get(f"/profile/{alice_id}")
 
     assert response.status_code == 200
-    assert '<h2 class="profile-section__title">Друзья (1)</h2>' in response.text
+    assert 'id="profile-friends-title">Друзья</h2>' in response.text
+    assert '<span class="wn-profile-card__count">1</span>' in response.text
     assert "bob@example.com" in response.text
 
 
@@ -725,7 +726,7 @@ async def test_profile_omits_show_all_link_within_the_preview_limit(
     assert _FRIEND_PREVIEW_LIMIT > 1  # sanity - a single friend must stay within it
     response = client.get(f"/profile/{alice_id}")
 
-    assert "Показать всех" not in response.text
+    assert "Все →" not in response.text
 
 
 async def test_profile_shows_a_show_all_link_over_the_preview_limit(
@@ -743,11 +744,12 @@ async def test_profile_shows_a_show_all_link_over_the_preview_limit(
     response = client.get(f"/profile/{alice_id}")
 
     assert response.status_code == 200
-    assert f"Друзья ({_FRIEND_PREVIEW_LIMIT + 1})" in response.text
+    count = _FRIEND_PREVIEW_LIMIT + 1
+    assert f'<span class="wn-profile-card__count">{count}</span>' in response.text
     assert f'href="/profile/{alice_id}/friends"' in response.text
-    assert "Показать всех" in response.text
+    assert "Все →" in response.text
     # only the preview limit's worth of rows actually render on the profile page itself
-    assert response.text.count('class="ui-friend-row__link"') == _FRIEND_PREVIEW_LIMIT
+    assert response.text.count('class="wn-profile-friend"') == _FRIEND_PREVIEW_LIMIT
 
 
 async def test_profile_friends_section_shows_on_the_owners_own_profile_too(
@@ -764,7 +766,8 @@ async def test_profile_friends_section_shows_on_the_owners_own_profile_too(
     response = client.get("/profile")
 
     assert response.status_code == 200
-    assert '<h2 class="profile-section__title">Друзья (1)</h2>' in response.text
+    assert 'id="profile-friends-title">Друзья</h2>' in response.text
+    assert '<span class="wn-profile-card__count">1</span>' in response.text
 
 
 async def test_profile_friends_page_lists_the_full_friend_list(client: TestClient) -> None:
@@ -833,7 +836,7 @@ async def test_profile_hides_the_friends_section_from_others_when_opted_out(
     response = client.get(f"/profile/{alice_id}")
 
     assert response.status_code == 200
-    assert '<h2 class="profile-section__title">Друзья' not in response.text
+    assert 'id="profile-friends-title"' not in response.text
 
 
 async def test_profile_still_shows_the_friends_section_to_its_own_owner(
@@ -852,7 +855,8 @@ async def test_profile_still_shows_the_friends_section_to_its_own_owner(
     response = client.get("/profile")
 
     assert response.status_code == 200
-    assert '<h2 class="profile-section__title">Друзья (1)</h2>' in response.text
+    assert 'id="profile-friends-title">Друзья</h2>' in response.text
+    assert '<span class="wn-profile-card__count">1</span>' in response.text
 
 
 async def test_profile_friends_page_hides_the_list_from_others_when_opted_out(
@@ -910,3 +914,87 @@ async def test_profile_friends_page_hides_the_list_from_an_anonymous_visitor_whe
 
     assert response.status_code == 200
     assert "Пока нет друзей." in response.text
+
+
+# PR 277 (Webnovells Redesign, screen A5).
+
+
+async def test_profile_hero_shows_the_stat_pills(client: TestClient) -> None:
+    _register(client, "alice@example.com")
+    alice_id = await _user_id("alice@example.com")
+    title = _fake_title()
+    with patch("app.services.client.RanobeLib", return_value=_FakeClient(title)):
+        client.post("/library/6712--test-novel/add")
+        response = client.get("/profile")
+
+    stats = response.text.split('<dl class="wn-profile-stats">')[1].split("</dl>")[0]
+    assert '<dt class="wn-profile-stats__label">за год</dt>' in stats
+    assert '<dd class="wn-profile-stats__value">0 мин</dd>' in stats
+    assert '<dt class="wn-profile-stats__label">тайтл</dt>' in stats
+    assert '<dt class="wn-profile-stats__label">друзей</dt>' in stats
+    assert '<dt class="wn-profile-stats__label">комментариев</dt>' in stats
+    assert alice_id  # the owner's own /profile
+
+
+async def test_profile_offers_add_bio_only_on_the_owners_own_profile(client: TestClient) -> None:
+    _register(client, "alice@example.com")
+    alice_id = await _user_id("alice@example.com")
+
+    own = client.get("/profile")
+    _register(client, "bob@example.com")
+    other = client.get(f"/profile/{alice_id}")
+
+    assert "Добавить о себе" in own.text
+    assert "Добавить о себе" not in other.text
+    assert "Пользователь пока не рассказал о себе." in other.text
+
+
+@pytest.mark.parametrize("show_reading", [True, False])
+async def test_profile_friend_preview_shows_what_a_friend_reads_unless_hidden(
+    client: TestClient, show_reading: bool
+) -> None:
+    _register(client, "alice@example.com")
+    alice_id = await _user_id("alice@example.com")
+    _register(client, "bob@example.com")  # the client is now bob
+    bob_id = await _user_id("bob@example.com")
+    await _befriend(alice_id, bob_id)
+    title = _fake_title()
+    with patch("app.services.client.RanobeLib", return_value=_FakeClient(title)):
+        client.post("/library/6712--test-novel/add")
+    async with connection() as conn:
+        await record_progress(conn, user_id=bob_id, slug_url=title.slug_url, volume="1", number="2")
+    _set_privacy(client, reading=show_reading, favorite=True, library=True)
+
+    with patch("app.services.client.RanobeLib", return_value=_FakeClient(title)):
+        response = client.get(f"/profile/{alice_id}")
+
+    assert ("Читает «Test Novel»" in response.text) is show_reading
+    assert ("Пока нет активности" in response.text) is not show_reading
+
+
+async def test_profile_library_preview_shows_at_most_seven_titles(client: TestClient) -> None:
+    from app.api.profile import _LIBRARY_PREVIEW_LIMIT
+
+    _register(client, "alice@example.com")
+    title = _fake_title()
+    with patch("app.services.client.RanobeLib", return_value=_FakeClient(title)):
+        for i in range(_LIBRARY_PREVIEW_LIMIT + 2):
+            client.post(f"/library/{i}--novel/add")
+        response = client.get("/profile")
+
+    assert _LIBRARY_PREVIEW_LIMIT == 7
+    assert response.text.count('class="wn-profile-poster"') == 7
+    assert "9 тайтлов" in response.text
+    assert 'href="/library">Открыть библиотеку →</a>' in response.text
+
+
+async def test_profile_calendar_counts_days_with_reading(client: TestClient) -> None:
+    _register(client, "alice@example.com")
+    alice_id = await _user_id("alice@example.com")
+    async with connection() as conn:
+        await record_chapter_read(conn, alice_id, "6712--test-novel", "1", "1")
+
+    with patch("app.services.client.RanobeLib", return_value=_FakeClient(_fake_title())):
+        response = client.get("/profile")
+
+    assert "1 день с чтением" in response.text

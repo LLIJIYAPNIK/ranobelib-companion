@@ -1,40 +1,100 @@
 {% extends "base.html" %}
 {% block title %}Загрузки — RanobeLib Companion{% endblock %}
 {% block content %}
-{#
-  PR 256 (Aurora Ink, DOWNLOADS/M-DOWNLOADS): "Текущие" as cards with progress, then
-  "История" as a plain divided list; an empty section is one hint line (.ui-empty).
-  A guest gets the locked state instead.
-#}
-<main class="downloads-page">
-  <h1 class="downloads-page__title">Загрузки</h1>
+<main class="downloads-page wn-downloads">
+  <div class="wn-downloads__head">
+    <div>
+      <span class="wn-downloads__eyebrow">Локальная библиотека</span>
+      <h1 class="downloads-page__title">Загрузки</h1>
+      <p>Следите за текущими задачами и находите готовые файлы.</p>
+    </div>
+    {% if current_user %}<a class="wn-btn wn-btn--primary" href="/#home-open-url">Вставить ссылку</a>{% endif %}
+  </div>
 
   {% if current_user %}
-  <section class="downloads-section" data-role="active-downloads">
-    <h2 class="downloads-section__title">Текущие</h2>
+  <section class="downloads-section wn-downloads__section" data-role="active-downloads">
+    <div class="wn-downloads__section-head">
+      <div><h2 class="downloads-section__title">Текущие</h2>{% if active_jobs %}<span>{{ active_jobs | length }}</span>{% endif %}</div>
+    </div>
     {% if active_jobs %}
     {% from "_active_downloads.html" import active_downloads_list with context %}
     {{ active_downloads_list(active_jobs) }}
     {% else %}
-    <p class="ui-empty">Сейчас ничего не скачивается.</p>
+    <div class="wn-downloads-empty" data-role="downloads-empty-active">
+      <div class="wn-downloads-empty__icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3v12m0 0 4-4m-4 4-4-4M5 19h14"/></svg></div>
+      <div class="wn-downloads-empty__copy">
+        <h3>Сейчас ничего не скачивается</h3>
+        <p>Вставьте ссылку на тайтл — выберите главы — получите готовый EPUB.</p>
+        <ol class="wn-downloads-steps" aria-label="Как скачать тайтл">
+          <li><b>1</b><span>Ссылка</span></li><li><i></i></li>
+          <li><b>2</b><span>Главы</span></li><li><i></i></li>
+          <li><b>3</b><span>EPUB</span></li>
+        </ol>
+      </div>
+      <a class="wn-btn wn-btn--secondary" href="/#home-open-url">Вставить ссылку</a>
+    </div>
     {% endif %}
   </section>
 
-  <section class="downloads-section">
-    <h2 class="downloads-section__title">История</h2>
+  <section class="downloads-section wn-downloads__section" data-role="downloads-history-section">
+    <div class="wn-downloads__section-head wn-downloads__history-head">
+      <div><h2 class="downloads-section__title">История</h2>{% if history %}<span data-role="history-count">{{ history | length }}</span>{% endif %}</div>
+      {% if history %}<button class="wn-downloads__clear" type="button" data-role="clear-download-history">Очистить историю</button>{% endif %}
+    </div>
+
     {% if history %}
-    {% from "_download_history.html" import download_history_list with context %}
-    {{ download_history_list(history, ready_files) }}
+    <div class="wn-downloads__tools">
+      <label class="wn-downloads-search">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="m16 16 4 4"/></svg>
+        <input class="wn-field__control" type="search" placeholder="Поиск по названию" aria-label="Поиск по истории загрузок" data-role="download-history-search">
+      </label>
+      <div class="wn-downloads-segments" role="group" aria-label="Фильтр истории">
+        <button type="button" class="wn-downloads-segments__button is-active" data-role="download-history-filter" data-filter="all" aria-pressed="true">Все</button>
+        <button type="button" class="wn-downloads-segments__button" data-role="download-history-filter" data-filter="done" aria-pressed="false">Готово</button>
+        <button type="button" class="wn-downloads-segments__button" data-role="download-history-filter" data-filter="error" aria-pressed="false">С ошибкой</button>
+      </div>
+    </div>
+
+    <div class="wn-downloads-history" data-role="download-history-groups">
+      {% for group in history_groups %}
+      <section class="wn-downloads-history__group" data-history-date="{{ group.date }}">
+        <h3>{{ group.label }}</h3>
+        <div class="wn-downloads-table" role="table" aria-label="Загрузки за {{ group.label }}">
+          <div class="wn-downloads-table__header" role="row">
+            <span role="columnheader">Тайтл</span><span role="columnheader">Формат</span><span role="columnheader">Глав</span><span role="columnheader">Время</span><span role="columnheader">Статус</span><span role="columnheader">Действия</span>
+          </div>
+          <ul class="downloads-history">
+            {% for entry in group.entries %}
+            <li class="downloads-history__item wn-downloads-row" data-entry-id="{{ entry.id }}" data-history-status="{{ 'error' if entry.status == 'error' else 'done' }}" data-history-title="{{ entry.slug_url | lower }}" role="row">
+              <span class="wn-downloads-row__title" role="cell"><a class="downloads-history__link" href="{{ ready_files[entry.id] if entry.id in ready_files else '/titles/' ~ entry.slug_url }}">{{ entry.slug_url }}</a></span>
+              <span class="downloads-history__fmt" role="cell">{{ entry.fmt | upper }}</span>
+              <span class="wn-technical" role="cell"{% if entry.chapter_count %} aria-label="{{ entry.chapter_count }} глав"{% endif %}>{{ entry.chapter_count or '—' }}</span>
+              <span class="downloads-history__date wn-technical" role="cell">{{ entry.finished_at[11:16] }}</span>
+              <span class="downloads-history__status{% if entry.status == 'error' %} downloads-history__status--error{% endif %}" role="cell">{% if entry.status == "done" %}Готово{% elif entry.status == "cancelled" %}Отменено{% else %}{{ entry.error or "Ошибка" }}{% endif %}</span>
+              <span class="wn-downloads-row__actions" role="cell">
+                {% if entry.id in ready_files %}<a class="downloads-history__download" href="{{ ready_files[entry.id] }}" aria-label="Скачать готовый файл">Файл</a>{% endif %}
+                <a href="/titles/{{ entry.slug_url }}" aria-label="Скачать тайтл снова">Снова</a>
+                <button type="button" class="downloads-history__delete" data-role="delete-history-entry" data-entry-id="{{ entry.id }}" aria-label="Удалить из истории" title="Удалить запись"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 6h14M9 6V4h6v2M7 6l1 14h8l1-14"/></svg></button>
+              </span>
+            </li>
+            {% endfor %}
+          </ul>
+        </div>
+      </section>
+      {% endfor %}
+    </div>
+    <p class="wn-downloads__no-results" data-role="download-history-no-results" hidden>По этому запросу загрузок нет.</p>
     {% else %}
-    <p class="ui-empty">Пока ничего не скачивали.</p>
+    <p class="ui-empty" data-role="download-history-empty">Пока ничего не скачивали.</p>
     {% endif %}
   </section>
   {% else %}
   {% from "_locked_feature.html" import locked_feature %}
   {% call locked_feature("Загрузки скрыты", "/login", "Войти") %}
-  <a href="/login">Войдите</a> или <a href="/register">зарегистрируйтесь</a>,
-  чтобы видеть свои загрузки и их историю.
+  <a href="/login">Войдите</a> или <a href="/register">зарегистрируйтесь</a>, чтобы видеть свои загрузки и их историю.
   {% endcall %}
   {% endif %}
 </main>
+<script src="{{ url_for('static', path='js/download-history-delete.js') }}" defer></script>
+<script src="{{ url_for('static', path='js/downloads-history-tools.js') }}" defer></script>
 {% endblock %}

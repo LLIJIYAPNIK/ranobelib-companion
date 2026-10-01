@@ -2,78 +2,157 @@
 {% block title %}Активность — RanobeLib Companion{% endblock %}
 {% block content %}
 {#
-  PR 257 (Aurora Ink, ACTIVITY): "За сегодня." - three stat tiles, "Читали сегодня" as
-  a grid of Aurora title cards (quickview eye in the corner, "N глав сегодня" under the
-  name), then the same Download job row / History row as /downloads (PR 256). An empty
-  subsection is one hint line (.ui-empty). A guest gets the locked state instead.
+  PR 276 (Webnovells Redesign, screen A4): period switch (Сегодня / 7 дней / 30 дней,
+  ?period=) over four metric cards, the last 30 days of reading minutes as a bar chart,
+  "Читали сегодня", "Текущие загрузки" (same job rows and downloads-status.js hooks as
+  /downloads) and "Скачано сегодня", and "История событий" - the latest reads and
+  downloads merged. A guest gets the locked state instead.
 #}
-<main class="activity-page">
-  <div class="activity-page__head">
-    <h1 class="activity-page__title">Активность</h1>
-    {% if current_user %}<p class="activity-page__subtitle">За сегодня.</p>{% endif %}
+{% macro plural(n, one, few, many) -%}
+{%- if n % 10 == 1 and n % 100 != 11 -%}{{ one }}
+{%- elif n % 10 in [2, 3, 4] and n % 100 not in [12, 13, 14] -%}{{ few }}
+{%- else -%}{{ many }}{%- endif -%}
+{%- endmacro %}
+{% set icon_download = "M12 3v12M7 10l5 5 5-5M5 21h14" %}
+{% set icon_book = "M2 4h6a4 4 0 0 1 4 4v13a3 3 0 0 0-3-3H2zM22 4h-6a4 4 0 0 0-4 4v13a3 3 0 0 1 3-3h7z" %}
+{% set icon_error = "M12 8v5M12 16.5v.5M10.3 3.9 2.4 18a2 2 0 0 0 1.7 3h15.8a2 2 0 0 0 1.7-3L13.7 3.9a2 2 0 0 0-3.4 0z" %}
+<main class="activity-page wn-activity">
+  <div class="wn-activity__head">
+    <div class="wn-activity__heading">
+      <h1 class="wn-activity__title">Активность</h1>
+      {% if current_user %}<p class="wn-activity__subtitle">Чтение и загрузки — по данным этого аккаунта.</p>{% endif %}
+    </div>
+    {% if current_user %}
+    <nav class="wn-segmented" aria-label="Период">
+      {% for key, label in period_labels.items() %}
+      <a class="wn-segmented__item" href="/activity{% if key != 'today' %}?period={{ key }}{% endif %}"{% if period == key %} aria-current="page"{% endif %}>{{ label }}</a>
+      {% endfor %}
+    </nav>
+    {% endif %}
   </div>
 
   {% if current_user %}
-  <div class="activity-stats">
-    <div class="activity-stats__tile">
-      <b class="activity-stats__value activity-stats__value--accent">{{ summary.chapters_read_today }}</b>
-      <span class="activity-stats__label">Глав прочитано</span>
+  <div class="wn-activity-metrics" data-role="activity-metrics">
+    {% for metric in overview.metrics %}
+    <div class="wn-activity-card wn-activity-metric">
+      <span class="wn-activity-metric__label">{{ metric.label }}</span>
+      <span class="wn-activity-metric__value{% if metric.accent %} wn-activity-metric__value--accent{% endif %}">{{ metric.value }}{% if metric.unit %}<span class="wn-activity-metric__unit">{{ metric.unit }}</span>{% endif %}</span>
+      <span class="wn-activity-metric__note">{{ metric.note }}</span>
     </div>
-    <div class="activity-stats__tile">
-      <b class="activity-stats__value">{{ summary.active_time_label }}</b>
-      <span class="activity-stats__label">Активное время чтения</span>
-    </div>
-    <div class="activity-stats__tile">
-      <b class="activity-stats__value">{{ summary.downloads_today | length }}</b>
-      <span class="activity-stats__label">Скачано сегодня</span>
-    </div>
+    {% endfor %}
   </div>
 
-  <section class="downloads-section">
-    <h2 class="downloads-section__title">Читали сегодня</h2>
-    {% if summary.read_today %}
-    {% from "_title_card.html" import ui_title_card %}
-    <div class="activity-page__grid">
-      {% for item in summary.read_today %}
-      {% set name = item.name or item.slug_url %}
-      {% call ui_title_card(item.slug_url, name, item.cover_url, meta=item.chapters_read ~ " глав сегодня", meta_accent=true) %}
-      <button
-        type="button"
-        class="ui-title-card__action"
-        data-role="title-quickview-trigger"
-        data-slug-url="{{ item.slug_url }}"
-        aria-label="Быстрый просмотр «{{ name }}»"
-        title="Быстрый просмотр"
-      >
-        <span class="ui-title-card__action-chip"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M2 12s4-7 10-7 10 7 10 7-4 7-10 7S2 12 2 12zM12 15a3 3 0 1 0 0-6 3 3 0 0 0 0 6z"/></svg></span>
-      </button>
-      {% endcall %}
-      {% endfor %}
+  <div class="wn-activity__row">
+    <section class="wn-activity-card wn-activity-chart" aria-labelledby="activity-chart-title">
+      <div class="wn-activity-card__head">
+        <h2 class="wn-activity-card__title" id="activity-chart-title">Чтение за 30 дней</h2>
+        <span class="wn-activity-card__aside">{{ overview.chart_total_label }} · {{ overview.chart_reading_days }} {{ plural(overview.chart_reading_days, "день", "дня", "дней") }} с чтением</span>
+        <span class="wn-activity-chart__legend"><span aria-hidden="true"></span>минуты</span>
+      </div>
+      <div class="wn-activity-chart__plot" role="img" aria-label="Минуты чтения по дням за последние 30 дней">
+        <span class="wn-activity-chart__guide wn-activity-chart__guide--top"></span>
+        <span class="wn-activity-chart__guide wn-activity-chart__guide--mid"></span>
+        {% for day in overview.chart_days %}
+        <span
+          class="wn-activity-chart__bar{% if day.minutes %} wn-activity-chart__bar--filled{% endif %}{% if day.is_today %} wn-activity-chart__bar--today{% endif %}"
+          style="--bar: {{ day.height_percent }}%"
+          title="{{ day.tooltip }}"
+        ></span>
+        {% endfor %}
+      </div>
+      <div class="wn-activity-chart__axis" aria-hidden="true">
+        {% for label, is_today in overview.chart_axis %}
+        <span{% if is_today %} class="wn-activity-chart__axis-today"{% endif %}>{{ label }}</span>
+        {% endfor %}
+      </div>
+    </section>
+
+    <section class="wn-activity-card wn-activity-today" aria-labelledby="activity-today-title">
+      <h2 class="wn-activity-card__title" id="activity-today-title">Читали сегодня</h2>
+      {% if overview.read_today_highlight %}
+      {% set highlight = overview.read_today_highlight %}
+      {% set first = highlight.item %}
+      {% set first_name = first.name or first.slug_url %}
+      <div class="wn-activity-today__title">
+        <a class="wn-activity-today__cover" href="/titles/{{ first.slug_url }}" tabindex="-1" aria-hidden="true">
+          {% if first.cover_url %}<img src="{{ first.cover_url }}" alt="" loading="lazy">{% endif %}
+        </a>
+        <div class="wn-activity-today__copy">
+          <a class="wn-activity-today__name" href="/titles/{{ first.slug_url }}">{{ first_name }}</a>
+          {% if highlight.volume and highlight.number %}
+          <span class="wn-activity-today__meta">Том {{ highlight.volume }}, глава {{ highlight.number }}</span>
+          {% endif %}
+          <span class="wn-activity-today__count">{{ first.chapters_read }} {{ plural(first.chapters_read, "глава", "главы", "глав") }} сегодня</span>
+          <span class="wn-activity-today__spacer"></span>
+          {% if highlight.volume and highlight.number %}
+          <a class="wn-activity-link" href="/titles/{{ first.slug_url }}/chapters/{{ highlight.volume }}/{{ highlight.number }}">Продолжить →</a>
+          {% endif %}
+        </div>
+      </div>
+      {% if overview.summary.read_today | length > 1 %}
+      <ul class="wn-activity-today__more">
+        {% for item in overview.summary.read_today[1:] %}
+        <li>
+          <a href="/titles/{{ item.slug_url }}">{{ item.name or item.slug_url }}</a>
+          <span>{{ item.chapters_read }} {{ plural(item.chapters_read, "глава", "главы", "глав") }} сегодня</span>
+        </li>
+        {% endfor %}
+      </ul>
+      {% endif %}
+      {% else %}
+      <p class="wn-activity-card__text">Сегодня ещё ничего не читали.</p>
+      {% endif %}
+    </section>
+  </div>
+
+  <div class="wn-activity__row">
+    <div class="wn-activity__downloads">
+      <section class="wn-activity-card" data-role="active-downloads" aria-labelledby="activity-jobs-title">
+        <h2 class="wn-activity-card__title" id="activity-jobs-title">Текущие загрузки</h2>
+        {% if overview.summary.active_jobs %}
+        {% from "_active_downloads.html" import active_downloads_list with context %}
+        {{ active_downloads_list(overview.summary.active_jobs) }}
+        {% else %}
+        <div class="wn-activity-idle">
+          <span class="wn-activity-idle__icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" aria-hidden="true"><path d="{{ icon_download }}"/></svg></span>
+          <span>Сейчас ничего не скачивается</span>
+        </div>
+        {% endif %}
+      </section>
+      <section class="wn-activity-card" aria-labelledby="activity-downloaded-title">
+        <h2 class="wn-activity-card__title" id="activity-downloaded-title">Скачано сегодня</h2>
+        {% if overview.summary.downloads_today %}
+        {% from "_download_history.html" import download_history_list with context %}
+        {{ download_history_list(overview.summary.downloads_today) }}
+        {% else %}
+        <p class="wn-activity-card__text">Сегодня ничего не скачивали.{% if overview.last_download_label %} Последняя загрузка — {{ overview.last_download_label }}.{% endif %}</p>
+        {% endif %}
+      </section>
     </div>
-    {% else %}
-    <p class="ui-empty">Сегодня ещё ничего не читали.</p>
-    {% endif %}
-  </section>
 
-  <section class="downloads-section" data-role="active-downloads">
-    <h2 class="downloads-section__title">Текущие загрузки</h2>
-    {% if summary.active_jobs %}
-    {% from "_active_downloads.html" import active_downloads_list with context %}
-    {{ active_downloads_list(summary.active_jobs) }}
-    {% else %}
-    <p class="ui-empty">Сейчас ничего не скачивается.</p>
-    {% endif %}
-  </section>
-
-  <section class="downloads-section">
-    <h2 class="downloads-section__title">Скачано сегодня</h2>
-    {% if summary.downloads_today %}
-    {% from "_download_history.html" import download_history_list with context %}
-    {{ download_history_list(summary.downloads_today) }}
-    {% else %}
-    <p class="ui-empty">Сегодня ничего не скачивали.</p>
-    {% endif %}
-  </section>
+    <section class="wn-activity-card wn-activity-events" aria-labelledby="activity-events-title">
+      <div class="wn-activity-card__head">
+        <h2 class="wn-activity-card__title" id="activity-events-title">История событий</h2>
+        <a class="wn-activity-link wn-activity-card__more" href="/downloads">Все загрузки →</a>
+      </div>
+      {% if overview.events %}
+      <ul class="wn-activity-events__list" data-role="activity-events">
+        {% for event in overview.events %}
+        <li class="wn-activity-event wn-activity-event--{{ event.kind }}">
+          <span class="wn-activity-event__icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="{{ icon_book if event.kind == 'read' else (icon_error if event.kind == 'download_error' else icon_download) }}"/></svg></span>
+          <span class="wn-activity-event__copy">
+            <a class="wn-activity-event__title" href="{{ event.href }}" title="{{ event.title }}">{{ event.title }}</a>
+            <span class="wn-activity-event__sub">{{ event.sub }}</span>
+          </span>
+          <span class="wn-activity-event__time">{{ event.time_label }}</span>
+        </li>
+        {% endfor %}
+      </ul>
+      {% else %}
+      <p class="wn-activity-card__text">Здесь появятся прочитанные главы и загрузки.</p>
+      {% endif %}
+    </section>
+  </div>
   {% else %}
   {% from "_locked_feature.html" import locked_feature %}
   {% call locked_feature("Активность скрыта", "/login", "Войти") %}
@@ -82,6 +161,4 @@
   {% endcall %}
   {% endif %}
 </main>
-<script src="{{ url_for('static', path='js/title-quickview.js') }}" defer></script>
-<script src="{{ url_for('static', path='js/image-lightbox.js') }}" defer></script>
 {% endblock %}

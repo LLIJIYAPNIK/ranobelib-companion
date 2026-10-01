@@ -1,6 +1,7 @@
 from base64 import urlsafe_b64encode
 from collections.abc import Iterator
 from json import dumps
+from types import SimpleNamespace
 from unittest.mock import patch
 
 import pytest
@@ -76,6 +77,144 @@ def test_home_recent_card_keeps_forget_button() -> None:
     assert 'class="ui-title-card"' in response.text
     assert 'data-role="forget-recent-title"' in response.text
     assert 'data-slug-url="6712--test-novel"' in response.text
+    assert 'class="home__grid wn-home__recent-grid"' in response.text
+    assert 'href="#home-open-url" data-role="focus-open-title"' in response.text
+
+
+async def test_home_dashboard_reuses_existing_services_and_limits_reading(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    from app.api import home as home_api
+
+    conn = object()
+
+    class _ConnectionContext:
+        async def __aenter__(self) -> object:
+            return conn
+
+        async def __aexit__(self, *exc_info: object) -> bool:
+            return False
+
+    reading_items = [
+        {"entry": SimpleNamespace(last_read_at=None), "name": "Unread"},
+        *[
+            {"entry": SimpleNamespace(last_read_at=f"2026-10-0{day}"), "name": f"Read {day}"}
+            for day in range(1, 5)
+        ],
+    ]
+    summary = home_api.ActivitySummary([], 2, "8 мин", [], [])
+
+    async def fake_library_items(user: object, passed_conn: object) -> list[dict[str, object]]:
+        assert passed_conn is conn
+        return reading_items
+
+    async def fake_summary(user: object, passed_conn: object) -> home_api.ActivitySummary:
+        assert passed_conn is conn
+        return summary
+
+    async def fake_downloads(
+        passed_conn: object, user_id: int, limit: int
+    ) -> list[home_api.DownloadHistoryEntry]:
+        assert (passed_conn, user_id, limit) == (conn, 42, 3)
+        return []
+
+    monkeypatch.setattr(home_api, "connection", _ConnectionContext)
+    monkeypatch.setattr(home_api, "library_items_for_user", fake_library_items)
+    monkeypatch.setattr(home_api, "build_activity_summary", fake_summary)
+    monkeypatch.setattr(home_api, "list_download_history", fake_downloads)
+
+    dashboard = await home_api._home_dashboard(SimpleNamespace(id=42))  # type: ignore[arg-type]
+
+    assert dashboard is not None
+    assert [item["name"] for item in dashboard.reading] == ["Read 1", "Read 2", "Read 3"]
+    assert dashboard.hero == dashboard.reading[0]
+    assert dashboard.summary is summary
+
+
+def test_home_renders_signed_in_cinematic_dashboard(monkeypatch: pytest.MonkeyPatch) -> None:
+    from fastapi import Request
+
+    from app.api import home as home_api
+    from app.auth.dependencies import get_current_user
+    from app.db.users import User
+
+    user = User(42, "reader@example.com", "hash", "2026-10-01T07:00:00+00:00")
+    entry = SimpleNamespace(
+        slug_url="6712--test-novel",
+        last_read_at="2026-10-01T08:00:00+00:00",
+        last_read_volume="1",
+        last_read_number="92",
+    )
+    item = {
+        "entry": entry,
+        "name": "Старшая школа D×D",
+        "cover_url": "https://example.test/cover.jpg",
+        "progress_percent": 41,
+    }
+    summary = home_api.ActivitySummary([], 1, "8 мин", [], [])
+    download = home_api.DownloadHistoryEntry(
+        1,
+        42,
+        "6712--test-novel",
+        "epub",
+        "done",
+        92,
+        None,
+        "2026-10-01T08:30:00+00:00",
+        None,
+    )
+    dashboard = home_api.HomeDashboard([item], summary, [download])
+    friend_card = home_api.FriendActivityCard(
+        home_api.FriendUser(7, "Alice", None, "AL"),
+        None,
+        [
+            home_api.RecentComment(
+                9,
+                "Отличная глава!",
+                "2026-10-01T08:10:00+00:00",
+                "6712--test-novel",
+                "1",
+                "5",
+                "",
+            )
+        ],
+        0,
+    )
+
+    async def override_current_user(request: Request) -> object:
+        request.state.current_user = user
+        return user
+
+    async def fake_dashboard(passed_user: object) -> home_api.HomeDashboard:
+        assert passed_user is user
+        return dashboard
+
+    async def fake_recent(request: Request, passed_user: object) -> list[dict[str, object]]:
+        assert passed_user is user
+        return []
+
+    async def fake_friend_activity(passed_user: object) -> list[home_api.FriendActivityCard]:
+        assert passed_user is user
+        return [friend_card]
+
+    app.dependency_overrides[get_current_user] = override_current_user
+    monkeypatch.setattr(home_api, "_home_dashboard", fake_dashboard)
+    monkeypatch.setattr(home_api, "_recent_with_progress", fake_recent)
+    monkeypatch.setattr(home_api, "_friend_activity_cards", fake_friend_activity)
+    try:
+        response = client.get("/")
+    finally:
+        app.dependency_overrides.pop(get_current_user, None)
+
+    assert response.status_code == 200
+    assert 'class="wn-home-hero__backdrop"' in response.text
+    assert "Продолжить · Глава 92" in response.text
+    assert 'aria-label="Прочитано 41%"' in response.text
+    assert 'id="today-title"' in response.text
+    assert 'class="wn-home-reading"' in response.text
+    assert 'id="latest-downloads-title"' in response.text
+    assert "Отличная глава!" in response.text
+    assert "/titles/6712--test-novel/chapters/1/5" in response.text
 
 
 def _set_recent_cookie(test_client: TestClient, slug_url: str, name: str) -> None:

@@ -73,6 +73,12 @@ async def delete_entry(conn: AsyncConnection, entry_id: int, user_id: int) -> bo
     return cursor.rowcount > 0
 
 
+async def clear_history(conn: AsyncConnection, user_id: int) -> int:
+    """Delete every permanent download-history row owned by ``user_id``."""
+    cursor = await conn.execute("DELETE FROM download_history WHERE user_id = %s", (user_id,))
+    return cursor.rowcount
+
+
 async def list_download_history(
     conn: AsyncConnection, user_id: int, limit: int = 20
 ) -> list[DownloadHistoryEntry]:
@@ -101,6 +107,18 @@ async def list_download_history_today(
     )
     rows = await cursor.fetchall()
     return [_row_to_entry(row) for row in rows]
+
+
+async def count_downloads_since(conn: AsyncConnection, user_id: int, since: str) -> int:
+    """Finished downloads (any status, same as list_download_history_today()) from the
+    UTC date/timestamp `since` onward - the "Скачано" metric of the Активность page for
+    its 7/30-day periods (PR 276)."""
+    cursor = await conn.execute(
+        "SELECT COUNT(*) AS n FROM download_history WHERE user_id = %s AND finished_at >= %s",
+        (user_id, since),
+    )
+    row = await cursor.fetchone()
+    return row["n"]
 
 
 def _row_to_entry(row: dict[str, Any]) -> DownloadHistoryEntry:

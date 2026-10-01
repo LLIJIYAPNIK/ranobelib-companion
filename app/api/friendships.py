@@ -7,12 +7,13 @@ and the page that lists them all together.
 
 from __future__ import annotations
 
-from typing import Annotated
+from typing import Annotated, Literal
 
 from fastapi import APIRouter, Depends, Form, HTTPException, Request
 from fastapi.responses import HTMLResponse, RedirectResponse
 from psycopg import AsyncConnection
 
+from app.api.library import currently_reading_for_users
 from app.auth.dependencies import get_current_user, require_current_user
 from app.db.connection import connection, get_connection
 from app.db.friendships import (
@@ -29,7 +30,12 @@ from app.db.friendships import (
     send_request,
 )
 from app.db.notifications import notify_friend_accept, notify_friend_request
-from app.db.users import User, get_user_by_id, search_users_by_nickname
+from app.db.users import (
+    User,
+    get_user_by_id,
+    search_users_by_nickname,
+    update_privacy_settings,
+)
 from app.templating import templates
 
 router = APIRouter(prefix="/friends")
@@ -40,6 +46,7 @@ async def show_friends(
     request: Request,
     user: Annotated[User | None, Depends(get_current_user)],
     query: str | None = None,
+    tab: Literal["friends", "incoming", "outgoing"] = "friends",
 ) -> HTMLResponse:
     """Same locked-screen gate as /library, /downloads, /activity (PR 22) - viewing the
     page itself doesn't require an account. conn is checked out below, not taken as a
@@ -50,11 +57,15 @@ async def show_friends(
     `query` (PR 209): the page's own "find someone to add" search - a plain GET query
     param rather than a separate route/page, same shape as the catalog's own `query`
     (app/api/library.py). Omitted or blank shows no search-results section at all, not an
-    empty-state message for a search nobody actually ran."""
+    empty-state message for a search nobody actually ran.
+
+    `tab` (PR 278): which list fills the main column - friends (the default), incoming or
+    outgoing requests. The "Заявки" side card lists both request kinds on every tab."""
     incoming: list[FriendRequestEntry] = []
     outgoing: list[FriendRequestEntry] = []
     friends: list[FriendEntry] = []
     search_results: list[FriendSearchResult] = []
+    friend_reading: dict[int, dict[str, object]] = {}
     if user is not None:
         async with connection() as conn:
             incoming = await list_incoming_requests(conn, user.id)
@@ -62,6 +73,8 @@ async def show_friends(
             friends = await list_friends(conn, user.id)
             if query:
                 search_results = await _search_friends(conn, user.id, query)
+            if tab == "friends":
+                friend_reading = await _friends_reading(conn, friends)
     return templates.TemplateResponse(
         request,
         "friends.html",
@@ -72,8 +85,49 @@ async def show_friends(
             "friends": friends,
             "query": query,
             "search_results": search_results,
+            "tab": tab,
+            "friend_reading": friend_reading,
         },
     )
+
+
+async def _friends_reading(
+    conn: AsyncConnection, friends: list[FriendEntry]
+) -> dict[int, dict[str, object]]:
+    """PR 278: the "Читает" preview on each friend card, keyed by user id - the same
+    lookup and the same show_currently_reading rule as the home page's friend activity
+    (PR 200). A friend with nothing to show is simply absent."""
+    if not friends:
+        return {}
+    by_user = await currently_reading_for_users([f.user.id for f in friends], conn)
+    reading: dict[int, dict[str, object]] = {}
+    for user_id, item in by_user.items():
+        friend_user = await get_user_by_id(conn, user_id)
+        if friend_user is not None and friend_user.show_currently_reading:
+            reading[user_id] = item
+    return reading
+
+
+@router.post("/privacy")
+async def update_reading_visibility(
+    user: Annotated[User, Depends(require_current_user)],
+    conn: Annotated[AsyncConnection, Depends(get_connection)],
+    show_currently_reading: Annotated[bool, Form()],
+) -> RedirectResponse:
+    """The switch on the /friends "Приватность" card (PR 278) - the same
+    show_currently_reading flag as /settings/account/privacy (PR 124), changed on its own:
+    the other four flags are written back as they already are, since
+    update_privacy_settings() always writes all five."""
+    await update_privacy_settings(
+        conn,
+        user.id,
+        show_currently_reading=show_currently_reading,
+        show_favorite=user.show_favorite,
+        show_library=user.show_library,
+        show_friends_activity_home=user.show_friends_activity_home,
+        show_friends=user.show_friends,
+    )
+    return RedirectResponse(url="/friends", status_code=303)
 
 
 async def _search_friends(

@@ -2,7 +2,9 @@
 // so it asks for confirmation before sending anything, then removes the row on success
 // rather than reloading the whole page.
 (() => {
-  const list = document.querySelector(".downloads-history");
+  const list =
+    document.querySelector('[data-role="download-history-groups"]') ||
+    document.querySelector(".downloads-history");
   if (!list) return;
 
   list.addEventListener("click", async (event) => {
@@ -23,6 +25,13 @@
       const response = await fetch(`/downloads/history/${entryId}`, { method: "DELETE" });
       if (response.ok) {
         row.remove();
+        const group = button.closest(".wn-downloads-history__group");
+        if (group && !group.querySelector(".downloads-history__item")) group.remove();
+        const count = document.querySelector('[data-role="history-count"]');
+        if (count) {
+          const remaining = document.querySelectorAll(".downloads-history__item").length;
+          count.textContent = String(remaining);
+        }
       } else {
         button.disabled = false;
       }
