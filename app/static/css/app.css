@@ -11092,7 +11092,407 @@ body.reader-hud-visible .reader-hud {
     padding: var(--s-4) var(--s-20) var(--s-8);
   }
 
-  .translation-choice {
+.translation-choice {
     width: 100%;
+  }
+}
+
+/* Webnovells Redesign - downloads (PR 274). */
+.wn-downloads {
+  width: min(100%, 1220px);
+  max-width: none;
+  gap: var(--wn-space-4);
+  padding: var(--wn-space-4);
+  color: var(--wn-text);
+  font-family: var(--wn-font-ui);
+}
+
+.wn-downloads__head,
+.wn-downloads__section-head,
+.wn-downloads__section-head > div,
+.wn-downloads__tools {
+  display: flex;
+  align-items: center;
+}
+
+.wn-downloads__head,
+.wn-downloads__section-head,
+.wn-downloads__tools {
+  justify-content: space-between;
+  gap: var(--wn-space-3);
+}
+
+.wn-downloads__eyebrow {
+  color: var(--wn-teal);
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+}
+
+.wn-downloads .downloads-page__title {
+  margin-top: 6px;
+  color: var(--wn-text);
+  font: var(--wn-type-heading);
+}
+
+.wn-downloads__head p {
+  margin: 8px 0 0;
+  color: var(--wn-text-secondary);
+  font: var(--wn-type-body);
+}
+
+.wn-downloads__section {
+  gap: var(--wn-space-2);
+}
+
+.wn-downloads__section-head > div {
+  gap: 10px;
+}
+
+.wn-downloads__section-head .downloads-section__title {
+  color: var(--wn-text);
+  font: var(--wn-type-section);
+}
+
+.wn-downloads__section-head > div > span {
+  display: grid;
+  place-items: center;
+  min-width: 24px;
+  height: 24px;
+  padding: 0 7px;
+  border-radius: 99px;
+  background: var(--wn-surface-raised);
+  color: var(--wn-text-secondary);
+  font: var(--wn-type-technical);
+}
+
+.wn-downloads-empty {
+  display: grid;
+  grid-template-columns: 64px minmax(0, 1fr) auto;
+  align-items: center;
+  gap: var(--wn-space-3);
+  padding: 24px;
+  border: 1px solid var(--wn-border);
+  border-radius: var(--wn-radius-lg);
+  background: var(--wn-surface);
+}
+
+.wn-downloads-empty__icon {
+  display: grid;
+  place-items: center;
+  width: 64px;
+  height: 64px;
+  border-radius: var(--wn-radius-lg);
+  background: rgb(61 214 195 / 10%);
+  color: var(--wn-teal);
+}
+
+.wn-downloads-empty__icon svg {
+  width: 30px;
+  height: 30px;
+}
+
+.wn-downloads-empty__copy h3 {
+  margin: 0;
+  color: var(--wn-text);
+  font-size: 16px;
+}
+
+.wn-downloads-empty__copy p {
+  margin: 5px 0 0;
+  color: var(--wn-text-secondary);
+  font: var(--wn-type-meta);
+}
+
+.wn-downloads-steps {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 16px 0 0;
+  padding: 0;
+  list-style: none;
+}
+
+.wn-downloads-steps li:nth-child(odd) {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  color: var(--wn-text-secondary);
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.wn-downloads-steps b {
+  display: grid;
+  place-items: center;
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  background: var(--wn-surface-raised);
+  color: var(--wn-teal);
+  font: var(--wn-type-technical);
+}
+
+.wn-downloads-steps li:nth-child(even) {
+  width: 24px;
+  height: 1px;
+  background: var(--wn-border-strong);
+}
+
+.wn-downloads__clear {
+  border: 0;
+  background: transparent;
+  color: var(--wn-danger);
+  font-size: 12px;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.wn-downloads-search {
+  position: relative;
+  flex: 1;
+  max-width: 440px;
+}
+
+.wn-downloads-search svg {
+  position: absolute;
+  z-index: 1;
+  top: 50%;
+  left: 14px;
+  width: 17px;
+  height: 17px;
+  color: var(--wn-text-muted);
+  transform: translateY(-50%);
+}
+
+.wn-downloads-search input {
+  padding-left: 40px;
+}
+
+.wn-downloads-segments {
+  display: inline-flex;
+  padding: 3px;
+  border: 1px solid var(--wn-border);
+  border-radius: var(--wn-radius-md);
+  background: var(--wn-surface);
+}
+
+.wn-downloads-segments__button {
+  min-height: 34px;
+  padding: 0 12px;
+  border: 0;
+  border-radius: var(--wn-radius-sm);
+  background: transparent;
+  color: var(--wn-text-secondary);
+  font-size: 12px;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.wn-downloads-segments__button.is-active {
+  background: var(--wn-surface-raised);
+  color: var(--wn-text);
+}
+
+.wn-downloads-history {
+  display: flex;
+  flex-direction: column;
+  gap: var(--wn-space-3);
+}
+
+.wn-downloads-history__group > h3 {
+  margin: 0 0 8px;
+  color: var(--wn-text-muted);
+  font: var(--wn-type-technical);
+}
+
+.wn-downloads-table {
+  border: 1px solid var(--wn-border);
+  border-radius: var(--wn-radius-lg);
+  background: var(--wn-surface);
+  overflow: hidden;
+}
+
+.wn-downloads-table__header,
+.wn-downloads-row {
+  display: grid;
+  grid-template-columns: minmax(220px, 1.8fr) 80px 64px 74px 110px minmax(142px, auto);
+  align-items: center;
+  gap: 12px;
+}
+
+.wn-downloads-table__header {
+  min-height: 42px;
+  padding: 0 16px;
+  border-bottom: 1px solid var(--wn-border);
+  background: var(--wn-surface-raised);
+  color: var(--wn-text-muted);
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.wn-downloads .downloads-history {
+  margin: 0;
+  padding: 0;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+}
+
+.wn-downloads-row {
+  min-height: 62px;
+  padding: 10px 16px;
+  border: 0;
+  border-bottom: 1px solid var(--wn-border);
+  border-radius: 0;
+  background: transparent;
+}
+
+.wn-downloads-row:last-child {
+  border-bottom: 0;
+}
+
+.wn-downloads-row__title {
+  min-width: 0;
+}
+
+.wn-downloads .downloads-history__link {
+  display: block;
+  overflow: hidden;
+  color: var(--wn-text);
+  font-size: 13px;
+  font-weight: 700;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.wn-downloads .downloads-history__fmt {
+  color: var(--wn-teal);
+  font: var(--wn-type-technical);
+}
+
+.wn-downloads-row > .wn-technical,
+.wn-downloads .downloads-history__date {
+  color: var(--wn-text-secondary);
+  font-size: 11px;
+}
+
+.wn-downloads .downloads-history__status {
+  overflow: hidden;
+  color: var(--wn-teal);
+  font-size: 12px;
+  font-weight: 600;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.wn-downloads .downloads-history__status--error {
+  color: var(--wn-danger);
+}
+
+.wn-downloads-row__actions {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 10px;
+}
+
+.wn-downloads-row__actions a,
+.wn-downloads-row__actions button {
+  border: 0;
+  background: transparent;
+  color: var(--wn-text-secondary);
+  font-size: 11px;
+  font-weight: 700;
+  text-decoration: none;
+  cursor: pointer;
+}
+
+.wn-downloads-row__actions .downloads-history__download {
+  color: var(--wn-teal);
+}
+
+.wn-downloads-row__actions .downloads-history__delete {
+  display: grid;
+  place-items: center;
+  width: 28px;
+  height: 28px;
+  padding: 0;
+}
+
+.wn-downloads-row__actions .downloads-history__delete svg {
+  width: 16px;
+  height: 16px;
+}
+
+.wn-downloads__no-results {
+  margin: 0;
+  padding: var(--wn-space-4);
+  border: 1px dashed var(--wn-border-strong);
+  border-radius: var(--wn-radius-lg);
+  color: var(--wn-text-muted);
+  text-align: center;
+}
+
+@media (hover: hover) {
+  .wn-downloads-row:hover {
+    background: var(--wn-surface-raised);
+  }
+
+  .wn-downloads-row__actions a:hover {
+    color: var(--wn-text);
+  }
+
+  .wn-downloads-row__actions .downloads-history__delete:hover {
+    color: var(--wn-danger);
+  }
+}
+
+@media (max-width: 960px) {
+  .wn-downloads-table {
+    overflow-x: auto;
+  }
+
+  .wn-downloads-table__header,
+  .wn-downloads-row {
+    min-width: 880px;
+  }
+}
+
+@media (max-width: 767px) {
+  .wn-downloads {
+    gap: var(--wn-space-3);
+    padding: var(--wn-space-2);
+  }
+
+  .wn-downloads__head,
+  .wn-downloads__tools {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .wn-downloads-empty {
+    grid-template-columns: 48px minmax(0, 1fr);
+    padding: 18px;
+  }
+
+  .wn-downloads-empty__icon {
+    width: 48px;
+    height: 48px;
+  }
+
+  .wn-downloads-empty > .wn-btn {
+    grid-column: 1 / -1;
+  }
+
+  .wn-downloads-search {
+    max-width: none;
+  }
+
+  .wn-downloads-segments {
+    align-self: flex-start;
   }
 }
