@@ -10724,6 +10724,556 @@ body.reader-hud-visible .reader-hud {
 }
 
 /* ==========================================================================
+   Webnovells Redesign - activity (PR 276, screen A4) on the --wn-* tokens from
+   PR 272: period switch, four metric cards, the 30-day reading chart, "Читали
+   сегодня", the two download cards and "История событий".
+   ========================================================================== */
+.wn-activity {
+  max-width: none;
+  gap: var(--wn-space-3);
+  font-family: var(--wn-font-ui);
+}
+
+.wn-activity__head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  gap: var(--wn-space-2);
+}
+
+.wn-activity__heading {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  gap: var(--wn-space-1);
+  min-width: 0;
+}
+
+.wn-activity__title {
+  margin: 0;
+  color: #f2f0f7;
+  font: var(--wn-weight-extra-bold) 32px/1.1 var(--wn-font-ui);
+  letter-spacing: -0.02em;
+}
+
+.wn-activity__subtitle {
+  margin: 0;
+  color: var(--wn-text-secondary);
+  font: var(--wn-weight-medium) 15px/1.4 var(--wn-font-ui);
+}
+
+.wn-segmented {
+  display: flex;
+  padding: 3px;
+  border: 1px solid #2a2838;
+  border-radius: 10px;
+  background: var(--wn-surface);
+}
+
+.wn-segmented__item {
+  padding: 10px 16px;
+  border-radius: 7px;
+  color: var(--wn-text-secondary);
+  font: var(--wn-weight-semi-bold) 14px/1 var(--wn-font-ui);
+  text-decoration: none;
+  white-space: nowrap;
+  transition:
+    background-color 160ms ease,
+    color 160ms ease;
+}
+
+@media (hover: hover) {
+  .wn-segmented__item:hover {
+    color: var(--wn-text);
+  }
+}
+
+.wn-segmented__item[aria-current="page"] {
+  background: #232230;
+  color: var(--wn-text);
+}
+
+.wn-segmented__item:focus-visible {
+  outline: none;
+  box-shadow: var(--wn-focus-ring);
+}
+
+.wn-activity-card {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  min-width: 0;
+  padding: 22px 24px;
+  border: 1px solid var(--wn-border);
+  border-radius: var(--wn-radius-lg);
+  background: var(--wn-surface);
+}
+
+.wn-activity-card__head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 12px;
+}
+
+.wn-activity-card__title {
+  margin: 0;
+  color: var(--wn-text);
+  font: var(--wn-weight-bold) 18px/1 var(--wn-font-ui);
+}
+
+.wn-activity-card__aside {
+  color: var(--wn-text-muted);
+  font: var(--wn-weight-semi-bold) 14px/1 var(--wn-font-ui);
+}
+
+.wn-activity-card__more {
+  margin-left: auto;
+}
+
+.wn-activity-card__text {
+  margin: 0;
+  color: var(--wn-text-secondary);
+  font: var(--wn-weight-medium) 14px/1.4 var(--wn-font-ui);
+  text-wrap: pretty;
+}
+
+.wn-activity-link {
+  color: #b7a6ff;
+  font: var(--wn-weight-bold) 14px/1 var(--wn-font-ui);
+  text-decoration: none;
+}
+
+@media (hover: hover) {
+  .wn-activity-link:hover {
+    color: #d3c8ff;
+  }
+}
+
+.wn-activity-link:focus-visible {
+  outline: none;
+  border-radius: 4px;
+  box-shadow: var(--wn-focus-ring);
+}
+
+/* Metric cards. */
+.wn-activity-metrics {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: var(--wn-space-3);
+}
+
+.wn-activity-metric {
+  gap: 10px;
+  padding: 20px 22px;
+}
+
+.wn-activity-metric__label {
+  color: var(--wn-text-secondary);
+  font: var(--wn-weight-semi-bold) 14px/1 var(--wn-font-ui);
+}
+
+.wn-activity-metric__value {
+  color: #f2f0f7;
+  font: var(--wn-weight-extra-bold) 36px/1 var(--wn-font-ui);
+  letter-spacing: -0.02em;
+  font-variant-numeric: tabular-nums;
+}
+
+.wn-activity-metric__value--accent {
+  color: var(--wn-teal);
+}
+
+.wn-activity-metric__unit {
+  color: #cfcbdd;
+  font-size: 17px;
+  font-weight: var(--wn-weight-bold);
+  letter-spacing: 0;
+}
+
+.wn-activity-metric__note {
+  overflow: hidden;
+  color: var(--wn-text-muted);
+  font: var(--wn-weight-medium) 13px/1.2 var(--wn-font-ui);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* Rows: chart 8 + "Читали сегодня" 4, then downloads 4 + events 8. */
+.wn-activity__row {
+  display: grid;
+  grid-template-columns: repeat(12, minmax(0, 1fr));
+  gap: var(--wn-space-3);
+}
+
+.wn-activity-chart {
+  grid-column: span 8;
+  gap: 20px;
+}
+
+.wn-activity-today {
+  grid-column: span 4;
+  gap: var(--wn-space-2);
+}
+
+.wn-activity__downloads {
+  grid-column: span 4;
+  display: flex;
+  flex-direction: column;
+  gap: var(--wn-space-2);
+  min-width: 0;
+}
+
+.wn-activity-events {
+  grid-column: span 8;
+  gap: var(--wn-space-1);
+}
+
+/* 30-day chart: bar height comes from --bar (percent of the busiest day). */
+.wn-activity-chart__legend {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--wn-space-1);
+  margin-left: auto;
+  color: var(--wn-text-muted);
+  font: var(--wn-weight-medium) 13px/1 var(--wn-font-ui);
+}
+
+.wn-activity-chart__legend span {
+  width: 10px;
+  height: 10px;
+  border-radius: 3px;
+  background: var(--wn-teal);
+}
+
+.wn-activity-chart__plot {
+  position: relative;
+  display: grid;
+  grid-template-columns: repeat(30, minmax(0, 1fr));
+  align-items: end;
+  gap: 6px;
+  height: 180px;
+  padding-bottom: 1px;
+  border-bottom: 1px solid #2a2838;
+}
+
+.wn-activity-chart__guide {
+  position: absolute;
+  left: 0;
+  right: 0;
+  border-top: 1px dashed #23212f;
+  pointer-events: none;
+}
+
+.wn-activity-chart__guide--top {
+  top: 0;
+}
+
+.wn-activity-chart__guide--mid {
+  top: 50%;
+}
+
+.wn-activity-chart__bar {
+  position: relative;
+  height: 3px;
+  border-radius: 4px 4px 2px 2px;
+  background: #1e1d29;
+}
+
+.wn-activity-chart__bar--filled {
+  height: max(6px, var(--bar));
+  background: rgb(61 214 195 / 60%);
+}
+
+.wn-activity-chart__bar--today.wn-activity-chart__bar--filled {
+  background: var(--wn-teal);
+}
+
+.wn-activity-chart__axis {
+  display: flex;
+  justify-content: space-between;
+  margin-top: calc(-1 * var(--wn-space-1));
+  color: var(--wn-text-muted);
+  font: var(--wn-weight-medium) 13px/1 var(--wn-font-ui);
+}
+
+.wn-activity-chart__axis-today {
+  color: var(--wn-teal);
+  font-weight: var(--wn-weight-bold);
+}
+
+/* "Читали сегодня". */
+.wn-activity-today__title {
+  display: flex;
+  gap: var(--wn-space-2);
+}
+
+.wn-activity-today__cover {
+  flex: none;
+  width: 88px;
+  height: 132px;
+  overflow: hidden;
+  border-radius: 10px;
+  background: var(--wn-surface-raised);
+}
+
+.wn-activity-today__cover img {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  object-position: top;
+}
+
+.wn-activity-today__copy {
+  display: flex;
+  flex-direction: column;
+  gap: var(--wn-space-1);
+  min-width: 0;
+}
+
+.wn-activity-today__name {
+  color: var(--wn-text);
+  font: var(--wn-weight-bold) 16px/1.3 var(--wn-font-ui);
+  text-decoration: none;
+}
+
+@media (hover: hover) {
+  .wn-activity-today__name:hover {
+    color: #ffffff;
+  }
+}
+
+.wn-activity-today__meta {
+  color: var(--wn-text-secondary);
+  font: var(--wn-weight-medium) 14px/1.2 var(--wn-font-ui);
+}
+
+.wn-activity-today__count {
+  color: var(--wn-teal);
+  font: var(--wn-weight-bold) 14px/1 var(--wn-font-ui);
+}
+
+.wn-activity-today__spacer {
+  flex: 1;
+}
+
+.wn-activity-today__more {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  margin: 0;
+  padding: 12px 0 0;
+  border-top: 1px solid #1e1d29;
+  list-style: none;
+}
+
+.wn-activity-today__more li {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  font: var(--wn-weight-medium) 13px/1.3 var(--wn-font-ui);
+}
+
+.wn-activity-today__more a {
+  overflow: hidden;
+  color: var(--wn-text);
+  font-weight: var(--wn-weight-semi-bold);
+  text-decoration: none;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.wn-activity-today__more span {
+  flex: none;
+  color: var(--wn-text-muted);
+}
+
+/* Download cards. */
+.wn-activity-idle {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: var(--wn-space-2);
+  border: 1.5px dashed #2e2b40;
+  border-radius: var(--wn-radius-md);
+  color: var(--wn-text-secondary);
+  font: var(--wn-weight-medium) 14px/1.4 var(--wn-font-ui);
+}
+
+.wn-activity-idle__icon {
+  display: grid;
+  flex: none;
+  place-items: center;
+  width: 40px;
+  height: 40px;
+  border-radius: var(--wn-radius-md);
+  background: rgb(61 214 195 / 10%);
+  color: var(--wn-teal);
+}
+
+.wn-activity-idle__icon svg {
+  width: 18px;
+  height: 18px;
+}
+
+/* "История событий". */
+.wn-activity-events__list {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.wn-activity-event {
+  display: grid;
+  grid-template-columns: 36px minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 14px;
+  padding: 10px 0;
+  border-top: 1px solid #1e1d29;
+}
+
+.wn-activity-event__icon {
+  display: grid;
+  place-items: center;
+  width: 36px;
+  height: 36px;
+  border-radius: 10px;
+  background: #1e1d29;
+  color: var(--wn-text-secondary);
+}
+
+.wn-activity-event--read .wn-activity-event__icon {
+  background: rgb(61 214 195 / 12%);
+  color: var(--wn-teal);
+}
+
+.wn-activity-event--download_error .wn-activity-event__icon {
+  background: rgb(242 104 122 / 12%);
+  color: var(--wn-danger);
+}
+
+.wn-activity-event__icon svg {
+  width: 16px;
+  height: 16px;
+}
+
+.wn-activity-event__copy {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  min-width: 0;
+}
+
+.wn-activity-event__title {
+  overflow: hidden;
+  color: var(--wn-text);
+  font: var(--wn-weight-semi-bold) 15px/1.25 var(--wn-font-ui);
+  text-decoration: none;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+@media (hover: hover) {
+  .wn-activity-event__title:hover {
+    color: #ffffff;
+  }
+}
+
+.wn-activity-event__title:focus-visible {
+  outline: none;
+  border-radius: 4px;
+  box-shadow: var(--wn-focus-ring);
+}
+
+.wn-activity-event__sub {
+  overflow: hidden;
+  color: var(--wn-text-muted);
+  font: var(--wn-weight-medium) 13px/1.2 var(--wn-font-ui);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.wn-activity-event__time {
+  color: var(--wn-text-muted);
+  font: var(--wn-weight-medium) 13px/1 var(--wn-font-ui);
+  white-space: nowrap;
+}
+
+@media (max-width: 1199px) {
+  .wn-activity-metrics {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .wn-activity-chart,
+  .wn-activity-today,
+  .wn-activity__downloads,
+  .wn-activity-events {
+    grid-column: 1 / -1;
+  }
+
+  .wn-activity__downloads {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    align-items: start;
+  }
+}
+
+@media (max-width: 767px) {
+  .wn-activity__title {
+    font-size: 26px;
+  }
+
+  .wn-segmented {
+    width: 100%;
+  }
+
+  .wn-segmented__item {
+    flex: 1;
+    text-align: center;
+  }
+
+  .wn-activity-metrics,
+  .wn-activity__row {
+    gap: 12px;
+  }
+
+  .wn-activity-metric {
+    padding: var(--wn-space-2);
+  }
+
+  .wn-activity-metric__value {
+    font-size: 28px;
+  }
+
+  .wn-activity-metric__unit {
+    font-size: 14px;
+  }
+
+  .wn-activity-card {
+    padding: 18px var(--wn-space-2);
+  }
+
+  .wn-activity-chart__plot {
+    gap: 3px;
+    height: 140px;
+  }
+
+  .wn-activity__downloads {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .wn-activity-event {
+    grid-template-columns: 36px minmax(0, 1fr);
+    gap: 4px 12px;
+  }
+
+  .wn-activity-event__time {
+    grid-column: 2;
+  }
+}
+
+/* ==========================================================================
    Aurora Ink screens - friends (PR 258): FRIENDS. Intro, nickname search, then the
    request/search sections as boxed Friend rows and "Друзья · N" as plain divided rows.
    Content capped at 760px, as in the design.

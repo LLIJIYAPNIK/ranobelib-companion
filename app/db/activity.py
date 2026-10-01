@@ -27,6 +27,14 @@ class ChapterReadCount:
     chapters_read: int
 
 
+@dataclass(frozen=True)
+class ChapterReadEvent:
+    slug_url: str
+    volume: str | None
+    number: str | None
+    created_at: str
+
+
 async def record_chapter_read(
     conn: AsyncConnection, user_id: int, slug_url: str, volume: str, number: str
 ) -> None:
@@ -144,6 +152,30 @@ async def daily_titles_read(
     for row in rows:
         titles[row["day"]].append(row["slug_url"])
     return dict(titles)
+
+
+async def list_recent_chapter_reads(
+    conn: AsyncConnection, user_id: int, limit: int = 10
+) -> list[ChapterReadEvent]:
+    """The latest chapter_read events, newest first - the reading half of the
+    "История событий" feed on the Активность page (PR 276). Unlike the per-day
+    aggregates above, this keeps each event's own volume/number/timestamp."""
+    cursor = await conn.execute(
+        "SELECT slug_url, volume, number, created_at FROM activity_events "
+        "WHERE user_id = %s AND kind = 'chapter_read' "
+        "ORDER BY created_at DESC, id DESC LIMIT %s",
+        (user_id, limit),
+    )
+    rows = await cursor.fetchall()
+    return [
+        ChapterReadEvent(
+            slug_url=row["slug_url"],
+            volume=row["volume"],
+            number=row["number"],
+            created_at=row["created_at"],
+        )
+        for row in rows
+    ]
 
 
 def _today_start() -> str:
