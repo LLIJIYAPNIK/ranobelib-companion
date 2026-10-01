@@ -6324,6 +6324,914 @@ a.ui-title-card:focus-visible .ui-title-card__cover {
 }
 
 /* ==========================================================================
+   Webnovells Redesign - library (PR 275, screen A3). Opts into the --wn-* tokens
+   from PR 272; the tabs partial is shared with the catalog, so its new look is
+   scoped to .wn-library and only the star/count need global defaults.
+   ========================================================================== */
+
+.library-tabs__star {
+  width: 14px;
+  height: 14px;
+  flex: none;
+  margin-right: 6px;
+  fill: #f2c14e;
+}
+
+.library-tabs__count {
+  margin-left: 8px;
+  font-weight: 700;
+  font-size: 13px;
+}
+
+.wn-library {
+  gap: var(--wn-space-3);
+  font-family: var(--wn-font-ui);
+}
+
+.wn-library__head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--wn-space-3);
+}
+
+.wn-library__title {
+  margin: 0;
+  color: #f2f0f7;
+  font: var(--wn-weight-extra-bold) 32px/1 var(--wn-font-ui);
+  letter-spacing: -0.02em;
+}
+
+.wn-library .ui-tabs {
+  display: flex;
+  gap: 4px;
+  padding: 4px;
+  border: 1px solid var(--wn-border);
+  border-radius: var(--wn-radius-md);
+  background: var(--wn-surface);
+}
+
+.wn-library .ui-tabs__link {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  height: auto;
+  padding: 10px 14px;
+  border: 0;
+  border-radius: 9px;
+  background: transparent;
+  color: var(--wn-text-secondary);
+  font: var(--wn-weight-semi-bold) 15px/1 var(--wn-font-ui);
+  white-space: nowrap;
+  box-shadow: none;
+}
+
+.wn-library .library-tabs__star {
+  margin-right: 0;
+}
+
+@media (hover: hover) {
+  .wn-library .ui-tabs__link:hover {
+    background: transparent;
+    color: var(--wn-text);
+  }
+}
+
+.wn-library .ui-tabs__link[aria-current="page"] {
+  background: #22212e;
+  color: #f2f0f7;
+  font-weight: var(--wn-weight-bold);
+}
+
+.wn-library .ui-tabs__link:focus-visible {
+  outline: none;
+  box-shadow: var(--wn-focus-ring);
+}
+
+.wn-library .library-tabs__count {
+  margin-left: 0;
+  color: var(--wn-text-muted);
+}
+
+.wn-library .ui-tabs__link[aria-current="page"] .library-tabs__count {
+  color: var(--wn-teal);
+}
+
+.wn-library__add {
+  display: flex;
+  gap: 12px;
+  margin-left: auto;
+}
+
+.wn-library__add-field {
+  position: relative;
+  display: flex;
+  align-items: center;
+  width: 380px;
+  color: var(--wn-text-muted);
+}
+
+.wn-library__add-field svg {
+  position: absolute;
+  left: 14px;
+  width: 16px;
+  height: 16px;
+  pointer-events: none;
+}
+
+.wn-library__add-control.wn-field__control {
+  padding-left: 40px;
+  border-color: #2a2838;
+  background: var(--wn-surface);
+  font-size: 14px;
+}
+
+.wn-library__add .wn-btn {
+  padding: 0 20px;
+  font-size: 15px;
+}
+
+.wn-library__add .wn-btn svg {
+  width: 16px;
+  height: 16px;
+}
+
+.wn-library__error {
+  margin: calc(-1 * var(--wn-space-2)) 0 0;
+  color: var(--wn-danger);
+  text-align: right;
+}
+
+.wn-library__content {
+  gap: var(--wn-space-3);
+}
+
+.wn-library__titles {
+  display: flex;
+  flex-direction: column;
+  gap: var(--wn-space-3);
+}
+
+.wn-library__titles [hidden] {
+  display: none !important;
+}
+
+.wn-library__empty,
+.wn-library__hint {
+  margin: 0;
+  color: var(--wn-text-muted);
+  font: var(--wn-type-body);
+  text-wrap: pretty;
+}
+
+.wn-library__hint {
+  font: var(--wn-type-meta);
+}
+
+.wn-library__empty {
+  padding: var(--wn-space-4) var(--wn-space-3);
+  border: 1px dashed var(--wn-border-strong);
+  border-radius: var(--wn-radius-lg);
+  text-align: center;
+}
+
+/* Toolbar: search, two selects and the list/grid switch. */
+.wn-library-toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 12px;
+}
+
+.wn-library-search {
+  position: relative;
+  display: flex;
+  align-items: center;
+  width: 320px;
+  color: var(--wn-text-muted);
+}
+
+.wn-library-search svg {
+  position: absolute;
+  left: 14px;
+  width: 16px;
+  height: 16px;
+  pointer-events: none;
+}
+
+.wn-library-search input {
+  width: 100%;
+  height: 40px;
+  padding: 0 14px 0 40px;
+  border: 1px solid var(--wn-border);
+  border-radius: 10px;
+  outline: none;
+  background: #101017;
+  color: var(--wn-text);
+  font: var(--wn-weight-medium) 14px/1 var(--wn-font-ui);
+  caret-color: var(--wn-teal);
+}
+
+.wn-library-search input::placeholder {
+  color: var(--wn-text-muted);
+  opacity: 1;
+}
+
+.wn-library-search input:focus {
+  border-color: var(--wn-teal);
+  box-shadow: 0 0 0 3px rgb(61 214 195 / 16%);
+}
+
+.wn-library-select {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  height: 40px;
+  padding: 0 34px 0 14px;
+  border: 1px solid var(--wn-border);
+  border-radius: 10px;
+  color: #cfcbdd;
+  font: var(--wn-weight-semi-bold) 14px/1 var(--wn-font-ui);
+  white-space: nowrap;
+  cursor: pointer;
+}
+
+.wn-library-select::after {
+  content: "";
+  position: absolute;
+  right: 14px;
+  top: 50%;
+  width: 7px;
+  height: 7px;
+  margin-top: -6px;
+  border-right: 2px solid currentColor;
+  border-bottom: 2px solid currentColor;
+  transform: rotate(45deg);
+  pointer-events: none;
+}
+
+.wn-library-select select {
+  appearance: none;
+  padding: 0;
+  border: 0;
+  outline: none;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  cursor: pointer;
+}
+
+.wn-library-select select option {
+  background: var(--wn-surface-raised);
+  color: var(--wn-text);
+}
+
+.wn-library-select:focus-within {
+  border-color: var(--wn-teal);
+}
+
+@media (hover: hover) {
+  .wn-library-select:hover {
+    border-color: var(--wn-border-strong);
+  }
+}
+
+.wn-library-view {
+  display: flex;
+  margin-left: auto;
+  padding: 3px;
+  border: 1px solid var(--wn-border);
+  border-radius: 10px;
+}
+
+.wn-library-view button {
+  appearance: none;
+  display: grid;
+  place-items: center;
+  width: 34px;
+  height: 32px;
+  padding: 0;
+  border: 0;
+  border-radius: 7px;
+  background: transparent;
+  color: var(--wn-text-muted);
+  cursor: pointer;
+}
+
+.wn-library-view button svg {
+  width: 16px;
+  height: 16px;
+}
+
+.wn-library-view button[aria-checked="true"] {
+  background: #22212e;
+  color: var(--wn-text);
+}
+
+.wn-library-view button:focus-visible {
+  outline: none;
+  box-shadow: var(--wn-focus-ring);
+}
+
+/* Cover skeleton: a shimmer behind the cover until its image has loaded
+   (library-toolbar.js adds .is-loaded). */
+.wn-skeleton {
+  background-color: #15151d;
+  background-image: linear-gradient(100deg, transparent 30%, rgb(255 255 255 / 4%) 50%, transparent 70%);
+  background-size: 200% 100%;
+  animation: wn-skeleton-shimmer 1.4s linear infinite;
+}
+
+.wn-skeleton.is-loaded {
+  animation: none;
+  background-image: none;
+}
+
+@keyframes wn-skeleton-shimmer {
+  from {
+    background-position: 150% 0;
+  }
+
+  to {
+    background-position: -50% 0;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .wn-skeleton {
+    animation: none;
+  }
+}
+
+/* Favorite star (data-role="favorite-toggle-trigger", favorite-toggle.js). */
+.wn-library-star {
+  appearance: none;
+  flex: none;
+  display: grid;
+  place-items: center;
+  width: 32px;
+  height: 32px;
+  padding: 0;
+  border: 0;
+  border-radius: var(--wn-radius-sm);
+  background: var(--wn-surface-raised);
+  color: var(--wn-text-muted);
+  cursor: pointer;
+  transition:
+    background-color 160ms ease,
+    color 160ms ease;
+}
+
+.wn-library-star svg {
+  width: 16px;
+  height: 16px;
+}
+
+.wn-library-star[aria-pressed="true"] {
+  color: #f2c14e;
+}
+
+.wn-library-star[aria-pressed="true"] svg {
+  fill: currentColor;
+}
+
+@media (hover: hover) {
+  .wn-library-star:hover {
+    background: var(--wn-surface-hover);
+    color: var(--wn-text);
+  }
+
+  .wn-library-star[aria-pressed="true"]:hover {
+    color: #f2c14e;
+  }
+}
+
+.wn-library-star:focus-visible {
+  outline: none;
+  box-shadow: var(--wn-focus-ring);
+}
+
+.wn-library-star:disabled {
+  cursor: progress;
+}
+
+.wn-library-star--overlay {
+  position: absolute;
+  top: 8px;
+  right: 8px;
+  background: rgb(12 12 18 / 80%);
+}
+
+/* "Читаю" cards - list view (default): 3 columns of horizontal cards. */
+.wn-library-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: var(--wn-space-3);
+}
+
+.wn-library-card {
+  display: flex;
+  gap: 18px;
+  min-width: 0;
+  padding: var(--wn-space-2);
+  border: 1px solid var(--wn-border);
+  border-radius: var(--wn-radius-lg);
+  background: var(--wn-surface);
+  transition:
+    border-color 160ms ease,
+    background-color 160ms ease;
+}
+
+@media (hover: hover) {
+  .wn-library-card:hover {
+    border-color: #3a3650;
+    background: #16161f;
+  }
+}
+
+.wn-library-card__cover {
+  flex: none;
+  width: 108px;
+  height: 162px;
+  overflow: hidden;
+  border-radius: 10px;
+  box-shadow: 0 0 0 1px rgb(255 255 255 / 8%);
+}
+
+.wn-library-card__cover img {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  object-position: top;
+}
+
+.wn-library-card__body {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  gap: var(--wn-space-1);
+  min-width: 0;
+}
+
+.wn-library-card__top {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--wn-space-1);
+}
+
+.wn-library-card__name {
+  display: -webkit-box;
+  flex: 1;
+  overflow: hidden;
+  color: var(--wn-text);
+  font: var(--wn-weight-bold) 17px/1.3 var(--wn-font-ui);
+  text-decoration: none;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+}
+
+@media (hover: hover) {
+  .wn-library-card__name:hover {
+    color: #ffffff;
+  }
+}
+
+.wn-library-card__name:focus-visible,
+.wn-library-poster__name:focus-visible {
+  outline: none;
+  border-radius: 4px;
+  box-shadow: var(--wn-focus-ring);
+}
+
+.wn-library-card__meta {
+  color: var(--wn-text-secondary);
+  font: var(--wn-weight-medium) 14px/1.2 var(--wn-font-ui);
+}
+
+.wn-library-card__last {
+  color: var(--wn-text-muted);
+  font: var(--wn-weight-medium) 13px/1.2 var(--wn-font-ui);
+}
+
+.wn-library-card__spacer {
+  flex: 1;
+}
+
+.wn-library-card__progress .ui-progress {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.wn-library-card__progress .ui-progress__bar {
+  flex: 1;
+  height: 5px;
+  border-radius: 3px;
+  background: #262433;
+}
+
+.wn-library-card__progress .ui-progress__fill {
+  min-width: 5px;
+  height: 100%;
+  border-radius: 3px;
+  background: var(--wn-teal);
+}
+
+.wn-library-card__progress .ui-progress__pct {
+  color: var(--wn-teal);
+  font: var(--wn-weight-extra-bold) 14px/1 var(--wn-font-ui);
+}
+
+.wn-library-card__cta {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--wn-space-1);
+  height: 38px;
+  border: 1px solid var(--wn-border-strong);
+  border-radius: 10px;
+  background: rgb(255 255 255 / 4%);
+  color: var(--wn-text);
+  font: var(--wn-weight-bold) 14px/1 var(--wn-font-ui);
+  text-decoration: none;
+  white-space: nowrap;
+  transition:
+    background-color 160ms ease,
+    border-color 160ms ease;
+}
+
+.wn-library-card__cta svg {
+  width: 12px;
+  height: 12px;
+  fill: var(--wn-teal);
+}
+
+@media (hover: hover) {
+  .wn-library-card__cta:hover {
+    border-color: #4a4566;
+    background: rgb(255 255 255 / 9%);
+    color: var(--wn-text);
+  }
+}
+
+.wn-library-card__cta:focus-visible {
+  outline: none;
+  box-shadow: var(--wn-focus-ring);
+}
+
+/* Grid view: the same cards as posters - cover on top, body below. */
+.wn-library__titles--grid .wn-library-grid {
+  grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+  gap: 20px;
+}
+
+.wn-library__titles--grid .wn-library-card {
+  flex-direction: column;
+  gap: 12px;
+  padding: 12px;
+}
+
+.wn-library__titles--grid .wn-library-card__cover {
+  width: 100%;
+  height: auto;
+  aspect-ratio: 2 / 3;
+}
+
+.wn-library__titles--grid .wn-library-card__name {
+  font-size: 15px;
+}
+
+.wn-library__titles--grid .wn-library-card__last {
+  display: none;
+}
+
+/* "Ещё в библиотеке" (not started) and "Избранное" side by side, 8 + 4 columns. */
+.wn-library__more {
+  display: grid;
+  grid-template-columns: repeat(12, minmax(0, 1fr));
+  gap: var(--wn-space-3);
+  margin-top: var(--wn-space-1);
+}
+
+.wn-library__not-started {
+  grid-column: span 8;
+  display: flex;
+  flex-direction: column;
+  gap: var(--wn-space-2);
+}
+
+.wn-library__favorite {
+  grid-column: 9 / span 4;
+  display: flex;
+  flex-direction: column;
+  gap: var(--wn-space-2);
+}
+
+.wn-library-section-head {
+  display: flex;
+  align-items: baseline;
+  gap: 12px;
+}
+
+.wn-library-section-head h2 {
+  margin: 0;
+  color: var(--wn-text);
+  font: var(--wn-weight-extra-bold) 20px/1 var(--wn-font-ui);
+}
+
+.wn-library-section-head span {
+  color: var(--wn-text-muted);
+  font: var(--wn-weight-semi-bold) 14px/1 var(--wn-font-ui);
+}
+
+.wn-library-posters {
+  display: grid;
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  gap: 20px;
+}
+
+.wn-library__titles--grid .wn-library-posters {
+  grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+}
+
+.wn-library-poster {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  min-width: 0;
+}
+
+.wn-library-poster__cover {
+  position: relative;
+  aspect-ratio: 2 / 3;
+  overflow: hidden;
+  border-radius: var(--wn-radius-md);
+  box-shadow: 0 0 0 1px rgb(255 255 255 / 8%);
+}
+
+.wn-library-poster__cover a,
+.wn-library-poster__cover img {
+  display: block;
+  width: 100%;
+  height: 100%;
+}
+
+.wn-library-poster__cover img {
+  object-fit: cover;
+  object-position: top;
+}
+
+.wn-library-poster__name {
+  display: -webkit-box;
+  overflow: hidden;
+  color: #e4e1ec;
+  font: var(--wn-weight-bold) 14px/1.35 var(--wn-font-ui);
+  text-decoration: none;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+}
+
+@media (hover: hover) {
+  .wn-library-poster__name:hover {
+    color: #ffffff;
+  }
+}
+
+.wn-library-poster__meta {
+  color: var(--wn-text-muted);
+  font: var(--wn-weight-semi-bold) 13px/1 var(--wn-font-ui);
+}
+
+/* Favorite title: the cover blurred behind a dark scrim, like the hero zones. */
+.wn-library-fav {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: var(--wn-space-2);
+  overflow: hidden;
+  padding: 18px;
+  border: 1px solid #2a2838;
+  border-radius: var(--wn-radius-lg);
+  background: var(--wn-surface);
+  text-decoration: none;
+  isolation: isolate;
+  transition: border-color 160ms ease;
+}
+
+@media (hover: hover) {
+  .wn-library-fav:hover {
+    border-color: #3a3650;
+  }
+}
+
+.wn-library-fav:focus-visible {
+  outline: none;
+  box-shadow: var(--wn-focus-ring);
+}
+
+.wn-library-fav__backdrop {
+  position: absolute;
+  inset: -40px;
+  z-index: -2;
+  width: calc(100% + 80px);
+  height: calc(100% + 80px);
+  object-fit: cover;
+  filter: blur(40px) saturate(0.5) brightness(0.5);
+}
+
+.wn-library-fav__scrim {
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  background: rgb(12 12 18 / 78%);
+}
+
+.wn-library-fav__cover {
+  flex: none;
+  width: 64px;
+  height: 96px;
+  overflow: hidden;
+  border-radius: var(--wn-radius-sm);
+  background: var(--wn-surface-raised);
+}
+
+.wn-library-fav__cover img {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  object-position: top;
+}
+
+.wn-library-fav__copy {
+  display: flex;
+  flex-direction: column;
+  gap: var(--wn-space-1);
+  min-width: 0;
+}
+
+.wn-library-fav__name {
+  color: #f2f0f7;
+  font: var(--wn-weight-bold) 16px/1.3 var(--wn-font-ui);
+}
+
+.wn-library-fav__meta {
+  color: #cfcbdd;
+  font: var(--wn-weight-medium) 14px/1.2 var(--wn-font-ui);
+}
+
+.wn-library-fav--lg {
+  max-width: 720px;
+  gap: var(--wn-space-3);
+  padding: var(--wn-space-3);
+}
+
+.wn-library-fav--lg .wn-library-fav__cover {
+  width: 120px;
+  height: 180px;
+  border-radius: 10px;
+}
+
+.wn-library-fav--lg .wn-library-fav__name {
+  font: var(--wn-weight-extra-bold) 24px/1.2 var(--wn-font-ui);
+}
+
+.wn-library-fav--lg .wn-library-fav__meta {
+  font-size: 15px;
+}
+
+@media (max-width: 1199px) {
+  .wn-library-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .wn-library__add {
+    width: 100%;
+    margin-left: 0;
+  }
+
+  .wn-library__add-field {
+    flex: 1;
+    width: auto;
+  }
+
+  .wn-library__error {
+    text-align: left;
+  }
+
+  .wn-library-search {
+    flex: 1 1 200px;
+    width: auto;
+  }
+
+  .wn-library__not-started,
+  .wn-library__favorite {
+    grid-column: 1 / -1;
+  }
+
+  .wn-library-posters {
+    grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+  }
+}
+
+@media (max-width: 767px) {
+  .wn-library__head {
+    gap: var(--wn-space-2);
+  }
+
+  .wn-library__title {
+    font-size: 26px;
+  }
+
+  .wn-library .ui-tabs {
+    width: 100%;
+    overflow-x: auto;
+    scrollbar-width: none;
+  }
+
+  .wn-library .ui-tabs__link {
+    flex: 1 0 auto;
+    justify-content: center;
+    padding: 10px 12px;
+    font-size: 14px;
+  }
+
+  .wn-library__add .wn-btn {
+    padding: 0 14px;
+  }
+
+  .wn-library-toolbar {
+    gap: var(--wn-space-1);
+  }
+
+  .wn-library-search {
+    width: 100%;
+  }
+
+  .wn-library-select {
+    flex: 1 1 0;
+    min-width: 0;
+    padding-left: 12px;
+  }
+
+  .wn-library-select select {
+    width: 100%;
+    min-width: 0;
+    text-overflow: ellipsis;
+  }
+
+  .wn-library-select > span {
+    display: none;
+  }
+
+  .wn-library-grid {
+    grid-template-columns: minmax(0, 1fr);
+    gap: var(--wn-space-2);
+  }
+
+  .wn-library-card {
+    gap: 14px;
+    padding: 12px;
+  }
+
+  .wn-library-card__cover {
+    width: 84px;
+    height: 126px;
+  }
+
+  .wn-library-card__name {
+    font-size: 16px;
+  }
+
+  .wn-library__titles--grid .wn-library-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 12px;
+  }
+
+  .wn-library-posters,
+  .wn-library__titles--grid .wn-library-posters {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 12px;
+  }
+
+  .wn-library-fav--lg {
+    gap: var(--wn-space-2);
+    padding: var(--wn-space-2);
+  }
+
+  .wn-library-fav--lg .wn-library-fav__cover {
+    width: 84px;
+    height: 126px;
+  }
+
+  .wn-library-fav--lg .wn-library-fav__name {
+    font-size: 19px;
+  }
+}
+
+/* ==========================================================================
    Aurora Ink screens - title page (PR 253): TITLE-DEFAULT / TITLE-IN-LIBRARY and
    M-TITLE-*. A blurred copy of the cover sits behind the hero; on mobile the
    download/library actions move into bottom sheets (title-actions-sheet.js) and

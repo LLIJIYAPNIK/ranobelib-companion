@@ -318,17 +318,45 @@ def test_show_library_anonymous_gets_the_locked_state(client: TestClient) -> Non
     assert 'data-role="locked-feature"' in response.text
     assert "Список читаемого скрыт" in response.text
     assert 'data-role="library-titles"' not in response.text
+    assert "library-tabs__count" not in response.text  # PR 275: no counts for a guest
 
 
-def test_show_library_counts_titles_in_the_heading(client: TestClient) -> None:
-    """PR 252: "Читаю" is followed by the number of titles, with the right word form."""
+async def test_show_library_counts_titles_on_the_tabs(client: TestClient) -> None:
+    """PR 275: "Читаю" counts started titles only, "Избранное" the one favorite."""
     _register(client)
-    title = _fake_title()
-    with patch("app.services.client.RanobeLib", return_value=_FakeClient(title)):
-        client.post("/library/6712--test-novel/add")
+    title_a = _fake_title(slug_url="1--first")
+    with patch("app.services.client.RanobeLib", return_value=_FakeClient(title_a)):
+        client.post("/library/1--first/add")
+        client.post("/library/2--second/add")
+    async with connection() as conn:
+        await record_progress(conn, user_id=1, slug_url="1--first", volume="1", number="2")
+    client.post("/library/2--second/favorite")
+
+    with patch("app.services.client.RanobeLib", return_value=_FakeClient(title_a)):
         response = client.get("/library")
 
-    assert '<span class="library-page__count">1 тайтл</span>' in response.text
+    reading_tab = 'aria-current="page">Читаю<span class="library-tabs__count">1</span></a>'
+    assert reading_tab in response.text
+    assert 'Избранное<span class="library-tabs__count">1</span></a>' in response.text
+    assert 'href="/library?tab=favorites"' in response.text
+
+
+def test_catalog_tabs_have_no_counts(client: TestClient) -> None:
+    """The tabs partial is shared with the catalog, which has no size to show."""
+    _register(client)
+
+    with patch("app.api.library.list_genres", return_value=[]), patch(
+        "app.api.library.list_countries", return_value=[]
+    ), patch("app.api.library.get_catalog"), patch(
+        "app.api.library.list_catalog_titles"
+    ) as list_titles:
+        list_titles.return_value.items = []
+        list_titles.return_value.has_next_page = False
+        response = client.get("/library/catalog")
+
+    assert response.status_code == 200
+    assert 'href="/library?tab=favorites"' in response.text
+    assert "library-tabs__count" not in response.text
 
 
 def test_add_by_url_error_keeps_the_reading_tab_active(client: TestClient) -> None:
@@ -417,8 +445,12 @@ def test_show_library_omits_progress_bar_for_unopened_titles(client: TestClient)
         response = client.get("/library")
 
     assert response.status_code == 200
-    assert "Ещё не начали читать" in response.text
+    # PR 275: a never-opened title goes under "Ещё в библиотеке", not a "Читаю" card.
+    assert "Ещё в библиотеке" in response.text
+    assert "не начаты · 1" in response.text
+    assert "Не начато" in response.text
     assert 'class="ui-progress' not in response.text
+    assert "wn-library-card" not in response.text
 
 
 def test_show_library_prefers_russian_name(client: TestClient) -> None:
@@ -708,3 +740,85 @@ def test_show_library_renders_the_favorite_star_button(client: TestClient) -> No
         r'data-slug-url="([^"]+)"\s+aria-pressed="true"', response.text
     ).group(1)
     assert favorite_slug == "6712--test-novel"
+
+
+async def test_show_library_reading_card_has_continue_cta_and_last_read_line(
+    client: TestClient,
+) -> None:
+    """PR 275: a started title's card links straight to the last-read chapter."""
+    _register(client)
+    title = _fake_title()
+    with patch("app.services.client.RanobeLib", return_value=_FakeClient(title)):
+        client.post("/library/6712--test-novel/add")
+    async with connection() as conn:
+        await record_progress(
+            conn, user_id=1, slug_url="6712--test-novel", volume="2", number="7"
+        )
+
+    with patch("app.services.client.RanobeLib", return_value=_FakeClient(title)):
+        response = client.get("/library")
+
+    assert 'href="/titles/6712--test-novel/chapters/2/7"' in response.text
+    assert "Продолжить · Гл. 7" in response.text
+    assert "Читали сегодня" in response.text
+    assert "Ещё в библиотеке" not in response.text
+
+
+def test_show_library_wires_the_toolbar_script(client: TestClient) -> None:
+    _register(client)
+    title = _fake_title()
+    with patch("app.services.client.RanobeLib", return_value=_FakeClient(title)):
+        client.post("/library/6712--test-novel/add")
+        response = client.get("/library")
+
+    assert "static/js/library-toolbar.js" in response.text
+    # Hidden until library-toolbar.js shows it - without JS it would do nothing.
+    assert 'data-role="library-toolbar" hidden' in response.text
+
+
+def test_show_library_shows_the_favorite_as_a_blurred_card(client: TestClient) -> None:
+    _register(client)
+    title = _fake_title(cover=Cover(default="https://example.com/cover.jpg"))
+    with patch("app.services.client.RanobeLib", return_value=_FakeClient(title)):
+        client.post("/library/6712--test-novel/add")
+    client.post("/library/6712--test-novel/favorite")
+
+    with patch("app.services.client.RanobeLib", return_value=_FakeClient(title)):
+        response = client.get("/library")
+
+    assert 'data-role="library-favorite-card"' in response.text
+    assert 'class="wn-library-fav__backdrop" src="https://example.com/cover.jpg"' in response.text
+
+
+def test_show_library_favorites_tab_without_a_favorite(client: TestClient) -> None:
+    _register(client)
+    title = _fake_title()
+    with patch("app.services.client.RanobeLib", return_value=_FakeClient(title)):
+        client.post("/library/6712--test-novel/add")
+        response = client.get("/library?tab=favorites")
+
+    assert response.status_code == 200
+    assert 'href="/library?tab=favorites" aria-current="page"' in response.text
+    assert "В избранном пусто" in response.text
+    assert 'data-role="library-toolbar"' not in response.text
+
+
+def test_show_library_favorites_tab_shows_only_the_favorite(client: TestClient) -> None:
+    _register(client)
+    title_a = _fake_title(slug_url="1--first")
+    with patch("app.services.client.RanobeLib", return_value=_FakeClient(title_a)):
+        client.post("/library/1--first/add")
+        client.post("/library/2--second/add")
+    client.post("/library/1--first/favorite")
+
+    with patch("app.services.client.RanobeLib", return_value=_FakeClient(title_a)):
+        response = client.get("/library?tab=favorites")
+
+    assert 'class="wn-library-fav wn-library-fav--lg" href="/titles/1--first"' in response.text
+    assert "/titles/2--second" not in response.text
+
+
+def test_show_library_rejects_an_unknown_tab(client: TestClient) -> None:
+    response = client.get("/library?tab=whatever")
+
+    assert response.status_code == 422

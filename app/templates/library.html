@@ -2,88 +2,218 @@
 {% block title %}Библиотека — RanobeLib Companion{% endblock %}
 {% block content %}
 {#
-  PR 252 (Aurora Ink, LIBRARY/LOCKED): tabs, the add-by-link field, a "Читаю" heading
-  with the count, and horizontal library cards - cover with the favorite star, name,
-  last-read line, and a large progress bar with its "N%" once reading has started.
-  A guest gets the locked state instead.
+  PR 275 (Webnovells Redesign, screen A3): "Библиотека" heading with the tabs and their
+  counts, the add-by-link field, a search/sort/progress toolbar with a list/grid switch
+  (library-toolbar.js), "Читаю" cards with progress and a continue CTA, not-started
+  titles under "Ещё в библиотеке" (cover skeleton while it loads) and the favorite
+  title (PR 123) as a blurred-cover card. "Избранное" (?tab=favorites) shows only that
+  card. A guest gets the locked state instead.
 #}
-{% macro titles_word(n) -%}
-{%- if n % 10 == 1 and n % 100 != 11 -%}тайтл
-{%- elif n % 10 in [2, 3, 4] and n % 100 not in [12, 13, 14] -%}тайтла
-{%- else -%}тайтлов{%- endif -%}
+{% macro star_icon() -%}
+<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linejoin="round" aria-hidden="true"><path d="M12 2l3 7 7 .3-5.5 4.7 2 7L12 17l-6.5 4 2-7L2 9.3 9 9z"/></svg>
 {%- endmacro %}
-<div class="library-page">
-  {% include "_library_tabs.html" %}
-  {% if current_user %}
-  <form class="library-page__add ui-input-row" method="post" action="/library/add">
-    <input
-      class="ui-input"
-      type="text"
-      name="url"
-      placeholder="Вставьте ссылку на тайтл, чтобы добавить в библиотеку…"
-      aria-label="Ссылка на тайтл, чтобы добавить в библиотеку"
-      value="{{ submitted_url or '' }}"
-      {% if error %}aria-invalid="true" aria-describedby="library-add-error"{% endif %}
-      required
-    >
-    <button class="ui-btn ui-btn--primary" type="submit">Добавить</button>
-  </form>
-  {% if error %}
-  <p class="library-page__error ui-field__error" id="library-add-error" role="alert">{{ error }}</p>
-  {% endif %}
-  {% endif %}
-  <main class="library-page__content library-tabs-content">
+{% macro chapter_meta(entry) -%}
+Том {{ entry.last_read_volume }}, глава {{ entry.last_read_number }}
+{%- endmacro %}
+{% macro favorite_button(item, name, extra_class) -%}
+<button
+  type="button"
+  class="wn-library-star {{ extra_class }}"
+  data-role="favorite-toggle-trigger"
+  data-slug-url="{{ item.entry.slug_url }}"
+  aria-pressed="{{ 'true' if item.entry.is_favorite else 'false' }}"
+  aria-label="{{ 'Убрать из избранного' if item.entry.is_favorite else 'Добавить в избранное' }}"
+  title="{{ 'Убрать из избранного' if item.entry.is_favorite else 'Добавить в избранное' }}"
+  data-title-name="{{ name }}"
+  data-title-cover="{{ item.cover_url or '' }}"
+  data-title-meta="{% if item.entry.last_read_volume %}{{ chapter_meta(item.entry) }}{% if item.progress_percent is not none %} · {{ item.progress_percent }}%{% endif %}{% else %}Не начато{% endif %}"
+>{{ star_icon() }}</button>
+{%- endmacro %}
+{% macro favorite_card(item, large=false) -%}
+{% set name = item.name or item.entry.slug_url %}
+<a class="wn-library-fav{% if large %} wn-library-fav--lg{% endif %}" href="/titles/{{ item.entry.slug_url }}" data-role="library-favorite-card">
+  {% if item.cover_url %}<img class="wn-library-fav__backdrop" src="{{ item.cover_url }}" alt="">{% endif %}
+  <span class="wn-library-fav__scrim"></span>
+  <span class="wn-library-fav__cover">{% if item.cover_url %}<img src="{{ item.cover_url }}" alt="">{% endif %}</span>
+  <span class="wn-library-fav__copy">
+    <span class="wn-library-fav__name">{{ name }}</span>
+    <span class="wn-library-fav__meta">{% if item.entry.last_read_volume %}{{ chapter_meta(item.entry) }}{% if item.progress_percent is not none %} · {{ item.progress_percent }}%{% endif %}{% else %}Не начато{% endif %}</span>
+  </span>
+</a>
+{%- endmacro %}
+<div class="library-page wn-library">
+  <div class="wn-library__head">
+    <h1 class="wn-library__title">Библиотека</h1>
+    {% include "_library_tabs.html" %}
     {% if current_user %}
-    <div class="library-page__head">
-      <h1 class="library-page__title">Читаю</h1>
-      {% if items %}
-      <span class="library-page__count">{{ items | length }} {{ titles_word(items | length) }}</span>
-      {% endif %}
-    </div>
-      {% if items %}
-      <div class="library-page__grid" data-role="library-titles">
-        {% for item in items %}
-        {% set name = item.name or item.entry.slug_url %}
-        {% set href = "/titles/" ~ item.entry.slug_url %}
-        <article class="ui-library-card">
-          <div class="library-card__cover-wrap">
-            <a class="ui-library-card__cover" href="{{ href }}" tabindex="-1" aria-hidden="true">
+    <form class="wn-library__add" method="post" action="/library/add">
+      <label class="wn-library__add-field">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" aria-hidden="true"><path d="M10 14a5 5 0 0 0 7 0l3-3a5 5 0 0 0-7-7l-1 1M14 10a5 5 0 0 0-7 0l-3 3a5 5 0 0 0 7 7l1-1"/></svg>
+        <input
+          class="wn-field__control wn-library__add-control"
+          type="text"
+          name="url"
+          placeholder="Ссылка на тайтл, чтобы добавить…"
+          aria-label="Ссылка на тайтл, чтобы добавить в библиотеку"
+          value="{{ submitted_url or '' }}"
+          {% if error %}aria-invalid="true" aria-describedby="library-add-error"{% endif %}
+          required
+        >
+      </label>
+      <button class="wn-btn wn-btn--primary" type="submit">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg>
+        Добавить
+      </button>
+    </form>
+    {% endif %}
+  </div>
+  {% if error %}
+  <p class="wn-field__caption wn-library__error" id="library-add-error" role="alert">{{ error }}</p>
+  {% endif %}
+  <main class="library-page__content library-tabs-content wn-library__content">
+    {% if current_user %}
+    <div class="wn-library__titles" data-role="library-titles">
+      {% if active_tab == 'favorites' %}
+        {% if favorite %}
+        {{ favorite_card(favorite, large=true) }}
+        {% else %}
+        <p class="wn-library__empty">В избранном пусто. Отметьте тайтл звёздочкой на вкладке «Читаю» — он появится здесь и в профиле.</p>
+        {% endif %}
+      {% elif items %}
+      <div class="wn-library-toolbar" data-role="library-toolbar" hidden>
+        <label class="wn-library-search">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="m21 21-4.3-4.3"/></svg>
+          <input type="search" placeholder="Поиск в библиотеке" aria-label="Поиск в библиотеке" data-role="library-search" autocomplete="off">
+        </label>
+        <label class="wn-library-select">
+          <span>Сортировка:</span>
+          <select data-role="library-sort" aria-label="Сортировка">
+            <option value="recent">недавно читал</option>
+            <option value="added">недавно добавлен</option>
+            <option value="name">по названию</option>
+            <option value="progress">по прогрессу</option>
+          </select>
+        </label>
+        <label class="wn-library-select">
+          <span>Прогресс:</span>
+          <select data-role="library-progress" aria-label="Прогресс">
+            <option value="any">любой</option>
+            <option value="lt50">меньше 50%</option>
+            <option value="gte50">50% и больше</option>
+            <option value="not-started">не начато</option>
+          </select>
+        </label>
+        <div class="wn-library-view" role="radiogroup" aria-label="Вид">
+          <button type="button" role="radio" aria-checked="true" data-view="list" aria-label="Списком" title="Списком">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" aria-hidden="true"><rect x="3" y="4" width="18" height="6" rx="1.5"/><rect x="3" y="14" width="18" height="6" rx="1.5"/></svg>
+          </button>
+          <button type="button" role="radio" aria-checked="false" data-view="grid" aria-label="Сеткой" title="Сеткой">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" aria-hidden="true"><rect x="3" y="3" width="7" height="7" rx="1.5"/><rect x="14" y="3" width="7" height="7" rx="1.5"/><rect x="3" y="14" width="7" height="7" rx="1.5"/><rect x="14" y="14" width="7" height="7" rx="1.5"/></svg>
+          </button>
+        </div>
+      </div>
+
+      {% if reading %}
+      <section class="wn-library__reading" aria-label="Читаю" data-role="library-section">
+        <div class="wn-library-grid" data-role="library-list">
+          {% for item in reading %}
+          {% set entry = item.entry %}
+          {% set name = item.name or entry.slug_url %}
+          {% set href = "/titles/" ~ entry.slug_url %}
+          <article
+            class="wn-library-card"
+            data-role="library-item"
+            data-name="{{ name | lower }}"
+            data-order="{{ loop.index0 }}"
+            data-added="{{ entry.added_at }}"
+            data-progress="{{ item.progress_percent if item.progress_percent is not none else 0 }}"
+          >
+            <a class="wn-library-card__cover wn-skeleton" href="{{ href }}" tabindex="-1" aria-hidden="true">
               {% if item.cover_url %}<img src="{{ item.cover_url }}" alt="" loading="lazy">{% endif %}
             </a>
-            <button
-              type="button"
-              class="library-card__favorite"
-              data-role="favorite-toggle-trigger"
-              data-slug-url="{{ item.entry.slug_url }}"
-              aria-pressed="{{ 'true' if item.entry.is_favorite else 'false' }}"
-              aria-label="{{ 'Убрать из избранного' if item.entry.is_favorite else 'Добавить в избранное' }}"
-              title="{{ 'Убрать из избранного' if item.entry.is_favorite else 'Добавить в избранное' }}"
-            >
-              <span class="library-card__favorite-chip"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round" aria-hidden="true"><path d="M12 2.5 15 9l7 1-5.2 5 1.3 7-6.1-3.4L5.9 22l1.3-7L2 10l7-1Z"/></svg></span>
-            </button>
-          </div>
-          <div class="ui-library-card__body">
-            <a class="ui-library-card__name" href="{{ href }}" title="{{ name }}">{{ name }}</a>
-            {% if item.entry.last_read_volume %}
-            <span class="ui-library-card__meta">Том {{ item.entry.last_read_volume }}, глава {{ item.entry.last_read_number }}</span>
-            {% if item.progress_percent is not none %}
-            <div class="ui-progress ui-progress--lg">
-              <span class="ui-progress__bar"><span class="ui-progress__fill" style="width: {{ item.progress_percent }}%"></span></span>
-              <span class="ui-progress__pct">{{ item.progress_percent }}%</span>
+            <div class="wn-library-card__body">
+              <div class="wn-library-card__top">
+                <a class="wn-library-card__name" href="{{ href }}" title="{{ name }}">{{ name }}</a>
+                {{ favorite_button(item, name, "") }}
+              </div>
+              <span class="wn-library-card__meta">{{ chapter_meta(entry) }}</span>
+              {% if item.last_read_label %}
+              <span class="wn-library-card__last">{{ item.last_read_label }}</span>
+              {% endif %}
+              <span class="wn-library-card__spacer"></span>
+              {% if item.progress_percent is not none %}
+              <div class="wn-library-card__progress">
+                <div class="ui-progress ui-progress--lg">
+                  <span class="ui-progress__bar"><span class="ui-progress__fill" style="width: {{ item.progress_percent }}%"></span></span>
+                  <span class="ui-progress__pct">{{ item.progress_percent }}%</span>
+                </div>
+              </div>
+              {% endif %}
+              <a class="wn-library-card__cta" href="{{ href }}/chapters/{{ entry.last_read_volume }}/{{ entry.last_read_number }}">
+                <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M7 4v16l13-8z"/></svg>
+                Продолжить · Гл. {{ entry.last_read_number }}
+              </a>
             </div>
-            {% endif %}
+          </article>
+          {% endfor %}
+        </div>
+      </section>
+      {% endif %}
+
+      <div class="wn-library__more">
+        {% if not_started %}
+        <section class="wn-library__not-started" aria-labelledby="library-not-started-title" data-role="library-section">
+          <div class="wn-library-section-head">
+            <h2 id="library-not-started-title">Ещё в библиотеке</h2>
+            <span>не начаты · {{ not_started | length }}</span>
+          </div>
+          <div class="wn-library-posters" data-role="library-list">
+            {% for item in not_started %}
+            {% set entry = item.entry %}
+            {% set name = item.name or entry.slug_url %}
+            {% set href = "/titles/" ~ entry.slug_url %}
+            <article
+              class="wn-library-poster"
+              data-role="library-item"
+              data-name="{{ name | lower }}"
+              data-order="{{ loop.index0 }}"
+              data-added="{{ entry.added_at }}"
+              data-progress="-1"
+            >
+              <div class="wn-library-poster__cover wn-skeleton">
+                <a href="{{ href }}" tabindex="-1" aria-hidden="true">
+                  {% if item.cover_url %}<img src="{{ item.cover_url }}" alt="" loading="lazy">{% endif %}
+                </a>
+                {{ favorite_button(item, name, "wn-library-star--overlay") }}
+              </div>
+              <a class="wn-library-poster__name" href="{{ href }}" title="{{ name }}">{{ name }}</a>
+              <span class="wn-library-poster__meta">Не начато</span>
+            </article>
+            {% endfor %}
+          </div>
+        </section>
+        {% endif %}
+        <aside class="wn-library__favorite" aria-labelledby="library-favorite-title" data-role="library-favorite">
+          <div class="wn-library-section-head">
+            <h2 id="library-favorite-title">Избранное</h2>
+            <span data-role="library-favorite-count">{{ 1 if favorite else 0 }}</span>
+          </div>
+          <div data-role="library-favorite-slot">
+            {% if favorite %}
+            {{ favorite_card(favorite) }}
             {% else %}
-            <span class="ui-library-card__meta">Ещё не начали читать</span>
+            <p class="wn-library__hint" data-role="library-favorite-empty">Отметьте тайтл звёздочкой — он появится здесь и в профиле.</p>
             {% endif %}
           </div>
-        </article>
-        {% endfor %}
+        </aside>
       </div>
+      <p class="wn-library__empty" data-role="library-no-results" hidden>Ничего не найдено — попробуйте другой запрос или фильтр.</p>
       {% else %}
-      <p class="ui-empty">
+      <p class="wn-library__empty">
         Пока пусто. Вставьте ссылку выше или откройте тайтл и нажмите «Добавить в библиотеку».
       </p>
       {% endif %}
+    </div>
     {% else %}
     {% from "_locked_feature.html" import locked_feature %}
     {% call locked_feature("Список читаемого скрыт", "/library/catalog", "Смотреть каталог") %}
@@ -95,5 +225,6 @@
   </main>
 </div>
 <script src="{{ url_for('static', path='js/favorite-toggle.js') }}" defer></script>
+<script src="{{ url_for('static', path='js/library-toolbar.js') }}" defer></script>
 <script src="{{ url_for('static', path='js/library-tabs-swipe.js') }}" defer></script>
 {% endblock %}
