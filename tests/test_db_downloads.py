@@ -4,6 +4,7 @@ import psycopg
 import pytest
 
 from app.db.downloads import (
+    count_downloads_since,
     delete_entry,
     list_download_history,
     list_download_history_today,
@@ -152,3 +153,15 @@ async def test_delete_entry_does_not_remove_another_users_entry(
 
     assert deleted is False
     assert len(await list_download_history(conn, 2)) == 1
+
+
+async def test_count_downloads_since(conn: psycopg.AsyncConnection) -> None:
+    await record_download(conn, 1, "a", "epub", "done", 1, None)
+    await record_download(conn, 1, "b", "fb2", "error", None, "boom")
+    await record_download(conn, 1, "c", "txt", "done", 1, None)
+    old = (datetime.now(UTC) - timedelta(days=10)).isoformat()
+    await conn.execute("UPDATE download_history SET finished_at = %s WHERE slug_url = 'c'", (old,))
+
+    week_ago = (datetime.now(UTC) - timedelta(days=6)).date().isoformat()
+    assert await count_downloads_since(conn, 1, week_ago) == 2
+    assert await count_downloads_since(conn, 2, week_ago) == 0

@@ -5,10 +5,12 @@ import pytest
 
 from app.db.activity import (
     ChapterReadCount,
+    ChapterReadEvent,
     daily_active_seconds,
     daily_reading_activity,
     daily_titles_read,
     list_chapters_read_today,
+    list_recent_chapter_reads,
     reading_streak_days,
     record_chapter_read,
     record_heartbeat,
@@ -348,3 +350,28 @@ def test_reading_streak_days_treats_an_explicit_zero_like_no_activity() -> None:
     counts = {today.isoformat(): 0, (today - timedelta(days=1)).isoformat(): 1}
 
     assert reading_streak_days(counts) == 1
+
+
+async def test_list_recent_chapter_reads_newest_first_with_position(
+    conn: psycopg.AsyncConnection,
+) -> None:
+    await conn.execute(
+        "INSERT INTO activity_events (user_id, kind, slug_url, volume, number, created_at) "
+        "VALUES (1, 'chapter_read', 'a', '1', '1', '2026-09-01T10:00:00+00:00'), "
+        "(1, 'chapter_read', 'b', '2', '7', '2026-09-02T10:00:00+00:00')"
+    )
+    await record_heartbeat(conn, 1, "a", 60)  # not a chapter read
+
+    events = await list_recent_chapter_reads(conn, 1)
+
+    assert events == [
+        ChapterReadEvent("b", "2", "7", "2026-09-02T10:00:00+00:00"),
+        ChapterReadEvent("a", "1", "1", "2026-09-01T10:00:00+00:00"),
+    ]
+
+
+async def test_list_recent_chapter_reads_respects_limit(conn: psycopg.AsyncConnection) -> None:
+    for number in range(5):
+        await record_chapter_read(conn, 1, "a", "1", str(number))
+
+    assert len(await list_recent_chapter_reads(conn, 1, limit=3)) == 3

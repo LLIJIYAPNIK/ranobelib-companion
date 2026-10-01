@@ -103,6 +103,18 @@ async def list_download_history_today(
     return [_row_to_entry(row) for row in rows]
 
 
+async def count_downloads_since(conn: AsyncConnection, user_id: int, since: str) -> int:
+    """Finished downloads (any status, same as list_download_history_today()) from the
+    UTC date/timestamp `since` onward - the "Скачано" metric of the Активность page for
+    its 7/30-day periods (PR 276)."""
+    cursor = await conn.execute(
+        "SELECT COUNT(*) AS n FROM download_history WHERE user_id = %s AND finished_at >= %s",
+        (user_id, since),
+    )
+    row = await cursor.fetchone()
+    return row["n"]
+
+
 def _row_to_entry(row: dict[str, Any]) -> DownloadHistoryEntry:
     return DownloadHistoryEntry(
         id=row["id"],
