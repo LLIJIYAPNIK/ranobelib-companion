@@ -2,7 +2,8 @@
 
 from __future__ import annotations
 
-from typing import Annotated
+from datetime import UTC, date, datetime, timedelta
+from typing import Annotated, Literal
 from urllib.parse import urlencode
 
 from fastapi import APIRouter, Depends, Form, HTTPException, Query, Request
@@ -55,22 +56,87 @@ CATALOG_SORT_OPTIONS = {
 async def show_library(
     request: Request,
     user: Annotated[User | None, Depends(get_current_user)],
+    tab: Literal["reading", "favorites"] = "reading",
 ) -> HTMLResponse:
     """Viewing the library page itself doesn't require an account - only an anonymous
     visitor can't have a personal reading list, so that's the one thing the page won't
     show them (library.html prompts them to log in/register instead of the list). conn is
     checked out below, not taken as a route-level Depends(get_connection) parameter, so an
     anonymous visitor never checks one out of the pool at all (see get_current_user()'s
-    own docstring for the same reasoning)."""
-    items = []
-    if user is not None:
-        async with connection() as conn:
-            items = await library_items_for_user(user, conn)
-    return templates.TemplateResponse(
-        request,
-        "library.html",
-        {"active_nav": "library", "active_tab": "reading", "items": items},
-    )
+    own docstring for the same reasoning).
+
+    `tab` (PR 275): "Избранное" is a view of this same page (`?tab=favorites`), not a
+    separate route - "Все тайтлы" stays the catalog at /library/catalog."""
+    if user is None:
+        # A guest has no library to count - the tabs render without numbers.
+        context = {**_library_context([], tab), "tab_counts": None}
+        return templates.TemplateResponse(request, "library.html", context)
+    async with connection() as conn:
+        items = await library_items_for_user(user, conn)
+    return templates.TemplateResponse(request, "library.html", _library_context(items, tab))
+
+
+def _library_context(
+    items: list[dict[str, LibraryEntry | str | int | None]],
+    tab: Literal["reading", "favorites"],
+) -> dict[str, object]:
+    """PR 275 (Webnovells Redesign): the page splits the library into started titles
+    ("Читаю", cards with progress) and not-started ones ("Ещё в библиотеке"), plus the
+    one favorite title (PR 123) - all from the same library_items_for_user() list, kept
+    in its "most recently read first" order."""
+    today = datetime.now(UTC).date()
+    items = [
+        {**item, "last_read_label": _last_read_label(item["entry"].last_read_at, today)}  # type: ignore[union-attr]
+        for item in items
+    ]
+    reading = [item for item in items if item["entry"].last_read_volume is not None]  # type: ignore[union-attr]
+    not_started = [item for item in items if item["entry"].last_read_volume is None]  # type: ignore[union-attr]
+    favorite = next((item for item in items if item["entry"].is_favorite), None)  # type: ignore[union-attr]
+    return {
+        "active_nav": "library",
+        "active_tab": tab,
+        "items": items,
+        "reading": reading,
+        "not_started": not_started,
+        "favorite": favorite,
+        "tab_counts": {"reading": len(reading), "favorites": 1 if favorite else 0},
+    }
+
+
+_MONTHS_GENITIVE = (
+    "января",
+    "февраля",
+    "марта",
+    "апреля",
+    "мая",
+    "июня",
+    "июля",
+    "августа",
+    "сентября",
+    "октября",
+    "ноября",
+    "декабря",
+)
+
+
+def _last_read_label(last_read_at: str | None, today: date) -> str | None:
+    """The line under a "Читаю" card: "Читали сегодня", "Читали вчера" or "Последнее
+    чтение 6 сентября" - "today" is the UTC calendar date, same as app/db/activity.py.
+    The year is added only when it isn't the current one."""
+    if last_read_at is None:
+        return None
+    read_at = datetime.fromisoformat(last_read_at)
+    if read_at.tzinfo is None:
+        read_at = read_at.replace(tzinfo=UTC)
+    read_on = read_at.astimezone(UTC).date()
+    if read_on == today:
+        return "Читали сегодня"
+    if read_on == today - timedelta(days=1):
+        return "Читали вчера"
+    label = f"Последнее чтение {read_on.day} {_MONTHS_GENITIVE[read_on.month - 1]}"
+    if read_on.year != today.year:
+        label += f" {read_on.year}"
+    return label
 
 
 @router.get("/catalog", response_model=None)
@@ -256,9 +322,7 @@ async def add_to_library_by_url(
             request,
             "library.html",
             {
-                "active_nav": "library",
-                "active_tab": "reading",
-                "items": items,
+                **_library_context(items, "reading"),
                 "error": "Не удалось распознать ссылку на тайтл",
                 "submitted_url": url,
             },

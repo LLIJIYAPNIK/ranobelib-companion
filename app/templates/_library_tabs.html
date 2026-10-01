@@ -1,6 +1,12 @@
-{# "Читаю" / "Все тайтлы" on the Aurora Ink tabs component (PR 251/252).
-   library-tabs-swipe.js reads .library-tabs__link and its --active modifier. #}
+{# "Читаю" / "Все тайтлы" / "Избранное" on the Aurora Ink tabs component (PR 251/252).
+   library-tabs-swipe.js reads .library-tabs__link and its --active modifier.
+   PR 275: "Избранное" is /library?tab=favorites; counts render only where the page
+   passes `tab_counts` (the library page - the catalog has no size to show). #}
+{% macro tab_count(key) -%}
+{%- if tab_counts is defined and tab_counts -%}<span class="library-tabs__count">{{ tab_counts[key] }}</span>{%- endif -%}
+{%- endmacro %}
 <nav class="ui-tabs" aria-label="Библиотека">
-  <a class="ui-tabs__link library-tabs__link{% if active_tab == 'reading' %} library-tabs__link--active{% endif %}" href="/library"{% if active_tab == 'reading' %} aria-current="page"{% endif %}>Читаю</a>
+  <a class="ui-tabs__link library-tabs__link{% if active_tab == 'reading' %} library-tabs__link--active{% endif %}" href="/library"{% if active_tab == 'reading' %} aria-current="page"{% endif %}>Читаю{{ tab_count("reading") }}</a>
   <a class="ui-tabs__link library-tabs__link{% if active_tab == 'catalog' %} library-tabs__link--active{% endif %}" href="/library/catalog"{% if active_tab == 'catalog' %} aria-current="page"{% endif %}>Все тайтлы</a>
+  <a class="ui-tabs__link library-tabs__link{% if active_tab == 'favorites' %} library-tabs__link--active{% endif %}" href="/library?tab=favorites"{% if active_tab == 'favorites' %} aria-current="page"{% endif %}><svg class="library-tabs__star" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 2l3 7 7 .3-5.5 4.7 2 7L12 17l-6.5 4 2-7L2 9.3 9 9z"/></svg>Избранное{{ tab_count("favorites") }}</a>
 </nav>
