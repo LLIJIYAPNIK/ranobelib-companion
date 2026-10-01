@@ -105,9 +105,16 @@
             </span>
             <span class="wn-home-friend__copy">
               <b class="home-friend__name">{{ card.friend.display_name }}</b>
-              {% if card.currently_reading %}<span>Читает · {{ card.currently_reading.name or card.currently_reading.entry.slug_url }}</span>{% elif card.streak_label %}<span>{{ card.streak_label }}</span>{% else %}<span class="home-friend__none">Пока нет активности</span>{% endif %}
+              {% if card.currently_reading %}<span>Читает · {{ card.currently_reading.name or card.currently_reading.entry.slug_url }}</span>{% elif card.streak_label %}<span>{{ card.streak_label }}</span>{% elif card.recent_comments %}<span>Недавний комментарий</span>{% else %}<span class="home-friend__none">Пока нет активности</span>{% endif %}
             </span>
           </a>
+          {% if card.recent_comments %}
+          <ul class="home-friend__comments wn-home-friend__comments">
+            {% for comment in card.recent_comments %}
+            <li><a href="{{ comment.url }}">{{ comment.body_excerpt }}</a></li>
+            {% endfor %}
+          </ul>
+          {% endif %}
         </article>
         {% endfor %}
       </section>

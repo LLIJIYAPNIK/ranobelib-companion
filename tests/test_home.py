@@ -164,6 +164,22 @@ def test_home_renders_signed_in_cinematic_dashboard(monkeypatch: pytest.MonkeyPa
         None,
     )
     dashboard = home_api.HomeDashboard([item], summary, [download])
+    friend_card = home_api.FriendActivityCard(
+        home_api.FriendUser(7, "Alice", None, "AL"),
+        None,
+        [
+            home_api.RecentComment(
+                9,
+                "Отличная глава!",
+                "2026-10-01T08:10:00+00:00",
+                "6712--test-novel",
+                "1",
+                "5",
+                "",
+            )
+        ],
+        0,
+    )
 
     async def override_current_user(request: Request) -> object:
         request.state.current_user = user
@@ -179,7 +195,7 @@ def test_home_renders_signed_in_cinematic_dashboard(monkeypatch: pytest.MonkeyPa
 
     async def fake_friend_activity(passed_user: object) -> list[home_api.FriendActivityCard]:
         assert passed_user is user
-        return []
+        return [friend_card]
 
     app.dependency_overrides[get_current_user] = override_current_user
     monkeypatch.setattr(home_api, "_home_dashboard", fake_dashboard)
@@ -197,6 +213,8 @@ def test_home_renders_signed_in_cinematic_dashboard(monkeypatch: pytest.MonkeyPa
     assert 'id="today-title"' in response.text
     assert 'class="wn-home-reading"' in response.text
     assert 'id="latest-downloads-title"' in response.text
+    assert "Отличная глава!" in response.text
+    assert "/titles/6712--test-novel/chapters/1/5" in response.text
 
 
 def _set_recent_cookie(test_client: TestClient, slug_url: str, name: str) -> None:

@@ -5824,6 +5824,15 @@ a.ui-title-card:focus-visible .ui-title-card__cover {
   white-space: nowrap;
 }
 
+.wn-home-friend__comments {
+  margin-left: 46px;
+  padding-top: 2px;
+}
+
+.wn-home-friend__comments a {
+  color: var(--wn-text-secondary);
+}
+
 .wn-home__section {
   display: flex;
   flex-direction: column;
