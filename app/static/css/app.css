@@ -163,6 +163,203 @@
   --r-focus: #22d3c5;
 }
 
+/* ==========================================================================
+   Webnovells Redesign foundations (PR 272) - screen "S" from the Claude Design
+   project "Webnovells Redesign". This is intentionally a separate, namespaced
+   design system: declaring it must not restyle any existing Aurora Ink screen.
+   Screens in PR 273-278 opt in by using the --wn-* tokens and .wn-* classes.
+   ========================================================================== */
+
+:root {
+  /* Color. */
+  --wn-canvas: #0c0c12;
+  --wn-surface: #13131b;
+  --wn-surface-raised: #1a1a24;
+  --wn-border: #24222f;
+  --wn-border-strong: #33304a;
+  --wn-text: #eeecf4;
+  --wn-text-secondary: #a3a0b5;
+  --wn-text-muted: #8c889f;
+  --wn-teal: #3dd6c3;
+  --wn-primary: #7a52f4;
+  --wn-danger: #f2687a;
+
+  /* Interactive color derived from the screen S state examples. */
+  --wn-primary-hover: #8a65f6;
+  --wn-primary-active: #6841df;
+  --wn-surface-hover: #22212d;
+  --wn-disabled: #24232e;
+  --wn-disabled-text: #686579;
+  --wn-focus-ring: 0 0 0 2px var(--wn-canvas), 0 0 0 4px var(--wn-teal);
+
+  /* Typography. The matching webfonts are loaded once in base.html. */
+  --wn-font-ui: Manrope, "Segoe UI", system-ui, sans-serif;
+  --wn-font-technical: "JetBrains Mono", ui-monospace, monospace;
+  --wn-weight-extra-bold: 800;
+  --wn-weight-bold: 700;
+  --wn-weight-semi-bold: 600;
+  --wn-weight-medium: 500;
+  --wn-type-hero: var(--wn-weight-extra-bold) 40px/44px var(--wn-font-ui);
+  --wn-type-heading: var(--wn-weight-extra-bold) 32px/36px var(--wn-font-ui);
+  --wn-type-section: var(--wn-weight-extra-bold) 22px/28px var(--wn-font-ui);
+  --wn-type-body: var(--wn-weight-medium) 15px/22px var(--wn-font-ui);
+  --wn-type-meta: var(--wn-weight-medium) 13px/18px var(--wn-font-ui);
+  --wn-type-technical: var(--wn-weight-medium) 13px/18px var(--wn-font-technical);
+
+  /* Radius and spacing scales. */
+  --wn-radius-sm: 8px;
+  --wn-radius-md: 12px;
+  --wn-radius-lg: 16px;
+  --wn-radius-xl: 20px;
+  --wn-space-1: 8px;
+  --wn-space-2: 16px;
+  --wn-space-3: 24px;
+  --wn-space-4: 32px;
+  --wn-space-5: 40px;
+}
+
+/* Technical values such as dates, file formats, chapter counts and percentages. */
+.wn-technical {
+  font: var(--wn-type-technical);
+  font-variant-numeric: tabular-nums;
+}
+
+/* Buttons shown on screen S: primary, secondary, disabled and destructive hover. */
+.wn-btn {
+  appearance: none;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--wn-space-1);
+  min-height: 44px;
+  padding: 0 var(--wn-space-2);
+  border: 1px solid transparent;
+  border-radius: var(--wn-radius-md);
+  font: var(--wn-weight-bold) 14px/20px var(--wn-font-ui);
+  white-space: nowrap;
+  text-decoration: none;
+  cursor: pointer;
+  transition:
+    background-color 160ms ease,
+    border-color 160ms ease,
+    color 160ms ease;
+}
+
+.wn-btn--primary {
+  background: var(--wn-primary);
+  color: #ffffff;
+}
+
+.wn-btn--secondary {
+  border-color: var(--wn-border-strong);
+  background: var(--wn-surface-raised);
+  color: var(--wn-text);
+}
+
+/* Destructive actions stay visually quiet until the user points at them. */
+.wn-btn--destructive {
+  border-color: var(--wn-border);
+  background: transparent;
+  color: var(--wn-text-secondary);
+}
+
+@media (hover: hover) {
+  .wn-btn--primary:hover {
+    background: var(--wn-primary-hover);
+  }
+
+  .wn-btn--secondary:hover {
+    border-color: var(--wn-border-strong);
+    background: var(--wn-surface-hover);
+  }
+
+  .wn-btn--destructive:hover {
+    border-color: var(--wn-danger);
+    background: var(--wn-danger);
+    color: var(--wn-canvas);
+  }
+}
+
+.wn-btn--primary:active {
+  background: var(--wn-primary-active);
+}
+
+.wn-btn:focus-visible {
+  outline: none;
+  box-shadow: var(--wn-focus-ring);
+}
+
+.wn-btn:disabled,
+.wn-btn[aria-disabled="true"] {
+  border-color: var(--wn-border);
+  background: var(--wn-disabled);
+  color: var(--wn-disabled-text);
+  cursor: not-allowed;
+}
+
+/* Input fields: label + control + caption, with focus and error states from screen S. */
+.wn-field {
+  display: flex;
+  flex-direction: column;
+  gap: var(--wn-space-1);
+  min-width: 0;
+  font-family: var(--wn-font-ui);
+}
+
+.wn-field__label {
+  color: var(--wn-text);
+  font-size: 13px;
+  font-weight: var(--wn-weight-bold);
+  line-height: 18px;
+}
+
+.wn-field__control {
+  width: 100%;
+  min-height: 44px;
+  padding: 10px 14px;
+  border: 1px solid var(--wn-border-strong);
+  border-radius: var(--wn-radius-md);
+  outline: none;
+  background: var(--wn-surface-raised);
+  color: var(--wn-text);
+  font: var(--wn-type-body);
+  caret-color: var(--wn-teal);
+  transition:
+    border-color 160ms ease,
+    box-shadow 160ms ease;
+}
+
+.wn-field__control::placeholder {
+  color: var(--wn-text-muted);
+  opacity: 1;
+}
+
+.wn-field__control:focus {
+  border-color: var(--wn-teal);
+  box-shadow: 0 0 0 3px rgb(61 214 195 / 16%);
+}
+
+.wn-field__caption {
+  min-height: 18px;
+  color: var(--wn-text-muted);
+  font: var(--wn-type-meta);
+}
+
+.wn-field__control[aria-invalid="true"],
+.wn-field--error .wn-field__control {
+  border-color: var(--wn-danger);
+}
+
+.wn-field__control[aria-invalid="true"]:focus,
+.wn-field--error .wn-field__control:focus {
+  box-shadow: 0 0 0 3px rgb(242 104 122 / 16%);
+}
+
+.wn-field__control[aria-invalid="true"] + .wn-field__caption,
+.wn-field--error .wn-field__caption {
+  color: var(--wn-danger);
+}
+
 @media (min-width: 1200px) {
   :root {
     --type-reader-title: 500 34px/1.25 var(--font-reader-serif);
