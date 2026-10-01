@@ -73,6 +73,12 @@ async def delete_entry(conn: AsyncConnection, entry_id: int, user_id: int) -> bo
     return cursor.rowcount > 0
 
 
+async def clear_history(conn: AsyncConnection, user_id: int) -> int:
+    """Delete every permanent download-history row owned by ``user_id``."""
+    cursor = await conn.execute("DELETE FROM download_history WHERE user_id = %s", (user_id,))
+    return cursor.rowcount
+
+
 async def list_download_history(
     conn: AsyncConnection, user_id: int, limit: int = 20
 ) -> list[DownloadHistoryEntry]:
