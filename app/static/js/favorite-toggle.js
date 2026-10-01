@@ -10,6 +10,11 @@
 // Exactly one favorite per user (app/db/library.py's set_favorite() clears every other
 // row server-side) - marking a title favorite here has to clear the star on whichever
 // other card in this same grid was previously active, not just set this one.
+//
+// PR 275: the library page also shows the favorite as a blurred-cover card
+// ([data-role="library-favorite"]) and its count on the "Избранное" tab - both are
+// redrawn here from the star's own data-title-* attributes, so they follow the star
+// without a reload.
 (() => {
   const grid = document.querySelector('[data-role="library-titles"]');
   if (!grid) return;
@@ -19,6 +24,65 @@
     const label = isFavorite ? "Убрать из избранного" : "Добавить в избранное";
     button.setAttribute("aria-label", label);
     button.title = label;
+  }
+
+  const favoriteBlock = document.querySelector('[data-role="library-favorite"]');
+  const favoriteTabLink = document.querySelector('.library-tabs__link[href="/library?tab=favorites"]');
+
+  function favoriteCard(button) {
+    const card = document.createElement("a");
+    card.className = "wn-library-fav";
+    card.href = `/titles/${button.dataset.slugUrl}`;
+    card.dataset.role = "library-favorite-card";
+    const cover = button.dataset.titleCover;
+    if (cover) {
+      const backdrop = document.createElement("img");
+      backdrop.className = "wn-library-fav__backdrop";
+      backdrop.src = cover;
+      backdrop.alt = "";
+      card.append(backdrop);
+    }
+    const scrim = document.createElement("span");
+    scrim.className = "wn-library-fav__scrim";
+    const coverBox = document.createElement("span");
+    coverBox.className = "wn-library-fav__cover";
+    if (cover) {
+      const img = document.createElement("img");
+      img.src = cover;
+      img.alt = "";
+      coverBox.append(img);
+    }
+    const copy = document.createElement("span");
+    copy.className = "wn-library-fav__copy";
+    const name = document.createElement("span");
+    name.className = "wn-library-fav__name";
+    name.textContent = button.dataset.titleName;
+    const meta = document.createElement("span");
+    meta.className = "wn-library-fav__meta";
+    meta.textContent = button.dataset.titleMeta;
+    copy.append(name, meta);
+    card.append(scrim, coverBox, copy);
+    return card;
+  }
+
+  function syncFavoriteBlock(button, isFavorite) {
+    const count = isFavorite ? "1" : "0";
+    const tabCount = favoriteTabLink?.querySelector(".library-tabs__count");
+    if (tabCount) tabCount.textContent = count;
+    if (!favoriteBlock) return;
+    const countEl = favoriteBlock.querySelector('[data-role="library-favorite-count"]');
+    if (countEl) countEl.textContent = count;
+    const slot = favoriteBlock.querySelector('[data-role="library-favorite-slot"]');
+    if (!slot) return;
+    if (isFavorite) {
+      slot.replaceChildren(favoriteCard(button));
+    } else {
+      const empty = document.createElement("p");
+      empty.className = "wn-library__hint";
+      empty.dataset.role = "library-favorite-empty";
+      empty.textContent = "Отметьте тайтл звёздочкой — он появится здесь и в профиле.";
+      slot.replaceChildren(empty);
+    }
   }
 
   grid.addEventListener("click", async (event) => {
@@ -45,6 +109,7 @@
         }
       }
       setButtonState(button, isFavorite);
+      syncFavoriteBlock(button, isFavorite);
     } finally {
       button.disabled = false;
     }
