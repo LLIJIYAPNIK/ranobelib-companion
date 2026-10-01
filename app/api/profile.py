@@ -23,7 +23,7 @@ from fastapi.responses import HTMLResponse
 from psycopg import AsyncConnection
 from ranobelib import RanobeLibError
 
-from app.api.library import library_items_for_user
+from app.api.library import currently_reading_for_users, library_items_for_user
 from app.auth.dependencies import get_current_user
 from app.db.activity import daily_active_seconds, daily_reading_activity, daily_titles_read
 from app.db.comments import count_comments_by_user
@@ -41,6 +41,18 @@ _CALENDAR_WEEKS = 52
 # pointing at the full list (GET /profile/{user_id}/friends) instead of listing everyone
 # right there - same idea as PR 159's _MAX_TITLES_IN_LABEL, just for this section.
 _FRIEND_PREVIEW_LIMIT = 6
+
+# PR 277: the "Библиотека" block is a preview row of covers (seven in the design), with
+# "Открыть библиотеку" for the rest - not every title in the library.
+_LIBRARY_PREVIEW_LIMIT = 7
+
+
+@dataclass(frozen=True)
+class ProfileStat:
+    """One of the hero's stat pills (PR 277): a big value over a small label."""
+
+    value: str
+    label: str
 
 
 @dataclass(frozen=True)
@@ -61,6 +73,8 @@ class ReadingCalendar:
     days: list[CalendarDay]
     month_labels: list[str]  # one entry per column of `days` (see _month_labels())
     total_duration_label: str  # e.g. "128 ч 4 мин чтения за последний год"
+    total_duration: str = ""  # PR 277: just "128 ч 4 мин", for the hero's stat pill
+    reading_days: int = 0  # PR 277: days in the window with at least one chapter read
 
 
 @router.get("/profile")
@@ -141,6 +155,21 @@ async def _render_profile(
     if viewer_id is not None and not is_own_profile:
         friend_state = await get_friend_button_state(conn, viewer_id, profile_user.id)
 
+    friend_preview = friends[:_FRIEND_PREVIEW_LIMIT]
+    comment_count = await count_comments_by_user(conn, profile_user.id)
+    reading_calendar = await _build_reading_calendar(profile_user.id, conn)
+    # PR 277: a hidden section counts as empty here too - the same neutral "0" a genuinely
+    # empty library/friend list shows, never a different state that would reveal a flag.
+    stats = [
+        ProfileStat(reading_calendar.total_duration, "за год"),
+        ProfileStat(str(len(items)), _plural(len(items), "тайтл", "тайтла", "тайтлов")),
+        ProfileStat(str(len(friends)), _plural(len(friends), "друг", "друга", "друзей")),
+        ProfileStat(
+            str(comment_count),
+            _plural(comment_count, "комментарий", "комментария", "комментариев"),
+        ),
+    ]
+
     return templates.TemplateResponse(
         request,
         "profile.html",
@@ -152,13 +181,16 @@ async def _render_profile(
             # PR 135/136: unlike currently_reading/favorite_item/library_items above, not
             # gated by any show_* privacy flag - there isn't one for either, same as the
             # avatar/nickname/bio they sit alongside.
-            "comment_count": await count_comments_by_user(conn, profile_user.id),
-            "reading_calendar": await _build_reading_calendar(profile_user.id, conn),
+            "comment_count": comment_count,
+            "reading_calendar": reading_calendar,
             "currently_reading": currently_reading,
             "favorite_item": favorite_item,
             "library_items": items,
-            "friend_preview": friends[:_FRIEND_PREVIEW_LIMIT],
+            "library_preview": items[:_LIBRARY_PREVIEW_LIMIT],
+            "friend_preview": friend_preview,
             "friend_count": len(friends),
+            "friend_reading": await _friends_reading(friend_preview, conn),
+            "stats": stats,
         },
     )
 
@@ -192,6 +224,31 @@ async def profile_friends_page(
     return templates.TemplateResponse(
         request, "profile_friends.html", {"profile_user": profile_user, "friends": friends}
     )
+
+
+async def _friends_reading(friends: list, conn: AsyncConnection) -> dict[int, str]:
+    """PR 277: the "Читает «…»" line under each friend in the profile's "Друзья" preview,
+    keyed by user id - the same lookup and the same show_currently_reading rule as the home
+    page's friend activity (PR 200), for at most _FRIEND_PREVIEW_LIMIT friends. A friend
+    with nothing to show is simply absent."""
+    if not friends:
+        return {}
+    by_user = await currently_reading_for_users([f.user.id for f in friends], conn)
+    reading: dict[int, str] = {}
+    for user_id, item in by_user.items():
+        friend_user = await get_user_by_id(conn, user_id)
+        if friend_user is None or not friend_user.show_currently_reading:
+            continue
+        reading[user_id] = item["name"] or item["entry"].slug_url  # type: ignore[union-attr]
+    return reading
+
+
+def _plural(n: int, one: str, few: str, many: str) -> str:
+    if n % 10 == 1 and n % 100 != 11:
+        return one
+    if n % 10 in (2, 3, 4) and n % 100 not in (12, 13, 14):
+        return few
+    return many
 
 
 def _format_date(iso_timestamp: str) -> str:
@@ -261,7 +318,11 @@ async def _build_reading_calendar(user_id: int, conn: AsyncConnection) -> Readin
     total_duration_label = f"{total_duration} чтения за последний год"
     month_labels = _month_labels(grid_start, total_days=len(days))
     return ReadingCalendar(
-        days=days, month_labels=month_labels, total_duration_label=total_duration_label
+        days=days,
+        month_labels=month_labels,
+        total_duration_label=total_duration_label,
+        total_duration=total_duration,
+        reading_days=sum(1 for n in counts.values() if n > 0),
     )
 
 
