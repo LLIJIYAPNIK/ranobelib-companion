@@ -25,10 +25,12 @@
       <div class="wn-downloads-empty__copy">
         <h3>Сейчас ничего не скачивается</h3>
         <p>Вставьте ссылку на тайтл — выберите главы — получите готовый EPUB.</p>
+        {# PR 281: a row of chips on desktop, a numbered vertical list with a one-line
+           hint per step on mobile (the hints and the list layout are mobile-only CSS). #}
         <ol class="wn-downloads-steps" aria-label="Как скачать тайтл">
-          <li><b>1</b><span>Ссылка</span></li><li><i></i></li>
-          <li><b>2</b><span>Главы</span></li><li><i></i></li>
-          <li><b>3</b><span>EPUB</span></li>
+          <li><b>1</b><span>Ссылка<small class="wn-downloads-steps__hint"> — вставьте адрес тайтла</small></span></li><li aria-hidden="true"><i></i></li>
+          <li><b>2</b><span>Главы<small class="wn-downloads-steps__hint"> — выберите тома или диапазон</small></span></li><li aria-hidden="true"><i></i></li>
+          <li><b>3</b><span>EPUB<small class="wn-downloads-steps__hint"> — файл появится в истории ниже</small></span></li>
         </ol>
       </div>
       <a class="wn-btn wn-btn--secondary" href="/#home-open-url">Вставить ссылку</a>
