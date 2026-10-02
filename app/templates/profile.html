@@ -87,7 +87,12 @@
         <span>{{ weekday }}</span>
         {% endfor %}
       </div>
-      <div class="reading-calendar-scroll" data-role="reading-calendar-scroll">
+      <div
+        class="reading-calendar-scroll wn-ribbon"
+        data-role="reading-calendar-scroll"
+        data-ribbon
+        data-ribbon-current-week
+      >
         <div class="reading-calendar-months" aria-hidden="true">
           {% for month in reading_calendar.month_labels %}
           <span>{{ month }}</span>
@@ -205,5 +210,6 @@
   {% endif %}
 </main>
 <script src="{{ url_for('static', path='js/image-lightbox.js') }}" defer></script>
+<script src="{{ url_for('static', path='js/ribbon.js') }}" defer></script>
 <script src="{{ url_for('static', path='js/reading-calendar-tooltip.js') }}" defer></script>
 {% endblock %}

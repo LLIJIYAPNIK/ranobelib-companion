@@ -13999,6 +13999,7 @@ body.reader-hud-visible .reader-hud {
   .wn-profile-hero__content {
     flex-direction: column;
     align-items: flex-start;
+    flex-wrap: wrap;
     gap: var(--wn-space-2);
     padding: var(--wn-space-3) var(--wn-space-2);
   }
@@ -14018,19 +14019,40 @@ body.reader-hud-visible .reader-hud {
     font-size: 15px;
   }
 
+  .wn-profile-hero__meta {
+    line-height: 1.45;
+    overflow-wrap: break-word;
+  }
+
   .wn-profile-stats {
-    display: grid;
-    grid-template-columns: repeat(2, minmax(0, 1fr));
+    display: flex;
+    flex-wrap: wrap;
     align-self: stretch;
+    gap: var(--wn-space-1);
+    overflow: visible;
+    background: transparent;
   }
 
   .wn-profile-stats__item {
+    flex: 1 1 120px;
     min-width: 0;
     padding: 14px var(--wn-space-2);
+    border-radius: var(--wn-radius-md);
+    background: rgb(12 12 18 / 70%);
   }
 
   .wn-profile-stats__value {
     font-size: 22px;
+  }
+
+  .wn-profile-hero__actions,
+  .wn-profile-hero__actions > * {
+    flex: 1 1 144px;
+    min-width: 0;
+  }
+
+  .wn-profile-edit {
+    justify-content: center;
   }
 
   .wn-profile-card {
@@ -14048,18 +14070,43 @@ body.reader-hud-visible .reader-hud {
     --reading-calendar-gap: 3px;
   }
 
+  .wn-profile .reading-calendar-scroll {
+    max-width: 100%;
+    overscroll-behavior-x: contain;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  /* The profile keeps month context visible while the year scrolls as a ribbon. The
+     older generic <=640px rule hides it; this screen's mobile design has room because
+     only the heatmap itself, not the page, moves sideways. */
+  .wn-profile .reading-calendar-months {
+    display: grid;
+  }
+
   .wn-profile__row {
+    grid-template-columns: minmax(0, 1fr);
     gap: 12px;
   }
 
+  .wn-profile-current,
   .wn-profile-friends,
   .wn-profile-favorite {
-    grid-column: 1 / -1;
+    grid-column: 1;
   }
 
   .wn-profile-current__cover {
     width: 80px;
     height: 120px;
+  }
+
+  .wn-profile-current__name,
+  .wn-profile-favorite__name,
+  .wn-profile-friend__name,
+  .wn-profile-friend__sub {
+    overflow: visible;
+    text-overflow: clip;
+    white-space: normal;
+    overflow-wrap: break-word;
   }
 
   .wn-profile-library__grid {
