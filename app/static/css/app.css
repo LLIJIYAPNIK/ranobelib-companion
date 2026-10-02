@@ -13253,6 +13253,12 @@ body.reader-hud-visible .reader-hud {
     padding: 18px var(--wn-space-2);
   }
 
+  /* «Заявки» repeats the Входящие / Исходящие tabs right above it - the mobile design
+     leaves it out; the tabs carry the same requests and actions. */
+  .wn-friends-card--requests {
+    display: none;
+  }
+
   /* Empty tabs (no requests in or out): the design's dashed note - a bold line and a
      short hint, no icon. */
   .wn-friends-empty {

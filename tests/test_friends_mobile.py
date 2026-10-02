@@ -117,3 +117,8 @@ def test_empty_tabs_are_dashed_notes_on_mobile() -> None:
 
 def test_sheet_confirmation_wraps_a_long_nickname() -> None:
     assert "overflow-wrap: anywhere;" in _rule(".wn-sheet-confirm__text")
+
+
+def test_requests_side_card_is_left_to_the_tabs_on_mobile() -> None:
+    assert '<section class="wn-friends-card wn-friends-card--requests"' in PAGE
+    assert "display: none;" in _rule(".wn-friends-card--requests", indent="  ")
