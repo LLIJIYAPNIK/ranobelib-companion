@@ -1708,6 +1708,24 @@ html.bottom-sheet-lock body {
     display: none;
   }
 
+  /* On-screen keyboard open (mobile-keyboard.js): the bottom bar goes, the header stays -
+     both live in .sidebar, so only the bar's own parts are hidden, and floating pieces
+     placed above the bar (--shell-bottom) drop to the bottom edge. */
+  html.keyboard-open,
+  html.keyboard-open body {
+    --shell-bottom: 0px;
+  }
+
+  html.keyboard-open .sidebar {
+    padding-bottom: 0;
+    border-top: 0;
+    background: none;
+  }
+
+  html.keyboard-open .sidebar__nav {
+    display: none;
+  }
+
   /* The reader is immersive on mobile - no bar, no strip. */
   body.reader-page .sidebar,
   body.reader-page .sidebar__account {

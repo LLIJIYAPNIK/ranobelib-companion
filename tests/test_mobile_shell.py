@@ -140,3 +140,16 @@ def test_no_global_horizontal_overflow_clipping() -> None:
         ):
             assert "overflow-x: hidden" not in block, selector
             assert "overflow: hidden" not in block, selector
+
+
+def test_keyboard_script_hides_the_bottom_bar_only() -> None:
+    # The bar hides at a 140px+ visual-viewport shortfall; the header shares .sidebar, so
+    # the CSS must hide .sidebar__nav, never the whole <nav>.
+    root = Path(__file__).parents[1] / "app/static"
+    script = (root / "js/mobile-keyboard.js").read_text(encoding="utf-8")
+    css = (root / "css/app.css").read_text(encoding="utf-8")
+
+    assert "KEYBOARD_MIN = 140" in script
+    assert re.search(r"html\.keyboard-open \.sidebar__nav \{\s*display: none;", css)
+    assert not re.search(r"html\.keyboard-open \.sidebar \{[^}]*display: none", css)
+    assert "static/js/mobile-keyboard.js" in client.get("/").text
