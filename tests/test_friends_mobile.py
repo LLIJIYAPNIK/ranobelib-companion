@@ -113,3 +113,7 @@ def test_empty_tabs_are_dashed_notes_on_mobile() -> None:
     assert "display: none;" in _rule(".wn-friends-empty__icon", indent="  ")
     assert "Новых заявок нет" in PAGE
     assert "Отправленных заявок нет" in PAGE
+
+
+def test_sheet_confirmation_wraps_a_long_nickname() -> None:
+    assert "overflow-wrap: anywhere;" in _rule(".wn-sheet-confirm__text")

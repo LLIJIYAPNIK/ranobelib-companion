@@ -16049,6 +16049,7 @@ body.reader-hud-visible .reader-hud {
   color: #cfcbdd;
   font: 500 15px/1.55 var(--wn-font-ui);
   text-wrap: pretty;
+  overflow-wrap: anywhere;
 }
 
 .wn-sheet-confirm__actions {
