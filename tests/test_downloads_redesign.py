@@ -98,6 +98,11 @@ def test_downloads_redesign_renders_history_without_database(
     monkeypatch.setattr(downloads_section, "list_download_history", fake_history)
     monkeypatch.setattr(downloads_section, "list_active_jobs_for_user", lambda user_id: [])
     monkeypatch.setattr(downloads_section, "ready_file_url", lambda job_id, user_id: None)
+
+    async def no_titles(slugs: set[str]) -> dict[str, object]:
+        return {}
+
+    monkeypatch.setattr(downloads_section, "title_summaries", no_titles)
     try:
         response = TestClient(app).get("/downloads")
     finally:

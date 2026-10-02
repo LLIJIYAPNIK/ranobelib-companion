@@ -28,6 +28,7 @@ from app.jobs.store import (
     ready_file_url,
     sweep_expired_result_files,
 )
+from app.services.titles import TitleSummary, title_summaries
 from app.templating import templates
 
 router = APIRouter(prefix="/downloads")
@@ -57,6 +58,7 @@ async def show_downloads(
     active_jobs = []
     history: list[DownloadHistoryEntry] = []
     ready_files: dict[int, str] = {}
+    history_titles: dict[str, TitleSummary] = {}
     if user is not None:
         active_jobs = list_active_jobs_for_user(user.id)
         async with connection() as conn:
@@ -66,6 +68,9 @@ async def show_downloads(
             for entry in history
             if (url := ready_file_url(entry.job_id, user.id)) is not None
         }
+        # PR 281: the title's name and cover on each history card; a title the SDK
+        # can't resolve stays out, and its card leads with the file name instead.
+        history_titles = await title_summaries({entry.slug_url for entry in history})
     return templates.TemplateResponse(
         request,
         "downloads.html",
@@ -75,6 +80,7 @@ async def show_downloads(
             "history": history,
             "history_groups": _group_history(history),
             "ready_files": ready_files,
+            "history_titles": history_titles,
         },
     )
 

@@ -48,7 +48,7 @@
     <div class="wn-downloads__tools">
       <label class="wn-downloads-search">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="m16 16 4 4"/></svg>
-        <input class="wn-field__control" type="search" placeholder="Поиск по названию" aria-label="Поиск по истории загрузок" data-role="download-history-search">
+        <input class="wn-field__control" type="search" placeholder="Название или файл" aria-label="Поиск по названию или файлу" data-role="download-history-search">
       </label>
       <div class="wn-downloads-segments" role="group" aria-label="Фильтр истории">
         <button type="button" class="wn-downloads-segments__button is-active" data-role="download-history-filter" data-filter="all" aria-pressed="true">Все</button>
@@ -67,15 +67,27 @@
           </div>
           <ul class="downloads-history">
             {% for entry in group.entries %}
-            <li class="downloads-history__item wn-downloads-row" data-entry-id="{{ entry.id }}" data-history-status="{{ 'error' if entry.status == 'error' else 'done' }}" data-history-title="{{ entry.slug_url | lower }}" role="row">
-              <span class="wn-downloads-row__title" role="cell"><a class="downloads-history__link" href="{{ ready_files[entry.id] if entry.id in ready_files else '/titles/' ~ entry.slug_url }}">{{ entry.slug_url }}</a></span>
+            {# PR 281: the title's name leads with the file name (the same {slug_url}.{fmt}
+               app/api/downloads.py serves it as) under it in mono; a title the SDK can't
+               resolve leads with the file name instead. #}
+            {% set title = history_titles.get(entry.slug_url) %}
+            {% set file_name = entry.slug_url ~ "." ~ entry.fmt %}
+            <li class="downloads-history__item wn-downloads-row" data-entry-id="{{ entry.id }}" data-history-status="{{ 'error' if entry.status == 'error' else 'done' }}" data-history-title="{{ ((title.name ~ ' ') if title else '') | lower }}{{ file_name | lower }}" role="row">
+              <span class="wn-downloads-row__title" role="cell">
+                <span class="wn-downloads-row__cover" aria-hidden="true">{% if title and title.cover_url %}<img src="{{ title.cover_url }}" alt="" loading="lazy">{% else %}{{ entry.fmt | upper }}{% endif %}</span>
+                <span class="wn-downloads-row__names{% if not title %} wn-downloads-row__names--file{% endif %}">
+                  <a class="downloads-history__link" href="{{ ready_files[entry.id] if entry.id in ready_files else '/titles/' ~ entry.slug_url }}">{{ title.name if title else file_name }}</a>
+                  {% if title %}<span class="wn-downloads-row__file">{{ file_name }}</span>{% endif %}
+                </span>
+              </span>
               <span class="downloads-history__fmt" role="cell">{{ entry.fmt | upper }}</span>
-              <span class="wn-technical" role="cell"{% if entry.chapter_count %} aria-label="{{ entry.chapter_count }} глав"{% endif %}>{{ entry.chapter_count or '—' }}</span>
+              {% set chapters_unit = plural(entry.chapter_count, "глава", "главы", "глав") if entry.chapter_count else "" %}
+              <span class="wn-technical wn-downloads-row__chapters{% if not entry.chapter_count %} wn-downloads-row__chapters--none{% endif %}" role="cell"{% if entry.chapter_count %} aria-label="{{ entry.chapter_count }} {{ chapters_unit }}"{% endif %}>{{ entry.chapter_count or '—' }}{% if entry.chapter_count %}<span class="wn-downloads-row__unit"> {{ chapters_unit }}</span>{% endif %}</span>
               <span class="downloads-history__date wn-technical" role="cell">{{ entry.finished_at[11:16] }}</span>
               <span class="downloads-history__status{% if entry.status == 'error' %} downloads-history__status--error{% endif %}" role="cell">{% if entry.status == "done" %}Готово{% elif entry.status == "cancelled" %}Отменено{% else %}{{ entry.error or "Ошибка" }}{% endif %}</span>
               <span class="wn-downloads-row__actions" role="cell">
-                {% if entry.id in ready_files %}<a class="downloads-history__download" href="{{ ready_files[entry.id] }}" aria-label="Скачать готовый файл">Файл</a>{% endif %}
-                <a href="/titles/{{ entry.slug_url }}" aria-label="Скачать тайтл снова">Снова</a>
+                {% if entry.id in ready_files %}<a class="downloads-history__download" href="{{ ready_files[entry.id] }}" aria-label="Скачать готовый файл"><svg class="wn-downloads-row__icon" viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" aria-hidden="true"><path d="M14 3H6a1 1 0 0 0-1 1v16a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1V8zM14 3v5h5"/></svg><span class="wn-downloads-row__label-short">Файл</span><span class="wn-downloads-row__label-long">Открыть</span></a>{% endif %}
+                <a href="/titles/{{ entry.slug_url }}" aria-label="Скачать тайтл снова"><svg class="wn-downloads-row__icon" viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" aria-hidden="true"><path d="M12 3v12M7 10l5 5 5-5M5 21h14"/></svg><span class="wn-downloads-row__label-short">Снова</span><span class="wn-downloads-row__label-long">Скачать снова</span></a>
                 <button type="button" class="downloads-history__delete" data-role="delete-history-entry" data-entry-id="{{ entry.id }}" aria-label="Удалить из истории" title="Удалить запись"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 6h14M9 6V4h6v2M7 6l1 14h8l1-14"/></svg></button>
               </span>
             </li>
