@@ -82,7 +82,7 @@ def test_base_renders_one_empty_bottom_sheet_outside_the_app_shell() -> None:
     assert html.count('data-role="bottom-sheet"') == 1
     sheet = html.index('data-role="bottom-sheet"')
     assert sheet > html.index('data-role="sidebar"')
-    assert '<div class="main">' in html[: sheet]
+    assert '<div class="main">' in html[:sheet]
     assert 'role="dialog" aria-modal="true" aria-labelledby="bottom-sheet-title"' in html
     assert 'data-role="bottom-sheet-close" aria-label="Закрыть"' in html
     assert re.search(r'data-role="bottom-sheet-body"></div>', html)
@@ -135,9 +135,7 @@ def test_no_global_horizontal_overflow_clipping() -> None:
     css = (Path(__file__).parents[1] / "app/static/css/app.css").read_text(encoding="utf-8")
 
     for selector in ("html", "body", ".app-shell", ".main"):
-        for block in re.findall(
-            rf"(?m)^\s*{re.escape(selector)}\s*\{{([^}}]*)\}}", css
-        ):
+        for block in re.findall(rf"(?m)^\s*{re.escape(selector)}\s*\{{([^}}]*)\}}", css):
             assert "overflow-x: hidden" not in block, selector
             assert "overflow: hidden" not in block, selector
 
