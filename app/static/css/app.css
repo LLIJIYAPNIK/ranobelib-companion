@@ -5852,9 +5852,12 @@ a.ui-title-card:focus-visible .ui-title-card__cover {
   font: var(--wn-type-body);
 }
 
+/* Stretched, not .ui-progress's centered row turned into a column: centered, the label
+   shrank to its text and the bar's flex: 1 (basis 0) collapsed its height to 0. */
 .wn-home-progress {
   display: flex;
   flex-direction: column;
+  align-items: stretch;
   gap: 7px;
   width: min(100%, 420px);
   margin-top: 18px;
@@ -5873,6 +5876,7 @@ a.ui-title-card:focus-visible .ui-title-card__cover {
 }
 
 .wn-home-progress .ui-progress__bar {
+  flex: none;
   width: 100%;
   background: rgb(51 48 74 / 72%);
 }
