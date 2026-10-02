@@ -70,3 +70,37 @@ def test_card_actions_are_wrapping_44px_buttons() -> None:
     assert "flex-wrap: wrap;" in _rule(".wn-friends-invite__nick", indent="  ")
     # The 26px switch keeps a 44px hit area.
     assert "inset: -9px 0;" in _rule(".wn-switch::before", indent="  ")
+
+
+def test_friend_actions_open_in_the_shared_sheet_on_mobile() -> None:
+    assert 'data-friend-sheet="friend-actions-{{ friend.user.id }}"' in PAGE
+    assert 'aria-haspopup="dialog"' in PAGE
+    assert 'id="friend-actions-{{ friend.user.id }}" data-role="friend-actions-sheet"' in PAGE
+    assert 'data-bottom-sheet-title="{{ friend.user.display_name }}" hidden' in PAGE
+    assert ">Открыть профиль</a>" in PAGE
+    assert ">Удалить из друзей</button>" in PAGE
+    # Removing asks first, in the same sheet, and posts to the existing route.
+    confirm = PAGE.split('data-role="friend-remove-confirm"')[1].split("</form>")[0]
+    assert 'action="/friends/{{ friend.user.id }}/remove"' in confirm
+    assert "data-bottom-sheet-close" in confirm
+    assert "js/friends-actions-sheet.js" in PAGE
+
+    # «Ещё» exists only on phones, where the inline «Удалить» goes away.
+    assert "display: none;" in _rule(".wn-friend-card__more")
+    more = _rule(".wn-friend-card__more", indent="  ")
+    assert "display: flex;" in more
+    assert "width: 44px;" in more and "height: 44px;" in more
+    assert "display: none;" in _rule(
+        ".wn-friend-card__actions .wn-friend-card__remove", indent="  "
+    )
+    assert CSS.index("\n.wn-friend-card__more {") < CSS.index("\n  .wn-friend-card__more {")
+
+
+def test_friend_sheet_swaps_to_the_confirmation_and_resets_on_close() -> None:
+    script = (ROOT / "app/static/js/friends-actions-sheet.js").read_text(encoding="utf-8")
+    assert "window.bottomSheet.open({" in script
+    assert "onClose:" in script
+    assert '[data-role="friend-remove-ask"]' in script
+    assert "menu.hidden = true;" in script
+    assert "confirm.hidden = false;" in script
+    assert "min-height: 52px;" in _rule(".wn-friend-sheet__item")

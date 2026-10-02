@@ -12522,6 +12522,12 @@ body.reader-hud-visible .reader-hud {
   gap: 14px;
 }
 
+/* «Ещё» is the mobile way into a friend's actions (PR 285, the bottom sheet) - hidden on
+   desktop, where they sit inline. */
+.wn-friend-card__more {
+  display: none;
+}
+
 .wn-friend-card__who {
   display: flex;
   flex: 1;
@@ -13161,6 +13167,35 @@ body.reader-hud-visible .reader-hud {
 
   .wn-friend-card__actions {
     flex-wrap: wrap;
+  }
+
+  /* «Удалить» moves behind «Ещё» (the bottom sheet), leaving «Профиль» full width. */
+  .wn-friend-card__more {
+    display: flex;
+    flex: none;
+    align-items: center;
+    justify-content: center;
+    width: 44px;
+    height: 44px;
+    padding: 0;
+    border: 0;
+    border-radius: 10px;
+    background: transparent;
+    color: var(--wn-text-secondary);
+    cursor: pointer;
+  }
+
+  .wn-friend-card__more:active {
+    background: #232230;
+  }
+
+  .wn-friend-card__more:focus-visible {
+    outline: none;
+    box-shadow: var(--wn-focus-ring);
+  }
+
+  .wn-friend-card__actions .wn-friend-card__remove {
+    display: none;
   }
 
   .wn-friend-card__actions > *,
@@ -16021,6 +16056,40 @@ body.reader-hud-visible .reader-hud {
 :is(.wn-sheet-confirm__cancel, .wn-sheet-confirm__danger):focus-visible {
   outline: none;
   box-shadow: var(--wn-focus-ring);
+}
+
+/* A friend's actions in the shared bottom sheet (PR 285, friends-actions-sheet.js): 52px
+   rows - «Открыть профиль», a divider, a red «Удалить из друзей» - then the
+   .wn-sheet-confirm text and buttons for the removal. */
+.wn-friend-sheet__item {
+  display: flex;
+  align-items: center;
+  width: 100%;
+  min-height: 52px;
+  padding: 0;
+  border: 0;
+  border-radius: var(--wn-radius-sm);
+  background: transparent;
+  color: var(--wn-text);
+  font: var(--wn-weight-semi-bold) 16px/1.2 var(--wn-font-ui);
+  text-align: left;
+  text-decoration: none;
+  cursor: pointer;
+}
+
+.wn-friend-sheet__item--danger {
+  color: #f2879a;
+}
+
+.wn-friend-sheet__item:focus-visible {
+  outline: none;
+  box-shadow: var(--wn-focus-ring);
+}
+
+.wn-friend-sheet__sep {
+  height: 1px;
+  margin: 4px 0;
+  background: var(--wn-border);
 }
 
 @media (max-width: 767px) {
