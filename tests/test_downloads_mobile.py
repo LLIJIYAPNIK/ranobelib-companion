@@ -154,3 +154,17 @@ def test_history_card_layout_on_mobile() -> None:
     assert "width: 44px;" in delete
     assert "height: 44px;" in delete
     assert "overflow-wrap: anywhere;" in _rule(".wn-downloads-row__file", indent="  ")
+
+
+def test_history_delete_is_undoable_instead_of_confirmed() -> None:
+    # Webnovells Mobile -> Загрузки: the row goes at once with «Вернуть» in a toast; the
+    # DELETE waits for the toast, and leaving the page still sends it.
+    script = (ROOT / "app/static/js/download-history-delete.js").read_text(encoding="utf-8")
+
+    assert "confirm(" not in script
+    assert "UNDO_MS = 5000" in script
+    assert 'label: "Вернуть"' in script
+    assert "setTimeout(commit, UNDO_MS)" in script
+    assert '"pagehide"' in script
+    assert "keepalive" in script
+    assert "fetch(`/downloads/history/${p.entryId}`" in script

@@ -15234,6 +15234,54 @@ body.reader-hud-visible .reader-hud {
   display: none;
 }
 
+/* Toast with an optional action («Вернуть»), PR 281: above the bottom bar on mobile,
+   centered over the content beside the rail on desktop. */
+.wn-toast {
+  position: fixed;
+  z-index: 70;
+  bottom: calc(var(--shell-bottom) + 16px);
+  left: calc(50% + var(--sidebar-width) / 2);
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  width: min(480px, calc(100% - 32px));
+  padding: 6px 6px 6px 16px;
+  border: 1px solid #33304a;
+  border-radius: 14px;
+  background: #22212e;
+  box-shadow: 0 16px 40px rgb(0 0 0 / 50%);
+  color: var(--wn-text);
+  font: 600 14px/1.4 var(--wn-font-ui);
+  transform: translateX(-50%);
+}
+
+.wn-toast[hidden] {
+  display: none;
+}
+
+.wn-toast__text {
+  flex: 1;
+  min-width: 0;
+  padding: 8px 0;
+}
+
+.wn-toast__action {
+  flex: none;
+  min-height: 44px;
+  padding: 0 14px;
+  border: 0;
+  border-radius: 10px;
+  background: transparent;
+  color: var(--wn-teal);
+  font: 800 14px/1 var(--wn-font-ui);
+  cursor: pointer;
+}
+
+.wn-toast__action:focus-visible {
+  outline: none;
+  box-shadow: var(--wn-focus-ring);
+}
+
 @media (max-width: 767px) {
   /* The 640px content column with 16px gutters, for every Webnovells screen. */
   .wn-home,
