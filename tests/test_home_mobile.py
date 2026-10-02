@@ -41,3 +41,15 @@ def test_today_shows_one_wording_per_layout() -> None:
     )
     mobile_row = _rule(".wn-home-today__stats .wn-home-today__row-label", indent="  ")
     assert "display: block;" in mobile_row
+
+
+def test_mobile_home_rows_wrap_instead_of_squeezing() -> None:
+    # Webnovells Mobile -> Главная: the hero's CTA and «Оглавление», and the link field
+    # and «Открыть», share a row while both fit and stack otherwise - no breakpoint.
+    cta = _rule(".wn-home-hero__actions .wn-btn", indent="  ")
+    assert "flex: 1 1 220px;" in cta
+    assert "white-space: normal;" in cta
+    assert "flex-basis: 140px;" in _rule(".wn-home-hero__actions .wn-btn--secondary", indent="  ")
+    assert "flex-wrap: wrap;" in _rule(".wn-home__open", indent="  ")
+    assert "flex: 1 1 220px;" in _rule(".wn-home__open-field", indent="  ")
+    assert "flex: 1 1 150px;" in _rule(".wn-home-hero__text", indent="  ")

@@ -6313,12 +6313,39 @@ a.ui-title-card:focus-visible .ui-title-card__cover {
     padding: var(--wn-space-1) var(--wn-space-2) var(--wn-space-3);
   }
 
+  /* Field and «Открыть» share a row while both fit, then the button drops under the
+     field (PR 280) - no breakpoint. */
   .wn-home__open {
+    flex-wrap: wrap;
     align-items: stretch;
+    gap: 8px;
   }
 
+  .wn-home__open-field {
+    flex: 1 1 220px;
+  }
+
+  /* Quiet, like the prototype: the hero's «Продолжить» stays the screen's one purple
+     CTA. */
   .wn-home__open .wn-btn {
-    padding-inline: 14px;
+    flex: 1 0 auto;
+    min-width: 112px;
+    min-height: 48px;
+    padding-inline: 20px;
+    border-color: var(--wn-border-strong);
+    background: rgb(255 255 255 / 5%);
+    box-shadow: none;
+    color: var(--wn-text);
+    font: 700 15px/1 var(--wn-font-ui);
+  }
+
+  .wn-home__open .wn-btn:hover {
+    background: rgb(255 255 255 / 9%);
+  }
+
+  .wn-home-section-head {
+    flex-wrap: wrap;
+    column-gap: 12px;
   }
 
   /* PR 280 (Webnovells Mobile -> Главная): the real cover beside the text over its own
@@ -6425,8 +6452,13 @@ a.ui-title-card:focus-visible .ui-title-card__cover {
     margin: 0;
   }
 
+  /* «Продолжить» and «Оглавление» share a row while both fit, otherwise stack; the CTA
+     text itself wraps rather than overflowing on a long chapter number. */
   .wn-home-hero__actions .wn-btn {
+    flex: 1 1 220px;
     gap: 10px;
+    white-space: normal;
+    text-align: center;
     min-height: 52px;
     padding: 12px 20px;
     font: 700 16px/1.25 var(--wn-font-ui);
@@ -6437,6 +6469,7 @@ a.ui-title-card:focus-visible .ui-title-card__cover {
   }
 
   .wn-home-hero__actions .wn-btn--secondary {
+    flex-basis: 140px;
     border-color: rgb(255 255 255 / 20%);
     background: rgb(255 255 255 / 6%);
     color: #f2f0f7;
