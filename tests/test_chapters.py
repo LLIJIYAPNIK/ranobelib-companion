@@ -27,7 +27,7 @@ from ranobelib.models import (
 from app.config import get_settings
 from app.db.activity import list_chapters_read_today
 from app.db.connection import connection
-from app.db.library import add_entry, get_entry, list_entries
+from app.db.library import add_entry, get_entry, list_entries, record_progress
 from app.gif_video import is_ffmpeg_available
 from app.main import app
 from app.services.exports import available_export_formats
@@ -530,6 +530,48 @@ async def test_read_chapter_records_progress_for_title_in_library(
         entry = await get_entry(conn, user_id=1, slug_url="6712--test-novel")
     assert entry.last_read_volume == "1"
     assert entry.last_read_number == "5"
+
+
+async def test_read_chapter_renders_the_paragraph_saved_for_that_chapter(
+    logged_in_client: TestClient,
+) -> None:
+    # Saved by another device (PR 288's tick) - reopening the same chapter keeps it and
+    # hands it to the reader scripts.
+    async with connection() as conn:
+        await add_entry(conn, user_id=1, slug_url="6712--test-novel")
+        await record_progress(
+            conn, 1, "6712--test-novel", "1", "5", paragraph=50, paragraph_total=80
+        )
+    chapter = Chapter(id=1, volume="1", number="5", content="<p>x</p>")
+    with patch("app.services.client.RanobeLib", return_value=_FakeClient(chapter)):
+        response = logged_in_client.get("/titles/6712--test-novel/chapters/1/5")
+
+    assert 'data-saved-paragraph="50"' in response.text
+    assert 'data-saved-paragraph-total="80"' in response.text
+
+
+async def test_read_chapter_omits_a_paragraph_saved_for_another_chapter(
+    logged_in_client: TestClient,
+) -> None:
+    async with connection() as conn:
+        await add_entry(conn, user_id=1, slug_url="6712--test-novel")
+        await record_progress(
+            conn, 1, "6712--test-novel", "1", "4", paragraph=50, paragraph_total=80
+        )
+    chapter = Chapter(id=1, volume="1", number="5", content="<p>x</p>")
+    with patch("app.services.client.RanobeLib", return_value=_FakeClient(chapter)):
+        response = logged_in_client.get("/titles/6712--test-novel/chapters/1/5")
+
+    assert "data-saved-paragraph" not in response.text
+
+
+def test_read_chapter_has_no_saved_paragraph_for_a_guest() -> None:
+    chapter = Chapter(id=1, volume="1", number="5", content="<p>x</p>")
+    with patch("app.services.client.RanobeLib", return_value=_FakeClient(chapter)):
+        response = client.get("/titles/6712--test-novel/chapters/1/5")
+
+    assert response.status_code == 200
+    assert "data-saved-paragraph" not in response.text
 
 
 async def test_read_chapter_adds_title_to_library_if_missing(

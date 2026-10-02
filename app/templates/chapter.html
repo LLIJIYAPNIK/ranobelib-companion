@@ -81,6 +81,10 @@
     data-branch-id="{{ branch_id if branch_id is not none else '' }}"
     data-authenticated="{{ '1' if current_user else '' }}"
     data-user-id="{{ current_user.id if current_user else '' }}"
+    {%- if saved_paragraph %}
+    data-saved-paragraph="{{ saved_paragraph }}"
+    data-saved-paragraph-total="{{ saved_paragraph_total if saved_paragraph_total is not none else '' }}"
+    {%- endif %}
   >
     {{ chapter.content | safe }}
     {#
