@@ -14617,3 +14617,94 @@ body.reader-hud-visible .reader-hud {
     align-self: flex-start;
   }
 }
+
+/* ==========================================================================
+   Webnovells Mobile - shared layout rules (PR 279, Mobile handoff.md -> Общие правила).
+   What every wave-34 screen (PR 280-285) builds on; screen-specific mobile layout stays
+   in each screen's own section. No breakpoints inside the helpers - they wrap by width.
+   ========================================================================== */
+
+/* A row of actions that wraps instead of squeezing: each child grows from its basis and
+   drops under the previous one once the row runs out of width. */
+.wn-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--wn-space-1);
+}
+
+.wn-actions > * {
+  flex: 1 1 var(--wn-actions-basis, 120px);
+  min-width: 0;
+}
+
+/* Long text: titles wrap at words (never a one-line ellipsis), file names - technical
+   and secondary - anywhere. */
+.wn-wrap {
+  overflow-wrap: break-word;
+}
+
+.wn-filename {
+  font: var(--wn-type-technical);
+  overflow-wrap: anywhere;
+}
+
+/* An icon action: a 44x44 hit area, whatever the size of the visible glyph or circle
+   inside it. */
+.wn-icon-btn {
+  display: inline-grid;
+  flex: none;
+  place-items: center;
+  width: 44px;
+  height: 44px;
+  padding: 0;
+  border: 0;
+  border-radius: var(--wn-radius-md);
+  background: transparent;
+  color: var(--wn-text-secondary);
+  cursor: pointer;
+}
+
+.wn-icon-btn:focus-visible {
+  outline: none;
+  box-shadow: var(--wn-focus-ring);
+}
+
+/* The only things allowed to scroll sideways are explicit ribbons (tabs, «Читаю»,
+   «Недавние», the heatmap) - never the page itself. */
+.wn-ribbon {
+  display: flex;
+  overflow-x: auto;
+  overscroll-behavior-x: contain;
+  scrollbar-width: none;
+  -webkit-overflow-scrolling: touch;
+}
+
+.wn-ribbon::-webkit-scrollbar {
+  display: none;
+}
+
+@media (max-width: 767px) {
+  /* The 640px content column with 16px gutters, for every Webnovells screen. */
+  .wn-home,
+  .wn-library,
+  .wn-downloads,
+  .wn-activity,
+  .wn-profile,
+  .wn-friends {
+    width: 100%;
+    max-width: 640px;
+    margin-inline: auto;
+    padding-inline: var(--wn-space-2);
+  }
+
+  /* iOS Safari zooms into any field set below 16px. Scoped to the page and the sheet so
+     it outranks a screen's own two-class field rule (e.g. the library's link field). */
+  :is(.main, .bottom-sheet)
+    :is(input:not([type="checkbox"], [type="radio"], [type="range"], [type="color"]), select, textarea) {
+    font-size: 16px;
+  }
+
+  .main :is(h1, h2, h3) {
+    overflow-wrap: break-word;
+  }
+}

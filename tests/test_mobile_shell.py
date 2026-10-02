@@ -126,3 +126,17 @@ def test_bottom_sheet_script_follows_the_handoff_thresholds() -> None:
     assert "{ passive: false }" in script
     assert "setPointerCapture" in script
     assert "prefers-reduced-motion: reduce" in script
+
+
+def test_no_global_horizontal_overflow_clipping() -> None:
+    # Mobile handoff.md -> Общие правила: no global overflow-x:hidden - a page that
+    # overflows sideways must be fixed where it overflows, and only explicit ribbons
+    # (.wn-ribbon) scroll horizontally.
+    css = (Path(__file__).parents[1] / "app/static/css/app.css").read_text(encoding="utf-8")
+
+    for selector in ("html", "body", ".app-shell", ".main"):
+        for block in re.findall(
+            rf"(?m)^\s*{re.escape(selector)}\s*\{{([^}}]*)\}}", css
+        ):
+            assert "overflow-x: hidden" not in block, selector
+            assert "overflow: hidden" not in block, selector
