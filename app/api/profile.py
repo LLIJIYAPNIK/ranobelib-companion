@@ -21,7 +21,6 @@ from typing import Annotated
 from fastapi import APIRouter, Depends, HTTPException, Request
 from fastapi.responses import HTMLResponse
 from psycopg import AsyncConnection
-from ranobelib import RanobeLibError
 
 from app.api.library import currently_reading_for_users, library_items_for_user
 from app.auth.dependencies import get_current_user
@@ -30,7 +29,7 @@ from app.db.comments import count_comments_by_user
 from app.db.connection import connection, get_connection
 from app.db.friendships import get_friend_button_state, list_friends
 from app.db.users import User, get_user_by_id
-from app.services.client import open_client
+from app.services.titles import title_summaries
 from app.templating import templates
 
 router = APIRouter()
@@ -363,22 +362,15 @@ def _month_labels(grid_start: date, total_days: int) -> list[str]:
 
 
 async def _title_names(slugs: set[str]) -> dict[str, str]:
-    """Display name per slug_url, fetched through the SDK the same "cheap - cache_dir
-    makes it a local cache hit after the first request" way library_items_for_user()
-    (app/api/library.py) already does, rather than storing title names in this app's own
-    DB (see that function's own docstring on why not). A title that's gone/unreachable on
-    ranobelib.me by the time this renders just falls back to its own slug_url as a label,
-    the same fallback library_items_for_user() effectively lands on too - it doesn't take
-    the whole tooltip down with it."""
-    names: dict[str, str] = {}
-    for slug_url in slugs:
-        try:
-            async with open_client(slug_url) as lib:
-                title = await lib.get_info()
-                names[slug_url] = title.rus_name or title.name
-        except RanobeLibError:
-            names[slug_url] = slug_url
-    return names
+    """Display name per slug_url (app/services/titles.py). A title that's gone/
+    unreachable on ranobelib.me by the time this renders just falls back to its own
+    slug_url as a label, the same fallback library_items_for_user() effectively lands on
+    too - it doesn't take the whole tooltip down with it."""
+    summaries = await title_summaries(slugs)
+    return {
+        slug_url: summaries[slug_url].name if slug_url in summaries else slug_url
+        for slug_url in slugs
+    }
 
 
 def _title_lines(slugs: list[str], title_names: dict[str, str]) -> list[str]:

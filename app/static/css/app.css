@@ -14613,7 +14613,15 @@ body.reader-hud-visible .reader-hud {
   background: var(--wn-border-strong);
 }
 
+/* The per-step hints belong to the mobile list (PR 281). */
+.wn-downloads-steps__hint {
+  display: none;
+}
+
 .wn-downloads__clear {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
   border: 0;
   background: transparent;
   color: var(--wn-danger);
@@ -14728,7 +14736,41 @@ body.reader-hud-visible .reader-hud {
   border-bottom: 0;
 }
 
+/* Cover + name over the file name, as in the desktop design's ТАЙТЛ column (PR 281).
+   No cover (the title didn't resolve) - a striped tile with the format instead. */
 .wn-downloads-row__title {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  min-width: 0;
+}
+
+.wn-downloads-row__cover {
+  display: grid;
+  flex: none;
+  place-items: center;
+  width: 40px;
+  height: 60px;
+  border: 1px solid var(--wn-border);
+  border-radius: 6px;
+  background: repeating-linear-gradient(135deg, #1c1b27 0 6px, #211f2e 6px 12px);
+  color: var(--wn-text-secondary);
+  font: 700 11px/1 var(--wn-font-ui);
+  letter-spacing: 0.04em;
+  overflow: hidden;
+}
+
+.wn-downloads-row__cover img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  object-position: top;
+}
+
+.wn-downloads-row__names {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
   min-width: 0;
 }
 
@@ -14740,6 +14782,25 @@ body.reader-hud-visible .reader-hud {
   font-weight: 700;
   text-overflow: ellipsis;
   white-space: nowrap;
+}
+
+.wn-downloads-row__names--file .downloads-history__link {
+  font-family: var(--wn-font-technical);
+}
+
+.wn-downloads-row__file {
+  overflow: hidden;
+  color: #7d7990;
+  font: 400 12px/1.2 var(--wn-font-technical);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* The mobile card's chapter unit, long action labels and icons (PR 281). */
+.wn-downloads-row__unit,
+.wn-downloads-row__label-long,
+.wn-downloads-row__icon {
+  display: none;
 }
 
 .wn-downloads .downloads-history__fmt {
@@ -14847,18 +14908,82 @@ body.reader-hud-visible .reader-hud {
     flex-direction: column;
   }
 
+  /* PR 281: the icon beside the heading and its line only; the steps and the button
+     run the card's full width below (__copy steps aside so each piece is placed on the
+     card's own grid). */
   .wn-downloads-empty {
     grid-template-columns: 48px minmax(0, 1fr);
-    padding: 18px;
+    align-items: start;
+    gap: 6px 14px;
+    padding: 20px;
   }
 
   .wn-downloads-empty__icon {
+    grid-row: span 2;
     width: 48px;
     height: 48px;
+    border-radius: 14px;
+  }
+
+  .wn-downloads-empty__copy {
+    display: contents;
+  }
+
+  .wn-downloads-empty__copy h3 {
+    font: 700 17px/1.3 var(--wn-font-ui);
+  }
+
+  .wn-downloads-empty__copy p {
+    margin: 0;
+    font: 500 14px/1.5 var(--wn-font-ui);
+  }
+
+  .wn-downloads-empty .wn-downloads-steps,
+  .wn-downloads-empty > .wn-btn {
+    grid-column: 1 / -1;
+    margin-top: 10px;
   }
 
   .wn-downloads-empty > .wn-btn {
-    grid-column: 1 / -1;
+    min-height: 48px;
+  }
+
+  /* PR 281 (Webnovells Mobile -> Загрузки): the steps as a numbered vertical list, the
+     number badge flex: none so a long hint wraps beside it instead of squeezing it. */
+  .wn-downloads-steps {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 10px;
+  }
+
+  .wn-downloads-steps li:nth-child(even) {
+    display: none;
+  }
+
+  .wn-downloads-steps li:nth-child(odd) {
+    align-items: flex-start;
+    gap: 12px;
+  }
+
+  .wn-downloads-steps b {
+    flex: none;
+    width: 28px;
+    height: 28px;
+    font: 800 13px/1 var(--wn-font-ui);
+  }
+
+  .wn-downloads-steps span {
+    flex: 1;
+    min-width: 0;
+    padding-top: 4px;
+    color: var(--wn-text);
+    font: 700 14px/1.45 var(--wn-font-ui);
+  }
+
+  .wn-downloads-steps__hint {
+    display: inline;
+    color: #cfcbdd;
+    font: 500 14px/1.45 var(--wn-font-ui);
   }
 
   .wn-downloads-search {
@@ -14867,6 +14992,201 @@ body.reader-hud-visible .reader-hud {
 
   .wn-downloads-segments {
     align-self: flex-start;
+  }
+
+  /* PR 281 (Webnovells Mobile -> Загрузки): each history row is a card instead of a
+     table row in an 880px sideways scroller - the cover and the names on top (the delete
+     icon pinned in the corner), the format/chapters/time/status meta wrapping under
+     them, the actions on a row of their own. Everything wraps; nothing ellipsizes. */
+  .wn-downloads-table {
+    overflow: visible;
+    border: 0;
+    background: none;
+  }
+
+  .wn-downloads-table__header {
+    display: none;
+  }
+
+  .wn-downloads .downloads-history {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+  }
+
+  .wn-downloads-row {
+    position: relative;
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 6px 12px;
+    min-width: 0;
+    min-height: 0;
+    padding: 14px;
+    border: 1px solid var(--wn-border);
+    border-radius: var(--wn-radius-lg);
+    background: var(--wn-surface);
+  }
+
+  .wn-downloads-row:last-child {
+    border-bottom: 1px solid var(--wn-border);
+  }
+
+  .wn-downloads-row__title {
+    flex: 1 1 100%;
+    align-items: flex-start;
+    gap: 12px;
+    margin-bottom: 6px;
+    padding-right: 36px;
+  }
+
+  .wn-downloads-row__cover {
+    width: 44px;
+    height: 66px;
+  }
+
+  .wn-downloads .downloads-history__link {
+    overflow: visible;
+    font: 700 15px/1.35 var(--wn-font-ui);
+    overflow-wrap: anywhere;
+    white-space: normal;
+  }
+
+  .wn-downloads .wn-downloads-row__names--file .downloads-history__link {
+    font: 700 14px/1.4 var(--wn-font-technical);
+  }
+
+  .wn-downloads-row__file {
+    color: var(--wn-text-muted);
+    font: 400 12px/1.45 var(--wn-font-technical);
+    overflow-wrap: anywhere;
+    white-space: normal;
+  }
+
+  .wn-downloads .downloads-history__fmt {
+    padding: 5px 7px;
+    border: 1px solid #2f2c3e;
+    border-radius: 6px;
+    color: #cfcbdd;
+    font: 700 11px/1 var(--wn-font-ui);
+    letter-spacing: 0.05em;
+  }
+
+  .wn-downloads-row > .wn-technical,
+  .wn-downloads .downloads-history__date {
+    color: var(--wn-text-secondary);
+    font: 500 13px/1.3 var(--wn-font-ui);
+    white-space: nowrap;
+  }
+
+  .wn-downloads-row__chapters--none {
+    display: none;
+  }
+
+  .wn-downloads-row__unit {
+    display: inline;
+  }
+
+  .wn-downloads .downloads-history__status {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    overflow: visible;
+    font: 700 13px/1.3 var(--wn-font-ui);
+    white-space: normal;
+  }
+
+  .wn-downloads .downloads-history__status::before {
+    content: "";
+    flex: none;
+    width: 7px;
+    height: 7px;
+    border-radius: 50%;
+    background: currentcolor;
+  }
+
+  .wn-downloads-row__actions {
+    flex: 1 1 100%;
+    flex-wrap: wrap;
+    justify-content: flex-start;
+    gap: 8px;
+    margin-top: 6px;
+    padding-top: 10px;
+    border-top: 1px solid #1e1d29;
+  }
+
+  .wn-downloads-row__actions a {
+    display: inline-flex;
+    flex: 1 1 auto;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    min-height: 44px;
+    padding: 0 12px;
+    border: 1px solid var(--wn-border-strong);
+    border-radius: 10px;
+    background: transparent;
+    color: #cfcbdd;
+    font: 600 14px/1.2 var(--wn-font-ui);
+  }
+
+  .wn-downloads-row__actions .downloads-history__download {
+    background: rgb(255 255 255 / 4%);
+    color: var(--wn-text);
+    font-weight: 700;
+  }
+
+  .wn-downloads-row__icon {
+    display: block;
+    flex: none;
+  }
+
+  .wn-downloads-row__label-short {
+    display: none;
+  }
+
+  .wn-downloads-row__label-long {
+    display: inline;
+  }
+
+  /* The delete icon: a 44px target pinned to the card's top-right corner. */
+  .wn-downloads-row__actions .downloads-history__delete {
+    position: absolute;
+    top: 6px;
+    right: 6px;
+    width: 44px;
+    height: 44px;
+    border-radius: 10px;
+    color: var(--wn-text-secondary);
+  }
+
+  .wn-downloads-row__actions .downloads-history__delete svg {
+    width: 18px;
+    height: 18px;
+  }
+
+  /* «История · N» and «Очистить историю» share a row while they fit; at 320px the button
+     drops under the heading instead of running the row off the screen. */
+  .wn-downloads__section-head {
+    flex-wrap: wrap;
+    gap: 4px 12px;
+  }
+
+  /* «Очистить историю» stays quiet on mobile until pressed - a 44px target. */
+  .wn-downloads__clear {
+    min-height: 44px;
+    margin-right: -12px;
+    padding: 0 12px;
+    border-radius: 10px;
+    color: #cfcbdd;
+    font: 600 14px/1.2 var(--wn-font-ui);
+    white-space: nowrap;
+  }
+
+  .wn-downloads-history__group > h3 {
+    padding: 4px 2px 0;
+    color: var(--wn-text-secondary);
+    font: 700 13px/1.3 var(--wn-font-ui);
   }
 }
 
@@ -14933,6 +15253,95 @@ body.reader-hud-visible .reader-hud {
 
 .wn-ribbon::-webkit-scrollbar {
   display: none;
+}
+
+/* Toast with an optional action («Вернуть»), PR 281: above the bottom bar on mobile,
+   centered over the content beside the rail on desktop. */
+.wn-toast {
+  position: fixed;
+  z-index: 70;
+  bottom: calc(var(--shell-bottom) + 16px);
+  left: calc(50% + var(--sidebar-width) / 2);
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  width: min(480px, calc(100% - 32px));
+  padding: 6px 6px 6px 16px;
+  border: 1px solid #33304a;
+  border-radius: 14px;
+  background: #22212e;
+  box-shadow: 0 16px 40px rgb(0 0 0 / 50%);
+  color: var(--wn-text);
+  font: 600 14px/1.4 var(--wn-font-ui);
+  transform: translateX(-50%);
+}
+
+.wn-toast[hidden] {
+  display: none;
+}
+
+.wn-toast__text {
+  flex: 1;
+  min-width: 0;
+  padding: 8px 0;
+}
+
+.wn-toast__action {
+  flex: none;
+  min-height: 44px;
+  padding: 0 14px;
+  border: 0;
+  border-radius: 10px;
+  background: transparent;
+  color: var(--wn-teal);
+  font: 800 14px/1 var(--wn-font-ui);
+  cursor: pointer;
+}
+
+.wn-toast__action:focus-visible {
+  outline: none;
+  box-shadow: var(--wn-focus-ring);
+}
+
+/* A confirmation in the shared bottom sheet (PR 281: «Очистить историю?»): a line of
+   text, then «Отмена» and the destructive action, wrapping under each other when narrow. */
+.wn-sheet-confirm__text {
+  margin: 8px 0 20px;
+  color: #cfcbdd;
+  font: 500 15px/1.55 var(--wn-font-ui);
+  text-wrap: pretty;
+}
+
+.wn-sheet-confirm__actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.wn-sheet-confirm__cancel,
+.wn-sheet-confirm__danger {
+  flex: 1 1 120px;
+  min-height: 48px;
+  border-radius: var(--wn-radius-md);
+  font: 700 15px/1.2 var(--wn-font-ui);
+  cursor: pointer;
+}
+
+.wn-sheet-confirm__cancel {
+  border: 1px solid var(--wn-border-strong);
+  background: transparent;
+  color: var(--wn-text);
+}
+
+.wn-sheet-confirm__danger {
+  border: 0;
+  background: #c9465a;
+  color: #fff;
+}
+
+:is(.wn-sheet-confirm__cancel, .wn-sheet-confirm__danger):focus-visible {
+  outline: none;
+  box-shadow: var(--wn-focus-ring);
 }
 
 @media (max-width: 767px) {

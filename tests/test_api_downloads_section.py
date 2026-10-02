@@ -26,6 +26,16 @@ def client(monkeypatch: pytest.MonkeyPatch) -> Iterator[TestClient]:
     # would leak into this one.
     monkeypatch.setattr(job_store, "_jobs", {})
 
+    # PR 281: history cards look up each title's name/cover through the SDK - stub it at
+    # the services boundary so these tests never reach ranobelib.me (no names: every card
+    # falls back to its file name).
+    from app.api import downloads_section
+
+    async def no_titles(slugs: set[str]) -> dict[str, object]:
+        return {}
+
+    monkeypatch.setattr(downloads_section, "title_summaries", no_titles)
+
     from app.main import app
 
     with TestClient(app) as test_client:
