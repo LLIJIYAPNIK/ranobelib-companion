@@ -36,3 +36,24 @@ def test_profile_stats_are_wrapping_pills_not_fixed_columns() -> None:
     pill = _rule(".wn-profile-stats__item", indent="  ")
     assert "flex: 1 1 120px;" in pill
     assert "border-radius: var(--wn-radius-md);" in pill
+
+
+def test_reading_heatmap_is_a_ribbon_aligned_to_the_current_week() -> None:
+    page = (ROOT / "app/templates/profile.html").read_text(encoding="utf-8")
+    assert 'class="reading-calendar-scroll wn-ribbon"' in page
+    assert "data-ribbon-current-week" in page
+    assert "js/ribbon.js" in page
+
+    ribbon = _rule(".wn-profile .reading-calendar-scroll", indent="  ")
+    assert "max-width: 100%;" in ribbon
+    assert "overscroll-behavior-x: contain;" in ribbon
+
+
+def test_heatmap_alignment_is_initial_only_and_keeps_month_context() -> None:
+    script = (ROOT / "app/static/js/ribbon.js").read_text(encoding="utf-8")
+    assert 'hasAttribute("data-ribbon-current-week")' in script
+    assert "ribbon.scrollWidth - ribbon.clientWidth" in script
+    assert "requestAnimationFrame" in script
+
+    months = _rule(".wn-profile .reading-calendar-months", indent="  ")
+    assert "display: grid;" in months

@@ -14070,6 +14070,19 @@ body.reader-hud-visible .reader-hud {
     --reading-calendar-gap: 3px;
   }
 
+  .wn-profile .reading-calendar-scroll {
+    max-width: 100%;
+    overscroll-behavior-x: contain;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  /* The profile keeps month context visible while the year scrolls as a ribbon. The
+     older generic <=640px rule hides it; this screen's mobile design has room because
+     only the heatmap itself, not the page, moves sideways. */
+  .wn-profile .reading-calendar-months {
+    display: grid;
+  }
+
   .wn-profile__row {
     gap: 12px;
   }

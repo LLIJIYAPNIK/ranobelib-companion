@@ -2,7 +2,9 @@
 // data-ribbon): a touch-scrolled row - tabs today - that fades out at an edge only where
 // there's more to scroll to (wn-ribbon--more-start / --more-end; the mask itself is CSS),
 // and keeps its active item (aria-current / aria-selected) scrolled into view, so the
-// current tab is never the one hidden off-screen.
+// current tab is never the one hidden off-screen. PR 284 also uses the same ribbon for
+// the profile heatmap: data-ribbon-current-week initially aligns its newest (rightmost)
+// week, then leaves the user's scroll position alone.
 (() => {
   const ribbons = document.querySelectorAll("[data-ribbon]");
   if (!ribbons.length) return;
@@ -30,9 +32,19 @@
     ribbon.scrollTo({ left: Math.max(0, target), behavior: smooth && !reducedMotion.matches ? "smooth" : "auto" });
   }
 
+  function revealCurrentWeek(ribbon) {
+    if (!ribbon.hasAttribute("data-ribbon-current-week")) return false;
+    ribbon.scrollLeft = Math.max(0, ribbon.scrollWidth - ribbon.clientWidth);
+    return true;
+  }
+
   for (const ribbon of ribbons) {
-    reveal(ribbon, false);
-    updateFade(ribbon);
+    // Wait for layout before measuring the year-wide heatmap. This is deliberately a
+    // one-shot alignment: resize/scroll handlers below must not fight a manual swipe.
+    requestAnimationFrame(() => {
+      if (!revealCurrentWeek(ribbon)) reveal(ribbon, false);
+      updateFade(ribbon);
+    });
     ribbon.addEventListener("scroll", () => updateFade(ribbon), { passive: true });
     // Tabs that switch in place (no page load) move aria-selected - follow them.
     new MutationObserver(() => reveal(ribbon, true)).observe(ribbon, {
@@ -43,7 +55,7 @@
 
   window.addEventListener("resize", () => {
     for (const ribbon of ribbons) {
-      reveal(ribbon, false);
+      if (!ribbon.hasAttribute("data-ribbon-current-week")) reveal(ribbon, false);
       updateFade(ribbon);
     }
   });
