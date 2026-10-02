@@ -7651,6 +7651,102 @@ a.ui-title-card:focus-visible .ui-title-card__cover {
   }
 }
 
+/* «Фильтры» and the value chips are the mobile toolbar (PR 282). */
+.wn-library-filters-btn,
+.wn-library-chips {
+  display: none;
+}
+
+/* The filters sheet's content (moved into the shared bottom sheet while open). */
+.wn-library-filters__group {
+  margin: 0;
+  padding: 8px 0 0;
+  border: 0;
+}
+
+.wn-library-filters__group + .wn-library-filters__group {
+  padding-top: 16px;
+}
+
+/* Floated: a legend otherwise sits in the fieldset's border, and the fieldset's top
+   padding opens a gap under it instead of above. */
+.wn-library-filters__group legend {
+  float: left;
+  width: 100%;
+  padding: 0 0 8px;
+  color: var(--wn-text-muted);
+  font: 800 13px/1 var(--wn-font-ui);
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.wn-library-filters__option {
+  clear: left;
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  min-height: 48px;
+  color: var(--wn-text);
+  font: 600 15px/1.3 var(--wn-font-ui);
+  cursor: pointer;
+}
+
+.wn-library-filters__option input {
+  appearance: none;
+  flex: none;
+  width: 22px;
+  height: 22px;
+  margin: 0;
+  border: 2px solid #55506e;
+  border-radius: 50%;
+  background: transparent;
+  cursor: pointer;
+}
+
+.wn-library-filters__option input:checked {
+  border-color: var(--wn-teal);
+  background: radial-gradient(circle, var(--wn-teal) 0 5px, transparent 5.5px);
+}
+
+.wn-library-filters__option input:focus-visible {
+  outline: none;
+  box-shadow: var(--wn-focus-ring);
+}
+
+.wn-library-filters__actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  padding-top: 16px;
+}
+
+.wn-library-filters__reset,
+.wn-library-filters__done {
+  min-height: 48px;
+  border-radius: var(--wn-radius-md);
+  font: 700 15px/1.2 var(--wn-font-ui);
+  cursor: pointer;
+}
+
+.wn-library-filters__reset {
+  flex: 1 1 120px;
+  border: 1px solid var(--wn-border-strong);
+  background: transparent;
+  color: var(--wn-text);
+}
+
+.wn-library-filters__done {
+  flex: 2 1 160px;
+  border: 0;
+  background: var(--wn-primary);
+  color: #fff;
+}
+
+:is(.wn-library-filters__reset, .wn-library-filters__done):focus-visible {
+  outline: none;
+  box-shadow: var(--wn-focus-ring);
+}
+
 .wn-library-view {
   display: flex;
   margin-left: auto;
@@ -8199,45 +8295,175 @@ a.ui-title-card:focus-visible .ui-title-card__cover {
     font-size: 26px;
   }
 
+  /* PR 282 (Webnovells Mobile -> Библиотека): the tabs are a touch ribbon of separate
+     pills, edge to edge across the page gutters, fading where more tabs hide
+     (ribbon.js). */
   .wn-library .ui-tabs {
-    width: 100%;
+    position: relative;
+    flex: 1 1 100%;
+    gap: 6px;
+    width: auto;
+    margin: 0 calc(-1 * var(--wn-space-2));
+    padding: 2px var(--wn-space-2);
+    border: 0;
+    border-radius: 0;
+    background: none;
     overflow-x: auto;
+    overscroll-behavior-x: contain;
     scrollbar-width: none;
   }
 
+  .wn-library .ui-tabs::-webkit-scrollbar {
+    display: none;
+  }
+
   .wn-library .ui-tabs__link {
-    flex: 1 0 auto;
-    justify-content: center;
-    padding: 10px 12px;
-    font-size: 14px;
+    flex: none;
+    min-height: 44px;
+    padding: 0 16px;
+    border: 1px solid var(--wn-border);
+    border-radius: var(--wn-radius-md);
+    color: var(--wn-text-secondary);
+    font: 700 15px/1 var(--wn-font-ui);
+  }
+
+  .wn-library .ui-tabs__link[aria-current="page"] {
+    border-color: #3a3650;
+    background: #22212e;
+    color: #f2f0f7;
+  }
+
+  .wn-library .library-tabs__count {
+    font: 800 13px/1 var(--wn-font-ui);
+  }
+
+  /* The link field and «Добавить» share a row while both fit; at 320px the button drops
+     under the field (PR 282). */
+  .wn-library__add {
+    flex-wrap: wrap;
+    gap: 8px;
+  }
+
+  .wn-library__add-field {
+    flex: 1 1 200px;
+    min-width: 0;
   }
 
   .wn-library__add .wn-btn {
-    padding: 0 14px;
+    flex: 1 0 auto;
+    min-width: 128px;
+    min-height: 48px;
+    padding: 0 18px;
   }
 
   .wn-library-toolbar {
-    gap: var(--wn-space-1);
+    gap: 12px;
   }
 
+  /* Search on a row of its own (PR 282), not squeezed beside the filters. */
   .wn-library-search {
+    flex: 1 1 100%;
     width: 100%;
   }
 
+  .wn-library-search input {
+    height: 48px;
+    border-radius: var(--wn-radius-md);
+  }
+
+  /* PR 282: «Фильтры» (with its count) and the 44px list/grid switch share a row, the
+     current values sit under them as chips; the selects themselves step aside - the
+     sheet's radios drive them. */
   .wn-library-select {
-    flex: 1 1 0;
-    min-width: 0;
-    padding-left: 12px;
-  }
-
-  .wn-library-select select {
-    width: 100%;
-    min-width: 0;
-    text-overflow: ellipsis;
-  }
-
-  .wn-library-select > span {
     display: none;
+  }
+
+  .wn-library-filters-btn {
+    display: flex;
+    flex: 1;
+    align-items: center;
+    gap: 10px;
+    min-width: 0;
+    min-height: 50px;
+    padding: 0 14px;
+    border: 1px solid var(--wn-border-strong);
+    border-radius: var(--wn-radius-md);
+    background: rgb(255 255 255 / 4%);
+    color: var(--wn-text);
+    font: 700 15px/1.2 var(--wn-font-ui);
+    cursor: pointer;
+  }
+
+  .wn-library-filters-btn svg {
+    flex: none;
+  }
+
+  .wn-library-filters-btn__count {
+    padding: 4px 7px;
+    border-radius: 999px;
+    background: rgb(61 214 195 / 16%);
+    color: var(--wn-teal);
+    font: 800 12px/1 var(--wn-font-ui);
+  }
+
+  .wn-library-filters-btn:focus-visible {
+    outline: none;
+    box-shadow: var(--wn-focus-ring);
+  }
+
+  .wn-library-view {
+    flex: none;
+    margin-left: 0;
+    padding: 2px;
+    border-radius: var(--wn-radius-md);
+  }
+
+  .wn-library-view button {
+    width: 44px;
+    height: 44px;
+    border-radius: 9px;
+  }
+
+  .wn-library-view button svg {
+    width: 18px;
+    height: 18px;
+  }
+
+  .wn-library-chips {
+    display: flex;
+    flex: 1 1 100%;
+    flex-wrap: wrap;
+    gap: 8px;
+  }
+
+  /* 36px pills as in the prototype, with a 44px hit area around them. */
+  .wn-library-chip {
+    position: relative;
+    max-width: 100%;
+    min-height: 36px;
+    padding: 6px 12px;
+    border: 1px solid #2a2838;
+    border-radius: 999px;
+    background: var(--wn-surface);
+    color: #cfcbdd;
+    font: 600 13px/1.3 var(--wn-font-ui);
+    text-align: left;
+    cursor: pointer;
+  }
+
+  .wn-library-chip::before {
+    content: "";
+    position: absolute;
+    inset: -4px 0;
+  }
+
+  .wn-library-chip b {
+    color: var(--wn-text);
+  }
+
+  .wn-library-chip:focus-visible {
+    outline: none;
+    box-shadow: var(--wn-focus-ring);
   }
 
   .wn-library-grid {
@@ -8259,13 +8485,59 @@ a.ui-title-card:focus-visible .ui-title-card__cover {
     font-size: 16px;
   }
 
-  .wn-library__titles--grid .wn-library-grid {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-    gap: 12px;
+  /* «Продолжить» is a 44px target on phones (PR 282). */
+  .wn-library-card__cta {
+    min-height: 44px;
   }
 
-  .wn-library-posters,
+  /* Stars: the same 32px chip with a 44px hit area around it (PR 282). */
+  .wn-library-star {
+    position: relative;
+  }
+
+  .wn-library-star::before {
+    content: "";
+    position: absolute;
+    inset: -6px;
+  }
+
+  .wn-library-star--overlay {
+    position: absolute;
+  }
+
+  /* Grid view (PR 282): as many 128px+ columns as fit - two from 320px to 430px. In
+     those narrow cards the star sits on the cover's corner (like the posters'), the
+     title gets the full width and wraps in full, and the CTA drops its verb. */
+  .wn-library__titles--grid .wn-library-card {
+    position: relative;
+  }
+
+  .wn-library__titles--grid .wn-library-card__top .wn-library-star {
+    position: absolute;
+    top: 20px;
+    right: 20px;
+    background: rgb(12 12 18 / 80%);
+  }
+
+  .wn-library__titles--grid .wn-library-card__name {
+    display: block;
+    overflow: visible;
+    font-size: 14px;
+    overflow-wrap: break-word;
+    -webkit-line-clamp: unset;
+  }
+
+  .wn-library__titles--grid .wn-library-card__cta-verb {
+    display: none;
+  }
+
+  .wn-library__titles--grid .wn-library-grid,
   .wn-library__titles--grid .wn-library-posters {
+    grid-template-columns: repeat(auto-fill, minmax(128px, 1fr));
+    gap: 20px 14px;
+  }
+
+  .wn-library-posters {
     grid-template-columns: repeat(3, minmax(0, 1fr));
     gap: 12px;
   }
@@ -15253,6 +15525,29 @@ body.reader-hud-visible .reader-hud {
 
 .wn-ribbon::-webkit-scrollbar {
   display: none;
+}
+
+/* A ribbon fades out at an edge only where there's more to scroll to (ribbon.js sets the
+   classes on [data-ribbon] elements, PR 282). */
+.wn-ribbon--more-start {
+  -webkit-mask-image: linear-gradient(90deg, transparent 0, #000 40px);
+  mask-image: linear-gradient(90deg, transparent 0, #000 40px);
+}
+
+.wn-ribbon--more-end {
+  -webkit-mask-image: linear-gradient(90deg, #000 calc(100% - 48px), transparent 100%);
+  mask-image: linear-gradient(90deg, #000 calc(100% - 48px), transparent 100%);
+}
+
+.wn-ribbon--more-start.wn-ribbon--more-end {
+  -webkit-mask-image: linear-gradient(
+    90deg,
+    transparent 0,
+    #000 40px,
+    #000 calc(100% - 48px),
+    transparent 100%
+  );
+  mask-image: linear-gradient(90deg, transparent 0, #000 40px, #000 calc(100% - 48px), transparent 100%);
 }
 
 /* Toast with an optional action («Вернуть»), PR 281: above the bottom bar on mobile,

@@ -759,7 +759,8 @@ async def test_show_library_reading_card_has_continue_cta_and_last_read_line(
         response = client.get("/library")
 
     assert 'href="/titles/6712--test-novel/chapters/2/7"' in response.text
-    assert "Продолжить · Гл. 7" in response.text
+    assert 'aria-label="Продолжить · Глава 7"' in response.text
+    assert '<span class="wn-library-card__cta-verb">Продолжить · </span>Гл. 7' in response.text
     assert "Читали сегодня" in response.text
     assert "Ещё в библиотеке" not in response.text
 
