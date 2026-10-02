@@ -12999,20 +12999,100 @@ body.reader-hud-visible .reader-hud {
 }
 
 @media (max-width: 767px) {
+  .wn-friends__head {
+    gap: var(--wn-space-2);
+  }
+
   .wn-friends__title {
-    font-size: 26px;
+    font-size: 28px;
+    line-height: 1.15;
+  }
+
+  /* PR 285 (Webnovells Mobile -> Друзья): «Искать» drops under the field when the two
+     don't fit side by side, without a breakpoint. */
+  .wn-friends-search {
+    flex-wrap: wrap;
+    gap: var(--wn-space-1);
+  }
+
+  .wn-friends-search__field {
+    flex: 1 1 200px;
+    min-width: 0;
   }
 
   .wn-friends-search .wn-btn {
-    padding: 0 16px;
+    flex: 1 0 auto;
+    min-width: 112px;
+    padding: 0 18px;
   }
 
+  /* A search result is a card: who on top, the request actions as a wrapping row of
+     44px buttons under it. */
+  .wn-friends-result {
+    flex-direction: column;
+    align-items: stretch;
+    padding: 14px;
+    border-color: var(--wn-border-strong);
+    border-radius: var(--wn-radius-lg);
+  }
+
+  .wn-friends-result .wn-friend-card__name {
+    font-size: 15px;
+    line-height: 1.3;
+    white-space: normal;
+    overflow-wrap: anywhere;
+  }
+
+  .wn-friends-result__actions form {
+    display: flex;
+    flex: 1 1 140px;
+  }
+
+  .wn-friends-result__actions .ui-btn {
+    width: 100%;
+    min-height: 44px;
+    border-radius: var(--wn-radius-md);
+    font-size: 15px;
+  }
+
+  /* Tabs: a touch ribbon of separate 44px pills, edge to edge across the page gutters,
+     fading where more tabs hide (ribbon.js, PR 282). */
   .wn-friends-tabs {
-    gap: 20px;
+    position: relative;
+    gap: 6px;
+    margin: 0 calc(-1 * var(--wn-space-2));
+    padding: 2px var(--wn-space-2);
+    border-bottom: 0;
+    overscroll-behavior-x: contain;
+  }
+
+  .wn-friends-tabs::-webkit-scrollbar {
+    display: none;
   }
 
   .wn-friends-tabs__link {
-    font-size: 15px;
+    min-height: 44px;
+    margin-bottom: 0;
+    padding: 0 16px;
+    border: 1px solid var(--wn-border);
+    border-radius: var(--wn-radius-md);
+    font: var(--wn-weight-bold) 15px/1 var(--wn-font-ui);
+  }
+
+  .wn-friends-tabs__link[aria-current="page"] {
+    border-color: #3a3650;
+    background: #22212e;
+  }
+
+  .wn-friends-tabs__count,
+  .wn-friends-tabs__link[aria-current="page"] .wn-friends-tabs__count {
+    padding: 0;
+    background: none;
+    font: var(--wn-weight-extra-bold) 13px/1 var(--wn-font-ui);
+  }
+
+  .wn-friends-tabs__count {
+    color: var(--wn-text-muted);
   }
 
   .wn-friends__main,
@@ -13031,11 +13111,6 @@ body.reader-hud-visible .reader-hud {
 
   .wn-friends-card {
     padding: 18px var(--wn-space-2);
-  }
-
-  .wn-friends-result {
-    flex-direction: column;
-    align-items: flex-start;
   }
 }
 

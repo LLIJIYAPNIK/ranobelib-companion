@@ -9,6 +9,8 @@
   - and a side column with every pending request ("Заявки") and the "Приватность" card,
   whose switch flips show_currently_reading (POST /friends/privacy). A guest gets the
   locked state instead.
+  PR 285 (Webnovells Mobile -> Друзья): on phones the search wraps «Искать» under the
+  field, the tabs are a touch ribbon (data-ribbon, ribbon.js).
 #}
 {% from "_friend_row.html" import ui_friend_request_actions %}
 {% macro avatar(user, size_class) -%}
@@ -64,6 +66,8 @@
           placeholder="Ник пользователя"
           aria-label="Поиск пользователей по нику"
           autocomplete="off"
+          autocapitalize="off"
+          enterkeyhint="search"
         >
       </label>
       <button class="wn-btn wn-btn--primary" type="submit">Искать</button>
@@ -95,7 +99,7 @@
   </section>
   {% endif %}
 
-  <nav class="wn-friends-tabs" aria-label="Друзья и заявки">
+  <nav class="wn-friends-tabs" aria-label="Друзья и заявки" data-ribbon>
     {% for key, label, count in [("friends", "Друзья", friends | length), ("incoming", "Входящие", incoming_requests | length), ("outgoing", "Исходящие", outgoing_requests | length)] %}
     <a class="wn-friends-tabs__link" href="/friends{% if key != 'friends' %}?tab={{ key }}{% endif %}"{% if tab == key %} aria-current="page"{% endif %}>{{ label }}<span class="wn-friends-tabs__count">{{ count }}</span></a>
     {% endfor %}
@@ -248,4 +252,5 @@
   {% endif %}
 </main>
 <script src="{{ url_for('static', path='js/friends-invite-copy.js') }}" defer></script>
+<script src="{{ url_for('static', path='js/ribbon.js') }}" defer></script>
 {% endblock %}
