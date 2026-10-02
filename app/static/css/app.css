@@ -687,7 +687,8 @@ body:has(.sidebar--expanded) {
   display: contents;
 }
 
-.sidebar__strip-brand {
+.sidebar__strip-brand,
+.sidebar__strip-title {
   display: none;
 }
 
@@ -1038,8 +1039,8 @@ body:has(.sidebar--expanded) {
 }
 
 /* Account hub: a popover beside the rail on desktop (profile-menu.js positions it, see
-   PR 97 for why it's portaled to <body>), a bottom sheet over a scrim on mobile
-   (--sheet, added by the same script). */
+   PR 97 for why it's portaled to <body>), the content of the shared bottom sheet on
+   mobile (--in-sheet, PR 279 - see .bottom-sheet below). */
 .profile-menu__panel {
   display: none;
   flex-direction: column;
@@ -1056,10 +1057,6 @@ body:has(.sidebar--expanded) {
 .profile-menu__panel--open {
   display: flex;
   animation: shell-pop-in var(--dur-base) var(--ease);
-}
-
-.profile-menu__grabber {
-  display: none;
 }
 
 .profile-menu__head {
@@ -1169,20 +1166,6 @@ body:has(.sidebar--expanded) {
   box-shadow: inset 0 0 0 2px var(--focus);
 }
 
-/* Scrim under a mobile sheet (profile-menu.js creates it). */
-.shell-scrim {
-  position: fixed;
-  inset: 0;
-  z-index: 79;
-  background: var(--scrim);
-  animation: ui-fade-in 160ms var(--ease);
-}
-
-html.shell-scroll-lock,
-html.shell-scroll-lock body {
-  overflow: hidden;
-}
-
 @keyframes shell-pop-in {
   from {
     opacity: 0;
@@ -1190,10 +1173,208 @@ html.shell-scroll-lock body {
   }
 }
 
-@keyframes shell-sheet-in {
-  from {
-    transform: translateY(calc(100% * var(--motion-shift)));
+/* The one bottom sheet (PR 279, Webnovells Mobile -> Mobile handoff.md). bottom-sheet.js
+   drives the transform/opacity transitions and the max-height (visual viewport - 24px -
+   safe-area-top); the content element it's handed brings its own styles. */
+.bottom-sheet {
+  position: fixed;
+  inset: 0;
+  z-index: 90;
+}
+
+.bottom-sheet[hidden] {
+  display: none;
+}
+
+.bottom-sheet__backdrop {
+  position: absolute;
+  inset: 0;
+  background: rgba(4, 4, 8, 0.68);
+}
+
+.bottom-sheet__panel {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  display: flex;
+  flex-direction: column;
+  max-width: 640px;
+  margin: 0 auto;
+  border: 1px solid #2a2838;
+  border-bottom: 0;
+  border-radius: var(--wn-radius-xl) var(--wn-radius-xl) 0 0;
+  background: #16161f;
+  box-shadow: 0 -24px 60px rgba(0, 0, 0, 0.5);
+  color: var(--wn-text);
+  font-family: var(--wn-font-ui);
+  outline: none;
+  will-change: transform;
+}
+
+/* The drag handle: grabber + title row. touch-action: none so a pointer drag here is
+   never taken for a page scroll. */
+.bottom-sheet__head {
+  flex: none;
+  padding: 6px 8px 4px 20px;
+  border-bottom: 1px solid #22202d;
+  cursor: grab;
+  touch-action: none;
+  -webkit-user-select: none;
+  user-select: none;
+}
+
+/* Centered on the panel, not on the head's asymmetric padding box. */
+.bottom-sheet__grabber {
+  position: relative;
+  left: -6px;
+  display: block;
+  width: 40px;
+  height: 5px;
+  margin: 4px auto 6px;
+  border-radius: 3px;
+  background: #55506e;
+}
+
+.bottom-sheet__bar {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 48px;
+}
+
+.bottom-sheet__title {
+  flex: 1;
+  min-width: 0;
+  margin: 0;
+  color: #f2f0f7;
+  font: 800 18px/1.25 var(--wn-font-ui);
+  overflow-wrap: break-word;
+}
+
+.bottom-sheet__close {
+  display: grid;
+  flex: none;
+  place-items: center;
+  width: 44px;
+  height: 44px;
+  padding: 0;
+  border: 0;
+  border-radius: var(--wn-radius-md);
+  background: #1f1e2a;
+  color: #cfcbdd;
+  cursor: pointer;
+}
+
+@media (hover: hover) {
+  .bottom-sheet__close:hover {
+    background: #2a2838;
   }
+}
+
+.bottom-sheet__close:focus-visible {
+  outline: none;
+  box-shadow: var(--wn-focus-ring);
+}
+
+.bottom-sheet__body {
+  position: relative;
+  flex: 1 1 auto;
+  min-height: 0;
+  padding: 8px 20px calc(20px + env(safe-area-inset-bottom, 0px));
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  -webkit-overflow-scrolling: touch;
+}
+
+/* Background lock while the sheet is open; bottom-sheet.js sets body's top to the saved
+   scroll offset (iOS Safari keeps scrolling an overflow:hidden page otherwise). */
+html.bottom-sheet-lock {
+  overflow: hidden;
+}
+
+html.bottom-sheet-lock body {
+  position: fixed;
+  left: 0;
+  right: 0;
+  width: 100%;
+  overflow: hidden;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .bottom-sheet__panel,
+  .bottom-sheet__backdrop {
+    transition: none !important;
+  }
+}
+
+/* Account hub inside the sheet («Меню», profile-menu.js): the prototype's rows - a 72px
+   profile head, 52px items, Выйти in red. */
+.profile-menu__panel--in-sheet {
+  display: flex;
+  width: auto;
+  padding: 0;
+  border: 0;
+  border-radius: 0;
+  background: none;
+  box-shadow: none;
+  animation: none;
+}
+
+.profile-menu__panel--in-sheet .profile-menu__head {
+  gap: 14px;
+  min-height: 72px;
+  padding: 8px 0;
+  border-radius: 0;
+  background: transparent;
+}
+
+.profile-menu__panel--in-sheet .profile-menu__avatar {
+  width: 52px;
+  height: 52px;
+  font-size: 15px;
+}
+
+.profile-menu__panel--in-sheet .profile-menu__name {
+  color: #f2f0f7;
+  font: 800 17px/1.2 var(--wn-font-ui);
+  overflow-wrap: anywhere;
+  white-space: normal;
+}
+
+.profile-menu__panel--in-sheet .profile-menu__profile-link {
+  color: #c9bcff;
+  font: 600 14px/1.2 var(--wn-font-ui);
+}
+
+.profile-menu__panel--in-sheet .profile-menu__head-chevron {
+  display: block;
+  color: var(--wn-text-muted);
+}
+
+.profile-menu__panel--in-sheet .profile-menu__sep {
+  margin: 4px 0;
+  background: var(--wn-border);
+}
+
+.profile-menu__panel--in-sheet .profile-menu__item {
+  gap: 16px;
+  min-height: 52px;
+  padding: 0;
+  border-radius: 0;
+  color: var(--wn-text);
+  font: 600 16px/1.2 var(--wn-font-ui);
+}
+
+.profile-menu__panel--in-sheet .profile-menu__item svg {
+  width: 22px;
+  height: 22px;
+  color: var(--wn-text-secondary);
+}
+
+.profile-menu__panel--in-sheet .profile-menu__item--danger,
+.profile-menu__panel--in-sheet .profile-menu__item--danger svg {
+  color: #f2879a;
 }
 
 /* Notifications popover - header, list of Notification cards (PR 259, below), footer
@@ -1273,12 +1454,15 @@ html.shell-scroll-lock body {
   box-shadow: inset 0 0 0 2px var(--focus);
 }
 
-/* Mobile: Quiet Edge Bar (bottom) + top strip. */
+/* Mobile: bottom navigation + top header. PR 279 restyled both to "Webnovells Mobile"
+   (Mobile handoff.md -> Общие правила): a 60px header + safe-area-top, a 64px bar +
+   safe-area-bottom, and main padded by 104px + safe-area so the last row clears the bar. */
 @media (max-width: 767px) {
   :root,
   body:has(.sidebar--expanded) {
     --sidebar-width: 0px;
-    --shell-bottom: calc(60px + env(safe-area-inset-bottom, 0px));
+    --mobile-account-height: 60px;
+    --shell-bottom: calc(64px + env(safe-area-inset-bottom, 0px));
   }
 
   /* PR 46's per-section fade-in, now on the shared motion tokens. */
@@ -1292,7 +1476,7 @@ html.shell-scroll-lock body {
   .main {
     margin-left: 0;
     padding-top: calc(var(--mobile-account-height) + env(safe-area-inset-top, 0px));
-    padding-bottom: calc(var(--shell-bottom) + 16px);
+    padding-bottom: calc(var(--shell-bottom) + 40px);
     animation: shell-section-in 150ms var(--ease);
   }
 
@@ -1312,9 +1496,10 @@ html.shell-scroll-lock body {
     /* The rail's justify-items: center would also center (and shrink) block children -
        Chrome applies justify-items in block layout too. */
     justify-items: normal;
-    padding: 0 16px env(safe-area-inset-bottom, 0px);
+    padding: 0 0 env(safe-area-inset-bottom, 0px);
     border-right: 0;
-    border-top: 1px solid var(--divider);
+    border-top: 1px solid #1e1c29;
+    background: rgba(14, 14, 21, 0.97);
     overflow: visible;
     transition: none;
   }
@@ -1328,25 +1513,30 @@ html.shell-scroll-lock body {
   .sidebar__nav {
     flex-direction: row;
     gap: 0;
-    height: 60px;
+    max-width: 640px;
+    height: 64px;
+    margin: 0 auto;
   }
 
   .sidebar__link {
-    flex: 1;
+    flex: 1 1 0;
+    min-width: 0;
     gap: 4px;
     width: auto;
-    height: 60px;
+    height: 64px;
+    padding: 6px 2px;
     border-radius: 0;
     background: none;
-    color: #a7a3b8;
-    font: 600 12px/14px var(--font-ui);
+    color: var(--wn-text-secondary);
+    font: 700 13px/1.1 var(--wn-font-ui);
+    white-space: nowrap;
   }
 
   /* Pressed / focus zone: 84x48, radius 12, centered on the item. */
   .sidebar__link::after {
     content: "";
     position: absolute;
-    top: 6px;
+    top: 8px;
     left: 50%;
     width: 84px;
     max-width: 100%;
@@ -1370,21 +1560,24 @@ html.shell-scroll-lock body {
 
   .sidebar__link--active {
     background: none;
-    color: var(--text-1);
-    font-weight: 700;
+    color: #f2f0f7;
   }
 
-  /* Active indicator: 28x2 on the bar's top edge. */
+  .sidebar__link--active .sidebar__icon {
+    color: var(--wn-teal);
+  }
+
+  /* Active indicator: 40x3 teal on the bar's top edge. */
   .sidebar__link--active::before {
     content: "";
     position: absolute;
-    top: -1px;
+    top: 0;
     left: 50%;
-    width: 28px;
-    height: 2px;
-    margin-left: -14px;
-    border-radius: 0 0 2px 2px;
-    background: var(--accent);
+    width: 40px;
+    height: 3px;
+    margin-left: -20px;
+    border-radius: 0 0 3px 3px;
+    background: var(--wn-teal);
   }
 
   .sidebar__link .sidebar__badge {
@@ -1407,7 +1600,10 @@ html.shell-scroll-lock body {
     display: block;
   }
 
-  /* Top strip: transparent until the page scrolls 8px (mobile-account-strip.js). */
+  /* Header: logo · section title · bell · avatar, opaque with a blur from the first
+     pixel. Fixed rather than sticky (it lives inside the fixed bottom <nav>), with .main
+     padded by the same height - the same on-screen result. The row is centered to the
+     640px content column. */
   .sidebar__account {
     position: fixed;
     top: 0;
@@ -1415,62 +1611,94 @@ html.shell-scroll-lock body {
     right: 0;
     z-index: 50;
     flex-direction: row;
-    gap: 2px;
+    align-items: center;
+    gap: 4px;
     width: auto;
     height: calc(var(--mobile-account-height) + env(safe-area-inset-top, 0px));
-    padding: env(safe-area-inset-top, 0px) 8px 0;
+    padding: env(safe-area-inset-top, 0px) max(8px, calc((100% - 640px) / 2 + 8px)) 0
+      max(12px, calc((100% - 640px) / 2 + 12px));
     border-top: 0;
-    background: transparent;
-    transition: background-color var(--dur-base) var(--ease);
-  }
-
-  .sidebar__account--scrolled {
-    background: rgba(11, 11, 20, 0.96);
+    border-bottom: 1px solid #1c1b26;
+    background: rgba(12, 12, 18, 0.94);
+    -webkit-backdrop-filter: blur(12px);
+    backdrop-filter: blur(12px);
   }
 
   .sidebar__strip-brand {
     display: flex;
-    align-items: center;
+    align-items: flex-end;
+    justify-content: center;
+    gap: 3px;
+    min-width: 44px;
     height: 44px;
-    margin-right: auto;
-    padding: 0 12px;
-    border-radius: var(--r-md);
-    color: var(--text-1);
-    font: 800 22px/1 var(--font-ui);
-    letter-spacing: -0.04em;
+    padding: 0 4px 9px;
+    border-radius: var(--wn-radius-md);
+    color: #f2f0f7;
+    font: 800 28px/1 var(--wn-font-ui);
     text-decoration: none;
   }
 
   .sidebar__strip-brand .sidebar__brand-dot {
-    margin-top: 10px;
+    width: 7px;
+    height: 7px;
+    margin: 0 0 2px;
+    background: var(--wn-teal);
+  }
+
+  .sidebar__strip-title {
+    display: block;
+    flex: 1;
+    min-width: 0;
+    padding-left: 6px;
+    overflow: hidden;
+    color: #cfcbdd;
+    font: 700 16px/1.2 var(--wn-font-ui);
+    text-overflow: ellipsis;
+    white-space: nowrap;
   }
 
   .sidebar__bell {
-    color: var(--text-1);
+    width: 44px;
+    height: 44px;
+    border-radius: var(--wn-radius-md);
+    color: #cfcbdd;
   }
 
-  /* Unread = an 8px coral dot, no number, on the strip. */
+  /* Unread = an 8px teal dot, no number, ringed in the header's background. */
   .sidebar__bell .sidebar__badge {
     top: -1px;
-    right: -1px;
-    width: 12px;
+    right: 0;
+    width: 8px;
     min-width: 0;
-    height: 12px;
+    height: 8px;
     padding: 0;
-    border-color: var(--bg-page);
+    border: 0;
+    background: var(--wn-teal);
+    box-shadow: 0 0 0 2px var(--wn-canvas);
     font-size: 0;
   }
 
+  /* Avatar: a 44px hit area, 2px ring - teal on the user's own profile. */
+  .sidebar__account-trigger {
+    padding: 2px;
+    border: 2px solid #2a2838;
+  }
+
+  .sidebar__account-trigger--current {
+    border-color: var(--wn-teal);
+  }
+
   .sidebar__avatar {
-    width: 32px;
-    height: 32px;
+    width: 100%;
+    height: 100%;
     border: 0;
   }
 
+  /* 44px: the header's touch-target floor (Mobile handoff.md). */
   .sidebar__guest {
     flex-direction: row;
     width: auto;
-    min-height: 40px;
+    min-height: 44px;
     margin-right: 4px;
     padding: 0 16px;
     border-radius: var(--r-md);
@@ -1481,76 +1709,22 @@ html.shell-scroll-lock body {
     display: none;
   }
 
-  /* Account hub as a bottom sheet. */
-  .profile-menu__panel--sheet {
-    left: 0;
-    right: 0;
-    bottom: 0;
-    top: auto;
-    width: auto;
-    padding: 8px 0 calc(12px + env(safe-area-inset-bottom, 0px));
-    border-width: 1px 0 0;
-    border-radius: var(--r-2xl) var(--r-2xl) 0 0;
-    box-shadow: var(--shadow-sheet);
-    animation: shell-sheet-in var(--dur-sheet) var(--ease);
+  /* On-screen keyboard open (mobile-keyboard.js): the bottom bar goes, the header stays -
+     both live in .sidebar, so only the bar's own parts are hidden, and floating pieces
+     placed above the bar (--shell-bottom) drop to the bottom edge. */
+  html.keyboard-open,
+  html.keyboard-open body {
+    --shell-bottom: 0px;
   }
 
-  .profile-menu__panel--sheet .profile-menu__grabber {
-    display: block;
-    width: 36px;
-    height: 4px;
-    margin: 0 auto 6px;
-    border-radius: 2px;
-    background: var(--disabled);
+  html.keyboard-open .sidebar {
+    padding-bottom: 0;
+    border-top: 0;
+    background: none;
   }
 
-  .profile-menu__panel--sheet .profile-menu__head {
-    gap: 14px;
-    padding: 10px 12px 14px 20px;
-    border-radius: 0;
-    background: transparent;
-  }
-
-  .profile-menu__panel--sheet .profile-menu__avatar {
-    width: 52px;
-    height: 52px;
-    font-size: 15px;
-  }
-
-  .profile-menu__panel--sheet .profile-menu__name {
-    font: 800 17px/1.1 var(--font-ui);
-  }
-
-  .profile-menu__panel--sheet .profile-menu__profile-link {
-    font-size: 13px;
-  }
-
-  .profile-menu__panel--sheet .profile-menu__head-chevron {
-    display: block;
-  }
-
-  .profile-menu__panel--sheet .profile-menu__sep {
-    margin: 6px 20px;
-  }
-
-  .profile-menu__panel--sheet .profile-menu__item {
-    gap: 16px;
-    min-height: 52px;
-    padding: 0 20px;
-    border-radius: 0;
-    color: var(--text-1);
-    font-size: 16px;
-  }
-
-  .profile-menu__panel--sheet .profile-menu__item svg {
-    width: 22px;
-    height: 22px;
-    color: var(--text-2);
-  }
-
-  .profile-menu__panel--sheet .profile-menu__item--danger,
-  .profile-menu__panel--sheet .profile-menu__item--danger svg {
-    color: var(--danger-text);
+  html.keyboard-open .sidebar__nav {
+    display: none;
   }
 
   /* The reader is immersive on mobile - no bar, no strip. */
@@ -9161,9 +9335,9 @@ a.ui-title-card:focus-visible .ui-title-card__cover {
   .sidebar__strip-back {
     display: grid;
     place-items: center;
+    flex: none;
     width: 44px;
     height: 44px;
-    margin-right: auto;
     border-radius: var(--r-lg);
     color: var(--text-1);
   }
@@ -14460,5 +14634,96 @@ body.reader-hud-visible .reader-hud {
 
   .wn-downloads-segments {
     align-self: flex-start;
+  }
+}
+
+/* ==========================================================================
+   Webnovells Mobile - shared layout rules (PR 279, Mobile handoff.md -> Общие правила).
+   What every wave-34 screen (PR 280-285) builds on; screen-specific mobile layout stays
+   in each screen's own section. No breakpoints inside the helpers - they wrap by width.
+   ========================================================================== */
+
+/* A row of actions that wraps instead of squeezing: each child grows from its basis and
+   drops under the previous one once the row runs out of width. */
+.wn-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--wn-space-1);
+}
+
+.wn-actions > * {
+  flex: 1 1 var(--wn-actions-basis, 120px);
+  min-width: 0;
+}
+
+/* Long text: titles wrap at words (never a one-line ellipsis), file names - technical
+   and secondary - anywhere. */
+.wn-wrap {
+  overflow-wrap: break-word;
+}
+
+.wn-filename {
+  font: var(--wn-type-technical);
+  overflow-wrap: anywhere;
+}
+
+/* An icon action: a 44x44 hit area, whatever the size of the visible glyph or circle
+   inside it. */
+.wn-icon-btn {
+  display: inline-grid;
+  flex: none;
+  place-items: center;
+  width: 44px;
+  height: 44px;
+  padding: 0;
+  border: 0;
+  border-radius: var(--wn-radius-md);
+  background: transparent;
+  color: var(--wn-text-secondary);
+  cursor: pointer;
+}
+
+.wn-icon-btn:focus-visible {
+  outline: none;
+  box-shadow: var(--wn-focus-ring);
+}
+
+/* The only things allowed to scroll sideways are explicit ribbons (tabs, «Читаю»,
+   «Недавние», the heatmap) - never the page itself. */
+.wn-ribbon {
+  display: flex;
+  overflow-x: auto;
+  overscroll-behavior-x: contain;
+  scrollbar-width: none;
+  -webkit-overflow-scrolling: touch;
+}
+
+.wn-ribbon::-webkit-scrollbar {
+  display: none;
+}
+
+@media (max-width: 767px) {
+  /* The 640px content column with 16px gutters, for every Webnovells screen. */
+  .wn-home,
+  .wn-library,
+  .wn-downloads,
+  .wn-activity,
+  .wn-profile,
+  .wn-friends {
+    width: 100%;
+    max-width: 640px;
+    margin-inline: auto;
+    padding-inline: var(--wn-space-2);
+  }
+
+  /* iOS Safari zooms into any field set below 16px. Scoped to the page and the sheet so
+     it outranks a screen's own two-class field rule (e.g. the library's link field). */
+  :is(.main, .bottom-sheet)
+    :is(input:not([type="checkbox"], [type="radio"], [type="range"], [type="color"]), select, textarea) {
+    font-size: 16px;
+  }
+
+  .main :is(h1, h2, h3) {
+    overflow-wrap: break-word;
   }
 }

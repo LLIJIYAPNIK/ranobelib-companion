@@ -107,7 +107,8 @@ def test_account_hub_friends_link_points_at_the_friends_page(
 
 
 def test_sidebar_wires_the_mobile_account_strip_script() -> None:
-    # PR 249: mobile-account-strip.js now only drives the top strip's scroll background;
+    # PR 279: mobile-account-strip.js now only drives the header's back button (the
+    # scroll-driven background went with the always-opaque Webnovells Mobile header);
     # the container it used to reparent into stays, rendered for every visitor.
     response = client.get("/")
 
