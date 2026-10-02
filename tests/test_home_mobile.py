@@ -7,9 +7,11 @@ CSS = (Path(__file__).parents[1] / "app/static/css/app.css").read_text(encoding=
 
 
 def _rule(selector: str, *, indent: str = "") -> str:
-    match = re.search(rf"\n{indent}{re.escape(selector)} \{{([^}}]*)\}}", CSS)
-    assert match, selector
-    return match.group(1)
+    """The selector's last rule at this indent - for an indented one, the <= 767px block
+    (the home's mobile rules come after its tablet ones)."""
+    matches = re.findall(rf"\n{indent}{re.escape(selector)} \{{([^}}]*)\}}", CSS)
+    assert matches, selector
+    return matches[-1]
 
 
 def test_hero_progress_bar_is_not_collapsed() -> None:
@@ -53,3 +55,9 @@ def test_mobile_home_rows_wrap_instead_of_squeezing() -> None:
     assert "flex-wrap: wrap;" in _rule(".wn-home__open", indent="  ")
     assert "flex: 1 1 220px;" in _rule(".wn-home__open-field", indent="  ")
     assert "flex: 1 1 150px;" in _rule(".wn-home-hero__text", indent="  ")
+
+
+def test_hero_title_is_capped_to_its_column_so_long_words_break() -> None:
+    # Found by the five-width check: an unbroken word sized the start-aligned heading
+    # past the column, so overflow-wrap never had a narrower box to break in.
+    assert "max-width: 100%;" in _rule(".wn-home-hero__title", indent="  ")

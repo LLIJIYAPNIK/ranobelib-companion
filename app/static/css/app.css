@@ -6410,7 +6410,10 @@ a.ui-title-card:focus-visible .ui-title-card__cover {
     letter-spacing: 0.06em;
   }
 
+  /* max-width: the column aligns items to the start, so without it an unbroken word
+     sizes the heading past the column and break-word never gets to break it. */
   .wn-home-hero__title {
+    max-width: 100%;
     color: #f6f4fa;
     font: 800 clamp(19px, 5.6vw, 26px) / 1.2 var(--wn-font-ui);
     letter-spacing: -0.01em;
