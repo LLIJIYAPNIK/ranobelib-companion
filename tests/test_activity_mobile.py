@@ -28,3 +28,13 @@ def test_metric_notes_and_event_lines_wrap_instead_of_ellipsizing() -> None:
 def test_period_switch_and_continue_are_44px_targets() -> None:
     assert "min-height: 44px;" in _rule(".wn-segmented__item", indent="  ")
     assert "min-height: 44px;" in _rule(".wn-activity-today .wn-activity-link", indent="  ")
+
+
+def test_thirty_day_chart_fits_the_width_on_phones() -> None:
+    # The prototype fits all 30 bars to the card - no sideways ribbon on this screen
+    # (the reading heatmap ribbon belongs to the profile, PR 284).
+    plot = _rule(".wn-activity-chart__plot", indent="  ")
+    assert "height: 120px;" in plot
+    assert "overflow" not in plot
+    assert "repeat(30, minmax(0, 1fr))" in _rule(".wn-activity-chart__plot")
+    assert "display: none;" in _rule(".wn-activity-chart__legend", indent="  ")

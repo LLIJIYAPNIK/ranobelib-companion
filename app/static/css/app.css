@@ -12024,9 +12024,28 @@ body.reader-hud-visible .reader-hud {
     min-height: 44px;
   }
 
+  /* PR 283: the 30 days fitted to the card's width as in the prototype - no sideways
+     scroll, all 30 bars always visible, today at the right edge. */
+  .wn-activity-chart {
+    gap: 14px;
+  }
+
   .wn-activity-chart__plot {
     gap: 3px;
-    height: 140px;
+    height: 120px;
+  }
+
+  .wn-activity-chart__bar {
+    border-radius: 3px 3px 1px 1px;
+  }
+
+  .wn-activity-chart__legend {
+    display: none;
+  }
+
+  .wn-activity-chart__axis {
+    margin-top: -6px;
+    font-size: 12px;
   }
 
   .wn-activity__downloads {
