@@ -52,8 +52,10 @@ def test_reading_heatmap_is_a_ribbon_aligned_to_the_current_week() -> None:
 def test_heatmap_alignment_is_initial_only_and_keeps_month_context() -> None:
     script = (ROOT / "app/static/js/ribbon.js").read_text(encoding="utf-8")
     assert 'hasAttribute("data-ribbon-current-week")' in script
+    assert 'matchMedia("(max-width: 767px)")' in script
     assert "ribbon.scrollWidth - ribbon.clientWidth" in script
     assert "requestAnimationFrame" in script
+    assert "new WeakSet()" in script
 
     months = _rule(".wn-profile .reading-calendar-months", indent="  ")
     assert "display: grid;" in months

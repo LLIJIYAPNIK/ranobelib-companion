@@ -12,6 +12,8 @@
   const EDGE = 4; // px of slack before an edge counts as "more to scroll"
   const PAD = 24; // breathing room left around the revealed item
   const reducedMotion = window.matchMedia("(prefers-reduced-motion: reduce)");
+  const phoneWidth = window.matchMedia("(max-width: 767px)");
+  const currentWeekAligned = new WeakSet();
 
   function updateFade(ribbon) {
     const start = ribbon.scrollLeft > EDGE;
@@ -34,7 +36,9 @@
 
   function revealCurrentWeek(ribbon) {
     if (!ribbon.hasAttribute("data-ribbon-current-week")) return false;
+    if (!phoneWidth.matches || currentWeekAligned.has(ribbon)) return true;
     ribbon.scrollLeft = Math.max(0, ribbon.scrollWidth - ribbon.clientWidth);
+    currentWeekAligned.add(ribbon);
     return true;
   }
 
@@ -55,7 +59,7 @@
 
   window.addEventListener("resize", () => {
     for (const ribbon of ribbons) {
-      if (!ribbon.hasAttribute("data-ribbon-current-week")) reveal(ribbon, false);
+      if (!revealCurrentWeek(ribbon)) reveal(ribbon, false);
       updateFade(ribbon);
     }
   });
