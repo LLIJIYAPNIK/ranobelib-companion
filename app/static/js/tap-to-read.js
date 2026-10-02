@@ -161,6 +161,19 @@
     return Math.min(stored.revealed, wraps.length);
   }
 
+  // Wave 35 (PR 287): the server's saved position for this chapter (data-saved-paragraph,
+  // possibly written from another device) vs this device's own entry - whichever got
+  // further wins, the same rule reader-progress.js applies between the two modes. A
+  // server win is copied into localStorage, so everything below - and the table of
+  // contents' toc-tap-progress.js - keeps reading the one local entry.
+  function adoptServerProgress() {
+    const serverRevealed = Number(content.dataset.savedParagraph);
+    if (!Number.isInteger(serverRevealed) || serverRevealed < 1) return;
+    const stored = readStoredProgress();
+    if (stored && stored.revealed >= serverRevealed) return;
+    saveProgress(Math.min(serverRevealed, wraps.length));
+  }
+
   function stampTime(wrap) {
     if (paragraphStyle !== "chat") return;
     const time = document.createElement("span");
@@ -537,6 +550,7 @@
   }
 
   content.classList.add("reader-content--tap-to-read", `reader-content--${paragraphStyle}`);
+  adoptServerProgress();
   const initialRevealedCount = loadRevealedCount();
   reveal(initialRevealedCount);
 
