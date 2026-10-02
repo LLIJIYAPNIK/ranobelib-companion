@@ -93,3 +93,8 @@ def test_narrow_grid_cards_keep_their_title_and_cta_inside() -> None:
     assert "inset: -6px;" in _rule(
         ".wn-library-star::before", indent="  "
     )  # 32px chip, 44px target
+
+
+def test_continue_button_is_a_44px_target_on_phones() -> None:
+    # Found by the 320/375/430 check: «Продолжить» was 38px tall in list and grid alike.
+    assert "min-height: 44px;" in _rule(".wn-library-card__cta", indent="  ")

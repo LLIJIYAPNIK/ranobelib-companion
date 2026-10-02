@@ -8485,6 +8485,11 @@ a.ui-title-card:focus-visible .ui-title-card__cover {
     font-size: 16px;
   }
 
+  /* «Продолжить» is a 44px target on phones (PR 282). */
+  .wn-library-card__cta {
+    min-height: 44px;
+  }
+
   /* Stars: the same 32px chip with a 44px hit area around it (PR 282). */
   .wn-library-star {
     position: relative;
