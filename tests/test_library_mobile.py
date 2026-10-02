@@ -41,3 +41,33 @@ def test_search_takes_its_own_row_and_the_add_form_wraps() -> None:
     assert "flex-wrap: wrap;" in _rule(".wn-library__add", indent="  ")
     assert "flex: 1 1 200px;" in _rule(".wn-library__add-field", indent="  ")
     assert "min-width: 128px;" in _rule(".wn-library__add .wn-btn", indent="  ")
+
+
+def test_filters_button_chips_and_sheet_are_in_the_toolbar() -> None:
+    page = (ROOT / "app/templates/library.html").read_text(encoding="utf-8")
+    assert 'data-role="library-filters-open" aria-haspopup="dialog"' in page
+    assert 'data-role="library-filters-count" hidden' in page
+    assert 'data-role="library-filter-chips"' in page
+    assert 'id="library-filters" data-bottom-sheet-title="Фильтры и сортировка" hidden' in page
+    # One radio group per existing select - the selects stay the single source of state.
+    assert 'data-filter-for="library-sort"' in page
+    assert 'data-filter-for="library-progress"' in page
+
+
+def test_sheet_radios_drive_the_selects() -> None:
+    script = (ROOT / "app/static/js/library-toolbar.js").read_text(encoding="utf-8")
+    assert "for (const option of select.options)" in script
+    assert 'select.dispatchEvent(new Event("change"))' in script
+    assert "select.selectedIndex !== 0" in script  # the count: controls off their default
+    assert "`Показать ${visibleTotal}`" in script
+    assert "window.bottomSheet.open(" in script
+
+
+def test_mobile_toolbar_swaps_selects_for_the_filters_button() -> None:
+    assert "display: none;" in _rule(".wn-library-select", indent="  ")
+    assert "display: flex;" in _rule(".wn-library-filters-btn", indent="  ")
+    view_button = _rule(".wn-library-view button", indent="  ")
+    assert "width: 44px;" in view_button
+    assert "height: 44px;" in view_button
+    # Desktop keeps the selects; the mobile controls stay out of its layout.
+    assert "display: none;" in _rule(".wn-library-filters-btn,\n.wn-library-chips")

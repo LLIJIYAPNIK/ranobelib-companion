@@ -5,6 +5,12 @@
 // page is just the full list.
 //
 // Also drops the cover skeleton shimmer (.wn-skeleton) once each cover image has loaded.
+//
+// PR 282 (Webnovells Mobile -> Библиотека): on phones the sort/progress selects give way
+// to «Фильтры» - a count of the controls changed from their first option, the current
+// values as chips, and the shared bottom sheet (bottom-sheet.js) with a radio group per
+// select, built from that select's own options. A radio sets its select and fires
+// "change", so the selects stay the one source of state for both layouts.
 (() => {
   for (const img of document.querySelectorAll(".wn-skeleton img")) {
     const done = () => img.closest(".wn-skeleton")?.classList.add("is-loaded");
@@ -62,6 +68,80 @@
       visibleTotal += visible;
     }
     if (noResults) noResults.hidden = visibleTotal > 0;
+    syncFilters(visibleTotal);
+  }
+
+  const filtersOpen = toolbar.querySelector('[data-role="library-filters-open"]');
+  const filtersCount = toolbar.querySelector('[data-role="library-filters-count"]');
+  const chipRow = toolbar.querySelector('[data-role="library-filter-chips"]');
+  const filtersSheet = document.getElementById("library-filters");
+  const filtersDone = filtersSheet?.querySelector('[data-role="library-filters-done"]');
+  const filtersReset = filtersSheet?.querySelector('[data-role="library-filters-reset"]');
+  const filterControls = [sort, progress];
+  const capitalize = (text) => text.charAt(0).toLocaleUpperCase("ru") + text.slice(1);
+  const chips = new Map();
+
+  function openFilters(opener) {
+    if (!filtersSheet || !window.bottomSheet) return;
+    window.bottomSheet.open({ title: filtersSheet.dataset.bottomSheetTitle, content: filtersSheet, opener });
+  }
+
+  function buildFilters() {
+    if (!filtersSheet) return;
+    for (const group of filtersSheet.querySelectorAll("[data-filter-for]")) {
+      const select = toolbar.querySelector(`[data-role="${group.dataset.filterFor}"]`);
+      for (const option of select.options) {
+        const label = document.createElement("label");
+        label.className = "wn-library-filters__option";
+        const input = document.createElement("input");
+        input.type = "radio";
+        input.name = `sheet-${group.dataset.filterFor}`;
+        input.value = option.value;
+        input.addEventListener("change", () => {
+          select.value = input.value;
+          select.dispatchEvent(new Event("change"));
+        });
+        const text = document.createElement("span");
+        text.textContent = capitalize(option.text);
+        label.append(input, text);
+        group.append(label);
+      }
+    }
+    for (const select of filterControls) {
+      const chip = document.createElement("button");
+      chip.type = "button";
+      chip.className = "wn-library-chip";
+      chip.setAttribute("aria-haspopup", "dialog");
+      chip.addEventListener("click", () => openFilters(chip));
+      chipRow?.append(chip);
+      chips.set(select, chip);
+    }
+    filtersOpen?.addEventListener("click", () => openFilters(filtersOpen));
+    filtersReset?.addEventListener("click", () => {
+      for (const select of filterControls) select.selectedIndex = 0;
+      search.value = "";
+      apply();
+    });
+  }
+
+  function syncFilters(visibleTotal) {
+    const changed = filterControls.filter((select) => select.selectedIndex !== 0).length;
+    if (filtersCount) {
+      filtersCount.hidden = changed === 0;
+      filtersCount.textContent = String(changed);
+    }
+    filtersOpen?.setAttribute("aria-label", changed ? `Фильтры, изменено: ${changed}` : "Фильтры");
+    for (const select of filterControls) {
+      const chip = chips.get(select);
+      if (chip) {
+        const value = document.createElement("b");
+        value.textContent = select.options[select.selectedIndex].text;
+        chip.replaceChildren(`${select.getAttribute("aria-label")}: `, value);
+      }
+      const radio = filtersSheet?.querySelector(`input[name="sheet-${select.dataset.role}"][value="${select.value}"]`);
+      if (radio) radio.checked = true;
+    }
+    if (filtersDone) filtersDone.textContent = visibleTotal ? `Показать ${visibleTotal}` : "Готово";
   }
 
   function setView(view) {
@@ -71,6 +151,8 @@
     }
   }
 
+  buildFilters();
+  syncFilters(titles.querySelectorAll('[data-role="library-item"]').length);
   search.addEventListener("input", apply);
   sort.addEventListener("change", apply);
   progress.addEventListener("change", apply);
