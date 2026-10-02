@@ -168,3 +168,15 @@ def test_history_delete_is_undoable_instead_of_confirmed() -> None:
     assert '"pagehide"' in script
     assert "keepalive" in script
     assert "fetch(`/downloads/history/${p.entryId}`" in script
+
+
+def test_clear_history_confirms_in_the_shared_sheet_on_mobile() -> None:
+    assert 'id="clear-history-confirm" data-bottom-sheet-title="Очистить историю?" hidden' in (
+        TEMPLATE
+    )
+    assert "data-bottom-sheet-close data-autofocus>Отмена</button>" in TEMPLATE
+    assert 'data-role="clear-download-history-confirm">Очистить</button>' in TEMPLATE
+    script = (ROOT / "app/static/js/downloads-history-tools.js").read_text(encoding="utf-8")
+    assert "window.bottomSheet.open(" in script
+    # Desktop keeps the native confirmation.
+    assert 'window.confirm("Очистить всю историю загрузок?")' in script

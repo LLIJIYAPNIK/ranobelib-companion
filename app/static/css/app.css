@@ -14619,6 +14619,9 @@ body.reader-hud-visible .reader-hud {
 }
 
 .wn-downloads__clear {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
   border: 0;
   background: transparent;
   color: var(--wn-danger);
@@ -15162,6 +15165,17 @@ body.reader-hud-visible .reader-hud {
     height: 18px;
   }
 
+  /* «Очистить историю» stays quiet on mobile until pressed - a 44px target. */
+  .wn-downloads__clear {
+    min-height: 44px;
+    margin-right: -12px;
+    padding: 0 12px;
+    border-radius: 10px;
+    color: #cfcbdd;
+    font: 600 14px/1.2 var(--wn-font-ui);
+    white-space: nowrap;
+  }
+
   .wn-downloads-history__group > h3 {
     padding: 4px 2px 0;
     color: var(--wn-text-secondary);
@@ -15278,6 +15292,47 @@ body.reader-hud-visible .reader-hud {
 }
 
 .wn-toast__action:focus-visible {
+  outline: none;
+  box-shadow: var(--wn-focus-ring);
+}
+
+/* A confirmation in the shared bottom sheet (PR 281: «Очистить историю?»): a line of
+   text, then «Отмена» and the destructive action, wrapping under each other when narrow. */
+.wn-sheet-confirm__text {
+  margin: 8px 0 20px;
+  color: #cfcbdd;
+  font: 500 15px/1.55 var(--wn-font-ui);
+  text-wrap: pretty;
+}
+
+.wn-sheet-confirm__actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.wn-sheet-confirm__cancel,
+.wn-sheet-confirm__danger {
+  flex: 1 1 120px;
+  min-height: 48px;
+  border-radius: var(--wn-radius-md);
+  font: 700 15px/1.2 var(--wn-font-ui);
+  cursor: pointer;
+}
+
+.wn-sheet-confirm__cancel {
+  border: 1px solid var(--wn-border-strong);
+  background: transparent;
+  color: var(--wn-text);
+}
+
+.wn-sheet-confirm__danger {
+  border: 0;
+  background: #c9465a;
+  color: #fff;
+}
+
+:is(.wn-sheet-confirm__cancel, .wn-sheet-confirm__danger):focus-visible {
   outline: none;
   box-shadow: var(--wn-focus-ring);
 }

@@ -41,8 +41,19 @@
   <section class="downloads-section wn-downloads__section" data-role="downloads-history-section">
     <div class="wn-downloads__section-head wn-downloads__history-head">
       <div><h2 class="downloads-section__title">История</h2>{% if history %}<span data-role="history-count">{{ history | length }}</span>{% endif %}</div>
-      {% if history %}<button class="wn-downloads__clear" type="button" data-role="clear-download-history">Очистить историю</button>{% endif %}
+      {% if history %}<button class="wn-downloads__clear" type="button" data-role="clear-download-history" aria-haspopup="dialog"><svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" aria-hidden="true"><path d="M3 6h18M8 6V4h8v2M6 6l1 15h10l1-15"/></svg>Очистить историю</button>{% endif %}
     </div>
+    {% if history %}
+    {# PR 281: «Очистить историю?» on mobile - the content the shared bottom sheet
+       (bottom-sheet.js) takes in; desktop asks with confirm(). #}
+    <div class="wn-sheet-confirm" id="clear-history-confirm" data-bottom-sheet-title="Очистить историю?" hidden>
+      <p class="wn-sheet-confirm__text">Записи о загрузках исчезнут из списка. Сами файлы на устройстве останутся.</p>
+      <div class="wn-sheet-confirm__actions">
+        <button class="wn-sheet-confirm__cancel" type="button" data-bottom-sheet-close data-autofocus>Отмена</button>
+        <button class="wn-sheet-confirm__danger" type="button" data-role="clear-download-history-confirm">Очистить</button>
+      </div>
+    </div>
+    {% endif %}
 
     {% if history %}
     <div class="wn-downloads__tools">

@@ -37,8 +37,13 @@
     });
   }
 
-  clear?.addEventListener("click", async () => {
-    if (!window.confirm("Очистить всю историю загрузок?")) return;
+  // PR 281: on mobile «Очистить историю?» is a bottom sheet (Webnovells Mobile ->
+  // Загрузки, the shared one from bottom-sheet.js); desktop keeps confirm().
+  const mobile = window.matchMedia("(max-width: 767px)");
+  const sheet = document.getElementById("clear-history-confirm");
+  const confirmInSheet = document.querySelector('[data-role="clear-download-history-confirm"]');
+
+  async function clearHistory() {
     clear.disabled = true;
     try {
       const response = await fetch("/downloads/history", { method: "DELETE" });
@@ -57,5 +62,18 @@
     } catch {
       clear.disabled = false;
     }
+  }
+
+  clear?.addEventListener("click", () => {
+    if (mobile.matches && sheet && window.bottomSheet) {
+      window.bottomSheet.open({ title: sheet.dataset.bottomSheetTitle, content: sheet, opener: clear });
+      return;
+    }
+    if (window.confirm("Очистить всю историю загрузок?")) clearHistory();
+  });
+
+  confirmInSheet?.addEventListener("click", () => {
+    window.bottomSheet.close();
+    clearHistory();
   });
 })();
