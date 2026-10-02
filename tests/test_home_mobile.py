@@ -23,9 +23,7 @@ def test_hero_progress_bar_is_not_collapsed() -> None:
 
 
 def test_today_stats_carry_the_tile_and_the_row_wording() -> None:
-    template = (Path(__file__).parents[1] / "app/templates/index.html").read_text(
-        encoding="utf-8"
-    )
+    template = (Path(__file__).parents[1] / "app/templates/index.html").read_text(encoding="utf-8")
 
     for tile, row in (
         ("глав<br>прочитано", "Глав прочитано"),
