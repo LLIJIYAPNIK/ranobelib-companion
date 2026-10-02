@@ -687,7 +687,8 @@ body:has(.sidebar--expanded) {
   display: contents;
 }
 
-.sidebar__strip-brand {
+.sidebar__strip-brand,
+.sidebar__strip-title {
   display: none;
 }
 
@@ -1273,12 +1274,15 @@ html.shell-scroll-lock body {
   box-shadow: inset 0 0 0 2px var(--focus);
 }
 
-/* Mobile: Quiet Edge Bar (bottom) + top strip. */
+/* Mobile: bottom navigation + top header. PR 279 restyled both to "Webnovells Mobile"
+   (Mobile handoff.md -> Общие правила): a 60px header + safe-area-top, a 64px bar +
+   safe-area-bottom, and main padded by 104px + safe-area so the last row clears the bar. */
 @media (max-width: 767px) {
   :root,
   body:has(.sidebar--expanded) {
     --sidebar-width: 0px;
-    --shell-bottom: calc(60px + env(safe-area-inset-bottom, 0px));
+    --mobile-account-height: 60px;
+    --shell-bottom: calc(64px + env(safe-area-inset-bottom, 0px));
   }
 
   /* PR 46's per-section fade-in, now on the shared motion tokens. */
@@ -1292,7 +1296,7 @@ html.shell-scroll-lock body {
   .main {
     margin-left: 0;
     padding-top: calc(var(--mobile-account-height) + env(safe-area-inset-top, 0px));
-    padding-bottom: calc(var(--shell-bottom) + 16px);
+    padding-bottom: calc(var(--shell-bottom) + 40px);
     animation: shell-section-in 150ms var(--ease);
   }
 
@@ -1312,9 +1316,10 @@ html.shell-scroll-lock body {
     /* The rail's justify-items: center would also center (and shrink) block children -
        Chrome applies justify-items in block layout too. */
     justify-items: normal;
-    padding: 0 16px env(safe-area-inset-bottom, 0px);
+    padding: 0 0 env(safe-area-inset-bottom, 0px);
     border-right: 0;
-    border-top: 1px solid var(--divider);
+    border-top: 1px solid #1e1c29;
+    background: rgba(14, 14, 21, 0.97);
     overflow: visible;
     transition: none;
   }
@@ -1328,25 +1333,30 @@ html.shell-scroll-lock body {
   .sidebar__nav {
     flex-direction: row;
     gap: 0;
-    height: 60px;
+    max-width: 640px;
+    height: 64px;
+    margin: 0 auto;
   }
 
   .sidebar__link {
-    flex: 1;
+    flex: 1 1 0;
+    min-width: 0;
     gap: 4px;
     width: auto;
-    height: 60px;
+    height: 64px;
+    padding: 6px 2px;
     border-radius: 0;
     background: none;
-    color: #a7a3b8;
-    font: 600 12px/14px var(--font-ui);
+    color: var(--wn-text-secondary);
+    font: 700 13px/1.1 var(--wn-font-ui);
+    white-space: nowrap;
   }
 
   /* Pressed / focus zone: 84x48, radius 12, centered on the item. */
   .sidebar__link::after {
     content: "";
     position: absolute;
-    top: 6px;
+    top: 8px;
     left: 50%;
     width: 84px;
     max-width: 100%;
@@ -1370,21 +1380,24 @@ html.shell-scroll-lock body {
 
   .sidebar__link--active {
     background: none;
-    color: var(--text-1);
-    font-weight: 700;
+    color: #f2f0f7;
   }
 
-  /* Active indicator: 28x2 on the bar's top edge. */
+  .sidebar__link--active .sidebar__icon {
+    color: var(--wn-teal);
+  }
+
+  /* Active indicator: 40x3 teal on the bar's top edge. */
   .sidebar__link--active::before {
     content: "";
     position: absolute;
-    top: -1px;
+    top: 0;
     left: 50%;
-    width: 28px;
-    height: 2px;
-    margin-left: -14px;
-    border-radius: 0 0 2px 2px;
-    background: var(--accent);
+    width: 40px;
+    height: 3px;
+    margin-left: -20px;
+    border-radius: 0 0 3px 3px;
+    background: var(--wn-teal);
   }
 
   .sidebar__link .sidebar__badge {
@@ -1407,7 +1420,10 @@ html.shell-scroll-lock body {
     display: block;
   }
 
-  /* Top strip: transparent until the page scrolls 8px (mobile-account-strip.js). */
+  /* Header: logo · section title · bell · avatar, opaque with a blur from the first
+     pixel. Fixed rather than sticky (it lives inside the fixed bottom <nav>), with .main
+     padded by the same height - the same on-screen result. The row is centered to the
+     640px content column. */
   .sidebar__account {
     position: fixed;
     top: 0;
@@ -1415,55 +1431,86 @@ html.shell-scroll-lock body {
     right: 0;
     z-index: 50;
     flex-direction: row;
-    gap: 2px;
+    align-items: center;
+    gap: 4px;
     width: auto;
     height: calc(var(--mobile-account-height) + env(safe-area-inset-top, 0px));
-    padding: env(safe-area-inset-top, 0px) 8px 0;
+    padding: env(safe-area-inset-top, 0px) max(8px, calc((100% - 640px) / 2 + 8px)) 0
+      max(12px, calc((100% - 640px) / 2 + 12px));
     border-top: 0;
-    background: transparent;
-    transition: background-color var(--dur-base) var(--ease);
-  }
-
-  .sidebar__account--scrolled {
-    background: rgba(11, 11, 20, 0.96);
+    border-bottom: 1px solid #1c1b26;
+    background: rgba(12, 12, 18, 0.94);
+    -webkit-backdrop-filter: blur(12px);
+    backdrop-filter: blur(12px);
   }
 
   .sidebar__strip-brand {
     display: flex;
-    align-items: center;
+    align-items: flex-end;
+    justify-content: center;
+    gap: 3px;
+    min-width: 44px;
     height: 44px;
-    margin-right: auto;
-    padding: 0 12px;
-    border-radius: var(--r-md);
-    color: var(--text-1);
-    font: 800 22px/1 var(--font-ui);
-    letter-spacing: -0.04em;
+    padding: 0 4px 9px;
+    border-radius: var(--wn-radius-md);
+    color: #f2f0f7;
+    font: 800 28px/1 var(--wn-font-ui);
     text-decoration: none;
   }
 
   .sidebar__strip-brand .sidebar__brand-dot {
-    margin-top: 10px;
+    width: 7px;
+    height: 7px;
+    margin: 0 0 2px;
+    background: var(--wn-teal);
+  }
+
+  .sidebar__strip-title {
+    display: block;
+    flex: 1;
+    min-width: 0;
+    padding-left: 6px;
+    overflow: hidden;
+    color: #cfcbdd;
+    font: 700 16px/1.2 var(--wn-font-ui);
+    text-overflow: ellipsis;
+    white-space: nowrap;
   }
 
   .sidebar__bell {
-    color: var(--text-1);
+    width: 44px;
+    height: 44px;
+    border-radius: var(--wn-radius-md);
+    color: #cfcbdd;
   }
 
-  /* Unread = an 8px coral dot, no number, on the strip. */
+  /* Unread = an 8px teal dot, no number, ringed in the header's background. */
   .sidebar__bell .sidebar__badge {
     top: -1px;
-    right: -1px;
-    width: 12px;
+    right: 0;
+    width: 8px;
     min-width: 0;
-    height: 12px;
+    height: 8px;
     padding: 0;
-    border-color: var(--bg-page);
+    border: 0;
+    background: var(--wn-teal);
+    box-shadow: 0 0 0 2px var(--wn-canvas);
     font-size: 0;
   }
 
+  /* Avatar: a 44px hit area, 2px ring - teal on the user's own profile. */
+  .sidebar__account-trigger {
+    padding: 2px;
+    border: 2px solid #2a2838;
+  }
+
+  .sidebar__account-trigger--current {
+    border-color: var(--wn-teal);
+  }
+
   .sidebar__avatar {
-    width: 32px;
-    height: 32px;
+    width: 100%;
+    height: 100%;
     border: 0;
   }
 
@@ -9161,9 +9208,9 @@ a.ui-title-card:focus-visible .ui-title-card__cover {
   .sidebar__strip-back {
     display: grid;
     place-items: center;
+    flex: none;
     width: 44px;
     height: 44px;
-    margin-right: auto;
     border-radius: var(--r-lg);
     color: var(--text-1);
   }

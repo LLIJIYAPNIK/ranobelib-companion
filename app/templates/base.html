@@ -68,6 +68,10 @@
         {% else %}
         <a class="sidebar__strip-brand" href="/" aria-label="Webnovells — на главную"><span aria-hidden="true">W</span><span class="sidebar__brand-dot" aria-hidden="true"></span></a>
         {% endif %}
+        {# PR 279 (Webnovells Mobile): the section name next to the logo in the mobile
+           header - empty on Главная, as in the prototype. A page outside this map
+           overrides the block. #}
+        <span class="sidebar__strip-title">{% block mobile_title %}{{ {'library': 'Библиотека', 'downloads': 'Загрузки', 'activity': 'Активность', 'friends': 'Друзья', 'settings': 'Настройки', 'notifications': 'Уведомления'}.get(active_nav, '') }}{% endblock %}</span>
         <div class="sidebar__account-actions" data-role="sidebar-account-actions">
           {% if current_user and current_user.notifications_enabled and not current_user.do_not_disturb %}
           <button
@@ -99,7 +103,7 @@
         {% set account_name = current_user.nickname or current_user.email %}
         <div class="profile-menu" data-role="profile-menu">
           <button
-            class="sidebar__account-trigger"
+            class="sidebar__account-trigger{% if is_own_profile %} sidebar__account-trigger--current{% endif %}"
             type="button"
             data-role="profile-menu-trigger"
             aria-haspopup="true"
@@ -157,9 +161,9 @@
   {% include "_cookie_notice.html" %}
   <script src="{{ url_for('static', path='js/sidebar-toggle.js') }}" defer></script>
   <script src="{{ url_for('static', path='js/cookie-notice.js') }}" defer></script>
-  <!-- PR 249: the mobile top strip's scroll-driven background. The bell is rendered
-       inside .sidebar__account-actions to begin with now, so nothing is reparented any
-       more and notifications-panel.js no longer depends on running after this. -->
+  <!-- PR 253: the mobile header's back button (strip_back_href). The bell is rendered
+       inside .sidebar__account-actions to begin with now (PR 249), so nothing is
+       reparented any more and notifications-panel.js doesn't depend on running after this. -->
   <script src="{{ url_for('static', path='js/mobile-account-strip.js') }}" defer></script>
   <!-- PR 217: queries the Quiet Edge Bar's links fresh on every swipe, long after page
        load, not once up front. -->
