@@ -1039,8 +1039,8 @@ body:has(.sidebar--expanded) {
 }
 
 /* Account hub: a popover beside the rail on desktop (profile-menu.js positions it, see
-   PR 97 for why it's portaled to <body>), a bottom sheet over a scrim on mobile
-   (--sheet, added by the same script). */
+   PR 97 for why it's portaled to <body>), the content of the shared bottom sheet on
+   mobile (--in-sheet, PR 279 - see .bottom-sheet below). */
 .profile-menu__panel {
   display: none;
   flex-direction: column;
@@ -1057,10 +1057,6 @@ body:has(.sidebar--expanded) {
 .profile-menu__panel--open {
   display: flex;
   animation: shell-pop-in var(--dur-base) var(--ease);
-}
-
-.profile-menu__grabber {
-  display: none;
 }
 
 .profile-menu__head {
@@ -1170,20 +1166,6 @@ body:has(.sidebar--expanded) {
   box-shadow: inset 0 0 0 2px var(--focus);
 }
 
-/* Scrim under a mobile sheet (profile-menu.js creates it). */
-.shell-scrim {
-  position: fixed;
-  inset: 0;
-  z-index: 79;
-  background: var(--scrim);
-  animation: ui-fade-in 160ms var(--ease);
-}
-
-html.shell-scroll-lock,
-html.shell-scroll-lock body {
-  overflow: hidden;
-}
-
 @keyframes shell-pop-in {
   from {
     opacity: 0;
@@ -1191,10 +1173,208 @@ html.shell-scroll-lock body {
   }
 }
 
-@keyframes shell-sheet-in {
-  from {
-    transform: translateY(calc(100% * var(--motion-shift)));
+/* The one bottom sheet (PR 279, Webnovells Mobile -> Mobile handoff.md). bottom-sheet.js
+   drives the transform/opacity transitions and the max-height (visual viewport - 24px -
+   safe-area-top); the content element it's handed brings its own styles. */
+.bottom-sheet {
+  position: fixed;
+  inset: 0;
+  z-index: 90;
+}
+
+.bottom-sheet[hidden] {
+  display: none;
+}
+
+.bottom-sheet__backdrop {
+  position: absolute;
+  inset: 0;
+  background: rgba(4, 4, 8, 0.68);
+}
+
+.bottom-sheet__panel {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  display: flex;
+  flex-direction: column;
+  max-width: 640px;
+  margin: 0 auto;
+  border: 1px solid #2a2838;
+  border-bottom: 0;
+  border-radius: var(--wn-radius-xl) var(--wn-radius-xl) 0 0;
+  background: #16161f;
+  box-shadow: 0 -24px 60px rgba(0, 0, 0, 0.5);
+  color: var(--wn-text);
+  font-family: var(--wn-font-ui);
+  outline: none;
+  will-change: transform;
+}
+
+/* The drag handle: grabber + title row. touch-action: none so a pointer drag here is
+   never taken for a page scroll. */
+.bottom-sheet__head {
+  flex: none;
+  padding: 6px 8px 4px 20px;
+  border-bottom: 1px solid #22202d;
+  cursor: grab;
+  touch-action: none;
+  -webkit-user-select: none;
+  user-select: none;
+}
+
+/* Centered on the panel, not on the head's asymmetric padding box. */
+.bottom-sheet__grabber {
+  position: relative;
+  left: -6px;
+  display: block;
+  width: 40px;
+  height: 5px;
+  margin: 4px auto 6px;
+  border-radius: 3px;
+  background: #55506e;
+}
+
+.bottom-sheet__bar {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 48px;
+}
+
+.bottom-sheet__title {
+  flex: 1;
+  min-width: 0;
+  margin: 0;
+  color: #f2f0f7;
+  font: 800 18px/1.25 var(--wn-font-ui);
+  overflow-wrap: break-word;
+}
+
+.bottom-sheet__close {
+  display: grid;
+  flex: none;
+  place-items: center;
+  width: 44px;
+  height: 44px;
+  padding: 0;
+  border: 0;
+  border-radius: var(--wn-radius-md);
+  background: #1f1e2a;
+  color: #cfcbdd;
+  cursor: pointer;
+}
+
+@media (hover: hover) {
+  .bottom-sheet__close:hover {
+    background: #2a2838;
   }
+}
+
+.bottom-sheet__close:focus-visible {
+  outline: none;
+  box-shadow: var(--wn-focus-ring);
+}
+
+.bottom-sheet__body {
+  position: relative;
+  flex: 1 1 auto;
+  min-height: 0;
+  padding: 8px 20px calc(20px + env(safe-area-inset-bottom, 0px));
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  -webkit-overflow-scrolling: touch;
+}
+
+/* Background lock while the sheet is open; bottom-sheet.js sets body's top to the saved
+   scroll offset (iOS Safari keeps scrolling an overflow:hidden page otherwise). */
+html.bottom-sheet-lock {
+  overflow: hidden;
+}
+
+html.bottom-sheet-lock body {
+  position: fixed;
+  left: 0;
+  right: 0;
+  width: 100%;
+  overflow: hidden;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .bottom-sheet__panel,
+  .bottom-sheet__backdrop {
+    transition: none !important;
+  }
+}
+
+/* Account hub inside the sheet («Меню», profile-menu.js): the prototype's rows - a 72px
+   profile head, 52px items, Выйти in red. */
+.profile-menu__panel--in-sheet {
+  display: flex;
+  width: auto;
+  padding: 0;
+  border: 0;
+  border-radius: 0;
+  background: none;
+  box-shadow: none;
+  animation: none;
+}
+
+.profile-menu__panel--in-sheet .profile-menu__head {
+  gap: 14px;
+  min-height: 72px;
+  padding: 8px 0;
+  border-radius: 0;
+  background: transparent;
+}
+
+.profile-menu__panel--in-sheet .profile-menu__avatar {
+  width: 52px;
+  height: 52px;
+  font-size: 15px;
+}
+
+.profile-menu__panel--in-sheet .profile-menu__name {
+  color: #f2f0f7;
+  font: 800 17px/1.2 var(--wn-font-ui);
+  overflow-wrap: anywhere;
+  white-space: normal;
+}
+
+.profile-menu__panel--in-sheet .profile-menu__profile-link {
+  color: #c9bcff;
+  font: 600 14px/1.2 var(--wn-font-ui);
+}
+
+.profile-menu__panel--in-sheet .profile-menu__head-chevron {
+  display: block;
+  color: var(--wn-text-muted);
+}
+
+.profile-menu__panel--in-sheet .profile-menu__sep {
+  margin: 4px 0;
+  background: var(--wn-border);
+}
+
+.profile-menu__panel--in-sheet .profile-menu__item {
+  gap: 16px;
+  min-height: 52px;
+  padding: 0;
+  border-radius: 0;
+  color: var(--wn-text);
+  font: 600 16px/1.2 var(--wn-font-ui);
+}
+
+.profile-menu__panel--in-sheet .profile-menu__item svg {
+  width: 22px;
+  height: 22px;
+  color: var(--wn-text-secondary);
+}
+
+.profile-menu__panel--in-sheet .profile-menu__item--danger,
+.profile-menu__panel--in-sheet .profile-menu__item--danger svg {
+  color: #f2879a;
 }
 
 /* Notifications popover - header, list of Notification cards (PR 259, below), footer
@@ -1526,78 +1706,6 @@ html.shell-scroll-lock body {
 
   .sidebar__guest svg {
     display: none;
-  }
-
-  /* Account hub as a bottom sheet. */
-  .profile-menu__panel--sheet {
-    left: 0;
-    right: 0;
-    bottom: 0;
-    top: auto;
-    width: auto;
-    padding: 8px 0 calc(12px + env(safe-area-inset-bottom, 0px));
-    border-width: 1px 0 0;
-    border-radius: var(--r-2xl) var(--r-2xl) 0 0;
-    box-shadow: var(--shadow-sheet);
-    animation: shell-sheet-in var(--dur-sheet) var(--ease);
-  }
-
-  .profile-menu__panel--sheet .profile-menu__grabber {
-    display: block;
-    width: 36px;
-    height: 4px;
-    margin: 0 auto 6px;
-    border-radius: 2px;
-    background: var(--disabled);
-  }
-
-  .profile-menu__panel--sheet .profile-menu__head {
-    gap: 14px;
-    padding: 10px 12px 14px 20px;
-    border-radius: 0;
-    background: transparent;
-  }
-
-  .profile-menu__panel--sheet .profile-menu__avatar {
-    width: 52px;
-    height: 52px;
-    font-size: 15px;
-  }
-
-  .profile-menu__panel--sheet .profile-menu__name {
-    font: 800 17px/1.1 var(--font-ui);
-  }
-
-  .profile-menu__panel--sheet .profile-menu__profile-link {
-    font-size: 13px;
-  }
-
-  .profile-menu__panel--sheet .profile-menu__head-chevron {
-    display: block;
-  }
-
-  .profile-menu__panel--sheet .profile-menu__sep {
-    margin: 6px 20px;
-  }
-
-  .profile-menu__panel--sheet .profile-menu__item {
-    gap: 16px;
-    min-height: 52px;
-    padding: 0 20px;
-    border-radius: 0;
-    color: var(--text-1);
-    font-size: 16px;
-  }
-
-  .profile-menu__panel--sheet .profile-menu__item svg {
-    width: 22px;
-    height: 22px;
-    color: var(--text-2);
-  }
-
-  .profile-menu__panel--sheet .profile-menu__item--danger,
-  .profile-menu__panel--sheet .profile-menu__item--danger svg {
-    color: var(--danger-text);
   }
 
   /* The reader is immersive on mobile - no bar, no strip. */

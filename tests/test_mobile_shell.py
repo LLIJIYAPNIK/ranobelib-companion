@@ -71,3 +71,58 @@ def test_mobile_header_marks_the_avatar_on_the_users_own_profile_only(
 
     assert "sidebar__account-trigger--current" in own.text
     assert "sidebar__account-trigger--current" not in home.text
+
+
+def test_base_renders_one_empty_bottom_sheet_outside_the_app_shell() -> None:
+    # bottom-sheet.js makes .app-shell inert while the sheet is open, so the sheet itself
+    # has to live outside it.
+    response = client.get("/")
+
+    html = response.text
+    assert html.count('data-role="bottom-sheet"') == 1
+    sheet = html.index('data-role="bottom-sheet"')
+    assert sheet > html.index('data-role="sidebar"')
+    assert '<div class="main">' in html[: sheet]
+    assert 'role="dialog" aria-modal="true" aria-labelledby="bottom-sheet-title"' in html
+    assert 'data-role="bottom-sheet-close" aria-label="Закрыть"' in html
+    assert re.search(r'data-role="bottom-sheet-body"></div>', html)
+
+
+def test_bottom_sheet_script_loads_for_guests_and_before_the_profile_menu(
+    logged_in_client: TestClient,
+) -> None:
+    guest = client.get("/")
+    user = logged_in_client.get("/")
+
+    assert "static/js/bottom-sheet.js" in guest.text
+    assert user.text.index("static/js/bottom-sheet.js") < user.text.index(
+        "static/js/profile-menu.js"
+    )
+
+
+def test_profile_menu_brings_no_grabber_of_its_own(logged_in_client: TestClient) -> None:
+    # PR 279: the shared sheet draws the grabber; the hub panel is only its content.
+    response = logged_in_client.get("/")
+
+    assert "profile-menu__grabber" not in response.text
+
+
+def test_bottom_sheet_script_follows_the_handoff_thresholds() -> None:
+    # Mobile handoff.md -> Bottom sheet: the numbers are spec, not taste.
+    script = (Path(__file__).parents[1] / "app/static/js/bottom-sheet.js").read_text(
+        encoding="utf-8"
+    )
+
+    for constant in (
+        "CLOSE_DISTANCE = 160",
+        "CLOSE_SHARE = 0.33",
+        "CLOSE_SPEED = 0.55",
+        "SPEED_WINDOW = 100",
+        "SPEED_PAUSE = 80",
+        "BODY_SLOP = 6",
+        "CLOSE_MS = 220",
+    ):
+        assert constant in script
+    assert "{ passive: false }" in script
+    assert "setPointerCapture" in script
+    assert "prefers-reduced-motion: reduce" in script

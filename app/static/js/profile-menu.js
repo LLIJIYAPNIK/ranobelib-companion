@@ -8,10 +8,9 @@
 // markup (and the no-JS fallback) still see it nested where it started.
 //
 // PR 249: on desktop the hub opens beside the rail, bottom-aligned with the avatar
-// ("02 Components" -> Account hub popover); on mobile (<= 767px, the Quiet Edge Bar
-// layout) it's a bottom sheet over a scrim with the page scroll locked ("05
-// Спецификация" -> Sheets, popovers, dialogs) - CSS does the sheet layout from the
-// --sheet class, so no inline coordinates are set in that case.
+// ("02 Components" -> Account hub popover). On mobile (<= 767px) it's the «Меню» bottom
+// sheet - since PR 279 the shared one (bottom-sheet.js), which takes the panel in and
+// hands it back on close and owns the scrim, scroll lock, drag, Escape and focus there.
 (() => {
   const GAP = 8;
   const mobileQuery = window.matchMedia("(max-width: 767px)");
@@ -24,7 +23,7 @@
   const sidebar = document.querySelector('[data-role="sidebar"]');
   const homeParent = wrapper;
   const homeNextSibling = panel.nextSibling;
-  let scrim = null;
+  let inSheet = false;
 
   function isOpen() {
     return wrapper.classList.contains("profile-menu--open");
@@ -40,45 +39,52 @@
     panel.style.top = "auto";
   }
 
-  function openScrim() {
-    scrim = document.createElement("div");
-    scrim.className = "shell-scrim";
-    scrim.addEventListener("click", () => close(true));
-    document.body.appendChild(scrim);
-    document.documentElement.classList.add("shell-scroll-lock");
+  function markOpen(open) {
+    wrapper.classList.toggle("profile-menu--open", open);
+    // The open state lives on the panel itself - once portaled it's a sibling of
+    // .profile-menu, so a descendant selector would never match.
+    panel.classList.toggle("profile-menu__panel--open", open);
+    trigger.setAttribute("aria-expanded", String(open));
   }
 
-  function closeScrim() {
-    if (!scrim) return;
-    scrim.remove();
-    scrim = null;
-    document.documentElement.classList.remove("shell-scroll-lock");
+  function openSheet() {
+    inSheet = true;
+    panel.classList.add("profile-menu__panel--in-sheet");
+    panel.querySelector(".profile-menu__head")?.setAttribute("data-autofocus", "");
+    markOpen(true);
+    window.bottomSheet.open({
+      title: "Меню",
+      content: panel,
+      opener: trigger,
+      onClose: () => {
+        inSheet = false;
+        panel.classList.remove("profile-menu__panel--in-sheet");
+        markOpen(false);
+      },
+    });
   }
 
   function open() {
-    const asSheet = mobileQuery.matches;
-    if (asSheet) openScrim();
+    if (mobileQuery.matches && window.bottomSheet) {
+      openSheet();
+      return;
+    }
     document.body.appendChild(panel);
     panel.style.position = "fixed";
-    panel.classList.toggle("profile-menu__panel--sheet", asSheet);
-    wrapper.classList.add("profile-menu--open");
-    // The open state lives on the panel itself - once portaled it's a sibling of
-    // .profile-menu, so a descendant selector would never match.
-    panel.classList.add("profile-menu__panel--open");
-    if (!asSheet) positionPopover();
-    trigger.setAttribute("aria-expanded", "true");
-    if (asSheet) panel.querySelector("a, button")?.focus();
+    markOpen(true);
+    positionPopover();
     window.addEventListener("resize", closeOnLayoutChange);
-    if (!asSheet) window.addEventListener("scroll", closeOnLayoutChange, true);
+    window.addEventListener("scroll", closeOnLayoutChange, true);
   }
 
   function close(refocusTrigger = false) {
-    wrapper.classList.remove("profile-menu--open");
-    panel.classList.remove("profile-menu__panel--open", "profile-menu__panel--sheet");
-    trigger.setAttribute("aria-expanded", "false");
+    if (inSheet) {
+      window.bottomSheet.close();
+      return;
+    }
+    markOpen(false);
     window.removeEventListener("resize", closeOnLayoutChange);
     window.removeEventListener("scroll", closeOnLayoutChange, true);
-    closeScrim();
     homeParent.insertBefore(panel, homeNextSibling);
     panel.style.position = "";
     panel.style.top = "";
@@ -93,13 +99,15 @@
 
   trigger.addEventListener("click", () => (isOpen() ? close() : open()));
 
+  // The sheet closes itself (backdrop, «Закрыть», drag, Escape) - a click on its head
+  // must not count as a click outside.
   document.addEventListener("click", (event) => {
-    if (isOpen() && !wrapper.contains(event.target) && !panel.contains(event.target)) {
+    if (isOpen() && !inSheet && !wrapper.contains(event.target) && !panel.contains(event.target)) {
       close();
     }
   });
 
   document.addEventListener("keydown", (event) => {
-    if (event.key === "Escape" && isOpen()) close(true);
+    if (event.key === "Escape" && isOpen() && !inSheet) close(true);
   });
 })();
