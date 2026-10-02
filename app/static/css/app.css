@@ -14084,17 +14084,29 @@ body.reader-hud-visible .reader-hud {
   }
 
   .wn-profile__row {
+    grid-template-columns: minmax(0, 1fr);
     gap: 12px;
   }
 
+  .wn-profile-current,
   .wn-profile-friends,
   .wn-profile-favorite {
-    grid-column: 1 / -1;
+    grid-column: 1;
   }
 
   .wn-profile-current__cover {
     width: 80px;
     height: 120px;
+  }
+
+  .wn-profile-current__name,
+  .wn-profile-favorite__name,
+  .wn-profile-friend__name,
+  .wn-profile-friend__sub {
+    overflow: visible;
+    text-overflow: clip;
+    white-space: normal;
+    overflow-wrap: break-word;
   }
 
   .wn-profile-library__grid {
