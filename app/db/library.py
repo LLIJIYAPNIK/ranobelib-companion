@@ -1,5 +1,6 @@
 """Access to the ``library_entries`` table (see migrations/0002_library_entries.sql,
-0008_library_entries_favorite.sql for ``is_favorite``).
+0008_library_entries_favorite.sql for ``is_favorite``, 0024_library_entries_read_paragraph.sql
+for the paragraph-level reading position).
 
 Deliberately stores only ``slug_url`` and reading progress - not the title's name/cover.
 Those are SDK response data, already cached in the SDK's own ``cache_dir``; duplicating
@@ -28,6 +29,11 @@ class LibraryEntry:
     last_read_at: str | None
     is_favorite: bool
     default_translation_index: int | None
+    # Paragraph-level position inside the last_read_* chapter (wave 35): the last revealed
+    # paragraph and the chapter's paragraph count when it was saved - the total travels
+    # with it because an edit on ranobelib.me can change the count since.
+    last_read_paragraph: int | None
+    last_read_paragraph_total: int | None
 
 
 async def add_entry(conn: AsyncConnection, user_id: int, slug_url: str) -> LibraryEntry:
@@ -174,4 +180,6 @@ def _row_to_entry(row: dict[str, Any]) -> LibraryEntry:
         last_read_at=row["last_read_at"],
         is_favorite=bool(row["is_favorite"]),
         default_translation_index=row["default_translation_index"],
+        last_read_paragraph=row["last_read_paragraph"],
+        last_read_paragraph_total=row["last_read_paragraph_total"],
     )

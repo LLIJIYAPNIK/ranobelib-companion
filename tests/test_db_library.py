@@ -1,6 +1,10 @@
+import shutil
+from pathlib import Path
+
 import psycopg
 import pytest
 
+import app.db.migrate
 from app.db.library import (
     add_entry,
     get_currently_reading_entries,
@@ -38,6 +42,8 @@ async def test_add_entry_returns_a_new_entry(conn: psycopg.AsyncConnection) -> N
     assert entry.last_read_at is None
     assert entry.is_favorite is False
     assert entry.default_translation_index is None
+    assert entry.last_read_paragraph is None
+    assert entry.last_read_paragraph_total is None
 
 
 async def test_add_entry_is_idempotent(conn: psycopg.AsyncConnection) -> None:
@@ -299,3 +305,38 @@ async def test_set_default_translation_index_does_not_affect_other_users(
 
     assert (await get_entry(conn, 1, "6712--test-novel")).default_translation_index == 2
     assert (await get_entry(conn, 2, "6712--test-novel")).default_translation_index is None
+
+
+async def test_read_paragraph_migration_keeps_existing_entries(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    # A library row saved before 0024 must survive it untouched, with no paragraph
+    # position - apply every migration up to 0023, insert a read entry, then 0024 on top.
+    connection = await fresh_connection()
+    source = Path(app.db.migrate.__file__).parent / "migrations"
+    for path in sorted(source.glob("*.sql")):
+        if path.name < "0024":
+            shutil.copy(path, tmp_path / path.name)
+    monkeypatch.setattr(app.db.migrate, "_MIGRATIONS_DIR", tmp_path)
+    await run_migrations(connection)
+    await connection.execute(
+        "INSERT INTO users (id, email, password_hash, created_at) "
+        "VALUES (1, 'alice@example.com', 'hash', 'now')"
+    )
+    # Raw SQL, not add_entry()/record_progress() - those read rows back through
+    # _row_to_entry(), which already expects the columns 0024 hasn't added yet.
+    await connection.execute(
+        "INSERT INTO library_entries "
+        "(user_id, slug_url, added_at, last_read_volume, last_read_number, last_read_at) "
+        "VALUES (1, '6712--test-novel', 'then', '1', '5', 'then')"
+    )
+
+    shutil.copy(source / "0024_library_entries_read_paragraph.sql", tmp_path)
+    await run_migrations(connection)
+
+    entry = await get_entry(connection, 1, "6712--test-novel")
+    assert entry is not None
+    assert entry.last_read_volume == "1"
+    assert entry.last_read_number == "5"
+    assert entry.last_read_paragraph is None
+    assert entry.last_read_paragraph_total is None
