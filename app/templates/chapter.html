@@ -240,6 +240,8 @@
 
 {% if current_user %}
 <script src="{{ url_for('static', path='js/activity-heartbeat.js') }}" defer></script>
+{# Before tap-to-read.js/reader-progress.js - listening by the time they announce a position. #}
+<script src="{{ url_for('static', path='js/reading-progress-tick.js') }}" defer></script>
 {% endif %}
 <script src="{{ url_for('static', path='js/reader-settings.js') }}" defer></script>
 <script src="{{ url_for('static', path='js/tap-to-read.js') }}" defer></script>
