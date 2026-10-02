@@ -11907,8 +11907,14 @@ body.reader-hud-visible .reader-hud {
     width: 100%;
   }
 
+  /* 44px targets, equal thirds (PR 283). */
   .wn-segmented__item {
-    flex: 1;
+    display: grid;
+    flex: 1 1 0;
+    place-items: center;
+    min-width: 0;
+    min-height: 44px;
+    padding: 0 6px;
     text-align: center;
   }
 
@@ -11917,20 +11923,105 @@ body.reader-hud-visible .reader-hud {
     gap: 12px;
   }
 
+  /* PR 283 (Webnovells Mobile -> Активность): the metric cards two by two, their notes
+     wrapping instead of ellipsizing. */
+  .wn-activity-metrics {
+    gap: 10px;
+  }
+
   .wn-activity-metric {
-    padding: var(--wn-space-2);
+    gap: 8px;
+    padding: 14px;
+  }
+
+  .wn-activity-metric__label {
+    font: 600 13px/1.3 var(--wn-font-ui);
   }
 
   .wn-activity-metric__value {
     font-size: 28px;
+    white-space: nowrap;
   }
 
   .wn-activity-metric__unit {
-    font-size: 14px;
+    font-size: 15px;
+  }
+
+  .wn-activity-metric__note {
+    overflow: visible;
+    font: 500 12px/1.35 var(--wn-font-ui);
+    overflow-wrap: break-word;
+    white-space: normal;
   }
 
   .wn-activity-card {
-    padding: 18px var(--wn-space-2);
+    padding: var(--wn-space-2);
+  }
+
+  .wn-activity-card__title {
+    font: 800 18px/1.2 var(--wn-font-ui);
+  }
+
+  .wn-activity-card__head {
+    flex-wrap: wrap;
+    gap: 4px 10px;
+  }
+
+  /* «Читали сегодня»: the prototype's smaller cover, «Продолжить» as a 44px button. */
+  .wn-activity-today__cover {
+    width: 64px;
+    height: 96px;
+    border-radius: 8px;
+  }
+
+  .wn-activity-today__name {
+    font-size: 15px;
+    overflow-wrap: break-word;
+  }
+
+  .wn-activity-today .wn-activity-link {
+    display: grid;
+    place-items: center;
+    min-height: 44px;
+    margin-top: 6px;
+    padding: 0 14px;
+    border: 1px solid var(--wn-border-strong);
+    border-radius: var(--wn-radius-md);
+    background: rgb(255 255 255 / 4%);
+    color: var(--wn-text);
+    font: 700 15px/1.2 var(--wn-font-ui);
+  }
+
+  .wn-activity-today__more a {
+    white-space: normal;
+    overflow-wrap: break-word;
+  }
+
+  /* «История событий»: titles and their sub-lines wrap rather than ellipsize. */
+  .wn-activity-event {
+    align-items: start;
+    padding: 12px 0;
+  }
+
+  .wn-activity-event__icon {
+    grid-row: span 2;
+  }
+
+  .wn-activity-event__title {
+    font: 600 14px/1.4 var(--wn-font-ui);
+    overflow-wrap: break-word;
+    white-space: normal;
+  }
+
+  .wn-activity-event__sub {
+    overflow-wrap: break-word;
+    white-space: normal;
+  }
+
+  .wn-activity-card__more {
+    display: inline-flex;
+    align-items: center;
+    min-height: 44px;
   }
 
   .wn-activity-chart__plot {
