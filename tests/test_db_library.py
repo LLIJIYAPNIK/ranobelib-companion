@@ -108,6 +108,47 @@ async def test_record_progress_outside_library_is_a_noop(conn: psycopg.AsyncConn
     assert await get_entry(conn, 1, "6712--test-novel") is None
 
 
+async def test_record_progress_stores_the_paragraph_position(
+    conn: psycopg.AsyncConnection,
+) -> None:
+    await add_entry(conn, 1, "6712--test-novel")
+
+    await record_progress(conn, 1, "6712--test-novel", "2", "10", paragraph=50, paragraph_total=80)
+
+    entry = await get_entry(conn, 1, "6712--test-novel")
+    assert entry.last_read_paragraph == 50
+    assert entry.last_read_paragraph_total == 80
+
+
+async def test_record_progress_without_a_paragraph_keeps_it_for_the_same_chapter(
+    conn: psycopg.AsyncConnection,
+) -> None:
+    # Reopening the chapter (GET, no paragraph known) must not wipe another device's
+    # saved position in it.
+    await add_entry(conn, 1, "6712--test-novel")
+    await record_progress(conn, 1, "6712--test-novel", "2", "10", paragraph=50, paragraph_total=80)
+
+    await record_progress(conn, 1, "6712--test-novel", "2", "10")
+
+    entry = await get_entry(conn, 1, "6712--test-novel")
+    assert entry.last_read_paragraph == 50
+    assert entry.last_read_paragraph_total == 80
+
+
+async def test_record_progress_without_a_paragraph_clears_it_for_another_chapter(
+    conn: psycopg.AsyncConnection,
+) -> None:
+    await add_entry(conn, 1, "6712--test-novel")
+    await record_progress(conn, 1, "6712--test-novel", "2", "10", paragraph=50, paragraph_total=80)
+
+    await record_progress(conn, 1, "6712--test-novel", "2", "11")
+
+    entry = await get_entry(conn, 1, "6712--test-novel")
+    assert entry.last_read_number == "11"
+    assert entry.last_read_paragraph is None
+    assert entry.last_read_paragraph_total is None
+
+
 async def test_set_favorite_marks_the_entry(conn: psycopg.AsyncConnection) -> None:
     await add_entry(conn, 1, "6712--test-novel")
 

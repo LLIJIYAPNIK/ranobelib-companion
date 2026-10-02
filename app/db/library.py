@@ -155,17 +155,61 @@ async def get_favorite_entry(conn: AsyncConnection, user_id: int) -> LibraryEntr
 
 
 async def record_progress(
-    conn: AsyncConnection, user_id: int, slug_url: str, volume: str, number: str
+    conn: AsyncConnection,
+    user_id: int,
+    slug_url: str,
+    volume: str,
+    number: str,
+    paragraph: int | None = None,
+    paragraph_total: int | None = None,
 ) -> None:
     """Only updates an existing row - no-op if `slug_url` isn't in this user's library.
     In practice the chapter-read route (PR 35) calls `add_entry()` right before this, so
     the row always exists by the time we get here; this stays a plain UPDATE rather than
-    an upsert so other callers without that guarantee can't silently create entries."""
+    an upsert so other callers without that guarantee can't silently create entries.
+
+    `paragraph`/`paragraph_total` (wave 35) are the position inside that chapter. Without
+    them the stored position survives only a reopen of the same chapter - it belongs to
+    last_read_volume/last_read_number, so moving to another chapter clears it rather than
+    leaving the previous chapter's paragraph attached to the new one."""
+    if paragraph is not None:
+        await conn.execute(
+            "UPDATE library_entries "
+            "SET last_read_volume = %s, last_read_number = %s, last_read_at = %s, "
+            "last_read_paragraph = %s, last_read_paragraph_total = %s "
+            "WHERE user_id = %s AND slug_url = %s",
+            (
+                volume,
+                number,
+                datetime.now(UTC).isoformat(),
+                paragraph,
+                paragraph_total,
+                user_id,
+                slug_url,
+            ),
+        )
+        return
+    # The CASEs read the row's old chapter - Postgres evaluates every SET expression
+    # against the pre-update row, so the order of assignments doesn't matter.
+    same_chapter = "(last_read_volume = %s AND last_read_number = %s)"
     await conn.execute(
         "UPDATE library_entries "
-        "SET last_read_volume = %s, last_read_number = %s, last_read_at = %s "
+        "SET last_read_volume = %s, last_read_number = %s, last_read_at = %s, "
+        f"last_read_paragraph = CASE WHEN {same_chapter} THEN last_read_paragraph END, "
+        f"last_read_paragraph_total = CASE WHEN {same_chapter} "
+        "THEN last_read_paragraph_total END "
         "WHERE user_id = %s AND slug_url = %s",
-        (volume, number, datetime.now(UTC).isoformat(), user_id, slug_url),
+        (
+            volume,
+            number,
+            datetime.now(UTC).isoformat(),
+            volume,
+            number,
+            volume,
+            number,
+            user_id,
+            slug_url,
+        ),
     )
 
 

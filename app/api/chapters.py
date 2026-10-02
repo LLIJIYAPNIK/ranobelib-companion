@@ -30,7 +30,7 @@ from app.db.comments import (
     list_comments_for_paragraph,
 )
 from app.db.connection import connection, get_connection
-from app.db.library import add_entry, record_progress
+from app.db.library import add_entry, get_entry, record_progress
 from app.db.notifications import notify_comment_reaction
 from app.db.reactions import (
     ALLOWED_EMOJI,
@@ -67,6 +67,8 @@ async def read_chapter(
         position = _chapter_position(volumes, str(volume), number)
         is_last = position is not None and position[0] == position[1] - 1
         title = await lib.get_info() if is_last else None
+    saved_paragraph: int | None = None
+    saved_paragraph_total: int | None = None
     if current_user is not None:
         # PR 35: opening any chapter adds the title to the library if it isn't there
         # yet, same as clicking "Добавить в библиотеку" - add_entry() is idempotent
@@ -78,6 +80,14 @@ async def read_chapter(
         async with connection() as conn:
             await add_entry(conn, current_user.id, slug_url)
             await record_progress(conn, current_user.id, slug_url, str(volume), number)
+            # Wave 35: the paragraph saved for this chapter, possibly from another
+            # device - record_progress() just kept it only if it belongs to this very
+            # chapter, so whatever is left here is this chapter's. The reader scripts
+            # compare it with their own localStorage entry and keep the further one.
+            entry = await get_entry(conn, current_user.id, slug_url)
+            if entry is not None:
+                saved_paragraph = entry.last_read_paragraph
+                saved_paragraph_total = entry.last_read_paragraph_total
             # Unlike record_progress, this always writes - it's an activity feed entry,
             # not a library-membership check (see app/db/activity.py).
             await record_chapter_read(conn, current_user.id, slug_url, str(volume), number)
@@ -102,6 +112,8 @@ async def read_chapter(
             "title_name": (title.rus_name or title.name) if title is not None else None,
             "branch_id": branch_id,
             "export_formats": available_export_formats(),
+            "saved_paragraph": saved_paragraph,
+            "saved_paragraph_total": saved_paragraph_total,
         },
     )
 

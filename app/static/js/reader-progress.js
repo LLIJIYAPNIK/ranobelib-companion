@@ -45,15 +45,21 @@
     return Number.isInteger(legacy) && legacy >= 1 ? legacy : 0;
   }
 
-  // Never regresses: whichever mode got further into the chapter wins.
-  let furthest = Math.min(loadFurthest(), paragraphs.length);
+  // Wave 35 (PR 287): the server's saved position for this chapter (data-saved-paragraph,
+  // possibly written from another device) joins the same comparison.
+  const serverRevealed = Number(content.dataset.savedParagraph);
+  const fromServer = Number.isInteger(serverRevealed) && serverRevealed > 0 ? serverRevealed : 0;
+
+  // Never regresses: whichever mode - or device - got further into the chapter wins.
+  let furthest = Math.min(Math.max(loadFurthest(), fromServer), paragraphs.length);
 
   function save() {
     localStorage.setItem(progressKey, JSON.stringify({ revealed: furthest, total: paragraphs.length }));
   }
 
   // Re-saves immediately so a legacy bare-number entry (no `total`) gains one right
-  // away, without waiting for the visitor to scroll past anything new this visit.
+  // away, without waiting for the visitor to scroll past anything new this visit - and
+  // so a server position that won above lands in localStorage too.
   if (furthest > 0) save();
 
   // PR 129: opening an already-started chapter should land on where the visitor left
