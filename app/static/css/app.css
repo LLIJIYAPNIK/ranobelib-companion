@@ -8241,16 +8241,38 @@ a.ui-title-card:focus-visible .ui-title-card__cover {
     font: 800 13px/1 var(--wn-font-ui);
   }
 
+  /* The link field and «Добавить» share a row while both fit; at 320px the button drops
+     under the field (PR 282). */
+  .wn-library__add {
+    flex-wrap: wrap;
+    gap: 8px;
+  }
+
+  .wn-library__add-field {
+    flex: 1 1 200px;
+    min-width: 0;
+  }
+
   .wn-library__add .wn-btn {
-    padding: 0 14px;
+    flex: 1 0 auto;
+    min-width: 128px;
+    min-height: 48px;
+    padding: 0 18px;
   }
 
   .wn-library-toolbar {
-    gap: var(--wn-space-1);
+    gap: 12px;
   }
 
+  /* Search on a row of its own (PR 282), not squeezed beside the filters. */
   .wn-library-search {
+    flex: 1 1 100%;
     width: 100%;
+  }
+
+  .wn-library-search input {
+    height: 48px;
+    border-radius: var(--wn-radius-md);
   }
 
   .wn-library-select {

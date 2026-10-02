@@ -33,3 +33,11 @@ def test_ribbon_fades_only_where_there_is_more_and_reveals_the_active_item() -> 
     assert '[aria-current="page"], [aria-selected="true"]' in script
     assert "mask-image" in _rule(".wn-ribbon--more-start")
     assert "mask-image" in _rule(".wn-ribbon--more-end")
+
+
+def test_search_takes_its_own_row_and_the_add_form_wraps() -> None:
+    search = _rule(".wn-library-search", indent="  ")
+    assert "flex: 1 1 100%;" in search
+    assert "flex-wrap: wrap;" in _rule(".wn-library__add", indent="  ")
+    assert "flex: 1 1 200px;" in _rule(".wn-library__add-field", indent="  ")
+    assert "min-width: 128px;" in _rule(".wn-library__add .wn-btn", indent="  ")
