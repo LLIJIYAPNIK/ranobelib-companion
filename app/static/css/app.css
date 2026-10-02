@@ -8199,17 +8199,46 @@ a.ui-title-card:focus-visible .ui-title-card__cover {
     font-size: 26px;
   }
 
+  /* PR 282 (Webnovells Mobile -> Библиотека): the tabs are a touch ribbon of separate
+     pills, edge to edge across the page gutters, fading where more tabs hide
+     (ribbon.js). */
   .wn-library .ui-tabs {
-    width: 100%;
+    position: relative;
+    flex: 1 1 100%;
+    gap: 6px;
+    width: auto;
+    margin: 0 calc(-1 * var(--wn-space-2));
+    padding: 2px var(--wn-space-2);
+    border: 0;
+    border-radius: 0;
+    background: none;
     overflow-x: auto;
+    overscroll-behavior-x: contain;
     scrollbar-width: none;
   }
 
+  .wn-library .ui-tabs::-webkit-scrollbar {
+    display: none;
+  }
+
   .wn-library .ui-tabs__link {
-    flex: 1 0 auto;
-    justify-content: center;
-    padding: 10px 12px;
-    font-size: 14px;
+    flex: none;
+    min-height: 44px;
+    padding: 0 16px;
+    border: 1px solid var(--wn-border);
+    border-radius: var(--wn-radius-md);
+    color: var(--wn-text-secondary);
+    font: 700 15px/1 var(--wn-font-ui);
+  }
+
+  .wn-library .ui-tabs__link[aria-current="page"] {
+    border-color: #3a3650;
+    background: #22212e;
+    color: #f2f0f7;
+  }
+
+  .wn-library .library-tabs__count {
+    font: 800 13px/1 var(--wn-font-ui);
   }
 
   .wn-library__add .wn-btn {
@@ -15253,6 +15282,29 @@ body.reader-hud-visible .reader-hud {
 
 .wn-ribbon::-webkit-scrollbar {
   display: none;
+}
+
+/* A ribbon fades out at an edge only where there's more to scroll to (ribbon.js sets the
+   classes on [data-ribbon] elements, PR 282). */
+.wn-ribbon--more-start {
+  -webkit-mask-image: linear-gradient(90deg, transparent 0, #000 40px);
+  mask-image: linear-gradient(90deg, transparent 0, #000 40px);
+}
+
+.wn-ribbon--more-end {
+  -webkit-mask-image: linear-gradient(90deg, #000 calc(100% - 48px), transparent 100%);
+  mask-image: linear-gradient(90deg, #000 calc(100% - 48px), transparent 100%);
+}
+
+.wn-ribbon--more-start.wn-ribbon--more-end {
+  -webkit-mask-image: linear-gradient(
+    90deg,
+    transparent 0,
+    #000 40px,
+    #000 calc(100% - 48px),
+    transparent 100%
+  );
+  mask-image: linear-gradient(90deg, transparent 0, #000 40px, #000 calc(100% - 48px), transparent 100%);
 }
 
 /* Toast with an optional action («Вернуть»), PR 281: above the bottom bar on mobile,
