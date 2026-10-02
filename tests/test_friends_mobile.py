@@ -104,3 +104,12 @@ def test_friend_sheet_swaps_to_the_confirmation_and_resets_on_close() -> None:
     assert "menu.hidden = true;" in script
     assert "confirm.hidden = false;" in script
     assert "min-height: 52px;" in _rule(".wn-friend-sheet__item")
+
+
+def test_empty_tabs_are_dashed_notes_on_mobile() -> None:
+    empty = _rule(".wn-friends-empty", indent="  ")
+    assert "border: 1.5px dashed #2e2b40;" in empty
+    assert "background: transparent;" in empty
+    assert "display: none;" in _rule(".wn-friends-empty__icon", indent="  ")
+    assert "Новых заявок нет" in PAGE
+    assert "Отправленных заявок нет" in PAGE

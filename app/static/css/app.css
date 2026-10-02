@@ -13253,6 +13253,31 @@ body.reader-hud-visible .reader-hud {
     padding: 18px var(--wn-space-2);
   }
 
+  /* Empty tabs (no requests in or out): the design's dashed note - a bold line and a
+     short hint, no icon. */
+  .wn-friends-empty {
+    gap: var(--wn-space-1);
+    padding: 28px var(--wn-space-2);
+    border: 1.5px dashed #2e2b40;
+    background: transparent;
+  }
+
+  .wn-friends-empty__icon {
+    display: none;
+  }
+
+  .wn-friends-empty b {
+    color: var(--wn-text);
+    font-size: 16px;
+    line-height: 1.3;
+  }
+
+  .wn-friends-empty > span:last-child {
+    max-width: 320px;
+    color: var(--wn-text-secondary);
+    line-height: 1.5;
+  }
+
   .wn-friends-request .wn-friend-card__name {
     white-space: normal;
     overflow-wrap: anywhere;
