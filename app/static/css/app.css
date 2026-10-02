@@ -15165,6 +15165,13 @@ body.reader-hud-visible .reader-hud {
     height: 18px;
   }
 
+  /* «История · N» and «Очистить историю» share a row while they fit; at 320px the button
+     drops under the heading instead of running the row off the screen. */
+  .wn-downloads__section-head {
+    flex-wrap: wrap;
+    gap: 4px 12px;
+  }
+
   /* «Очистить историю» stays quiet on mobile until pressed - a 44px target. */
   .wn-downloads__clear {
     min-height: 44px;

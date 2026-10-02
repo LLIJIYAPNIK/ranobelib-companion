@@ -180,3 +180,9 @@ def test_clear_history_confirms_in_the_shared_sheet_on_mobile() -> None:
     assert "window.bottomSheet.open(" in script
     # Desktop keeps the native confirmation.
     assert 'window.confirm("Очистить всю историю загрузок?")' in script
+
+
+def test_history_heading_row_wraps_its_clear_button() -> None:
+    # Found by the five-width check: at 320px «Очистить историю» ran the row 25px off
+    # the screen.
+    assert "flex-wrap: wrap;" in _rule(".wn-downloads__section-head", indent="  ")
