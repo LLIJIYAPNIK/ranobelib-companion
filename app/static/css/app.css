@@ -8485,13 +8485,54 @@ a.ui-title-card:focus-visible .ui-title-card__cover {
     font-size: 16px;
   }
 
-  .wn-library__titles--grid .wn-library-grid {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-    gap: 12px;
+  /* Stars: the same 32px chip with a 44px hit area around it (PR 282). */
+  .wn-library-star {
+    position: relative;
   }
 
-  .wn-library-posters,
+  .wn-library-star::before {
+    content: "";
+    position: absolute;
+    inset: -6px;
+  }
+
+  .wn-library-star--overlay {
+    position: absolute;
+  }
+
+  /* Grid view (PR 282): as many 128px+ columns as fit - two from 320px to 430px. In
+     those narrow cards the star sits on the cover's corner (like the posters'), the
+     title gets the full width and wraps in full, and the CTA drops its verb. */
+  .wn-library__titles--grid .wn-library-card {
+    position: relative;
+  }
+
+  .wn-library__titles--grid .wn-library-card__top .wn-library-star {
+    position: absolute;
+    top: 20px;
+    right: 20px;
+    background: rgb(12 12 18 / 80%);
+  }
+
+  .wn-library__titles--grid .wn-library-card__name {
+    display: block;
+    overflow: visible;
+    font-size: 14px;
+    overflow-wrap: break-word;
+    -webkit-line-clamp: unset;
+  }
+
+  .wn-library__titles--grid .wn-library-card__cta-verb {
+    display: none;
+  }
+
+  .wn-library__titles--grid .wn-library-grid,
   .wn-library__titles--grid .wn-library-posters {
+    grid-template-columns: repeat(auto-fill, minmax(128px, 1fr));
+    gap: 20px 14px;
+  }
+
+  .wn-library-posters {
     grid-template-columns: repeat(3, minmax(0, 1fr));
     gap: 12px;
   }

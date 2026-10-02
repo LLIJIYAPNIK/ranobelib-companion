@@ -167,9 +167,11 @@
                 </div>
               </div>
               {% endif %}
-              <a class="wn-library-card__cta" href="{{ href }}/chapters/{{ entry.last_read_volume }}/{{ entry.last_read_number }}">
+              {# PR 282: the mobile grid's narrow cards drop the verb («Гл. 92», as in the
+                 prototype); the aria-label keeps the full action for screen readers. #}
+              <a class="wn-library-card__cta" href="{{ href }}/chapters/{{ entry.last_read_volume }}/{{ entry.last_read_number }}" aria-label="Продолжить · Глава {{ entry.last_read_number }}">
                 <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M7 4v16l13-8z"/></svg>
-                Продолжить · Гл. {{ entry.last_read_number }}
+                <span class="wn-library-card__cta-verb">Продолжить · </span>Гл. {{ entry.last_read_number }}
               </a>
             </div>
           </article>
