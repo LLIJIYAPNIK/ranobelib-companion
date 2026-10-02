@@ -523,7 +523,10 @@ async def test_friend_card_shows_what_the_friend_reads_unless_hidden(
         await record_progress(conn, bob_id, "6712--test-novel", "1", "3")
     client.post("/logout")
     client.post("/login", data={"email": "alice@example.com", "password": "hunter2pass"})
-    client.post(f"/friends/{bob_id}/accept")
+    # Accept redirects to /friends, whose friend cards enrich the current title through
+    # the SDK. Do not follow that setup redirect before the fake client below is active:
+    # tests must never make a live ranobelib.me request (CLAUDE.md, "Тесты").
+    client.post(f"/friends/{bob_id}/accept", follow_redirects=False)
     title = Title(
         id=6712,
         name="Test Novel",
