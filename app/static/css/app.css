@@ -13095,22 +13095,174 @@ body.reader-hud-visible .reader-hud {
     color: var(--wn-text-muted);
   }
 
+  /* PR 285: one column of cards - friends, requests, the invite card - and the side
+     cards under them. */
   .wn-friends__main,
   .wn-friends__side {
     grid-template-columns: minmax(0, 1fr);
-    gap: 12px;
+    gap: var(--wn-space-2);
   }
 
   .wn-friends__layout {
-    gap: 12px;
+    gap: var(--wn-space-3);
   }
 
   .wn-friend-card {
+    gap: 12px;
+    padding: 14px;
+  }
+
+  .wn-friend-card__head,
+  .wn-friend-card__who {
+    gap: 12px;
+  }
+
+  .wn-friends-avatar--lg {
+    width: 52px;
+    height: 52px;
+    font-size: 17px;
+  }
+
+  .wn-friend-card__copy {
+    gap: 4px;
+  }
+
+  /* No single-line ellipsis for a nickname or a title - they wrap. */
+  .wn-friend-card__name,
+  .wn-friend-card__title {
+    white-space: normal;
+    overflow-wrap: anywhere;
+  }
+
+  .wn-friend-card__name {
+    font-size: 16px;
+    line-height: 1.25;
+  }
+
+  .wn-friend-card__sub {
+    font-size: 13px;
+    line-height: 1.3;
+  }
+
+  .wn-friend-card__reading {
+    padding: 12px;
+  }
+
+  .wn-friend-card__cover {
+    width: 32px;
+    height: 48px;
+    border-radius: 5px;
+  }
+
+  .wn-friend-card__eyebrow {
+    font: var(--wn-weight-bold) 11px/1 var(--wn-font-ui);
+    letter-spacing: 0.08em;
+  }
+
+  .wn-friend-card__actions {
+    flex-wrap: wrap;
+  }
+
+  .wn-friend-card__actions > *,
+  .wn-friend-card__actions > :first-child {
+    flex: 1 1 120px;
+  }
+
+  :is(.wn-friend-card__actions, .wn-friends-request__actions)
+    :is(.wn-btn, .wn-friends-secondary, .wn-friends-quiet, .wn-friends-mini) {
+    width: 100%;
+    height: auto;
+    min-height: 44px;
+    border-radius: var(--wn-radius-md);
+    font-size: 15px;
+  }
+
+  .wn-friends-quiet {
+    border-color: var(--wn-border-strong);
+    color: #cfcbdd;
+  }
+
+  /* Invite: the nickname and «Копировать» wrap under each other when narrow. */
+  .wn-friends-invite {
+    gap: 12px;
     padding: var(--wn-space-2);
+  }
+
+  .wn-friends-invite__icon {
+    display: none;
+  }
+
+  .wn-friends-invite__nick {
+    flex-wrap: wrap;
+    height: auto;
+    padding: 4px 4px 4px 14px;
+    border-radius: var(--wn-radius-md);
+  }
+
+  .wn-friends-invite__nick span {
+    flex: 1 1 120px;
+    min-width: 0;
+    line-height: 1.4;
+    white-space: normal;
+    overflow-wrap: anywhere;
+  }
+
+  .wn-friends-invite__nick button {
+    min-height: 44px;
+    padding: 0 14px;
+    border-radius: 10px;
+    font-size: 14px;
   }
 
   .wn-friends-card {
     padding: 18px var(--wn-space-2);
+  }
+
+  .wn-friends-request .wn-friend-card__name {
+    white-space: normal;
+    overflow-wrap: anywhere;
+  }
+
+  .wn-friends-request__actions {
+    flex: 1 1 100%;
+    flex-wrap: wrap;
+    gap: var(--wn-space-1);
+  }
+
+  .wn-friends-request__actions form {
+    display: flex;
+    flex: 1 1 120px;
+  }
+
+  /* The privacy switch is a 44px target; its row wraps the long label. */
+  .wn-switch {
+    width: 44px;
+    height: 26px;
+    border-radius: 13px;
+  }
+
+  .wn-switch::before {
+    content: "";
+    position: absolute;
+    inset: -9px 0;
+  }
+
+  .wn-switch__thumb {
+    width: 20px;
+    height: 20px;
+  }
+
+  .wn-switch[aria-checked="true"] .wn-switch__thumb {
+    transform: translateX(18px);
+  }
+
+  .wn-friends-privacy {
+    min-height: 52px;
+  }
+
+  .wn-friends-privacy__label {
+    color: var(--wn-text);
+    font-size: 15px;
   }
 }
 

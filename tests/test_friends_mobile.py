@@ -44,3 +44,29 @@ def test_friends_tabs_are_a_ribbon() -> None:
     link = _rule(".wn-friends-tabs__link", indent="  ")
     assert "min-height: 44px;" in link
     assert "border-radius: var(--wn-radius-md);" in link
+
+
+def test_friend_cards_stack_in_one_column_with_wrapping_names() -> None:
+    assert "grid-template-columns: minmax(0, 1fr);" in _rule(
+        ".wn-friends__main,\n  .wn-friends__side", indent="  "
+    )
+    names = _rule(".wn-friend-card__name,\n  .wn-friend-card__title", indent="  ")
+    assert "white-space: normal;" in names
+    assert "overflow-wrap: anywhere;" in names
+
+
+def test_card_actions_are_wrapping_44px_buttons() -> None:
+    assert "flex-wrap: wrap;" in _rule(".wn-friend-card__actions", indent="  ")
+    assert "flex: 1 1 120px;" in _rule(
+        ".wn-friend-card__actions > *,\n  .wn-friend-card__actions > :first-child", indent="  "
+    )
+    buttons = re.search(
+        r"\n  :is\(\.wn-friend-card__actions, \.wn-friends-request__actions\)\n"
+        r"    :is\([^)]*\) \{([^}]*)\}",
+        CSS,
+    )
+    assert buttons and "min-height: 44px;" in buttons.group(1)
+    assert "min-height: 44px;" in _rule(".wn-friends-invite__nick button", indent="  ")
+    assert "flex-wrap: wrap;" in _rule(".wn-friends-invite__nick", indent="  ")
+    # The 26px switch keeps a 44px hit area.
+    assert "inset: -9px 0;" in _rule(".wn-switch::before", indent="  ")
