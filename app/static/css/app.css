@@ -1694,10 +1694,11 @@ html.bottom-sheet-lock body {
     border: 0;
   }
 
+  /* 44px: the header's touch-target floor (Mobile handoff.md). */
   .sidebar__guest {
     flex-direction: row;
     width: auto;
-    min-height: 40px;
+    min-height: 44px;
     margin-right: 4px;
     padding: 0 16px;
     border-radius: var(--r-md);

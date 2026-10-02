@@ -153,3 +153,13 @@ def test_keyboard_script_hides_the_bottom_bar_only() -> None:
     assert re.search(r"html\.keyboard-open \.sidebar__nav \{\s*display: none;", css)
     assert not re.search(r"html\.keyboard-open \.sidebar \{[^}]*display: none", css)
     assert "static/js/mobile-keyboard.js" in client.get("/").text
+
+
+def test_guest_sign_in_in_the_mobile_header_is_a_44px_target() -> None:
+    # Found by the PR 279 touch check at 320-430px: «Войти» was the one header control
+    # under the 44px floor.
+    css = (Path(__file__).parents[1] / "app/static/css/app.css").read_text(encoding="utf-8")
+
+    mobile_guest = re.search(r"\n  \.sidebar__guest \{([^}]*)\}", css)
+    assert mobile_guest
+    assert "min-height: 44px;" in mobile_guest.group(1)
