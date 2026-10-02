@@ -5815,6 +5815,19 @@ a.ui-title-card:focus-visible .ui-title-card__cover {
   min-width: 0;
 }
 
+.wn-home-hero__text {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  min-width: 0;
+  max-width: 100%;
+}
+
+/* Button glyphs belong to the mobile hero only (PR 280). */
+.wn-home-hero__icon {
+  display: none;
+}
+
 .wn-home-hero__eyebrow {
   margin-bottom: 12px;
   color: var(--wn-teal);
@@ -5839,9 +5852,12 @@ a.ui-title-card:focus-visible .ui-title-card__cover {
   font: var(--wn-type-body);
 }
 
+/* Stretched, not .ui-progress's centered row turned into a column: centered, the label
+   shrank to its text and the bar's flex: 1 (basis 0) collapsed its height to 0. */
 .wn-home-progress {
   display: flex;
   flex-direction: column;
+  align-items: stretch;
   gap: 7px;
   width: min(100%, 420px);
   margin-top: 18px;
@@ -5860,6 +5876,7 @@ a.ui-title-card:focus-visible .ui-title-card__cover {
 }
 
 .wn-home-progress .ui-progress__bar {
+  flex: none;
   width: 100%;
   background: rgb(51 48 74 / 72%);
 }
@@ -5966,6 +5983,11 @@ a.ui-title-card:focus-visible .ui-title-card__cover {
   font-size: 10px;
   font-weight: var(--wn-weight-medium);
   line-height: 14px;
+}
+
+/* The mobile rows' wording (PR 280). */
+.wn-home-today__stats .wn-home-today__row-label {
+  display: none;
 }
 
 .wn-home .home__friends {
@@ -6291,27 +6313,238 @@ a.ui-title-card:focus-visible .ui-title-card__cover {
     padding: var(--wn-space-1) var(--wn-space-2) var(--wn-space-3);
   }
 
+  /* Field and «Открыть» share a row while both fit, then the button drops under the
+     field (PR 280) - no breakpoint. */
   .wn-home__open {
+    flex-wrap: wrap;
     align-items: stretch;
+    gap: 8px;
   }
 
+  .wn-home__open-field {
+    flex: 1 1 220px;
+  }
+
+  /* Quiet, like the prototype: the hero's «Продолжить» stays the screen's one purple
+     CTA. */
   .wn-home__open .wn-btn {
-    padding-inline: 14px;
+    flex: 1 0 auto;
+    min-width: 112px;
+    min-height: 48px;
+    padding-inline: 20px;
+    border-color: var(--wn-border-strong);
+    background: rgb(255 255 255 / 5%);
+    box-shadow: none;
+    color: var(--wn-text);
+    font: 700 15px/1 var(--wn-font-ui);
+  }
+
+  .wn-home__open .wn-btn:hover {
+    background: rgb(255 255 255 / 9%);
+  }
+
+  .wn-home-section-head {
+    flex-wrap: wrap;
+    column-gap: 12px;
+  }
+
+  /* PR 280 (Webnovells Mobile -> Главная): the real cover beside the text over its own
+     blurred backdrop; the text block, the progress and the actions are flex items of
+     __content (__copy steps aside), so progress and actions take full rows. */
+  .wn-home-hero {
+    min-height: 0;
+    border-color: #2a2838;
+    border-radius: var(--wn-radius-xl);
+  }
+
+  .wn-home-hero__backdrop {
+    inset: -48px;
+    width: calc(100% + 96px);
+    height: calc(100% + 96px);
+    filter: blur(44px) saturate(0.55) brightness(0.6);
+    transform: none;
+  }
+
+  .wn-home-hero__scrim {
+    background: linear-gradient(
+      180deg,
+      rgb(12 12 18 / 55%) 0%,
+      rgb(12 12 18 / 82%) 55%,
+      rgb(12 12 18 / 94%) 100%
+    );
   }
 
   .wn-home-hero__content {
-    align-items: flex-end;
-    min-height: 360px;
+    flex-wrap: wrap;
+    align-items: flex-start;
+    gap: 18px 16px;
+    min-height: 0;
     padding: 20px;
   }
 
   .wn-home-hero__cover {
+    flex: none;
+    width: clamp(72px, 24vw, 124px);
+    border-radius: 10px;
+    box-shadow:
+      0 0 0 1px rgb(255 255 255 / 14%),
+      0 18px 36px rgb(0 0 0 / 50%);
+  }
+
+  .wn-home-hero__cover img {
+    object-position: top;
+  }
+
+  .wn-home-hero__copy {
+    display: contents;
+  }
+
+  .wn-home-hero__text {
+    flex: 1 1 150px;
+    gap: 8px;
+  }
+
+  .wn-home-hero__eyebrow {
+    margin: 0;
+    font: 800 12px/1.3 var(--wn-font-ui);
+    letter-spacing: 0.06em;
+  }
+
+  /* max-width: the column aligns items to the start, so without it an unbroken word
+     sizes the heading past the column and break-word never gets to break it. */
+  .wn-home-hero__title {
+    max-width: 100%;
+    color: #f6f4fa;
+    font: 800 clamp(19px, 5.6vw, 26px) / 1.2 var(--wn-font-ui);
+    letter-spacing: -0.01em;
+  }
+
+  .wn-home-hero__chapter {
+    margin: 0;
+    color: #e2dfea;
+    font: 600 15px/1.35 var(--wn-font-ui);
+  }
+
+  /* «Прочитано» and the percentage stay two separate items with a gap between them. */
+  .wn-home-progress {
+    flex: 1 1 100%;
+    gap: 8px;
+    width: 100%;
+    margin: 0;
+  }
+
+  .wn-home-progress__label {
+    gap: 12px;
+    color: #cfcbdd;
+    font: 600 14px/1.2 var(--wn-font-ui);
+  }
+
+  .wn-home-progress__label b {
+    font-weight: 800;
+  }
+
+  .wn-home-progress .ui-progress__bar {
+    height: 6px;
+    border-radius: 3px;
+    background: rgb(255 255 255 / 14%);
+  }
+
+  .wn-home-hero__actions {
+    flex: 1 1 100%;
+    gap: 8px;
+    margin: 0;
+  }
+
+  /* «Продолжить» and «Оглавление» share a row while both fit, otherwise stack; the CTA
+     text itself wraps rather than overflowing on a long chapter number. */
+  .wn-home-hero__actions .wn-btn {
+    flex: 1 1 220px;
+    gap: 10px;
+    white-space: normal;
+    text-align: center;
+    min-height: 52px;
+    padding: 12px 20px;
+    font: 700 16px/1.25 var(--wn-font-ui);
+  }
+
+  .wn-home-hero__actions .wn-btn--primary {
+    box-shadow: 0 10px 28px rgb(122 82 244 / 32%);
+  }
+
+  .wn-home-hero__actions .wn-btn--secondary {
+    flex-basis: 140px;
+    border-color: rgb(255 255 255 / 20%);
+    background: rgb(255 255 255 / 6%);
+    color: #f2f0f7;
+  }
+
+  .wn-home-hero__icon {
+    display: block;
+    flex: none;
+  }
+
+  /* «Сегодня»: «metric → value» rows instead of three narrow tiles. */
+  .wn-home-today {
+    padding: 8px 16px 4px;
+    border-color: var(--wn-border);
+  }
+
+  .wn-home-today .wn-home-section-head {
+    flex-wrap: wrap;
+    gap: 0 12px;
+  }
+
+  .wn-home-today .wn-home-section-head h2 {
+    font: 800 18px/1.2 var(--wn-font-ui);
+  }
+
+  .wn-home-today .wn-home-section-head a {
+    display: inline-flex;
+    align-items: center;
+    min-height: 44px;
+    color: #b7a6ff;
+    font: 700 14px/1.2 var(--wn-font-ui);
+    white-space: nowrap;
+  }
+
+  .wn-home-today .wn-home-section-head a::after {
+    content: " →";
+    white-space: pre;
+  }
+
+  .wn-home-today__stats {
+    display: block;
+    margin-top: 0;
+  }
+
+  .wn-home-today__stats > div {
+    flex-direction: row;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    min-height: 48px;
+    padding: 0;
+    border-top: 1px solid #1e1d29;
+    border-radius: 0;
+    background: none;
+  }
+
+  .wn-home-today__stats b {
+    order: 1;
+    overflow: visible;
+    color: #f2f0f7;
+    font: 800 20px/1 var(--wn-font-ui);
+  }
+
+  .wn-home-today__stats .wn-home-today__tile-label {
     display: none;
   }
 
-  .wn-home-hero__title {
-    font-size: 25px;
-    line-height: 30px;
+  .wn-home-today__stats .wn-home-today__row-label {
+    display: block;
+    min-width: 0;
+    color: #cfcbdd;
+    font: 500 15px/1.3 var(--wn-font-ui);
   }
 
   .wn-home__rail,

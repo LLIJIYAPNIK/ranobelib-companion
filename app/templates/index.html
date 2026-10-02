@@ -52,10 +52,14 @@
         <a class="wn-home-hero__cover" href="/titles/{{ hero_entry.slug_url }}" aria-label="{{ hero_name }}">
           {% if hero.cover_url %}<img src="{{ hero.cover_url }}" alt="">{% endif %}
         </a>
+        {# PR 280: __text groups what sits beside the cover on mobile (and drops under it
+           on the narrowest phones); progress and actions become full-width rows there. #}
         <div class="wn-home-hero__copy">
-          <span class="wn-home-hero__eyebrow">Продолжить чтение</span>
-          <h1 class="wn-home-hero__title" id="continue-reading-title">{{ hero_name }}</h1>
-          <p class="wn-home-hero__chapter">Том {{ hero_entry.last_read_volume }} · Глава {{ hero_entry.last_read_number }}</p>
+          <div class="wn-home-hero__text">
+            <span class="wn-home-hero__eyebrow">Продолжить чтение</span>
+            <h1 class="wn-home-hero__title" id="continue-reading-title">{{ hero_name }}</h1>
+            <p class="wn-home-hero__chapter">Том {{ hero_entry.last_read_volume }} · Глава {{ hero_entry.last_read_number }}</p>
+          </div>
           {% if hero.progress_percent is not none %}
           <div class="wn-home-progress ui-progress" aria-label="Прочитано {{ hero.progress_percent }}%">
             <div class="wn-home-progress__label"><span>Прочитано</span><b>{{ hero.progress_percent }}%</b></div>
@@ -63,8 +67,8 @@
           </div>
           {% endif %}
           <div class="wn-home-hero__actions">
-            <a class="wn-btn wn-btn--primary" href="/titles/{{ hero_entry.slug_url }}/chapters/{{ hero_entry.last_read_volume }}/{{ hero_entry.last_read_number }}">Продолжить · Глава {{ hero_entry.last_read_number }}</a>
-            <a class="wn-btn wn-btn--secondary" href="/titles/{{ hero_entry.slug_url }}">Оглавление</a>
+            <a class="wn-btn wn-btn--primary" href="/titles/{{ hero_entry.slug_url }}/chapters/{{ hero_entry.last_read_volume }}/{{ hero_entry.last_read_number }}"><svg class="wn-home-hero__icon" viewBox="0 0 24 24" width="14" height="14" fill="currentColor" aria-hidden="true"><path d="M7 4v16l13-8z"/></svg><span>Продолжить · Глава {{ hero_entry.last_read_number }}</span></a>
+            <a class="wn-btn wn-btn--secondary" href="/titles/{{ hero_entry.slug_url }}"><svg class="wn-home-hero__icon" viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" aria-hidden="true"><path d="M8 6h13M8 12h13M8 18h13M3 6h.01M3 12h.01M3 18h.01"/></svg><span>Оглавление</span></a>
           </div>
         </div>
       </div>
@@ -84,10 +88,13 @@
           <h2 id="today-title">Сегодня</h2>
           <a href="/activity">Активность</a>
         </div>
+        {# PR 280: tiles on desktop, «metric → value» rows on mobile - each stat carries
+           both layouts' wording and the CSS shows one (the other is display: none, so
+           it's out of the accessibility tree too). #}
         <div class="wn-home-today__stats">
-          <div><b>{{ dashboard.summary.chapters_read_today }}</b><span>глав<br>прочитано</span></div>
-          <div><b>{{ dashboard.summary.active_time_label }}</b><span>активного<br>чтения</span></div>
-          <div><b>{{ dashboard.summary.downloads_today | length }}</b><span>скачано<br>сегодня</span></div>
+          <div><b>{{ dashboard.summary.chapters_read_today }}</b><span class="wn-home-today__tile-label">глав<br>прочитано</span><span class="wn-home-today__row-label">Глав прочитано</span></div>
+          <div><b>{{ dashboard.summary.active_time_label }}</b><span class="wn-home-today__tile-label">активного<br>чтения</span><span class="wn-home-today__row-label">Активное чтение</span></div>
+          <div><b>{{ dashboard.summary.downloads_today | length }}</b><span class="wn-home-today__tile-label">скачано<br>сегодня</span><span class="wn-home-today__row-label">Скачано</span></div>
         </div>
       </section>
 
