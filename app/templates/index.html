@@ -88,10 +88,13 @@
           <h2 id="today-title">Сегодня</h2>
           <a href="/activity">Активность</a>
         </div>
+        {# PR 280: tiles on desktop, «metric → value» rows on mobile - each stat carries
+           both layouts' wording and the CSS shows one (the other is display: none, so
+           it's out of the accessibility tree too). #}
         <div class="wn-home-today__stats">
-          <div><b>{{ dashboard.summary.chapters_read_today }}</b><span>глав<br>прочитано</span></div>
-          <div><b>{{ dashboard.summary.active_time_label }}</b><span>активного<br>чтения</span></div>
-          <div><b>{{ dashboard.summary.downloads_today | length }}</b><span>скачано<br>сегодня</span></div>
+          <div><b>{{ dashboard.summary.chapters_read_today }}</b><span class="wn-home-today__tile-label">глав<br>прочитано</span><span class="wn-home-today__row-label">Глав прочитано</span></div>
+          <div><b>{{ dashboard.summary.active_time_label }}</b><span class="wn-home-today__tile-label">активного<br>чтения</span><span class="wn-home-today__row-label">Активное чтение</span></div>
+          <div><b>{{ dashboard.summary.downloads_today | length }}</b><span class="wn-home-today__tile-label">скачано<br>сегодня</span><span class="wn-home-today__row-label">Скачано</span></div>
         </div>
       </section>
 

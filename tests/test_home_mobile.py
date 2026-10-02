@@ -18,3 +18,26 @@ def test_hero_progress_bar_is_not_collapsed() -> None:
     # column layout means a 0 basis for its height.
     assert "align-items: stretch;" in _rule(".wn-home-progress")
     assert "flex: none;" in _rule(".wn-home-progress .ui-progress__bar")
+
+
+def test_today_stats_carry_the_tile_and_the_row_wording() -> None:
+    template = (Path(__file__).parents[1] / "app/templates/index.html").read_text(
+        encoding="utf-8"
+    )
+
+    for tile, row in (
+        ("глав<br>прочитано", "Глав прочитано"),
+        ("активного<br>чтения", "Активное чтение"),
+        ("скачано<br>сегодня", "Скачано"),
+    ):
+        assert f'<span class="wn-home-today__tile-label">{tile}</span>' in template
+        assert f'<span class="wn-home-today__row-label">{row}</span>' in template
+
+
+def test_today_shows_one_wording_per_layout() -> None:
+    assert "display: none;" in _rule(".wn-home-today__stats .wn-home-today__row-label")
+    assert "display: none;" in _rule(
+        ".wn-home-today__stats .wn-home-today__tile-label", indent="  "
+    )
+    mobile_row = _rule(".wn-home-today__stats .wn-home-today__row-label", indent="  ")
+    assert "display: block;" in mobile_row

@@ -5985,6 +5985,11 @@ a.ui-title-card:focus-visible .ui-title-card__cover {
   line-height: 14px;
 }
 
+/* The mobile rows' wording (PR 280). */
+.wn-home-today__stats .wn-home-today__row-label {
+  display: none;
+}
+
 .wn-home .home__friends {
   max-width: none;
 }
@@ -6440,6 +6445,70 @@ a.ui-title-card:focus-visible .ui-title-card__cover {
   .wn-home-hero__icon {
     display: block;
     flex: none;
+  }
+
+  /* «Сегодня»: «metric → value» rows instead of three narrow tiles. */
+  .wn-home-today {
+    padding: 8px 16px 4px;
+    border-color: var(--wn-border);
+  }
+
+  .wn-home-today .wn-home-section-head {
+    flex-wrap: wrap;
+    gap: 0 12px;
+  }
+
+  .wn-home-today .wn-home-section-head h2 {
+    font: 800 18px/1.2 var(--wn-font-ui);
+  }
+
+  .wn-home-today .wn-home-section-head a {
+    display: inline-flex;
+    align-items: center;
+    min-height: 44px;
+    color: #b7a6ff;
+    font: 700 14px/1.2 var(--wn-font-ui);
+    white-space: nowrap;
+  }
+
+  .wn-home-today .wn-home-section-head a::after {
+    content: " →";
+    white-space: pre;
+  }
+
+  .wn-home-today__stats {
+    display: block;
+    margin-top: 0;
+  }
+
+  .wn-home-today__stats > div {
+    flex-direction: row;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    min-height: 48px;
+    padding: 0;
+    border-top: 1px solid #1e1d29;
+    border-radius: 0;
+    background: none;
+  }
+
+  .wn-home-today__stats b {
+    order: 1;
+    overflow: visible;
+    color: #f2f0f7;
+    font: 800 20px/1 var(--wn-font-ui);
+  }
+
+  .wn-home-today__stats .wn-home-today__tile-label {
+    display: none;
+  }
+
+  .wn-home-today__stats .wn-home-today__row-label {
+    display: block;
+    min-width: 0;
+    color: #cfcbdd;
+    font: 500 15px/1.3 var(--wn-font-ui);
   }
 
   .wn-home__rail,
