@@ -567,10 +567,15 @@
   content.classList.add("reader-content--tap-to-read", `reader-content--${paragraphStyle}`);
   adoptServerProgress();
   const initialRevealedCount = loadRevealedCount();
-  reveal(initialRevealedCount);
+  // PR 289: a saved position (this device's or the server's, adopted just above) comes
+  // back without the reveal effects; a chapter opened for the first time still reveals
+  // its opening paragraph the usual way.
+  const hasSavedProgress = readStoredProgress() !== null;
+  if (hasSavedProgress) restore(initialRevealedCount);
+  else reveal(initialRevealedCount);
 
   // PR 129: reopening an already-started chapter lands on the last revealed paragraph.
-  if (readStoredProgress()) settle(wraps[initialRevealedCount - 1], { instant: true });
+  if (hasSavedProgress) settle(wraps[initialRevealedCount - 1], { instant: true });
 
   // --- taps ----------------------------------------------------------------------------
   // Anything interactive, and every layer above the text, keeps its own behavior. PR 74:
