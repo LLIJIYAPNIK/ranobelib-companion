@@ -53,7 +53,7 @@ def test_home_empty_state_links_to_catalog() -> None:
     response = client.get("/")
 
     assert response.status_code == 200
-    assert 'href="/library/catalog"' in response.text
+    assert 'href="/catalog"' in response.text
     assert "Открыть каталог" in response.text
 
 

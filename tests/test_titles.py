@@ -431,7 +431,7 @@ def test_title_data_renders_full_metadata() -> None:
 
 
 def test_title_data_genres_link_to_the_filtered_catalog() -> None:
-    # PR 31/38: a genre badge is a link into /library/catalog, not just a static label -
+    # PR 31/38: a genre badge is a link into /catalog, not just a static label -
     # just the id, the catalog page resolves the display name itself via
     # Catalog.list_genres() (PR 38) rather than needing it forwarded in the URL.
     title = Title(
@@ -448,8 +448,8 @@ def test_title_data_genres_link_to_the_filtered_catalog() -> None:
         response = client.get("/titles/6712--test-novel/data")
 
     assert response.status_code == 200
-    assert 'href="/library/catalog?genres=5"' in response.text
-    assert 'href="/library/catalog?genres=8"' in response.text
+    assert 'href="/catalog?genres=5"' in response.text
+    assert 'href="/catalog?genres=8"' in response.text
 
 
 def test_title_data_tags_link_to_the_filtered_catalog() -> None:
@@ -472,8 +472,8 @@ def test_title_data_tags_link_to_the_filtered_catalog() -> None:
 
     assert response.status_code == 200
     # PR 253: built as a chip href in Jinja, so the & is attribute-escaped (same URL).
-    assert f'href="/library/catalog?tags=1&amp;tag_name={quote("Реинкарнация")}"' in response.text
-    assert f'href="/library/catalog?tags=2&amp;tag_name={quote("Магия")}"' in response.text
+    assert f'href="/catalog?tags=1&amp;tag_name={quote("Реинкарнация")}"' in response.text
+    assert f'href="/catalog?tags=2&amp;tag_name={quote("Магия")}"' in response.text
     assert '<span class="badge badge--muted">Реинкарнация</span>' not in response.text
 
 
@@ -485,7 +485,7 @@ def test_title_data_country_links_to_the_filtered_catalog() -> None:
 
     assert response.status_code == 200
     assert (
-        '<a class="ui-chip title-chip" href="/library/catalog?countries=1">Япония</a>'
+        '<a class="ui-chip title-chip" href="/catalog?countries=1">Япония</a>'
         in response.text
     )
 
@@ -497,7 +497,7 @@ def test_title_data_without_country_renders_no_country_badge() -> None:
         response = client.get("/titles/6712--test-novel/data")
 
     assert response.status_code == 200
-    assert "/library/catalog?countries=" not in response.text
+    assert "/catalog?countries=" not in response.text
 
 
 def test_title_data_renders_table_of_contents() -> None:
@@ -688,8 +688,8 @@ def test_title_data_shows_six_chips_and_folds_the_rest_into_details() -> None:
 
     assert '<summary class="ui-chip-more">Ещё 3</summary>' in response.text
     details = response.text[response.text.index("<details") :]
-    assert 'href="/library/catalog?genres=7"' in details
-    assert 'href="/library/catalog?genres=6"' not in details
+    assert 'href="/catalog?genres=7"' in details
+    assert 'href="/catalog?genres=6"' not in details
 
 
 def test_title_data_mobile_sheets_offer_every_export_format() -> None:

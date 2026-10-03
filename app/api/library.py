@@ -72,7 +72,7 @@ async def show_library(
     if tab is not None:
         if tab == "all":
             rest = [(k, v) for k, v in request.query_params.multi_items() if k != "tab"]
-            url = f"/library/catalog?{urlencode(rest)}" if rest else "/library/catalog"
+            url = f"/catalog?{urlencode(rest)}" if rest else "/catalog"
             return RedirectResponse(url=url, status_code=301)
         return RedirectResponse(url="/library", status_code=301)
     if user is None:

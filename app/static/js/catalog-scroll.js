@@ -58,7 +58,7 @@
     let response;
     let html;
     try {
-      response = await fetch(`/library/catalog/page?${params}`);
+      response = await fetch(`/catalog/page?${params}`);
       html = response.ok ? await response.text() : null;
     } catch {
       hideSkeletons();

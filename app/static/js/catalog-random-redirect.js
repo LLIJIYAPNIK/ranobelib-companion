@@ -1,5 +1,5 @@
 // PR 230: picking "Случайно" in the catalog's sort <select> goes straight to one random
-// title (GET /library/catalog/random) instead of reloading the list reshuffled - the
+// title (GET /catalog/random) instead of reloading the list reshuffled - the
 // moment it's chosen, not only after "Искать", since there's no list left to look at.
 // The same interception runs on submit too, in case the select still reads "random" when
 // the form is sent (e.g. the browser restored it on a back navigation).
@@ -25,7 +25,7 @@
     (grid?.dataset.tags || "").split(",").filter(Boolean).forEach((id) => params.append("tags", id));
     const tagName = new URLSearchParams(window.location.search).get("tag_name");
     if (tagName) params.set("tag_name", tagName);
-    return `/library/catalog/random?${params}`;
+    return `/catalog/random?${params}`;
   }
 
   select.addEventListener("change", () => {

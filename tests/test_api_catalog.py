@@ -91,7 +91,7 @@ def test_show_catalog_renders_cards() -> None:
 
 def test_show_catalog_wires_the_tab_swipe_script() -> None:
     # PR 211: mobile-only swipe-to-switch-tabs shortcut between /library and
-    # /library/catalog.
+    # /catalog.
     page = CatalogPage(items=[], page=1, has_next_page=False)
     with patch("app.services.catalog.Catalog", return_value=_FakeCatalog(page)):
         response = client.get("/catalog")
@@ -632,7 +632,7 @@ def test_library_tabs_active_state() -> None:
 
     assert 'library-tabs__link library-tabs__link--active" href="/library"' in library_response.text
     assert (
-        'library-tabs__link library-tabs__link--active" href="/library/catalog"'
+        'library-tabs__link library-tabs__link--active" href="/catalog"'
         in catalog_response.text
     )
 

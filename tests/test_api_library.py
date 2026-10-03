@@ -307,7 +307,7 @@ def test_show_library_anonymous_is_viewable_but_prompts_to_log_in(client: TestCl
     assert response.status_code == 200
     assert 'href="/login"' in response.text
     assert 'href="/register"' in response.text
-    assert 'href="/library/catalog"' in response.text  # locked-state CTA (PR 15)
+    assert 'href="/catalog"' in response.text  # locked-state CTA (PR 15)
 
 
 def test_show_library_anonymous_gets_the_locked_state(client: TestClient) -> None:
@@ -352,7 +352,7 @@ def test_catalog_tabs_have_no_counts(client: TestClient) -> None:
         response = client.get("/catalog")
 
     assert response.status_code == 200
-    assert 'href="/library/catalog" aria-current="page"' in response.text
+    assert 'href="/catalog" aria-current="page"' in response.text
     assert "library-tabs__count" not in response.text
 
 
@@ -376,7 +376,7 @@ def test_show_library_empty_state(client: TestClient) -> None:
 
 def test_show_library_wires_the_tab_swipe_script(client: TestClient) -> None:
     # PR 211: mobile-only swipe-to-switch-tabs shortcut between /library and
-    # /library/catalog.
+    # /catalog.
     response = client.get("/library")
 
     assert response.status_code == 200
@@ -588,7 +588,7 @@ def test_old_all_tab_redirects_to_the_catalog(client: TestClient) -> None:
     response = client.get("/library?tab=all", follow_redirects=False)
 
     assert response.status_code == 301
-    assert response.headers["location"] == "/library/catalog"
+    assert response.headers["location"] == "/catalog"
 
 
 def test_old_all_tab_keeps_the_other_query_parameters(client: TestClient) -> None:
@@ -598,7 +598,7 @@ def test_old_all_tab_keeps_the_other_query_parameters(client: TestClient) -> Non
 
     assert response.status_code == 301
     assert response.headers["location"] == (
-        "/library/catalog?query=dragon&genres=1&genres=2&sort=views"
+        "/catalog?query=dragon&genres=1&genres=2&sort=views"
     )
 
 
