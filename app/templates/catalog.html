@@ -11,7 +11,7 @@
 #}
 {% set filter_count = genres | length + countries | length %}
 {% set has_filters = all_genres or all_countries %}
-<div class="catalog-page">
+<div class="catalog-page" data-mode="{{ 'editorial' if editorial else 'results' }}">
   {% include "_library_switch.html" %}
   <header class="catalog-toolbar" data-role="catalog-scroll-header">
     {# The form is display: contents - its fields sit in the toolbar row next to the

@@ -884,3 +884,31 @@ def test_old_catalog_redirect_lands_on_the_filtered_catalog() -> None:
     assert response.status_code == 200
     assert str(response.url).endswith("/catalog?genres=5&genres=8&query=dxd&sort=views")
     assert 'value="dxd"' in response.text
+
+
+# --- PR 295: editorial vs results mode -----------------------------------------------
+
+
+@pytest.mark.parametrize(
+    ("params", "editorial"),
+    [
+        ({}, True),
+        ({"query": "   "}, True),
+        ({"sort": "last_chapter_at"}, True),
+        ({"query": "dxd"}, False),
+        ({"sort": "views"}, False),
+        ({"genres": 5}, False),
+        ({"countries": 1}, False),
+        ({"tags": 7}, False),
+    ],
+)
+def test_catalog_mode_follows_query_sort_and_filters(
+    params: dict[str, object], editorial: bool
+) -> None:
+    page = CatalogPage(items=[], page=1, has_next_page=False)
+    with patch("app.services.catalog.Catalog", return_value=_FakeCatalog(page)):
+        response = client.get("/catalog", params=params)
+
+    assert response.context["editorial"] is editorial
+    mode = "editorial" if editorial else "results"
+    assert f'class="catalog-page" data-mode="{mode}"' in response.text

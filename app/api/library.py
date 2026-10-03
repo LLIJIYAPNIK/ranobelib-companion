@@ -54,6 +54,21 @@ CATALOG_SORT_OPTIONS = {
 }
 
 
+def _is_editorial(
+    query: str | None, sort: str, genres: list[int], countries: list[int], tags: list[int]
+) -> bool:
+    """PR 295 (Catalog handoff.md): the catalog's default "editorial" mode - no search,
+    the default sort and no filter - gets the featured inserts; anything else is the
+    "results" mode, a plain listing of exactly what was asked for plus the criteria chips."""
+    return (
+        not (query or "").strip()
+        and sort == DEFAULT_CATALOG_SORT
+        and not genres
+        and not countries
+        and not tags
+    )
+
+
 @router.get("", response_model=None)
 async def show_library(
     request: Request,
@@ -257,6 +272,7 @@ async def show_catalog(
             "selected_tag_names": selected_tag_names,
             "tag_name": tag_name,
             "random_empty": random_empty,
+            "editorial": _is_editorial(query, sort, genres, countries, tags),
             "library_count": library_count,
         },
     )
