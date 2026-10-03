@@ -8321,8 +8321,218 @@ a.catalog-card__action {
   }
 }
 
-/* Phones (until PR 299): the feed without section labels. */
+/* ==========================================================================
+   CatalogMobile (PR 299, wave 36): the phone catalog from CatalogMobile.dc.html /
+   Catalog handoff.md -> Mobile 390 / 320. H1 and the full-width switch, the search on
+   its own 48px row, then sort (ellipsis) + «Фильтры» with its count + grid/list in one
+   row, the criteria chips as one horizontal strip (results mode only). No section labels
+   in the feed - they're desktop navigation.
+   ========================================================================== */
+
+.catalog-toolbar__clear,
+.catalog-toolbar__view {
+  display: none;
+}
+
 @media (max-width: 767px) {
+  .catalog-page.wn-catalog {
+    --catalog-pad-x: 16px;
+    gap: 20px;
+    padding: 16px var(--catalog-pad-x) 24px;
+    font-family: var(--wn-font-ui);
+  }
+
+  .wn-catalog__hero {
+    display: flex;
+    flex-direction: column;
+    gap: 14px;
+  }
+
+  .wn-catalog__hero-copy {
+    display: block;
+  }
+
+  .wn-catalog__eyebrow {
+    display: none;
+  }
+
+  .wn-catalog__title {
+    margin: 0;
+    color: #f2f0f7;
+    font: 800 28px/1.15 var(--wn-font-ui);
+    letter-spacing: -0.02em;
+  }
+
+  /* Not a sticky card on phones - the app bar above is what stays. */
+  .wn-catalog .catalog-toolbar,
+  .wn-catalog .catalog-toolbar.header--hidden {
+    position: static;
+    gap: 10px 8px;
+    padding: 0;
+    border: 0;
+    border-radius: 0;
+    background: none;
+    transform: none;
+  }
+
+  .wn-catalog .catalog-toolbar__search {
+    flex: 1 1 100%;
+    gap: 10px;
+    height: 48px;
+    padding: 0 6px 0 14px;
+    border-color: #2a2838;
+    border-radius: 12px;
+    background: #101017;
+    color: #8c889f;
+  }
+
+  .wn-catalog .catalog-toolbar__search .ui-input {
+    color: #eeecf4;
+    font: 500 16px/1 var(--wn-font-ui);
+  }
+
+  .wn-catalog .catalog-toolbar__search .ui-input::placeholder {
+    color: #8c889f;
+  }
+
+  .catalog-toolbar__clear:not([hidden]) {
+    display: flex;
+    flex: none;
+    align-items: center;
+    justify-content: center;
+    width: 36px;
+    height: 36px;
+    padding: 0;
+    border: 0;
+    border-radius: 8px;
+    background: transparent;
+    color: #a3a0b5;
+    cursor: pointer;
+  }
+
+  .catalog-toolbar__clear svg {
+    width: 16px;
+    height: 16px;
+  }
+
+  .wn-catalog .catalog-toolbar__sort,
+  .wn-catalog .catalog-toolbar__filters,
+  .catalog-toolbar__view:not([hidden]) {
+    height: 44px;
+    border: 1px solid #2a2838;
+    border-radius: 12px;
+    background: #16161f;
+    color: #eeecf4;
+  }
+
+  .wn-catalog .catalog-toolbar__sort {
+    flex: 1 1 0;
+    min-width: 0;
+    padding: 0 10px 0 14px;
+    font: 600 15px/1 var(--wn-font-ui);
+  }
+
+  /* The label gives way with an ellipsis, the chevron stays. */
+  .wn-catalog .catalog-toolbar__sort :is(.dropdown, .dropdown__trigger, select) {
+    width: 100%;
+    min-width: 0;
+  }
+
+  .wn-catalog .catalog-toolbar__sort .dropdown__trigger {
+    gap: 6px;
+    overflow: hidden;
+  }
+
+  .wn-catalog .catalog-toolbar__sort .dropdown__trigger > span,
+  .wn-catalog .catalog-toolbar__sort select {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .wn-catalog .catalog-toolbar__filters {
+    --ui-btn-bg: #16161f;
+    --ui-btn-border: #2a2838;
+    gap: 8px;
+    padding: 0 12px;
+    font: 700 15px/1 var(--wn-font-ui);
+  }
+
+  .wn-catalog .catalog-toolbar__filters .ui-badge {
+    min-width: 22px;
+    height: 22px;
+    padding: 0 6px;
+    border-radius: 999px;
+    background: rgb(61 214 195 / 16%);
+    color: #3dd6c3;
+    font: 800 12px/22px var(--wn-font-ui);
+    text-align: center;
+  }
+
+  .catalog-toolbar__view:not([hidden]) {
+    display: flex;
+    flex: none;
+    align-items: center;
+    justify-content: center;
+    width: 44px;
+    padding: 0;
+    cursor: pointer;
+  }
+
+  .catalog-toolbar__view svg {
+    width: 18px;
+    height: 18px;
+  }
+
+  /* The icon shows what a tap switches to. */
+  .catalog-toolbar__view[data-view="list"] .catalog-toolbar__view-list,
+  .catalog-toolbar__view:not([data-view="list"]) .catalog-toolbar__view-grid {
+    display: none;
+  }
+
+  :is(.catalog-toolbar__clear, .catalog-toolbar__view):focus-visible {
+    outline: 2px solid #c5b6ff;
+    outline-offset: 2px;
+  }
+
+  /* One strip edge to edge: chips, then «Сбросить». */
+  .wn-catalog .catalog-criteria {
+    flex: 1 1 100%;
+    flex-wrap: nowrap;
+    gap: 8px;
+    margin: 0 calc(-1 * var(--catalog-pad-x));
+    padding: 2px var(--catalog-pad-x);
+    overflow-x: auto;
+    scrollbar-width: none;
+  }
+
+  .wn-catalog .catalog-criteria::-webkit-scrollbar {
+    display: none;
+  }
+
+  .wn-catalog .catalog-criteria__chips {
+    overflow: visible;
+  }
+
+  .wn-catalog .catalog-criteria__chip {
+    padding: 0 6px 0 12px;
+    border-color: #3a3650;
+    background: #1c1b27;
+    white-space: nowrap;
+  }
+
+  .wn-catalog .catalog-criteria__reset {
+    display: flex;
+    flex: none;
+    align-items: center;
+    height: 36px;
+    padding: 0 8px;
+  }
+
+  .catalog-criteria__reset-all {
+    display: none;
+  }
+
   .catalog-section {
     display: none;
   }
