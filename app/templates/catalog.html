@@ -4,15 +4,24 @@
 {% block content %}
 {#
   PR 251 (Aurora Ink, CATALOG-DEFAULT/-FILTERS/-QUICKVIEW): the «Библиотека /
-  Каталог» switch (PR 294), a sticky
-  toolbar card (search · sort · «Фильтры · N» · «Искать»), the grid, and the filters
-  panel - a 292px column beside the grid on desktop, a bottom sheet on mobile, both
-  with a «Сбросить»/«Показать» footer.
+  Каталог» switch (PR 294), a sticky toolbar card (search · sort · «Фильтры · N» ·
+  «Искать»), the grid, and the filters panel with a «Сбросить»/«Показать» footer - a
+  bottom sheet on mobile.
+  PR 296 (CatalogDesktop.dc.html): on desktop a header card (eyebrow + H1, the switch on
+  the right) with the toolbar as a sticky glass panel overlapping its bottom edge, the
+  results mode's criteria row inside that panel, and «Фильтры» as a popover under its
+  button (catalog-filters-toggle.js).
 #}
 {% set filter_count = genres | length + countries | length %}
 {% set has_filters = all_genres or all_countries %}
-<div class="catalog-page" data-mode="{{ 'editorial' if editorial else 'results' }}">
-  {% include "_library_switch.html" %}
+<div class="catalog-page wn-catalog" data-mode="{{ 'editorial' if editorial else 'results' }}">
+  <section class="wn-catalog__hero">
+    <div class="wn-catalog__hero-copy">
+      <span class="wn-catalog__eyebrow">Каталог RanobeLib</span>
+      <h1 class="wn-catalog__title">Библиотека</h1>
+    </div>
+    {% include "_library_switch.html" %}
+  </section>
   <header class="catalog-toolbar" data-role="catalog-scroll-header">
     {# The form is display: contents - its fields sit in the toolbar row next to the
        filters toggle, which stays outside it (PR 111), and «Искать» joins via form=. #}
@@ -26,9 +35,11 @@
           placeholder="Поиск по каталогу…"
           aria-label="Поиск по каталогу"
           value="{{ query or '' }}"
+          data-role="catalog-search-input"
         >
+        <kbd class="wn-catalog__kbd" aria-hidden="true">/</kbd>
       </label>
-      <span class="ui-select catalog-toolbar__sort">
+      <span class="ui-select catalog-toolbar__sort{% if sort != 'last_chapter_at' %} catalog-toolbar__sort--active{% endif %}">
         <select name="sort" class="toc__export-format" aria-label="Сортировка">
           {% for value, label in sort_options.items() %}
           <option value="{{ value }}"{% if value == sort %} selected{% endif %}>{{ label }}</option>
@@ -50,33 +61,48 @@
     </button>
     {% endif %}
     <button class="ui-btn ui-btn--primary catalog-toolbar__submit" type="submit" form="catalog-search-form">Искать</button>
+    {# PR 295: the results mode's active criteria (Catalog handoff.md) - a click on a chip
+       drops that one, «Сбросить всё» goes back to the editorial feed. No count: the API
+       returns no total. #}
+    {% if criteria_chips %}
+    <div class="catalog-criteria" data-role="catalog-criteria">
+      <span class="catalog-criteria__label" aria-hidden="true">Условия</span>
+      <ul class="catalog-criteria__chips" aria-label="Условия">
+        {% for chip in criteria_chips %}
+        <li>
+          <a class="catalog-criteria__chip" href="{{ chip.href }}" aria-label="Убрать: {{ chip.label }}">
+            {{ chip.label }}
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" aria-hidden="true"><path d="M7 7l10 10M17 7 7 17"/></svg>
+          </a>
+        </li>
+        {% endfor %}
+      </ul>
+      <a class="catalog-criteria__reset" href="/catalog" data-role="catalog-criteria-reset">Сбросить всё</a>
+      <span class="catalog-criteria__status">Показаны результаты</span>
+    </div>
+    {% endif %}
   </header>
-  {# PR 295: the results mode's active criteria (Catalog handoff.md) - a click on a chip
-     drops that one, «Сбросить всё» goes back to the editorial feed. No count: the API
-     returns no total. #}
-  {% if criteria_chips %}
-  <div class="catalog-criteria" data-role="catalog-criteria">
-    <ul class="catalog-criteria__chips" aria-label="Условия">
-      {% for chip in criteria_chips %}
-      <li>
-        <a class="catalog-criteria__chip" href="{{ chip.href }}" aria-label="Убрать: {{ chip.label }}">
-          {{ chip.label }}
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" aria-hidden="true"><path d="M7 7l10 10M17 7 7 17"/></svg>
-        </a>
-      </li>
-      {% endfor %}
-    </ul>
-    <a class="catalog-criteria__reset" href="/catalog" data-role="catalog-criteria-reset">Сбросить всё</a>
-    <span class="catalog-criteria__status">Показаны результаты</span>
-  </div>
-  {% endif %}
   {% if random_empty %}
   <p class="catalog-page__hint" role="status">Не нашлось ранобэ по этим фильтрам</p>
   {% endif %}
   <main class="catalog-layout library-tabs-content">
     <div class="catalog-layout__results">
       {% if not items and not random_empty %}
-      <p class="ui-empty">Не нашлось ранобэ по этим фильтрам</p>
+      {# PR 296 (CatalogDesktop, preset=empty): names what was asked for and offers one
+         reset; popular titles are deliberately not mixed in (Catalog handoff.md). #}
+      {% set asked = [] %}
+      {% if (query or "").strip() %}{% set _ = asked.append("запросу «" ~ query.strip() ~ "»") %}{% endif %}
+      {% if genres or countries or tags %}{% set _ = asked.append("выбранным фильтрам") %}{% endif %}
+      <div class="catalog-empty" data-role="catalog-empty" role="status">
+        <span class="catalog-empty__icon" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round"><circle cx="11" cy="11" r="7"/><path d="m21 21-4.3-4.3M8.5 11h5"/></svg></span>
+        <h2 class="catalog-empty__title">Ничего не нашлось</h2>
+        {% if asked %}
+        <p class="catalog-empty__text">По {{ asked | join(" и ") }} тайтлов нет. Проверьте написание или ослабьте фильтры.</p>
+        {% else %}
+        <p class="catalog-empty__text">Здесь пока нет тайтлов.</p>
+        {% endif %}
+        {% if not editorial %}<a class="catalog-empty__reset" href="/catalog">Сбросить поиск и фильтры</a>{% endif %}
+      </div>
       {% endif %}
       <div
         class="catalog-grid"
@@ -238,6 +264,7 @@
 <script src="{{ url_for('static', path='js/custom-dropdown.js') }}" defer></script>
 <script src="{{ url_for('static', path='js/catalog-random-redirect.js') }}" defer></script>
 <script src="{{ url_for('static', path='js/catalog-sort-autosubmit.js') }}" defer></script>
+<script src="{{ url_for('static', path='js/catalog-search-shortcut.js') }}" defer></script>
 {% if has_filters %}
 <script src="{{ url_for('static', path='js/catalog-filters-toggle.js') }}" defer></script>
 <script src="{{ url_for('static', path='js/catalog-filters-accordion.js') }}" defer></script>

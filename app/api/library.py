@@ -401,10 +401,11 @@ async def catalog_page_fragment(
     genres = genres or []
     countries = countries or []
     tags = tags or []
+    editorial = _is_editorial(query, sort, genres, countries, tags)
     async with get_catalog() as catalog:
         stream = await catalog_stream(
             catalog,
-            editorial=_is_editorial(query, sort, genres, countries, tags),
+            editorial=editorial,
             page=page,
             shown=shown,
             featured=featured,
@@ -414,7 +415,16 @@ async def catalog_page_fragment(
             countries=countries,
             tags=tags,
         )
-    response = templates.TemplateResponse(request, "_catalog_cards.html", {"items": stream.items})
+    response = templates.TemplateResponse(
+        request,
+        "_catalog_cards.html",
+        {
+            "items": stream.items,
+            "editorial": editorial,
+            "page": page,
+            "has_next_page": stream.has_next_page,
+        },
+    )
     response.headers["X-Has-Next-Page"] = "true" if stream.has_next_page else "false"
     response.headers["X-Catalog-Shown"] = str(stream.shown)
     response.headers["X-Catalog-Featured"] = str(stream.featured)

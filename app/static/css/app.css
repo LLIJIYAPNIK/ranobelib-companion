@@ -6772,11 +6772,83 @@ a.ui-title-card:focus-visible .ui-title-card__cover {
   }
 }
 
+/* PR 296: the next-page skeleton in the catalog card's own shape, pulsing .55↔1 with
+   an 80ms step from column to column (catalog-scroll.js sets --i). */
+.catalog-skeleton__cover {
+  display: block;
+  aspect-ratio: 2 / 3;
+  border-radius: 12px;
+  background: #15141c;
+  box-shadow: 0 0 0 1px rgb(255 255 255 / 4%);
+  animation: catalog-pulse 1.6s ease-in-out infinite;
+  animation-delay: calc(var(--i, 0) * 80ms);
+}
+
+.catalog-skeleton__line {
+  display: block;
+  height: 14px;
+  margin-top: 14px;
+  border-radius: 7px;
+  background: #18171f;
+}
+
+.catalog-skeleton__line--title {
+  width: 88%;
+}
+
+.catalog-skeleton__line--meta {
+  width: 50%;
+  height: 11px;
+  margin-top: 10px;
+  background: #131219;
+}
+
+@keyframes catalog-pulse {
+  0%,
+  100% {
+    opacity: 0.55;
+  }
+
+  50% {
+    opacity: 1;
+  }
+}
+
+@keyframes catalog-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
 .catalog-feed-status {
-  margin: 8px 0 0;
-  color: #a3a0b5;
-  font: 500 14px/1.4 var(--wn-font-ui, sans-serif);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  margin: 18px 0 0;
+  color: #8c889f;
+  font: 600 13px/1 var(--wn-font-ui, sans-serif);
   text-align: center;
+}
+
+/* A teal spinner beside «Загружаем ещё…». */
+.catalog-feed-status::before {
+  content: "";
+  flex: none;
+  width: 14px;
+  height: 14px;
+  box-sizing: border-box;
+  border: 2px solid #2a2838;
+  border-top-color: #3dd6c3;
+  border-radius: 50%;
+  animation: catalog-spin 0.8s linear infinite;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .catalog-skeleton__cover,
+  .catalog-feed-status::before {
+    animation: none;
+  }
 }
 
 .catalog-feed-status:empty {
@@ -6790,30 +6862,65 @@ a.ui-title-card:focus-visible .ui-title-card__cover {
   display: flex;
   flex-wrap: wrap;
   align-items: center;
-  justify-content: space-between;
-  gap: 12px;
-  max-width: 520px;
+  justify-content: center;
+  gap: 12px 16px;
+  width: fit-content;
+  max-width: 100%;
   margin: 16px auto 0;
-  padding: 12px 12px 12px 16px;
+  padding: 12px 12px 12px 18px;
   border: 1px solid rgb(240 138 155 / 28%);
-  border-radius: 14px;
-  background: rgb(20 20 29 / 78%);
+  border-radius: 16px;
+  background: rgb(24 20 28 / 90%);
+  box-shadow: 0 20px 40px -20px rgb(0 0 0 / 70%);
+}
+
+.catalog-feed-error__icon {
+  flex: none;
+  width: 22px;
+  height: 22px;
+  color: #f08a9b;
+}
+
+.catalog-feed-error__copy {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  min-width: 0;
 }
 
 .catalog-feed-error__text {
   color: #eeecf4;
-  font: 600 14px/1.4 var(--wn-font-ui, sans-serif);
+  font: 700 15px/1.3 var(--wn-font-ui, sans-serif);
+}
+
+.catalog-feed-error__hint {
+  color: #a3a0b5;
+  font: 500 13px/1.3 var(--wn-font-ui, sans-serif);
 }
 
 .catalog-feed-error__retry {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
   min-height: 44px;
   padding: 0 16px;
-  border: 1px solid rgb(255 255 255 / 14%);
+  border: 1px solid #33304a;
   border-radius: 12px;
-  background: rgb(255 255 255 / 6%);
-  color: #f2f0f7;
+  background: rgb(255 255 255 / 5%);
+  color: #eeecf4;
   font: 700 14px/1 var(--wn-font-ui, sans-serif);
   cursor: pointer;
+}
+
+.catalog-feed-error__retry svg {
+  width: 15px;
+  height: 15px;
+}
+
+@media (hover: hover) {
+  .catalog-feed-error__retry:hover {
+    background: rgb(255 255 255 / 10%);
+  }
 }
 
 .catalog-feed-error__retry:focus-visible {
@@ -6848,9 +6955,11 @@ a.ui-title-card:focus-visible .ui-title-card__cover {
   position: absolute;
   top: -4px;
   left: calc(50% - 4px);
+  box-sizing: border-box;
   width: 8px;
   height: 8px;
-  background: #3a3650;
+  border: 1px solid rgb(61 214 195 / 60%);
+  background: #08080c;
   transform: rotate(45deg);
 }
 
@@ -6898,30 +7007,267 @@ a.ui-title-card:focus-visible .ui-title-card__cover {
   outline-offset: 2px;
 }
 
-/* PR 295: the editorial feed's featured insert - a whole grid row after every 12
-   cards. A plain block here; the FeaturedCard look (backdrop, glow, flip) is PR 296. */
-.catalog-featured {
-  grid-column: 1 / -1;
+/* PR 296: nothing found (CatalogDesktop preset=empty) - names what was asked for, one
+   reset, no popular titles mixed in. */
+.catalog-empty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 16px;
+  padding: 72px 32px;
+  border: 1px solid rgb(255 255 255 / 7%);
+  border-radius: 20px;
+  background:
+    radial-gradient(600px 260px at 50% 0%, rgb(122 82 244 / 8%), transparent 70%),
+    #0e0e14;
+  text-align: center;
 }
 
-.catalog-featured__link {
+.catalog-empty__icon {
   display: flex;
   align-items: center;
-  gap: 20px;
-  padding: 18px;
-  border: 1px solid #2a2838;
-  border-radius: 16px;
-  background: var(--wn-surface, #101017);
-  color: inherit;
+  justify-content: center;
+  width: 64px;
+  height: 64px;
+  border: 1px solid rgb(255 255 255 / 9%);
+  border-radius: 18px;
+  background: linear-gradient(180deg, #1e1d29, #15141c);
+  box-shadow: inset 0 1px 0 rgb(255 255 255 / 6%);
+  color: #b3afc4;
+}
+
+.catalog-empty__icon svg {
+  width: 28px;
+  height: 28px;
+}
+
+.catalog-empty__title {
+  margin: 0;
+  color: #f7f5fb;
+  font: 800 26px/1.2 var(--wn-font-ui, sans-serif);
+  letter-spacing: -0.015em;
+}
+
+.catalog-empty__text {
+  max-width: 520px;
+  margin: 0;
+  color: #a3a0b5;
+  font: 500 15px/1.6 var(--wn-font-ui, sans-serif);
+  text-wrap: pretty;
+}
+
+.catalog-empty__reset {
+  display: inline-flex;
+  align-items: center;
+  height: 48px;
+  margin-top: 8px;
+  padding: 0 20px;
+  border: 1px solid #3a3650;
+  border-radius: 12px;
+  background: rgb(255 255 255 / 5%);
+  color: #eeecf4;
+  font: 700 15px/1 var(--wn-font-ui, sans-serif);
   text-decoration: none;
 }
 
-.catalog-featured__link:focus-visible {
+.catalog-empty__reset:focus-visible {
   outline: 2px solid #c5b6ff;
   outline-offset: 2px;
 }
 
+@media (max-width: 767px) {
+  .catalog-empty {
+    padding: 40px 20px;
+  }
+
+  .catalog-empty__title {
+    font-size: 22px;
+  }
+}
+
+/* PR 296: the catalog card (CatalogCard.dc.html) - 2:3 cover with a bottom scrim,
+   title, «жанр · статус», «N гл.», the corner action. The desktop «cinema» hover
+   (lift, zoom, the cover's own blurred glow) is in the CatalogDesktop block. */
+.catalog-card {
+  position: relative;
+  min-width: 0;
+}
+
+.catalog-card__link {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  border-radius: 14px;
+  color: inherit;
+  text-decoration: none;
+  outline: none;
+}
+
+.catalog-card__media {
+  position: relative;
+  display: block;
+  aspect-ratio: 2 / 3;
+}
+
+.catalog-card__glow {
+  display: none;
+}
+
+.catalog-card__cover {
+  position: absolute;
+  inset: 0;
+  overflow: hidden;
+  border-radius: 12px;
+  background: #15151d;
+  box-shadow:
+    0 0 0 1px rgb(255 255 255 / 7%),
+    0 10px 24px rgb(0 0 0 / 35%);
+}
+
+.catalog-card__img {
+  position: absolute;
+  inset: 0;
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.catalog-card__scrim {
+  position: absolute;
+  inset: auto 0 0;
+  height: 38%;
+  background: linear-gradient(180deg, transparent, rgb(8 8 12 / 72%));
+  pointer-events: none;
+}
+
+.catalog-card__link:focus-visible .catalog-card__cover {
+  box-shadow:
+    0 0 0 2px #c5b6ff,
+    0 0 0 6px rgb(197 182 255 / 18%),
+    0 22px 40px rgb(0 0 0 / 60%);
+}
+
+.catalog-card__body {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 0 2px;
+}
+
+.catalog-card__title {
+  display: -webkit-box;
+  min-height: 40px;
+  overflow: hidden;
+  color: #eeecf4;
+  font: 700 15px/1.35 var(--wn-font-ui, sans-serif);
+  overflow-wrap: break-word;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+}
+
+.catalog-card__meta,
+.catalog-card__sub {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.catalog-card__meta {
+  color: #a3a0b5;
+  font: 600 13px/1.3 var(--wn-font-ui, sans-serif);
+}
+
+.catalog-card__sub {
+  color: #8c889f;
+  font: 500 12px/1.3 var(--wn-font-ui, sans-serif);
+}
+
+/* The corner action: a 36px glass plate in a 44px hit area. */
+.catalog-card__action {
+  position: absolute;
+  top: 4px;
+  right: 4px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 44px;
+  height: 44px;
+  padding: 0;
+  border: 0;
+  border-radius: 12px;
+  background: transparent;
+  color: #eeecf4;
+  cursor: pointer;
+}
+
+.catalog-card__action-chip {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 36px;
+  height: 36px;
+  border: 1px solid rgb(255 255 255 / 14%);
+  border-radius: 10px;
+  background: rgb(12 12 18 / 72%);
+  opacity: 0.82;
+  backdrop-filter: blur(8px);
+  transition: opacity 0.2s ease;
+}
+
+.catalog-card__action-chip svg {
+  width: 17px;
+  height: 17px;
+}
+
+.catalog-card__action:focus-visible {
+  outline: 2px solid #c5b6ff;
+  outline-offset: 2px;
+}
+
+.catalog-card__action:focus-visible .catalog-card__action-chip {
+  opacity: 1;
+}
+
+/* PR 295/296: the editorial feed's featured insert, a whole grid row after every 12
+   cards - FeaturedCard (FeaturedCard.dc.html). Phones get a compact horizontal block
+   here (their own FeaturedCard is PR 299); the desktop layers are in the CatalogDesktop
+   block. */
+.catalog-featured {
+  position: relative;
+  grid-column: 1 / -1;
+  min-width: 0;
+}
+
+.catalog-featured__halo,
+.catalog-featured__backdrop,
+.catalog-featured__scrim,
+.catalog-featured__issue,
+.catalog-featured__cover-glow,
+.catalog-featured__eyebrow-sep,
+.catalog-featured__eyebrow-sub,
+.catalog-featured__genres {
+  display: none;
+}
+
+.catalog-featured__card {
+  position: relative;
+  overflow: hidden;
+  isolation: isolate;
+  padding: 14px;
+  border: 1px solid #2a2838;
+  border-radius: 16px;
+  background: var(--wn-surface, #101017);
+}
+
+.catalog-featured__inner {
+  display: flex;
+  align-items: flex-start;
+  gap: 14px;
+}
+
 .catalog-featured__cover {
+  position: relative;
   flex: none;
   width: 92px;
   aspect-ratio: 2 / 3;
@@ -6930,7 +7276,7 @@ a.ui-title-card:focus-visible .ui-title-card__cover {
   background: #1b1a25;
 }
 
-.catalog-featured__cover img {
+.catalog-featured__cover-img {
   display: block;
   width: 100%;
   height: 100%;
@@ -6944,28 +7290,88 @@ a.ui-title-card:focus-visible .ui-title-card__cover {
   min-width: 0;
 }
 
-.catalog-featured__eyebrow {
-  color: #8c889f;
-  font: 800 11px/1 var(--wn-font-ui, sans-serif);
-  letter-spacing: 0.16em;
+.catalog-featured__eyebrow-main {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  color: #7ee8da;
+  font: 800 10px/1.2 var(--wn-font-ui, sans-serif);
+  letter-spacing: 0.1em;
   text-transform: uppercase;
 }
 
+.catalog-featured__dot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: #3dd6c3;
+  box-shadow: 0 0 10px rgb(61 214 195 / 70%);
+}
+
 .catalog-featured__name {
+  display: -webkit-box;
+  margin: 0;
+  overflow: hidden;
   color: #f7f5fb;
-  font: 800 20px/1.2 var(--wn-font-ui, sans-serif);
+  font: 800 17px/1.25 var(--wn-font-ui, sans-serif);
+  overflow-wrap: break-word;
+  -webkit-line-clamp: 3;
+  -webkit-box-orient: vertical;
+}
+
+.catalog-featured__facts {
+  margin: 0;
+  color: #cfcbdd;
+  font: 600 12px/1.35 var(--wn-font-ui, sans-serif);
 }
 
 .catalog-featured__summary {
   display: -webkit-box;
+  margin: 0;
   overflow: hidden;
-  color: #a3a0b5;
-  font: 500 14px/1.5 var(--wn-font-ui, sans-serif);
+  color: #cfcbdd;
+  font: 500 14px/1.45 var(--wn-font-ui, sans-serif);
   -webkit-line-clamp: 2;
   -webkit-box-orient: vertical;
 }
 
-/* Filters panel - desktop column. */
+.catalog-featured__actions {
+  display: flex;
+  gap: 10px;
+  margin-top: 4px;
+}
+
+.catalog-featured__open {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  min-height: 44px;
+  padding: 0 18px;
+  border-radius: 12px;
+  background: #7a52f4;
+  color: #fff;
+  font: 700 15px/1 var(--wn-font-ui, sans-serif);
+  text-decoration: none;
+  white-space: nowrap;
+}
+
+.catalog-featured__open svg {
+  width: 16px;
+  height: 16px;
+}
+
+.catalog-featured__open:focus-visible {
+  outline: 2px solid #c5b6ff;
+  outline-offset: 2px;
+}
+
+@media (hover: hover) {
+  .catalog-featured__open:hover {
+    background: #8a66ff;
+    color: #fff;
+  }
+}
+
 .catalog-filters {
   position: sticky;
   top: var(--s-16);
@@ -7174,6 +7580,655 @@ a.ui-title-card:focus-visible .ui-title-card__cover {
   right: calc(var(--catalog-pad-x) + 292px + var(--s-24));
 }
 
+/* ==========================================================================
+   CatalogDesktop (PR 296, wave 36): the desktop shell from CatalogDesktop.dc.html /
+   Catalog handoff.md - a dark page with two faint colour spots, noise and a vignette, a
+   header card (eyebrow + H1, the «Библиотека / Каталог» switch on the right) and the
+   toolbar as a sticky glass panel overlapping its bottom edge. Phones keep the PR 251
+   layout until PR 299.
+   ========================================================================== */
+
+/* «Искать» goes once catalog-sort-autosubmit.js makes sort changes submit on their own -
+   search submits on Enter, filters on «Показать» (was phones-only, PR 251). */
+.catalog-toolbar--autosubmit .catalog-toolbar__submit {
+  display: none;
+}
+
+.wn-catalog__hero-copy,
+.wn-catalog__kbd,
+.catalog-criteria__label {
+  display: none;
+}
+
+@media (min-width: 768px) {
+  .wn-catalog {
+    --wn-catalog-ctl-h: 52px;
+    position: relative;
+    isolation: isolate;
+    gap: 0;
+    padding: 28px 36px 64px;
+    background:
+      radial-gradient(1100px 520px at 78% -8%, rgb(122 82 244 / 7.5%), transparent 62%),
+      radial-gradient(800px 420px at -5% 0%, rgb(61 214 195 / 4%), transparent 60%),
+      linear-gradient(180deg, #0b0b10 0%, #08080c 40%);
+    font-family: var(--wn-font-ui);
+  }
+
+  .wn-catalog[data-mode="results"] {
+    --wn-catalog-ctl-h: 46px;
+  }
+
+  /* Noise (feTurbulence at 5%) and the inner vignette - decoration only. */
+  .wn-catalog::before,
+  .wn-catalog::after {
+    content: "";
+    position: absolute;
+    inset: 0;
+    z-index: -1;
+    pointer-events: none;
+  }
+
+  /* A static file, not a data: URI - img-src is 'self' only (app/security_headers.py). */
+  .wn-catalog::before {
+    opacity: 0.05;
+    background-image: url("../img/catalog-noise.svg");
+  }
+
+  .wn-catalog::after {
+    box-shadow: inset 0 0 220px rgb(0 0 0 / 55%);
+  }
+
+  .wn-catalog > .wn-catalog__hero,
+  .wn-catalog > .catalog-page__hint,
+  .wn-catalog > .catalog-layout {
+    width: 100%;
+    max-width: 1280px;
+    margin-inline: auto;
+  }
+
+  /* Header card. */
+  .wn-catalog__hero {
+    position: relative;
+    display: flex;
+    flex-wrap: wrap;
+    align-items: flex-end;
+    justify-content: space-between;
+    gap: 24px;
+    overflow: hidden;
+    padding: 36px 36px 80px;
+    border: 1px solid rgb(255 255 255 / 6.5%);
+    border-radius: 22px;
+    background:
+      radial-gradient(260px 180px at calc(100% - 200px) 20px, rgb(122 82 244 / 16%), transparent),
+      radial-gradient(260px 160px at 30% 100%, rgb(61 214 195 / 6%), transparent),
+      linear-gradient(180deg, rgb(26 25 36 / 92%) 0%, rgb(16 16 23 / 92%) 100%);
+    box-shadow:
+      inset 0 1px 0 rgb(255 255 255 / 6%),
+      0 30px 60px -30px rgb(0 0 0 / 70%);
+  }
+
+  /* The thin light line along the top edge. */
+  .wn-catalog__hero::before {
+    content: "";
+    position: absolute;
+    top: 0;
+    right: 0;
+    left: 0;
+    height: 1px;
+    background: linear-gradient(90deg, transparent, rgb(197 182 255 / 35%), transparent);
+  }
+
+  .wn-catalog__hero-copy {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+  }
+
+  .wn-catalog__eyebrow {
+    color: #8c889f;
+    font: 800 11px/1 var(--wn-font-ui);
+    letter-spacing: 0.2em;
+    text-transform: uppercase;
+  }
+
+  .wn-catalog__title {
+    margin: 0;
+    color: #f7f5fb;
+    font: 800 52px/1.02 var(--wn-font-ui);
+    letter-spacing: -0.035em;
+  }
+
+  .wn-catalog[data-mode="results"] .wn-catalog__hero {
+    padding: 24px 28px 68px;
+  }
+
+  .wn-catalog[data-mode="results"] .wn-catalog__title {
+    font-size: 36px;
+  }
+
+  /* Sticky glass panel, overlapping the header's bottom edge by 44px. */
+  .wn-catalog .catalog-toolbar {
+    top: 12px;
+    align-items: center;
+    gap: 10px;
+    width: calc(min(100%, 1280px) - 40px);
+    margin: -44px auto 0;
+    padding: 12px;
+    border: 1px solid rgb(255 255 255 / 9%);
+    border-radius: 16px;
+    background: rgb(20 20 29 / 78%);
+    box-shadow:
+      inset 0 1px 0 rgb(255 255 255 / 5%),
+      0 24px 48px -16px rgb(0 0 0 / 70%);
+    backdrop-filter: blur(18px) saturate(1.2);
+  }
+
+  .wn-catalog[data-mode="results"] .catalog-toolbar {
+    padding: 10px;
+  }
+
+  .wn-catalog .catalog-toolbar__search {
+    flex: 1 1 240px;
+    gap: 12px;
+    height: var(--wn-catalog-ctl-h);
+    padding: 0 16px;
+    border: 1px solid rgb(255 255 255 / 9%);
+    border-radius: 12px;
+    background: rgb(8 8 12 / 70%);
+    color: #8c889f;
+  }
+
+  .wn-catalog .catalog-toolbar__search > svg {
+    width: 20px;
+    height: 20px;
+  }
+
+  .wn-catalog .catalog-toolbar__search .ui-input {
+    font: 500 16px/1 var(--wn-font-ui);
+  }
+
+  .wn-catalog .catalog-toolbar__sort,
+  .wn-catalog .catalog-toolbar__filters {
+    height: var(--wn-catalog-ctl-h);
+    padding: 0 16px;
+    border: 1px solid rgb(255 255 255 / 9%);
+    border-radius: 12px;
+    background: rgb(255 255 255 / 4%);
+    color: #eeecf4;
+    font: 600 15px/1 var(--wn-font-ui);
+  }
+
+  .wn-catalog .catalog-toolbar__filters {
+    --ui-btn-bg: rgb(255 255 255 / 4%);
+    --ui-btn-hover: rgb(255 255 255 / 8%);
+    --ui-btn-border: rgb(255 255 255 / 9%);
+    font-weight: 700;
+  }
+
+  .wn-catalog .catalog-toolbar__filters[aria-expanded="true"] {
+    --ui-btn-border: #5b5380;
+  }
+
+  /* A non-default value gets the teal edge (handoff: «с активным значением»). */
+  .wn-catalog[data-mode="results"] .catalog-toolbar__search:has(.ui-input:not(:placeholder-shown)),
+  .wn-catalog .catalog-toolbar__sort--active,
+  .wn-catalog .catalog-toolbar__filters:has(.ui-badge) {
+    border-color: rgb(61 214 195 / 40%);
+  }
+
+  .wn-catalog__kbd {
+    display: flex;
+    flex: none;
+    align-items: center;
+    justify-content: center;
+    min-width: 24px;
+    height: 24px;
+    border: 1px solid #33304a;
+    border-radius: 6px;
+    color: #8c889f;
+    font: 700 12px/1 var(--wn-font-ui);
+  }
+
+  /* The results mode's criteria join the panel as its second row. */
+  .wn-catalog .catalog-criteria {
+    flex: 1 1 100%;
+    gap: 8px;
+    padding-top: 12px;
+    border-top: 1px solid rgb(255 255 255 / 6%);
+  }
+
+  .catalog-criteria__label {
+    display: inline;
+    margin-right: 4px;
+    color: #8c889f;
+    font: 700 12px/1 var(--wn-font-ui);
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+  }
+
+  .wn-catalog .catalog-criteria__chip {
+    height: 34px;
+  }
+
+  .wn-catalog > .catalog-page__hint {
+    margin-top: 20px;
+  }
+
+  .wn-catalog > .catalog-layout {
+    margin-top: 40px;
+  }
+
+  .wn-catalog[data-mode="results"] > .catalog-layout {
+    margin-top: 28px;
+  }
+
+  /* «Фильтры» opens as a popover under its button (catalog-filters-toggle.js sets top /
+     right / max-height from the button's box) instead of the old 292px side column. */
+  .wn-catalog .catalog-filters.catalog-filters--enhanced {
+    position: fixed;
+    z-index: 60;
+    flex: none;
+    width: 360px;
+    border-color: #33304a;
+    border-radius: 14px;
+    background: #17171f;
+    box-shadow: 0 20px 50px rgb(0 0 0 / 60%);
+  }
+
+  .wn-catalog .back-to-top--filters-open {
+    right: var(--catalog-pad-x);
+  }
+
+  /* The feed: 6 columns (4 below 1200px), 40×24 in the editorial mode and the calmer
+     30×20 in the results mode; 56px between a segment and the next (grid gap + 16). */
+  .wn-catalog .catalog-grid {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    gap: 40px 24px;
+  }
+
+  .wn-catalog[data-mode="results"] .catalog-grid {
+    gap: 30px 20px;
+  }
+
+  /* Section labels of the editorial feed (_catalog_cards.html). */
+  .catalog-section {
+    display: flex;
+    grid-column: 1 / -1;
+    align-items: center;
+    gap: 14px;
+    min-width: 0;
+  }
+
+  .catalog-section:not(:first-child),
+  .wn-catalog .catalog-featured {
+    margin-top: 16px;
+  }
+
+  .catalog-section__dot {
+    flex: none;
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    background: #4a4565;
+  }
+
+  .catalog-section--fresh .catalog-section__dot {
+    background: #3dd6c3;
+    box-shadow: 0 0 10px rgb(61 214 195 / 60%);
+  }
+
+  .catalog-section__title {
+    margin: 0;
+    color: #f2f0f7;
+    font: 800 20px/1.2 var(--wn-font-ui);
+    letter-spacing: -0.01em;
+    white-space: nowrap;
+  }
+
+  .catalog-section__sub {
+    color: #8c889f;
+    font: 500 13px/1.2 var(--wn-font-ui);
+    white-space: nowrap;
+  }
+
+  .catalog-section__rule {
+    flex: 1;
+    height: 1px;
+    background: linear-gradient(90deg, rgb(255 255 255 / 10%), transparent);
+  }
+
+  /* CatalogCard variant="cinema": hover or keyboard focus lifts the card by 4px, zooms
+     the cover to 1.03, fades in a blurred copy of the same cover behind it as the glow
+     and brightens the ring. */
+  .wn-catalog .catalog-card {
+    transition: transform 0.22s cubic-bezier(0.2, 0.7, 0.2, 1);
+  }
+
+  .wn-catalog .catalog-card__link {
+    gap: 14px;
+  }
+
+  .wn-catalog .catalog-card__glow {
+    position: absolute;
+    inset: 8% 4% -6%;
+    display: block;
+    width: 92%;
+    height: 98%;
+    border-radius: 12px;
+    object-fit: cover;
+    opacity: 0;
+    filter: blur(26px) saturate(1.4);
+    pointer-events: none;
+    transition: opacity 0.25s ease;
+  }
+
+  .wn-catalog .catalog-card__cover {
+    transition: box-shadow 0.22s ease;
+  }
+
+  .wn-catalog .catalog-card__img {
+    transition: transform 0.4s ease;
+  }
+
+  .wn-catalog .catalog-card__title {
+    transition: color 0.2s;
+  }
+
+  .wn-catalog .catalog-card:has(.catalog-card__link:focus-visible) {
+    transform: translateY(-4px);
+  }
+
+  .wn-catalog .catalog-card:has(.catalog-card__link:focus-visible) .catalog-card__glow {
+    opacity: 0.55;
+  }
+
+  .wn-catalog .catalog-card:has(.catalog-card__link:focus-visible) .catalog-card__img {
+    transform: scale(1.03);
+  }
+
+  .wn-catalog .catalog-card:has(.catalog-card__link:focus-visible) .catalog-card__title {
+    color: #fff;
+  }
+}
+
+@media (min-width: 768px) and (hover: hover) {
+  .wn-catalog .catalog-card:hover {
+    transform: translateY(-4px);
+  }
+
+  .wn-catalog .catalog-card:hover .catalog-card__glow {
+    opacity: 0.55;
+  }
+
+  .wn-catalog .catalog-card:hover .catalog-card__img {
+    transform: scale(1.03);
+  }
+
+  .wn-catalog .catalog-card:hover .catalog-card__cover {
+    box-shadow:
+      0 0 0 1px rgb(255 255 255 / 22%),
+      0 22px 40px rgb(0 0 0 / 60%);
+  }
+
+  .wn-catalog .catalog-card:hover .catalog-card__title {
+    color: #fff;
+  }
+
+  .wn-catalog .catalog-card:hover .catalog-card__action-chip {
+    opacity: 1;
+  }
+
+  .catalog-card__action:hover .catalog-card__action-chip {
+    background: rgb(30 30 42 / 90%);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .catalog-card,
+  .catalog-card__img,
+  .catalog-card__glow {
+    transition: none !important;
+  }
+
+  .wn-catalog .catalog-card:hover,
+  .wn-catalog .catalog-card:has(.catalog-card__link:focus-visible) {
+    transform: none;
+  }
+
+  .wn-catalog .catalog-card:hover .catalog-card__img,
+  .wn-catalog .catalog-card:has(.catalog-card__link:focus-visible) .catalog-card__img {
+    transform: none;
+  }
+}
+
+/* FeaturedCard desktop - the interrupting frame: min-height 340px, the cover blurred as
+   the backdrop under a scrim towards the text and a radial vignette; the cover 200×300
+   with a coloured halo of itself; a soft colour patch behind the whole card (the only
+   colour on the page comes from here). --flip mirrors it for every even insert. */
+@media (min-width: 768px) {
+  .wn-catalog .catalog-featured {
+    padding: 8px 0;
+  }
+
+  .wn-catalog .catalog-featured__halo {
+    position: absolute;
+    top: -40px;
+    bottom: -40px;
+    left: 8%;
+    z-index: 0;
+    display: block;
+    width: 84%;
+    height: calc(100% + 80px);
+    object-fit: cover;
+    opacity: 0.32;
+    filter: blur(90px) saturate(1.3);
+    pointer-events: none;
+  }
+
+  .wn-catalog .catalog-featured__card {
+    z-index: 1;
+    min-height: 340px;
+    padding: 0;
+    border: 1px solid rgb(255 255 255 / 9%);
+    border-radius: 20px;
+    background: #0e0e14;
+    box-shadow:
+      inset 0 1px 0 rgb(255 255 255 / 6%),
+      0 40px 80px -30px rgb(0 0 0 / 85%);
+  }
+
+  .wn-catalog .catalog-featured__backdrop {
+    position: absolute;
+    inset: -90px;
+    z-index: -3;
+    display: block;
+    width: calc(100% + 180px);
+    height: calc(100% + 180px);
+    object-fit: cover;
+    filter: blur(60px) saturate(1.05) brightness(0.62);
+  }
+
+  .wn-catalog .catalog-featured__scrim {
+    position: absolute;
+    inset: 0;
+    z-index: -2;
+    display: block;
+    background:
+      radial-gradient(130% 150% at 15% 50%, transparent 35%, rgb(0 0 0 / 55%) 100%),
+      linear-gradient(90deg, rgb(8 8 12 / 12%) 0%, rgb(8 8 12 / 66%) 32%, rgb(8 8 12 / 93%) 62%, rgb(8 8 12 / 96%) 100%);
+  }
+
+  .wn-catalog .catalog-featured--flip .catalog-featured__scrim {
+    background:
+      radial-gradient(130% 150% at 85% 50%, transparent 35%, rgb(0 0 0 / 55%) 100%),
+      linear-gradient(270deg, rgb(8 8 12 / 12%) 0%, rgb(8 8 12 / 66%) 32%, rgb(8 8 12 / 93%) 62%, rgb(8 8 12 / 96%) 100%);
+  }
+
+  /* «Выпуск 01» - decorative, in the corner opposite the cover. */
+  .wn-catalog .catalog-featured__issue {
+    position: absolute;
+    top: 26px;
+    right: 40px;
+    display: flex;
+    flex-direction: column;
+    align-items: flex-end;
+    gap: 2px;
+    pointer-events: none;
+  }
+
+  .wn-catalog .catalog-featured--flip .catalog-featured__issue {
+    right: auto;
+    left: 40px;
+    align-items: flex-start;
+  }
+
+  .catalog-featured__issue-label {
+    color: rgb(255 255 255 / 32%);
+    font: 700 10px/1 var(--wn-font-ui);
+    letter-spacing: 0.28em;
+    text-transform: uppercase;
+  }
+
+  .catalog-featured__issue-number {
+    color: rgb(255 255 255 / 10%);
+    font: 200 64px/1 var(--wn-font-ui);
+    letter-spacing: -0.04em;
+  }
+
+  .wn-catalog .catalog-featured__inner {
+    align-items: center;
+    gap: 48px;
+    min-height: 340px;
+    padding: 20px 48px;
+  }
+
+  .wn-catalog .catalog-featured--flip .catalog-featured__inner {
+    flex-direction: row-reverse;
+  }
+
+  .wn-catalog .catalog-featured__cover {
+    width: 200px;
+    overflow: visible;
+    background: none;
+  }
+
+  .wn-catalog .catalog-featured__cover-glow {
+    position: absolute;
+    inset: 6% -6% -8%;
+    display: block;
+    width: 112%;
+    height: 102%;
+    border-radius: 16px;
+    object-fit: cover;
+    opacity: 0.75;
+    filter: blur(30px) saturate(1.5);
+  }
+
+  .wn-catalog .catalog-featured__cover-img {
+    position: relative;
+    border-radius: 14px;
+    box-shadow:
+      0 0 0 1px rgb(255 255 255 / 14%),
+      0 28px 50px rgb(0 0 0 / 60%);
+  }
+
+  .wn-catalog .catalog-featured__copy {
+    flex: 1;
+    gap: 14px;
+    max-width: 680px;
+  }
+
+  .wn-catalog .catalog-featured__eyebrow {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 8px 14px;
+  }
+
+  .wn-catalog .catalog-featured__eyebrow-main {
+    color: #8af0e2;
+    font-size: 11px;
+    letter-spacing: 0.14em;
+  }
+
+  .wn-catalog .catalog-featured__eyebrow-sep {
+    display: block;
+    width: 1px;
+    height: 12px;
+    background: rgb(255 255 255 / 18%);
+  }
+
+  .wn-catalog .catalog-featured__eyebrow-sub {
+    display: inline;
+    color: #b3afc4;
+    font: 600 13px/1 var(--wn-font-ui);
+  }
+
+  .wn-catalog .catalog-featured__name {
+    color: #fff;
+    font: 800 36px/1.12 var(--wn-font-ui);
+    letter-spacing: -0.025em;
+    text-wrap: balance;
+    -webkit-line-clamp: 2;
+  }
+
+  .wn-catalog .catalog-featured__facts {
+    color: #d6d2e2;
+    font: 600 14px/1.3 var(--wn-font-ui);
+  }
+
+  .wn-catalog .catalog-featured__summary {
+    max-width: 600px;
+    color: #c9c5d6;
+    font: 500 15px/1.6 var(--wn-font-ui);
+    text-wrap: pretty;
+  }
+
+  .wn-catalog .catalog-featured__genres {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+    margin: 0;
+    padding: 0;
+    list-style: none;
+  }
+
+  .wn-catalog .catalog-featured__genres li {
+    display: flex;
+    align-items: center;
+    height: 28px;
+    padding: 0 12px;
+    border: 1px solid rgb(255 255 255 / 12%);
+    border-radius: 999px;
+    background: rgb(255 255 255 / 6%);
+    color: #dcd8e8;
+    font: 600 12px/1 var(--wn-font-ui);
+  }
+
+  .wn-catalog .catalog-featured__actions {
+    margin-top: 6px;
+  }
+
+  .wn-catalog .catalog-featured__open {
+    height: 48px;
+    padding: 0 22px;
+    box-shadow: 0 10px 30px -10px rgb(122 82 244 / 70%);
+  }
+}
+
+@media (min-width: 1200px) {
+  .wn-catalog .catalog-grid {
+    grid-template-columns: repeat(6, minmax(0, 1fr));
+  }
+}
+
+/* Phones (until PR 299): the feed without section labels. */
+@media (max-width: 767px) {
+  .catalog-section {
+    display: none;
+  }
+}
+
 /* Quick view (title-quickview.js): a non-modal <dialog> over its own scrim, one level
    below the image lightbox (z-index 100) that its cover opens. */
 .title-quickview-scrim {
@@ -7308,8 +8363,7 @@ a.ui-title-card:focus-visible .ui-title-card__cover {
     padding: var(--s-4) var(--catalog-pad-x) var(--s-8);
   }
 
-  /* Search on its own row, sort and «Фильтры» on the second (M-CATALOG). «Искать» goes
-     once catalog-sort-autosubmit.js makes sort changes submit on their own. */
+  /* Search on its own row, sort and «Фильтры» on the second (M-CATALOG). */
   .catalog-toolbar__search {
     flex-basis: 100%;
   }
@@ -7317,10 +8371,6 @@ a.ui-title-card:focus-visible .ui-title-card__cover {
   .catalog-toolbar__sort {
     flex: 1 1 0;
     min-width: 0;
-  }
-
-  .catalog-toolbar--autosubmit .catalog-toolbar__submit {
-    display: none;
   }
 
   .catalog-layout {
