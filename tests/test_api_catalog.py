@@ -556,9 +556,13 @@ def test_show_catalog_renders_combined_filter_chip_and_plural_reset_link() -> No
 
     assert response.status_code == 200
     # PR 295: one chip per criterion, each dropping only itself; «Сбросить всё» both.
+    # PR 299: «всё» is its own span - phones say just «Сбросить».
     assert 'href="/catalog?countries=1" aria-label="Убрать: Фэнтези"' in response.text
     assert 'href="/catalog?genres=5" aria-label="Убрать: Япония"' in response.text
-    assert 'href="/catalog" data-role="catalog-criteria-reset">Сбросить всё</a>' in response.text
+    assert (
+        'href="/catalog" data-role="catalog-criteria-reset">'
+        'Сбросить<span class="catalog-criteria__reset-all"> всё</span></a>'
+    ) in response.text
 
 
 def test_show_catalog_without_genres_omits_the_filter_chip() -> None:

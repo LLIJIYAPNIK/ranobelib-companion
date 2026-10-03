@@ -9,6 +9,8 @@
 // or, with no JS of your own, a button with data-bottom-sheet="<id of a hidden element>"
 // (title from the element's data-bottom-sheet-title). Inside the content,
 // data-bottom-sheet-close closes the sheet and data-autofocus picks the first focus.
+// PR 299: an element marked data-bottom-sheet-action (e.g. the catalog filters'
+// «Сбросить») moves into the head row, before ✕, while the content is open.
 //
 // Drag: the head (grabber + title) via Pointer Events + pointer capture, never from its
 // buttons; the body via touch events, taken over only when it starts at scrollTop <= 0
@@ -25,6 +27,7 @@
   const head = root.querySelector('[data-role="bottom-sheet-head"]');
   const titleEl = root.querySelector('[data-role="bottom-sheet-title"]');
   const body = root.querySelector('[data-role="bottom-sheet-body"]');
+  const closeButton = root.querySelector('[data-role="bottom-sheet-close"]');
   const appRoot = document.querySelector(".app-shell");
   const reducedMotion = window.matchMedia("(prefers-reduced-motion: reduce)");
 
@@ -38,7 +41,7 @@
   const CLOSE_MS = 220; // also the spring back
   const BACKDROP_IN_MS = 240;
 
-  let current = null; // { content, placeholder, wasHidden, opener, onClose }
+  let current = null; // { content, placeholder, wasHidden, opener, onClose, action }
   let closing = false;
   let drag = null;
   let bodyTouch = null;
@@ -82,11 +85,19 @@
     content.hidden = false;
     body.appendChild(content);
     titleEl.textContent = options.title || "";
-    current = { content, placeholder, wasHidden, opener: options.opener, onClose: options.onClose };
+    let action = null;
+    const actionEl = content.querySelector("[data-bottom-sheet-action]");
+    if (actionEl) {
+      action = { el: actionEl, home: document.createComment("bottom-sheet-action") };
+      actionEl.before(action.home);
+      closeButton.before(actionEl);
+    }
+    current = { content, placeholder, wasHidden, opener: options.opener, onClose: options.onClose, action };
   }
 
   function unmount() {
-    const { content, placeholder, wasHidden, onClose } = current;
+    const { content, placeholder, wasHidden, onClose, action } = current;
+    action?.home.replaceWith(action.el);
     content.hidden = wasHidden;
     placeholder.replaceWith(content);
     current = null;

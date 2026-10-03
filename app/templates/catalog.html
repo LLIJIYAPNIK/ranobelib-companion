@@ -1,6 +1,5 @@
 {% extends "base.html" %}
 {% block title %}Все тайтлы — RanobeLib Companion{% endblock %}
-{% block mobile_title %}Каталог{% endblock %}
 {% block content %}
 {#
   PR 251 (Aurora Ink, CATALOG-DEFAULT/-FILTERS/-QUICKVIEW): the «Библиотека /
@@ -35,9 +34,18 @@
           placeholder="Поиск по каталогу…"
           aria-label="Поиск по каталогу"
           value="{{ query or '' }}"
+          enterkeyhint="search"
           data-role="catalog-search-input"
         >
         <kbd class="wn-catalog__kbd" aria-hidden="true">/</kbd>
+        {# PR 299 (CatalogMobile): phones clear the search from inside the field. #}
+        <button
+          class="catalog-toolbar__clear"
+          type="button"
+          data-role="catalog-search-clear"
+          aria-label="Очистить поиск"
+          {%- if not query %} hidden{% endif %}
+        ><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" aria-hidden="true"><path d="M7 7l10 10M17 7 7 17"/></svg></button>
       </label>
       <span class="ui-select catalog-toolbar__sort{% if sort != 'last_chapter_at' %} catalog-toolbar__sort--active{% endif %}">
         <select name="sort" class="toc__export-format" aria-label="Сортировка">
@@ -60,6 +68,43 @@
       {% if filter_count %}<span class="ui-badge ui-badge--accent" aria-label="выбрано: {{ filter_count }}">{{ filter_count }}</span>{% endif %}
     </button>
     {% endif %}
+    {# PR 299 (CatalogMobile): on phones the sort and «Фильтры» both open the filters
+       sheet below - catalog-mobile.js shows these two in place of the select and the
+       popover toggle, which stay for desktop and for phones without JS. #}
+    <button
+      class="catalog-toolbar__sheet-sort"
+      type="button"
+      data-role="catalog-sheet-open"
+      aria-haspopup="dialog"
+      aria-label="Сортировка: {{ sort_options.get(sort, sort) }}"
+      hidden
+    >
+      <span>{{ sort_options.get(sort, sort) }}</span>
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m6 9 6 6 6-6"/></svg>
+    </button>
+    <button
+      class="catalog-toolbar__sheet-filters"
+      type="button"
+      data-role="catalog-sheet-open"
+      aria-haspopup="dialog"
+      hidden
+    >
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" aria-hidden="true"><path d="M3 6h18M6 12h12M10 18h4"/></svg>
+      Фильтры
+      {% if filter_count %}<span class="catalog-toolbar__sheet-count" aria-label="выбрано: {{ filter_count }}">{{ filter_count }}</span>{% endif %}
+    </button>
+    {# PR 299 (CatalogMobile): grid or list on phones - catalog-mobile.js shows it and
+       remembers the choice. Two columns of covers by default. #}
+    <button
+      class="catalog-toolbar__view"
+      type="button"
+      data-role="catalog-view-toggle"
+      aria-label="Показать списком"
+      hidden
+    >
+      <svg class="catalog-toolbar__view-list" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" aria-hidden="true"><rect x="3" y="4" width="18" height="6" rx="1.5"/><rect x="3" y="14" width="18" height="6" rx="1.5"/></svg>
+      <svg class="catalog-toolbar__view-grid" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" aria-hidden="true"><rect x="3" y="3" width="7" height="7" rx="1.5"/><rect x="14" y="3" width="7" height="7" rx="1.5"/><rect x="3" y="14" width="7" height="7" rx="1.5"/><rect x="14" y="14" width="7" height="7" rx="1.5"/></svg>
+    </button>
     <button class="ui-btn ui-btn--primary catalog-toolbar__submit" type="submit" form="catalog-search-form">Искать</button>
     {# PR 295: the results mode's active criteria (Catalog handoff.md) - a click on a chip
        drops that one, «Сбросить всё» goes back to the editorial feed. No count: the API
@@ -77,7 +122,7 @@
         </li>
         {% endfor %}
       </ul>
-      <a class="catalog-criteria__reset" href="/catalog" data-role="catalog-criteria-reset">Сбросить всё</a>
+      <a class="catalog-criteria__reset" href="/catalog" data-role="catalog-criteria-reset">Сбросить<span class="catalog-criteria__reset-all"> всё</span></a>
       <span class="catalog-criteria__status">Показаны результаты</span>
     </div>
     {% endif %}
@@ -250,6 +295,45 @@
     </aside>
     {% endif %}
   </main>
+  {# PR 299 (CatalogMobile): the phone filters sheet - the shared bottom sheet
+     (bottom-sheet.js) takes it in. Its own form is the draft: nothing applies until
+     «Показать результаты» sends it, «Сбросить» (moved into the sheet's head) clears the
+     draft, and closing the sheet without sending puts the form back as the page has it
+     (catalog-mobile.js). Groups: sort (one), genres and countries (several). Status and
+     chapter-count groups wait for the SDK (ranobelib-python-sdk#68, #69). The search
+     and a tag filter from a title page aren't in the sheet - they ride along unchanged.
+     autocomplete="off": no browser form restore on Back - the draft starts as the page. #}
+  <div class="catalog-sheet" id="catalog-filters-sheet" data-role="catalog-filters-sheet" data-bottom-sheet-title="Фильтры" hidden>
+    <button class="catalog-sheet__reset" type="button" data-role="catalog-sheet-reset" data-bottom-sheet-action>Сбросить</button>
+    <form class="catalog-sheet__form" method="get" action="/catalog" data-role="catalog-sheet-form" data-default-sort="last_chapter_at" autocomplete="off">
+      <input type="hidden" name="query" value="{{ query or '' }}" data-role="catalog-sheet-query">
+      {% for t in tags %}<input type="hidden" name="tags" value="{{ t }}">{% endfor %}
+      {% if tag_name %}<input type="hidden" name="tag_name" value="{{ tag_name }}">{% endif %}
+      {% set check %}<svg class="catalog-sheet__check" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m5 12 5 5 9-10"/></svg>{% endset %}
+      <fieldset class="catalog-sheet__group">
+        <legend class="catalog-sheet__legend">Сортировка</legend>
+        <div class="catalog-sheet__options">
+          {% for value, label in sort_options.items() %}
+          <label class="catalog-sheet__option"><input type="radio" name="sort" value="{{ value }}"{% if value == sort %} checked{% endif %}>{{ check }}<span>{{ label }}</span></label>
+          {% endfor %}
+        </div>
+      </fieldset>
+      {% for key, legend, options, selected in [("genres", "Жанры", all_genres, genres), ("countries", "Страны", all_countries, countries)] if options %}
+      <fieldset class="catalog-sheet__group">
+        <legend class="catalog-sheet__legend">{{ legend }}</legend>
+        <div class="catalog-sheet__options">
+          {% for option in options %}
+          <label class="catalog-sheet__option"><input type="checkbox" name="{{ key }}" value="{{ option.id }}"{% if option.id in selected %} checked{% endif %}>{{ check }}<span>{{ option.name }}</span></label>
+          {% endfor %}
+        </div>
+      </fieldset>
+      {% endfor %}
+      <p class="catalog-sheet__hint">Любой фильтр или сортировка, кроме «По обновлению», переключает каталог в режим результатов — подборки популярного скрываются.</p>
+      <div class="catalog-sheet__foot">
+        <button class="catalog-sheet__apply" type="submit">Показать результаты</button>
+      </div>
+    </form>
+  </div>
   <button
     type="button"
     class="ui-icon-btn back-to-top"
@@ -270,6 +354,7 @@
 <script src="{{ url_for('static', path='js/catalog-filters-accordion.js') }}" defer></script>
 {% endif %}
 <script src="{{ url_for('static', path='js/catalog-library-toggle.js') }}" defer></script>
+<script src="{{ url_for('static', path='js/catalog-mobile.js') }}" defer></script>
 <script src="{{ url_for('static', path='js/image-lightbox.js') }}" defer></script>
 <script src="{{ url_for('static', path='js/library-tabs-swipe.js') }}" defer></script>
 <script src="{{ url_for('static', path='js/library-switch.js') }}" defer></script>

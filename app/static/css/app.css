@@ -7303,9 +7303,9 @@ a.catalog-card__action {
 }
 
 /* PR 295/296: the editorial feed's featured insert, a whole grid row after every 12
-   cards - FeaturedCard (FeaturedCard.dc.html). Phones get a compact horizontal block
-   here (their own FeaturedCard is PR 299); the desktop layers are in the CatalogDesktop
-   block. */
+   cards - FeaturedCard (FeaturedCard.dc.html). A compact horizontal block here; the
+   phone layout is in the CatalogMobile block (PR 299), the desktop layers in the
+   CatalogDesktop one. */
 .catalog-featured {
   position: relative;
   grid-column: 1 / -1;
@@ -7657,8 +7657,8 @@ a.catalog-card__action {
    CatalogDesktop (PR 296, wave 36): the desktop shell from CatalogDesktop.dc.html /
    Catalog handoff.md - a dark page with two faint colour spots, noise and a vignette, a
    header card (eyebrow + H1, the «Библиотека / Каталог» switch on the right) and the
-   toolbar as a sticky glass panel overlapping its bottom edge. Phones keep the PR 251
-   layout until PR 299.
+   toolbar as a sticky glass panel overlapping its bottom edge. Phones: the CatalogMobile
+   block below (PR 299).
    ========================================================================== */
 
 /* «Искать» goes once catalog-sort-autosubmit.js makes sort changes submit on their own -
@@ -8321,10 +8321,793 @@ a.catalog-card__action {
   }
 }
 
-/* Phones (until PR 299): the feed without section labels. */
+/* ==========================================================================
+   CatalogMobile (PR 299, wave 36): the phone catalog from CatalogMobile.dc.html /
+   Catalog handoff.md -> Mobile 390 / 320. H1 and the full-width switch, the search on
+   its own 48px row, then sort (ellipsis) + «Фильтры» with its count + grid/list in one
+   row, the criteria chips as one horizontal strip (results mode only). No section labels
+   in the feed - they're desktop navigation.
+   ========================================================================== */
+
+.catalog-toolbar__clear,
+.catalog-toolbar__view,
+.catalog-toolbar__sheet-sort,
+.catalog-toolbar__sheet-filters {
+  display: none;
+}
+
 @media (max-width: 767px) {
+  .catalog-page.wn-catalog {
+    --catalog-pad-x: 16px;
+    gap: 20px;
+    padding: 16px var(--catalog-pad-x) 24px;
+    font-family: var(--wn-font-ui);
+  }
+
+  .wn-catalog__hero {
+    display: flex;
+    flex-direction: column;
+    gap: 14px;
+  }
+
+  .wn-catalog__hero-copy {
+    display: block;
+  }
+
+  .wn-catalog__eyebrow {
+    display: none;
+  }
+
+  .wn-catalog__title {
+    margin: 0;
+    color: #f2f0f7;
+    font: 800 28px/1.15 var(--wn-font-ui);
+    letter-spacing: -0.02em;
+  }
+
+  /* Not a sticky card on phones - the app bar above is what stays. */
+  .wn-catalog .catalog-toolbar,
+  .wn-catalog .catalog-toolbar.header--hidden {
+    position: static;
+    gap: 10px 8px;
+    padding: 0;
+    border: 0;
+    border-radius: 0;
+    background: none;
+    transform: none;
+  }
+
+  .wn-catalog .catalog-toolbar__search {
+    flex: 1 1 100%;
+    gap: 10px;
+    height: 48px;
+    padding: 0 6px 0 14px;
+    border-color: #2a2838;
+    border-radius: 12px;
+    background: #101017;
+    color: #8c889f;
+  }
+
+  .wn-catalog .catalog-toolbar__search .ui-input {
+    color: #eeecf4;
+    font: 500 16px/1 var(--wn-font-ui);
+  }
+
+  .wn-catalog .catalog-toolbar__search .ui-input::placeholder {
+    color: #8c889f;
+  }
+
+  .catalog-toolbar__clear:not([hidden]) {
+    display: flex;
+    flex: none;
+    align-items: center;
+    justify-content: center;
+    width: 36px;
+    height: 36px;
+    padding: 0;
+    border: 0;
+    border-radius: 8px;
+    background: transparent;
+    color: #a3a0b5;
+    cursor: pointer;
+  }
+
+  .catalog-toolbar__clear svg {
+    width: 16px;
+    height: 16px;
+  }
+
+  .wn-catalog .catalog-toolbar__sort,
+  .wn-catalog .catalog-toolbar__filters,
+  .catalog-toolbar__view:not([hidden]) {
+    height: 44px;
+    border: 1px solid #2a2838;
+    border-radius: 12px;
+    background: #16161f;
+    color: #eeecf4;
+  }
+
+  .wn-catalog .catalog-toolbar__sort {
+    flex: 1 1 0;
+    min-width: 0;
+    padding: 0 10px 0 14px;
+    font: 600 15px/1 var(--wn-font-ui);
+  }
+
+  /* The label gives way with an ellipsis, the chevron stays. */
+  .wn-catalog .catalog-toolbar__sort :is(.dropdown, .dropdown__trigger, select) {
+    width: 100%;
+    min-width: 0;
+  }
+
+  .wn-catalog .catalog-toolbar__sort .dropdown__trigger {
+    gap: 6px;
+    overflow: hidden;
+  }
+
+  .wn-catalog .catalog-toolbar__sort .dropdown__trigger > span,
+  .wn-catalog .catalog-toolbar__sort select {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .wn-catalog .catalog-toolbar__filters {
+    --ui-btn-bg: #16161f;
+    --ui-btn-border: #2a2838;
+    gap: 8px;
+    padding: 0 12px;
+    font: 700 15px/1 var(--wn-font-ui);
+  }
+
+  .wn-catalog .catalog-toolbar__filters .ui-badge {
+    min-width: 22px;
+    height: 22px;
+    padding: 0 6px;
+    border-radius: 999px;
+    background: rgb(61 214 195 / 16%);
+    color: #3dd6c3;
+    font: 800 12px/22px var(--wn-font-ui);
+    text-align: center;
+  }
+
+  .catalog-toolbar__view:not([hidden]) {
+    display: flex;
+    flex: none;
+    align-items: center;
+    justify-content: center;
+    width: 44px;
+    padding: 0;
+    cursor: pointer;
+  }
+
+  /* With the filters sheet (catalog-mobile.js), its two buttons replace the select and
+     the popover toggle. */
+  .wn-catalog--sheet :is(.catalog-toolbar__sort, .catalog-toolbar__filters) {
+    display: none;
+  }
+
+  .wn-catalog--sheet :is(.catalog-toolbar__sheet-sort, .catalog-toolbar__sheet-filters):not([hidden]) {
+    display: flex;
+    align-items: center;
+    height: 44px;
+    border: 1px solid #2a2838;
+    border-radius: 12px;
+    background: #16161f;
+    color: #eeecf4;
+    cursor: pointer;
+  }
+
+  .wn-catalog--sheet .catalog-toolbar__sheet-sort:not([hidden]) {
+    flex: 1 1 0;
+    justify-content: space-between;
+    gap: 6px;
+    min-width: 0;
+    padding: 0 10px 0 14px;
+    font: 600 15px/1 var(--wn-font-ui);
+  }
+
+  .catalog-toolbar__sheet-sort span {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .catalog-toolbar__sheet-sort svg {
+    flex: none;
+    width: 16px;
+    height: 16px;
+    color: #a3a0b5;
+  }
+
+  .wn-catalog--sheet .catalog-toolbar__sheet-filters:not([hidden]) {
+    flex: none;
+    gap: 8px;
+    padding: 0 12px;
+    font: 700 15px/1 var(--wn-font-ui);
+  }
+
+  .catalog-toolbar__sheet-filters svg {
+    flex: none;
+    width: 18px;
+    height: 18px;
+  }
+
+  .catalog-toolbar__sheet-count {
+    box-sizing: border-box;
+    min-width: 22px;
+    height: 22px;
+    padding: 0 6px;
+    border-radius: 999px;
+    background: rgb(61 214 195 / 16%);
+    color: #3dd6c3;
+    font: 800 12px/22px var(--wn-font-ui);
+    text-align: center;
+  }
+
+  :is(.catalog-toolbar__sheet-sort, .catalog-toolbar__sheet-filters):focus-visible {
+    outline: 2px solid #c5b6ff;
+    outline-offset: 2px;
+  }
+
+  .catalog-toolbar__view svg {
+    width: 18px;
+    height: 18px;
+  }
+
+  /* The icon shows what a tap switches to. */
+  .catalog-toolbar__view[data-view="list"] .catalog-toolbar__view-list,
+  .catalog-toolbar__view:not([data-view="list"]) .catalog-toolbar__view-grid {
+    display: none;
+  }
+
+  :is(.catalog-toolbar__clear, .catalog-toolbar__view):focus-visible {
+    outline: 2px solid #c5b6ff;
+    outline-offset: 2px;
+  }
+
+  /* One strip edge to edge: chips, then «Сбросить». */
+  .wn-catalog .catalog-criteria {
+    flex: 1 1 100%;
+    flex-wrap: nowrap;
+    gap: 8px;
+    margin: 0 calc(-1 * var(--catalog-pad-x));
+    padding: 2px var(--catalog-pad-x);
+    overflow-x: auto;
+    scrollbar-width: none;
+  }
+
+  .wn-catalog .catalog-criteria::-webkit-scrollbar {
+    display: none;
+  }
+
+  .wn-catalog .catalog-criteria__chips {
+    overflow: visible;
+  }
+
+  .wn-catalog .catalog-criteria__chip {
+    padding: 0 6px 0 12px;
+    border-color: #3a3650;
+    background: #1c1b27;
+    white-space: nowrap;
+  }
+
+  .wn-catalog .catalog-criteria__reset {
+    display: flex;
+    flex: none;
+    align-items: center;
+    height: 36px;
+    padding: 0 8px;
+  }
+
+  .catalog-criteria__reset-all {
+    display: none;
+  }
+
   .catalog-section {
     display: none;
+  }
+}
+
+/* The card's status sits in «жанр · статус» on desktop and in «статус · N гл.» on
+   phones (CatalogCard grid/row) - _catalog_cards.html renders it in both. */
+.catalog-card__sub-status,
+.catalog-card__sub--status-only {
+  display: none;
+}
+
+/* CatalogCard grid (phones): strictly two columns, 24×12, no scrim on the cover. */
+@media (max-width: 767px) {
+  .catalog-card__meta-status,
+  .catalog-card__meta--status-only {
+    display: none;
+  }
+
+  .catalog-card__sub-status {
+    display: inline;
+  }
+
+  .catalog-card__sub--status-only {
+    display: block;
+  }
+
+  .wn-catalog .catalog-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 24px 12px;
+  }
+
+  .wn-catalog .catalog-card__cover {
+    box-shadow: 0 0 0 1px rgb(255 255 255 / 6%);
+  }
+
+  .wn-catalog .catalog-card__scrim {
+    display: none;
+  }
+
+  .wn-catalog .catalog-card__body {
+    gap: 5px;
+  }
+
+  .wn-catalog .catalog-card__sub {
+    font-size: 13px;
+  }
+
+  /* CatalogCard row - the list view (catalog-mobile.js): a 64px cover, the title in
+     full, «жанр · статус · N гл.», and the library button as a 44px outlined square. */
+  .wn-catalog .catalog-grid[data-view="list"] {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 10px;
+  }
+
+  .catalog-grid[data-view="list"] .catalog-card:not(.catalog-grid__skeleton) {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    padding: 12px;
+    border: 1px solid #24222f;
+    border-radius: 14px;
+    background: #13131b;
+  }
+
+  .catalog-grid[data-view="list"] .catalog-card__link {
+    flex: 1;
+    flex-direction: row;
+    align-items: center;
+    gap: 14px;
+    min-width: 0;
+    border-radius: 10px;
+  }
+
+  .catalog-grid[data-view="list"] .catalog-card__media {
+    flex: none;
+    width: 64px;
+  }
+
+  .catalog-grid[data-view="list"] .catalog-card__cover {
+    border-radius: 8px;
+    box-shadow: none;
+  }
+
+  /* One run of text under the title, so «жанр · статус · N гл.» wraps word by word. */
+  .catalog-grid[data-view="list"] .catalog-card__body {
+    display: block;
+    flex: 1;
+    min-width: 0;
+    padding: 0;
+    color: #8c889f;
+    font: 500 13px/1.3 var(--wn-font-ui);
+  }
+
+  .catalog-grid[data-view="list"] .catalog-card__title {
+    display: block;
+    min-height: 0;
+    margin-bottom: 6px;
+    text-wrap: pretty;
+  }
+
+  .catalog-grid[data-view="list"] :is(.catalog-card__meta, .catalog-card__sub) {
+    display: inline;
+    color: inherit;
+    font: inherit;
+    white-space: normal;
+  }
+
+  .catalog-grid[data-view="list"] .catalog-card__meta + .catalog-card__sub::before {
+    content: "\00a0· ";
+  }
+
+  .catalog-grid[data-view="list"] .catalog-card__action {
+    position: static;
+    flex: none;
+    border: 1px solid rgb(255 255 255 / 14%);
+  }
+
+  .catalog-grid[data-view="list"] .catalog-card__action-chip,
+  .catalog-grid[data-view="list"] .catalog-card__action[aria-pressed="true"] .catalog-card__action-chip {
+    width: auto;
+    height: auto;
+    border: 0;
+    background: none;
+    color: inherit;
+    opacity: 1;
+    backdrop-filter: none;
+  }
+
+  .catalog-grid[data-view="list"] .catalog-card__action[aria-pressed="true"] {
+    border-color: rgb(61 214 195 / 60%);
+    background: rgb(61 214 195 / 14%);
+    color: #3dd6c3;
+  }
+
+  .catalog-grid[data-view="list"] .catalog-grid__skeleton {
+    display: grid;
+    grid-template-columns: 64px minmax(0, 1fr);
+    align-content: center;
+    column-gap: 14px;
+  }
+
+  .catalog-grid[data-view="list"] .catalog-skeleton__cover {
+    grid-row: span 2;
+    border-radius: 8px;
+  }
+
+  /* FeaturedCard mobile: the whole row, a horizontal block shorter than one card
+     (≈270px) - the cover (92px, 80px under 360) beside eyebrow, title (3 lines),
+     «статус · N глав» and two genres, then the description and «Открыть тайтл» + a
+     44px «В библиотеку» across the full width. The cover blurred and desaturated is the
+     backdrop. The copy column's children join the inner grid (display: contents), so
+     the description and the buttons can run under the cover. */
+  .wn-catalog .catalog-featured__card {
+    padding: 14px;
+    border-color: #2a2838;
+    border-radius: 16px;
+  }
+
+  .wn-catalog .catalog-featured__backdrop {
+    position: absolute;
+    inset: -50px;
+    z-index: -2;
+    display: block;
+    width: calc(100% + 100px);
+    height: calc(100% + 100px);
+    object-fit: cover;
+    filter: blur(40px) saturate(0.6) brightness(0.6);
+  }
+
+  .wn-catalog .catalog-featured__scrim {
+    position: absolute;
+    inset: 0;
+    z-index: -1;
+    display: block;
+    background: linear-gradient(
+      180deg,
+      rgb(10 10 16 / 60%) 0%,
+      rgb(10 10 16 / 90%) 60%,
+      rgb(10 10 16 / 95%) 100%
+    );
+  }
+
+  .wn-catalog .catalog-featured__inner {
+    display: grid;
+    grid-template-columns: 92px minmax(0, 1fr);
+    grid-template-rows: auto auto auto 1fr auto auto;
+    gap: 6px 12px;
+  }
+
+  .wn-catalog .catalog-featured__copy {
+    display: contents;
+  }
+
+  .wn-catalog .catalog-featured__cover {
+    grid-row: 1 / 5;
+    grid-column: 1;
+    align-self: start;
+    width: auto;
+    box-shadow:
+      0 12px 26px rgb(0 0 0 / 50%),
+      0 0 0 1px rgb(255 255 255 / 10%);
+  }
+
+  .wn-catalog :is(.catalog-featured__eyebrow, .catalog-featured__name, .catalog-featured__facts, .catalog-featured__genres) {
+    grid-column: 2;
+  }
+
+  .wn-catalog .catalog-featured__dot {
+    display: none;
+  }
+
+  .wn-catalog .catalog-featured__genres {
+    grid-row: 4;
+    align-self: start;
+    display: block;
+    margin: 0;
+    padding: 0;
+    color: #a3a0b5;
+    font: 500 12px/1.35 var(--wn-font-ui);
+    list-style: none;
+  }
+
+  .wn-catalog .catalog-featured__genres li {
+    display: inline;
+  }
+
+  .wn-catalog .catalog-featured__genres li + li::before {
+    content: " · ";
+  }
+
+  .wn-catalog .catalog-featured__genres li:nth-child(n + 3) {
+    display: none;
+  }
+
+  .wn-catalog :is(.catalog-featured__summary, .catalog-featured__actions) {
+    grid-column: 1 / -1;
+    margin-top: 6px;
+  }
+
+  .wn-catalog .catalog-featured__summary {
+    grid-row: 5;
+  }
+
+  .wn-catalog .catalog-featured__actions {
+    grid-row: 6;
+    gap: 8px;
+  }
+
+  .wn-catalog .catalog-featured__open {
+    flex: 1;
+    justify-content: center;
+    min-width: 0;
+  }
+
+  .wn-catalog .catalog-featured__open svg {
+    display: none;
+  }
+
+  .wn-catalog .catalog-featured__lib {
+    flex: none;
+    justify-content: center;
+    width: 44px;
+    height: 44px;
+    padding: 0;
+    background: rgb(255 255 255 / 5%);
+    backdrop-filter: none;
+  }
+
+  .wn-catalog .catalog-featured__lib svg {
+    width: 18px;
+    height: 18px;
+  }
+
+  /* The label is the button's aria-label already. */
+  .wn-catalog .catalog-featured__lib > span {
+    display: none;
+  }
+
+  /* Feed states, phone versions (CatalogMobile footer=error/end, preset empty): the
+     error as one compact row, the end as a plain rule + «Наверх ↑» link, «Ничего не
+     нашлось» as a dashed note with one reset. */
+  .wn-catalog .catalog-feed-error {
+    justify-content: flex-start;
+    gap: 10px 12px;
+    width: auto;
+    padding: 12px 12px 12px 14px;
+    border-color: #3a2a36;
+    border-radius: 14px;
+    background: #15141c;
+    box-shadow: none;
+  }
+
+  .wn-catalog .catalog-feed-error__icon {
+    width: 20px;
+    height: 20px;
+  }
+
+  .wn-catalog .catalog-feed-error__copy {
+    flex: 1 1 140px;
+  }
+
+  .wn-catalog .catalog-feed-error__text {
+    font-weight: 600;
+  }
+
+  .wn-catalog .catalog-feed-error__hint,
+  .wn-catalog .catalog-feed-error__retry svg {
+    display: none;
+  }
+
+  .wn-catalog .catalog-feed-error__retry {
+    border-radius: 10px;
+  }
+
+  .wn-catalog .catalog-feed-end {
+    gap: 10px;
+    margin-top: 8px;
+    padding: 8px 0;
+  }
+
+  .wn-catalog .catalog-feed-end__rule {
+    margin: 0;
+    background: #24222f;
+  }
+
+  .wn-catalog .catalog-feed-end__diamond,
+  .wn-catalog .catalog-feed-end__text {
+    display: none;
+  }
+
+  .wn-catalog .catalog-feed-end__title {
+    color: #a3a0b5;
+    font: 600 14px/1.3 var(--wn-font-ui);
+  }
+
+  .wn-catalog .catalog-feed-end__actions {
+    margin: 0;
+  }
+
+  .wn-catalog .catalog-feed-end__action {
+    padding: 0 8px;
+    border: 0;
+    background: none;
+    color: #b7a6ff;
+  }
+
+  .wn-catalog .catalog-empty {
+    gap: 12px;
+    padding: 32px 20px;
+    border: 1px dashed #33304a;
+    border-radius: 16px;
+    background: #0f0f15;
+  }
+
+  .wn-catalog .catalog-empty__icon {
+    display: none;
+  }
+
+  .wn-catalog .catalog-empty__title {
+    font: 800 20px/1.25 var(--wn-font-ui);
+    letter-spacing: 0;
+  }
+
+  .wn-catalog .catalog-empty__text {
+    font: 500 14px/1.5 var(--wn-font-ui);
+  }
+
+  .wn-catalog .catalog-empty__reset {
+    height: 44px;
+    margin-top: 0;
+    padding: 0 18px;
+    border-color: #33304a;
+  }
+}
+
+@media (max-width: 359px) {
+  .wn-catalog .catalog-featured__inner {
+    grid-template-columns: 80px minmax(0, 1fr);
+  }
+}
+
+/* The filters sheet (catalog.html, catalog-mobile.js) inside the shared bottom sheet:
+   uppercase group legends over wrapping pill options (a teal check on the chosen
+   ones - real radios/checkboxes underneath), the hint about the results mode, and
+   «Показать результаты» pinned at the bottom while the groups scroll. */
+.catalog-sheet__reset {
+  flex: none;
+  height: 44px;
+  padding: 0 10px;
+  border: 0;
+  border-radius: 10px;
+  background: transparent;
+  color: #b7a6ff;
+  font: 700 14px/1 var(--wn-font-ui);
+  cursor: pointer;
+}
+
+.catalog-sheet__group {
+  min-width: 0;
+  margin: 0 0 22px;
+  padding: 0;
+  border: 0;
+}
+
+.catalog-sheet__legend {
+  padding: 0 0 10px;
+  color: #8c889f;
+  font: 700 13px/1 var(--wn-font-ui);
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.catalog-sheet__options {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.catalog-sheet__option {
+  position: relative;
+  display: flex;
+  flex: none;
+  align-items: center;
+  gap: 6px;
+  min-height: 40px;
+  padding: 0 14px;
+  border: 1px solid #2a2838;
+  border-radius: 999px;
+  color: #cfcbdd;
+  font: 600 14px/1.2 var(--wn-font-ui);
+  cursor: pointer;
+}
+
+.catalog-sheet__option input {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  margin: 0;
+  opacity: 0;
+  pointer-events: none;
+}
+
+.catalog-sheet__check {
+  display: none;
+  flex: none;
+  width: 14px;
+  height: 14px;
+  color: #3dd6c3;
+}
+
+.catalog-sheet__option:has(input:checked) {
+  border-color: #4a4565;
+  background: #24232f;
+  color: #f2f0f7;
+}
+
+.catalog-sheet__option:has(input:checked) .catalog-sheet__check {
+  display: block;
+}
+
+.catalog-sheet__option:has(input:focus-visible),
+:is(.catalog-sheet__reset, .catalog-sheet__apply):focus-visible {
+  outline: 2px solid #c5b6ff;
+  outline-offset: 2px;
+}
+
+.catalog-sheet__hint {
+  margin: 0;
+  padding-top: 12px;
+  border-top: 1px solid #24222f;
+  color: #8c889f;
+  font: 500 13px/1.45 var(--wn-font-ui);
+}
+
+/* Out to the panel's edges and down over the body's bottom padding, so it sits on
+   the sheet's floor; sticky keeps it there while the groups scroll. */
+.catalog-sheet__foot {
+  position: sticky;
+  bottom: calc(-20px - env(safe-area-inset-bottom, 0px));
+  margin: 20px -20px calc(-20px - env(safe-area-inset-bottom, 0px));
+  padding: 12px 16px calc(16px + env(safe-area-inset-bottom, 0px));
+  border-top: 1px solid #24222f;
+  background: #16161f;
+}
+
+.catalog-sheet__apply {
+  width: 100%;
+  height: 52px;
+  border: 0;
+  border-radius: 12px;
+  background: #7a52f4;
+  color: #fff;
+  font: 700 16px/1 var(--wn-font-ui);
+  cursor: pointer;
+}
+
+@media (hover: hover) {
+  .catalog-sheet__apply:hover {
+    background: #8a66ff;
+  }
+
+  .catalog-sheet__option:hover {
+    border-color: #3a3650;
   }
 }
 
