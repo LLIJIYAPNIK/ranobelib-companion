@@ -69,34 +69,64 @@ def test_add_field_gets_a_short_placeholder_on_phones() -> None:
     assert "phone.matches ? field.dataset.placeholderShort : full" in script
 
 
-def test_filters_button_chips_and_sheet_are_in_the_toolbar() -> None:
+def test_sort_and_progress_buttons_and_the_sheet_are_in_the_toolbar() -> None:
     page = (ROOT / "app/templates/library.html").read_text(encoding="utf-8")
-    assert 'data-role="library-filters-open" aria-haspopup="dialog"' in page
-    assert 'data-role="library-filters-count" hidden' in page
-    assert 'data-role="library-filter-chips"' in page
-    assert 'id="library-filters" data-bottom-sheet-title="Фильтры и сортировка" hidden' in page
-    # One radio group per existing select - the selects stay the single source of state.
+    # PR 300 (LibraryMobile): two buttons, one sheet - «Фильтры» and its value chips went.
+    assert page.count('data-role="library-filters-open" aria-haspopup="dialog"') == 2
+    assert '<span data-role="library-sort-label">Недавно читал</span>' in page
+    assert 'data-role="library-filters-count" hidden>1</span>' in page
+    assert 'data-role="library-filter-chips"' not in page
+    assert 'id="library-filters" data-bottom-sheet-title="Сортировка и прогресс" hidden' in page
+    assert "data-bottom-sheet-close>Показать</button>" in page
+    assert 'data-role="library-filters-reset"' not in page
+    # One option group per existing select - the selects stay the single source of state.
     assert 'data-filter-for="library-sort"' in page
     assert 'data-filter-for="library-progress"' in page
 
 
-def test_sheet_radios_drive_the_selects() -> None:
+def test_sheet_is_a_draft_until_show() -> None:
     script = (ROOT / "app/static/js/library-toolbar.js").read_text(encoding="utf-8")
     assert "for (const option of select.options)" in script
-    assert 'select.dispatchEvent(new Event("change"))' in script
-    assert "select.selectedIndex !== 0" in script  # the count: controls off their default
-    assert "`Показать ${visibleTotal}`" in script
+    # Picking an option no longer touches the select; «Показать» does, and closing the
+    # sheet any other way re-checks the options from the selects.
+    assert 'input.addEventListener("change"' not in script
+    assert 'filtersDone?.addEventListener("click", () => {' in script
+    assert "onClose: syncRadios," in script
     assert "window.bottomSheet.open(" in script
 
 
-def test_mobile_toolbar_swaps_selects_for_the_filters_button() -> None:
+def test_toolbar_buttons_show_the_sort_and_a_progress_count() -> None:
+    script = (ROOT / "app/static/js/library-toolbar.js").read_text(encoding="utf-8")
+    assert "if (sortLabel) sortLabel.textContent = sortText;" in script
+    assert "if (filtersCount) filtersCount.hidden = !progressSet;" in script
+    assert 'sortOpen?.toggleAttribute("data-changed", sort.selectedIndex !== 0);' in script
     assert "display: none;" in _rule(".wn-library-select", indent="  ")
-    assert "display: flex;" in _rule(".wn-library-filters-btn", indent="  ")
-    view_button = _rule(".wn-library-view button", indent="  ")
-    assert "width: 44px;" in view_button
-    assert "height: 44px;" in view_button
-    # Desktop keeps the selects; the mobile controls stay out of its layout.
-    assert "display: none;" in _rule(".wn-library-filters-btn,\n.wn-library-chips")
+    assert "flex: 1 1 0;" in _phone_rule(".wn-library-sheet-btn--sort")
+    assert "border-color: rgb(61 214 195 / 40%);" in _phone_rule(
+        ".wn-library-sheet-btn[data-changed]"
+    )
+    # Desktop keeps the selects; the phone controls stay out of its layout.
+    assert "display: none;" in _rule(".wn-library-sheet-btn,\n.wn-library-search__clear")
+
+
+def test_search_clear_and_results_chips_on_phones() -> None:
+    page = (ROOT / "app/templates/library.html").read_text(encoding="utf-8")
+    assert 'data-role="library-search-clear" aria-label="Очистить поиск" hidden' in page
+    assert 'Сбросить<span class="wn-library-criteria__reset-all"> всё</span>' in page
+    strip = _phone_rule(".wn-library .wn-library-criteria:not([hidden])")
+    assert "overflow-x: auto;" in strip
+    assert "display: none;" in _phone_rule(
+        ".wn-library .wn-library-search input::-webkit-search-cancel-button"
+    )
+
+
+def test_sheet_options_are_pills_with_a_pinned_show_button() -> None:
+    option = re.search(r"\n\.wn-library-filters__option \{([^}]*)\}", CSS)
+    assert option
+    assert "border-radius: 999px;" in option[1]
+    actions = re.search(r"\n\.wn-library-filters__actions \{([^}]*)\}", CSS)
+    assert actions
+    assert "position: sticky;" in actions[1]
 
 
 def test_phones_list_row_cards_only() -> None:

@@ -100,6 +100,8 @@
         <label class="wn-library-search">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="m21 21-4.3-4.3"/></svg>
           <input type="search" placeholder="Поиск в библиотеке" aria-label="Поиск в библиотеке" data-role="library-search" autocomplete="off">
+          {# PR 300 (LibraryMobile): phones clear the search from inside the field. #}
+          <button type="button" class="wn-library-search__clear" data-role="library-search-clear" aria-label="Очистить поиск" hidden><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" aria-hidden="true"><path d="M7 7l10 10M17 7 7 17"/></svg></button>
         </label>
         <label class="wn-library-select">
           <span>Сортировка</span>
@@ -119,14 +121,18 @@
             <option value="done">Дочитанные</option>
           </select>
         </label>
-        {# PR 282 (Webnovells Mobile): on phones the two selects above give way to
-           «Фильтры» (with a count of what's changed), the current values as chips under
-           it, and the shared bottom sheet - library-toolbar.js builds its radios from the
-           selects' own options, so both layouts drive the same state. #}
-        <button type="button" class="wn-library-filters-btn" data-role="library-filters-open" aria-haspopup="dialog">
-          <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" aria-hidden="true"><path d="M3 6h18M6 12h12M10 18h4"/></svg>
-          <span>Фильтры</span>
-          <span class="wn-library-filters-btn__count" data-role="library-filters-count" hidden></span>
+        {# PR 300 (LibraryMobile): on phones the two selects above give way to two
+           buttons - the current sort, and «Прогресс» with a 1 when it's set - that both
+           open the «Сортировка и прогресс» sheet below. library-toolbar.js builds the
+           sheet's options from the selects' own, so the selects stay the one state. #}
+        <button type="button" class="wn-library-sheet-btn wn-library-sheet-btn--sort" data-role="library-filters-open" aria-haspopup="dialog">
+          <span data-role="library-sort-label">Недавно читал</span>
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m6 9 6 6 6-6"/></svg>
+        </button>
+        <button type="button" class="wn-library-sheet-btn wn-library-sheet-btn--progress" data-role="library-filters-open" aria-haspopup="dialog">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" aria-hidden="true"><path d="M3 6h18M6 12h12M10 18h4"/></svg>
+          Прогресс
+          <span class="wn-library-sheet-btn__count" data-role="library-filters-count" hidden>1</span>
         </button>
         <div class="wn-library-view" role="radiogroup" aria-label="Вид">
           <button type="button" role="radio" aria-checked="true" data-view="list" aria-label="Списком" title="Списком">
@@ -136,20 +142,21 @@
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" aria-hidden="true"><rect x="3" y="3" width="7" height="7" rx="1.5"/><rect x="14" y="3" width="7" height="7" rx="1.5"/><rect x="3" y="14" width="7" height="7" rx="1.5"/><rect x="14" y="14" width="7" height="7" rx="1.5"/></svg>
           </button>
         </div>
-        <div class="wn-library-chips" data-role="library-filter-chips"></div>
-        {# PR 297: the results mode's criteria row (desktop) - library-toolbar.js fills it. #}
+        {# PR 297: the results mode's criteria row - library-toolbar.js fills it. PR 300:
+           on phones too, as one strip of chips ending in «Сбросить». #}
         <div class="wn-library-criteria" data-role="library-criteria" hidden>
           <span class="wn-library-criteria__label" aria-hidden="true">Условия</span>
           <div class="wn-library-criteria__chips" data-role="library-criteria-chips"></div>
-          <button type="button" class="wn-library-criteria__reset" data-role="library-criteria-reset">Сбросить всё</button>
+          <button type="button" class="wn-library-criteria__reset" data-role="library-criteria-reset">Сбросить<span class="wn-library-criteria__reset-all"> всё</span></button>
           <span class="wn-library-criteria__count" data-role="library-criteria-count" aria-live="polite"></span>
         </div>
-        <div class="wn-library-filters" id="library-filters" data-bottom-sheet-title="Фильтры и сортировка" hidden>
+        {# PR 300: a draft - nothing changes until «Показать»; closed any other way, the
+           sheet goes back to what the page shows. #}
+        <div class="wn-library-filters" id="library-filters" data-bottom-sheet-title="Сортировка и прогресс" hidden>
           <fieldset class="wn-library-filters__group" data-filter-for="library-sort"><legend>Сортировка</legend></fieldset>
           <fieldset class="wn-library-filters__group" data-filter-for="library-progress"><legend>Прогресс</legend></fieldset>
           <div class="wn-library-filters__actions">
-            <button type="button" class="wn-library-filters__reset" data-role="library-filters-reset">Сбросить</button>
-            <button type="button" class="wn-library-filters__done" data-role="library-filters-done" data-bottom-sheet-close>Готово</button>
+            <button type="button" class="wn-library-filters__done" data-role="library-filters-done" data-bottom-sheet-close>Показать</button>
           </div>
         </div>
       </div>

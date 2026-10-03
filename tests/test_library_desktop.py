@@ -268,7 +268,7 @@ async def test_results_mode_hooks_are_in_place(client: TestClient) -> None:
     criteria = criteria.split("</div>\n        </div>", 1)[0]
     assert criteria.startswith(" hidden>")
     assert 'data-role="library-criteria-chips"' in criteria
-    assert ">Сбросить всё</button>" in criteria
+    assert '>Сбросить<span class="wn-library-criteria__reset-all"> всё</span></button>' in criteria
     assert 'data-role="library-criteria-count"' in criteria
     assert 'data-role="library-end-reset" hidden>Сбросить условия</button>' in html
 

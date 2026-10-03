@@ -6,11 +6,11 @@
 //
 // Also drops the cover skeleton shimmer (.wn-skeleton) once each cover image has loaded.
 //
-// PR 282 (Webnovells Mobile -> Библиотека): on phones the sort/progress selects give way
-// to «Фильтры» - a count of the controls changed from their first option, the current
-// values as chips, and the shared bottom sheet (bottom-sheet.js) with a radio group per
-// select, built from that select's own options. A radio sets its select and fires
-// "change", so the selects stay the one source of state for both layouts.
+// PR 282 (Webnovells Mobile -> Библиотека), PR 300 (LibraryMobile): on phones the
+// sort/progress selects give way to two buttons opening the shared bottom sheet
+// (bottom-sheet.js) with a group of options per select, built from that select's own
+// options - see "the sort button" below. The selects stay the one source of state for
+// both layouts.
 //
 // PR 297 (LibraryDesktop.dc.html): the page's two modes. The default one (no search,
 // «Недавно читал», «Любой») has the «Продолжить чтение» hero, «Моя библиотека» and the
@@ -33,6 +33,7 @@
   toolbar.hidden = false;
 
   const search = toolbar.querySelector('[data-role="library-search"]');
+  const searchClear = toolbar.querySelector('[data-role="library-search-clear"]');
   const sort = toolbar.querySelector('[data-role="library-sort"]');
   const progress = toolbar.querySelector('[data-role="library-progress"]');
   const viewButtons = [...toolbar.querySelectorAll("[data-view]")];
@@ -161,22 +162,42 @@
     // removal is sent.
     if (noResults) noResults.hidden = visibleTotal > 0 || total === 0;
     syncMode(visibleTotal);
-    syncFilters(visibleTotal);
+    syncFilters();
+    searchClear?.toggleAttribute("hidden", search.value === "");
   }
 
-  const filtersOpen = toolbar.querySelector('[data-role="library-filters-open"]');
+  // PR 300 (LibraryMobile): the sort button (showing the current sort) and «Прогресс»
+  // (a 1 when it's set) both open the «Сортировка и прогресс» sheet. Its pill options
+  // are a draft: «Показать» puts them into the selects; closed any other way, the sheet
+  // goes back to what the selects say.
+  const filtersOpen = [...toolbar.querySelectorAll('[data-role="library-filters-open"]')];
+  const sortOpen = toolbar.querySelector(".wn-library-sheet-btn--sort");
+  const progressOpen = toolbar.querySelector(".wn-library-sheet-btn--progress");
+  const sortLabel = toolbar.querySelector('[data-role="library-sort-label"]');
   const filtersCount = toolbar.querySelector('[data-role="library-filters-count"]');
-  const chipRow = toolbar.querySelector('[data-role="library-filter-chips"]');
   const filtersSheet = document.getElementById("library-filters");
   const filtersDone = filtersSheet?.querySelector('[data-role="library-filters-done"]');
-  const filtersReset = filtersSheet?.querySelector('[data-role="library-filters-reset"]');
   const filterControls = [sort, progress];
   const capitalize = (text) => text.charAt(0).toLocaleUpperCase("ru") + text.slice(1);
-  const chips = new Map();
+  const radioFor = (select) =>
+    filtersSheet?.querySelector(`input[name="sheet-${select.dataset.role}"][value="${select.value}"]`);
+
+  function syncRadios() {
+    for (const select of filterControls) {
+      const radio = radioFor(select);
+      if (radio) radio.checked = true;
+    }
+  }
 
   function openFilters(opener) {
     if (!filtersSheet || !window.bottomSheet) return;
-    window.bottomSheet.open({ title: filtersSheet.dataset.bottomSheetTitle, content: filtersSheet, opener });
+    syncRadios();
+    window.bottomSheet.open({
+      title: filtersSheet.dataset.bottomSheetTitle,
+      content: filtersSheet,
+      opener,
+      onClose: syncRadios,
+    });
   }
 
   function buildFilters() {
@@ -190,52 +211,48 @@
         input.type = "radio";
         input.name = `sheet-${group.dataset.filterFor}`;
         input.value = option.value;
-        input.addEventListener("change", () => {
-          select.value = input.value;
-          select.dispatchEvent(new Event("change"));
-        });
         const text = document.createElement("span");
         text.textContent = capitalize(option.text);
         label.append(input, text);
         group.append(label);
       }
     }
-    for (const select of filterControls) {
-      const chip = document.createElement("button");
-      chip.type = "button";
-      chip.className = "wn-library-chip";
-      chip.setAttribute("aria-haspopup", "dialog");
-      chip.addEventListener("click", () => openFilters(chip));
-      chipRow?.append(chip);
-      chips.set(select, chip);
-    }
-    filtersOpen?.addEventListener("click", () => openFilters(filtersOpen));
-    filtersReset?.addEventListener("click", () => {
-      for (const select of filterControls) select.selectedIndex = 0;
-      search.value = "";
-      apply();
+    for (const button of filtersOpen) button.addEventListener("click", () => openFilters(button));
+    // Before the sheet's own data-bottom-sheet-close handler closes it.
+    filtersDone?.addEventListener("click", () => {
+      let changed = false;
+      for (const select of filterControls) {
+        const picked = filtersSheet.querySelector(`input[name="sheet-${select.dataset.role}"]:checked`);
+        if (picked && picked.value !== select.value) {
+          select.value = picked.value;
+          changed = true;
+        }
+      }
+      if (changed) apply();
     });
   }
 
-  function syncFilters(visibleTotal) {
-    const changed = filterControls.filter((select) => select.selectedIndex !== 0).length;
-    if (filtersCount) {
-      filtersCount.hidden = changed === 0;
-      filtersCount.textContent = String(changed);
-    }
-    filtersOpen?.setAttribute("aria-label", changed ? `Фильтры, изменено: ${changed}` : "Фильтры");
-    for (const select of filterControls) {
-      const chip = chips.get(select);
-      if (chip) {
-        const value = document.createElement("b");
-        value.textContent = select.options[select.selectedIndex].text;
-        chip.replaceChildren(`${select.getAttribute("aria-label")}: `, value);
-      }
-      const radio = filtersSheet?.querySelector(`input[name="sheet-${select.dataset.role}"][value="${select.value}"]`);
-      if (radio) radio.checked = true;
-    }
-    if (filtersDone) filtersDone.textContent = visibleTotal ? `Показать ${visibleTotal}` : "Готово";
+  function syncFilters() {
+    const sortText = sort.options[sort.selectedIndex].text;
+    if (sortLabel) sortLabel.textContent = sortText;
+    sortOpen?.setAttribute("aria-label", `Сортировка: ${sortText}`);
+    sortOpen?.toggleAttribute("data-changed", sort.selectedIndex !== 0);
+    const progressSet = progress.selectedIndex !== 0;
+    if (filtersCount) filtersCount.hidden = !progressSet;
+    progressOpen?.setAttribute(
+      "aria-label",
+      progressSet ? `Прогресс: ${progress.options[progress.selectedIndex].text}` : "Прогресс"
+    );
+    progressOpen?.toggleAttribute("data-changed", progressSet);
+    if (!window.bottomSheet?.isOpen()) syncRadios();
   }
+
+  // PR 300: the ✕ inside the search field - apply() shows it while there's text.
+  searchClear?.addEventListener("click", () => {
+    search.value = "";
+    apply();
+    search.focus();
+  });
 
   function setView(view) {
     titles.classList.toggle("wn-library__titles--grid", view === "grid");
@@ -269,7 +286,7 @@
   });
 
   buildFilters();
-  syncFilters(titles.querySelectorAll('[data-role="library-item"]').length);
+  syncFilters();
   search.addEventListener("input", apply);
   sort.addEventListener("change", apply);
   progress.addEventListener("change", apply);
