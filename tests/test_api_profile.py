@@ -762,7 +762,6 @@ def _hide_friends(client: TestClient) -> None:
         "/settings/account/privacy",
         data={
             "show_currently_reading": "on",
-            "show_favorite": "on",
             "show_library": "on",
             "show_friends_activity_home": "on",
             # show_friends deliberately omitted - an unchecked checkbox
