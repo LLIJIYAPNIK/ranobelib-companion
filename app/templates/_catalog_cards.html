@@ -18,8 +18,9 @@
    items too (CatalogDesktop.dc.html) - «Свежие обновления» opening the first page,
    «Продолжить каталог» after every insert that isn't the end of the feed. They're
    navigation inside the one feed, not separate listings; the results mode has none. #}
+{# PR 299: no-break spaces - «37 038 гл.» never splits in the phone list view. #}
 {% macro chapters_label(count) -%}
-{{ "{:,}".format(count) | replace(",", " ") }} гл.
+{{ "{:,}".format(count) | replace(",", " ") }} гл.
 {%- endmacro %}
 {% macro chapters_long(count) -%}
 {% set n10, n100 = count % 10, count % 100 -%}
@@ -107,7 +108,10 @@
 {{ section_label("Продолжить каталог", "тот же поток, по обновлению") }}
 {% endif %}
 {% else %}
-{% set meta = [title.genres[0].name if title.genres else none, title.status.label if title.status else none] | select | join(" · ") %}
+{# PR 299: phones split the lines the other way (CatalogCard grid/row: «жанр», then
+   «статус · N гл.») - the status is in both lines and CSS shows one of them. #}
+{% set genre = title.genres[0].name if title.genres else none %}
+{% set status = title.status.label if title.status else none %}
 <div class="catalog-card">
   <a class="catalog-card__link" href="/titles/{{ title.slug_url }}" title="{{ name }}">
     <span class="catalog-card__media">
@@ -119,8 +123,18 @@
     </span>
     <span class="catalog-card__body">
       <span class="catalog-card__title">{{ name }}</span>
-      {% if meta %}<span class="catalog-card__meta">{{ meta }}</span>{% endif %}
-      {% if title.chapter_count %}<span class="catalog-card__sub">{{ chapters_label(title.chapter_count) }}</span>{% endif %}
+      {% if genre or status -%}
+      <span class="catalog-card__meta{% if not genre %} catalog-card__meta--status-only{% endif %}">
+        {%- if genre %}{{ genre }}{% endif -%}
+        {%- if status %}<span class="catalog-card__meta-status">{% if genre %} · {% endif %}{{ status }}</span>{% endif -%}
+      </span>
+      {%- endif %}
+      {%- if status or title.chapter_count %}
+      <span class="catalog-card__sub{% if not title.chapter_count %} catalog-card__sub--status-only{% endif %}">
+        {%- if status %}<span class="catalog-card__sub-status">{{ status }}{% if title.chapter_count %} · {% endif %}</span>{% endif -%}
+        {%- if title.chapter_count %}{{ chapters_label(title.chapter_count) }}{% endif -%}
+      </span>
+      {%- endif %}
     </span>
   </a>
   {{ library_toggle(title.slug_url, name) }}

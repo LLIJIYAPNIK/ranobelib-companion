@@ -197,8 +197,16 @@ def test_card_shows_title_genre_status_and_chapter_count() -> None:
 
     assert 'href="/titles/7--dragon" title="Последнее пламя в долгой ночи"' in card
     assert '<span class="catalog-card__title">Последнее пламя в долгой ночи</span>' in card
-    assert '<span class="catalog-card__meta">Тёмное фэнтези · Онгоинг</span>' in card
-    assert '<span class="catalog-card__sub">1 133 гл.</span>' in card
+    # PR 299: the status is in both lines - «жанр · статус» shows on desktop,
+    # «статус · N гл.» on phones (app.css); the count keeps no-break spaces.
+    assert (
+        '<span class="catalog-card__meta">Тёмное фэнтези'
+        '<span class="catalog-card__meta-status"> · Онгоинг</span></span>'
+    ) in card
+    assert (
+        '<span class="catalog-card__sub">'
+        '<span class="catalog-card__sub-status">Онгоинг · </span>1 133 гл.</span>'
+    ) in card
     assert 'class="catalog-card__glow" src="https://example.com/c.jpg"' in card
     assert 'href="/login" aria-label="Войдите, чтобы добавить' in card  # a guest
 
@@ -206,8 +214,15 @@ def test_card_shows_title_genre_status_and_chapter_count() -> None:
 def test_card_without_genres_chapters_or_cover_drops_those_lines() -> None:
     card = _card_html(_title(genres=[], chapter_count=None, cover=Cover()))
 
-    assert '<span class="catalog-card__meta">Онгоинг</span>' in card
-    assert "catalog-card__sub" not in card
+    assert (
+        '<span class="catalog-card__meta catalog-card__meta--status-only">'
+        '<span class="catalog-card__meta-status">Онгоинг</span></span>'
+    ) in card
+    # Only the status left for the second line - shown on phones, hidden on desktop.
+    assert (
+        '<span class="catalog-card__sub catalog-card__sub--status-only">'
+        '<span class="catalog-card__sub-status">Онгоинг</span></span>'
+    ) in card
     assert "catalog-card__glow" not in card
     assert "<img" not in card
 
