@@ -26,7 +26,8 @@
 {%- endmacro %}
 {#
   PR 298 (LibraryCard.dc.html): the ⋯ menu of a library card or the hero - «Страница
-  тайтла», «Оглавление» (cards only - the hero has its own button), and «Удалить из
+  тайтла», «Оглавление» (cards only - the hero has its own button; toc="phone" keeps it
+  for phones, where the hero drops that button - PR 300), and «Удалить из
   библиотеки», which always asks first. Hidden until library-card-actions.js wires it up
   (no menu without JS - the title page still has its own remove button).
 #}
@@ -38,11 +39,12 @@
   aria-haspopup="menu"
   aria-expanded="false"
   aria-label="Действия с тайтлом «{{ name }}»"
+  data-title-name="{{ name }}"
   hidden
 ><svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><circle cx="5" cy="12" r="1.8"/><circle cx="12" cy="12" r="1.8"/><circle cx="19" cy="12" r="1.8"/></svg></button>
 <div class="wn-library-menu" role="menu" aria-label="Действия" data-role="library-menu" hidden>
   <a class="wn-library-menu__item" role="menuitem" href="/titles/{{ slug_url }}"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M14 4h6v6M20 4l-9 9M18 14v5a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1V7a1 1 0 0 1 1-1h5"/></svg>Страница тайтла</a>
-  {% if toc %}<a class="wn-library-menu__item" role="menuitem" href="/titles/{{ slug_url }}#title-panel-toc"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" aria-hidden="true"><path d="M8 6h13M8 12h13M8 18h13M3 6h.01M3 12h.01M3 18h.01"/></svg>Оглавление</a>{% endif %}
+  {% if toc %}<a class="wn-library-menu__item{% if toc == "phone" %} wn-library-menu__item--phone-only{% endif %}" role="menuitem" href="/titles/{{ slug_url }}#title-panel-toc"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" aria-hidden="true"><path d="M8 6h13M8 12h13M8 18h13M3 6h.01M3 12h.01M3 18h.01"/></svg>Оглавление</a>{% endif %}
   <span class="wn-library-menu__sep" role="separator"></span>
   <button type="button" class="wn-library-menu__item wn-library-menu__item--danger" role="menuitem" data-role="library-remove"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 7h16M10 11v6M14 11v6M6 7l1 13h10l1-13M9 7V4h6v3"/></svg>Удалить из библиотеки</button>
 </div>
@@ -50,7 +52,7 @@
   <span class="wn-library-confirm__title">Удалить из библиотеки?</span>
   <span class="wn-library-confirm__text">«{{ name }}» пропадёт из библиотеки. EPUB-файлы, которые вы уже скачали, останутся на устройстве.</span>
   <div class="wn-library-confirm__actions">
-    <button type="button" class="wn-library-confirm__cancel" data-role="library-confirm-cancel">Отмена</button>
+    <button type="button" class="wn-library-confirm__cancel" data-role="library-confirm-cancel" data-autofocus>Отмена</button>
     <button type="button" class="wn-library-confirm__remove" data-role="library-confirm-remove">Удалить</button>
   </div>
 </div>
@@ -72,6 +74,7 @@
           type="text"
           name="url"
           placeholder="Ссылка на тайтл ranobelib.me"
+          data-placeholder-short="Ссылка на тайтл"
           aria-label="Ссылка на тайтл, чтобы добавить в библиотеку"
           value="{{ submitted_url or '' }}"
           {% if error %}aria-invalid="true" aria-describedby="library-add-error"{% endif %}
@@ -97,6 +100,8 @@
         <label class="wn-library-search">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="m21 21-4.3-4.3"/></svg>
           <input type="search" placeholder="Поиск в библиотеке" aria-label="Поиск в библиотеке" data-role="library-search" autocomplete="off">
+          {# PR 300 (LibraryMobile): phones clear the search from inside the field. #}
+          <button type="button" class="wn-library-search__clear" data-role="library-search-clear" aria-label="Очистить поиск" hidden><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" aria-hidden="true"><path d="M7 7l10 10M17 7 7 17"/></svg></button>
         </label>
         <label class="wn-library-select">
           <span>Сортировка</span>
@@ -116,14 +121,18 @@
             <option value="done">Дочитанные</option>
           </select>
         </label>
-        {# PR 282 (Webnovells Mobile): on phones the two selects above give way to
-           «Фильтры» (with a count of what's changed), the current values as chips under
-           it, and the shared bottom sheet - library-toolbar.js builds its radios from the
-           selects' own options, so both layouts drive the same state. #}
-        <button type="button" class="wn-library-filters-btn" data-role="library-filters-open" aria-haspopup="dialog">
-          <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" aria-hidden="true"><path d="M3 6h18M6 12h12M10 18h4"/></svg>
-          <span>Фильтры</span>
-          <span class="wn-library-filters-btn__count" data-role="library-filters-count" hidden></span>
+        {# PR 300 (LibraryMobile): on phones the two selects above give way to two
+           buttons - the current sort, and «Прогресс» with a 1 when it's set - that both
+           open the «Сортировка и прогресс» sheet below. library-toolbar.js builds the
+           sheet's options from the selects' own, so the selects stay the one state. #}
+        <button type="button" class="wn-library-sheet-btn wn-library-sheet-btn--sort" data-role="library-filters-open" aria-haspopup="dialog">
+          <span data-role="library-sort-label">Недавно читал</span>
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m6 9 6 6 6-6"/></svg>
+        </button>
+        <button type="button" class="wn-library-sheet-btn wn-library-sheet-btn--progress" data-role="library-filters-open" aria-haspopup="dialog">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" aria-hidden="true"><path d="M3 6h18M6 12h12M10 18h4"/></svg>
+          Прогресс
+          <span class="wn-library-sheet-btn__count" data-role="library-filters-count" hidden>1</span>
         </button>
         <div class="wn-library-view" role="radiogroup" aria-label="Вид">
           <button type="button" role="radio" aria-checked="true" data-view="list" aria-label="Списком" title="Списком">
@@ -133,20 +142,21 @@
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" aria-hidden="true"><rect x="3" y="3" width="7" height="7" rx="1.5"/><rect x="14" y="3" width="7" height="7" rx="1.5"/><rect x="3" y="14" width="7" height="7" rx="1.5"/><rect x="14" y="14" width="7" height="7" rx="1.5"/></svg>
           </button>
         </div>
-        <div class="wn-library-chips" data-role="library-filter-chips"></div>
-        {# PR 297: the results mode's criteria row (desktop) - library-toolbar.js fills it. #}
+        {# PR 297: the results mode's criteria row - library-toolbar.js fills it. PR 300:
+           on phones too, as one strip of chips ending in «Сбросить». #}
         <div class="wn-library-criteria" data-role="library-criteria" hidden>
           <span class="wn-library-criteria__label" aria-hidden="true">Условия</span>
           <div class="wn-library-criteria__chips" data-role="library-criteria-chips"></div>
-          <button type="button" class="wn-library-criteria__reset" data-role="library-criteria-reset">Сбросить всё</button>
+          <button type="button" class="wn-library-criteria__reset" data-role="library-criteria-reset">Сбросить<span class="wn-library-criteria__reset-all"> всё</span></button>
           <span class="wn-library-criteria__count" data-role="library-criteria-count" aria-live="polite"></span>
         </div>
-        <div class="wn-library-filters" id="library-filters" data-bottom-sheet-title="Фильтры и сортировка" hidden>
+        {# PR 300: a draft - nothing changes until «Показать»; closed any other way, the
+           sheet goes back to what the page shows. #}
+        <div class="wn-library-filters" id="library-filters" data-bottom-sheet-title="Сортировка и прогресс" hidden>
           <fieldset class="wn-library-filters__group" data-filter-for="library-sort"><legend>Сортировка</legend></fieldset>
           <fieldset class="wn-library-filters__group" data-filter-for="library-progress"><legend>Прогресс</legend></fieldset>
           <div class="wn-library-filters__actions">
-            <button type="button" class="wn-library-filters__reset" data-role="library-filters-reset">Сбросить</button>
-            <button type="button" class="wn-library-filters__done" data-role="library-filters-done" data-bottom-sheet-close>Готово</button>
+            <button type="button" class="wn-library-filters__done" data-role="library-filters-done" data-bottom-sheet-close>Показать</button>
           </div>
         </div>
       </div>
@@ -187,7 +197,7 @@
                   <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" aria-hidden="true"><path d="M8 6h13M8 12h13M8 18h13M3 6h.01M3 12h.01M3 18h.01"/></svg>
                   Оглавление
                 </a>
-                <div class="wn-library-hero__more">{{ actions_menu(hero_entry.slug_url, hero_name, toc=false) }}</div>
+                <div class="wn-library-hero__more">{{ actions_menu(hero_entry.slug_url, hero_name, toc="phone") }}</div>
               </div>
             </div>
             {% if hero.progress_percent is not none %}
@@ -250,8 +260,8 @@
               </div>
               {% endif %}
               {% if started %}
-              {# PR 282: the mobile grid's narrow cards drop the verb («Гл. 92», as in the
-                 prototype); the aria-label keeps the full action for screen readers. #}
+              {# PR 300: a row card under 360px drops the verb («Гл. 92») to fit beside ⋯;
+                 the aria-label keeps the full action for screen readers. #}
               <a class="wn-library-card__cta" href="{{ href }}/chapters/{{ entry.last_read_volume }}/{{ entry.last_read_number }}" aria-label="Продолжить · {{ chapter_label(entry.last_read_number) }}">
                 <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M7 4v16l13-8z"/></svg>
                 <span class="wn-library-card__cta-verb">Продолжить · </span>{{ chapter_short(entry.last_read_number) }}
@@ -306,6 +316,7 @@
 </div>
 <script src="{{ url_for('static', path='js/library-toolbar.js') }}" defer></script>
 <script src="{{ url_for('static', path='js/library-card-actions.js') }}" defer></script>
+<script src="{{ url_for('static', path='js/library-mobile.js') }}" defer></script>
 <script src="{{ url_for('static', path='js/library-tabs-swipe.js') }}" defer></script>
 <script src="{{ url_for('static', path='js/library-switch.js') }}" defer></script>
 {% endblock %}

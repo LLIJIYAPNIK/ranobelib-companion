@@ -15,11 +15,17 @@
 // everything back where it was without anything reaching the server. A removal still
 // waiting is sent right away when another one starts, and with keepalive when the page is
 // left; if it fails, the title comes back.
+//
+// PR 300 (LibraryMobile.dc.html): on phones the same menu and confirmation open in the
+// shared bottom sheet (bottom-sheet.js) instead of as popovers - the title's name heads
+// the action sheet, «Удалить из библиотеки» swaps it for the confirmation (headed
+// «Удалить из библиотеки?», a pink top edge in app.css) in the same sheet.
 (() => {
   const root = document.querySelector('[data-role="library-titles"]');
   if (!root) return;
 
   const UNDO_MS = 6000;
+  const phone = window.matchMedia("(max-width: 767px)");
   const popovers = new Map(); // ⋯ button -> { menu, confirm, slug }
   let open = null; // { button, panel }
   let pending = null; // { slug, button, placed: [{ node, parent, next }], timer }
@@ -44,6 +50,13 @@
 
   function close({ focus = true } = {}) {
     if (!open) return;
+    if (open.sheet) {
+      // The sheet hands focus back to the ⋯ button itself once it's closed.
+      open.button.setAttribute("aria-expanded", "false");
+      open = null;
+      window.bottomSheet.close();
+      return;
+    }
     const { button, panel } = open;
     panel.hidden = true;
     button.setAttribute("aria-expanded", "false");
@@ -51,7 +64,28 @@
     if (focus && button.isConnected) button.focus();
   }
 
+  function showInSheet(button, panel) {
+    const confirming = panel.dataset.role === "library-confirm";
+    open = { button, panel, sheet: true };
+    button.setAttribute("aria-expanded", "true");
+    // Already open with the menu: the sheet swaps its content in place.
+    window.bottomSheet.open({
+      title: confirming ? "Удалить из библиотеки?" : button.dataset.titleName,
+      content: panel,
+      opener: button,
+      onClose: () => {
+        if (!open || open.panel !== panel) return;
+        button.setAttribute("aria-expanded", "false");
+        open = null;
+      },
+    });
+  }
+
   function show(button, panel, focusSelector) {
+    if (phone.matches && window.bottomSheet) {
+      showInSheet(button, panel);
+      return;
+    }
     close({ focus: false });
     panel.hidden = false;
     place(button, panel);
@@ -214,7 +248,7 @@
     send(p, { keepalive: true });
   });
 
-  const reposition = () => open && place(open.button, open.panel);
+  const reposition = () => open && !open.sheet && place(open.button, open.panel);
   window.addEventListener("scroll", reposition, { passive: true });
   window.addEventListener("resize", reposition);
 })();

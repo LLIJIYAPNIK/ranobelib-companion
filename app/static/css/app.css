@@ -9113,8 +9113,8 @@ a.catalog-card__action {
 
 /* ==========================================================================
    LibraryDesktop (PR 297, wave 36): the library on the catalog's desktop shell (above:
-   page background, header card, sticky glass panel) - LibraryDesktop.dc.html. Phones
-   keep the PR 282 layout until PR 300.
+   page background, header card, sticky glass panel) - LibraryDesktop.dc.html. Phones:
+   the LibraryMobile block (PR 300).
    ========================================================================== */
 
 .wn-library__eyebrow {
@@ -9663,7 +9663,7 @@ a.catalog-card__action {
   outline-offset: 2px;
 }
 
-/* «Условия» in the panel - desktop (phones keep their own chips until PR 300). */
+/* «Условия» in the panel - desktop here; phones: the LibraryMobile block (PR 300). */
 .wn-library-criteria {
   display: none;
 }
@@ -10049,6 +10049,10 @@ a.catalog-card__action {
   .wn-library .wn-library__add .wn-btn svg {
     width: 15px;
     height: 15px;
+  }
+
+  .wn-library .wn-library__add .wn-btn:active {
+    background: rgb(255 255 255 / 10%);
   }
 
   .wn-library .wn-library__error {
@@ -11025,100 +11029,114 @@ a.catalog-card__action {
   }
 }
 
-/* «Фильтры» and the value chips are the mobile toolbar (PR 282). */
-.wn-library-filters-btn,
-.wn-library-chips {
+/* The sort / «Прогресс» buttons and the search's ✕ are the phone toolbar (PR 300). */
+.wn-library-sheet-btn,
+.wn-library-search__clear {
   display: none;
 }
 
-/* The filters sheet's content (moved into the shared bottom sheet while open). */
+/* The «Сортировка и прогресс» sheet's content (moved into the shared bottom sheet
+   while open; PR 300 - LibraryMobile): uppercase legends over wrapping pill options, a
+   teal check on the picked one (a real radio underneath), «Показать» pinned at the
+   bottom. */
 .wn-library-filters__group {
-  margin: 0;
-  padding: 8px 0 0;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  min-width: 0;
+  margin: 0 0 22px;
+  padding: 0;
   border: 0;
 }
 
-.wn-library-filters__group + .wn-library-filters__group {
-  padding-top: 16px;
-}
-
-/* Floated: a legend otherwise sits in the fieldset's border, and the fieldset's top
-   padding opens a gap under it instead of above. */
+/* Floated, so it's an ordinary item of the group's flex row, not the border legend. */
 .wn-library-filters__group legend {
   float: left;
-  width: 100%;
-  padding: 0 0 8px;
-  color: var(--wn-text-muted);
-  font: 800 13px/1 var(--wn-font-ui);
-  letter-spacing: 0.08em;
+  flex: 1 1 100%;
+  padding: 0 0 2px;
+  color: #8c889f;
+  font: 700 13px/1 var(--wn-font-ui);
+  letter-spacing: 0.06em;
   text-transform: uppercase;
 }
 
 .wn-library-filters__option {
-  clear: left;
+  position: relative;
   display: flex;
+  flex: none;
   align-items: center;
-  gap: 14px;
-  min-height: 48px;
-  color: var(--wn-text);
-  font: 600 15px/1.3 var(--wn-font-ui);
+  gap: 6px;
+  min-height: 40px;
+  padding: 0 14px;
+  border: 1px solid #2a2838;
+  border-radius: 999px;
+  color: #cfcbdd;
+  font: 600 14px/1.2 var(--wn-font-ui);
   cursor: pointer;
 }
 
 .wn-library-filters__option input {
-  appearance: none;
-  flex: none;
-  width: 22px;
-  height: 22px;
+  position: absolute;
+  width: 1px;
+  height: 1px;
   margin: 0;
-  border: 2px solid #55506e;
-  border-radius: 50%;
-  background: transparent;
-  cursor: pointer;
+  opacity: 0;
+  pointer-events: none;
 }
 
-.wn-library-filters__option input:checked {
-  border-color: var(--wn-teal);
-  background: radial-gradient(circle, var(--wn-teal) 0 5px, transparent 5.5px);
+.wn-library-filters__option:has(input:checked) {
+  border-color: #4a4565;
+  background: #24232f;
+  color: #f2f0f7;
 }
 
-.wn-library-filters__option input:focus-visible {
-  outline: none;
-  box-shadow: var(--wn-focus-ring);
+/* The check, drawn with two borders (a data: URI icon would be blocked by img-src). */
+.wn-library-filters__option:has(input:checked)::before {
+  content: "";
+  flex: none;
+  width: 5px;
+  height: 9px;
+  margin: -3px 3px 0 1px;
+  border: solid #3dd6c3;
+  border-width: 0 2.5px 2.5px 0;
+  transform: rotate(45deg);
 }
 
+.wn-library-filters__option:has(input:focus-visible) {
+  outline: 2px solid #c5b6ff;
+  outline-offset: 2px;
+}
+
+/* Out to the panel's edges and over the body's bottom padding (as the catalog's). */
 .wn-library-filters__actions {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 8px;
-  padding-top: 16px;
+  position: sticky;
+  bottom: calc(-20px - env(safe-area-inset-bottom, 0px));
+  margin: 0 -20px calc(-20px - env(safe-area-inset-bottom, 0px));
+  padding: 12px 16px calc(16px + env(safe-area-inset-bottom, 0px));
+  border-top: 1px solid #24222f;
+  background: #16161f;
 }
 
-.wn-library-filters__reset,
 .wn-library-filters__done {
-  min-height: 48px;
-  border-radius: var(--wn-radius-md);
-  font: 700 15px/1.2 var(--wn-font-ui);
+  width: 100%;
+  height: 52px;
+  border: 0;
+  border-radius: 12px;
+  background: #7a52f4;
+  color: #fff;
+  font: 700 16px/1 var(--wn-font-ui);
   cursor: pointer;
 }
 
-.wn-library-filters__reset {
-  flex: 1 1 120px;
-  border: 1px solid var(--wn-border-strong);
-  background: transparent;
-  color: var(--wn-text);
+.wn-library-filters__done:focus-visible {
+  outline: 2px solid #c5b6ff;
+  outline-offset: 2px;
 }
 
-.wn-library-filters__done {
-  flex: 2 1 160px;
-  border: 0;
-  background: var(--wn-primary);
-  color: #fff;
-}
-
-:is(.wn-library-filters__reset, .wn-library-filters__done):focus-visible {
-  outline: none;
-  box-shadow: var(--wn-focus-ring);
+@media (hover: hover) {
+  .wn-library-filters__done:hover {
+    background: #8a66ff;
+  }
 }
 
 .wn-library-view {
@@ -11539,99 +11557,10 @@ a.catalog-card__action {
     border-radius: var(--wn-radius-md);
   }
 
-  /* PR 282: «Фильтры» (with its count) and the 44px list/grid switch share a row, the
-     current values sit under them as chips; the selects themselves step aside - the
-     sheet's radios drive them. */
+  /* The selects step aside on phones - the sort / «Прогресс» buttons and their sheet
+     drive them (PR 282, PR 300). */
   .wn-library-select {
     display: none;
-  }
-
-  .wn-library-filters-btn {
-    display: flex;
-    flex: 1;
-    align-items: center;
-    gap: 10px;
-    min-width: 0;
-    min-height: 50px;
-    padding: 0 14px;
-    border: 1px solid var(--wn-border-strong);
-    border-radius: var(--wn-radius-md);
-    background: rgb(255 255 255 / 4%);
-    color: var(--wn-text);
-    font: 700 15px/1.2 var(--wn-font-ui);
-    cursor: pointer;
-  }
-
-  .wn-library-filters-btn svg {
-    flex: none;
-  }
-
-  .wn-library-filters-btn__count {
-    padding: 4px 7px;
-    border-radius: 999px;
-    background: rgb(61 214 195 / 16%);
-    color: var(--wn-teal);
-    font: 800 12px/1 var(--wn-font-ui);
-  }
-
-  .wn-library-filters-btn:focus-visible {
-    outline: none;
-    box-shadow: var(--wn-focus-ring);
-  }
-
-  .wn-library-view {
-    flex: none;
-    margin-left: 0;
-    padding: 2px;
-    border-radius: var(--wn-radius-md);
-  }
-
-  .wn-library-view button {
-    width: 44px;
-    height: 44px;
-    border-radius: 9px;
-  }
-
-  .wn-library-view button svg {
-    width: 18px;
-    height: 18px;
-  }
-
-  .wn-library-chips {
-    display: flex;
-    flex: 1 1 100%;
-    flex-wrap: wrap;
-    gap: 8px;
-  }
-
-  /* 36px pills as in the prototype, with a 44px hit area around them. */
-  .wn-library-chip {
-    position: relative;
-    max-width: 100%;
-    min-height: 36px;
-    padding: 6px 12px;
-    border: 1px solid #2a2838;
-    border-radius: 999px;
-    background: var(--wn-surface);
-    color: #cfcbdd;
-    font: 600 13px/1.3 var(--wn-font-ui);
-    text-align: left;
-    cursor: pointer;
-  }
-
-  .wn-library-chip::before {
-    content: "";
-    position: absolute;
-    inset: -4px 0;
-  }
-
-  .wn-library-chip b {
-    color: var(--wn-text);
-  }
-
-  .wn-library-chip:focus-visible {
-    outline: none;
-    box-shadow: var(--wn-focus-ring);
   }
 
   .wn-library-grid {
@@ -11658,35 +11587,686 @@ a.catalog-card__action {
     min-height: 44px;
   }
 
-  /* Grid view (PR 282): as many 128px+ columns as fit - two from 320px to 430px. In
-     those narrow cards the title gets the full width and wraps in full, and the CTA
-     drops its verb. */
-  .wn-library__titles--grid .wn-library-card {
-    position: relative;
-  }
-
-  .wn-library__titles--grid .wn-library-card__name {
-    display: block;
-    overflow: visible;
-    font-size: 14px;
-    overflow-wrap: break-word;
-    -webkit-line-clamp: unset;
-  }
-
-  .wn-library__titles--grid .wn-library-card__cta-verb {
-    display: none;
-  }
-
-  .wn-library__titles--grid .wn-library-grid,
-  .wn-library__titles--grid .wn-library-posters {
-    grid-template-columns: repeat(auto-fill, minmax(128px, 1fr));
-    gap: 20px 14px;
-  }
-
   .wn-library-posters {
     grid-template-columns: repeat(3, minmax(0, 1fr));
     gap: 12px;
   }
+}
+
+/* ==========================================================================
+   LibraryMobile (PR 300, wave 36): the phone library from LibraryMobile.dc.html /
+   Catalog handoff.md -> Mobile «Библиотека». «Ваши тайтлы · N» over H1 30, the
+   full-width switch, the add-by-link form (field + glass «Добавить», wrapping at 320),
+   then the toolbar, the compact «Продолжить чтение» hero and one column of row cards.
+   ========================================================================== */
+
+@media (max-width: 767px) {
+  .library-page.wn-library {
+    gap: 20px;
+    padding-top: 16px;
+  }
+
+  .wn-library .wn-library__head {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 14px;
+  }
+
+  .wn-library .wn-library__title {
+    color: #f7f5fb;
+    font: 800 30px/1.05 var(--wn-font-ui);
+    letter-spacing: -0.03em;
+  }
+
+  .wn-library .wn-library__add {
+    gap: 8px;
+    margin: 0;
+  }
+
+  .wn-library .wn-library__add-field {
+    flex: 1 1 180px;
+    width: auto;
+  }
+
+  .wn-library .wn-library__add-field svg {
+    width: 17px;
+    height: 17px;
+    color: #8c889f;
+  }
+
+  .wn-library .wn-library__add-control.wn-field__control {
+    height: 48px;
+    padding-left: 41px;
+    border-color: #2a2838;
+    border-radius: 12px;
+    background: #101017;
+    color: #eeecf4;
+    font: 500 16px/1 var(--wn-font-ui);
+  }
+
+  .wn-library .wn-library__add-control.wn-field__control::placeholder {
+    color: #8c889f;
+  }
+
+  /* Glass, not purple - the screen's one primary action is «Продолжить» in the hero. */
+  .wn-library .wn-library__add .wn-btn {
+    flex: 1 0 auto;
+    gap: 8px;
+    min-width: 112px;
+    min-height: 48px;
+    padding: 0 16px;
+    border: 1px solid rgb(255 255 255 / 14%);
+    border-radius: 12px;
+    background: rgb(255 255 255 / 6%);
+    color: #f2f0f7;
+    font: 700 15px/1 var(--wn-font-ui);
+  }
+
+  .wn-library .wn-library__add .wn-btn svg {
+    width: 15px;
+    height: 15px;
+  }
+
+  .wn-library .wn-library__error {
+    margin: -6px 0 0;
+    text-align: left;
+  }
+
+  /* Toolbar: the 48px search with a ✕, then the sort (ellipsis) and «Прогресс» with a
+     teal 1 - both open «Сортировка и прогресс». A set criterion gets a teal edge. */
+  .wn-library .wn-library-toolbar {
+    gap: 10px 8px;
+  }
+
+  .wn-library .wn-library-search input {
+    height: 48px;
+    padding-right: 48px;
+    border-color: #2a2838;
+    border-radius: 12px;
+    color: #eeecf4;
+    font: 500 16px/1 var(--wn-font-ui);
+  }
+
+  .wn-library .wn-library-search input:not(:placeholder-shown) {
+    border-color: rgb(61 214 195 / 40%);
+  }
+
+  /* One ✕ - ours, not the browser's own search cancel button too. */
+  .wn-library .wn-library-search input::-webkit-search-cancel-button {
+    display: none;
+    appearance: none;
+  }
+
+  .wn-library-search__clear:not([hidden]) {
+    position: absolute;
+    right: 6px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 36px;
+    height: 36px;
+    padding: 0;
+    border: 0;
+    border-radius: 8px;
+    background: transparent;
+    color: #a3a0b5;
+    cursor: pointer;
+  }
+
+  .wn-library .wn-library-search .wn-library-search__clear svg {
+    position: static;
+    width: 16px;
+    height: 16px;
+  }
+
+  .wn-library-sheet-btn {
+    display: flex;
+    align-items: center;
+    height: 44px;
+    border: 1px solid #2a2838;
+    border-radius: 12px;
+    background: #16161f;
+    color: #eeecf4;
+    cursor: pointer;
+  }
+
+  .wn-library-sheet-btn[data-changed] {
+    border-color: rgb(61 214 195 / 40%);
+  }
+
+  .wn-library-sheet-btn--sort {
+    flex: 1 1 0;
+    justify-content: space-between;
+    gap: 6px;
+    min-width: 0;
+    padding: 0 10px 0 14px;
+    font: 600 15px/1 var(--wn-font-ui);
+  }
+
+  .wn-library-sheet-btn--sort span {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .wn-library-sheet-btn--sort svg {
+    flex: none;
+    width: 16px;
+    height: 16px;
+    color: #a3a0b5;
+  }
+
+  .wn-library-sheet-btn--progress {
+    flex: none;
+    gap: 8px;
+    padding: 0 12px;
+    font: 700 15px/1 var(--wn-font-ui);
+  }
+
+  .wn-library-sheet-btn--progress svg {
+    flex: none;
+    width: 18px;
+    height: 18px;
+  }
+
+  .wn-library-sheet-btn__count:not([hidden]) {
+    box-sizing: border-box;
+    min-width: 22px;
+    height: 22px;
+    padding: 0 6px;
+    border-radius: 999px;
+    background: rgb(61 214 195 / 16%);
+    color: #3dd6c3;
+    font: 800 12px/22px var(--wn-font-ui);
+    text-align: center;
+  }
+
+  :is(.wn-library-sheet-btn, .wn-library-search__clear):focus-visible {
+    outline: 2px solid #c5b6ff;
+    outline-offset: 2px;
+  }
+
+  /* The results mode's chips: one strip edge to edge, then «Сбросить». */
+  .wn-library .wn-library-criteria:not([hidden]) {
+    display: flex;
+    flex: 1 1 100%;
+    gap: 8px;
+    margin: 0 -16px;
+    padding: 2px 16px;
+    overflow-x: auto;
+    scrollbar-width: none;
+  }
+
+  .wn-library .wn-library-criteria::-webkit-scrollbar {
+    display: none;
+  }
+
+  .wn-library .wn-library-criteria__label,
+  .wn-library .wn-library-criteria__count,
+  .wn-library .wn-library-criterion__key,
+  .wn-library .wn-library-criteria__reset-all {
+    display: none;
+  }
+
+  .wn-library .wn-library-criteria__chips {
+    display: flex;
+    flex: none;
+    gap: 8px;
+  }
+
+  .wn-library .wn-library-criterion {
+    display: inline-flex;
+    flex: none;
+    align-items: center;
+    gap: 6px;
+    height: 36px;
+    padding: 0 6px 0 12px;
+    border: 1px solid rgb(61 214 195 / 32%);
+    border-radius: 999px;
+    background: rgb(61 214 195 / 7%);
+    color: #eeecf4;
+    font: 600 14px/1 var(--wn-font-ui);
+    white-space: nowrap;
+  }
+
+  .wn-library .wn-library-criterion svg {
+    width: 16px;
+    height: 16px;
+    color: #a3a0b5;
+  }
+
+  .wn-library .wn-library-criteria__reset {
+    flex: none;
+    height: 36px;
+    padding: 0 8px;
+    border: 0;
+    background: transparent;
+    color: #b7a6ff;
+    font: 700 14px/1 var(--wn-font-ui);
+  }
+}
+
+/* The hero's «Оглавление» menu item is for phones - desktop has the button beside
+   «Продолжить» (PR 300). */
+@media (min-width: 768px) {
+  .wn-library-menu__item--phone-only {
+    display: none;
+  }
+}
+
+/* The compact «Продолжить чтение» hero (phones): the cover (88px, 76px under 360) beside
+   the eyebrow, title, «Том X · Глава Y» and when it was read, then the progress bar
+   with its % and a full-width purple «Продолжить» + a 48px ⋯ (the action sheet, with
+   «Оглавление» in it). The cover blurred is the backdrop. The copy column and the
+   eyebrow join the inner grid (display: contents), the desktop markup unchanged. */
+@media (max-width: 767px) {
+  .wn-library .wn-library-hero__card {
+    padding: 14px;
+    border-color: rgb(255 255 255 / 9%);
+  }
+
+  .wn-library .wn-library-hero__backdrop {
+    position: absolute;
+    inset: -50px;
+    z-index: -2;
+    display: block;
+    width: calc(100% + 100px);
+    height: calc(100% + 100px);
+    object-fit: cover;
+    filter: blur(40px) brightness(0.55);
+  }
+
+  .wn-library .wn-library-hero__scrim {
+    position: absolute;
+    inset: 0;
+    z-index: -1;
+    display: block;
+    background: linear-gradient(
+      180deg,
+      rgb(8 8 12 / 50%) 0%,
+      rgb(8 8 12 / 88%) 55%,
+      rgb(8 8 12 / 95%) 100%
+    );
+  }
+
+  .wn-library .wn-library-hero__inner {
+    display: grid;
+    grid-template-columns: 88px minmax(0, 1fr);
+    grid-template-rows: auto auto auto 1fr auto auto;
+    gap: 6px 14px;
+  }
+
+  .wn-library .wn-library-hero__copy,
+  .wn-library .wn-library-hero__eyebrow {
+    display: contents;
+  }
+
+  .wn-library .wn-library-hero__cover {
+    grid-row: 1 / 5;
+    grid-column: 1;
+    align-self: start;
+    width: auto;
+    box-shadow:
+      0 12px 26px rgb(0 0 0 / 50%),
+      0 0 0 1px rgb(255 255 255 / 12%);
+  }
+
+  .wn-library .wn-library-hero__eyebrow-main {
+    grid-row: 1;
+    grid-column: 2;
+    gap: 6px;
+    font: 800 10px/1.2 var(--wn-font-ui);
+    letter-spacing: 0.12em;
+  }
+
+  .wn-library .wn-library-hero__dot {
+    width: 6px;
+    height: 6px;
+    box-shadow: none;
+  }
+
+  .wn-library .wn-library-hero__title {
+    grid-row: 2;
+    grid-column: 2;
+    font: 800 18px/1.25 var(--wn-font-ui);
+  }
+
+  .wn-library .wn-library-hero__where {
+    grid-row: 3;
+    grid-column: 2;
+    font: 600 13px/1.3 var(--wn-font-ui);
+  }
+
+  .wn-library .wn-library-hero__last {
+    grid-row: 4;
+    grid-column: 2;
+    align-self: start;
+    color: #a3a0b5;
+    font: 500 12px/1.3 var(--wn-font-ui);
+  }
+
+  .wn-library .wn-library-hero__progress {
+    grid-row: 5;
+    grid-column: 1 / -1;
+    flex-direction: row;
+    align-items: center;
+    gap: 10px;
+    margin-top: 6px;
+  }
+
+  .wn-library .wn-library-hero__progress-label,
+  .wn-library .wn-library-hero__stopped,
+  .wn-library .wn-library-hero__toc {
+    display: none;
+  }
+
+  .wn-library .wn-library-hero__bar {
+    flex: 1;
+    height: 6px;
+    border-radius: 3px;
+  }
+
+  .wn-library .wn-library-hero__bar span {
+    border-radius: 3px;
+    background: #3dd6c3;
+    box-shadow: 0 0 10px rgb(61 214 195 / 50%);
+  }
+
+  .wn-library .wn-library-hero__pct {
+    flex: none;
+    order: 1;
+    color: #3dd6c3;
+    font: 800 14px/1 var(--wn-font-ui);
+    letter-spacing: 0;
+  }
+
+  .wn-library .wn-library-hero__pct span {
+    color: inherit;
+    font: inherit;
+  }
+
+  .wn-library .wn-library-hero__actions {
+    grid-row: 6;
+    grid-column: 1 / -1;
+    flex-wrap: nowrap;
+    gap: 8px;
+    margin-top: 6px;
+  }
+
+  .wn-library .wn-library-hero__continue {
+    flex: 1;
+    justify-content: center;
+    gap: 8px;
+    min-width: 0;
+    padding: 0 12px;
+  }
+
+  .wn-library .wn-library-hero__continue svg {
+    width: 11px;
+    height: 11px;
+  }
+
+  .wn-library .wn-library-hero__more {
+    flex: none;
+  }
+}
+
+@media (max-width: 359px) {
+  .wn-library .wn-library-hero__inner {
+    grid-template-columns: 76px minmax(0, 1fr);
+  }
+}
+
+/* «Моя библиотека» on phones: one column of LibraryCard row - a 76px cover beside the
+   title in full, «Том X · Глава Y», when it was last read and the progress bar, then
+   «Продолжить · Гл. Y» (teal-tint outline) with the 44px ⋯ beside it. No grid view on
+   phones: the toggle goes and the grid view's own rules are overridden here. The title
+   row's wrapper joins the body grid (display: contents), so ⋯ can sit by the button. */
+@media (max-width: 767px) {
+  .wn-library .wn-library-view {
+    display: none;
+  }
+
+  .wn-library .wn-library-shelf {
+    gap: 12px;
+  }
+
+  .wn-library .wn-library-shelf__head {
+    align-items: baseline;
+    gap: 10px;
+  }
+
+  .wn-library .wn-library-shelf__dot,
+  .wn-library .wn-library-shelf__rule {
+    display: none;
+  }
+
+  .wn-library .wn-library-shelf__title {
+    font: 800 18px/1.25 var(--wn-font-ui);
+  }
+
+  .wn-library .wn-library-shelf__count {
+    color: #8c889f;
+    font: 500 13px/1 var(--wn-font-ui);
+  }
+
+  .wn-library .wn-library-grid {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 12px;
+  }
+
+  .wn-library .wn-library-card {
+    flex-direction: row;
+    gap: 14px;
+    padding: 12px;
+    border-color: #24222f;
+    border-radius: 16px;
+    background: #13131b;
+  }
+
+  .wn-library .wn-library-card__cover {
+    align-self: flex-start;
+    width: 76px;
+    height: 114px;
+    border-radius: 9px;
+    aspect-ratio: auto;
+  }
+
+  .wn-library .wn-library-card__body {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) 44px;
+    align-content: start;
+    gap: 5px 8px;
+  }
+
+  .wn-library .wn-library-card__top {
+    display: contents;
+  }
+
+  .wn-library .wn-library-card__name {
+    display: block;
+    grid-row: 1;
+    grid-column: 1 / -1;
+    overflow: visible;
+    color: #f2f0f7;
+    font: 700 15px/1.3 var(--wn-font-ui);
+    overflow-wrap: break-word;
+  }
+
+  .wn-library .wn-library-card__meta {
+    grid-row: 2;
+    grid-column: 1 / -1;
+    color: #cfcbdd;
+    font: 600 13px/1.3 var(--wn-font-ui);
+  }
+
+  .wn-library .wn-library-card__last {
+    display: block;
+    grid-row: 3;
+    grid-column: 1 / -1;
+    color: #8c889f;
+    font: 500 12px/1.3 var(--wn-font-ui);
+  }
+
+  .wn-library .wn-library-card__spacer {
+    display: none;
+  }
+
+  .wn-library .wn-library-card__progress {
+    grid-row: 4;
+    grid-column: 1 / -1;
+    margin-top: 4px;
+  }
+
+  .wn-library .wn-library-card__progress .ui-progress {
+    gap: 8px;
+  }
+
+  .wn-library .wn-library-card__progress .ui-progress__pct {
+    font: 800 13px/1 var(--wn-font-ui);
+  }
+
+  .wn-library .wn-library-card__cta {
+    grid-row: 5;
+    grid-column: 1;
+    gap: 0;
+    min-width: 0;
+    height: 44px;
+    min-height: 44px;
+    margin-top: 6px;
+    padding: 0 10px;
+    border-color: rgb(61 214 195 / 28%);
+    border-radius: 12px;
+    background: rgb(61 214 195 / 7%);
+    color: #eeecf4;
+  }
+
+  .wn-library .wn-library-card__cta svg {
+    flex: none;
+    width: 11px;
+    height: 11px;
+    margin-right: 8px;
+  }
+
+  /* Its trailing space is kept - the button isn't a flex gap away from «Гл. Y». */
+  .wn-library .wn-library-card__cta-verb {
+    display: inline;
+    white-space: pre;
+  }
+
+  .wn-library .wn-library-card .wn-library-more {
+    grid-row: 5;
+    grid-column: 2;
+    width: 44px;
+    height: 44px;
+    margin: 6px 0 0;
+    border: 1px solid #2a2838;
+    border-radius: 12px;
+  }
+}
+
+/* «В библиотеке ничего не нашлось» on phones (LibraryMobile preset=results, empty):
+   a quiet note - no icon, H3 20, one 44px reset, then «Искать в каталоге →». */
+@media (max-width: 767px) {
+  .wn-library .wn-library-no-results {
+    gap: 12px;
+    padding: 32px 20px;
+    border-color: rgb(255 255 255 / 7%);
+    border-radius: 16px;
+    background: #0f0f15;
+  }
+
+  .wn-library .wn-library-no-results .catalog-empty__icon {
+    display: none;
+  }
+
+  .wn-library .wn-library-no-results .catalog-empty__title {
+    font: 800 20px/1.25 var(--wn-font-ui);
+    letter-spacing: 0;
+  }
+
+  .wn-library .wn-library-no-results .catalog-empty__text {
+    font: 500 14px/1.5 var(--wn-font-ui);
+  }
+
+  .wn-library .wn-library-no-results .catalog-empty__reset {
+    height: 44px;
+    margin-top: 0;
+    padding: 0 18px;
+    border-color: #33304a;
+  }
+}
+
+/* «Продолжить · Гл. Y» doesn't fit beside ⋯ in a 320px row card - «Гл. Y» alone (the
+   link's aria-label keeps the full action). */
+@media (max-width: 359px) {
+  .wn-library .wn-library-card__cta-verb {
+    display: none;
+  }
+}
+
+/* The ⋯ menu and the removal confirmation inside the bottom sheet (phones,
+   library-card-actions.js): the menu as 52px rows with 20px icons, the confirmation
+   as the sheet's text and two 48px buttons, under a pink top edge. */
+.bottom-sheet :is(.wn-library-menu, .wn-library-confirm) {
+  position: static;
+  width: auto;
+  max-width: none;
+  border: 0;
+  border-radius: 0;
+  background: none;
+  box-shadow: none;
+}
+
+.bottom-sheet .wn-library-menu {
+  margin: 0 -12px;
+  padding: 0;
+}
+
+.bottom-sheet .wn-library-menu__item {
+  gap: 14px;
+  min-height: 52px;
+  border-radius: 12px;
+  font: 600 16px/1 var(--wn-font-ui);
+}
+
+.bottom-sheet .wn-library-menu__item svg {
+  width: 20px;
+  height: 20px;
+}
+
+.bottom-sheet .wn-library-menu__sep {
+  margin: 6px 12px;
+}
+
+.bottom-sheet .wn-library-confirm {
+  gap: 16px;
+  padding: 6px 0 0;
+}
+
+.bottom-sheet .wn-library-confirm__title {
+  display: none;
+}
+
+.bottom-sheet .wn-library-confirm__text {
+  font: 500 15px/1.55 var(--wn-font-ui);
+  overflow-wrap: break-word;
+}
+
+.bottom-sheet .wn-library-confirm__actions {
+  flex-wrap: wrap;
+  margin: 0;
+}
+
+.bottom-sheet :is(.wn-library-confirm__cancel, .wn-library-confirm__remove) {
+  flex: 1 1 120px;
+  min-height: 48px;
+  border-radius: 12px;
+  font-size: 15px;
+}
+
+.bottom-sheet__panel:has(.wn-library-confirm:not([hidden])) {
+  border-top-color: rgb(240 138 155 / 40%);
 }
 
 /* ==========================================================================
