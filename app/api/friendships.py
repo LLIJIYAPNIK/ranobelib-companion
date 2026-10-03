@@ -116,13 +116,12 @@ async def update_reading_visibility(
 ) -> RedirectResponse:
     """The switch on the /friends "Приватность" card (PR 278) - the same
     show_currently_reading flag as /settings/account/privacy (PR 124), changed on its own:
-    the other four flags are written back as they already are, since
-    update_privacy_settings() always writes all five."""
+    the other three flags are written back as they already are, since
+    update_privacy_settings() always writes all four."""
     await update_privacy_settings(
         conn,
         user.id,
         show_currently_reading=show_currently_reading,
-        show_favorite=user.show_favorite,
         show_library=user.show_library,
         show_friends_activity_home=user.show_friends_activity_home,
         show_friends=user.show_friends,

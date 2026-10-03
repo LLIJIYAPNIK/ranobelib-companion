@@ -165,14 +165,12 @@ async def update_privacy(
     show_friends: bool = Form(default=False),
 ) -> HTMLResponse:
     """Unchecked checkboxes simply aren't sent by the browser at all, so every submit of
-    this form carries the visitor's complete intended state for all four switches - no
-    partial update. show_favorite has no switch since PR 293 ("Избранное" is gone) and
-    is written back as it already is."""
+    this form carries the visitor's complete intended state for all four - no partial
+    update, matching update_privacy_settings()'s own "always write all four" shape."""
     updated = await update_privacy_settings(
         conn,
         user.id,
         show_currently_reading=show_currently_reading,
-        show_favorite=user.show_favorite,
         show_library=show_library,
         show_friends_activity_home=show_friends_activity_home,
         show_friends=show_friends,

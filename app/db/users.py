@@ -1,5 +1,6 @@
 """Access to the ``users`` table (see migrations/0001_users.sql,
-0009_users_privacy_flags.sql for the ``show_*`` columns,
+0009_users_privacy_flags.sql for the ``show_*`` columns - ``show_favorite`` among them is
+still in the table but no longer read or written since PR 293 removed "Избранное",
 0015_users_notification_flags.sql for ``notifications_enabled``/``do_not_disturb``,
 0019_users_friends_privacy_flags.sql for ``show_friends_activity_home``/``show_friends``,
 0023_email_verification.sql for ``email_verified_at``).
@@ -28,14 +29,13 @@ class User:
     # True (show everything) so PR 122's existing behavior doesn't change for anyone who
     # has never opened the privacy settings.
     show_currently_reading: bool = True
-    show_favorite: bool = True
     show_library: bool = True
-    # PR 202: two more privacy toggles, same section/pattern as the three above but
-    # different targets. show_friends is the same kind of flag as the three above - what a
+    # PR 202: two more privacy toggles, same section/pattern as the two above but
+    # different targets. show_friends is the same kind of flag as the two above - what a
     # *different* visitor sees on this user's public profile (PR 201's friends section),
     # ignored on the owner's own view of their own profile. show_friends_activity_home is
     # NOT about what others see - it's a personal preference gating the friends-activity
-    # column (PR 200) on *this user's own* home page, so unlike the other four it has no
+    # column (PR 200) on *this user's own* home page, so unlike the other three it has no
     # "owner's own view ignores it" carve-out (there's no "someone else's home page" to
     # view in the first place).
     show_friends_activity_home: bool = True
@@ -169,17 +169,16 @@ async def update_privacy_settings(
     user_id: int,
     *,
     show_currently_reading: bool,
-    show_favorite: bool,
     show_library: bool,
     show_friends_activity_home: bool,
     show_friends: bool,
 ) -> User:
-    """The five "Приватность" toggles (PR 124's original three plus PR 202's two) -
-    independent of each other, so all five are always written together as a plain
-    replace, not a partial update - same shape as the original three, just wider now that
-    the same settings form (settings_account.html) carries two more checkboxes."""
+    """The four "Приватность" toggles (PR 124's original three plus PR 202's two, minus
+    show_favorite since PR 293 - its column is left as it is) - independent of each
+    other, so all four are always written together as a plain replace, not a partial
+    update."""
     await conn.execute(
-        "UPDATE users SET show_currently_reading = %s, show_favorite = %s, show_library = %s, "
+        "UPDATE users SET show_currently_reading = %s, show_library = %s, "
         "show_friends_activity_home = %s, show_friends = %s "
         "WHERE id = %s",
         # cast bool -> int: the column is INTEGER (0/1), not a native Postgres BOOLEAN -
@@ -187,7 +186,6 @@ async def update_privacy_settings(
         # Postgres won't implicitly coerce a bound `True`/`False` into one.
         (
             int(show_currently_reading),
-            int(show_favorite),
             int(show_library),
             int(show_friends_activity_home),
             int(show_friends),
@@ -229,7 +227,7 @@ async def update_notification_settings(
 
 _USER_COLUMNS = (
     "id, email, password_hash, created_at, nickname, bio, avatar_path, "
-    "show_currently_reading, show_favorite, show_library, "
+    "show_currently_reading, show_library, "
     "show_friends_activity_home, show_friends, "
     "notifications_enabled, do_not_disturb, session_version, email_verified_at"
 )
@@ -305,7 +303,6 @@ def _row_to_user(row: dict[str, Any]) -> User:
         bio=row["bio"],
         avatar_path=row["avatar_path"],
         show_currently_reading=bool(row["show_currently_reading"]),
-        show_favorite=bool(row["show_favorite"]),
         show_library=bool(row["show_library"]),
         show_friends_activity_home=bool(row["show_friends_activity_home"]),
         show_friends=bool(row["show_friends"]),

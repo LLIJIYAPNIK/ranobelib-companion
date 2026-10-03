@@ -482,8 +482,8 @@ async def test_friends_privacy_switch_flips_only_currently_reading(client: TestC
         user = await get_user_by_email(conn, "alice@example.com")
     assert user is not None
     assert user.show_currently_reading is False
-    # The other four are written back exactly as they were.
-    assert (user.show_favorite, user.show_library) == (False, True)
+    # The other three are written back exactly as they were.
+    assert user.show_library is True
     assert (user.show_friends_activity_home, user.show_friends) == (False, True)
     page = client.get("/friends")
     assert 'aria-checked="false"' in page.text
