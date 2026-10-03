@@ -349,7 +349,7 @@ def test_catalog_tabs_have_no_counts(client: TestClient) -> None:
     ) as list_titles:
         list_titles.return_value.items = []
         list_titles.return_value.has_next_page = False
-        response = client.get("/library/catalog")
+        response = client.get("/catalog")
 
     assert response.status_code == 200
     assert 'href="/library/catalog" aria-current="page"' in response.text

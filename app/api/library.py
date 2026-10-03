@@ -35,6 +35,9 @@ from app.services.client import get_client, open_client
 from app.templating import templates
 
 router = APIRouter(prefix="/library")
+# PR 292 (wave 36): the catalog is its own top-level page now, next to /library rather
+# than under it - its handlers live here with the rest of the library/catalog code.
+catalog_router = APIRouter(prefix="/catalog")
 
 # Catalog.list_titles()'s own known-accepted `sort` values (see its docstring - the SDK
 # doesn't validate `sort` itself, so this is only for the dropdown, not enforced here).
@@ -146,7 +149,7 @@ def _last_read_label(last_read_at: str | None, today: date) -> str | None:
     return label
 
 
-@router.get("/catalog", response_model=None)
+@catalog_router.get("", response_model=None)
 async def show_catalog(
     request: Request,
     query: str | None = None,
@@ -193,9 +196,7 @@ async def show_catalog(
         # PR 230: the no-JS path (catalog-random-redirect.js normally never lets the form
         # submit sort=random) - same one-random-title redirect, not a reshuffled list.
         params = _catalog_filter_params(query, genres, countries, tags, tag_name)
-        return RedirectResponse(
-            url=f"/library/catalog/random?{urlencode(params)}", status_code=303
-        )
+        return RedirectResponse(url=f"/catalog/random?{urlencode(params)}", status_code=303)
     all_genres = await list_genres()
     all_countries = await list_countries()
     async with get_catalog() as catalog:
@@ -239,7 +240,7 @@ async def show_catalog(
     )
 
 
-@router.get("/catalog/random")
+@catalog_router.get("/random")
 async def random_catalog_title(
     query: str | None = None,
     genres: Annotated[list[int] | None, Query()] = None,
@@ -262,7 +263,7 @@ async def random_catalog_title(
         return RedirectResponse(url=f"/titles/{title.slug_url}", status_code=303)
     params = _catalog_filter_params(query, genres, countries, tags, tag_name)
     params.append(("random_empty", "1"))
-    return RedirectResponse(url=f"/library/catalog?{urlencode(params)}", status_code=303)
+    return RedirectResponse(url=f"/catalog?{urlencode(params)}", status_code=303)
 
 
 def _catalog_filter_params(
@@ -283,7 +284,7 @@ def _catalog_filter_params(
     return params
 
 
-@router.get("/catalog/page", response_model=None)
+@catalog_router.get("/page", response_model=None)
 async def catalog_page_fragment(
     request: Request,
     query: str | None = None,
