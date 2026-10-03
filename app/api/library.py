@@ -26,8 +26,8 @@ from app.db.library import (
 from app.db.users import User
 from app.reading_progress import reading_progress_percent
 from app.services.catalog import (
+    catalog_stream,
     get_catalog,
-    list_catalog_titles,
     list_countries,
     list_genres,
     pick_random_title,
@@ -52,6 +52,21 @@ CATALOG_SORT_OPTIONS = {
     "rate_avg": "По рейтингу",
     "random": "Случайно",
 }
+
+
+def _is_editorial(
+    query: str | None, sort: str, genres: list[int], countries: list[int], tags: list[int]
+) -> bool:
+    """PR 295 (Catalog handoff.md): the catalog's default "editorial" mode - no search,
+    the default sort and no filter - gets the featured inserts; anything else is the
+    "results" mode, a plain listing of exactly what was asked for plus the criteria chips."""
+    return (
+        not (query or "").strip()
+        and sort == DEFAULT_CATALOG_SORT
+        and not genres
+        and not countries
+        and not tags
+    )
 
 
 @router.get("", response_model=None)
@@ -174,6 +189,8 @@ async def show_catalog(
     tags: Annotated[list[int] | None, Query()] = None,
     tag_name: str | None = None,
     page: Annotated[int, Query(ge=1)] = 1,
+    shown: Annotated[int, Query(ge=0)] = 0,
+    featured: Annotated[int, Query(ge=0)] = 0,
     random_empty: bool = False,
 ) -> Response:
     """The catalog tab - unlike "Читаю", browsing it has never needed an account (see
@@ -220,10 +237,14 @@ async def show_catalog(
             library_count = await count_entries(conn, user.id)
     all_genres = await list_genres()
     all_countries = await list_countries()
+    editorial = _is_editorial(query, sort, genres, countries, tags)
     async with get_catalog() as catalog:
-        result = await list_catalog_titles(
+        stream = await catalog_stream(
             catalog,
+            editorial=editorial,
             page=page,
+            shown=shown,
+            featured=featured,
             query=query or None,
             sort=sort,
             genres=genres,
@@ -235,28 +256,43 @@ async def show_catalog(
     selected_tag_names = (
         [tag_name] if len(tags) == 1 and tag_name else [str(t) for t in tags]
     )
+    selected_genre_names = [genre_names_by_id.get(g, str(g)) for g in genres]
+    selected_country_names = [country_names_by_id.get(c, str(c)) for c in countries]
     return templates.TemplateResponse(
         request,
         "catalog.html",
         {
             "active_nav": "library",
             "active_tab": "catalog",
-            "items": result.items,
-            "has_next_page": result.has_next_page,
+            "stream": stream,
+            "items": stream.items,
+            "has_next_page": stream.has_next_page,
             "page": page,
             "query": query,
             "sort": sort,
             "sort_options": CATALOG_SORT_OPTIONS,
             "all_genres": all_genres,
             "genres": genres,
-            "selected_genre_names": [genre_names_by_id.get(g, str(g)) for g in genres],
+            "selected_genre_names": selected_genre_names,
             "all_countries": all_countries,
             "countries": countries,
-            "selected_country_names": [country_names_by_id.get(c, str(c)) for c in countries],
+            "selected_country_names": selected_country_names,
             "tags": tags,
             "selected_tag_names": selected_tag_names,
             "tag_name": tag_name,
             "random_empty": random_empty,
+            "editorial": editorial,
+            "criteria_chips": [] if editorial else _criteria_chips(
+                query=query,
+                sort=sort,
+                genres=genres,
+                countries=countries,
+                tags=tags,
+                tag_name=tag_name,
+                genre_names=selected_genre_names,
+                country_names=selected_country_names,
+                tag_names=selected_tag_names,
+            ),
             "library_count": library_count,
         },
     )
@@ -288,6 +324,46 @@ async def random_catalog_title(
     return RedirectResponse(url=f"/catalog?{urlencode(params)}", status_code=303)
 
 
+def _criteria_chips(
+    *,
+    query: str | None,
+    sort: str,
+    genres: list[int],
+    countries: list[int],
+    tags: list[int],
+    tag_name: str | None,
+    genre_names: list[str],
+    country_names: list[str],
+    tag_names: list[str],
+) -> list[dict[str, str]]:
+    """PR 295: the results mode's row of active criteria (Catalog handoff.md) - search,
+    a non-default sort, each genre, country and tag. Each chip links to /catalog with
+    every criterion but its own, so a click drops just that one; with none left the
+    catalog is back in the editorial mode."""
+    criteria: list[tuple[str, list[tuple[str, str | int]]]] = []
+    if (query or "").strip():
+        criteria.append((f"«{query.strip()}»", [("query", query.strip())]))  # type: ignore[union-attr]
+    if sort != DEFAULT_CATALOG_SORT:
+        criteria.append((CATALOG_SORT_OPTIONS.get(sort, sort), [("sort", sort)]))
+    criteria += [(name, [("genres", g)]) for g, name in zip(genres, genre_names, strict=True)]
+    criteria += [
+        (name, [("countries", c)]) for c, name in zip(countries, country_names, strict=True)
+    ]
+    # tag_name only names a lone tag (see show_catalog) - it goes with that tag's chip.
+    tag_extra: list[tuple[str, str | int]] = (
+        [("tag_name", tag_name)] if tag_name and len(tags) == 1 else []
+    )
+    criteria += [
+        (name, [("tags", t), *tag_extra]) for t, name in zip(tags, tag_names, strict=True)
+    ]
+    chips = []
+    for index, (label, _) in enumerate(criteria):
+        rest = [param for i, (_, params) in enumerate(criteria) if i != index for param in params]
+        href = f"/catalog?{urlencode(rest)}" if rest else "/catalog"
+        chips.append({"label": label, "href": href})
+    return chips
+
+
 def _catalog_filter_params(
     query: str | None,
     genres: list[int],
@@ -315,21 +391,33 @@ async def catalog_page_fragment(
     countries: Annotated[list[int] | None, Query()] = None,
     tags: Annotated[list[int] | None, Query()] = None,
     page: Annotated[int, Query(ge=1)] = 1,
+    shown: Annotated[int, Query(ge=0)] = 0,
+    featured: Annotated[int, Query(ge=0)] = 0,
 ) -> Response:
     """Just the card markup, no base.html - what catalog-scroll.js fetches and appends
-    as the visitor scrolls (see app/static/js/catalog-scroll.js)."""
+    as the visitor scrolls (see app/static/js/catalog-scroll.js). PR 295: `shown` /
+    `featured` are the feed cursor from the previous page (catalog_stream()), the new
+    one goes back in X-Catalog-Shown / X-Catalog-Featured."""
+    genres = genres or []
+    countries = countries or []
+    tags = tags or []
     async with get_catalog() as catalog:
-        result = await list_catalog_titles(
+        stream = await catalog_stream(
             catalog,
+            editorial=_is_editorial(query, sort, genres, countries, tags),
             page=page,
+            shown=shown,
+            featured=featured,
             query=query or None,
             sort=sort,
-            genres=genres or [],
-            countries=countries or [],
-            tags=tags or [],
+            genres=genres,
+            countries=countries,
+            tags=tags,
         )
-    response = templates.TemplateResponse(request, "_catalog_cards.html", {"items": result.items})
-    response.headers["X-Has-Next-Page"] = "true" if result.has_next_page else "false"
+    response = templates.TemplateResponse(request, "_catalog_cards.html", {"items": stream.items})
+    response.headers["X-Has-Next-Page"] = "true" if stream.has_next_page else "false"
+    response.headers["X-Catalog-Shown"] = str(stream.shown)
+    response.headers["X-Catalog-Featured"] = str(stream.featured)
     return response
 
 

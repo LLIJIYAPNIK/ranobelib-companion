@@ -30,13 +30,18 @@ class _FakeCatalog:
         exc: Exception | None = None,
         genres: list[Genre] | None = None,
         countries: list[Country] | None = None,
+        featured: list[CatalogPage] | None = None,
     ) -> None:
         self._page = page
         self._exc = exc
         self._genres = genres or []
         self._countries = countries or []
+        # PR 295: the editorial feed's `sort="views"` listing (page by page) - empty by
+        # default, so a test about the regular listing sees only its own cards.
+        self._featured = featured or []
         self.received_kwargs: dict[str, object] | None = None
         self.calls: list[dict[str, object]] = []
+        self.featured_calls: list[dict[str, object]] = []
 
     async def __aenter__(self) -> "_FakeCatalog":
         return self
@@ -45,6 +50,14 @@ class _FakeCatalog:
         return False
 
     async def list_titles(self, **kwargs: object) -> CatalogPage:
+        # The featured source call passes only page + sort (catalog_stream()); every
+        # regular listing goes through list_catalog_titles() with the filter kwargs.
+        if kwargs.get("sort") == "views" and "genres" not in kwargs:
+            self.featured_calls.append(kwargs)
+            index = int(kwargs["page"]) - 1  # type: ignore[call-overload]
+            if index < len(self._featured):
+                return self._featured[index]
+            return CatalogPage(items=[], page=index + 1, has_next_page=False)
         self.received_kwargs = kwargs
         self.calls.append(kwargs)
         if self._exc is not None:
@@ -309,8 +322,8 @@ def test_show_catalog_renders_tag_filter_chip_using_forwarded_name() -> None:
         )
 
     assert response.status_code == 200
-    assert "Тег: Реинкарнация" in response.text
-    assert "Сбросить фильтр<" in response.text  # singular - only one filter active
+    # PR 295: a criteria chip; dropping the only criterion goes back to /catalog.
+    assert 'href="/catalog" aria-label="Убрать: Реинкарнация"' in response.text
 
 
 def test_show_catalog_tag_without_forwarded_name_falls_back_to_the_id() -> None:
@@ -322,7 +335,7 @@ def test_show_catalog_tag_without_forwarded_name_falls_back_to_the_id() -> None:
         response = client.get("/catalog", params={"tags": 7})
 
     assert response.status_code == 200
-    assert "Тег: 7" in response.text
+    assert 'aria-label="Убрать: 7"' in response.text
 
 
 def test_show_catalog_renders_tags_in_grid_data_attribute() -> None:
@@ -401,7 +414,8 @@ def test_show_catalog_renders_genre_filter_chip_with_resolved_names() -> None:
         response = client.get("/catalog", params={"genres": [5, 8]})
 
     assert response.status_code == 200
-    assert "Жанры: Фэнтези, Романтика" in response.text
+    assert 'href="/catalog?genres=8" aria-label="Убрать: Фэнтези"' in response.text
+    assert 'href="/catalog?genres=5" aria-label="Убрать: Романтика"' in response.text
     assert 'data-genres="5,8"' in response.text
 
 
@@ -525,7 +539,8 @@ def test_show_catalog_renders_country_filter_chip_with_resolved_names() -> None:
         response = client.get("/catalog", params={"countries": [1, 2]})
 
     assert response.status_code == 200
-    assert "Страны: Япония, Корея" in response.text
+    assert 'href="/catalog?countries=2" aria-label="Убрать: Япония"' in response.text
+    assert 'href="/catalog?countries=1" aria-label="Убрать: Корея"' in response.text
     assert 'data-country="1,2"' in response.text
 
 
@@ -540,10 +555,10 @@ def test_show_catalog_renders_combined_filter_chip_and_plural_reset_link() -> No
         response = client.get("/catalog", params={"genres": 5, "countries": 1})
 
     assert response.status_code == 200
-    assert "Жанр: Фэнтези · Страна: Япония" in response.text
-    assert "Сбросить фильтры<" in response.text  # plural - two filters active
-    # the reset link drops both, not just one
-    assert 'href="?query=&sort=last_chapter_at"' in response.text
+    # PR 295: one chip per criterion, each dropping only itself; «Сбросить всё» both.
+    assert 'href="/catalog?countries=1" aria-label="Убрать: Фэнтези"' in response.text
+    assert 'href="/catalog?genres=5" aria-label="Убрать: Япония"' in response.text
+    assert 'href="/catalog" data-role="catalog-criteria-reset">Сбросить всё</a>' in response.text
 
 
 def test_show_catalog_without_genres_omits_the_filter_chip() -> None:
@@ -884,3 +899,210 @@ def test_old_catalog_redirect_lands_on_the_filtered_catalog() -> None:
     assert response.status_code == 200
     assert str(response.url).endswith("/catalog?genres=5&genres=8&query=dxd&sort=views")
     assert 'value="dxd"' in response.text
+
+
+# --- PR 295: editorial vs results mode -----------------------------------------------
+
+
+@pytest.mark.parametrize(
+    ("params", "editorial"),
+    [
+        ({}, True),
+        ({"query": "   "}, True),
+        ({"sort": "last_chapter_at"}, True),
+        ({"query": "dxd"}, False),
+        ({"sort": "views"}, False),
+        ({"genres": 5}, False),
+        ({"countries": 1}, False),
+        ({"tags": 7}, False),
+    ],
+)
+def test_catalog_mode_follows_query_sort_and_filters(
+    params: dict[str, object], editorial: bool
+) -> None:
+    page = CatalogPage(items=[], page=1, has_next_page=False)
+    with patch("app.services.catalog.Catalog", return_value=_FakeCatalog(page)):
+        response = client.get("/catalog", params=params)
+
+    assert response.context["editorial"] is editorial
+    mode = "editorial" if editorial else "results"
+    assert f'class="catalog-page" data-mode="{mode}"' in response.text
+
+
+def _titles(start: int, count: int) -> list[Title]:
+    return [_fake_title(id_=i, name=f"Novel {i}") for i in range(start, start + count)]
+
+
+def test_editorial_catalog_renders_a_featured_insert_after_twelve_cards() -> None:
+    fake = _FakeCatalog(
+        CatalogPage(items=_titles(1, 30), page=1, has_next_page=True),
+        featured=[CatalogPage(items=_titles(1001, 5), page=1, has_next_page=False)],
+    )
+    with patch("app.services.catalog.Catalog", return_value=fake):
+        response = client.get("/catalog")
+
+    assert response.text.count('data-role="catalog-featured"') == 2
+    assert 'data-issue="1"' in response.text
+    assert "Популярно на RanobeLib" in response.text
+    assert 'data-shown="30"' in response.text
+    assert 'data-featured="2"' in response.text
+
+
+def test_results_catalog_has_no_featured_inserts() -> None:
+    fake = _FakeCatalog(
+        CatalogPage(items=_titles(1, 30), page=1, has_next_page=True),
+        featured=[CatalogPage(items=_titles(1001, 5), page=1, has_next_page=False)],
+    )
+    with patch("app.services.catalog.Catalog", return_value=fake):
+        response = client.get("/catalog", params={"query": "dxd"})
+
+    assert 'data-role="catalog-featured"' not in response.text
+    assert fake.featured_calls == []
+
+
+def test_catalog_page_fragment_carries_the_feed_cursor() -> None:
+    fake = _FakeCatalog(
+        CatalogPage(items=_titles(31, 30), page=2, has_next_page=True),
+        featured=[CatalogPage(items=_titles(1001, 10), page=1, has_next_page=False)],
+    )
+    with patch("app.services.catalog.Catalog", return_value=fake):
+        response = client.get("/catalog/page", params={"page": 2, "shown": 30, "featured": 2})
+
+    # Cards 31..60 of the feed: inserts after the 36th, 48th and 60th.
+    assert response.text.count('data-role="catalog-featured"') == 3
+    assert 'data-issue="3"' in response.text
+    assert response.headers["X-Catalog-Shown"] == "60"
+    assert response.headers["X-Catalog-Featured"] == "5"
+
+
+def test_catalog_scroll_sends_and_updates_the_cursor() -> None:
+    from pathlib import Path
+
+    script = (Path(__file__).parents[1] / "app/static/js/catalog-scroll.js").read_text(
+        encoding="utf-8"
+    )
+    assert 'params.set("shown", grid.dataset.shown || "0")' in script
+    assert 'params.set("featured", grid.dataset.featured || "0")' in script
+    assert 'response.headers.get("X-Catalog-Shown")' in script
+    assert 'response.headers.get("X-Catalog-Featured")' in script
+
+
+def test_criteria_chips_cover_search_and_sort_and_keep_the_rest() -> None:
+    page = CatalogPage(items=[], page=1, has_next_page=False)
+    genres = [Genre(id=5, name="Фэнтези")]
+    with patch("app.services.catalog.Catalog", return_value=_FakeCatalog(page, genres=genres)):
+        response = client.get(
+            "/catalog", params={"query": " dxd ", "sort": "views", "genres": 5}
+        )
+
+    chips = response.context["criteria_chips"]
+    assert [chip["label"] for chip in chips] == ["«dxd»", "По просмотрам", "Фэнтези"]
+    assert [chip["href"] for chip in chips] == [
+        "/catalog?sort=views&genres=5",
+        "/catalog?query=dxd&genres=5",
+        "/catalog?query=dxd&sort=views",
+    ]
+    assert "Показаны результаты" in response.text
+
+
+def test_editorial_catalog_has_no_criteria_row() -> None:
+    page = CatalogPage(items=[], page=1, has_next_page=False)
+    with patch("app.services.catalog.Catalog", return_value=_FakeCatalog(page)):
+        response = client.get("/catalog")
+
+    assert response.context["criteria_chips"] == []
+    assert 'data-role="catalog-criteria"' not in response.text
+
+
+def test_tag_chip_carries_its_forwarded_name_only_for_a_lone_tag() -> None:
+    page = CatalogPage(items=[], page=1, has_next_page=False)
+    with patch("app.services.catalog.Catalog", return_value=_FakeCatalog(page)):
+        lone = client.get(
+            "/catalog", params={"query": "x", "tags": 7, "tag_name": "Реинкарнация"}
+        )
+        several = client.get("/catalog", params={"tags": [1, 2], "tag_name": "Магия"})
+
+    # Dropping the search keeps the tag and its name together.
+    assert lone.context["criteria_chips"][0]["href"] == (
+        "/catalog?tags=7&tag_name=%D0%A0%D0%B5%D0%B8%D0%BD%D0%BA%D0%B0%D1%80%D0%BD%D0%B0%D1%86%D0%B8%D1%8F"
+    )
+    # With several tags the name belongs to none of them - it doesn't travel.
+    assert [chip["href"] for chip in several.context["criteria_chips"]] == [
+        "/catalog?tags=2",
+        "/catalog?tags=1",
+    ]
+
+
+def _end_block(html: str) -> str:
+    return html.split('data-role="catalog-end"', 1)[1].split("</div>\n      </div>", 1)[0]
+
+
+def test_end_of_feed_shown_when_the_first_page_is_the_last() -> None:
+    page = CatalogPage(items=_titles(1, 5), page=1, has_next_page=False)
+    with patch("app.services.catalog.Catalog", return_value=_FakeCatalog(page)):
+        response = client.get("/catalog")
+
+    end = _end_block(response.text)
+    assert not end.startswith(" hidden")
+    assert "Вы посмотрели все тайтлы" in end
+    assert "Новые главы появятся в начале каталога" in end
+    assert 'href="#">Наверх ↑</a>' in end
+    assert "Сбросить условия" not in end
+
+
+def test_end_of_feed_in_results_mode_offers_a_reset() -> None:
+    page = CatalogPage(items=_titles(1, 5), page=1, has_next_page=False)
+    with patch("app.services.catalog.Catalog", return_value=_FakeCatalog(page)):
+        response = client.get("/catalog", params={"query": "dxd"})
+
+    end = _end_block(response.text)
+    assert "Больше ничего не подходит под условия" in end
+    assert 'href="/catalog">Сбросить условия</a>' in end
+
+
+@pytest.mark.parametrize(
+    "page",
+    [
+        CatalogPage(items=_titles(1, 5), page=1, has_next_page=True),
+        CatalogPage(items=[], page=1, has_next_page=False),
+    ],
+    ids=["more-to-come", "empty"],
+)
+def test_end_of_feed_hidden_while_more_is_coming_or_nothing_was_found(
+    page: CatalogPage,
+) -> None:
+    with patch("app.services.catalog.Catalog", return_value=_FakeCatalog(page)):
+        response = client.get("/catalog")
+
+    assert _end_block(response.text).startswith(" hidden")
+
+
+def test_featured_title_never_doubles_as_a_card_across_pages() -> None:
+    """End to end: title 3 (2nd by views) is in the regular listing of both pages; the
+    whole feed shows it exactly once - as its featured insert."""
+    top = [_fake_title(id_=1001, name="Top 1"), _fake_title(id_=3, name="Novel 3")]
+    featured = [CatalogPage(items=top, page=1, has_next_page=False)]
+    first = _FakeCatalog(
+        CatalogPage(items=_titles(1, 30), page=1, has_next_page=True), featured=featured
+    )
+    with patch("app.services.catalog.Catalog", return_value=first):
+        page_one = client.get("/catalog")
+    second_items = [_fake_title(id_=3, name="Novel 3"), *_titles(31, 29)]
+    second = _FakeCatalog(
+        CatalogPage(items=second_items, page=2, has_next_page=False), featured=featured
+    )
+    with patch("app.services.catalog.Catalog", return_value=second):
+        page_two = client.get(
+            "/catalog/page",
+            params={
+                "page": 2,
+                "shown": page_one.context["stream"].shown,
+                "featured": page_one.context["stream"].featured,
+            },
+        )
+
+    # One data-slug-url per regular card (its quickview button) or featured insert.
+    feed = page_one.text + page_two.text
+    assert feed.count('data-slug-url="3--test-novel-3"') == 1
+    assert 'data-slug-url="3--test-novel-3" data-issue="2"' in feed
+    assert page_one.context["stream"].shown == 29  # 30 listed, title 3 dropped

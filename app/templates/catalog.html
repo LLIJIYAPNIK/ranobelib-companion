@@ -11,7 +11,7 @@
 #}
 {% set filter_count = genres | length + countries | length %}
 {% set has_filters = all_genres or all_countries %}
-<div class="catalog-page">
+<div class="catalog-page" data-mode="{{ 'editorial' if editorial else 'results' }}">
   {% include "_library_switch.html" %}
   <header class="catalog-toolbar" data-role="catalog-scroll-header">
     {# The form is display: contents - its fields sit in the toolbar row next to the
@@ -51,15 +51,24 @@
     {% endif %}
     <button class="ui-btn ui-btn--primary catalog-toolbar__submit" type="submit" form="catalog-search-form">Искать</button>
   </header>
-  {% set active_filters = [] %}
-  {% if genres %}{% set _ = active_filters.append("Жанр" ~ ("ы" if genres | length > 1 else "") ~ ": " ~ (selected_genre_names | join(", "))) %}{% endif %}
-  {% if countries %}{% set _ = active_filters.append(("Страны" if countries | length > 1 else "Страна") ~ ": " ~ (selected_country_names | join(", "))) %}{% endif %}
-  {% if tags %}{% set _ = active_filters.append("Тег" ~ ("и" if tags | length > 1 else "") ~ ": " ~ (selected_tag_names | join(", "))) %}{% endif %}
-  {% if active_filters %}
-  <p class="catalog-page__hint">
-    {{ active_filters | join(" · ") }} ·
-    <a href="?query={{ query or '' }}&sort={{ sort }}">Сбросить фильтр{{ "ы" if active_filters | length > 1 else "" }}</a>
-  </p>
+  {# PR 295: the results mode's active criteria (Catalog handoff.md) - a click on a chip
+     drops that one, «Сбросить всё» goes back to the editorial feed. No count: the API
+     returns no total. #}
+  {% if criteria_chips %}
+  <div class="catalog-criteria" data-role="catalog-criteria">
+    <ul class="catalog-criteria__chips" aria-label="Условия">
+      {% for chip in criteria_chips %}
+      <li>
+        <a class="catalog-criteria__chip" href="{{ chip.href }}" aria-label="Убрать: {{ chip.label }}">
+          {{ chip.label }}
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" aria-hidden="true"><path d="M7 7l10 10M17 7 7 17"/></svg>
+        </a>
+      </li>
+      {% endfor %}
+    </ul>
+    <a class="catalog-criteria__reset" href="/catalog" data-role="catalog-criteria-reset">Сбросить всё</a>
+    <span class="catalog-criteria__status">Показаны результаты</span>
+  </div>
   {% endif %}
   {% if random_empty %}
   <p class="catalog-page__hint" role="status">Не нашлось ранобэ по этим фильтрам</p>
@@ -78,14 +87,37 @@
         data-country="{{ countries | join(',') }}"
         data-tags="{{ tags | join(',') }}"
         data-next-page="{{ page + 1 if has_next_page else '' }}"
+        data-shown="{{ stream.shown }}"
+        data-featured="{{ stream.featured }}"
       >
         {% include "_catalog_cards.html" %}
       </div>
       <div class="catalog-grid__sentinel" data-role="catalog-sentinel" aria-hidden="true"></div>
+      {# PR 295: live regions catalog-scroll.js fills - «Загружаем ещё…» while a page
+         loads, the «Повторить» plate if it fails. Always in the DOM so screen readers
+         announce what's put into them. #}
+      <p class="catalog-feed-status" data-role="catalog-loading" role="status"></p>
+      <div data-role="catalog-load-error" role="alert"></div>
+      {# PR 295: the end of the feed - shown here when this page already is the last one,
+         or by catalog-scroll.js once it loads the last page. «Наверх» is a plain #top
+         link, so it works without JS too. #}
+      <div class="catalog-feed-end" data-role="catalog-end"{% if has_next_page or not items %} hidden{% endif %}>
+        <span class="catalog-feed-end__rule" aria-hidden="true"><span class="catalog-feed-end__diamond"></span></span>
+        <p class="catalog-feed-end__title">Вы посмотрели все тайтлы</p>
+        {% if editorial %}
+        <p class="catalog-feed-end__text">Новые главы появятся в начале каталога</p>
+        {% else %}
+        <p class="catalog-feed-end__text">Больше ничего не подходит под условия</p>
+        {% endif %}
+        <div class="catalog-feed-end__actions">
+          <a class="catalog-feed-end__action" href="#">Наверх ↑</a>
+          {% if not editorial %}<a class="catalog-feed-end__action catalog-feed-end__action--reset" href="/catalog">Сбросить условия</a>{% endif %}
+        </div>
+      </div>
       <noscript>
         {% if has_next_page %}
         <p class="catalog-page__hint">
-          <a href="?query={{ query or '' }}&sort={{ sort }}{% for g in genres %}&genres={{ g }}{% endfor %}{% for c in countries %}&countries={{ c }}{% endfor %}{% for t in tags %}&tags={{ t }}{% endfor %}&page={{ page + 1 }}">Следующая страница</a>
+          <a href="?query={{ query or '' }}&sort={{ sort }}{% for g in genres %}&genres={{ g }}{% endfor %}{% for c in countries %}&countries={{ c }}{% endfor %}{% for t in tags %}&tags={{ t }}{% endfor %}&page={{ page + 1 }}&shown={{ stream.shown }}&featured={{ stream.featured }}">Следующая страница</a>
         </p>
         {% endif %}
       </noscript>
