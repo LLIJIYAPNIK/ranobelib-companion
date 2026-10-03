@@ -72,6 +72,7 @@
           type="text"
           name="url"
           placeholder="Ссылка на тайтл ranobelib.me"
+          data-placeholder-short="Ссылка на тайтл"
           aria-label="Ссылка на тайтл, чтобы добавить в библиотеку"
           value="{{ submitted_url or '' }}"
           {% if error %}aria-invalid="true" aria-describedby="library-add-error"{% endif %}
@@ -306,6 +307,7 @@
 </div>
 <script src="{{ url_for('static', path='js/library-toolbar.js') }}" defer></script>
 <script src="{{ url_for('static', path='js/library-card-actions.js') }}" defer></script>
+<script src="{{ url_for('static', path='js/library-mobile.js') }}" defer></script>
 <script src="{{ url_for('static', path='js/library-tabs-swipe.js') }}" defer></script>
 <script src="{{ url_for('static', path='js/library-switch.js') }}" defer></script>
 {% endblock %}

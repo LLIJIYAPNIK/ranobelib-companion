@@ -33,12 +33,39 @@ def test_ribbon_fades_only_where_there_is_more_and_reveals_the_active_item() -> 
     assert "mask-image" in _rule(".wn-ribbon--more-end")
 
 
+def _phone_rule(selector: str) -> str:
+    """PR 300: the last rule for `selector` in the LibraryMobile section."""
+    block = CSS.split("LibraryMobile (PR 300", 1)[1].split("title page (PR 253)", 1)[0]
+    matches = re.findall(rf"\n  {re.escape(selector)} \{{([^}}]*)\}}", block)
+    assert matches, selector
+    return matches[-1]
+
+
 def test_search_takes_its_own_row_and_the_add_form_wraps() -> None:
     search = _rule(".wn-library-search", indent="  ")
     assert "flex: 1 1 100%;" in search
     assert "flex-wrap: wrap;" in _rule(".wn-library__add", indent="  ")
-    assert "flex: 1 1 200px;" in _rule(".wn-library__add-field", indent="  ")
-    assert "min-width: 128px;" in _rule(".wn-library__add .wn-btn", indent="  ")
+    # PR 300 (LibraryMobile): a 180px+ field beside a 112px+ «Добавить» - the button
+    # drops under the field at 320px.
+    assert "flex: 1 1 180px;" in _phone_rule(".wn-library .wn-library__add-field")
+    button = _phone_rule(".wn-library .wn-library__add .wn-btn")
+    assert "min-width: 112px;" in button
+    assert "background: rgb(255 255 255 / 6%);" in button  # glass, not the purple CTA
+
+
+def test_head_is_eyebrow_h1_then_the_switch() -> None:
+    assert "800 30px/1.05" in _phone_rule(".wn-library .wn-library__title")
+    head = _phone_rule(".wn-library .wn-library__head")
+    assert "flex-direction: column;" in head
+    assert "gap: 14px;" in head
+
+
+def test_add_field_gets_a_short_placeholder_on_phones() -> None:
+    page = (ROOT / "app/templates/library.html").read_text(encoding="utf-8")
+    assert 'data-placeholder-short="Ссылка на тайтл"' in page
+    assert "js/library-mobile.js" in page
+    script = (ROOT / "app/static/js/library-mobile.js").read_text(encoding="utf-8")
+    assert "phone.matches ? field.dataset.placeholderShort : full" in script
 
 
 def test_filters_button_chips_and_sheet_are_in_the_toolbar() -> None:

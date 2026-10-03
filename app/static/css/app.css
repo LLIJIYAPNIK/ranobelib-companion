@@ -9113,8 +9113,8 @@ a.catalog-card__action {
 
 /* ==========================================================================
    LibraryDesktop (PR 297, wave 36): the library on the catalog's desktop shell (above:
-   page background, header card, sticky glass panel) - LibraryDesktop.dc.html. Phones
-   keep the PR 282 layout until PR 300.
+   page background, header card, sticky glass panel) - LibraryDesktop.dc.html. Phones:
+   the LibraryMobile block (PR 300).
    ========================================================================== */
 
 .wn-library__eyebrow {
@@ -10049,6 +10049,10 @@ a.catalog-card__action {
   .wn-library .wn-library__add .wn-btn svg {
     width: 15px;
     height: 15px;
+  }
+
+  .wn-library .wn-library__add .wn-btn:active {
+    background: rgb(255 255 255 / 10%);
   }
 
   .wn-library .wn-library__error {
@@ -11686,6 +11690,86 @@ a.catalog-card__action {
   .wn-library-posters {
     grid-template-columns: repeat(3, minmax(0, 1fr));
     gap: 12px;
+  }
+}
+
+/* ==========================================================================
+   LibraryMobile (PR 300, wave 36): the phone library from LibraryMobile.dc.html /
+   Catalog handoff.md -> Mobile «Библиотека». «Ваши тайтлы · N» over H1 30, the
+   full-width switch, the add-by-link form (field + glass «Добавить», wrapping at 320),
+   then the toolbar, the compact «Продолжить чтение» hero and one column of row cards.
+   ========================================================================== */
+
+@media (max-width: 767px) {
+  .library-page.wn-library {
+    gap: 20px;
+    padding-top: 16px;
+  }
+
+  .wn-library .wn-library__head {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 14px;
+  }
+
+  .wn-library .wn-library__title {
+    color: #f7f5fb;
+    font: 800 30px/1.05 var(--wn-font-ui);
+    letter-spacing: -0.03em;
+  }
+
+  .wn-library .wn-library__add {
+    gap: 8px;
+    margin: 0;
+  }
+
+  .wn-library .wn-library__add-field {
+    flex: 1 1 180px;
+    width: auto;
+  }
+
+  .wn-library .wn-library__add-field svg {
+    width: 17px;
+    height: 17px;
+    color: #8c889f;
+  }
+
+  .wn-library .wn-library__add-control.wn-field__control {
+    height: 48px;
+    padding-left: 41px;
+    border-color: #2a2838;
+    border-radius: 12px;
+    background: #101017;
+    color: #eeecf4;
+    font: 500 16px/1 var(--wn-font-ui);
+  }
+
+  .wn-library .wn-library__add-control.wn-field__control::placeholder {
+    color: #8c889f;
+  }
+
+  /* Glass, not purple - the screen's one primary action is «Продолжить» in the hero. */
+  .wn-library .wn-library__add .wn-btn {
+    flex: 1 0 auto;
+    gap: 8px;
+    min-width: 112px;
+    min-height: 48px;
+    padding: 0 16px;
+    border: 1px solid rgb(255 255 255 / 14%);
+    border-radius: 12px;
+    background: rgb(255 255 255 / 6%);
+    color: #f2f0f7;
+    font: 700 15px/1 var(--wn-font-ui);
+  }
+
+  .wn-library .wn-library__add .wn-btn svg {
+    width: 15px;
+    height: 15px;
+  }
+
+  .wn-library .wn-library__error {
+    margin: -6px 0 0;
+    text-align: left;
   }
 }
 
