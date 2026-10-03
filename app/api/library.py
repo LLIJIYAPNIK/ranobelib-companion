@@ -136,6 +136,9 @@ def _library_context(
         "active_tab": "library",
         "items": items,
         "reading": reading,
+        # PR 297: «Продолжить чтение» - the most recently read title (the library is
+        # already "most recently read first"); a title never opened can't be continued.
+        "continue_item": reading[0] if reading else None,
         "not_started": not_started,
         # PR 294: the «Библиотека» switch item counts every title, started or not.
         "library_count": len(items),

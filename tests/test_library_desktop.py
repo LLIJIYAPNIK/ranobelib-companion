@@ -9,6 +9,8 @@ import pytest
 from fastapi.testclient import TestClient
 
 from app.config import get_settings
+from app.db.connection import connection
+from app.db.library import record_progress
 from tests.auth_helpers import register
 from tests.db_reset import reset_app_database
 from tests.test_api_library import _fake_title, _FakeClient
@@ -106,3 +108,70 @@ def test_add_button_is_glass_not_the_purple_cta() -> None:
     button = _library_rule(".wn-library .wn-library__add .wn-btn")
     assert "background: rgb(255 255 255 / 6%);" in button
     assert "height: 44px;" in button
+
+
+# --- «Продолжить чтение» -----------------------------------------------------------
+
+
+def _hero(html: str) -> str:
+    return html.split('data-role="library-hero"', 1)[1].split("</section>", 1)[0]
+
+
+async def test_hero_continues_the_most_recently_read_title(client: TestClient) -> None:
+    register(client, "alice@example.com")
+    _add(client, "1--first", "2--second", "3--never-opened")
+    async with connection() as conn:
+        await record_progress(conn, 1, "1--first", "1", "4")
+        await record_progress(conn, 1, "2--second", "11", "92")  # read last
+
+    html = _library(client)
+    hero = _hero(html)
+
+    assert "Продолжить чтение" in hero
+    assert "Читали сегодня" in hero
+    assert '<a href="/titles/2--second">' in hero
+    assert "Том 11 · Глава 92" in hero
+    assert 'href="/titles/2--second/chapters/11/92"' in hero
+    assert "Продолжить · Гл. 92" in hero
+    assert 'href="/titles/2--second#title-panel-toc"' in hero
+    # Its own card in the list carries data-hero (hidden while the hero is shown).
+    card = re.search(
+        r'<article\s+class="wn-library-card"\s+data-role="library-item" data-hero[^>]*>', html
+    )
+    assert card is not None and 'data-name="test novel"' in card.group(0)
+    assert html.count(" data-hero") == 1
+
+
+async def test_no_hero_when_nothing_was_opened_yet(client: TestClient) -> None:
+    register(client, "alice@example.com")
+    _add(client, "1--first")
+
+    html = _library(client)
+
+    assert 'data-role="library-hero"' not in html
+    assert " data-hero" not in html
+
+
+async def test_hero_progress_column_only_with_a_known_percent(client: TestClient) -> None:
+    register(client, "alice@example.com")
+    _add(client, "1--first")
+    async with connection() as conn:
+        await record_progress(conn, 1, "1--first", "1", "4")
+
+    with patch("app.api.library.reading_progress_percent", return_value=41):
+        with_pct = _hero(_library(client))
+    with patch("app.api.library.reading_progress_percent", return_value=None):
+        without = _hero(_library(client))
+
+    assert '<span class="wn-library-hero__pct">41<span>%</span></span>' in with_pct
+    assert 'aria-valuenow="41"' in with_pct
+    assert "Остановились на главе 4" in with_pct
+    assert "wn-library-hero__progress" not in without
+
+
+def test_hero_design_values() -> None:
+    assert "min-height: 320px;" in _library_rule(".wn-library-hero__card")
+    assert "width: 176px;" in _library_rule(".wn-library-hero__cover")
+    assert "width: 280px;" in _library_rule(".wn-library-hero__progress")
+    assert "font-size: 72px;" in _library_rule(".wn-library-hero__pct")
+    assert "800 36px/1.12" in _library_rule(".wn-library-hero__title")

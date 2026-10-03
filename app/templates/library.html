@@ -106,6 +106,57 @@
         </div>
       </div>
 
+      {% if continue_item %}
+      {% set hero = continue_item %}
+      {% set hero_entry = hero.entry %}
+      {% set hero_name = hero.name or hero_entry.slug_url %}
+      {% set hero_href = "/titles/" ~ hero_entry.slug_url %}
+      {# PR 297 (LibraryDesktop): «Продолжить чтение» - the last opened title as the
+         page's hero. Its card in the list below stays hidden while the hero is shown
+         (data-hero; library-toolbar.js shows it again in the results mode). #}
+      <section class="wn-library-hero" aria-labelledby="library-continue-title" data-role="library-hero">
+        {% if hero.cover_url %}<img class="wn-library-hero__halo" src="{{ hero.cover_url }}" alt="" aria-hidden="true">{% endif %}
+        <article class="wn-library-hero__card">
+          {% if hero.cover_url %}<img class="wn-library-hero__backdrop" src="{{ hero.cover_url }}" alt="" aria-hidden="true">{% endif %}
+          <span class="wn-library-hero__scrim" aria-hidden="true"></span>
+          <div class="wn-library-hero__inner">
+            <a class="wn-library-hero__cover" href="{{ hero_href }}" tabindex="-1" aria-hidden="true">
+              {% if hero.cover_url %}<img class="wn-library-hero__cover-glow" src="{{ hero.cover_url }}" alt=""><img class="wn-library-hero__cover-img" src="{{ hero.cover_url }}" alt="">{% endif %}
+            </a>
+            <div class="wn-library-hero__copy">
+              <div class="wn-library-hero__eyebrow">
+                <span class="wn-library-hero__eyebrow-main"><span class="wn-library-hero__dot" aria-hidden="true"></span>Продолжить чтение</span>
+                {% if hero.last_read_label %}
+                <span class="wn-library-hero__eyebrow-sep" aria-hidden="true"></span>
+                <span class="wn-library-hero__last">{{ hero.last_read_label }}</span>
+                {% endif %}
+              </div>
+              <h2 class="wn-library-hero__title" id="library-continue-title"><a href="{{ hero_href }}">{{ hero_name }}</a></h2>
+              <span class="wn-library-hero__where">Том {{ hero_entry.last_read_volume }} · Глава {{ hero_entry.last_read_number }}</span>
+              <div class="wn-library-hero__actions">
+                <a class="wn-library-hero__continue" href="{{ hero_href }}/chapters/{{ hero_entry.last_read_volume }}/{{ hero_entry.last_read_number }}">
+                  <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 4v16l14-8z"/></svg>
+                  Продолжить · Гл. {{ hero_entry.last_read_number }}
+                </a>
+                <a class="wn-library-hero__toc" href="{{ hero_href }}#title-panel-toc">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" aria-hidden="true"><path d="M8 6h13M8 12h13M8 18h13M3 6h.01M3 12h.01M3 18h.01"/></svg>
+                  Оглавление
+                </a>
+              </div>
+            </div>
+            {% if hero.progress_percent is not none %}
+            <div class="wn-library-hero__progress">
+              <span class="wn-library-hero__progress-label">Прочитано</span>
+              <span class="wn-library-hero__pct">{{ hero.progress_percent }}<span>%</span></span>
+              <div class="wn-library-hero__bar" role="progressbar" aria-label="Прогресс чтения" aria-valuenow="{{ hero.progress_percent }}" aria-valuemin="0" aria-valuemax="100"><span style="width: {{ hero.progress_percent }}%"></span></div>
+              <span class="wn-library-hero__stopped">Остановились на главе {{ hero_entry.last_read_number }}</span>
+            </div>
+            {% endif %}
+          </div>
+        </article>
+      </section>
+      {% endif %}
+
       {% if reading %}
       <section class="wn-library__reading" aria-label="Читаю" data-role="library-section">
         <div class="wn-library-grid" data-role="library-list">
@@ -115,7 +166,7 @@
           {% set href = "/titles/" ~ entry.slug_url %}
           <article
             class="wn-library-card"
-            data-role="library-item"
+            data-role="library-item"{% if continue_item and item is sameas continue_item %} data-hero{% endif %}
             data-name="{{ name | lower }}"
             data-order="{{ loop.index0 }}"
             data-added="{{ entry.added_at }}"
