@@ -6772,11 +6772,83 @@ a.ui-title-card:focus-visible .ui-title-card__cover {
   }
 }
 
+/* PR 296: the next-page skeleton in the catalog card's own shape, pulsing .55↔1 with
+   an 80ms step from column to column (catalog-scroll.js sets --i). */
+.catalog-skeleton__cover {
+  display: block;
+  aspect-ratio: 2 / 3;
+  border-radius: 12px;
+  background: #15141c;
+  box-shadow: 0 0 0 1px rgb(255 255 255 / 4%);
+  animation: catalog-pulse 1.6s ease-in-out infinite;
+  animation-delay: calc(var(--i, 0) * 80ms);
+}
+
+.catalog-skeleton__line {
+  display: block;
+  height: 14px;
+  margin-top: 14px;
+  border-radius: 7px;
+  background: #18171f;
+}
+
+.catalog-skeleton__line--title {
+  width: 88%;
+}
+
+.catalog-skeleton__line--meta {
+  width: 50%;
+  height: 11px;
+  margin-top: 10px;
+  background: #131219;
+}
+
+@keyframes catalog-pulse {
+  0%,
+  100% {
+    opacity: 0.55;
+  }
+
+  50% {
+    opacity: 1;
+  }
+}
+
+@keyframes catalog-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
 .catalog-feed-status {
-  margin: 8px 0 0;
-  color: #a3a0b5;
-  font: 500 14px/1.4 var(--wn-font-ui, sans-serif);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  margin: 18px 0 0;
+  color: #8c889f;
+  font: 600 13px/1 var(--wn-font-ui, sans-serif);
   text-align: center;
+}
+
+/* A teal spinner beside «Загружаем ещё…». */
+.catalog-feed-status::before {
+  content: "";
+  flex: none;
+  width: 14px;
+  height: 14px;
+  box-sizing: border-box;
+  border: 2px solid #2a2838;
+  border-top-color: #3dd6c3;
+  border-radius: 50%;
+  animation: catalog-spin 0.8s linear infinite;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .catalog-skeleton__cover,
+  .catalog-feed-status::before {
+    animation: none;
+  }
 }
 
 .catalog-feed-status:empty {
@@ -6790,30 +6862,65 @@ a.ui-title-card:focus-visible .ui-title-card__cover {
   display: flex;
   flex-wrap: wrap;
   align-items: center;
-  justify-content: space-between;
-  gap: 12px;
-  max-width: 520px;
+  justify-content: center;
+  gap: 12px 16px;
+  width: fit-content;
+  max-width: 100%;
   margin: 16px auto 0;
-  padding: 12px 12px 12px 16px;
+  padding: 12px 12px 12px 18px;
   border: 1px solid rgb(240 138 155 / 28%);
-  border-radius: 14px;
-  background: rgb(20 20 29 / 78%);
+  border-radius: 16px;
+  background: rgb(24 20 28 / 90%);
+  box-shadow: 0 20px 40px -20px rgb(0 0 0 / 70%);
+}
+
+.catalog-feed-error__icon {
+  flex: none;
+  width: 22px;
+  height: 22px;
+  color: #f08a9b;
+}
+
+.catalog-feed-error__copy {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  min-width: 0;
 }
 
 .catalog-feed-error__text {
   color: #eeecf4;
-  font: 600 14px/1.4 var(--wn-font-ui, sans-serif);
+  font: 700 15px/1.3 var(--wn-font-ui, sans-serif);
+}
+
+.catalog-feed-error__hint {
+  color: #a3a0b5;
+  font: 500 13px/1.3 var(--wn-font-ui, sans-serif);
 }
 
 .catalog-feed-error__retry {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
   min-height: 44px;
   padding: 0 16px;
-  border: 1px solid rgb(255 255 255 / 14%);
+  border: 1px solid #33304a;
   border-radius: 12px;
-  background: rgb(255 255 255 / 6%);
-  color: #f2f0f7;
+  background: rgb(255 255 255 / 5%);
+  color: #eeecf4;
   font: 700 14px/1 var(--wn-font-ui, sans-serif);
   cursor: pointer;
+}
+
+.catalog-feed-error__retry svg {
+  width: 15px;
+  height: 15px;
+}
+
+@media (hover: hover) {
+  .catalog-feed-error__retry:hover {
+    background: rgb(255 255 255 / 10%);
+  }
 }
 
 .catalog-feed-error__retry:focus-visible {
@@ -6848,9 +6955,11 @@ a.ui-title-card:focus-visible .ui-title-card__cover {
   position: absolute;
   top: -4px;
   left: calc(50% - 4px);
+  box-sizing: border-box;
   width: 8px;
   height: 8px;
-  background: #3a3650;
+  border: 1px solid rgb(61 214 195 / 60%);
+  background: #08080c;
   transform: rotate(45deg);
 }
 
@@ -6896,6 +7005,84 @@ a.ui-title-card:focus-visible .ui-title-card__cover {
 .catalog-feed-end__action:focus-visible {
   outline: 2px solid #c5b6ff;
   outline-offset: 2px;
+}
+
+/* PR 296: nothing found (CatalogDesktop preset=empty) - names what was asked for, one
+   reset, no popular titles mixed in. */
+.catalog-empty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 16px;
+  padding: 72px 32px;
+  border: 1px solid rgb(255 255 255 / 7%);
+  border-radius: 20px;
+  background:
+    radial-gradient(600px 260px at 50% 0%, rgb(122 82 244 / 8%), transparent 70%),
+    #0e0e14;
+  text-align: center;
+}
+
+.catalog-empty__icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 64px;
+  height: 64px;
+  border: 1px solid rgb(255 255 255 / 9%);
+  border-radius: 18px;
+  background: linear-gradient(180deg, #1e1d29, #15141c);
+  box-shadow: inset 0 1px 0 rgb(255 255 255 / 6%);
+  color: #b3afc4;
+}
+
+.catalog-empty__icon svg {
+  width: 28px;
+  height: 28px;
+}
+
+.catalog-empty__title {
+  margin: 0;
+  color: #f7f5fb;
+  font: 800 26px/1.2 var(--wn-font-ui, sans-serif);
+  letter-spacing: -0.015em;
+}
+
+.catalog-empty__text {
+  max-width: 520px;
+  margin: 0;
+  color: #a3a0b5;
+  font: 500 15px/1.6 var(--wn-font-ui, sans-serif);
+  text-wrap: pretty;
+}
+
+.catalog-empty__reset {
+  display: inline-flex;
+  align-items: center;
+  height: 48px;
+  margin-top: 8px;
+  padding: 0 20px;
+  border: 1px solid #3a3650;
+  border-radius: 12px;
+  background: rgb(255 255 255 / 5%);
+  color: #eeecf4;
+  font: 700 15px/1 var(--wn-font-ui, sans-serif);
+  text-decoration: none;
+}
+
+.catalog-empty__reset:focus-visible {
+  outline: 2px solid #c5b6ff;
+  outline-offset: 2px;
+}
+
+@media (max-width: 767px) {
+  .catalog-empty {
+    padding: 40px 20px;
+  }
+
+  .catalog-empty__title {
+    font-size: 22px;
+  }
 }
 
 /* PR 296: the catalog card (CatalogCard.dc.html) - 2:3 cover with a bottom scrim,

@@ -798,7 +798,11 @@ def test_catalog_with_no_results_shows_empty_state() -> None:
     with patch("app.services.catalog.Catalog", return_value=fake):
         response = client.get("/catalog")
 
-    assert '<p class="ui-empty">Не нашлось ранобэ по этим фильтрам</p>' in response.text
+    # PR 296: the design's empty card; an empty editorial feed has nothing to reset.
+    assert 'data-role="catalog-empty"' in response.text
+    assert '<h2 class="catalog-empty__title">Ничего не нашлось</h2>' in response.text
+    assert "Здесь пока нет тайтлов." in response.text
+    assert "catalog-empty__reset" not in response.text
 
 
 def test_catalog_filters_button_counts_selected_genres_and_countries() -> None:

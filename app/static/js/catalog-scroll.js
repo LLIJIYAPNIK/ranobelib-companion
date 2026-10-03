@@ -21,14 +21,16 @@
 
   // PR 251 (CATALOG-DEFAULT), PR 295: a row of skeleton cards at the end of the grid
   // while a page loads - six, of which phones show two (app.css) - the same size as the
-  // cards about to replace them.
-  const SKELETON_HTML =
-    '<div class="ui-title-card catalog-grid__skeleton" aria-hidden="true">' +
-    '<span class="ui-skeleton ui-skeleton--cover"></span>' +
-    '<span class="ui-skeleton ui-skeleton--line" style="width: 85%"></span></div>';
+  // cards about to replace them. PR 296: the catalog card's own shape, pulsing with an
+  // 80ms step from column to column (--i).
+  const skeleton = (i) =>
+    `<div class="catalog-card catalog-grid__skeleton" style="--i: ${i}" aria-hidden="true">` +
+    '<span class="catalog-skeleton__cover"></span>' +
+    '<span class="catalog-skeleton__line catalog-skeleton__line--title"></span>' +
+    '<span class="catalog-skeleton__line catalog-skeleton__line--meta"></span></div>';
 
   function showLoading() {
-    grid.insertAdjacentHTML("beforeend", SKELETON_HTML.repeat(6));
+    grid.insertAdjacentHTML("beforeend", [0, 1, 2, 3, 4, 5].map(skeleton).join(""));
     grid.setAttribute("aria-busy", "true");
     if (status) status.textContent = "Загружаем ещё…";
   }
@@ -44,8 +46,14 @@
     if (!errorBox) return;
     errorBox.innerHTML =
       '<div class="catalog-feed-error">' +
+      '<svg class="catalog-feed-error__icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M12 8v5M12 16.5v.5"/></svg>' +
+      '<span class="catalog-feed-error__copy">' +
       '<span class="catalog-feed-error__text">Не удалось загрузить ещё</span>' +
-      '<button type="button" class="catalog-feed-error__retry" data-role="catalog-retry">Повторить</button>' +
+      '<span class="catalog-feed-error__hint">Уже загруженные тайтлы останутся на месте</span>' +
+      "</span>" +
+      '<button type="button" class="catalog-feed-error__retry" data-role="catalog-retry">' +
+      '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 11a8 8 0 1 0-2.3 5.7M20 5v6h-6"/></svg>' +
+      "Повторить</button>" +
       "</div>";
   }
 

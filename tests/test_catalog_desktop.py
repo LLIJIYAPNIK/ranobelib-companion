@@ -288,3 +288,26 @@ def test_featured_desktop_layers_follow_the_design() -> None:
         ".wn-catalog .catalog-featured--flip .catalog-featured__inner"
     )
     assert "800 36px/1.12" in _desktop_rule(".wn-catalog .catalog-featured__name")
+
+
+# --- states ---------------------------------------------------------------------------
+
+
+def test_empty_results_name_what_was_asked_for_and_offer_one_reset() -> None:
+    html = _get(query=" dxd ", genres=5)
+
+    assert "По запросу «dxd» и выбранным фильтрам тайтлов нет." in html
+    assert 'class="catalog-empty__reset" href="/catalog">Сбросить поиск и фильтры</a>' in html
+    assert 'data-role="catalog-featured"' not in html  # no popular titles mixed in
+
+
+def test_empty_search_alone_names_just_the_search() -> None:
+    assert "По запросу «zzz» тайтлов нет." in _get(query="zzz")
+
+
+def test_next_page_skeleton_and_error_plate_follow_the_design() -> None:
+    script = (ROOT / "app/static/js/catalog-scroll.js").read_text(encoding="utf-8")
+    assert 'class="catalog-card catalog-grid__skeleton" style="--i: ${i}"' in script
+    assert "Уже загруженные тайтлы останутся на месте" in script
+    assert "animation-delay: calc(var(--i, 0) * 80ms);" in CSS
+    assert "border-top-color: #3dd6c3;" in CSS

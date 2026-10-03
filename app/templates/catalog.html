@@ -88,7 +88,21 @@
   <main class="catalog-layout library-tabs-content">
     <div class="catalog-layout__results">
       {% if not items and not random_empty %}
-      <p class="ui-empty">Не нашлось ранобэ по этим фильтрам</p>
+      {# PR 296 (CatalogDesktop, preset=empty): names what was asked for and offers one
+         reset; popular titles are deliberately not mixed in (Catalog handoff.md). #}
+      {% set asked = [] %}
+      {% if (query or "").strip() %}{% set _ = asked.append("запросу «" ~ query.strip() ~ "»") %}{% endif %}
+      {% if genres or countries or tags %}{% set _ = asked.append("выбранным фильтрам") %}{% endif %}
+      <div class="catalog-empty" data-role="catalog-empty" role="status">
+        <span class="catalog-empty__icon" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round"><circle cx="11" cy="11" r="7"/><path d="m21 21-4.3-4.3M8.5 11h5"/></svg></span>
+        <h2 class="catalog-empty__title">Ничего не нашлось</h2>
+        {% if asked %}
+        <p class="catalog-empty__text">По {{ asked | join(" и ") }} тайтлов нет. Проверьте написание или ослабьте фильтры.</p>
+        {% else %}
+        <p class="catalog-empty__text">Здесь пока нет тайтлов.</p>
+        {% endif %}
+        {% if not editorial %}<a class="catalog-empty__reset" href="/catalog">Сбросить поиск и фильтры</a>{% endif %}
+      </div>
       {% endif %}
       <div
         class="catalog-grid"
