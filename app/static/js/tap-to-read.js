@@ -467,8 +467,21 @@
     emit("reader:progress", { revealed: revealedCount, total: wraps.length });
   }
 
-  // `scroll` is only true for a tap-triggered reveal - restoring saved progress on load
-  // settles once, without animation, after everything is revealed.
+  // PR 289: putting a saved position back on load. Every one of these paragraphs was
+  // already read last time, so they return as a finished stretch: no appear animation,
+  // typewriter, tempo or chat timestamp on any of them, the active one included - only
+  // the read/active marking. Running them through reveal() played its per-paragraph
+  // animation N times over on every open of a half-read chapter. A real tap (next())
+  // still goes through reveal()/revealNextWithTempo() as before.
+  function restore(count) {
+    for (let i = revealedCount; i < count; i++) {
+      wraps[i].classList.remove("reader-content__paragraph--hidden");
+    }
+    revealedCount = count;
+    afterReveal();
+  }
+
+  // `scroll` is only true for a tap-triggered reveal.
   function reveal(count, { scroll = false } = {}) {
     let lastRevealed = null;
     for (let i = revealedCount; i < count; i++) {
