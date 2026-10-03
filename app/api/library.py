@@ -7,7 +7,7 @@ from typing import Annotated
 from urllib.parse import urlencode
 
 from fastapi import APIRouter, Depends, Form, HTTPException, Query, Request
-from fastapi.responses import HTMLResponse, RedirectResponse, Response
+from fastapi.responses import HTMLResponse, JSONResponse, RedirectResponse, Response
 from psycopg import AsyncConnection
 from ranobelib import RanobeLibError
 
@@ -462,27 +462,40 @@ async def add_to_library_by_url(
     return RedirectResponse(url=f"/titles/{title.slug_url}", status_code=303)
 
 
-@router.post("/{slug_url}/add")
+def _wants_json(request: Request) -> bool:
+    """PR 298: the library card menu and the catalog's «В библиотеку» toggle call add /
+    remove with fetch() and `Accept: application/json` - they get the new state back
+    instead of the redirect a plain form post follows."""
+    return "application/json" in request.headers.get("accept", "")
+
+
+@router.post("/{slug_url}/add", response_model=None)
 async def add_to_library(
+    request: Request,
     slug_url: str,
     user: Annotated[User, Depends(require_current_user)],
     conn: Annotated[AsyncConnection, Depends(get_connection)],
     next: Annotated[str | None, Form()] = None,
-) -> RedirectResponse:
+) -> Response:
     async with open_client(slug_url) as lib:
         await lib.get_info()  # 404s via the usual TitleNotFoundError mapping if bogus
     await add_entry(conn, user.id, slug_url)
+    if _wants_json(request):
+        return JSONResponse({"in_library": True})
     return RedirectResponse(url=_safe_next(next, f"/titles/{slug_url}"), status_code=303)
 
 
-@router.post("/{slug_url}/remove")
+@router.post("/{slug_url}/remove", response_model=None)
 async def remove_from_library(
+    request: Request,
     slug_url: str,
     user: Annotated[User, Depends(require_current_user)],
     conn: Annotated[AsyncConnection, Depends(get_connection)],
     next: Annotated[str | None, Form()] = None,
-) -> RedirectResponse:
+) -> Response:
     await remove_entry(conn, user.id, slug_url)
+    if _wants_json(request):
+        return JSONResponse({"in_library": False})
     return RedirectResponse(url=_safe_next(next, "/library"), status_code=303)
 
 
