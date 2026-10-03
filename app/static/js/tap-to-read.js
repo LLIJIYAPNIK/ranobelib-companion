@@ -467,8 +467,21 @@
     emit("reader:progress", { revealed: revealedCount, total: wraps.length });
   }
 
-  // `scroll` is only true for a tap-triggered reveal - restoring saved progress on load
-  // settles once, without animation, after everything is revealed.
+  // PR 289: putting a saved position back on load. Every one of these paragraphs was
+  // already read last time, so they return as a finished stretch: no appear animation,
+  // typewriter, tempo or chat timestamp on any of them, the active one included - only
+  // the read/active marking. Running them through reveal() played its per-paragraph
+  // animation N times over on every open of a half-read chapter. A real tap (next())
+  // still goes through reveal()/revealNextWithTempo() as before.
+  function restore(count) {
+    for (let i = revealedCount; i < count; i++) {
+      wraps[i].classList.remove("reader-content__paragraph--hidden");
+    }
+    revealedCount = count;
+    afterReveal();
+  }
+
+  // `scroll` is only true for a tap-triggered reveal.
   function reveal(count, { scroll = false } = {}) {
     let lastRevealed = null;
     for (let i = revealedCount; i < count; i++) {
@@ -554,10 +567,15 @@
   content.classList.add("reader-content--tap-to-read", `reader-content--${paragraphStyle}`);
   adoptServerProgress();
   const initialRevealedCount = loadRevealedCount();
-  reveal(initialRevealedCount);
+  // PR 289: a saved position (this device's or the server's, adopted just above) comes
+  // back without the reveal effects; a chapter opened for the first time still reveals
+  // its opening paragraph the usual way.
+  const hasSavedProgress = readStoredProgress() !== null;
+  if (hasSavedProgress) restore(initialRevealedCount);
+  else reveal(initialRevealedCount);
 
   // PR 129: reopening an already-started chapter lands on the last revealed paragraph.
-  if (readStoredProgress()) settle(wraps[initialRevealedCount - 1], { instant: true });
+  if (hasSavedProgress) settle(wraps[initialRevealedCount - 1], { instant: true });
 
   // --- taps ----------------------------------------------------------------------------
   // Anything interactive, and every layer above the text, keeps its own behavior. PR 74:
