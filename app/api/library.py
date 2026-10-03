@@ -90,6 +90,18 @@ async def redirect_favorites() -> RedirectResponse:
     return RedirectResponse(url="/library", status_code=301)
 
 
+@router.get("/catalog")
+@router.get("/catalog/page")
+@router.get("/catalog/random")
+async def redirect_old_catalog(request: Request) -> RedirectResponse:
+    """The catalog's addresses before PR 292 moved it to /catalog - same path minus the
+    /library prefix, with the query string passed through untouched (filters, search,
+    sort and page all survive)."""
+    path = request.url.path.removeprefix("/library")
+    query = request.url.query
+    return RedirectResponse(url=f"{path}?{query}" if query else path, status_code=301)
+
+
 def _library_context(
     items: list[dict[str, LibraryEntry | str | int | None]],
 ) -> dict[str, object]:

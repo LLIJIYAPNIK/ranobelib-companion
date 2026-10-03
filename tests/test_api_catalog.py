@@ -837,3 +837,27 @@ def test_show_catalog_wires_the_random_redirect_script() -> None:
 
     assert "js/catalog-random-redirect.js" in response.text
     assert '<option value="random"' in response.text
+
+
+# --- PR 292: the old /library/catalog addresses redirect to /catalog ----------------------
+
+
+def test_old_catalog_address_redirects_to_catalog() -> None:
+    response = _no_redirect_client.get("/library/catalog")
+
+    assert response.status_code == 301
+    assert response.headers["location"] == "/catalog"
+
+
+def test_old_catalog_page_address_redirects_to_catalog_page() -> None:
+    response = _no_redirect_client.get("/library/catalog/page")
+
+    assert response.status_code == 301
+    assert response.headers["location"] == "/catalog/page"
+
+
+def test_old_catalog_random_address_redirects_to_catalog_random() -> None:
+    response = _no_redirect_client.get("/library/catalog/random")
+
+    assert response.status_code == 301
+    assert response.headers["location"] == "/catalog/random"
