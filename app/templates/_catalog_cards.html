@@ -1,5 +1,5 @@
-{# PR 251: grid card with the quickview eye as its corner action - the same markup
-   whether rendered into catalog.html or appended by catalog-scroll.js.
+{# PR 251: grid card with its corner action - the same markup whether rendered into
+   catalog.html or appended by catalog-scroll.js.
    PR 296: the card is CatalogCard variant="cinema" (CatalogCard.dc.html) - 2:3 cover
    with a bottom scrim and, on desktop, a blurred copy of itself as the hover glow;
    title (2 lines), «жанр · статус», «N гл.». No update date or «+N главы» badge yet:
@@ -10,7 +10,10 @@
    backdrop under a scrim, the cover itself with its own glow, «Популярно на RanobeLib»,
    title, «статус · N глав», description, genres and «Открыть тайтл»; even inserts flip
    the cover to the right. «Выпуск N» is the insert's number on the feed, not a rank.
-   «В библиотеку» on it is PR 298.
+   PR 298: the one action on both cards is «В библиотеку» / «В библиотеке» (+ / a check
+   on teal) - not a favorite. catalog-library-toggle.js adds or removes the title without
+   asking: a title from the catalog has no progress yet, nothing to lose. `in_library` is
+   the visitor's library (a set of slug_urls), none for a guest, who gets a login link.
    PR 296: in the editorial mode the feed carries its section labels as full-row grid
    items too (CatalogDesktop.dc.html) - «Свежие обновления» opening the first page,
    «Продолжить каталог» after every insert that isn't the end of the feed. They're
@@ -21,6 +24,28 @@
 {% macro chapters_long(count) -%}
 {% set n10, n100 = count % 10, count % 100 -%}
 {{ "{:,}".format(count) | replace(",", " ") }} {% if n10 == 1 and n100 != 11 %}глава{% elif n10 in [2, 3, 4] and n100 not in [12, 13, 14] %}главы{% else %}глав{% endif %}
+{%- endmacro %}
+{% macro library_toggle(slug_url, name, featured=false) -%}
+{% set plus %}<svg class="catalog-lib__plus" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg><svg class="catalog-lib__check" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m5 12.5 4.5 4.5L19 7.5"/></svg>{% endset %}
+{% if in_library is not defined or in_library is none %}
+{% if featured %}
+<a class="catalog-featured__lib" href="/login" aria-label="Войдите, чтобы добавить «{{ name }}» в библиотеку">{{ plus }}<span>В библиотеку</span></a>
+{% else %}
+<a class="catalog-card__action" href="/login" aria-label="Войдите, чтобы добавить «{{ name }}» в библиотеку" title="Добавить в библиотеку"><span class="catalog-card__action-chip">{{ plus }}</span></a>
+{% endif %}
+{% else %}
+{% set on = slug_url in in_library %}
+<button
+  type="button"
+  class="{{ 'catalog-featured__lib' if featured else 'catalog-card__action' }}"
+  data-role="catalog-library-toggle"
+  data-slug-url="{{ slug_url }}"
+  data-title-name="{{ name }}"
+  aria-pressed="{{ 'true' if on else 'false' }}"
+  aria-label="{{ ('«' ~ name ~ '» в библиотеке — убрать') if on else ('Добавить «' ~ name ~ '» в библиотеку') }}"
+  {%- if not featured %} title="{{ 'В библиотеке — убрать' if on else 'Добавить в библиотеку' }}"{% endif %}
+>{% if featured %}{{ plus }}<span data-role="catalog-library-label">{{ 'В библиотеке' if on else 'В библиотеку' }}</span>{% else %}<span class="catalog-card__action-chip">{{ plus }}</span>{% endif %}</button>
+{% endif %}
 {%- endmacro %}
 {% macro section_label(title, sub, fresh=false) -%}
 <div class="catalog-section{% if fresh %} catalog-section--fresh{% endif %}" data-role="catalog-section">
@@ -72,6 +97,7 @@
             Открыть тайтл
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12h14M13 6l6 6-6 6"/></svg>
           </a>
+          {{ library_toggle(title.slug_url, name, featured=true) }}
         </div>
       </div>
     </div>
@@ -97,16 +123,7 @@
       {% if title.chapter_count %}<span class="catalog-card__sub">{{ chapters_label(title.chapter_count) }}</span>{% endif %}
     </span>
   </a>
-  <button
-    type="button"
-    class="catalog-card__action"
-    data-role="title-quickview-trigger"
-    data-slug-url="{{ title.slug_url }}"
-    aria-label="Быстрый просмотр «{{ name }}»"
-    title="Быстрый просмотр"
-  >
-    <span class="catalog-card__action-chip"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M2 12s4-7 10-7 10 7 10 7-4 7-10 7S2 12 2 12zM12 15a3 3 0 1 0 0-6 3 3 0 0 0 0 6z"/></svg></span>
-  </button>
+  {{ library_toggle(title.slug_url, name) }}
 </div>
 {% endif %}
 {% endfor %}

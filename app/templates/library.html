@@ -14,8 +14,46 @@
 {% macro titles_word(n) -%}
 {{ n }} {% if n % 10 == 1 and n % 100 != 11 %}тайтл{% elif n % 10 in [2, 3, 4] and n % 100 not in [12, 13, 14] %}тайтла{% else %}тайтлов{% endif %}
 {%- endmacro %}
+{# PR 298 (LibraryCard): «Том X · Глава Y», «Пролог» for chapter 0. #}
+{% macro chapter_label(number) -%}
+{% if number == "0" %}Пролог{% else %}Глава {{ number }}{% endif %}
+{%- endmacro %}
+{% macro chapter_short(number) -%}
+{% if number == "0" %}Пролог{% else %}Гл. {{ number }}{% endif %}
+{%- endmacro %}
 {% macro chapter_meta(entry) -%}
-Том {{ entry.last_read_volume }}, глава {{ entry.last_read_number }}
+Том {{ entry.last_read_volume }} · {{ chapter_label(entry.last_read_number) }}
+{%- endmacro %}
+{#
+  PR 298 (LibraryCard.dc.html): the ⋯ menu of a library card or the hero - «Страница
+  тайтла», «Оглавление» (cards only - the hero has its own button), and «Удалить из
+  библиотеки», which always asks first. Hidden until library-card-actions.js wires it up
+  (no menu without JS - the title page still has its own remove button).
+#}
+{% macro actions_menu(slug_url, name, toc=true) -%}
+<button
+  type="button"
+  class="wn-library-more"
+  data-role="library-more"
+  aria-haspopup="menu"
+  aria-expanded="false"
+  aria-label="Действия с тайтлом «{{ name }}»"
+  hidden
+><svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><circle cx="5" cy="12" r="1.8"/><circle cx="12" cy="12" r="1.8"/><circle cx="19" cy="12" r="1.8"/></svg></button>
+<div class="wn-library-menu" role="menu" aria-label="Действия" data-role="library-menu" hidden>
+  <a class="wn-library-menu__item" role="menuitem" href="/titles/{{ slug_url }}"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M14 4h6v6M20 4l-9 9M18 14v5a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1V7a1 1 0 0 1 1-1h5"/></svg>Страница тайтла</a>
+  {% if toc %}<a class="wn-library-menu__item" role="menuitem" href="/titles/{{ slug_url }}#title-panel-toc"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" aria-hidden="true"><path d="M8 6h13M8 12h13M8 18h13M3 6h.01M3 12h.01M3 18h.01"/></svg>Оглавление</a>{% endif %}
+  <span class="wn-library-menu__sep" role="separator"></span>
+  <button type="button" class="wn-library-menu__item wn-library-menu__item--danger" role="menuitem" data-role="library-remove"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 7h16M10 11v6M14 11v6M6 7l1 13h10l1-13M9 7V4h6v3"/></svg>Удалить из библиотеки</button>
+</div>
+<div class="wn-library-confirm" role="alertdialog" aria-label="Удалить из библиотеки?" data-role="library-confirm" hidden>
+  <span class="wn-library-confirm__title">Удалить из библиотеки?</span>
+  <span class="wn-library-confirm__text">«{{ name }}» пропадёт из библиотеки. EPUB-файлы, которые вы уже скачали, останутся на устройстве.</span>
+  <div class="wn-library-confirm__actions">
+    <button type="button" class="wn-library-confirm__cancel" data-role="library-confirm-cancel">Отмена</button>
+    <button type="button" class="wn-library-confirm__remove" data-role="library-confirm-remove">Удалить</button>
+  </div>
+</div>
 {%- endmacro %}
 <div class="library-page wn-library" data-mode="default">
   <section class="wn-library__head">
@@ -121,7 +159,7 @@
       {# PR 297 (LibraryDesktop): «Продолжить чтение» - the last opened title as the
          page's hero. Its card in the list below stays hidden while the hero is shown
          (data-hero; library-toolbar.js shows it again in the results mode). #}
-      <section class="wn-library-hero" aria-labelledby="library-continue-title" data-role="library-hero">
+      <section class="wn-library-hero" aria-labelledby="library-continue-title" data-role="library-hero" data-slug-url="{{ hero_entry.slug_url }}">
         {% if hero.cover_url %}<img class="wn-library-hero__halo" src="{{ hero.cover_url }}" alt="" aria-hidden="true">{% endif %}
         <article class="wn-library-hero__card">
           {% if hero.cover_url %}<img class="wn-library-hero__backdrop" src="{{ hero.cover_url }}" alt="" aria-hidden="true">{% endif %}
@@ -139,16 +177,17 @@
                 {% endif %}
               </div>
               <h2 class="wn-library-hero__title" id="library-continue-title"><a href="{{ hero_href }}">{{ hero_name }}</a></h2>
-              <span class="wn-library-hero__where">Том {{ hero_entry.last_read_volume }} · Глава {{ hero_entry.last_read_number }}</span>
+              <span class="wn-library-hero__where">{{ chapter_meta(hero_entry) }}</span>
               <div class="wn-library-hero__actions">
                 <a class="wn-library-hero__continue" href="{{ hero_href }}/chapters/{{ hero_entry.last_read_volume }}/{{ hero_entry.last_read_number }}">
                   <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 4v16l14-8z"/></svg>
-                  Продолжить · Гл. {{ hero_entry.last_read_number }}
+                  Продолжить · {{ chapter_short(hero_entry.last_read_number) }}
                 </a>
                 <a class="wn-library-hero__toc" href="{{ hero_href }}#title-panel-toc">
                   <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" aria-hidden="true"><path d="M8 6h13M8 12h13M8 18h13M3 6h.01M3 12h.01M3 18h.01"/></svg>
                   Оглавление
                 </a>
+                <div class="wn-library-hero__more">{{ actions_menu(hero_entry.slug_url, hero_name, toc=false) }}</div>
               </div>
             </div>
             {% if hero.progress_percent is not none %}
@@ -156,7 +195,7 @@
               <span class="wn-library-hero__progress-label">Прочитано</span>
               <span class="wn-library-hero__pct">{{ hero.progress_percent }}<span>%</span></span>
               <div class="wn-library-hero__bar" role="progressbar" aria-label="Прогресс чтения" aria-valuenow="{{ hero.progress_percent }}" aria-valuemin="0" aria-valuemax="100"><span style="width: {{ hero.progress_percent }}%"></span></div>
-              <span class="wn-library-hero__stopped">Остановились на главе {{ hero_entry.last_read_number }}</span>
+              <span class="wn-library-hero__stopped">Остановились на {% if hero_entry.last_read_number == "0" %}прологе{% else %}главе {{ hero_entry.last_read_number }}{% endif %}</span>
             </div>
             {% endif %}
           </div>
@@ -184,16 +223,18 @@
             class="wn-library-card{% if not started %} wn-library-card--new{% endif %}"
             data-role="library-item"{% if continue_item and item is sameas continue_item %} data-hero{% endif %}
             data-name="{{ name | lower }}"
+            data-slug-url="{{ entry.slug_url }}"
             data-order="{{ loop.index0 }}"
             data-added="{{ entry.added_at }}"
             data-progress="{% if not started %}-1{% elif item.progress_percent is not none %}{{ item.progress_percent }}{% else %}0{% endif %}"
           >
             <a class="wn-library-card__cover wn-skeleton" href="{{ href }}" tabindex="-1" aria-hidden="true">
-              {% if item.cover_url %}<img src="{{ item.cover_url }}" alt="" loading="lazy">{% endif %}
+              {% if item.cover_url %}<img class="wn-library-card__glow" src="{{ item.cover_url }}" alt="" loading="lazy"><img src="{{ item.cover_url }}" alt="" loading="lazy">{% endif %}
             </a>
             <div class="wn-library-card__body">
               <div class="wn-library-card__top">
                 <a class="wn-library-card__name" href="{{ href }}" title="{{ name }}">{{ name }}</a>
+                {{ actions_menu(entry.slug_url, name) }}
               </div>
               <span class="wn-library-card__meta">{% if started %}{{ chapter_meta(entry) }}{% else %}Не начато{% endif %}</span>
               {% if item.last_read_label %}
@@ -211,9 +252,9 @@
               {% if started %}
               {# PR 282: the mobile grid's narrow cards drop the verb («Гл. 92», as in the
                  prototype); the aria-label keeps the full action for screen readers. #}
-              <a class="wn-library-card__cta" href="{{ href }}/chapters/{{ entry.last_read_volume }}/{{ entry.last_read_number }}" aria-label="Продолжить · Глава {{ entry.last_read_number }}">
+              <a class="wn-library-card__cta" href="{{ href }}/chapters/{{ entry.last_read_volume }}/{{ entry.last_read_number }}" aria-label="Продолжить · {{ chapter_label(entry.last_read_number) }}">
                 <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M7 4v16l13-8z"/></svg>
-                <span class="wn-library-card__cta-verb">Продолжить · </span>Гл. {{ entry.last_read_number }}
+                <span class="wn-library-card__cta-verb">Продолжить · </span>{{ chapter_short(entry.last_read_number) }}
               </a>
               {% else %}
               <a class="wn-library-card__cta" href="{{ href }}" aria-label="Открыть «{{ name }}»">Открыть</a>
@@ -224,7 +265,7 @@
           <a class="wn-library-add-tile" href="/catalog" data-role="library-add-tile">
             <span class="wn-library-add-tile__icon" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M3 3h7v7H3zM14 3h7v7h-7zM3 14h7v7H3zM17.5 14v7M14 17.5h7"/></svg></span>
             <span class="wn-library-add-tile__title">Добавить из каталога</span>
-            <span class="wn-library-add-tile__text">Найдите тайтл в каталоге и откройте его — или вставьте ссылку выше.</span>
+            <span class="wn-library-add-tile__text">Найдите тайтл в каталоге и нажмите «В библиотеку» — или вставьте ссылку выше.</span>
             <span class="wn-library-add-tile__link">Открыть каталог →</span>
           </a>
         </div>
@@ -264,6 +305,7 @@
   </main>
 </div>
 <script src="{{ url_for('static', path='js/library-toolbar.js') }}" defer></script>
+<script src="{{ url_for('static', path='js/library-card-actions.js') }}" defer></script>
 <script src="{{ url_for('static', path='js/library-tabs-swipe.js') }}" defer></script>
 <script src="{{ url_for('static', path='js/library-switch.js') }}" defer></script>
 {% endblock %}

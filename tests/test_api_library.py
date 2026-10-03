@@ -452,7 +452,7 @@ async def test_show_library_lists_added_titles_with_progress(client: TestClient)
 
     assert response.status_code == 200
     assert "Test Novel" in response.text
-    assert "Том 1, глава 5" in response.text
+    assert "Том 1 · Глава 5" in response.text  # PR 298: LibraryCard wording
 
 
 async def test_show_library_renders_reading_progress_bar(client: TestClient) -> None:

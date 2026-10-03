@@ -56,8 +56,8 @@
   const end = titles.querySelector('[data-role="library-end"]');
   const noResultsText = titles.querySelector('[data-role="library-no-results-text"]');
   const noResultsCatalog = titles.querySelector('[data-role="library-no-results-catalog"]');
-  const total = titles.querySelectorAll('[data-role="library-item"]').length;
-  const endDefault = endText?.textContent ?? "";
+  let total = titles.querySelectorAll('[data-role="library-item"]').length;
+  let endDefault = endText?.textContent ?? "";
 
   function titlesWord(n) {
     const m10 = n % 10;
@@ -156,7 +156,10 @@
       if (section) section.hidden = visible === 0;
       visibleTotal += visible;
     }
-    if (noResults) noResults.hidden = visibleTotal > 0;
+    // An emptied library (the last title removed, «Вернуть» still on offer) isn't "nothing
+    // found" - library-card-actions.js reloads into the empty library's hint once the
+    // removal is sent.
+    if (noResults) noResults.hidden = visibleTotal > 0 || total === 0;
     syncMode(visibleTotal);
     syncFilters(visibleTotal);
   }
@@ -246,6 +249,24 @@
   titles
     .querySelector('[data-role="library-no-results-reset"]')
     ?.addEventListener("click", resetAll);
+
+  // PR 298: a title removed from its card menu (library-card-actions.js) - recount
+  // everything that shows the library's size, then re-apply the current criteria.
+  document.addEventListener("library:changed", () => {
+    total = titles.querySelectorAll('[data-role="library-item"]').length;
+    endDefault = `Это вся библиотека · ${titlesWord(total)}`;
+    const eyebrow = document.querySelector(".wn-library__eyebrow");
+    if (eyebrow) eyebrow.textContent = `Ваши тайтлы · ${titlesWord(total)}`;
+    const switchCount = document.querySelector('[data-role="library-switch-count"]');
+    if (switchCount) switchCount.textContent = String(total);
+    const rest = titles.querySelector('[data-role="library-rest"]');
+    if (rest) {
+      const hero = titles.querySelector('[data-role="library-hero"]');
+      if (!hero) rest.textContent = titlesWord(total);
+      else rest.textContent = total > 1 ? `ещё ${titlesWord(total - 1)}` : "пока только этот";
+    }
+    apply();
+  });
 
   buildFilters();
   syncFilters(titles.querySelectorAll('[data-role="library-item"]').length);
