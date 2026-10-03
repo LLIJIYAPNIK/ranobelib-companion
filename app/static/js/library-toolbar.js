@@ -63,6 +63,9 @@
         if (show) visible += 1;
         list.append(item);
       }
+      // PR 297: «Добавить из каталога» stays the grid's last cell whatever the order.
+      const tile = list.querySelector('[data-role="library-add-tile"]');
+      if (tile) list.append(tile);
       const section = list.closest('[data-role="library-section"]');
       if (section) section.hidden = visible === 0;
       visibleTotal += visible;

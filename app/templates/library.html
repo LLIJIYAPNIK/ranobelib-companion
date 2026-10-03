@@ -157,20 +157,29 @@
       </section>
       {% endif %}
 
-      {% if reading %}
-      <section class="wn-library__reading" aria-label="Читаю" data-role="library-section">
+      {# PR 297 (LibraryDesktop): every title in one «Моя библиотека» grid - started or
+         not, the hero's own card included (hidden while the hero is shown) - ending in
+         the «Добавить из каталога» tile (library-toolbar.js keeps it last). #}
+      <section class="wn-library-shelf" aria-labelledby="library-shelf-title" data-role="library-section">
+        <div class="wn-library-shelf__head">
+          <span class="wn-library-shelf__dot" aria-hidden="true"></span>
+          <h2 class="wn-library-shelf__title" id="library-shelf-title">Моя библиотека</h2>
+          <span class="wn-library-shelf__count" data-role="library-rest">{% if continue_item %}{% if items | length > 1 %}ещё {{ titles_word(items | length - 1) }}{% else %}пока только этот{% endif %}{% else %}{{ titles_word(items | length) }}{% endif %}</span>
+          <span class="wn-library-shelf__rule" aria-hidden="true"></span>
+        </div>
         <div class="wn-library-grid" data-role="library-list">
-          {% for item in reading %}
+          {% for item in items %}
           {% set entry = item.entry %}
           {% set name = item.name or entry.slug_url %}
           {% set href = "/titles/" ~ entry.slug_url %}
+          {% set started = entry.last_read_volume is not none %}
           <article
-            class="wn-library-card"
+            class="wn-library-card{% if not started %} wn-library-card--new{% endif %}"
             data-role="library-item"{% if continue_item and item is sameas continue_item %} data-hero{% endif %}
             data-name="{{ name | lower }}"
             data-order="{{ loop.index0 }}"
             data-added="{{ entry.added_at }}"
-            data-progress="{{ item.progress_percent if item.progress_percent is not none else 0 }}"
+            data-progress="{% if not started %}-1{% elif item.progress_percent is not none %}{{ item.progress_percent }}{% else %}0{% endif %}"
           >
             <a class="wn-library-card__cover wn-skeleton" href="{{ href }}" tabindex="-1" aria-hidden="true">
               {% if item.cover_url %}<img src="{{ item.cover_url }}" alt="" loading="lazy">{% endif %}
@@ -179,7 +188,7 @@
               <div class="wn-library-card__top">
                 <a class="wn-library-card__name" href="{{ href }}" title="{{ name }}">{{ name }}</a>
               </div>
-              <span class="wn-library-card__meta">{{ chapter_meta(entry) }}</span>
+              <span class="wn-library-card__meta">{% if started %}{{ chapter_meta(entry) }}{% else %}Не начато{% endif %}</span>
               {% if item.last_read_label %}
               <span class="wn-library-card__last">{{ item.last_read_label }}</span>
               {% endif %}
@@ -192,51 +201,32 @@
                 </div>
               </div>
               {% endif %}
+              {% if started %}
               {# PR 282: the mobile grid's narrow cards drop the verb («Гл. 92», as in the
                  prototype); the aria-label keeps the full action for screen readers. #}
               <a class="wn-library-card__cta" href="{{ href }}/chapters/{{ entry.last_read_volume }}/{{ entry.last_read_number }}" aria-label="Продолжить · Глава {{ entry.last_read_number }}">
                 <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M7 4v16l13-8z"/></svg>
                 <span class="wn-library-card__cta-verb">Продолжить · </span>Гл. {{ entry.last_read_number }}
               </a>
+              {% else %}
+              <a class="wn-library-card__cta" href="{{ href }}" aria-label="Открыть «{{ name }}»">Открыть</a>
+              {% endif %}
             </div>
           </article>
           {% endfor %}
+          <a class="wn-library-add-tile" href="/catalog" data-role="library-add-tile">
+            <span class="wn-library-add-tile__icon" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M3 3h7v7H3zM14 3h7v7h-7zM3 14h7v7H3zM17.5 14v7M14 17.5h7"/></svg></span>
+            <span class="wn-library-add-tile__title">Добавить из каталога</span>
+            <span class="wn-library-add-tile__text">Найдите тайтл в каталоге и откройте его — или вставьте ссылку выше.</span>
+            <span class="wn-library-add-tile__link">Открыть каталог →</span>
+          </a>
         </div>
       </section>
-      {% endif %}
-
-      <div class="wn-library__more">
-        {% if not_started %}
-        <section class="wn-library__not-started" aria-labelledby="library-not-started-title" data-role="library-section">
-          <div class="wn-library-section-head">
-            <h2 id="library-not-started-title">Ещё в библиотеке</h2>
-            <span>не начаты · {{ not_started | length }}</span>
-          </div>
-          <div class="wn-library-posters" data-role="library-list">
-            {% for item in not_started %}
-            {% set entry = item.entry %}
-            {% set name = item.name or entry.slug_url %}
-            {% set href = "/titles/" ~ entry.slug_url %}
-            <article
-              class="wn-library-poster"
-              data-role="library-item"
-              data-name="{{ name | lower }}"
-              data-order="{{ loop.index0 }}"
-              data-added="{{ entry.added_at }}"
-              data-progress="-1"
-            >
-              <div class="wn-library-poster__cover wn-skeleton">
-                <a href="{{ href }}" tabindex="-1" aria-hidden="true">
-                  {% if item.cover_url %}<img src="{{ item.cover_url }}" alt="" loading="lazy">{% endif %}
-                </a>
-              </div>
-              <a class="wn-library-poster__name" href="{{ href }}" title="{{ name }}">{{ name }}</a>
-              <span class="wn-library-poster__meta">Не начато</span>
-            </article>
-            {% endfor %}
-          </div>
-        </section>
-        {% endif %}
+      <div class="wn-library-end" data-role="library-end">
+        <span class="wn-library-end__rule" aria-hidden="true"></span>
+        <span class="wn-library-end__text" data-role="library-end-text">Это вся библиотека · {{ titles_word(items | length) }}</span>
+        <a class="wn-library-end__link" href="/catalog" data-role="library-end-catalog">Найти новое в каталоге →</a>
+        <span class="wn-library-end__rule wn-library-end__rule--right" aria-hidden="true"></span>
       </div>
       <p class="wn-library__empty" data-role="library-no-results" hidden>Ничего не найдено — попробуйте другой запрос или фильтр.</p>
       {% else %}

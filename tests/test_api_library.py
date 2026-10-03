@@ -492,12 +492,12 @@ def test_show_library_omits_progress_bar_for_unopened_titles(client: TestClient)
         response = client.get("/library")
 
     assert response.status_code == 200
-    # PR 275: a never-opened title goes under "Ещё в библиотеке", not a "Читаю" card.
-    assert "Ещё в библиотеке" in response.text
-    assert "не начаты · 1" in response.text
-    assert "Не начато" in response.text
+    # PR 297: one «Моя библиотека» grid - a never-opened title is a «Не начато» card
+    # that opens the title page, with no progress bar.
+    assert 'class="wn-library-card wn-library-card--new"' in response.text
+    assert '<span class="wn-library-card__meta">Не начато</span>' in response.text
+    assert 'aria-label="Открыть «Test Novel»">Открыть</a>' in response.text
     assert 'class="ui-progress' not in response.text
-    assert "wn-library-card" not in response.text
 
 
 def test_show_library_prefers_russian_name(client: TestClient) -> None:

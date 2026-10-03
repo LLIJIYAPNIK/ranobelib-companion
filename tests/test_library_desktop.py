@@ -175,3 +175,57 @@ def test_hero_design_values() -> None:
     assert "width: 280px;" in _library_rule(".wn-library-hero__progress")
     assert "font-size: 72px;" in _library_rule(".wn-library-hero__pct")
     assert "800 36px/1.12" in _library_rule(".wn-library-hero__title")
+
+
+# --- «Моя библиотека» ---------------------------------------------------------------
+
+
+async def test_one_grid_of_every_title_ending_in_the_add_tile(client: TestClient) -> None:
+    register(client, "alice@example.com")
+    _add(client, "1--first", "2--second", "3--third")
+    async with connection() as conn:
+        await record_progress(conn, 1, "2--second", "1", "3")
+
+    html = _library(client)
+    grid = html.split('data-role="library-list"', 1)[1].split("</section>", 1)[0]
+
+    assert grid.count('data-role="library-item"') == 3
+    assert grid.count("wn-library-card--new") == 2
+    # The tile is the grid's last cell.
+    assert grid.rfind('data-role="library-add-tile"') > grid.rfind('data-role="library-item"')
+    assert 'href="/catalog" data-role="library-add-tile"' in grid
+    assert "Добавить из каталога" in grid
+    shelf_title = '<h2 class="wn-library-shelf__title" id="library-shelf-title">'
+    assert f"{shelf_title}Моя библиотека</h2>" in html
+    assert 'data-role="library-rest">ещё 2 тайтла</span>' in html
+    assert 'data-role="library-end-text">Это вся библиотека · 3 тайтла</span>' in html
+    assert 'href="/catalog" data-role="library-end-catalog">Найти новое в каталоге →</a>' in html
+
+
+async def test_shelf_counts_everything_without_a_hero(client: TestClient) -> None:
+    register(client, "alice@example.com")
+    _add(client, "1--first", "2--second")
+
+    assert 'data-role="library-rest">2 тайтла</span>' in _library(client)
+
+
+async def test_shelf_with_only_the_hero_title(client: TestClient) -> None:
+    register(client, "alice@example.com")
+    _add(client, "1--first")
+    async with connection() as conn:
+        await record_progress(conn, 1, "1--first", "1", "3")
+
+    assert 'data-role="library-rest">пока только этот</span>' in _library(client)
+
+
+def test_toolbar_keeps_the_add_tile_last_when_sorting() -> None:
+    script = (ROOT / "app/static/js/library-toolbar.js").read_text(encoding="utf-8")
+    assert "const tile = list.querySelector('[data-role=\"library-add-tile\"]');" in script
+    assert "if (tile) list.append(tile);" in script
+
+
+def test_shelf_design_values() -> None:
+    tile = CSS.split(".wn-library-add-tile {", 1)[1].split("}", 1)[0]
+    assert "border: 1px dashed rgb(255 255 255 / 14%);" in tile
+    assert "min-height: 200px;" in tile
+    assert "gap: 20px;" in _library_rule(".wn-library .wn-library-grid")
