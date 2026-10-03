@@ -61,21 +61,21 @@
           <input type="search" placeholder="Поиск в библиотеке" aria-label="Поиск в библиотеке" data-role="library-search" autocomplete="off">
         </label>
         <label class="wn-library-select">
-          <span>Сортировка:</span>
+          <span>Сортировка</span>
           <select data-role="library-sort" aria-label="Сортировка">
-            <option value="recent">недавно читал</option>
-            <option value="added">недавно добавлен</option>
-            <option value="name">по названию</option>
-            <option value="progress">по прогрессу</option>
+            <option value="recent">Недавно читал</option>
+            <option value="added">Недавно добавленные</option>
+            <option value="name">По названию</option>
+            <option value="progress">По прогрессу</option>
           </select>
         </label>
         <label class="wn-library-select">
-          <span>Прогресс:</span>
+          <span>Прогресс</span>
           <select data-role="library-progress" aria-label="Прогресс">
-            <option value="any">любой</option>
-            <option value="lt50">меньше 50%</option>
-            <option value="gte50">50% и больше</option>
-            <option value="not-started">не начато</option>
+            <option value="any">Любой</option>
+            <option value="started">Начатые</option>
+            <option value="new">Не начатые</option>
+            <option value="done">Дочитанные</option>
           </select>
         </label>
         {# PR 282 (Webnovells Mobile): on phones the two selects above give way to
@@ -96,6 +96,13 @@
           </button>
         </div>
         <div class="wn-library-chips" data-role="library-filter-chips"></div>
+        {# PR 297: the results mode's criteria row (desktop) - library-toolbar.js fills it. #}
+        <div class="wn-library-criteria" data-role="library-criteria" hidden>
+          <span class="wn-library-criteria__label" aria-hidden="true">Условия</span>
+          <div class="wn-library-criteria__chips" data-role="library-criteria-chips"></div>
+          <button type="button" class="wn-library-criteria__reset" data-role="library-criteria-reset">Сбросить всё</button>
+          <span class="wn-library-criteria__count" data-role="library-criteria-count" aria-live="polite"></span>
+        </div>
         <div class="wn-library-filters" id="library-filters" data-bottom-sheet-title="Фильтры и сортировка" hidden>
           <fieldset class="wn-library-filters__group" data-filter-for="library-sort"><legend>Сортировка</legend></fieldset>
           <fieldset class="wn-library-filters__group" data-filter-for="library-progress"><legend>Прогресс</legend></fieldset>
@@ -226,6 +233,7 @@
         <span class="wn-library-end__rule" aria-hidden="true"></span>
         <span class="wn-library-end__text" data-role="library-end-text">Это вся библиотека · {{ titles_word(items | length) }}</span>
         <a class="wn-library-end__link" href="/catalog" data-role="library-end-catalog">Найти новое в каталоге →</a>
+        <button type="button" class="wn-library-end__reset" data-role="library-end-reset" hidden>Сбросить условия</button>
         <span class="wn-library-end__rule wn-library-end__rule--right" aria-hidden="true"></span>
       </div>
       <p class="wn-library__empty" data-role="library-no-results" hidden>Ничего не найдено — попробуйте другой запрос или фильтр.</p>

@@ -8439,6 +8439,122 @@ a.ui-title-card:focus-visible .ui-title-card__cover {
   }
 }
 
+/* The results mode (library-toolbar.js sets data-mode): no hero, tile or section head,
+   the hero's card back in the grid; the end line offers «Сбросить условия». */
+.wn-library[data-mode="results"] [data-role="library-hero"],
+.wn-library[data-mode="results"] [data-role="library-add-tile"],
+.wn-library[data-mode="results"] .wn-library-shelf__head,
+.wn-library[data-mode="results"] [data-role="library-end-catalog"] {
+  display: none;
+}
+
+.wn-library-end__reset {
+  padding: 0 4px;
+  border: 0;
+  background: transparent;
+  color: #b7a6ff;
+  font: 700 14px/1 var(--wn-font-ui);
+  cursor: pointer;
+}
+
+.wn-library-end__reset:focus-visible {
+  outline: 2px solid #c5b6ff;
+  outline-offset: 2px;
+}
+
+/* «Условия» in the panel - desktop (phones keep their own chips until PR 300). */
+.wn-library-criteria {
+  display: none;
+}
+
+@media (min-width: 768px) {
+  .wn-library-criteria {
+    display: flex;
+    flex: 1 1 100%;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 8px;
+    padding-top: 12px;
+    border-top: 1px solid rgb(255 255 255 / 6%);
+  }
+
+  .wn-library-criteria__label {
+    margin-right: 4px;
+    color: #8c889f;
+    font: 700 12px/1 var(--wn-font-ui);
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+  }
+
+  .wn-library-criteria__chips {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+  }
+
+  .wn-library-criterion {
+    display: inline-flex;
+    align-items: center;
+    gap: 7px;
+    height: 34px;
+    padding: 0 8px 0 12px;
+    border: 1px solid rgb(61 214 195 / 32%);
+    border-radius: 999px;
+    background: rgb(61 214 195 / 7%);
+    color: #eeecf4;
+    font: 600 14px/1 var(--wn-font-ui);
+    cursor: pointer;
+  }
+
+  .wn-library-criterion__key {
+    color: #9c98ae;
+  }
+
+  .wn-library-criterion svg {
+    width: 15px;
+    height: 15px;
+    color: #a3a0b5;
+  }
+
+  .wn-library-criterion:hover {
+    border-color: rgb(61 214 195 / 60%);
+  }
+
+  .wn-library-criterion:focus-visible,
+  .wn-library-criteria__reset:focus-visible {
+    outline: 2px solid #c5b6ff;
+    outline-offset: 2px;
+  }
+
+  .wn-library-criteria__reset {
+    height: 34px;
+    padding: 0 10px;
+    border: 0;
+    border-radius: 8px;
+    background: transparent;
+    color: #b7a6ff;
+    font: 700 14px/1 var(--wn-font-ui);
+    cursor: pointer;
+  }
+
+  .wn-library-criteria__count {
+    margin-left: auto;
+    color: #8c889f;
+    font: 500 14px/1 var(--wn-font-ui);
+  }
+
+  /* The add-by-link form goes in the results mode (handoff: «header компактнее»). */
+  .wn-library[data-mode="results"] .wn-library__add {
+    display: none;
+  }
+
+  /* A changed criterion gets the teal edge, as on the catalog. */
+  .wn-library .wn-library-search:has(input:not(:placeholder-shown)) input,
+  .wn-library .wn-library-select:has(select option:checked:not(:first-child)) {
+    border-color: rgb(61 214 195 / 40%);
+  }
+}
+
 /* «Продолжить чтение» (PR 297) - compact here (phones until PR 300), the full hero in
    the min-width: 768px block below. Its own card in the list stays hidden while the
    hero is on screen (the default mode). */

@@ -229,3 +229,61 @@ def test_shelf_design_values() -> None:
     assert "border: 1px dashed rgb(255 255 255 / 14%);" in tile
     assert "min-height: 200px;" in tile
     assert "gap: 20px;" in _library_rule(".wn-library .wn-library-grid")
+
+
+# --- results mode -------------------------------------------------------------------
+
+
+async def test_filters_follow_the_handoff(client: TestClient) -> None:
+    register(client, "alice@example.com")
+    _add(client, "1--first")
+    html = _library(client)
+
+    progress = html.split('data-role="library-progress"', 1)[1].split("</select>", 1)[0]
+    assert re.findall(r'<option value="([^"]+)">([^<]+)</option>', progress) == [
+        ("any", "Любой"),
+        ("started", "Начатые"),
+        ("new", "Не начатые"),
+        ("done", "Дочитанные"),
+    ]
+    sort = html.split('data-role="library-sort"', 1)[1].split("</select>", 1)[0]
+    assert re.findall(r'<option value="[^"]+">([^<]+)</option>', sort) == [
+        "Недавно читал",
+        "Недавно добавленные",
+        "По названию",
+        "По прогрессу",
+    ]
+
+
+async def test_results_mode_hooks_are_in_place(client: TestClient) -> None:
+    register(client, "alice@example.com")
+    _add(client, "1--first")
+    html = _library(client)
+
+    assert 'class="library-page wn-library" data-mode="default"' in html
+    criteria = html.split('data-role="library-criteria"', 1)[1]
+    criteria = criteria.split("</div>\n        </div>", 1)[0]
+    assert criteria.startswith(" hidden>")
+    assert 'data-role="library-criteria-chips"' in criteria
+    assert ">Сбросить всё</button>" in criteria
+    assert 'data-role="library-criteria-count"' in criteria
+    assert 'data-role="library-end-reset" hidden>Сбросить условия</button>' in html
+
+
+def test_toolbar_script_switches_the_modes() -> None:
+    script = (ROOT / "app/static/js/library-toolbar.js").read_text(encoding="utf-8")
+    assert 'page.dataset.mode = results ? "results" : "default";' in script
+    assert "sort.selectedIndex !== 0 || progress.selectedIndex !== 0" in script
+    assert '`${titlesWord(visibleTotal)} из ${total}`' in script
+    assert '"Больше ничего не подходит под условия"' in script
+    assert 'if (value === "done") return pct >= 100;' in script
+
+
+def test_results_mode_hides_the_default_blocks() -> None:
+    hidden = CSS.split('.wn-library[data-mode="results"] [data-role="library-hero"],', 1)[1]
+    hidden = hidden.split("}", 1)[0]
+    for hook in ("library-add-tile", "wn-library-shelf__head", "library-end-catalog"):
+        assert hook in hidden
+    assert "display: none;" in hidden
+    # ...and the hero's own card is hidden only in the default mode.
+    assert '.wn-library[data-mode="default"] [data-hero] {\n  display: none;' in CSS
