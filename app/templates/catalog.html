@@ -68,6 +68,31 @@
       {% if filter_count %}<span class="ui-badge ui-badge--accent" aria-label="выбрано: {{ filter_count }}">{{ filter_count }}</span>{% endif %}
     </button>
     {% endif %}
+    {# PR 299 (CatalogMobile): on phones the sort and «Фильтры» both open the filters
+       sheet below - catalog-mobile.js shows these two in place of the select and the
+       popover toggle, which stay for desktop and for phones without JS. #}
+    <button
+      class="catalog-toolbar__sheet-sort"
+      type="button"
+      data-role="catalog-sheet-open"
+      aria-haspopup="dialog"
+      aria-label="Сортировка: {{ sort_options.get(sort, sort) }}"
+      hidden
+    >
+      <span>{{ sort_options.get(sort, sort) }}</span>
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m6 9 6 6 6-6"/></svg>
+    </button>
+    <button
+      class="catalog-toolbar__sheet-filters"
+      type="button"
+      data-role="catalog-sheet-open"
+      aria-haspopup="dialog"
+      hidden
+    >
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" aria-hidden="true"><path d="M3 6h18M6 12h12M10 18h4"/></svg>
+      Фильтры
+      {% if filter_count %}<span class="catalog-toolbar__sheet-count" aria-label="выбрано: {{ filter_count }}">{{ filter_count }}</span>{% endif %}
+    </button>
     {# PR 299 (CatalogMobile): grid or list on phones - catalog-mobile.js shows it and
        remembers the choice. Two columns of covers by default. #}
     <button
@@ -270,6 +295,45 @@
     </aside>
     {% endif %}
   </main>
+  {# PR 299 (CatalogMobile): the phone filters sheet - the shared bottom sheet
+     (bottom-sheet.js) takes it in. Its own form is the draft: nothing applies until
+     «Показать результаты» sends it, «Сбросить» (moved into the sheet's head) clears the
+     draft, and closing the sheet without sending puts the form back as the page has it
+     (catalog-mobile.js). Groups: sort (one), genres and countries (several). Status and
+     chapter-count groups wait for the SDK (ranobelib-python-sdk#68, #69). The search
+     and a tag filter from a title page aren't in the sheet - they ride along unchanged.
+     autocomplete="off": no browser form restore on Back - the draft starts as the page. #}
+  <div class="catalog-sheet" id="catalog-filters-sheet" data-role="catalog-filters-sheet" data-bottom-sheet-title="Фильтры" hidden>
+    <button class="catalog-sheet__reset" type="button" data-role="catalog-sheet-reset" data-bottom-sheet-action>Сбросить</button>
+    <form class="catalog-sheet__form" method="get" action="/catalog" data-role="catalog-sheet-form" data-default-sort="last_chapter_at" autocomplete="off">
+      <input type="hidden" name="query" value="{{ query or '' }}" data-role="catalog-sheet-query">
+      {% for t in tags %}<input type="hidden" name="tags" value="{{ t }}">{% endfor %}
+      {% if tag_name %}<input type="hidden" name="tag_name" value="{{ tag_name }}">{% endif %}
+      {% set check %}<svg class="catalog-sheet__check" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m5 12 5 5 9-10"/></svg>{% endset %}
+      <fieldset class="catalog-sheet__group">
+        <legend class="catalog-sheet__legend">Сортировка</legend>
+        <div class="catalog-sheet__options">
+          {% for value, label in sort_options.items() %}
+          <label class="catalog-sheet__option"><input type="radio" name="sort" value="{{ value }}"{% if value == sort %} checked{% endif %}>{{ check }}<span>{{ label }}</span></label>
+          {% endfor %}
+        </div>
+      </fieldset>
+      {% for key, legend, options, selected in [("genres", "Жанры", all_genres, genres), ("countries", "Страны", all_countries, countries)] if options %}
+      <fieldset class="catalog-sheet__group">
+        <legend class="catalog-sheet__legend">{{ legend }}</legend>
+        <div class="catalog-sheet__options">
+          {% for option in options %}
+          <label class="catalog-sheet__option"><input type="checkbox" name="{{ key }}" value="{{ option.id }}"{% if option.id in selected %} checked{% endif %}>{{ check }}<span>{{ option.name }}</span></label>
+          {% endfor %}
+        </div>
+      </fieldset>
+      {% endfor %}
+      <p class="catalog-sheet__hint">Любой фильтр или сортировка, кроме «По обновлению», переключает каталог в режим результатов — подборки популярного скрываются.</p>
+      <div class="catalog-sheet__foot">
+        <button class="catalog-sheet__apply" type="submit">Показать результаты</button>
+      </div>
+    </form>
+  </div>
   <button
     type="button"
     class="ui-icon-btn back-to-top"

@@ -8330,7 +8330,9 @@ a.catalog-card__action {
    ========================================================================== */
 
 .catalog-toolbar__clear,
-.catalog-toolbar__view {
+.catalog-toolbar__view,
+.catalog-toolbar__sheet-sort,
+.catalog-toolbar__sheet-filters {
   display: none;
 }
 
@@ -8477,6 +8479,75 @@ a.catalog-card__action {
     width: 44px;
     padding: 0;
     cursor: pointer;
+  }
+
+  /* With the filters sheet (catalog-mobile.js), its two buttons replace the select and
+     the popover toggle. */
+  .wn-catalog--sheet :is(.catalog-toolbar__sort, .catalog-toolbar__filters) {
+    display: none;
+  }
+
+  .wn-catalog--sheet :is(.catalog-toolbar__sheet-sort, .catalog-toolbar__sheet-filters):not([hidden]) {
+    display: flex;
+    align-items: center;
+    height: 44px;
+    border: 1px solid #2a2838;
+    border-radius: 12px;
+    background: #16161f;
+    color: #eeecf4;
+    cursor: pointer;
+  }
+
+  .wn-catalog--sheet .catalog-toolbar__sheet-sort:not([hidden]) {
+    flex: 1 1 0;
+    justify-content: space-between;
+    gap: 6px;
+    min-width: 0;
+    padding: 0 10px 0 14px;
+    font: 600 15px/1 var(--wn-font-ui);
+  }
+
+  .catalog-toolbar__sheet-sort span {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .catalog-toolbar__sheet-sort svg {
+    flex: none;
+    width: 16px;
+    height: 16px;
+    color: #a3a0b5;
+  }
+
+  .wn-catalog--sheet .catalog-toolbar__sheet-filters:not([hidden]) {
+    flex: none;
+    gap: 8px;
+    padding: 0 12px;
+    font: 700 15px/1 var(--wn-font-ui);
+  }
+
+  .catalog-toolbar__sheet-filters svg {
+    flex: none;
+    width: 18px;
+    height: 18px;
+  }
+
+  .catalog-toolbar__sheet-count {
+    box-sizing: border-box;
+    min-width: 22px;
+    height: 22px;
+    padding: 0 6px;
+    border-radius: 999px;
+    background: rgb(61 214 195 / 16%);
+    color: #3dd6c3;
+    font: 800 12px/22px var(--wn-font-ui);
+    text-align: center;
+  }
+
+  :is(.catalog-toolbar__sheet-sort, .catalog-toolbar__sheet-filters):focus-visible {
+    outline: 2px solid #c5b6ff;
+    outline-offset: 2px;
   }
 
   .catalog-toolbar__view svg {
@@ -8816,6 +8887,131 @@ a.catalog-card__action {
 @media (max-width: 359px) {
   .wn-catalog .catalog-featured__inner {
     grid-template-columns: 80px minmax(0, 1fr);
+  }
+}
+
+/* The filters sheet (catalog.html, catalog-mobile.js) inside the shared bottom sheet:
+   uppercase group legends over wrapping pill options (a teal check on the chosen
+   ones - real radios/checkboxes underneath), the hint about the results mode, and
+   «Показать результаты» pinned at the bottom while the groups scroll. */
+.catalog-sheet__reset {
+  flex: none;
+  height: 44px;
+  padding: 0 10px;
+  border: 0;
+  border-radius: 10px;
+  background: transparent;
+  color: #b7a6ff;
+  font: 700 14px/1 var(--wn-font-ui);
+  cursor: pointer;
+}
+
+.catalog-sheet__group {
+  min-width: 0;
+  margin: 0 0 22px;
+  padding: 0;
+  border: 0;
+}
+
+.catalog-sheet__legend {
+  padding: 0 0 10px;
+  color: #8c889f;
+  font: 700 13px/1 var(--wn-font-ui);
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.catalog-sheet__options {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.catalog-sheet__option {
+  position: relative;
+  display: flex;
+  flex: none;
+  align-items: center;
+  gap: 6px;
+  min-height: 40px;
+  padding: 0 14px;
+  border: 1px solid #2a2838;
+  border-radius: 999px;
+  color: #cfcbdd;
+  font: 600 14px/1.2 var(--wn-font-ui);
+  cursor: pointer;
+}
+
+.catalog-sheet__option input {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  margin: 0;
+  opacity: 0;
+  pointer-events: none;
+}
+
+.catalog-sheet__check {
+  display: none;
+  flex: none;
+  width: 14px;
+  height: 14px;
+  color: #3dd6c3;
+}
+
+.catalog-sheet__option:has(input:checked) {
+  border-color: #4a4565;
+  background: #24232f;
+  color: #f2f0f7;
+}
+
+.catalog-sheet__option:has(input:checked) .catalog-sheet__check {
+  display: block;
+}
+
+.catalog-sheet__option:has(input:focus-visible),
+:is(.catalog-sheet__reset, .catalog-sheet__apply):focus-visible {
+  outline: 2px solid #c5b6ff;
+  outline-offset: 2px;
+}
+
+.catalog-sheet__hint {
+  margin: 0;
+  padding-top: 12px;
+  border-top: 1px solid #24222f;
+  color: #8c889f;
+  font: 500 13px/1.45 var(--wn-font-ui);
+}
+
+/* Out to the panel's edges and down over the body's bottom padding, so it sits on
+   the sheet's floor; sticky keeps it there while the groups scroll. */
+.catalog-sheet__foot {
+  position: sticky;
+  bottom: calc(-20px - env(safe-area-inset-bottom, 0px));
+  margin: 20px -20px calc(-20px - env(safe-area-inset-bottom, 0px));
+  padding: 12px 16px calc(16px + env(safe-area-inset-bottom, 0px));
+  border-top: 1px solid #24222f;
+  background: #16161f;
+}
+
+.catalog-sheet__apply {
+  width: 100%;
+  height: 52px;
+  border: 0;
+  border-radius: 12px;
+  background: #7a52f4;
+  color: #fff;
+  font: 700 16px/1 var(--wn-font-ui);
+  cursor: pointer;
+}
+
+@media (hover: hover) {
+  .catalog-sheet__apply:hover {
+    background: #8a66ff;
+  }
+
+  .catalog-sheet__option:hover {
+    border-color: #3a3650;
   }
 }
 

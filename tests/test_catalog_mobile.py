@@ -136,3 +136,64 @@ def test_featured_card_shows_two_genres_and_an_icon_library_button() -> None:
     # The hidden label is still announced: the toggle carries its own aria-label.
     cards = (ROOT / "app/templates/_catalog_cards.html").read_text(encoding="utf-8")
     assert "aria-label=\"{{ ('«' ~ name ~ '» в библиотеке — убрать')" in cards
+
+
+def _sheet(html: str) -> str:
+    return html.split('id="catalog-filters-sheet"', 1)[1].split("</form>", 1)[0]
+
+
+def test_filters_sheet_is_its_own_draft_form() -> None:
+    page = CatalogPage(items=_titles(1, 3), page=1, has_next_page=False)
+    fake = _FakeCatalog(page, genres=[Genre(id=5, name="Фэнтези"), Genre(id=6, name="Уся")])
+    params = {"query": "dxd", "sort": "views", "genres": 6, "tags": 9, "tag_name": "Магия"}
+    with patch("app.services.catalog.Catalog", return_value=fake):
+        sheet = _sheet(client.get("/catalog", params=params).text)
+    assert 'data-bottom-sheet-title="Фильтры" hidden' in sheet
+    assert 'method="get" action="/catalog"' in sheet
+    assert 'data-default-sort="last_chapter_at" autocomplete="off"' in sheet
+    # What the sheet doesn't show rides along as it is.
+    assert '<input type="hidden" name="query" value="dxd"' in sheet
+    assert '<input type="hidden" name="tags" value="9">' in sheet
+    assert '<input type="hidden" name="tag_name" value="Магия">' in sheet
+    # Sort: one; genres: several - the page's own state is the draft's start.
+    assert '<input type="radio" name="sort" value="views" checked>' in sheet
+    assert '<input type="radio" name="sort" value="last_chapter_at">' in sheet
+    assert '<input type="checkbox" name="genres" value="6" checked>' in sheet
+    assert '<input type="checkbox" name="genres" value="5">' in sheet
+    assert ">Показать результаты</button>" in sheet
+    assert "data-bottom-sheet-action>Сбросить</button>" in sheet
+
+
+def test_sheet_buttons_show_the_sort_and_the_filter_count() -> None:
+    html = _get(sort="views", genres=5)
+    assert 'aria-label="Сортировка: По просмотрам"' in html
+    assert "<span>По просмотрам</span>" in html
+    assert 'class="catalog-toolbar__sheet-count" aria-label="выбрано: 1">1</span>' in html
+    assert html.count('data-role="catalog-sheet-open"') == 2
+    # They replace the select and the popover toggle only once the script is in.
+    assert (
+        "  .wn-catalog--sheet :is(.catalog-toolbar__sort, .catalog-toolbar__filters) {\n"
+        "    display: none;"
+    ) in CSS
+
+
+def test_sheet_script_keeps_a_draft() -> None:
+    script = (ROOT / "app/static/js/catalog-mobile.js").read_text(encoding="utf-8")
+    assert "if (!applying) sheetForm.reset();" in script
+    assert 'field.type === "radio" && field.value === sheetForm.dataset.defaultSort' in script
+    assert "sheetQuery.value = input.value.trim();" in script
+    assert 'page.classList.add("wn-catalog--sheet");' in script
+
+
+def test_bottom_sheet_takes_a_head_action() -> None:
+    script = (ROOT / "app/static/js/bottom-sheet.js").read_text(encoding="utf-8")
+    assert 'content.querySelector("[data-bottom-sheet-action]")' in script
+    assert "closeButton.before(actionEl);" in script
+    assert "action?.home.replaceWith(action.el);" in script
+
+
+def test_sheet_apply_stays_on_the_sheet_floor() -> None:
+    foot = re.search(r"\n\.catalog-sheet__foot \{([^}]*)\}", CSS)
+    assert foot
+    assert "position: sticky;" in foot[1]
+    assert "background: #16161f;" in foot[1]
