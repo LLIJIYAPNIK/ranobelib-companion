@@ -631,11 +631,10 @@ def test_library_tabs_active_state() -> None:
     with patch("app.services.catalog.Catalog", return_value=_FakeCatalog(page)):
         catalog_response = client.get("/catalog")
 
-    assert 'library-tabs__link library-tabs__link--active" href="/library"' in library_response.text
-    assert (
-        'library-tabs__link library-tabs__link--active" href="/catalog"'
-        in catalog_response.text
-    )
+    active = 'library-tabs__link library-tabs__link--active"\n    href="{}"'
+    assert active.format("/library") in library_response.text
+    assert active.format("/catalog") in catalog_response.text
+    assert active.format("/catalog") not in library_response.text
 
 
 def test_show_catalog_genre_section_is_an_accordion_toggle() -> None:

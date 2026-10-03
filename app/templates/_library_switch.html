@@ -1,0 +1,29 @@
+{# PR 294 (wave 36, LibraryTabs.dc.html / Catalog handoff.md): the two-position
+   «Библиотека / Каталог» switch shared by /library and /catalog. A segment track, not
+   tabs over one page's content - each item is a link to the other route.
+   `active_tab`: "library" or "catalog". `library_count`: the number of titles in the
+   visitor's library, or none for a guest - the catalog never gets a count (the API has
+   no total). library-tabs-swipe.js reads .library-tabs__link and its --active modifier;
+   library-switch.js adds roving tabindex and ←/→. #}
+<div class="wn-lib-switch" role="tablist" aria-label="Разделы" data-role="library-switch">
+  {%- for id, href, label, icon in [
+    ("library", "/library", "Библиотека", "M2 4h6a4 4 0 0 1 4 4v13a3 3 0 0 0-3-3H2zM22 4h-6a4 4 0 0 0-4 4v13a3 3 0 0 1 3-3h7z"),
+    ("catalog", "/catalog", "Каталог", "M3 3h7v7H3zM14 3h7v7h-7zM3 14h7v7H3zM14 14h7v7h-7z"),
+  ] %}
+  {%- set is_active = active_tab == id %}
+  <a
+    class="wn-lib-switch__tab library-tabs__link{% if is_active %} library-tabs__link--active{% endif %}"
+    href="{{ href }}"
+    role="tab"
+    aria-selected="{{ 'true' if is_active else 'false' }}"
+    tabindex="{{ '0' if is_active else '-1' }}"
+    {%- if is_active %} aria-current="page"{% endif %}
+  >
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="{{ icon }}"/></svg>
+    <span>{{ label }}</span>
+    {%- if id == "library" and library_count is defined and library_count is not none %}
+    <span class="wn-lib-switch__count" data-role="library-switch-count">{{ library_count }}</span>
+    {%- endif %}
+  </a>
+  {%- endfor %}
+</div>

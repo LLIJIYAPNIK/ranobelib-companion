@@ -7311,10 +7311,112 @@ a.ui-title-card:focus-visible .ui-title-card__cover {
   }
 }
 
-.library-tabs__count {
-  margin-left: 8px;
-  font-weight: 700;
-  font-size: 13px;
+/* ==========================================================================
+   LibraryTabs (PR 294, wave 36): the «Библиотека / Каталог» segment track shared by
+   /library and /catalog (_library_switch.html) - straight from LibraryTabs.dc.html.
+   A 48px hit area with the track (40px items + 4px padding).
+   ========================================================================== */
+
+.wn-lib-switch {
+  display: flex;
+  box-sizing: border-box;
+  width: max-content;
+  max-width: 100%;
+  gap: 4px;
+  padding: 4px;
+  border: 1px solid rgb(255 255 255 / 8%);
+  border-radius: 15px;
+  background: rgb(8 8 12 / 55%);
+  box-shadow: inset 0 1px 0 rgb(255 255 255 / 3%);
+  font-family: var(--wn-font-ui);
+}
+
+.wn-lib-switch__tab {
+  flex: 1 1 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  min-width: 0;
+  height: 40px;
+  padding: 0 18px;
+  border: 1px solid transparent;
+  border-radius: 11px;
+  background: transparent;
+  color: #a3a0b5;
+  font: 700 15px/1 var(--wn-font-ui);
+  white-space: nowrap;
+  text-decoration: none;
+  transition:
+    background-color 160ms ease,
+    color 160ms ease;
+}
+
+.wn-lib-switch__tab svg {
+  flex: none;
+  width: 17px;
+  height: 17px;
+}
+
+@media (hover: hover) {
+  .wn-lib-switch__tab:not([aria-selected="true"]):hover {
+    background: rgb(255 255 255 / 5%);
+    color: #eeecf4;
+  }
+}
+
+.wn-lib-switch__tab[aria-selected="true"] {
+  border-color: #3a3650;
+  background: linear-gradient(180deg, #2a2938, #211f2c);
+  box-shadow:
+    inset 0 1px 0 rgb(255 255 255 / 7%),
+    0 6px 16px -6px rgb(0 0 0 / 60%);
+  color: #f7f5fb;
+}
+
+.wn-lib-switch__tab[aria-selected="true"] svg {
+  color: #3dd6c3;
+}
+
+.wn-lib-switch__tab:focus-visible {
+  outline: 2px solid #c5b6ff;
+  outline-offset: 1px;
+}
+
+.wn-lib-switch__count {
+  box-sizing: border-box;
+  min-width: 22px;
+  height: 22px;
+  padding: 0 6px;
+  border-radius: 999px;
+  background: rgb(255 255 255 / 6%);
+  color: #a3a0b5;
+  font: 800 12px/22px var(--wn-font-ui);
+  font-variant-numeric: tabular-nums;
+  text-align: center;
+}
+
+.wn-lib-switch__tab[aria-selected="true"] .wn-lib-switch__count {
+  background: rgb(61 214 195 / 14%);
+  color: #3dd6c3;
+}
+
+/* Mobile (LibraryMobile: fill, compact under 360px): the track spans the row and both
+   items fit even at 320px - no horizontal scroll. */
+@media (max-width: 767px) {
+  .wn-lib-switch {
+    width: 100%;
+  }
+}
+
+/* Under 360px the items share the track by content, not in equal halves - «Библиотека»
+   with its count needs ~156px, more than half of a 320px screen's track. */
+@media (max-width: 359px) {
+  .wn-lib-switch__tab {
+    flex: 1 1 auto;
+    gap: 6px;
+    padding: 0 10px;
+  }
 }
 
 .wn-library {
@@ -7334,57 +7436,6 @@ a.ui-title-card:focus-visible .ui-title-card__cover {
   color: #f2f0f7;
   font: var(--wn-weight-extra-bold) 32px/1 var(--wn-font-ui);
   letter-spacing: -0.02em;
-}
-
-.wn-library .ui-tabs {
-  display: flex;
-  gap: 4px;
-  padding: 4px;
-  border: 1px solid var(--wn-border);
-  border-radius: var(--wn-radius-md);
-  background: var(--wn-surface);
-}
-
-.wn-library .ui-tabs__link {
-  display: inline-flex;
-  align-items: center;
-  gap: 8px;
-  height: auto;
-  padding: 10px 14px;
-  border: 0;
-  border-radius: 9px;
-  background: transparent;
-  color: var(--wn-text-secondary);
-  font: var(--wn-weight-semi-bold) 15px/1 var(--wn-font-ui);
-  white-space: nowrap;
-  box-shadow: none;
-}
-
-@media (hover: hover) {
-  .wn-library .ui-tabs__link:hover {
-    background: transparent;
-    color: var(--wn-text);
-  }
-}
-
-.wn-library .ui-tabs__link[aria-current="page"] {
-  background: #22212e;
-  color: #f2f0f7;
-  font-weight: var(--wn-weight-bold);
-}
-
-.wn-library .ui-tabs__link:focus-visible {
-  outline: none;
-  box-shadow: var(--wn-focus-ring);
-}
-
-.wn-library .library-tabs__count {
-  margin-left: 0;
-  color: var(--wn-text-muted);
-}
-
-.wn-library .ui-tabs__link[aria-current="page"] .library-tabs__count {
-  color: var(--wn-teal);
 }
 
 .wn-library__add {
@@ -8045,48 +8096,6 @@ a.ui-title-card:focus-visible .ui-title-card__cover {
 
   .wn-library__title {
     font-size: 26px;
-  }
-
-  /* PR 282 (Webnovells Mobile -> Библиотека): the tabs are a touch ribbon of separate
-     pills, edge to edge across the page gutters, fading where more tabs hide
-     (ribbon.js). */
-  .wn-library .ui-tabs {
-    position: relative;
-    flex: 1 1 100%;
-    gap: 6px;
-    width: auto;
-    margin: 0 calc(-1 * var(--wn-space-2));
-    padding: 2px var(--wn-space-2);
-    border: 0;
-    border-radius: 0;
-    background: none;
-    overflow-x: auto;
-    overscroll-behavior-x: contain;
-    scrollbar-width: none;
-  }
-
-  .wn-library .ui-tabs::-webkit-scrollbar {
-    display: none;
-  }
-
-  .wn-library .ui-tabs__link {
-    flex: none;
-    min-height: 44px;
-    padding: 0 16px;
-    border: 1px solid var(--wn-border);
-    border-radius: var(--wn-radius-md);
-    color: var(--wn-text-secondary);
-    font: 700 15px/1 var(--wn-font-ui);
-  }
-
-  .wn-library .ui-tabs__link[aria-current="page"] {
-    border-color: #3a3650;
-    background: #22212e;
-    color: #f2f0f7;
-  }
-
-  .wn-library .library-tabs__count {
-    font: 800 13px/1 var(--wn-font-ui);
   }
 
   /* The link field and «Добавить» share a row while both fit; at 320px the button drops

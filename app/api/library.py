@@ -16,6 +16,7 @@ from app.db.connection import connection, get_connection
 from app.db.library import (
     LibraryEntry,
     add_entry,
+    count_entries,
     get_currently_reading_entries,
     get_entry,
     list_entries,
@@ -76,8 +77,8 @@ async def show_library(
             return RedirectResponse(url=url, status_code=301)
         return RedirectResponse(url="/library", status_code=301)
     if user is None:
-        # A guest has no library to count - the tabs render without numbers.
-        context = {**_library_context([]), "tab_counts": None}
+        # A guest has no library to count - the switch renders without a number.
+        context = {**_library_context([]), "library_count": None}
         return templates.TemplateResponse(request, "library.html", context)
     async with connection() as conn:
         items = await library_items_for_user(user, conn)
@@ -117,11 +118,12 @@ def _library_context(
     not_started = [item for item in items if item["entry"].last_read_volume is None]  # type: ignore[union-attr]
     return {
         "active_nav": "library",
-        "active_tab": "reading",
+        "active_tab": "library",
         "items": items,
         "reading": reading,
         "not_started": not_started,
-        "tab_counts": {"reading": len(reading)},
+        # PR 294: the «Библиотека» switch item counts every title, started or not.
+        "library_count": len(items),
     }
 
 
@@ -164,6 +166,7 @@ def _last_read_label(last_read_at: str | None, today: date) -> str | None:
 @catalog_router.get("", response_model=None)
 async def show_catalog(
     request: Request,
+    user: Annotated[User | None, Depends(get_current_user)],
     query: str | None = None,
     sort: str = DEFAULT_CATALOG_SORT,
     genres: Annotated[list[int] | None, Query()] = None,
@@ -209,6 +212,12 @@ async def show_catalog(
         # submit sort=random) - same one-random-title redirect, not a reshuffled list.
         params = _catalog_filter_params(query, genres, countries, tags, tag_name)
         return RedirectResponse(url=f"/catalog/random?{urlencode(params)}", status_code=303)
+    library_count = None
+    if user is not None:
+        # PR 294: the «Библиотека» switch item shows the library's size here too - one
+        # COUNT, checked out only for a logged-in visitor (same reasoning as show_library).
+        async with connection() as conn:
+            library_count = await count_entries(conn, user.id)
     all_genres = await list_genres()
     all_countries = await list_countries()
     async with get_catalog() as catalog:
@@ -248,6 +257,7 @@ async def show_catalog(
             "selected_tag_names": selected_tag_names,
             "tag_name": tag_name,
             "random_empty": random_empty,
+            "library_count": library_count,
         },
     )
 
