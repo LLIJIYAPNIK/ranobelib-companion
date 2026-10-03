@@ -1,5 +1,9 @@
-{# PR 251: Aurora Ink grid card with the quickview eye as its corner action - the same
-   markup whether rendered into catalog.html or appended by catalog-scroll.js.
+{# PR 251: grid card with the quickview eye as its corner action - the same markup
+   whether rendered into catalog.html or appended by catalog-scroll.js.
+   PR 296: the card is CatalogCard variant="cinema" (CatalogCard.dc.html) - 2:3 cover
+   with a bottom scrim and, on desktop, a blurred copy of itself as the hover glow;
+   title (2 lines), «жанр · статус», «N гл.». No update date or «+N главы» badge yet:
+   the SDK doesn't return the last chapter's date (ranobelib-python-sdk#67).
    PR 295: `items` is the feed (app/services/catalog.py's StreamItem) - regular cards,
    and in the editorial mode a featured insert after every 12 of them, spanning the
    whole row. The insert's full FeaturedCard look is PR 296; here it's the plain block.
@@ -7,7 +11,9 @@
    items too (CatalogDesktop.dc.html) - «Свежие обновления» opening the first page,
    «Продолжить каталог» after every insert that isn't the end of the feed. They're
    navigation inside the one feed, not separate listings; the results mode has none. #}
-{% from "_title_card.html" import ui_title_card %}
+{% macro chapters_label(count) -%}
+{{ "{:,}".format(count) | replace(",", " ") }} гл.
+{%- endmacro %}
 {% macro section_label(title, sub, fresh=false) -%}
 <div class="catalog-section{% if fresh %} catalog-section--fresh{% endif %}" data-role="catalog-section">
   <span class="catalog-section__dot" aria-hidden="true"></span>
@@ -38,17 +44,32 @@
 {{ section_label("Продолжить каталог", "тот же поток, по обновлению") }}
 {% endif %}
 {% else %}
-{% call ui_title_card(title.slug_url, name, cover) %}
-<button
-  type="button"
-  class="ui-title-card__action"
-  data-role="title-quickview-trigger"
-  data-slug-url="{{ title.slug_url }}"
-  aria-label="Быстрый просмотр «{{ name }}»"
-  title="Быстрый просмотр"
->
-  <span class="ui-title-card__action-chip"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M2 12s4-7 10-7 10 7 10 7-4 7-10 7S2 12 2 12zM12 15a3 3 0 1 0 0-6 3 3 0 0 0 0 6z"/></svg></span>
-</button>
-{% endcall %}
+{% set meta = [title.genres[0].name if title.genres else none, title.status.label if title.status else none] | select | join(" · ") %}
+<div class="catalog-card">
+  <a class="catalog-card__link" href="/titles/{{ title.slug_url }}" title="{{ name }}">
+    <span class="catalog-card__media">
+      {% if cover %}<img class="catalog-card__glow" src="{{ cover }}" alt="" aria-hidden="true" loading="lazy">{% endif %}
+      <span class="catalog-card__cover">
+        {% if cover %}<img class="catalog-card__img" src="{{ cover }}" alt="" loading="lazy">{% endif %}
+        <span class="catalog-card__scrim" aria-hidden="true"></span>
+      </span>
+    </span>
+    <span class="catalog-card__body">
+      <span class="catalog-card__title">{{ name }}</span>
+      {% if meta %}<span class="catalog-card__meta">{{ meta }}</span>{% endif %}
+      {% if title.chapter_count %}<span class="catalog-card__sub">{{ chapters_label(title.chapter_count) }}</span>{% endif %}
+    </span>
+  </a>
+  <button
+    type="button"
+    class="catalog-card__action"
+    data-role="title-quickview-trigger"
+    data-slug-url="{{ title.slug_url }}"
+    aria-label="Быстрый просмотр «{{ name }}»"
+    title="Быстрый просмотр"
+  >
+    <span class="catalog-card__action-chip"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M2 12s4-7 10-7 10 7 10 7-4 7-10 7S2 12 2 12zM12 15a3 3 0 1 0 0-6 3 3 0 0 0 0 6z"/></svg></span>
+  </button>
+</div>
 {% endif %}
 {% endfor %}

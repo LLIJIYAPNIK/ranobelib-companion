@@ -6,7 +6,7 @@ from unittest.mock import patch
 
 from fastapi.testclient import TestClient
 from ranobelib import CatalogPage
-from ranobelib.models import Genre
+from ranobelib.models import Cover, Genre, Label, Title
 
 from app.main import app
 from tests.test_api_catalog import _FakeCatalog, _titles
@@ -155,3 +155,60 @@ def test_desktop_grid_is_six_columns_with_the_mode_gaps() -> None:
     assert "gap: 30px 20px;" in results
     wide = CSS.split("@media (min-width: 1200px) {\n  .wn-catalog .catalog-grid {", 1)[1]
     assert wide.lstrip().startswith("grid-template-columns: repeat(6, minmax(0, 1fr));")
+
+
+# --- CatalogCard variant="cinema" ---------------------------------------------------
+
+
+def _card_html(title: Title) -> str:
+    fake = _FakeCatalog(CatalogPage(items=[title], page=1, has_next_page=False))
+    with patch("app.services.catalog.Catalog", return_value=fake):
+        html = client.get("/catalog", params={"sort": "views"}).text
+    return html.split('<div class="catalog-card">', 1)[1].split("</button>\n</div>", 1)[0]
+
+
+def _title(**overrides: object) -> Title:
+    fields: dict[str, object] = {
+        "id": 7,
+        "name": "Dragon",
+        "rus_name": "Последнее пламя в долгой ночи",
+        "slug": "dragon",
+        "slug_url": "7--dragon",
+        "cover": Cover(default="https://example.com/c.jpg"),
+        "age_restriction": Label(id=0, label="16+"),
+        "status": Label(id=1, label="Онгоинг"),
+        "genres": [Genre(id=5, name="Тёмное фэнтези"), Genre(id=6, name="Выживание")],
+        "chapter_count": 1133,
+    }
+    fields.update(overrides)
+    return Title(**fields)
+
+
+def test_card_shows_title_genre_status_and_chapter_count() -> None:
+    card = _card_html(_title())
+
+    assert 'href="/titles/7--dragon" title="Последнее пламя в долгой ночи"' in card
+    assert '<span class="catalog-card__title">Последнее пламя в долгой ночи</span>' in card
+    assert '<span class="catalog-card__meta">Тёмное фэнтези · Онгоинг</span>' in card
+    assert '<span class="catalog-card__sub">1 133 гл.</span>' in card
+    assert 'class="catalog-card__glow" src="https://example.com/c.jpg"' in card
+    assert 'data-role="title-quickview-trigger"' in card
+
+
+def test_card_without_genres_chapters_or_cover_drops_those_lines() -> None:
+    card = _card_html(_title(genres=[], chapter_count=None, cover=Cover()))
+
+    assert '<span class="catalog-card__meta">Онгоинг</span>' in card
+    assert "catalog-card__sub" not in card
+    assert "catalog-card__glow" not in card
+    assert "<img" not in card
+
+
+def test_cinema_hover_follows_the_design() -> None:
+    glow = _desktop_rule(".wn-catalog .catalog-card__glow")
+    assert "filter: blur(26px) saturate(1.4);" in glow
+    assert "opacity: 0;" in glow
+    hover = CSS.split("@media (min-width: 768px) and (hover: hover) {", 1)[1]
+    assert ".wn-catalog .catalog-card:hover {\n    transform: translateY(-4px);" in hover
+    assert "opacity: 0.55;" in hover
+    assert "transform: scale(1.03);" in hover
