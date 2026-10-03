@@ -1,6 +1,7 @@
 import re
 from unittest.mock import patch
 
+import pytest
 from fastapi.testclient import TestClient
 from ranobelib import CatalogPage
 from ranobelib.models import Country, Cover, Genre, Label, Title
@@ -861,3 +862,26 @@ def test_old_catalog_random_address_redirects_to_catalog_random() -> None:
 
     assert response.status_code == 301
     assert response.headers["location"] == "/catalog/random"
+
+
+@pytest.mark.parametrize("suffix", ["", "/page", "/random"])
+def test_old_catalog_redirects_keep_every_query_parameter(suffix: str) -> None:
+    query = (
+        "query=dxd&sort=views&genres=5&genres=8&countries=1&countries=2"
+        "&tags=7&tag_name=%D0%9C%D0%B0%D0%B3%D0%B8%D1%8F&page=3"
+    )
+
+    response = _no_redirect_client.get(f"/library/catalog{suffix}?{query}")
+
+    assert response.status_code == 301
+    assert response.headers["location"] == f"/catalog{suffix}?{query}"
+
+
+def test_old_catalog_redirect_lands_on_the_filtered_catalog() -> None:
+    fake = _FakeCatalog(CatalogPage(items=[], page=1, has_next_page=False))
+    with patch("app.services.catalog.Catalog", return_value=fake):
+        response = client.get("/library/catalog?genres=5&genres=8&query=dxd&sort=views")
+
+    assert response.status_code == 200
+    assert str(response.url).endswith("/catalog?genres=5&genres=8&query=dxd&sort=views")
+    assert 'value="dxd"' in response.text
