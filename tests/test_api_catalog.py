@@ -1,6 +1,7 @@
 import re
 from unittest.mock import patch
 
+import pytest
 from fastapi.testclient import TestClient
 from ranobelib import CatalogPage
 from ranobelib.models import Country, Cover, Genre, Label, Title
@@ -63,7 +64,7 @@ def test_show_catalog_renders_countries_in_grid_data_attribute() -> None:
     # data-genres, to forward the filter on every infinite-scroll page fetch.
     page = CatalogPage(items=[], page=1, has_next_page=False)
     with patch("app.services.catalog.Catalog", return_value=_FakeCatalog(page)):
-        response = client.get("/library/catalog", params={"countries": [3, 5]})
+        response = client.get("/catalog", params={"countries": [3, 5]})
 
     assert 'data-country="3,5"' in response.text
 
@@ -71,7 +72,7 @@ def test_show_catalog_renders_countries_in_grid_data_attribute() -> None:
 def test_show_catalog_without_countries_leaves_data_country_empty() -> None:
     page = CatalogPage(items=[], page=1, has_next_page=False)
     with patch("app.services.catalog.Catalog", return_value=_FakeCatalog(page)):
-        response = client.get("/library/catalog")
+        response = client.get("/catalog")
 
     assert 'data-country=""' in response.text
 
@@ -79,7 +80,7 @@ def test_show_catalog_without_countries_leaves_data_country_empty() -> None:
 def test_show_catalog_renders_cards() -> None:
     page = CatalogPage(items=[_fake_title(1, "High School DxD")], page=1, has_next_page=True)
     with patch("app.services.catalog.Catalog", return_value=_FakeCatalog(page)):
-        response = client.get("/library/catalog")
+        response = client.get("/catalog")
 
     assert response.status_code == 200
     assert "High School DxD" in response.text
@@ -91,10 +92,10 @@ def test_show_catalog_renders_cards() -> None:
 
 def test_show_catalog_wires_the_tab_swipe_script() -> None:
     # PR 211: mobile-only swipe-to-switch-tabs shortcut between /library and
-    # /library/catalog.
+    # /catalog.
     page = CatalogPage(items=[], page=1, has_next_page=False)
     with patch("app.services.catalog.Catalog", return_value=_FakeCatalog(page)):
-        response = client.get("/library/catalog")
+        response = client.get("/catalog")
 
     assert response.status_code == 200
     assert "static/js/library-tabs-swipe.js" in response.text
@@ -105,7 +106,7 @@ def test_show_catalog_renders_a_quickview_trigger_on_each_card() -> None:
     # without navigating away - data-slug-url is what title-quickview.js fetches.
     page = CatalogPage(items=[_fake_title(1, "High School DxD")], page=1, has_next_page=False)
     with patch("app.services.catalog.Catalog", return_value=_FakeCatalog(page)):
-        response = client.get("/library/catalog")
+        response = client.get("/catalog")
 
     assert response.status_code == 200
     assert 'data-role="title-quickview-trigger"' in response.text
@@ -121,7 +122,7 @@ def test_show_catalog_renders_back_to_top_button() -> None:
     # smooth-scrolls to the top on click - starts `hidden` so it never flashes on load.
     page = CatalogPage(items=[], page=1, has_next_page=False)
     with patch("app.services.catalog.Catalog", return_value=_FakeCatalog(page)):
-        response = client.get("/library/catalog")
+        response = client.get("/catalog")
 
     assert response.status_code == 200
     button_tag = re.search(r'<button[^>]*data-role="catalog-back-to-top"[^>]*>', response.text)
@@ -135,7 +136,7 @@ def test_show_catalog_header_reveals_on_scroll_up() -> None:
     # hook it queries for and the script itself need to be on the page for that to work.
     page = CatalogPage(items=[], page=1, has_next_page=False)
     with patch("app.services.catalog.Catalog", return_value=_FakeCatalog(page)):
-        response = client.get("/library/catalog")
+        response = client.get("/catalog")
 
     assert response.status_code == 200
     header_tag = re.search(r"<header[^>]*>", response.text)
@@ -157,7 +158,7 @@ def test_show_catalog_prefers_russian_name() -> None:
     )
     page = CatalogPage(items=[title], page=1, has_next_page=False)
     with patch("app.services.catalog.Catalog", return_value=_FakeCatalog(page)):
-        response = client.get("/library/catalog")
+        response = client.get("/catalog")
 
     assert response.status_code == 200
     assert "Школа демонов" in response.text
@@ -167,7 +168,7 @@ def test_show_catalog_prefers_russian_name() -> None:
 def test_show_catalog_no_next_page_leaves_data_next_page_empty() -> None:
     page = CatalogPage(items=[_fake_title()], page=1, has_next_page=False)
     with patch("app.services.catalog.Catalog", return_value=_FakeCatalog(page)):
-        response = client.get("/library/catalog")
+        response = client.get("/catalog")
 
     assert response.status_code == 200
     assert 'data-next-page=""' in response.text
@@ -176,13 +177,13 @@ def test_show_catalog_no_next_page_leaves_data_next_page_empty() -> None:
 def test_show_catalog_is_viewable_without_login() -> None:
     page = CatalogPage(items=[], page=1, has_next_page=False)
     with patch("app.services.catalog.Catalog", return_value=_FakeCatalog(page)):
-        response = client.get("/library/catalog")
+        response = client.get("/catalog")
 
     assert response.status_code == 200  # no redirect to /login
 
 
 def test_show_catalog_invalid_page_is_rejected() -> None:
-    response = client.get("/library/catalog", params={"page": 0})
+    response = client.get("/catalog", params={"page": 0})
 
     assert response.status_code == 422
 
@@ -191,7 +192,7 @@ def test_show_catalog_passes_page_to_the_sdk() -> None:
     page = CatalogPage(items=[], page=3, has_next_page=False)
     fake = _FakeCatalog(page)
     with patch("app.services.catalog.Catalog", return_value=fake):
-        client.get("/library/catalog", params={"page": 3})
+        client.get("/catalog", params={"page": 3})
 
     assert fake.received_kwargs["page"] == 3
 
@@ -200,7 +201,7 @@ def test_show_catalog_passes_query_to_the_sdk() -> None:
     page = CatalogPage(items=[], page=1, has_next_page=False)
     fake = _FakeCatalog(page)
     with patch("app.services.catalog.Catalog", return_value=fake):
-        client.get("/library/catalog", params={"query": "dxd"})
+        client.get("/catalog", params={"query": "dxd"})
 
     assert fake.received_kwargs["query"] == "dxd"
 
@@ -209,7 +210,7 @@ def test_show_catalog_empty_query_is_treated_as_no_search() -> None:
     page = CatalogPage(items=[], page=1, has_next_page=False)
     fake = _FakeCatalog(page)
     with patch("app.services.catalog.Catalog", return_value=fake):
-        client.get("/library/catalog", params={"query": ""})
+        client.get("/catalog", params={"query": ""})
 
     assert fake.received_kwargs["query"] is None
 
@@ -217,7 +218,7 @@ def test_show_catalog_empty_query_is_treated_as_no_search() -> None:
 def test_show_catalog_renders_query_in_search_input_and_data_attribute() -> None:
     page = CatalogPage(items=[], page=1, has_next_page=False)
     with patch("app.services.catalog.Catalog", return_value=_FakeCatalog(page)):
-        response = client.get("/library/catalog", params={"query": "dxd"})
+        response = client.get("/catalog", params={"query": "dxd"})
 
     assert 'value="dxd"' in response.text
     assert 'data-query="dxd"' in response.text
@@ -227,7 +228,7 @@ def test_show_catalog_defaults_sort_to_last_chapter_at() -> None:
     page = CatalogPage(items=[], page=1, has_next_page=False)
     fake = _FakeCatalog(page)
     with patch("app.services.catalog.Catalog", return_value=fake):
-        client.get("/library/catalog")
+        client.get("/catalog")
 
     assert fake.received_kwargs["sort"] == "last_chapter_at"
 
@@ -236,7 +237,7 @@ def test_show_catalog_passes_sort_to_the_sdk() -> None:
     page = CatalogPage(items=[], page=1, has_next_page=False)
     fake = _FakeCatalog(page)
     with patch("app.services.catalog.Catalog", return_value=fake):
-        client.get("/library/catalog", params={"sort": "views"})
+        client.get("/catalog", params={"sort": "views"})
 
     assert fake.received_kwargs["sort"] == "views"
 
@@ -244,7 +245,7 @@ def test_show_catalog_passes_sort_to_the_sdk() -> None:
 def test_show_catalog_renders_sort_in_select_and_data_attribute() -> None:
     page = CatalogPage(items=[], page=1, has_next_page=False)
     with patch("app.services.catalog.Catalog", return_value=_FakeCatalog(page)):
-        response = client.get("/library/catalog", params={"sort": "views"})
+        response = client.get("/catalog", params={"sort": "views"})
 
     assert 'data-sort="views"' in response.text
     assert '<option value="views" selected>' in response.text
@@ -254,7 +255,7 @@ def test_show_catalog_passes_genres_to_the_sdk() -> None:
     page = CatalogPage(items=[], page=1, has_next_page=False)
     fake = _FakeCatalog(page)
     with patch("app.services.catalog.Catalog", return_value=fake):
-        client.get("/library/catalog", params={"genres": 5})
+        client.get("/catalog", params={"genres": 5})
 
     assert fake.received_kwargs["genres"] == [5]
 
@@ -265,7 +266,7 @@ def test_show_catalog_queries_each_of_several_genres_separately() -> None:
     page = CatalogPage(items=[], page=1, has_next_page=False)
     fake = _FakeCatalog(page)
     with patch("app.services.catalog.Catalog", return_value=fake):
-        client.get("/library/catalog", params={"genres": [5, 8]})
+        client.get("/catalog", params={"genres": [5, 8]})
 
     assert [call["genres"] for call in fake.calls] == [[5], [8]]
 
@@ -274,7 +275,7 @@ def test_show_catalog_without_genres_passes_none() -> None:
     page = CatalogPage(items=[], page=1, has_next_page=False)
     fake = _FakeCatalog(page)
     with patch("app.services.catalog.Catalog", return_value=fake):
-        client.get("/library/catalog")
+        client.get("/catalog")
 
     assert fake.received_kwargs["genres"] is None
 
@@ -283,7 +284,7 @@ def test_show_catalog_passes_tags_to_the_sdk() -> None:
     page = CatalogPage(items=[], page=1, has_next_page=False)
     fake = _FakeCatalog(page)
     with patch("app.services.catalog.Catalog", return_value=fake):
-        client.get("/library/catalog", params={"tags": [1, 2]})
+        client.get("/catalog", params={"tags": [1, 2]})
 
     assert fake.received_kwargs["tags"] == [1, 2]
 
@@ -292,7 +293,7 @@ def test_show_catalog_without_tags_passes_none() -> None:
     page = CatalogPage(items=[], page=1, has_next_page=False)
     fake = _FakeCatalog(page)
     with patch("app.services.catalog.Catalog", return_value=fake):
-        client.get("/library/catalog")
+        client.get("/catalog")
 
     assert fake.received_kwargs["tags"] is None
 
@@ -304,7 +305,7 @@ def test_show_catalog_renders_tag_filter_chip_using_forwarded_name() -> None:
     fake = _FakeCatalog(page)
     with patch("app.services.catalog.Catalog", return_value=fake):
         response = client.get(
-            "/library/catalog", params={"tags": 7, "tag_name": "Реинкарнация"}
+            "/catalog", params={"tags": 7, "tag_name": "Реинкарнация"}
         )
 
     assert response.status_code == 200
@@ -318,7 +319,7 @@ def test_show_catalog_tag_without_forwarded_name_falls_back_to_the_id() -> None:
     page = CatalogPage(items=[], page=1, has_next_page=False)
     fake = _FakeCatalog(page)
     with patch("app.services.catalog.Catalog", return_value=fake):
-        response = client.get("/library/catalog", params={"tags": 7})
+        response = client.get("/catalog", params={"tags": 7})
 
     assert response.status_code == 200
     assert "Тег: 7" in response.text
@@ -327,7 +328,7 @@ def test_show_catalog_tag_without_forwarded_name_falls_back_to_the_id() -> None:
 def test_show_catalog_renders_tags_in_grid_data_attribute() -> None:
     page = CatalogPage(items=[], page=1, has_next_page=False)
     with patch("app.services.catalog.Catalog", return_value=_FakeCatalog(page)):
-        response = client.get("/library/catalog", params={"tags": [1, 2]})
+        response = client.get("/catalog", params={"tags": [1, 2]})
 
     assert 'data-tags="1,2"' in response.text
 
@@ -336,7 +337,7 @@ def test_show_catalog_passes_countries_to_the_sdk() -> None:
     page = CatalogPage(items=[], page=1, has_next_page=False)
     fake = _FakeCatalog(page)
     with patch("app.services.catalog.Catalog", return_value=fake):
-        client.get("/library/catalog", params={"countries": 3})
+        client.get("/catalog", params={"countries": 3})
 
     assert fake.received_kwargs["countries"] == [3]
 
@@ -347,7 +348,7 @@ def test_show_catalog_passes_several_countries_to_the_sdk() -> None:
     page = CatalogPage(items=[], page=1, has_next_page=False)
     fake = _FakeCatalog(page)
     with patch("app.services.catalog.Catalog", return_value=fake):
-        client.get("/library/catalog", params={"countries": [1, 2]})
+        client.get("/catalog", params={"countries": [1, 2]})
 
     assert fake.received_kwargs["countries"] == [1, 2]
 
@@ -356,7 +357,7 @@ def test_show_catalog_without_countries_passes_none() -> None:
     page = CatalogPage(items=[], page=1, has_next_page=False)
     fake = _FakeCatalog(page)
     with patch("app.services.catalog.Catalog", return_value=fake):
-        client.get("/library/catalog")
+        client.get("/catalog")
 
     assert fake.received_kwargs["countries"] is None
 
@@ -368,9 +369,9 @@ def test_show_catalog_garbage_country_id_errors_same_as_a_garbage_genre_id() -> 
     page = CatalogPage(items=[], page=1, has_next_page=False)
     fake = _FakeCatalog(page)
     with patch("app.services.catalog.Catalog", return_value=fake):
-        genres_response = client.get("/library/catalog", params={"genres": "not-a-number"})
+        genres_response = client.get("/catalog", params={"genres": "not-a-number"})
         countries_response = client.get(
-            "/library/catalog", params={"countries": "not-a-number"}
+            "/catalog", params={"countries": "not-a-number"}
         )
 
     assert countries_response.status_code == genres_response.status_code == 422
@@ -380,7 +381,7 @@ def test_show_catalog_renders_genre_checkboxes() -> None:
     page = CatalogPage(items=[], page=1, has_next_page=False)
     genres = [Genre(id=5, name="Фэнтези"), Genre(id=8, name="Романтика")]
     with patch("app.services.catalog.Catalog", return_value=_FakeCatalog(page, genres=genres)):
-        response = client.get("/library/catalog", params={"genres": 5})
+        response = client.get("/catalog", params={"genres": 5})
 
     assert response.status_code == 200
     assert 'data-role="catalog-filters"' in response.text
@@ -397,7 +398,7 @@ def test_show_catalog_renders_genre_filter_chip_with_resolved_names() -> None:
     page = CatalogPage(items=[], page=1, has_next_page=False)
     genres = [Genre(id=5, name="Фэнтези"), Genre(id=8, name="Романтика")]
     with patch("app.services.catalog.Catalog", return_value=_FakeCatalog(page, genres=genres)):
-        response = client.get("/library/catalog", params={"genres": [5, 8]})
+        response = client.get("/catalog", params={"genres": [5, 8]})
 
     assert response.status_code == 200
     assert "Жанры: Фэнтези, Романтика" in response.text
@@ -411,7 +412,7 @@ def test_show_catalog_filters_panel_renders_unhidden_for_the_no_js_fallback() ->
     page = CatalogPage(items=[], page=1, has_next_page=False)
     genres = [Genre(id=5, name="Фэнтези")]
     with patch("app.services.catalog.Catalog", return_value=_FakeCatalog(page, genres=genres)):
-        response = client.get("/library/catalog", params={"genres": 5})
+        response = client.get("/catalog", params={"genres": 5})
 
     assert response.status_code == 200
     aside_tag = re.search(r"<aside\b[^>]*>", response.text)
@@ -430,7 +431,7 @@ def test_show_catalog_renders_a_filters_toggle_button_when_there_are_filters() -
     page = CatalogPage(items=[], page=1, has_next_page=False)
     genres = [Genre(id=5, name="Фэнтези")]
     with patch("app.services.catalog.Catalog", return_value=_FakeCatalog(page, genres=genres)):
-        response = client.get("/library/catalog")
+        response = client.get("/catalog")
 
     assert response.status_code == 200
     assert 'data-role="catalog-filters-toggle"' in response.text
@@ -444,7 +445,7 @@ def test_filters_toggle_is_a_header_sibling_of_the_search_form_not_nested_inside
     page = CatalogPage(items=[], page=1, has_next_page=False)
     genres = [Genre(id=5, name="Фэнтези")]
     with patch("app.services.catalog.Catalog", return_value=_FakeCatalog(page, genres=genres)):
-        response = client.get("/library/catalog")
+        response = client.get("/catalog")
 
     assert response.status_code == 200
     assert "catalog-toolbar__filters" in response.text
@@ -457,7 +458,7 @@ def test_show_catalog_filters_panel_has_a_close_button() -> None:
     page = CatalogPage(items=[], page=1, has_next_page=False)
     genres = [Genre(id=5, name="Фэнтези")]
     with patch("app.services.catalog.Catalog", return_value=_FakeCatalog(page, genres=genres)):
-        response = client.get("/library/catalog")
+        response = client.get("/catalog")
 
     assert response.status_code == 200
     assert 'data-role="catalog-filters-close"' in response.text
@@ -466,7 +467,7 @@ def test_show_catalog_filters_panel_has_a_close_button() -> None:
 def test_show_catalog_omits_the_filters_toggle_when_there_is_nothing_to_filter_by() -> None:
     page = CatalogPage(items=[], page=1, has_next_page=False)
     with patch("app.services.catalog.Catalog", return_value=_FakeCatalog(page)):
-        response = client.get("/library/catalog")
+        response = client.get("/catalog")
 
     assert response.status_code == 200
     assert 'data-role="catalog-filters-toggle"' not in response.text
@@ -477,7 +478,7 @@ def test_show_catalog_includes_the_filters_toggle_script_when_there_are_filters(
     page = CatalogPage(items=[], page=1, has_next_page=False)
     genres = [Genre(id=5, name="Фэнтези")]
     with patch("app.services.catalog.Catalog", return_value=_FakeCatalog(page, genres=genres)):
-        response = client.get("/library/catalog")
+        response = client.get("/catalog")
 
     assert response.status_code == 200
     assert "static/js/catalog-filters-toggle.js" in response.text
@@ -489,7 +490,7 @@ def test_show_catalog_renders_country_checkboxes() -> None:
     with patch(
         "app.services.catalog.Catalog", return_value=_FakeCatalog(page, countries=countries)
     ):
-        response = client.get("/library/catalog", params={"countries": 1})
+        response = client.get("/catalog", params={"countries": 1})
 
     assert response.status_code == 200
     assert 'data-section-key="countries"' in response.text
@@ -509,7 +510,7 @@ def test_show_catalog_without_countries_checks_nothing() -> None:
     with patch(
         "app.services.catalog.Catalog", return_value=_FakeCatalog(page, countries=countries)
     ):
-        response = client.get("/library/catalog")
+        response = client.get("/catalog")
 
     japan_checkbox = re.search(r'name="countries"\s+value="1"[^>]*>', response.text)
     assert japan_checkbox is not None and "checked" not in japan_checkbox.group(0)
@@ -521,7 +522,7 @@ def test_show_catalog_renders_country_filter_chip_with_resolved_names() -> None:
     with patch(
         "app.services.catalog.Catalog", return_value=_FakeCatalog(page, countries=countries)
     ):
-        response = client.get("/library/catalog", params={"countries": [1, 2]})
+        response = client.get("/catalog", params={"countries": [1, 2]})
 
     assert response.status_code == 200
     assert "Страны: Япония, Корея" in response.text
@@ -536,7 +537,7 @@ def test_show_catalog_renders_combined_filter_chip_and_plural_reset_link() -> No
         "app.services.catalog.Catalog",
         return_value=_FakeCatalog(page, genres=genres, countries=countries),
     ):
-        response = client.get("/library/catalog", params={"genres": 5, "countries": 1})
+        response = client.get("/catalog", params={"genres": 5, "countries": 1})
 
     assert response.status_code == 200
     assert "Жанр: Фэнтези · Страна: Япония" in response.text
@@ -548,7 +549,7 @@ def test_show_catalog_renders_combined_filter_chip_and_plural_reset_link() -> No
 def test_show_catalog_without_genres_omits_the_filter_chip() -> None:
     page = CatalogPage(items=[], page=1, has_next_page=False)
     with patch("app.services.catalog.Catalog", return_value=_FakeCatalog(page)):
-        response = client.get("/library/catalog")
+        response = client.get("/catalog")
 
     assert "Жанр:" not in response.text
     assert 'data-role="catalog-filters"' not in response.text
@@ -558,7 +559,7 @@ def test_catalog_page_fragment_queries_each_of_several_genres_separately() -> No
     page = CatalogPage(items=[], page=1, has_next_page=False)
     fake = _FakeCatalog(page)
     with patch("app.services.catalog.Catalog", return_value=fake):
-        client.get("/library/catalog/page", params={"genres": [5, 8]})
+        client.get("/catalog/page", params={"genres": [5, 8]})
 
     assert [call["genres"] for call in fake.calls] == [[5], [8]]
 
@@ -569,7 +570,7 @@ def test_catalog_page_fragment_passes_tags_to_the_sdk() -> None:
     page = CatalogPage(items=[], page=1, has_next_page=False)
     fake = _FakeCatalog(page)
     with patch("app.services.catalog.Catalog", return_value=fake):
-        client.get("/library/catalog/page", params={"tags": [1, 2]})
+        client.get("/catalog/page", params={"tags": [1, 2]})
 
     assert fake.received_kwargs["tags"] == [1, 2]
 
@@ -580,7 +581,7 @@ def test_catalog_page_fragment_passes_countries_to_the_sdk() -> None:
     page = CatalogPage(items=[], page=1, has_next_page=False)
     fake = _FakeCatalog(page)
     with patch("app.services.catalog.Catalog", return_value=fake):
-        client.get("/library/catalog/page", params={"countries": [3, 5]})
+        client.get("/catalog/page", params={"countries": [3, 5]})
 
     assert fake.received_kwargs["countries"] == [3, 5]
 
@@ -589,7 +590,7 @@ def test_catalog_page_fragment_passes_sort_to_the_sdk() -> None:
     page = CatalogPage(items=[], page=1, has_next_page=False)
     fake = _FakeCatalog(page)
     with patch("app.services.catalog.Catalog", return_value=fake):
-        client.get("/library/catalog/page", params={"sort": "views"})
+        client.get("/catalog/page", params={"sort": "views"})
 
     assert fake.received_kwargs["sort"] == "views"
 
@@ -598,7 +599,7 @@ def test_catalog_page_fragment_passes_query_to_the_sdk() -> None:
     page = CatalogPage(items=[], page=2, has_next_page=False)
     fake = _FakeCatalog(page)
     with patch("app.services.catalog.Catalog", return_value=fake):
-        client.get("/library/catalog/page", params={"query": "dxd", "page": 2})
+        client.get("/catalog/page", params={"query": "dxd", "page": 2})
 
     assert fake.received_kwargs["query"] == "dxd"
 
@@ -606,7 +607,7 @@ def test_catalog_page_fragment_passes_query_to_the_sdk() -> None:
 def test_catalog_page_fragment_returns_only_cards() -> None:
     page = CatalogPage(items=[_fake_title(1, "High School DxD")], page=2, has_next_page=True)
     with patch("app.services.catalog.Catalog", return_value=_FakeCatalog(page)):
-        response = client.get("/library/catalog/page", params={"page": 2})
+        response = client.get("/catalog/page", params={"page": 2})
 
     assert response.status_code == 200
     assert response.headers["X-Has-Next-Page"] == "true"
@@ -618,7 +619,7 @@ def test_catalog_page_fragment_returns_only_cards() -> None:
 def test_catalog_page_fragment_has_next_page_false() -> None:
     page = CatalogPage(items=[], page=5, has_next_page=False)
     with patch("app.services.catalog.Catalog", return_value=_FakeCatalog(page)):
-        response = client.get("/library/catalog/page", params={"page": 5})
+        response = client.get("/catalog/page", params={"page": 5})
 
     assert response.headers["X-Has-Next-Page"] == "false"
 
@@ -628,11 +629,11 @@ def test_library_tabs_active_state() -> None:
 
     library_response = client.get("/library")
     with patch("app.services.catalog.Catalog", return_value=_FakeCatalog(page)):
-        catalog_response = client.get("/library/catalog")
+        catalog_response = client.get("/catalog")
 
     assert 'library-tabs__link library-tabs__link--active" href="/library"' in library_response.text
     assert (
-        'library-tabs__link library-tabs__link--active" href="/library/catalog"'
+        'library-tabs__link library-tabs__link--active" href="/catalog"'
         in catalog_response.text
     )
 
@@ -641,7 +642,7 @@ def test_show_catalog_genre_section_is_an_accordion_toggle() -> None:
     page = CatalogPage(items=[], page=1, has_next_page=False)
     genres = [Genre(id=5, name="Фэнтези")]
     with patch("app.services.catalog.Catalog", return_value=_FakeCatalog(page, genres=genres)):
-        response = client.get("/library/catalog")
+        response = client.get("/catalog")
 
     assert response.status_code == 200
     assert 'data-section-key="genres"' in response.text
@@ -658,7 +659,7 @@ def test_show_catalog_country_section_is_an_accordion_toggle() -> None:
     with patch(
         "app.services.catalog.Catalog", return_value=_FakeCatalog(page, countries=countries)
     ):
-        response = client.get("/library/catalog")
+        response = client.get("/catalog")
 
     assert response.status_code == 200
     assert 'data-section-key="countries"' in response.text
@@ -670,7 +671,7 @@ def test_show_catalog_includes_the_accordion_script_when_there_are_filters() -> 
     page = CatalogPage(items=[], page=1, has_next_page=False)
     genres = [Genre(id=5, name="Фэнтези")]
     with patch("app.services.catalog.Catalog", return_value=_FakeCatalog(page, genres=genres)):
-        response = client.get("/library/catalog")
+        response = client.get("/catalog")
 
     assert response.status_code == 200
     assert "static/js/catalog-filters-accordion.js" in response.text
@@ -679,7 +680,7 @@ def test_show_catalog_includes_the_accordion_script_when_there_are_filters() -> 
 def test_show_catalog_omits_the_accordion_script_when_there_is_nothing_to_filter_by() -> None:
     page = CatalogPage(items=[], page=1, has_next_page=False)
     with patch("app.services.catalog.Catalog", return_value=_FakeCatalog(page)):
-        response = client.get("/library/catalog")
+        response = client.get("/catalog")
 
     assert response.status_code == 200
     assert "catalog-filters-accordion.js" not in response.text
@@ -694,7 +695,7 @@ def test_random_redirects_to_the_first_title_of_a_random_listing() -> None:
     page = CatalogPage(items=[_fake_title(7, "Picked")], page=1, has_next_page=True)
     fake = _FakeCatalog(page)
     with patch("app.services.catalog.Catalog", return_value=fake):
-        response = _no_redirect_client.get("/library/catalog/random")
+        response = _no_redirect_client.get("/catalog/random")
 
     assert response.status_code == 303
     assert response.headers["location"] == "/titles/7--test-novel-7"
@@ -708,7 +709,7 @@ def test_random_bypasses_the_sdk_cache() -> None:
     page = CatalogPage(items=[_fake_title(7)], page=1, has_next_page=False)
     fake = _FakeCatalog(page)
     with patch("app.services.catalog.Catalog", return_value=fake):
-        _no_redirect_client.get("/library/catalog/random")
+        _no_redirect_client.get("/catalog/random")
 
     assert fake.received_kwargs["refresh"] is True
 
@@ -718,7 +719,7 @@ def test_random_forwards_the_current_filters() -> None:
     fake = _FakeCatalog(page)
     with patch("app.services.catalog.Catalog", return_value=fake):
         _no_redirect_client.get(
-            "/library/catalog/random",
+            "/catalog/random",
             params={"query": "dxd", "genres": 5, "countries": [1, 2], "tags": 9},
         )
 
@@ -733,7 +734,7 @@ def test_random_with_several_genres_picks_from_one_genre_at_a_time() -> None:
     page = CatalogPage(items=[_fake_title(7)], page=1, has_next_page=False)
     fake = _FakeCatalog(page)
     with patch("app.services.catalog.Catalog", return_value=fake):
-        _no_redirect_client.get("/library/catalog/random", params={"genres": [5, 8]})
+        _no_redirect_client.get("/catalog/random", params={"genres": [5, 8]})
 
     assert fake.received_kwargs["genres"] in ([5], [8])
 
@@ -741,7 +742,7 @@ def test_random_with_several_genres_picks_from_one_genre_at_a_time() -> None:
 def test_random_with_several_genres_tries_the_others_if_one_is_empty() -> None:
     fake = _FakeCatalog(CatalogPage(items=[], page=1, has_next_page=False))
     with patch("app.services.catalog.Catalog", return_value=fake):
-        _no_redirect_client.get("/library/catalog/random", params={"genres": [5, 8]})
+        _no_redirect_client.get("/catalog/random", params={"genres": [5, 8]})
 
     assert sorted(call["genres"] for call in fake.calls) == [[5], [8]]
 
@@ -750,17 +751,17 @@ def test_random_with_no_matches_returns_to_the_catalog_with_a_notice() -> None:
     fake = _FakeCatalog(CatalogPage(items=[], page=1, has_next_page=False))
     with patch("app.services.catalog.Catalog", return_value=fake):
         response = _no_redirect_client.get(
-            "/library/catalog/random", params={"query": "zzz", "countries": 3}
+            "/catalog/random", params={"query": "zzz", "countries": 3}
         )
 
     assert response.status_code == 303
-    assert response.headers["location"] == ("/library/catalog?query=zzz&countries=3&random_empty=1")
+    assert response.headers["location"] == ("/catalog?query=zzz&countries=3&random_empty=1")
 
 
 def test_catalog_shows_the_nothing_found_notice_after_an_empty_random_pick() -> None:
     fake = _FakeCatalog(CatalogPage(items=[], page=1, has_next_page=False))
     with patch("app.services.catalog.Catalog", return_value=fake):
-        response = client.get("/library/catalog", params={"random_empty": 1})
+        response = client.get("/catalog", params={"random_empty": 1})
 
     assert response.status_code == 200
     assert "Не нашлось ранобэ по этим фильтрам" in response.text
@@ -771,7 +772,7 @@ def test_catalog_without_random_empty_has_no_notice() -> None:
     page = CatalogPage(items=[_fake_title(1, "High School DxD")], page=1, has_next_page=False)
     fake = _FakeCatalog(page)
     with patch("app.services.catalog.Catalog", return_value=fake):
-        response = client.get("/library/catalog")
+        response = client.get("/catalog")
 
     assert "Не нашлось ранобэ по этим фильтрам" not in response.text
 
@@ -781,7 +782,7 @@ def test_catalog_with_no_results_shows_empty_state() -> None:
     blank grid."""
     fake = _FakeCatalog(CatalogPage(items=[], page=1, has_next_page=False))
     with patch("app.services.catalog.Catalog", return_value=fake):
-        response = client.get("/library/catalog")
+        response = client.get("/catalog")
 
     assert '<p class="ui-empty">Не нашлось ранобэ по этим фильтрам</p>' in response.text
 
@@ -791,7 +792,7 @@ def test_catalog_filters_button_counts_selected_genres_and_countries() -> None:
     page = CatalogPage(items=[], page=1, has_next_page=False)
     genres = [Genre(id=5, name="Фэнтези"), Genre(id=6, name="Драма")]
     with patch("app.services.catalog.Catalog", return_value=_FakeCatalog(page, genres=genres)):
-        response = client.get("/library/catalog?genres=5&genres=6&tags=3")
+        response = client.get("/catalog?genres=5&genres=6&tags=3")
 
     toggle_start = response.text.index('data-role="catalog-filters-toggle"')
     toggle_html = response.text[toggle_start : response.text.index("</button>", toggle_start)]
@@ -804,7 +805,7 @@ def test_catalog_filters_footer_resets_filters_and_submits_the_search_form() -> 
     page = CatalogPage(items=[], page=1, has_next_page=False)
     genres = [Genre(id=5, name="Фэнтези")]
     with patch("app.services.catalog.Catalog", return_value=_FakeCatalog(page, genres=genres)):
-        response = client.get("/library/catalog?query=dxd&genres=5&tags=3")
+        response = client.get("/catalog?query=dxd&genres=5&tags=3")
 
     reset = re.search(r'<a\s+class="[^"]*catalog-filters__reset"\s+href="([^"]*)"', response.text)
     assert reset is not None
@@ -822,18 +823,65 @@ def test_catalog_sort_random_redirects_to_the_random_route() -> None:
     fake = _FakeCatalog(CatalogPage(items=[], page=1, has_next_page=False))
     with patch("app.services.catalog.Catalog", return_value=fake):
         response = _no_redirect_client.get(
-            "/library/catalog", params={"sort": "random", "genres": [5, 8], "query": "x"}
+            "/catalog", params={"sort": "random", "genres": [5, 8], "query": "x"}
         )
 
     assert response.status_code == 303
-    assert response.headers["location"] == "/library/catalog/random?query=x&genres=5&genres=8"
+    assert response.headers["location"] == "/catalog/random?query=x&genres=5&genres=8"
     assert fake.calls == []
 
 
 def test_show_catalog_wires_the_random_redirect_script() -> None:
     fake = _FakeCatalog(CatalogPage(items=[], page=1, has_next_page=False))
     with patch("app.services.catalog.Catalog", return_value=fake):
-        response = client.get("/library/catalog")
+        response = client.get("/catalog")
 
     assert "js/catalog-random-redirect.js" in response.text
     assert '<option value="random"' in response.text
+
+
+# --- PR 292: the old /library/catalog addresses redirect to /catalog ----------------------
+
+
+def test_old_catalog_address_redirects_to_catalog() -> None:
+    response = _no_redirect_client.get("/library/catalog")
+
+    assert response.status_code == 301
+    assert response.headers["location"] == "/catalog"
+
+
+def test_old_catalog_page_address_redirects_to_catalog_page() -> None:
+    response = _no_redirect_client.get("/library/catalog/page")
+
+    assert response.status_code == 301
+    assert response.headers["location"] == "/catalog/page"
+
+
+def test_old_catalog_random_address_redirects_to_catalog_random() -> None:
+    response = _no_redirect_client.get("/library/catalog/random")
+
+    assert response.status_code == 301
+    assert response.headers["location"] == "/catalog/random"
+
+
+@pytest.mark.parametrize("suffix", ["", "/page", "/random"])
+def test_old_catalog_redirects_keep_every_query_parameter(suffix: str) -> None:
+    query = (
+        "query=dxd&sort=views&genres=5&genres=8&countries=1&countries=2"
+        "&tags=7&tag_name=%D0%9C%D0%B0%D0%B3%D0%B8%D1%8F&page=3"
+    )
+
+    response = _no_redirect_client.get(f"/library/catalog{suffix}?{query}")
+
+    assert response.status_code == 301
+    assert response.headers["location"] == f"/catalog{suffix}?{query}"
+
+
+def test_old_catalog_redirect_lands_on_the_filtered_catalog() -> None:
+    fake = _FakeCatalog(CatalogPage(items=[], page=1, has_next_page=False))
+    with patch("app.services.catalog.Catalog", return_value=fake):
+        response = client.get("/library/catalog?genres=5&genres=8&query=dxd&sort=views")
+
+    assert response.status_code == 200
+    assert str(response.url).endswith("/catalog?genres=5&genres=8&query=dxd&sort=views")
+    assert 'value="dxd"' in response.text

@@ -85,9 +85,9 @@
     {# Country (PR 229), genres (PR 31) and tags (PR 86) all link into the filtered
        catalog - the first six show, the rest open from «Ещё N» (a native <details>). #}
     {% set chips = [] %}
-    {% if title.country %}{% set _ = chips.append(("/library/catalog?countries=" ~ title.country.id, title.country.name)) %}{% endif %}
-    {% for genre in title.genres %}{% set _ = chips.append(("/library/catalog?genres=" ~ genre.id, genre.name)) %}{% endfor %}
-    {% for tag in title.tags %}{% set _ = chips.append(("/library/catalog?tags=" ~ tag.id ~ "&tag_name=" ~ (tag.name | urlencode), tag.name)) %}{% endfor %}
+    {% if title.country %}{% set _ = chips.append(("/catalog?countries=" ~ title.country.id, title.country.name)) %}{% endif %}
+    {% for genre in title.genres %}{% set _ = chips.append(("/catalog?genres=" ~ genre.id, genre.name)) %}{% endfor %}
+    {% for tag in title.tags %}{% set _ = chips.append(("/catalog?tags=" ~ tag.id ~ "&tag_name=" ~ (tag.name | urlencode), tag.name)) %}{% endfor %}
     {% if chips %}
     <div class="ui-chips title-hero__chips">
       {% for href, label in chips[:6] %}

@@ -22,7 +22,7 @@ def test_catalog_sort_select_has_no_js_only_hiding_markers() -> None:
             CatalogPage(items=[], page=1, has_next_page=False)
         )
         MockCatalog.return_value.__aenter__.return_value.list_genres.return_value = []
-        response = client.get("/library/catalog")
+        response = client.get("/catalog")
 
     assert response.status_code == 200
     assert '<select name="sort" class="toc__export-format"' in response.text
