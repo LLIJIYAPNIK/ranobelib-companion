@@ -1075,3 +1075,34 @@ def test_end_of_feed_hidden_while_more_is_coming_or_nothing_was_found(
         response = client.get("/catalog")
 
     assert _end_block(response.text).startswith(" hidden")
+
+
+def test_featured_title_never_doubles_as_a_card_across_pages() -> None:
+    """End to end: title 3 (2nd by views) is in the regular listing of both pages; the
+    whole feed shows it exactly once - as its featured insert."""
+    top = [_fake_title(id_=1001, name="Top 1"), _fake_title(id_=3, name="Novel 3")]
+    featured = [CatalogPage(items=top, page=1, has_next_page=False)]
+    first = _FakeCatalog(
+        CatalogPage(items=_titles(1, 30), page=1, has_next_page=True), featured=featured
+    )
+    with patch("app.services.catalog.Catalog", return_value=first):
+        page_one = client.get("/catalog")
+    second_items = [_fake_title(id_=3, name="Novel 3"), *_titles(31, 29)]
+    second = _FakeCatalog(
+        CatalogPage(items=second_items, page=2, has_next_page=False), featured=featured
+    )
+    with patch("app.services.catalog.Catalog", return_value=second):
+        page_two = client.get(
+            "/catalog/page",
+            params={
+                "page": 2,
+                "shown": page_one.context["stream"].shown,
+                "featured": page_one.context["stream"].featured,
+            },
+        )
+
+    # One data-slug-url per regular card (its quickview button) or featured insert.
+    feed = page_one.text + page_two.text
+    assert feed.count('data-slug-url="3--test-novel-3"') == 1
+    assert 'data-slug-url="3--test-novel-3" data-issue="2"' in feed
+    assert page_one.context["stream"].shown == 29  # 30 listed, title 3 dropped

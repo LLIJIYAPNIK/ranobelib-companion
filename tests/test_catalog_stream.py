@@ -121,3 +121,50 @@ async def test_editorial_reads_more_views_pages_only_when_inserts_need_them() ->
     assert [item.title.id for item in stream.items if item.kind == "featured"] == [1001, 1002]
     assert stream.has_next_page is True
     assert (stream.shown, stream.featured) == (24, 2)
+
+
+# --- dedup: a featured title is never also a regular card -----------------------------
+
+
+def test_titles_of_the_featured_buffer_are_dropped_from_the_regular_cards() -> None:
+    # 7 and 20 are top by views too - each is shown only as a featured insert.
+    regular = [_title(i) for i in range(1, 31)]
+    top = [_title(7), _title(20), _title(1001)]
+
+    items, shown, featured = interleave(regular, top, shown=0, featured=0)
+
+    cards = [item.title.id for item in items if item.kind == "card"]
+    assert 7 not in cards and 20 not in cards
+    assert len(cards) == 28 and shown == 28
+    ids = [item.title.id for item in items]
+    assert ids.count(7) == 1 and ids.count(20) == 1
+
+
+def test_a_buffered_title_is_not_a_card_even_before_its_insert_is_due() -> None:
+    """The title next to its own insert - the case the design rules out by name."""
+    regular = [_title(i) for i in range(1, 13)]  # card 12 would sit right before insert 1
+    items, _, _ = interleave(regular, [_title(12)], shown=0, featured=0)
+
+    assert _layout(items) == [f"C{i}" for i in range(1, 12)]
+
+
+async def test_dedup_holds_on_a_later_page_too() -> None:
+    views = [[_title(5), _title(40), _title(1001)]]
+    catalog = _Catalog([_title(i) for i in range(31, 61)], views)
+
+    stream = await catalog_stream(
+        catalog,  # type: ignore[arg-type]
+        editorial=True,
+        page=2,
+        shown=30,
+        featured=1,
+        query=None,
+        sort="last_chapter_at",
+        genres=[],
+        countries=[],
+        tags=[],
+    )
+
+    cards = [item.title.id for item in stream.items if item.kind == "card"]
+    assert 40 not in cards
+    assert [item.title.id for item in stream.items if item.kind == "featured"] == [40, 1001]
