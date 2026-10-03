@@ -35,6 +35,9 @@ def _library_rule(selector: str) -> str:
     """The body of the last rule in the LibraryDesktop part of app.css (and the shared
     catalog shell above it) whose selector list includes `selector`."""
     block = CSS.split("CatalogDesktop (PR 296", 1)[1]
+    # PR 300: the phone section isn't desktop.
+    before_mobile, rest = block.split("LibraryMobile (PR 300", 1)
+    block = before_mobile + rest.split("title page (PR 253)", 1)[1]
     matches = [
         body
         for selectors, body in re.findall(r"\n  ([^{}@/]+?) \{([^}]*)\}", block)
@@ -265,7 +268,7 @@ async def test_results_mode_hooks_are_in_place(client: TestClient) -> None:
     criteria = criteria.split("</div>\n        </div>", 1)[0]
     assert criteria.startswith(" hidden>")
     assert 'data-role="library-criteria-chips"' in criteria
-    assert ">Сбросить всё</button>" in criteria
+    assert '>Сбросить<span class="wn-library-criteria__reset-all"> всё</span></button>' in criteria
     assert 'data-role="library-criteria-count"' in criteria
     assert 'data-role="library-end-reset" hidden>Сбросить условия</button>' in html
 
