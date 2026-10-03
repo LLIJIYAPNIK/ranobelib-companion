@@ -7409,8 +7409,11 @@ a.ui-title-card:focus-visible .ui-title-card__cover {
   }
 }
 
+/* Under 360px the items share the track by content, not in equal halves - «Библиотека»
+   with its count needs ~156px, more than half of a 320px screen's track. */
 @media (max-width: 359px) {
   .wn-lib-switch__tab {
+    flex: 1 1 auto;
     gap: 6px;
     padding: 0 10px;
   }
