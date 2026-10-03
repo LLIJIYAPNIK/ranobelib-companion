@@ -17,10 +17,15 @@ client = TestClient(app)
 
 
 def _desktop_rule(selector: str, *, last: bool = True) -> str:
-    """The selector's own rule inside the CatalogDesktop min-width: 768px block - the last
-    one, so a shared `a, b {` rule earlier on doesn't shadow it."""
+    """The body of a rule inside the CatalogDesktop min-width: 768px block whose selector
+    list includes `selector` (PR 297: the library shares some of these rules) - the last
+    such rule by default, the first with last=False."""
     block = CSS.split("CatalogDesktop (PR 296", 1)[1]
-    matches = re.findall(rf"\n  {re.escape(selector)} \{{([^}}]*)\}}", block)
+    matches = [
+        body
+        for selectors, body in re.findall(r"\n  ([^{}@/]+?) \{([^}]*)\}", block)
+        if selector in [part.strip() for part in selectors.split(",")]
+    ]
     assert matches, selector
     return matches[-1] if last else matches[0]
 

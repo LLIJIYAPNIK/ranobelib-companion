@@ -7618,9 +7618,25 @@ a.ui-title-card:focus-visible .ui-title-card__cover {
     --wn-catalog-ctl-h: 46px;
   }
 
-  /* Noise (feTurbulence at 5%) and the inner vignette - decoration only. */
+  /* Noise (feTurbulence at 5%) and the inner vignette - decoration only. PR 297: the
+     library's desktop screen shares this whole shell (.library-page.wn-library: the
+     base .library-page / .wn-library rules later in the file set their own padding and
+     gap). */
+  .library-page.wn-library {
+    position: relative;
+    isolation: isolate;
+    gap: 0;
+    padding: 28px 36px 64px;
+    background:
+      radial-gradient(1100px 520px at 78% -8%, rgb(122 82 244 / 7.5%), transparent 62%),
+      radial-gradient(800px 420px at -5% 0%, rgb(61 214 195 / 4%), transparent 60%),
+      linear-gradient(180deg, #0b0b10 0%, #08080c 40%);
+  }
+
   .wn-catalog::before,
-  .wn-catalog::after {
+  .wn-catalog::after,
+  .wn-library::before,
+  .wn-library::after {
     content: "";
     position: absolute;
     inset: 0;
@@ -7629,12 +7645,14 @@ a.ui-title-card:focus-visible .ui-title-card__cover {
   }
 
   /* A static file, not a data: URI - img-src is 'self' only (app/security_headers.py). */
-  .wn-catalog::before {
+  .wn-catalog::before,
+  .wn-library::before {
     opacity: 0.05;
     background-image: url("../img/catalog-noise.svg");
   }
 
-  .wn-catalog::after {
+  .wn-catalog::after,
+  .wn-library::after {
     box-shadow: inset 0 0 220px rgb(0 0 0 / 55%);
   }
 
@@ -7647,7 +7665,8 @@ a.ui-title-card:focus-visible .ui-title-card__cover {
   }
 
   /* Header card. */
-  .wn-catalog__hero {
+  .wn-catalog__hero,
+  .wn-library__head {
     position: relative;
     display: flex;
     flex-wrap: wrap;
@@ -7668,7 +7687,8 @@ a.ui-title-card:focus-visible .ui-title-card__cover {
   }
 
   /* The thin light line along the top edge. */
-  .wn-catalog__hero::before {
+  .wn-catalog__hero::before,
+  .wn-library__head::before {
     content: "";
     position: absolute;
     top: 0;
@@ -7678,36 +7698,42 @@ a.ui-title-card:focus-visible .ui-title-card__cover {
     background: linear-gradient(90deg, transparent, rgb(197 182 255 / 35%), transparent);
   }
 
-  .wn-catalog__hero-copy {
+  .wn-catalog__hero-copy,
+  .wn-library__head-copy {
     display: flex;
     flex-direction: column;
     gap: 10px;
   }
 
-  .wn-catalog__eyebrow {
+  .wn-catalog__eyebrow,
+  .wn-library__eyebrow {
     color: #8c889f;
     font: 800 11px/1 var(--wn-font-ui);
     letter-spacing: 0.2em;
     text-transform: uppercase;
   }
 
-  .wn-catalog__title {
+  .wn-catalog__title,
+  .wn-library .wn-library__title {
     margin: 0;
     color: #f7f5fb;
     font: 800 52px/1.02 var(--wn-font-ui);
     letter-spacing: -0.035em;
   }
 
-  .wn-catalog[data-mode="results"] .wn-catalog__hero {
+  .wn-catalog[data-mode="results"] .wn-catalog__hero,
+  .wn-library[data-mode="results"] .wn-library__head {
     padding: 24px 28px 68px;
   }
 
-  .wn-catalog[data-mode="results"] .wn-catalog__title {
+  .wn-catalog[data-mode="results"] .wn-catalog__title,
+  .wn-library[data-mode="results"] .wn-library__title {
     font-size: 36px;
   }
 
   /* Sticky glass panel, overlapping the header's bottom edge by 44px. */
-  .wn-catalog .catalog-toolbar {
+  .wn-catalog .catalog-toolbar,
+  .wn-library .wn-library-toolbar {
     top: 12px;
     align-items: center;
     gap: 10px;
@@ -8226,6 +8252,208 @@ a.ui-title-card:focus-visible .ui-title-card__cover {
 @media (max-width: 767px) {
   .catalog-section {
     display: none;
+  }
+}
+
+/* ==========================================================================
+   LibraryDesktop (PR 297, wave 36): the library on the catalog's desktop shell (above:
+   page background, header card, sticky glass panel) - LibraryDesktop.dc.html. Phones
+   keep the PR 282 layout until PR 300.
+   ========================================================================== */
+
+.wn-library__eyebrow {
+  color: #8c889f;
+  font: 800 10px/1 var(--wn-font-ui);
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+}
+
+.wn-library__head-copy {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+@media (max-width: 767px) {
+  .wn-library__head-side {
+    display: contents;
+  }
+}
+
+@media (min-width: 768px) {
+  .wn-library {
+    --wn-library-ctl-h: 52px;
+  }
+
+  .wn-library[data-mode="results"] {
+    --wn-library-ctl-h: 46px;
+  }
+
+  .wn-library > .wn-library__head,
+  .wn-library > .wn-library__content {
+    width: 100%;
+    max-width: 1280px;
+    margin-inline: auto;
+  }
+
+  .wn-library__head {
+    gap: 24px 32px;
+  }
+
+  /* The switch over the add-by-link form, right-aligned. */
+  .wn-library__head-side {
+    display: flex;
+    flex: 0 1 auto;
+    flex-direction: column;
+    align-items: flex-end;
+    gap: 14px;
+    min-width: 0;
+  }
+
+  .wn-library .wn-library__add {
+    width: 440px;
+    max-width: 100%;
+    gap: 8px;
+    margin-left: 0;
+  }
+
+  .wn-library .wn-library__add-field {
+    flex: 1;
+    width: auto;
+    min-width: 0;
+    color: #8c889f;
+  }
+
+  .wn-library .wn-library__add-field svg {
+    width: 17px;
+    height: 17px;
+  }
+
+  .wn-library .wn-library__add-control.wn-field__control {
+    height: 44px;
+    border-color: rgb(255 255 255 / 9%);
+    border-radius: 12px;
+    background: rgb(8 8 12 / 60%);
+    font: 500 15px/1 var(--wn-font-ui);
+  }
+
+  /* «Добавить» is a glass button here, not the page's purple CTA. */
+  .wn-library .wn-library__add .wn-btn {
+    height: 44px;
+    padding: 0 16px;
+    border: 1px solid rgb(255 255 255 / 14%);
+    border-radius: 12px;
+    background: rgb(255 255 255 / 6%);
+    box-shadow: none;
+    color: #f2f0f7;
+    font: 700 14px/1 var(--wn-font-ui);
+  }
+
+  .wn-library .wn-library__add .wn-btn svg {
+    width: 15px;
+    height: 15px;
+  }
+
+  .wn-library .wn-library__error {
+    margin: 0;
+    text-align: right;
+  }
+
+  .wn-library > .wn-library__content {
+    margin-top: 0;
+  }
+
+  .wn-library .wn-library-toolbar {
+    position: sticky;
+    z-index: 30;
+    flex-wrap: wrap;
+  }
+
+  .wn-library[data-mode="results"] .wn-library-toolbar {
+    padding: 10px;
+  }
+
+  .wn-library .wn-library-search {
+    flex: 1 1 240px;
+    width: auto;
+    color: #8c889f;
+  }
+
+  .wn-library .wn-library-search svg {
+    left: 16px;
+    width: 20px;
+    height: 20px;
+  }
+
+  .wn-library .wn-library-search input {
+    height: var(--wn-library-ctl-h);
+    padding-left: 48px;
+    border-color: rgb(255 255 255 / 9%);
+    border-radius: 12px;
+    background: rgb(8 8 12 / 70%);
+    font: 500 16px/1 var(--wn-font-ui);
+  }
+
+  /* «Сортировка  Недавно читал ⌄» - the label muted, the value bright. */
+  .wn-library .wn-library-select {
+    gap: 10px;
+    height: var(--wn-library-ctl-h);
+    padding: 0 40px 0 16px;
+    border-color: rgb(255 255 255 / 9%);
+    border-radius: 12px;
+    background: rgb(255 255 255 / 4%);
+    color: #eeecf4;
+    font: 600 15px/1 var(--wn-font-ui);
+  }
+
+  .wn-library .wn-library-select > span {
+    color: #8c889f;
+  }
+
+  .wn-library .wn-library-select::after {
+    right: 16px;
+    color: #a3a0b5;
+  }
+
+  .wn-library .wn-library-select select {
+    color: #eeecf4;
+    font: inherit;
+  }
+
+  .wn-library .wn-library-view {
+    height: var(--wn-library-ctl-h);
+    box-sizing: border-box;
+    margin-left: 0;
+    border-color: rgb(255 255 255 / 9%);
+    border-radius: 12px;
+  }
+
+  .wn-library .wn-library-view button {
+    width: 42px;
+    height: 100%;
+    border-radius: 9px;
+  }
+
+  .wn-library .wn-library-view button svg {
+    width: 18px;
+    height: 18px;
+  }
+
+  .wn-library .wn-library-view button[aria-checked="true"] {
+    background: rgb(255 255 255 / 10%);
+    color: #f2f0f7;
+  }
+
+  .wn-library .wn-library__titles {
+    gap: 0;
+  }
+
+  .wn-library .wn-library__titles > :not(.wn-library-toolbar) {
+    margin-top: 40px;
+  }
+
+  .wn-library[data-mode="results"] .wn-library__titles > :not(.wn-library-toolbar) {
+    margin-top: 28px;
   }
 }
 

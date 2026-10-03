@@ -7,13 +7,23 @@
   (library-toolbar.js), "Читаю" cards with progress and a continue CTA, not-started
   titles under "Ещё в библиотеке" (cover skeleton while it loads). A guest gets the
   locked state instead.
+  PR 297 (LibraryDesktop.dc.html): the catalog's desktop shell - a header card («Ваши
+  тайтлы · N тайтлов» + H1, the switch and the add-by-link form on the right) with the
+  toolbar as a sticky glass panel overlapping its bottom edge.
 #}
+{% macro titles_word(n) -%}
+{{ n }} {% if n % 10 == 1 and n % 100 != 11 %}тайтл{% elif n % 10 in [2, 3, 4] and n % 100 not in [12, 13, 14] %}тайтла{% else %}тайтлов{% endif %}
+{%- endmacro %}
 {% macro chapter_meta(entry) -%}
 Том {{ entry.last_read_volume }}, глава {{ entry.last_read_number }}
 {%- endmacro %}
-<div class="library-page wn-library">
-  <div class="wn-library__head">
-    <h1 class="wn-library__title">Библиотека</h1>
+<div class="library-page wn-library" data-mode="default">
+  <section class="wn-library__head">
+    <div class="wn-library__head-copy">
+      {% if current_user %}<span class="wn-library__eyebrow">Ваши тайтлы · {{ titles_word(items | length) }}</span>{% endif %}
+      <h1 class="wn-library__title">Библиотека</h1>
+    </div>
+    <div class="wn-library__head-side">
     {% include "_library_switch.html" %}
     {% if current_user %}
     <form class="wn-library__add" method="post" action="/library/add">
@@ -23,7 +33,7 @@
           class="wn-field__control wn-library__add-control"
           type="text"
           name="url"
-          placeholder="Ссылка на тайтл, чтобы добавить…"
+          placeholder="Ссылка на тайтл ranobelib.me"
           aria-label="Ссылка на тайтл, чтобы добавить в библиотеку"
           value="{{ submitted_url or '' }}"
           {% if error %}aria-invalid="true" aria-describedby="library-add-error"{% endif %}
@@ -36,10 +46,11 @@
       </button>
     </form>
     {% endif %}
-  </div>
-  {% if error %}
-  <p class="wn-field__caption wn-library__error" id="library-add-error" role="alert">{{ error }}</p>
-  {% endif %}
+    {% if error %}
+    <p class="wn-field__caption wn-library__error" id="library-add-error" role="alert">{{ error }}</p>
+    {% endif %}
+    </div>
+  </section>
   <main class="library-page__content library-tabs-content wn-library__content">
     {% if current_user %}
     <div class="wn-library__titles" data-role="library-titles">
