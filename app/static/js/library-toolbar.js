@@ -156,7 +156,10 @@
       if (section) section.hidden = visible === 0;
       visibleTotal += visible;
     }
-    if (noResults) noResults.hidden = visibleTotal > 0;
+    // An emptied library (the last title removed, «Вернуть» still on offer) isn't "nothing
+    // found" - library-card-actions.js reloads into the empty library's hint once the
+    // removal is sent.
+    if (noResults) noResults.hidden = visibleTotal > 0 || total === 0;
     syncMode(visibleTotal);
     syncFilters(visibleTotal);
   }
@@ -251,10 +254,6 @@
   // everything that shows the library's size, then re-apply the current criteria.
   document.addEventListener("library:changed", () => {
     total = titles.querySelectorAll('[data-role="library-item"]').length;
-    if (total === 0) {
-      window.location.reload(); // the empty library's own hint
-      return;
-    }
     endDefault = `Это вся библиотека · ${titlesWord(total)}`;
     const eyebrow = document.querySelector(".wn-library__eyebrow");
     if (eyebrow) eyebrow.textContent = `Ваши тайтлы · ${titlesWord(total)}`;

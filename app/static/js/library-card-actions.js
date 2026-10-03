@@ -8,15 +8,22 @@
 // overflow: hidden would clip them. One open at a time; Escape or a click elsewhere
 // closes it and hands focus back to the button; ↑/↓ move between the menu items.
 //
-// The removal itself: POST /library/{slug}/remove (JSON), then every element of that title
-// on the page goes (its card, and the hero if it's that title) and the page recounts
-// (library-toolbar.js listens for "library:changed").
+// The removal itself, undoable like the download history's (PR 281): every element of
+// that title leaves the page at once (its card, and the hero if it's that title), the page
+// recounts (library-toolbar.js listens for "library:changed"), and a toast offers
+// «Вернуть» for 6 seconds - only then is POST /library/{slug}/remove sent. «Вернуть» puts
+// everything back where it was without anything reaching the server. A removal still
+// waiting is sent right away when another one starts, and with keepalive when the page is
+// left; if it fails, the title comes back.
 (() => {
   const root = document.querySelector('[data-role="library-titles"]');
   if (!root) return;
 
+  const UNDO_MS = 6000;
   const popovers = new Map(); // ⋯ button -> { menu, confirm, slug }
   let open = null; // { button, panel }
+  let pending = null; // { slug, button, placed: [{ node, parent, next }], timer }
+  let toast = null;
 
   for (const button of root.querySelectorAll('[data-role="library-more"]')) {
     const scope = button.parentElement;
@@ -68,26 +75,94 @@
     )];
   }
 
-  async function remove(slug) {
-    const response = await fetch(`/library/${encodeURIComponent(slug)}/remove`, {
-      method: "POST",
-      headers: { Accept: "application/json" },
-    });
-    return response.ok;
+  function showToast(message, action) {
+    if (!toast) {
+      toast = document.createElement("div");
+      toast.className = "wn-toast";
+      toast.setAttribute("role", "status");
+      toast.setAttribute("aria-live", "polite");
+      document.body.append(toast);
+    }
+    const text = document.createElement("span");
+    text.className = "wn-toast__text";
+    text.textContent = message;
+    toast.replaceChildren(text);
+    if (action) {
+      const button = document.createElement("button");
+      button.type = "button";
+      button.className = "wn-toast__action";
+      button.dataset.role = "library-undo";
+      button.textContent = action.label;
+      button.addEventListener("click", action.run);
+      toast.append(button);
+    }
+    toast.hidden = false;
+    clearTimeout(toast.hideTimer);
+    toast.hideTimer = setTimeout(hideToast, action ? UNDO_MS : 2600);
   }
 
-  function dropTitle(slug) {
-    for (const [button, parts] of popovers) {
-      if (parts.slug !== slug) continue;
-      parts.menu.remove();
-      parts.confirm.remove();
-      popovers.delete(button);
+  function hideToast() {
+    if (toast) toast.hidden = true;
+  }
+
+  function putBack(p) {
+    // In reverse, so a node whose `next` was another removed node finds it back in place.
+    for (const { node, parent, next } of [...p.placed].reverse()) {
+      parent.insertBefore(node, next && next.parentNode === parent ? next : null);
     }
-    for (const element of elementsFor(slug)) element.remove();
     document.dispatchEvent(new CustomEvent("library:changed"));
   }
 
-  document.addEventListener("click", async (event) => {
+  async function send(p, { keepalive = false } = {}) {
+    try {
+      const response = await fetch(`/library/${encodeURIComponent(p.slug)}/remove`, {
+        method: "POST",
+        headers: { Accept: "application/json" },
+        keepalive,
+      });
+      if (response.ok) {
+        // The last title gone for good - the empty library has its own hint.
+        if (!keepalive && !root.querySelector('[data-role="library-item"]')) window.location.reload();
+        return;
+      }
+    } catch {
+      // Falls through to putting the title back.
+    }
+    if (keepalive) return;
+    putBack(p);
+    showToast("Не удалось удалить из библиотеки");
+  }
+
+  function commit() {
+    if (!pending) return;
+    const p = pending;
+    pending = null;
+    clearTimeout(p.timer);
+    send(p);
+  }
+
+  function undo() {
+    if (!pending) return;
+    const p = pending;
+    pending = null;
+    clearTimeout(p.timer);
+    putBack(p);
+    hideToast();
+    if (p.button.isConnected) p.button.focus();
+  }
+
+  function removeTitle(slug, button, viaKeyboard) {
+    commit();
+    const placed = elementsFor(slug).map((node) => ({ node, parent: node.parentNode, next: node.nextSibling }));
+    for (const { node } of placed) node.remove();
+    pending = { slug, button, placed, timer: setTimeout(commit, UNDO_MS) };
+    document.dispatchEvent(new CustomEvent("library:changed"));
+    showToast("Удалено из библиотеки", { label: "Вернуть", run: undo });
+    // The focused card is gone - from the keyboard, hand focus to «Вернуть».
+    if (viaKeyboard) toast.querySelector('[data-role="library-undo"]').focus();
+  }
+
+  document.addEventListener("click", (event) => {
     const more = event.target.closest('[data-role="library-more"]');
     if (more && popovers.has(more)) {
       if (open && open.button === more) close();
@@ -110,19 +185,9 @@
       close();
       return;
     }
-    const confirmButton = event.target.closest('[data-role="library-confirm-remove"]');
-    if (!confirmButton) return;
-    confirmButton.disabled = true;
-    let ok = false;
-    try {
-      ok = await remove(parts.slug);
-    } catch {
-      ok = false;
-    }
-    confirmButton.disabled = false;
-    if (!ok) return;
+    if (!event.target.closest('[data-role="library-confirm-remove"]')) return;
     close({ focus: false });
-    dropTitle(parts.slug);
+    removeTitle(parts.slug, button, event.detail === 0);
   });
 
   document.addEventListener("keydown", (event) => {
@@ -139,6 +204,14 @@
     const step = event.key === "ArrowDown" ? 1 : -1;
     event.preventDefault();
     items[(index + step + items.length) % items.length]?.focus();
+  });
+
+  window.addEventListener("pagehide", () => {
+    if (!pending) return;
+    const p = pending;
+    pending = null;
+    clearTimeout(p.timer);
+    send(p, { keepalive: true });
   });
 
   const reposition = () => open && place(open.button, open.panel);

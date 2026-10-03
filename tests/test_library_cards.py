@@ -146,5 +146,16 @@ def test_card_actions_script_is_wired_and_portals_its_popovers() -> None:
     assert "document.body.append(menu, confirm);" in script
     assert 'headers: { Accept: "application/json" }' in script
     assert 'new CustomEvent("library:changed")' in script
+
+
+def test_removal_is_undoable_for_six_seconds() -> None:
+    script = (ROOT / "app/static/js/library-card-actions.js").read_text(encoding="utf-8")
+    assert "const UNDO_MS = 6000;" in script
+    assert 'showToast("Удалено из библиотеки", { label: "Вернуть", run: undo });' in script
+    # Nothing reaches the server until the toast's time is up (or the page is left).
+    assert "timer: setTimeout(commit, UNDO_MS)" in script
+    assert 'window.addEventListener("pagehide"' in script
+    assert "send(p, { keepalive: true });" in script
+    assert 'showToast("Не удалось удалить из библиотеки");' in script
     toolbar = (ROOT / "app/static/js/library-toolbar.js").read_text(encoding="utf-8")
     assert 'document.addEventListener("library:changed"' in toolbar
