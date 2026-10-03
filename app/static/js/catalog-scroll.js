@@ -53,6 +53,10 @@
     if (grid.dataset.tags) {
       for (const id of grid.dataset.tags.split(",")) params.append("tags", id);
     }
+    // PR 295: the feed cursor - regular cards and featured inserts so far - so the
+    // server keeps one featured insert per 12 cards across the whole feed.
+    params.set("shown", grid.dataset.shown || "0");
+    params.set("featured", grid.dataset.featured || "0");
 
     showSkeletons();
     let response;
@@ -74,7 +78,9 @@
     }
 
     grid.insertAdjacentHTML("beforeend", html);
-    nextPage = response.headers.get("X-Has-Next-Page") === "true" ? nextPage + 1 : null;
+    grid.dataset.shown = response.headers.get("X-Catalog-Shown") || grid.dataset.shown;
+    grid.dataset.featured = response.headers.get("X-Catalog-Featured") || grid.dataset.featured;
+    nextPage =response.headers.get("X-Has-Next-Page") === "true" ? nextPage + 1 : null;
     loading = false;
     if (!nextPage) {
       observer.unobserve(sentinel);

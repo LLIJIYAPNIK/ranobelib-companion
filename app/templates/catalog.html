@@ -78,6 +78,8 @@
         data-country="{{ countries | join(',') }}"
         data-tags="{{ tags | join(',') }}"
         data-next-page="{{ page + 1 if has_next_page else '' }}"
+        data-shown="{{ stream.shown }}"
+        data-featured="{{ stream.featured }}"
       >
         {% include "_catalog_cards.html" %}
       </div>
@@ -85,7 +87,7 @@
       <noscript>
         {% if has_next_page %}
         <p class="catalog-page__hint">
-          <a href="?query={{ query or '' }}&sort={{ sort }}{% for g in genres %}&genres={{ g }}{% endfor %}{% for c in countries %}&countries={{ c }}{% endfor %}{% for t in tags %}&tags={{ t }}{% endfor %}&page={{ page + 1 }}">Следующая страница</a>
+          <a href="?query={{ query or '' }}&sort={{ sort }}{% for g in genres %}&genres={{ g }}{% endfor %}{% for c in countries %}&countries={{ c }}{% endfor %}{% for t in tags %}&tags={{ t }}{% endfor %}&page={{ page + 1 }}&shown={{ stream.shown }}&featured={{ stream.featured }}">Следующая страница</a>
         </p>
         {% endif %}
       </noscript>

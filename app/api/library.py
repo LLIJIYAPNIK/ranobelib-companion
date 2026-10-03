@@ -26,8 +26,8 @@ from app.db.library import (
 from app.db.users import User
 from app.reading_progress import reading_progress_percent
 from app.services.catalog import (
+    catalog_stream,
     get_catalog,
-    list_catalog_titles,
     list_countries,
     list_genres,
     pick_random_title,
@@ -189,6 +189,8 @@ async def show_catalog(
     tags: Annotated[list[int] | None, Query()] = None,
     tag_name: str | None = None,
     page: Annotated[int, Query(ge=1)] = 1,
+    shown: Annotated[int, Query(ge=0)] = 0,
+    featured: Annotated[int, Query(ge=0)] = 0,
     random_empty: bool = False,
 ) -> Response:
     """The catalog tab - unlike "Читаю", browsing it has never needed an account (see
@@ -235,10 +237,14 @@ async def show_catalog(
             library_count = await count_entries(conn, user.id)
     all_genres = await list_genres()
     all_countries = await list_countries()
+    editorial = _is_editorial(query, sort, genres, countries, tags)
     async with get_catalog() as catalog:
-        result = await list_catalog_titles(
+        stream = await catalog_stream(
             catalog,
+            editorial=editorial,
             page=page,
+            shown=shown,
+            featured=featured,
             query=query or None,
             sort=sort,
             genres=genres,
@@ -256,8 +262,9 @@ async def show_catalog(
         {
             "active_nav": "library",
             "active_tab": "catalog",
-            "items": result.items,
-            "has_next_page": result.has_next_page,
+            "stream": stream,
+            "items": stream.items,
+            "has_next_page": stream.has_next_page,
             "page": page,
             "query": query,
             "sort": sort,
@@ -272,7 +279,7 @@ async def show_catalog(
             "selected_tag_names": selected_tag_names,
             "tag_name": tag_name,
             "random_empty": random_empty,
-            "editorial": _is_editorial(query, sort, genres, countries, tags),
+            "editorial": editorial,
             "library_count": library_count,
         },
     )
@@ -331,21 +338,33 @@ async def catalog_page_fragment(
     countries: Annotated[list[int] | None, Query()] = None,
     tags: Annotated[list[int] | None, Query()] = None,
     page: Annotated[int, Query(ge=1)] = 1,
+    shown: Annotated[int, Query(ge=0)] = 0,
+    featured: Annotated[int, Query(ge=0)] = 0,
 ) -> Response:
     """Just the card markup, no base.html - what catalog-scroll.js fetches and appends
-    as the visitor scrolls (see app/static/js/catalog-scroll.js)."""
+    as the visitor scrolls (see app/static/js/catalog-scroll.js). PR 295: `shown` /
+    `featured` are the feed cursor from the previous page (catalog_stream()), the new
+    one goes back in X-Catalog-Shown / X-Catalog-Featured."""
+    genres = genres or []
+    countries = countries or []
+    tags = tags or []
     async with get_catalog() as catalog:
-        result = await list_catalog_titles(
+        stream = await catalog_stream(
             catalog,
+            editorial=_is_editorial(query, sort, genres, countries, tags),
             page=page,
+            shown=shown,
+            featured=featured,
             query=query or None,
             sort=sort,
-            genres=genres or [],
-            countries=countries or [],
-            tags=tags or [],
+            genres=genres,
+            countries=countries,
+            tags=tags,
         )
-    response = templates.TemplateResponse(request, "_catalog_cards.html", {"items": result.items})
-    response.headers["X-Has-Next-Page"] = "true" if result.has_next_page else "false"
+    response = templates.TemplateResponse(request, "_catalog_cards.html", {"items": stream.items})
+    response.headers["X-Has-Next-Page"] = "true" if stream.has_next_page else "false"
+    response.headers["X-Catalog-Shown"] = str(stream.shown)
+    response.headers["X-Catalog-Featured"] = str(stream.featured)
     return response
 
 

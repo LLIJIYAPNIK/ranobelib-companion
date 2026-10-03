@@ -1,9 +1,26 @@
 {# PR 251: Aurora Ink grid card with the quickview eye as its corner action - the same
-   markup whether rendered into catalog.html or appended by catalog-scroll.js. #}
+   markup whether rendered into catalog.html or appended by catalog-scroll.js.
+   PR 295: `items` is the feed (app/services/catalog.py's StreamItem) - regular cards,
+   and in the editorial mode a featured insert after every 12 of them, spanning the
+   whole row. The insert's full FeaturedCard look is PR 296; here it's the plain block. #}
 {% from "_title_card.html" import ui_title_card %}
-{% for title in items %}
+{% for item in items %}
+{% set title = item.title %}
 {% set name = title.rus_name or title.name %}
-{% call ui_title_card(title.slug_url, name, title.cover.default or title.cover.md or title.cover.thumbnail) %}
+{% set cover = title.cover.default or title.cover.md or title.cover.thumbnail %}
+{% if item.kind == "featured" %}
+<article class="catalog-featured" data-role="catalog-featured" data-slug-url="{{ title.slug_url }}" data-issue="{{ item.issue }}">
+  <a class="catalog-featured__link" href="/titles/{{ title.slug_url }}">
+    <span class="catalog-featured__cover">{% if cover %}<img src="{{ cover }}" alt="" loading="lazy">{% endif %}</span>
+    <span class="catalog-featured__copy">
+      <span class="catalog-featured__eyebrow">Популярно на RanobeLib</span>
+      <span class="catalog-featured__name">{{ name }}</span>
+      {% if title.summary %}<span class="catalog-featured__summary">{{ title.summary | truncate(240) }}</span>{% endif %}
+    </span>
+  </a>
+</article>
+{% else %}
+{% call ui_title_card(title.slug_url, name, cover) %}
 <button
   type="button"
   class="ui-title-card__action"
@@ -15,4 +32,5 @@
   <span class="ui-title-card__action-chip"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M2 12s4-7 10-7 10 7 10 7-4 7-10 7S2 12 2 12zM12 15a3 3 0 1 0 0-6 3 3 0 0 0 0 6z"/></svg></span>
 </button>
 {% endcall %}
+{% endif %}
 {% endfor %}

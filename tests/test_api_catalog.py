@@ -30,13 +30,18 @@ class _FakeCatalog:
         exc: Exception | None = None,
         genres: list[Genre] | None = None,
         countries: list[Country] | None = None,
+        featured: list[CatalogPage] | None = None,
     ) -> None:
         self._page = page
         self._exc = exc
         self._genres = genres or []
         self._countries = countries or []
+        # PR 295: the editorial feed's `sort="views"` listing (page by page) - empty by
+        # default, so a test about the regular listing sees only its own cards.
+        self._featured = featured or []
         self.received_kwargs: dict[str, object] | None = None
         self.calls: list[dict[str, object]] = []
+        self.featured_calls: list[dict[str, object]] = []
 
     async def __aenter__(self) -> "_FakeCatalog":
         return self
@@ -45,6 +50,14 @@ class _FakeCatalog:
         return False
 
     async def list_titles(self, **kwargs: object) -> CatalogPage:
+        # The featured source call passes only page + sort (catalog_stream()); every
+        # regular listing goes through list_catalog_titles() with the filter kwargs.
+        if kwargs.get("sort") == "views" and "genres" not in kwargs:
+            self.featured_calls.append(kwargs)
+            index = int(kwargs["page"]) - 1  # type: ignore[call-overload]
+            if index < len(self._featured):
+                return self._featured[index]
+            return CatalogPage(items=[], page=index + 1, has_next_page=False)
         self.received_kwargs = kwargs
         self.calls.append(kwargs)
         if self._exc is not None:
@@ -912,3 +925,61 @@ def test_catalog_mode_follows_query_sort_and_filters(
     assert response.context["editorial"] is editorial
     mode = "editorial" if editorial else "results"
     assert f'class="catalog-page" data-mode="{mode}"' in response.text
+
+
+def _titles(start: int, count: int) -> list[Title]:
+    return [_fake_title(id_=i, name=f"Novel {i}") for i in range(start, start + count)]
+
+
+def test_editorial_catalog_renders_a_featured_insert_after_twelve_cards() -> None:
+    fake = _FakeCatalog(
+        CatalogPage(items=_titles(1, 30), page=1, has_next_page=True),
+        featured=[CatalogPage(items=_titles(1001, 5), page=1, has_next_page=False)],
+    )
+    with patch("app.services.catalog.Catalog", return_value=fake):
+        response = client.get("/catalog")
+
+    assert response.text.count('data-role="catalog-featured"') == 2
+    assert 'data-issue="1"' in response.text
+    assert "Популярно на RanobeLib" in response.text
+    assert 'data-shown="30"' in response.text
+    assert 'data-featured="2"' in response.text
+
+
+def test_results_catalog_has_no_featured_inserts() -> None:
+    fake = _FakeCatalog(
+        CatalogPage(items=_titles(1, 30), page=1, has_next_page=True),
+        featured=[CatalogPage(items=_titles(1001, 5), page=1, has_next_page=False)],
+    )
+    with patch("app.services.catalog.Catalog", return_value=fake):
+        response = client.get("/catalog", params={"query": "dxd"})
+
+    assert 'data-role="catalog-featured"' not in response.text
+    assert fake.featured_calls == []
+
+
+def test_catalog_page_fragment_carries_the_feed_cursor() -> None:
+    fake = _FakeCatalog(
+        CatalogPage(items=_titles(31, 30), page=2, has_next_page=True),
+        featured=[CatalogPage(items=_titles(1001, 10), page=1, has_next_page=False)],
+    )
+    with patch("app.services.catalog.Catalog", return_value=fake):
+        response = client.get("/catalog/page", params={"page": 2, "shown": 30, "featured": 2})
+
+    # Cards 31..60 of the feed: inserts after the 36th, 48th and 60th.
+    assert response.text.count('data-role="catalog-featured"') == 3
+    assert 'data-issue="3"' in response.text
+    assert response.headers["X-Catalog-Shown"] == "60"
+    assert response.headers["X-Catalog-Featured"] == "5"
+
+
+def test_catalog_scroll_sends_and_updates_the_cursor() -> None:
+    from pathlib import Path
+
+    script = (Path(__file__).parents[1] / "app/static/js/catalog-scroll.js").read_text(
+        encoding="utf-8"
+    )
+    assert 'params.set("shown", grid.dataset.shown || "0")' in script
+    assert 'params.set("featured", grid.dataset.featured || "0")' in script
+    assert 'response.headers.get("X-Catalog-Shown")' in script
+    assert 'response.headers.get("X-Catalog-Featured")' in script

@@ -2,6 +2,8 @@
 
 import random
 from collections.abc import AsyncGenerator
+from dataclasses import dataclass
+from typing import Literal
 
 from ranobelib import Catalog, CatalogPage
 from ranobelib.catalog import MAX_PER_PAGE, MIN_PER_PAGE
@@ -177,6 +179,112 @@ async def _genre_stream(
             yield title
         if not result.has_next_page:
             return
+
+
+# PR 295 (Catalog handoff.md, `buildStream` in catalog-data.js): in the editorial mode one
+# featured title - the next one by views - follows every 12 regular cards, counted over
+# the whole feed rather than per page.
+FEATURED_EVERY = 12
+_EDITORIAL_SORT = "last_chapter_at"
+_FEATURED_SORT = "views"
+# Upper bound on views pages read for one feed page - plenty for the inserts a page
+# can need, a guard against a runaway loop if the API keeps saying "more".
+_MAX_FEATURED_PAGES = 5
+
+
+@dataclass(frozen=True)
+class StreamItem:
+    kind: Literal["card", "featured"]
+    title: Title
+    # 1-based number of a featured insert on the feed (the design's decorative
+    # «Выпуск N») - not a rank by views. None for a regular card.
+    issue: int | None = None
+
+
+@dataclass(frozen=True)
+class CatalogStream:
+    """One page of the catalog feed plus the cursor to ask for the next one with:
+    `shown` regular cards and `featured` inserts so far, over the whole feed."""
+
+    items: list[StreamItem]
+    has_next_page: bool
+    shown: int
+    featured: int
+
+
+def interleave(
+    regular: list[Title],
+    top: list[Title],
+    *,
+    shown: int,
+    featured: int,
+    every: int = FEATURED_EVERY,
+) -> tuple[list[StreamItem], int, int]:
+    """`buildStream` from the design, resumable across pages: regular titles in order,
+    minus any title of the featured buffer `top` (so a title is never both a featured
+    insert and a regular card); after every `every`-th regular card of the whole feed
+    (`shown` carries the count from earlier pages) the next title of `top` (from index
+    `featured`) as a featured insert. Returns the items and the updated cursor. Pure -
+    no I/O - so the rhythm and the dedup are testable on their own."""
+    top_ids = {title.id for title in top}
+    items: list[StreamItem] = []
+    for title in regular:
+        if title.id in top_ids:
+            continue
+        items.append(StreamItem("card", title))
+        shown += 1
+        if shown % every == 0 and featured < len(top):
+            items.append(StreamItem("featured", top[featured], issue=featured + 1))
+            featured += 1
+    return items, shown, featured
+
+
+async def catalog_stream(
+    catalog: Catalog,
+    *,
+    editorial: bool,
+    page: int,
+    shown: int,
+    featured: int,
+    query: str | None,
+    sort: str,
+    genres: list[int],
+    countries: list[int],
+    tags: list[int],
+) -> CatalogStream:
+    """One page of the catalog feed. The results mode (a search, another sort or any
+    filter) is the plain listing - list_catalog_titles(), no inserts, cursor untouched.
+    The editorial mode adds the featured inserts: the regular `last_chapter_at` page,
+    then as many `views` pages as the inserts due on this page need (at least the first
+    one, so the dedup set never shrinks between pages), all through the one `catalog`
+    client and its cache like any other listing - a composition of two SDK listings on
+    the web layer, not new domain logic (see CLAUDE.md, wave 36)."""
+    if not editorial:
+        result = await list_catalog_titles(
+            catalog,
+            page=page,
+            query=query,
+            sort=sort,
+            genres=genres,
+            countries=countries,
+            tags=tags,
+        )
+        items = [StreamItem("card", title) for title in result.items]
+        return CatalogStream(items, result.has_next_page, shown, featured)
+
+    regular = await list_catalog_titles(
+        catalog, page=page, query=None, sort=_EDITORIAL_SORT, genres=[], countries=[], tags=[]
+    )
+    # Inserts this page can hold at most (if none of its titles is dropped as a dup).
+    slots = (shown + len(regular.items)) // FEATURED_EVERY - shown // FEATURED_EVERY
+    top: list[Title] = []
+    for views_page in range(1, _MAX_FEATURED_PAGES + 1):
+        result = await catalog.list_titles(page=views_page, sort=_FEATURED_SORT)
+        top.extend(result.items)
+        if len(top) >= featured + slots or not result.has_next_page:
+            break
+    items, shown, featured = interleave(regular.items, top, shown=shown, featured=featured)
+    return CatalogStream(items, regular.has_next_page, shown, featured)
 
 
 async def pick_random_title(
