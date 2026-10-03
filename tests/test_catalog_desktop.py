@@ -102,9 +102,9 @@ def _feed(html: str) -> list[str]:
     """The grid's items in order: S(ection), F(eatured), C(ard)."""
     grid = html.split('data-role="catalog-grid"', 1)[-1]
     roles = re.findall(
-        r'data-role="(catalog-section|catalog-featured|title-quickview-trigger)"', grid
+        r'data-role="(catalog-section|catalog-featured)"|class="(catalog-card)"', grid
     )
-    return [{"catalog-section": "S", "catalog-featured": "F"}.get(r, "C") for r in roles]
+    return [{"catalog-section": "S", "catalog-featured": "F"}.get(a, "C") for a, _ in roles]
 
 
 def test_editorial_feed_opens_with_fresh_updates_and_continues_after_each_insert() -> None:
@@ -197,7 +197,7 @@ def test_card_shows_title_genre_status_and_chapter_count() -> None:
     assert '<span class="catalog-card__meta">Тёмное фэнтези · Онгоинг</span>' in card
     assert '<span class="catalog-card__sub">1 133 гл.</span>' in card
     assert 'class="catalog-card__glow" src="https://example.com/c.jpg"' in card
-    assert 'data-role="title-quickview-trigger"' in card
+    assert 'href="/login" aria-label="Войдите, чтобы добавить' in card  # a guest
 
 
 def test_card_without_genres_chapters_or_cover_drops_those_lines() -> None:
@@ -251,7 +251,9 @@ def test_featured_card_carries_the_design_content() -> None:
     assert first.count("<li>Жанр") == 3
     assert 'class="catalog-featured__open" href="/titles/1001--prince"' in first
     assert '<span class="catalog-featured__issue-number">01</span>' in first
-    assert "В библиотеку" not in first  # PR 298
+    # PR 298: «В библиотеку» beside «Открыть тайтл» - a login link for a guest.
+    assert 'class="catalog-featured__lib" href="/login"' in first
+    assert "<span>В библиотеку</span>" in first
 
 
 def test_even_inserts_flip_the_cover_to_the_right() -> None:

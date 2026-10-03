@@ -7229,6 +7229,79 @@ a.ui-title-card:focus-visible .ui-title-card__cover {
   opacity: 1;
 }
 
+/* PR 298: «В библиотеку» (+) / «В библиотеке» (a check on teal) - the card's one
+   action, and the featured insert's glass button beside «Открыть тайтл». */
+.catalog-lib__check {
+  display: none;
+}
+
+[aria-pressed="true"] > .catalog-lib__plus,
+[aria-pressed="true"] .catalog-card__action-chip > .catalog-lib__plus {
+  display: none;
+}
+
+[aria-pressed="true"] > .catalog-lib__check,
+[aria-pressed="true"] .catalog-card__action-chip > .catalog-lib__check {
+  display: block;
+}
+
+.catalog-card__action[aria-pressed="true"] .catalog-card__action-chip {
+  border-color: rgb(61 214 195 / 60%);
+  background: rgb(61 214 195 / 92%);
+  color: #0c0c12;
+  opacity: 1;
+}
+
+a.catalog-card__action {
+  text-decoration: none;
+}
+
+.catalog-featured__lib {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  min-height: 44px;
+  padding: 0 16px;
+  border: 1px solid rgb(255 255 255 / 20%);
+  border-radius: 12px;
+  background: rgb(255 255 255 / 6%);
+  color: #f2f0f7;
+  font: 700 15px/1 var(--wn-font-ui, sans-serif);
+  text-decoration: none;
+  white-space: nowrap;
+  cursor: pointer;
+  backdrop-filter: blur(10px);
+}
+
+.catalog-featured__lib svg {
+  flex: none;
+  width: 17px;
+  height: 17px;
+}
+
+.catalog-featured__lib[aria-pressed="true"] {
+  border-color: rgb(61 214 195 / 55%);
+  color: #3dd6c3;
+}
+
+.catalog-featured__lib:focus-visible {
+  outline: 2px solid #c5b6ff;
+  outline-offset: 2px;
+}
+
+@media (hover: hover) {
+  .catalog-featured__lib:hover {
+    background: rgb(255 255 255 / 11%);
+  }
+}
+
+@media (min-width: 768px) {
+  .wn-catalog .catalog-featured__lib {
+    height: 48px;
+    padding: 0 18px;
+  }
+}
+
 /* PR 295/296: the editorial feed's featured insert, a whole grid row after every 12
    cards - FeaturedCard (FeaturedCard.dc.html). Phones get a compact horizontal block
    here (their own FeaturedCard is PR 299); the desktop layers are in the CatalogDesktop

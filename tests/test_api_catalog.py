@@ -114,20 +114,20 @@ def test_show_catalog_wires_the_tab_swipe_script() -> None:
     assert "static/js/library-tabs-swipe.js" in response.text
 
 
-def test_show_catalog_renders_a_quickview_trigger_on_each_card() -> None:
-    # PR 117: the eye icon on every title_card() opens a quick-view modal for that title
-    # without navigating away - data-slug-url is what title-quickview.js fetches.
+def test_guest_catalog_card_offers_login_to_add_it() -> None:
+    # PR 298: the card's one action is «В библиотеку» (it replaced PR 117's quick-view
+    # eye); a guest has no library, so it's a login link.
     page = CatalogPage(items=[_fake_title(1, "High School DxD")], page=1, has_next_page=False)
     with patch("app.services.catalog.Catalog", return_value=_FakeCatalog(page)):
         response = client.get("/catalog")
 
     assert response.status_code == 200
-    assert 'data-role="title-quickview-trigger"' in response.text
-    assert 'data-slug-url="1--test-novel-1"' in response.text
-    assert "static/js/title-quickview.js" in response.text
-    # PR 142: the modal's own .title-hero__cover only exists once title-quickview.js
-    # fetches and injects it, so image-lightbox.js needs to be loaded here too.
-    assert "static/js/image-lightbox.js" in response.text
+    assert 'href="/login" aria-label="Войдите, чтобы добавить «High School DxD» в библиотеку"' in (
+        response.text
+    )
+    assert 'data-role="catalog-library-toggle"' not in response.text
+    assert "title-quickview" not in response.text
+    assert "static/js/catalog-library-toggle.js" in response.text
 
 
 def test_show_catalog_renders_back_to_top_button() -> None:
@@ -1105,8 +1105,9 @@ def test_featured_title_never_doubles_as_a_card_across_pages() -> None:
             },
         )
 
-    # One data-slug-url per regular card (its quickview button) or featured insert.
+    # Title 3 never shows up as a regular card (its link) - only as its featured insert.
     feed = page_one.text + page_two.text
-    assert feed.count('data-slug-url="3--test-novel-3"') == 1
+    assert 'class="catalog-card__link" href="/titles/3--test-novel-3"' not in feed
+    assert feed.count('data-role="catalog-featured" data-slug-url="3--test-novel-3"') == 1
     assert 'data-slug-url="3--test-novel-3" data-issue="2"' in feed
     assert page_one.context["stream"].shown == 29  # 30 listed, title 3 dropped

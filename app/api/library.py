@@ -16,9 +16,9 @@ from app.db.connection import connection, get_connection
 from app.db.library import (
     LibraryEntry,
     add_entry,
-    count_entries,
     get_currently_reading_entries,
     get_entry,
+    library_slugs,
     list_entries,
     remove_entry,
     set_default_translation_index,
@@ -231,12 +231,9 @@ async def show_catalog(
         # submit sort=random) - same one-random-title redirect, not a reshuffled list.
         params = _catalog_filter_params(query, genres, countries, tags, tag_name)
         return RedirectResponse(url=f"/catalog/random?{urlencode(params)}", status_code=303)
-    library_count = None
-    if user is not None:
-        # PR 294: the «Библиотека» switch item shows the library's size here too - one
-        # COUNT, checked out only for a logged-in visitor (same reasoning as show_library).
-        async with connection() as conn:
-            library_count = await count_entries(conn, user.id)
+    in_library = await _in_library(user)
+    # PR 294: the «Библиотека» switch item shows the library's size here too.
+    library_count = len(in_library) if in_library is not None else None
     all_genres = await list_genres()
     all_countries = await list_countries()
     editorial = _is_editorial(query, sort, genres, countries, tags)
@@ -296,6 +293,7 @@ async def show_catalog(
                 tag_names=selected_tag_names,
             ),
             "library_count": library_count,
+            "in_library": in_library,
         },
     )
 
@@ -384,9 +382,20 @@ def _catalog_filter_params(
     return params
 
 
+async def _in_library(user: User | None) -> set[str] | None:
+    """PR 298: the slug_urls already in the visitor's library - the «В библиотеку» /
+    «В библиотеке» state of each catalog card; None for a guest (no toggle, a login
+    link). Checked out only for a logged-in visitor (same reasoning as show_library)."""
+    if user is None:
+        return None
+    async with connection() as conn:
+        return await library_slugs(conn, user.id)
+
+
 @catalog_router.get("/page", response_model=None)
 async def catalog_page_fragment(
     request: Request,
+    user: Annotated[User | None, Depends(get_current_user)],
     query: str | None = None,
     sort: str = DEFAULT_CATALOG_SORT,
     genres: Annotated[list[int] | None, Query()] = None,
@@ -425,6 +434,7 @@ async def catalog_page_fragment(
             "editorial": editorial,
             "page": page,
             "has_next_page": stream.has_next_page,
+            "in_library": await _in_library(user),
         },
     )
     response.headers["X-Has-Next-Page"] = "true" if stream.has_next_page else "false"

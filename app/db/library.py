@@ -80,14 +80,14 @@ async def list_entries(conn: AsyncConnection, user_id: int) -> list[LibraryEntry
     return [_row_to_entry(row) for row in rows]
 
 
-async def count_entries(conn: AsyncConnection, user_id: int) -> int:
-    """How many titles are in `user_id`'s library - the count on the «Библиотека» switch
-    item (PR 294) on pages that don't load the entries themselves (the catalog)."""
+async def library_slugs(conn: AsyncConnection, user_id: int) -> set[str]:
+    """The slug_urls in `user_id`'s library - the catalog's «В библиотеку» / «В
+    библиотеке» state on each card (PR 298), and their number the «Библиотека» switch
+    item's count there (PR 294)."""
     cursor = await conn.execute(
-        "SELECT COUNT(*) AS n FROM library_entries WHERE user_id = %s", (user_id,)
+        "SELECT slug_url FROM library_entries WHERE user_id = %s", (user_id,)
     )
-    row = await cursor.fetchone()
-    return row["n"] if row is not None else 0
+    return {row["slug_url"] for row in await cursor.fetchall()}
 
 
 async def set_default_translation_index(
