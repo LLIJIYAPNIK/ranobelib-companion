@@ -447,3 +447,15 @@ def test_logout_clears_session(client: TestClient) -> None:
     assert response.status_code in (200, 303)
     assert "alice@example.com" not in home.text
     assert 'href="/login"' in home.text
+
+
+# --- PR 293: "Избранное" is gone from the pitch too ------------------------------------
+
+
+@pytest.mark.parametrize("path", ["/login", "/register"])
+def test_auth_card_perks_do_not_mention_favorites(client: TestClient, path: str) -> None:
+    response = client.get(path)
+
+    assert response.status_code == 200
+    assert "<li>Своя библиотека тайтлов</li>" in response.text
+    assert "избранн" not in response.text.lower()
