@@ -6783,14 +6783,17 @@ a.ui-title-card:focus-visible .ui-title-card__cover {
   display: none;
 }
 
-/* The next page failed: a compact glass plate with a pink edge and «Повторить». */
+/* The next page failed: a compact glass plate with a pink edge and «Повторить» -
+   centred at a compact width, so its button stays clear of the fixed back-to-top
+   button in the bottom-right corner. */
 .catalog-feed-error {
   display: flex;
   flex-wrap: wrap;
   align-items: center;
   justify-content: space-between;
   gap: 12px;
-  margin-top: 16px;
+  max-width: 520px;
+  margin: 16px auto 0;
   padding: 12px 12px 12px 16px;
   border: 1px solid rgb(240 138 155 / 28%);
   border-radius: 14px;
