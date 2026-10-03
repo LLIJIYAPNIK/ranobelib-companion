@@ -129,7 +129,7 @@
         {%- if status %}<span class="catalog-card__meta-status">{% if genre %} · {% endif %}{{ status }}</span>{% endif -%}
       </span>
       {%- endif %}
-      {%- if status or title.chapter_count %}
+      {%- if status or title.chapter_count -%}
       <span class="catalog-card__sub{% if not title.chapter_count %} catalog-card__sub--status-only{% endif %}">
         {%- if status %}<span class="catalog-card__sub-status">{{ status }}{% if title.chapter_count %} · {% endif %}</span>{% endif -%}
         {%- if title.chapter_count %}{{ chapters_label(title.chapter_count) }}{% endif -%}

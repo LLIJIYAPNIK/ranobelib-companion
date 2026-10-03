@@ -8882,6 +8882,102 @@ a.catalog-card__action {
   .wn-catalog .catalog-featured__lib > span {
     display: none;
   }
+
+  /* Feed states, phone versions (CatalogMobile footer=error/end, preset empty): the
+     error as one compact row, the end as a plain rule + «Наверх ↑» link, «Ничего не
+     нашлось» as a dashed note with one reset. */
+  .wn-catalog .catalog-feed-error {
+    justify-content: flex-start;
+    gap: 10px 12px;
+    width: auto;
+    padding: 12px 12px 12px 14px;
+    border-color: #3a2a36;
+    border-radius: 14px;
+    background: #15141c;
+    box-shadow: none;
+  }
+
+  .wn-catalog .catalog-feed-error__icon {
+    width: 20px;
+    height: 20px;
+  }
+
+  .wn-catalog .catalog-feed-error__copy {
+    flex: 1 1 140px;
+  }
+
+  .wn-catalog .catalog-feed-error__text {
+    font-weight: 600;
+  }
+
+  .wn-catalog .catalog-feed-error__hint,
+  .wn-catalog .catalog-feed-error__retry svg {
+    display: none;
+  }
+
+  .wn-catalog .catalog-feed-error__retry {
+    border-radius: 10px;
+  }
+
+  .wn-catalog .catalog-feed-end {
+    gap: 10px;
+    margin-top: 8px;
+    padding: 8px 0;
+  }
+
+  .wn-catalog .catalog-feed-end__rule {
+    margin: 0;
+    background: #24222f;
+  }
+
+  .wn-catalog .catalog-feed-end__diamond,
+  .wn-catalog .catalog-feed-end__text {
+    display: none;
+  }
+
+  .wn-catalog .catalog-feed-end__title {
+    color: #a3a0b5;
+    font: 600 14px/1.3 var(--wn-font-ui);
+  }
+
+  .wn-catalog .catalog-feed-end__actions {
+    margin: 0;
+  }
+
+  .wn-catalog .catalog-feed-end__action {
+    padding: 0 8px;
+    border: 0;
+    background: none;
+    color: #b7a6ff;
+  }
+
+  .wn-catalog .catalog-empty {
+    gap: 12px;
+    padding: 32px 20px;
+    border: 1px dashed #33304a;
+    border-radius: 16px;
+    background: #0f0f15;
+  }
+
+  .wn-catalog .catalog-empty__icon {
+    display: none;
+  }
+
+  .wn-catalog .catalog-empty__title {
+    font: 800 20px/1.25 var(--wn-font-ui);
+    letter-spacing: 0;
+  }
+
+  .wn-catalog .catalog-empty__text {
+    font: 500 14px/1.5 var(--wn-font-ui);
+  }
+
+  .wn-catalog .catalog-empty__reset {
+    height: 44px;
+    margin-top: 0;
+    padding: 0 18px;
+    border-color: #33304a;
+  }
 }
 
 @media (max-width: 359px) {

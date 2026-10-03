@@ -197,3 +197,20 @@ def test_sheet_apply_stays_on_the_sheet_floor() -> None:
     assert foot
     assert "position: sticky;" in foot[1]
     assert "background: #16161f;" in foot[1]
+
+
+def test_feed_states_follow_the_phone_mockup() -> None:
+    error = _mobile_rule(".wn-catalog .catalog-feed-error")
+    assert "justify-content: flex-start;" in error
+    assert "flex: 1 1 140px;" in _mobile_rule(".wn-catalog .catalog-feed-error__copy")
+    assert "display: none;" in _mobile_rule(".wn-catalog .catalog-feed-error__hint")
+    assert "display: none;" in _mobile_rule(".wn-catalog .catalog-feed-end__diamond")
+    assert "color: #b7a6ff;" in _mobile_rule(".wn-catalog .catalog-feed-end__action")
+    empty = _mobile_rule(".wn-catalog .catalog-empty")
+    assert "border: 1px dashed #33304a;" in empty
+    assert "display: none;" in _mobile_rule(".wn-catalog .catalog-empty__icon")
+
+
+def test_list_line_has_no_stray_space_before_the_separator() -> None:
+    html = _get()
+    assert '</span></span><span class="catalog-card__sub' in html
