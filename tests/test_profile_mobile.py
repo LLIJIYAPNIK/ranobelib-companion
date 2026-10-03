@@ -61,20 +61,17 @@ def test_heatmap_alignment_is_initial_only_and_keeps_month_context() -> None:
     assert "display: grid;" in months
 
 
-def test_current_friends_and_favorite_stack_in_one_column() -> None:
+def test_current_and_friends_stack_in_one_column() -> None:
     row = _rule(".wn-profile__row", indent="  ")
     assert "grid-template-columns: minmax(0, 1fr);" in row
 
-    cards = _rule(
-        ".wn-profile-current,\n  .wn-profile-friends,\n  .wn-profile-favorite", indent="  "
-    )
+    cards = _rule(".wn-profile-current,\n  .wn-profile-friends", indent="  ")
     assert "grid-column: 1;" in cards
 
 
 def test_profile_card_names_wrap_instead_of_ellipsizing() -> None:
     names = _rule(
         ".wn-profile-current__name,\n"
-        "  .wn-profile-favorite__name,\n"
         "  .wn-profile-friend__name,\n"
         "  .wn-profile-friend__sub",
         indent="  ",

@@ -49,7 +49,7 @@ async def settings_reading_page(request: Request) -> HTMLResponse:
 
 def _account_context(user: User, **extra: object) -> dict[str, object]:
     """Shared base for every settings_account.html render below - the "Приватность" form
-    (PR 124) needs the three show_* flags on every one of them, not just its own POST
+    (PR 124) needs the show_* flags on every one of them, not just its own POST
     handler, since a save from the account-fields or avatar form re-renders this same
     template and its checkboxes have to reflect the visitor's actual saved state, not
     default back to "show everything"."""
@@ -60,7 +60,6 @@ def _account_context(user: User, **extra: object) -> dict[str, object]:
         "email": user.email,
         "bio": user.bio,
         "show_currently_reading": user.show_currently_reading,
-        "show_favorite": user.show_favorite,
         "show_library": user.show_library,
         "show_friends_activity_home": user.show_friends_activity_home,
         "show_friends": user.show_friends,
@@ -161,19 +160,17 @@ async def update_privacy(
     user: Annotated[User, Depends(require_current_user)],
     conn: Annotated[AsyncConnection, Depends(get_connection)],
     show_currently_reading: bool = Form(default=False),
-    show_favorite: bool = Form(default=False),
     show_library: bool = Form(default=False),
     show_friends_activity_home: bool = Form(default=False),
     show_friends: bool = Form(default=False),
 ) -> HTMLResponse:
     """Unchecked checkboxes simply aren't sent by the browser at all, so every submit of
-    this form carries the visitor's complete intended state for all five - no partial
-    update, matching update_privacy_settings()'s own "always write all five" shape."""
+    this form carries the visitor's complete intended state for all four - no partial
+    update, matching update_privacy_settings()'s own "always write all four" shape."""
     updated = await update_privacy_settings(
         conn,
         user.id,
         show_currently_reading=show_currently_reading,
-        show_favorite=show_favorite,
         show_library=show_library,
         show_friends_activity_home=show_friends_activity_home,
         show_friends=show_friends,

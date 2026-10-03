@@ -254,27 +254,24 @@ async def test_create_user_shows_everything_by_default(conn: psycopg.AsyncConnec
     user = await create_user(conn, "alice@example.com", "hash1")
 
     assert user.show_currently_reading is True
-    assert user.show_favorite is True
     assert user.show_library is True
     assert user.show_friends_activity_home is True
     assert user.show_friends is True
 
 
-async def test_update_privacy_settings_sets_all_five_flags(conn: psycopg.AsyncConnection) -> None:
+async def test_update_privacy_settings_sets_all_four_flags(conn: psycopg.AsyncConnection) -> None:
     user = await create_user(conn, "alice@example.com", "hash1")
 
     updated = await update_privacy_settings(
         conn,
         user.id,
         show_currently_reading=False,
-        show_favorite=False,
         show_library=False,
         show_friends_activity_home=False,
         show_friends=False,
     )
 
     assert updated.show_currently_reading is False
-    assert updated.show_favorite is False
     assert updated.show_library is False
     assert updated.show_friends_activity_home is False
     assert updated.show_friends is False
@@ -288,14 +285,12 @@ async def test_update_privacy_settings_flags_are_independent(conn: psycopg.Async
         conn,
         user.id,
         show_currently_reading=False,
-        show_favorite=True,
         show_library=True,
         show_friends_activity_home=False,
         show_friends=True,
     )
 
     assert updated.show_currently_reading is False
-    assert updated.show_favorite is True
     assert updated.show_library is True
     assert updated.show_friends_activity_home is False
     assert updated.show_friends is True
@@ -311,7 +306,6 @@ async def test_update_privacy_settings_leaves_other_fields_untouched(
         conn,
         user.id,
         show_currently_reading=False,
-        show_favorite=False,
         show_library=False,
         show_friends_activity_home=False,
         show_friends=False,

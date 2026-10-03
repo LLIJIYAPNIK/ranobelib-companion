@@ -2,8 +2,8 @@
 
 PR 122 turned it into a public page (GET /profile/{user_id}) with two extra sections -
 "Читает сейчас" and "Библиотека" - covered further down. PR 124's privacy toggles
-("Приватность", settings_account.html) that gate those sections (plus PR 123's
-"Избранное") for a non-owner visitor are covered at the very end.
+("Приватность", settings_account.html) that gate those sections for a non-owner
+visitor are covered at the very end.
 """
 
 import itertools
@@ -517,78 +517,42 @@ async def test_public_profile_shows_the_owners_comment_count_to_another_visitor(
     assert "Комментариев: 1" in response.text
 
 
-# --- PR 123: the "Избранное" section --------------------------------------------------
+# --- PR 293: no "Избранное" section ------------------------------------------------
 
 
-async def test_public_profile_shows_the_favorite_section_when_one_is_set(
+async def test_profile_has_no_favorite_section_even_with_a_stored_favorite(
     client: TestClient,
 ) -> None:
+    """library_entries.is_favorite stays in the table (PR 293) but is no longer read."""
     _register(client, "alice@example.com")
     alice_id = await _user_id("alice@example.com")
     title = _fake_title()
-
     with patch("app.services.client.RanobeLib", return_value=_FakeClient(title)):
         client.post("/library/6712--test-novel/add")
-    client.post("/library/6712--test-novel/favorite")
+    async with connection() as conn:
+        await conn.execute(
+            "UPDATE library_entries SET is_favorite = 1 WHERE user_id = %s", (alice_id,)
+        )
 
     with patch("app.services.client.RanobeLib", return_value=_FakeClient(title)):
-        response = client.get(f"/profile/{alice_id}")
+        own = client.get("/profile")
+        _register(client, "bob@example.com")
+        public = client.get(f"/profile/{alice_id}")
 
-    assert response.status_code == 200
-    assert 'id="profile-favorite-title">Избранное</h2>' in response.text
-    assert 'class="wn-profile-favorite__body"' in response.text
-    assert "Test Novel" in response.text
-
-
-async def test_public_profile_omits_the_favorite_section_when_nothing_is_favorited(
-    client: TestClient,
-) -> None:
-    _register(client, "alice@example.com")
-    alice_id = await _user_id("alice@example.com")
-    title = _fake_title()
-
-    with patch("app.services.client.RanobeLib", return_value=_FakeClient(title)):
-        client.post("/library/6712--test-novel/add")
-        response = client.get(f"/profile/{alice_id}")
-
-    assert response.status_code == 200
-    assert "Избранное" not in response.text
-    assert "wn-profile-favorite__body" not in response.text
+    for response in (own, public):
+        assert response.status_code == 200
+        assert "Test Novel" in response.text
+        assert "Избранн" not in response.text
+        assert "favorite" not in response.text
 
 
-async def test_public_profile_favorite_section_updates_after_a_new_favorite_is_chosen(
-    client: TestClient,
-) -> None:
-    _register(client, "alice@example.com")
-    alice_id = await _user_id("alice@example.com")
-    title_a = _fake_title(slug_url="1--first")
-    title_b = _fake_title(slug_url="2--second")
-
-    with patch("app.services.client.RanobeLib", return_value=_FakeClient(title_a)):
-        client.post("/library/1--first/add")
-    with patch("app.services.client.RanobeLib", return_value=_FakeClient(title_b)):
-        client.post("/library/2--second/add")
-    client.post("/library/1--first/favorite")
-    client.post("/library/2--second/favorite")  # replaces the previous favorite
-
-    with patch("app.services.client.RanobeLib", return_value=_FakeClient(title_b)):
-        response = client.get(f"/profile/{alice_id}")
-
-    assert response.status_code == 200
-    favorite_section = response.text.split('id="profile-favorite-title">Избранное</h2>')[
-        1
-    ].split("</section>")[0]
-    assert "1--first" not in favorite_section
-    assert "2--second" in favorite_section
-
-
-# --- PR 124: privacy flags gate the three sections for non-owner visitors ------------
+# --- PR 124: privacy flags gate the sections for non-owner visitors ------------------
 
 
 async def _populate_full_profile(client: TestClient, title: Title) -> None:
-    """Puts a title in the library, gives it a recorded reading position, and marks it
-    favorite - so all three sections ("Читает сейчас"/"Избранное"/"Библиотека") would
-    render for the very same title if nothing were hiding them."""
+    """Puts a title in the library and gives it a recorded reading position - so both
+    sections ("Читает сейчас"/"Библиотека") would render for the very same title if
+    nothing were hiding them."""
     with patch("app.services.client.RanobeLib", return_value=_FakeClient(title)):
         client.post(f"/library/{title.slug_url}/add")
     async with connection() as conn:
@@ -599,36 +563,29 @@ async def _populate_full_profile(client: TestClient, title: Title) -> None:
             volume="1",
             number="5",
         )
-    client.post(f"/library/{title.slug_url}/favorite")
 
 
-def _set_privacy(
-    client: TestClient, *, reading: bool, favorite: bool, library: bool
-) -> None:
+def _set_privacy(client: TestClient, *, reading: bool, library: bool) -> None:
     data = {}
     if reading:
         data["show_currently_reading"] = "on"
-    if favorite:
-        data["show_favorite"] = "on"
     if library:
         data["show_library"] = "on"
     client.post("/settings/account/privacy", data=data)
 
 
 @pytest.mark.parametrize(
-    ("show_reading", "show_favorite", "show_library"),
-    list(itertools.product([True, False], repeat=3)),
+    ("show_reading", "show_library"),
+    list(itertools.product([True, False], repeat=2)),
 )
 async def test_privacy_flags_gate_sections_for_a_non_owner_visitor(
-    client: TestClient, show_reading: bool, show_favorite: bool, show_library: bool
+    client: TestClient, show_reading: bool, show_library: bool
 ) -> None:
     _register(client, "alice@example.com")
     alice_id = await _user_id("alice@example.com")
     title = _fake_title()
     await _populate_full_profile(client, title)
-    _set_privacy(
-        client, reading=show_reading, favorite=show_favorite, library=show_library
-    )
+    _set_privacy(client, reading=show_reading, library=show_library)
     _register(client, "bob@example.com")  # a different, logged-in visitor
 
     with patch("app.services.client.RanobeLib", return_value=_FakeClient(title)):
@@ -636,9 +593,6 @@ async def test_privacy_flags_gate_sections_for_a_non_owner_visitor(
 
     assert response.status_code == 200
     assert ("Читает сейчас" in response.text) is show_reading
-    assert ('id="profile-favorite-title">Избранное</h2>' in response.text) is (
-        show_favorite
-    )
     assert ('id="profile-library-title">Библиотека</h2>' in response.text) is (
         show_library
     )
@@ -648,14 +602,13 @@ async def test_privacy_flags_do_not_affect_the_owners_own_view(client: TestClien
     _register(client, "alice@example.com")
     title = _fake_title()
     await _populate_full_profile(client, title)
-    _set_privacy(client, reading=False, favorite=False, library=False)
+    _set_privacy(client, reading=False, library=False)
 
     with patch("app.services.client.RanobeLib", return_value=_FakeClient(title)):
         response = client.get("/profile")
 
     assert response.status_code == 200
     assert "Читает сейчас" in response.text
-    assert 'id="profile-favorite-title">Избранное</h2>' in response.text
     assert 'id="profile-library-title">Библиотека</h2>' in response.text
 
 
@@ -673,7 +626,6 @@ async def test_privacy_flags_default_to_showing_everything(client: TestClient) -
 
     assert response.status_code == 200
     assert "Читает сейчас" in response.text
-    assert 'id="profile-favorite-title">Избранное</h2>' in response.text
     assert 'id="profile-library-title">Библиотека</h2>' in response.text
 
 
@@ -810,7 +762,6 @@ def _hide_friends(client: TestClient) -> None:
         "/settings/account/privacy",
         data={
             "show_currently_reading": "on",
-            "show_favorite": "on",
             "show_library": "on",
             "show_friends_activity_home": "on",
             # show_friends deliberately omitted - an unchecked checkbox
@@ -963,7 +914,7 @@ async def test_profile_friend_preview_shows_what_a_friend_reads_unless_hidden(
         client.post("/library/6712--test-novel/add")
     async with connection() as conn:
         await record_progress(conn, user_id=bob_id, slug_url=title.slug_url, volume="1", number="2")
-    _set_privacy(client, reading=show_reading, favorite=True, library=True)
+    _set_privacy(client, reading=show_reading, library=True)
 
     with patch("app.services.client.RanobeLib", return_value=_FakeClient(title)):
         response = client.get(f"/profile/{alice_id}")

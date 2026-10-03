@@ -85,14 +85,9 @@ def test_grid_view_fits_two_columns_on_phones() -> None:
 def test_narrow_grid_cards_keep_their_title_and_cta_inside() -> None:
     name = _rule(".wn-library__titles--grid .wn-library-card__name", indent="  ")
     assert "-webkit-line-clamp: unset;" in name  # titles wrap in full, no ellipsis
-    star = _rule(".wn-library__titles--grid .wn-library-card__top .wn-library-star", indent="  ")
-    assert "position: absolute;" in star
     assert "display: none;" in _rule(
         ".wn-library__titles--grid .wn-library-card__cta-verb", indent="  "
     )
-    assert "inset: -6px;" in _rule(
-        ".wn-library-star::before", indent="  "
-    )  # 32px chip, 44px target
 
 
 def test_continue_button_is_a_44px_target_on_phones() -> None:

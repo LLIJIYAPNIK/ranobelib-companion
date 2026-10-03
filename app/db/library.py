@@ -1,6 +1,9 @@
 """Access to the ``library_entries`` table (see migrations/0002_library_entries.sql,
-0008_library_entries_favorite.sql for ``is_favorite``, 0024_library_entries_read_paragraph.sql
-for the paragraph-level reading position).
+0024_library_entries_read_paragraph.sql for the paragraph-level reading position).
+
+``is_favorite`` (0008_library_entries_favorite.sql) is still in the table but no longer
+read or written: "Избранное" was removed from the app in PR 293 (wave 36), and the column
+stays so that decision can be reversed without data loss.
 
 Deliberately stores only ``slug_url`` and reading progress - not the title's name/cover.
 Those are SDK response data, already cached in the SDK's own ``cache_dir``; duplicating
@@ -27,7 +30,6 @@ class LibraryEntry:
     last_read_volume: str | None
     last_read_number: str | None
     last_read_at: str | None
-    is_favorite: bool
     default_translation_index: int | None
     # Paragraph-level position inside the last_read_* chapter (wave 35): the last revealed
     # paragraph and the chapter's paragraph count when it was saved - the total travels
@@ -78,28 +80,6 @@ async def list_entries(conn: AsyncConnection, user_id: int) -> list[LibraryEntry
     return [_row_to_entry(row) for row in rows]
 
 
-async def set_favorite(conn: AsyncConnection, user_id: int, slug_url: str) -> None:
-    """Marks `slug_url` as `user_id`'s one favorite title, clearing any previous favorite
-    first - exactly one favorite per user is simplest as a plain boolean flag reset on
-    every new pick, rather than a separate table just to hold a single value (see PR 123
-    in CLAUDE.md's roadmap). No-op (both UPDATEs affect 0 rows) if `slug_url` isn't
-    actually in this user's library."""
-    await conn.execute("UPDATE library_entries SET is_favorite = 0 WHERE user_id = %s", (user_id,))
-    await conn.execute(
-        "UPDATE library_entries SET is_favorite = 1 WHERE user_id = %s AND slug_url = %s",
-        (user_id, slug_url),
-    )
-
-
-async def unset_favorite(conn: AsyncConnection, user_id: int, slug_url: str) -> None:
-    """Not an error if `slug_url` wasn't the favorite (or wasn't in the library) to begin
-    with - same "no-op instead of raising" shape as `remove_entry`."""
-    await conn.execute(
-        "UPDATE library_entries SET is_favorite = 0 WHERE user_id = %s AND slug_url = %s",
-        (user_id, slug_url),
-    )
-
-
 async def set_default_translation_index(
     conn: AsyncConnection, user_id: int, slug_url: str, translation_index: int | None
 ) -> None:
@@ -107,7 +87,7 @@ async def set_default_translation_index(
     reading a chapter) doesn't have to ask again every time a title turns out to have
     ambiguous chapters. `None` clears it back to "спрашивать каждый раз". Only meaningful
     for a title already in the library (nowhere else to store this per-user choice) - a
-    no-op, same shape as set_favorite()/record_progress(), if `slug_url` isn't."""
+    no-op, same shape as record_progress(), if `slug_url` isn't."""
     await conn.execute(
         "UPDATE library_entries SET default_translation_index = %s "
         "WHERE user_id = %s AND slug_url = %s",
@@ -144,14 +124,6 @@ async def get_currently_reading_entries(
     )
     rows = await cursor.fetchall()
     return {row["user_id"]: _row_to_entry(row) for row in rows}
-
-
-async def get_favorite_entry(conn: AsyncConnection, user_id: int) -> LibraryEntry | None:
-    cursor = await conn.execute(
-        "SELECT * FROM library_entries WHERE user_id = %s AND is_favorite = 1", (user_id,)
-    )
-    row = await cursor.fetchone()
-    return _row_to_entry(row) if row is not None else None
 
 
 async def record_progress(
@@ -222,7 +194,6 @@ def _row_to_entry(row: dict[str, Any]) -> LibraryEntry:
         last_read_volume=row["last_read_volume"],
         last_read_number=row["last_read_number"],
         last_read_at=row["last_read_at"],
-        is_favorite=bool(row["is_favorite"]),
         default_translation_index=row["default_translation_index"],
         last_read_paragraph=row["last_read_paragraph"],
         last_read_paragraph_total=row["last_read_paragraph_total"],

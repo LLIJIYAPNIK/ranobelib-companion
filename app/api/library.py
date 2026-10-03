@@ -3,11 +3,11 @@
 from __future__ import annotations
 
 from datetime import UTC, date, datetime, timedelta
-from typing import Annotated, Literal
+from typing import Annotated
 from urllib.parse import urlencode
 
 from fastapi import APIRouter, Depends, Form, HTTPException, Query, Request
-from fastapi.responses import HTMLResponse, JSONResponse, RedirectResponse, Response
+from fastapi.responses import HTMLResponse, RedirectResponse, Response
 from psycopg import AsyncConnection
 from ranobelib import RanobeLibError
 
@@ -21,8 +21,6 @@ from app.db.library import (
     list_entries,
     remove_entry,
     set_default_translation_index,
-    set_favorite,
-    unset_favorite,
 )
 from app.db.users import User
 from app.reading_progress import reading_progress_percent
@@ -52,12 +50,12 @@ CATALOG_SORT_OPTIONS = {
 }
 
 
-@router.get("")
+@router.get("", response_model=None)
 async def show_library(
     request: Request,
     user: Annotated[User | None, Depends(get_current_user)],
-    tab: Literal["reading", "favorites"] = "reading",
-) -> HTMLResponse:
+    tab: str | None = None,
+) -> HTMLResponse | RedirectResponse:
     """Viewing the library page itself doesn't require an account - only an anonymous
     visitor can't have a personal reading list, so that's the one thing the page won't
     show them (library.html prompts them to log in/register instead of the list). conn is
@@ -65,25 +63,36 @@ async def show_library(
     anonymous visitor never checks one out of the pool at all (see get_current_user()'s
     own docstring for the same reasoning).
 
-    `tab` (PR 275): "Избранное" is a view of this same page (`?tab=favorites`), not a
-    separate route - "Все тайтлы" stays the catalog at /library/catalog."""
+    `tab` is no longer a view of this page (PR 293, Catalog handoff.md): old links keep
+    working through a redirect - `?tab=all` to the catalog (any other query parameters
+    kept), every other value (`reading`, `favorites`, `fav`, ...) to the plain library."""
+    if tab is not None:
+        if tab == "all":
+            rest = [(k, v) for k, v in request.query_params.multi_items() if k != "tab"]
+            url = f"/library/catalog?{urlencode(rest)}" if rest else "/library/catalog"
+            return RedirectResponse(url=url, status_code=301)
+        return RedirectResponse(url="/library", status_code=301)
     if user is None:
         # A guest has no library to count - the tabs render without numbers.
-        context = {**_library_context([], tab), "tab_counts": None}
+        context = {**_library_context([]), "tab_counts": None}
         return templates.TemplateResponse(request, "library.html", context)
     async with connection() as conn:
         items = await library_items_for_user(user, conn)
-    return templates.TemplateResponse(request, "library.html", _library_context(items, tab))
+    return templates.TemplateResponse(request, "library.html", _library_context(items))
+
+
+@router.get("/favorites")
+async def redirect_favorites() -> RedirectResponse:
+    """The old "Избранное" page address (PR 293) - the plain library now."""
+    return RedirectResponse(url="/library", status_code=301)
 
 
 def _library_context(
     items: list[dict[str, LibraryEntry | str | int | None]],
-    tab: Literal["reading", "favorites"],
 ) -> dict[str, object]:
     """PR 275 (Webnovells Redesign): the page splits the library into started titles
-    ("Читаю", cards with progress) and not-started ones ("Ещё в библиотеке"), plus the
-    one favorite title (PR 123) - all from the same library_items_for_user() list, kept
-    in its "most recently read first" order."""
+    ("Читаю", cards with progress) and not-started ones ("Ещё в библиотеке") - both from
+    the same library_items_for_user() list, kept in its "most recently read first" order."""
     today = datetime.now(UTC).date()
     items = [
         {**item, "last_read_label": _last_read_label(item["entry"].last_read_at, today)}  # type: ignore[union-attr]
@@ -91,15 +100,13 @@ def _library_context(
     ]
     reading = [item for item in items if item["entry"].last_read_volume is not None]  # type: ignore[union-attr]
     not_started = [item for item in items if item["entry"].last_read_volume is None]  # type: ignore[union-attr]
-    favorite = next((item for item in items if item["entry"].is_favorite), None)  # type: ignore[union-attr]
     return {
         "active_nav": "library",
-        "active_tab": tab,
+        "active_tab": "reading",
         "items": items,
         "reading": reading,
         "not_started": not_started,
-        "favorite": favorite,
-        "tab_counts": {"reading": len(reading), "favorites": 1 if favorite else 0},
+        "tab_counts": {"reading": len(reading)},
     }
 
 
@@ -322,7 +329,7 @@ async def add_to_library_by_url(
             request,
             "library.html",
             {
-                **_library_context(items, "reading"),
+                **_library_context(items),
                 "error": "Не удалось распознать ссылку на тайтл",
                 "submitted_url": url,
             },
@@ -356,26 +363,6 @@ async def remove_from_library(
     return RedirectResponse(url=_safe_next(next, "/library"), status_code=303)
 
 
-@router.post("/{slug_url}/favorite", response_model=None)
-async def toggle_favorite(
-    slug_url: str,
-    user: Annotated[User, Depends(require_current_user)],
-    conn: Annotated[AsyncConnection, Depends(get_connection)],
-) -> Response:
-    """Star toggle on a "Читаю" card (favorite-toggle.js) - JSON in/out (unlike
-    add/remove's redirects above) so the button can flip its own state, and every other
-    card's, without a full page reload: exactly one favorite per user (see
-    app/db/library.py's set_favorite()), so setting a new one always clears the rest."""
-    entry = await get_entry(conn, user.id, slug_url)
-    if entry is None:
-        raise HTTPException(status_code=404, detail="Тайтл не в библиотеке")
-    if entry.is_favorite:
-        await unset_favorite(conn, user.id, slug_url)
-        return JSONResponse({"is_favorite": False})
-    await set_favorite(conn, user.id, slug_url)
-    return JSONResponse({"is_favorite": True})
-
-
 @router.post("/{slug_url}/default-translation")
 async def set_title_default_translation(
     slug_url: str,
@@ -386,7 +373,7 @@ async def set_title_default_translation(
     """The dropdown next to .title-credits's "N глав несколько переводов" note (PR 205) -
     an empty `translation_index` (the "Спрашивать каждый раз" option) clears the saved
     default back to None, same as never having set one. Requires the title already being
-    in the library (same 404 as toggle_favorite() above) - there's nowhere else to persist
+    in the library (404 otherwise) - there's nowhere else to persist
     this per-user choice, see set_default_translation_index()'s own docstring."""
     entry = await get_entry(conn, user.id, slug_url)
     if entry is None:
