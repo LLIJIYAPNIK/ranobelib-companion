@@ -2,8 +2,23 @@
    markup whether rendered into catalog.html or appended by catalog-scroll.js.
    PR 295: `items` is the feed (app/services/catalog.py's StreamItem) - regular cards,
    and in the editorial mode a featured insert after every 12 of them, spanning the
-   whole row. The insert's full FeaturedCard look is PR 296; here it's the plain block. #}
+   whole row. The insert's full FeaturedCard look is PR 296; here it's the plain block.
+   PR 296: in the editorial mode the feed carries its section labels as full-row grid
+   items too (CatalogDesktop.dc.html) - «Свежие обновления» opening the first page,
+   «Продолжить каталог» after every insert that isn't the end of the feed. They're
+   navigation inside the one feed, not separate listings; the results mode has none. #}
 {% from "_title_card.html" import ui_title_card %}
+{% macro section_label(title, sub, fresh=false) -%}
+<div class="catalog-section{% if fresh %} catalog-section--fresh{% endif %}" data-role="catalog-section">
+  <span class="catalog-section__dot" aria-hidden="true"></span>
+  <h2 class="catalog-section__title">{{ title }}</h2>
+  <span class="catalog-section__sub">{{ sub }}</span>
+  <span class="catalog-section__rule" aria-hidden="true"></span>
+</div>
+{%- endmacro %}
+{% if editorial and page == 1 and items %}
+{{ section_label("Свежие обновления", "по дате последней главы", fresh=true) }}
+{% endif %}
 {% for item in items %}
 {% set title = item.title %}
 {% set name = title.rus_name or title.name %}
@@ -19,6 +34,9 @@
     </span>
   </a>
 </article>
+{% if editorial and (not loop.last or has_next_page) %}
+{{ section_label("Продолжить каталог", "тот же поток, по обновлению") }}
+{% endif %}
 {% else %}
 {% call ui_title_card(title.slug_url, name, cover) %}
 <button

@@ -9,20 +9,20 @@ from ranobelib import CatalogPage
 from ranobelib.models import Genre
 
 from app.main import app
-from tests.test_api_catalog import _FakeCatalog
+from tests.test_api_catalog import _FakeCatalog, _titles
 
 ROOT = Path(__file__).resolve().parents[1]
 CSS = (ROOT / "app/static/css/app.css").read_text(encoding="utf-8")
 client = TestClient(app)
 
 
-def _desktop_rule(selector: str) -> str:
+def _desktop_rule(selector: str, *, last: bool = True) -> str:
     """The selector's own rule inside the CatalogDesktop min-width: 768px block - the last
     one, so a shared `a, b {` rule earlier on doesn't shadow it."""
     block = CSS.split("CatalogDesktop (PR 296", 1)[1]
     matches = re.findall(rf"\n  {re.escape(selector)} \{{([^}}]*)\}}", block)
     assert matches, selector
-    return matches[-1]
+    return matches[-1] if last else matches[0]
 
 
 def _get(**params: object) -> str:
@@ -84,3 +84,74 @@ def test_search_button_goes_once_sort_autosubmits_at_every_width() -> None:
     assert re.search(
         r"\n\.catalog-toolbar--autosubmit \.catalog-toolbar__submit \{\s*display: none;", CSS
     )
+
+
+# --- editorial feed: section labels -------------------------------------------------
+
+
+def _labels(html: str) -> list[str]:
+    return re.findall(r'<h2 class="catalog-section__title">([^<]+)</h2>', html)
+
+
+def _feed(html: str) -> list[str]:
+    """The grid's items in order: S(ection), F(eatured), C(ard)."""
+    grid = html.split('data-role="catalog-grid"', 1)[-1]
+    roles = re.findall(
+        r'data-role="(catalog-section|catalog-featured|title-quickview-trigger)"', grid
+    )
+    return [{"catalog-section": "S", "catalog-featured": "F"}.get(r, "C") for r in roles]
+
+
+def test_editorial_feed_opens_with_fresh_updates_and_continues_after_each_insert() -> None:
+    fake = _FakeCatalog(
+        CatalogPage(items=_titles(1, 30), page=1, has_next_page=True),
+        featured=[CatalogPage(items=_titles(1001, 5), page=1, has_next_page=False)],
+    )
+    with patch("app.services.catalog.Catalog", return_value=fake):
+        html = client.get("/catalog").text
+
+    assert _labels(html) == ["Свежие обновления", "Продолжить каталог", "Продолжить каталог"]
+    feed = _feed(html)
+    assert feed[0] == "S"
+    assert "".join(feed) == "S" + "C" * 12 + "FS" + "C" * 12 + "FS" + "C" * 6
+    assert 'class="catalog-section catalog-section--fresh"' in html
+
+
+def test_no_label_after_an_insert_that_ends_the_feed() -> None:
+    fake = _FakeCatalog(
+        CatalogPage(items=_titles(1, 12), page=1, has_next_page=False),
+        featured=[CatalogPage(items=_titles(1001, 5), page=1, has_next_page=False)],
+    )
+    with patch("app.services.catalog.Catalog", return_value=fake):
+        html = client.get("/catalog").text
+
+    assert "".join(_feed(html)) == "S" + "C" * 12 + "F"
+
+
+def test_later_pages_carry_no_opening_label() -> None:
+    fake = _FakeCatalog(
+        CatalogPage(items=_titles(31, 30), page=2, has_next_page=True),
+        featured=[CatalogPage(items=_titles(1001, 10), page=1, has_next_page=False)],
+    )
+    with patch("app.services.catalog.Catalog", return_value=fake):
+        html = client.get("/catalog/page", params={"page": 2, "shown": 30, "featured": 2}).text
+
+    assert "".join(_feed(html)).startswith("CCCCCCF")
+    assert _labels(html) == ["Продолжить каталог"] * 3
+
+
+def test_results_mode_is_one_unnamed_grid() -> None:
+    fake = _FakeCatalog(CatalogPage(items=_titles(1, 30), page=1, has_next_page=True))
+    with patch("app.services.catalog.Catalog", return_value=fake):
+        html = client.get("/catalog", params={"sort": "views"}).text
+
+    assert _labels(html) == []
+
+
+def test_desktop_grid_is_six_columns_with_the_mode_gaps() -> None:
+    grid = _desktop_rule(".wn-catalog .catalog-grid", last=False)
+    assert "gap: 40px 24px;" in grid
+    results = _desktop_rule('.wn-catalog[data-mode="results"] .catalog-grid')
+    assert "gap: 30px 20px;" in results
+    wide = CSS.split("@media (min-width: 1200px) {\n  .wn-catalog .catalog-grid {", 1)[1]
+    assert wide.lstrip().startswith("grid-template-columns: repeat(6, minmax(0, 1fr));")

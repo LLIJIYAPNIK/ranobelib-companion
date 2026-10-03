@@ -7430,6 +7430,77 @@ a.ui-title-card:focus-visible .ui-title-card__cover {
   .wn-catalog .back-to-top--filters-open {
     right: var(--catalog-pad-x);
   }
+
+  /* The feed: 6 columns (4 below 1200px), 40×24 in the editorial mode and the calmer
+     30×20 in the results mode; 56px between a segment and the next (grid gap + 16). */
+  .wn-catalog .catalog-grid {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    gap: 40px 24px;
+  }
+
+  .wn-catalog[data-mode="results"] .catalog-grid {
+    gap: 30px 20px;
+  }
+
+  /* Section labels of the editorial feed (_catalog_cards.html). */
+  .catalog-section {
+    display: flex;
+    grid-column: 1 / -1;
+    align-items: center;
+    gap: 14px;
+    min-width: 0;
+  }
+
+  .catalog-section:not(:first-child),
+  .wn-catalog .catalog-featured {
+    margin-top: 16px;
+  }
+
+  .catalog-section__dot {
+    flex: none;
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    background: #4a4565;
+  }
+
+  .catalog-section--fresh .catalog-section__dot {
+    background: #3dd6c3;
+    box-shadow: 0 0 10px rgb(61 214 195 / 60%);
+  }
+
+  .catalog-section__title {
+    margin: 0;
+    color: #f2f0f7;
+    font: 800 20px/1.2 var(--wn-font-ui);
+    letter-spacing: -0.01em;
+    white-space: nowrap;
+  }
+
+  .catalog-section__sub {
+    color: #8c889f;
+    font: 500 13px/1.2 var(--wn-font-ui);
+    white-space: nowrap;
+  }
+
+  .catalog-section__rule {
+    flex: 1;
+    height: 1px;
+    background: linear-gradient(90deg, rgb(255 255 255 / 10%), transparent);
+  }
+}
+
+@media (min-width: 1200px) {
+  .wn-catalog .catalog-grid {
+    grid-template-columns: repeat(6, minmax(0, 1fr));
+  }
+}
+
+/* Phones (until PR 299): the feed without section labels. */
+@media (max-width: 767px) {
+  .catalog-section {
+    display: none;
+  }
 }
 
 /* Quick view (title-quickview.js): a non-modal <dialog> over its own scrim, one level
