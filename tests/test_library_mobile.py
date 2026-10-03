@@ -208,3 +208,14 @@ def test_confirm_sheet_has_a_pink_top_edge_and_48px_buttons() -> None:
     )
     assert buttons
     assert "min-height: 48px;" in buttons[1]
+
+
+def test_no_results_is_a_quiet_note_on_phones() -> None:
+    note = _phone_rule(".wn-library .wn-library-no-results")
+    assert "padding: 32px 20px;" in note
+    assert "display: none;" in _phone_rule(
+        ".wn-library .wn-library-no-results .catalog-empty__icon"
+    )
+    assert "height: 44px;" in _phone_rule(
+        ".wn-library .wn-library-no-results .catalog-empty__reset"
+    )

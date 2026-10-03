@@ -12165,6 +12165,38 @@ a.catalog-card__action {
   }
 }
 
+/* «В библиотеке ничего не нашлось» on phones (LibraryMobile preset=results, empty):
+   a quiet note - no icon, H3 20, one 44px reset, then «Искать в каталоге →». */
+@media (max-width: 767px) {
+  .wn-library .wn-library-no-results {
+    gap: 12px;
+    padding: 32px 20px;
+    border-color: rgb(255 255 255 / 7%);
+    border-radius: 16px;
+    background: #0f0f15;
+  }
+
+  .wn-library .wn-library-no-results .catalog-empty__icon {
+    display: none;
+  }
+
+  .wn-library .wn-library-no-results .catalog-empty__title {
+    font: 800 20px/1.25 var(--wn-font-ui);
+    letter-spacing: 0;
+  }
+
+  .wn-library .wn-library-no-results .catalog-empty__text {
+    font: 500 14px/1.5 var(--wn-font-ui);
+  }
+
+  .wn-library .wn-library-no-results .catalog-empty__reset {
+    height: 44px;
+    margin-top: 0;
+    padding: 0 18px;
+    border-color: #33304a;
+  }
+}
+
 /* «Продолжить · Гл. Y» doesn't fit beside ⋯ in a 320px row card - «Гл. Y» alone (the
    link's aria-label keeps the full action). */
 @media (max-width: 359px) {
