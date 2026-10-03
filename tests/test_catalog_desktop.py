@@ -21,6 +21,9 @@ def _desktop_rule(selector: str, *, last: bool = True) -> str:
     list includes `selector` (PR 297: the library shares some of these rules) - the last
     such rule by default, the first with last=False."""
     block = CSS.split("CatalogDesktop (PR 296", 1)[1]
+    # PR 299: the phone section in between isn't desktop.
+    before_mobile, rest = block.split("CatalogMobile (PR 299", 1)
+    block = before_mobile + rest.split("LibraryDesktop (PR 297", 1)[1]
     matches = [
         body
         for selectors, body in re.findall(r"\n  ([^{}@/]+?) \{([^}]*)\}", block)
