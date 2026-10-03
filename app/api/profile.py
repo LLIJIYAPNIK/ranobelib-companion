@@ -1,13 +1,13 @@
 """GET /profile — read-only account profile (PR 92), now a public page (PR 122).
 
 Separate from /settings/account (PR 90), which is where these same fields are actually
-edited - this page only displays them (PR 124's three show_* privacy flags included).
+edited - this page only displays them (PR 124's show_* privacy flags included).
 
 /profile (no id) is the logged-in visitor's own shortcut - it stays gated behind login,
 since there's no "own profile" to show an anonymous visitor. /profile/{user_id} is the
 public page itself: any visitor, logged in or not, can view any registered user's
-profile by id - subject to that user's own show_currently_reading/show_favorite/
-show_library flags (PR 124), which only apply to *other* visitors; the owner's own view
+profile by id - subject to that user's own show_currently_reading/show_library flags
+(PR 124), which only apply to *other* visitors; the owner's own view
 of their own profile always shows everything, since that's also where they'd notice
 something is set to hidden and go fix it in /settings/account.
 """
@@ -127,7 +127,6 @@ async def _render_profile(
     # but the top entry might just be the most recently *added*, never actually opened,
     # so "Читает сейчас" only shows up once that entry genuinely has a read position.
     currently_reading = items[0] if items and items[0]["entry"].last_read_at else None
-    favorite_item = next((item for item in items if item["entry"].is_favorite), None)
 
     # PR 201/202: the friends preview shown further down, gated the same way as the three
     # sections right below (computed unconditionally so the owner's own visit is
@@ -140,8 +139,6 @@ async def _render_profile(
     if not is_own_profile:
         if not profile_user.show_currently_reading:
             currently_reading = None
-        if not profile_user.show_favorite:
-            favorite_item = None
         if not profile_user.show_library:
             items = []
         if not profile_user.show_friends:
@@ -177,13 +174,12 @@ async def _render_profile(
             "is_own_profile": is_own_profile,
             "friend_state": friend_state,
             "registered_at": _format_date(profile_user.created_at),
-            # PR 135/136: unlike currently_reading/favorite_item/library_items above, not
+            # PR 135/136: unlike currently_reading/library_items above, not
             # gated by any show_* privacy flag - there isn't one for either, same as the
             # avatar/nickname/bio they sit alongside.
             "comment_count": comment_count,
             "reading_calendar": reading_calendar,
             "currently_reading": currently_reading,
-            "favorite_item": favorite_item,
             "library_items": items,
             "library_preview": items[:_LIBRARY_PREVIEW_LIMIT],
             "friend_preview": friend_preview,

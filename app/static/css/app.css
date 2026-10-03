@@ -7251,72 +7251,6 @@ a.ui-title-card:focus-visible .ui-title-card__cover {
   box-shadow: var(--focus-ring);
 }
 
-/* Favorite star: a 28px chip over the cover's top-right corner, 44px hit area; state
-   is aria-pressed (favorite-toggle.js). */
-.library-card__cover-wrap {
-  position: relative;
-  flex: 0 0 auto;
-}
-
-.library-card__favorite {
-  appearance: none;
-  position: absolute;
-  top: -6px;
-  right: -10px;
-  display: grid;
-  place-items: center;
-  width: 44px;
-  height: 44px;
-  padding: 0;
-  border: 0;
-  background: transparent;
-  color: var(--text-1);
-  cursor: pointer;
-}
-
-.library-card__favorite-chip {
-  display: grid;
-  place-items: center;
-  width: 28px;
-  height: 28px;
-  border-radius: var(--r-sm);
-  background: rgba(11, 11, 20, 0.8);
-  transition:
-    background-color var(--dur-base) var(--ease),
-    color var(--dur-base) var(--ease);
-}
-
-.library-card__favorite svg {
-  width: 14px;
-  height: 14px;
-}
-
-.library-card__favorite[aria-pressed="true"] {
-  color: var(--warning);
-}
-
-.library-card__favorite[aria-pressed="true"] svg {
-  fill: currentColor;
-}
-
-@media (hover: hover) {
-  .library-card__favorite:hover .library-card__favorite-chip {
-    background: rgba(11, 11, 20, 0.95);
-  }
-}
-
-.library-card__favorite:focus-visible {
-  outline: none;
-}
-
-.library-card__favorite:focus-visible .library-card__favorite-chip {
-  box-shadow: var(--focus-ring);
-}
-
-.library-card__favorite:disabled {
-  cursor: progress;
-}
-
 /* Locked state at page level (LOCKED): the .ui-locked row turned into a centered
    card - bigger tile, title and text - for a whole page a guest can't see. */
 .ui-locked--page {
@@ -7377,20 +7311,6 @@ a.ui-title-card:focus-visible .ui-title-card__cover {
   }
 }
 
-/* ==========================================================================
-   Webnovells Redesign - library (PR 275, screen A3). Opts into the --wn-* tokens
-   from PR 272; the tabs partial is shared with the catalog, so its new look is
-   scoped to .wn-library and only the star/count need global defaults.
-   ========================================================================== */
-
-.library-tabs__star {
-  width: 14px;
-  height: 14px;
-  flex: none;
-  margin-right: 6px;
-  fill: #f2c14e;
-}
-
 .library-tabs__count {
   margin-left: 8px;
   font-weight: 700;
@@ -7438,10 +7358,6 @@ a.ui-title-card:focus-visible .ui-title-card__cover {
   font: var(--wn-weight-semi-bold) 15px/1 var(--wn-font-ui);
   white-space: nowrap;
   box-shadow: none;
-}
-
-.wn-library .library-tabs__star {
-  margin-right: 0;
 }
 
 @media (hover: hover) {
@@ -7814,65 +7730,6 @@ a.ui-title-card:focus-visible .ui-title-card__cover {
   }
 }
 
-/* Favorite star (data-role="favorite-toggle-trigger", favorite-toggle.js). */
-.wn-library-star {
-  appearance: none;
-  flex: none;
-  display: grid;
-  place-items: center;
-  width: 32px;
-  height: 32px;
-  padding: 0;
-  border: 0;
-  border-radius: var(--wn-radius-sm);
-  background: var(--wn-surface-raised);
-  color: var(--wn-text-muted);
-  cursor: pointer;
-  transition:
-    background-color 160ms ease,
-    color 160ms ease;
-}
-
-.wn-library-star svg {
-  width: 16px;
-  height: 16px;
-}
-
-.wn-library-star[aria-pressed="true"] {
-  color: #f2c14e;
-}
-
-.wn-library-star[aria-pressed="true"] svg {
-  fill: currentColor;
-}
-
-@media (hover: hover) {
-  .wn-library-star:hover {
-    background: var(--wn-surface-hover);
-    color: var(--wn-text);
-  }
-
-  .wn-library-star[aria-pressed="true"]:hover {
-    color: #f2c14e;
-  }
-}
-
-.wn-library-star:focus-visible {
-  outline: none;
-  box-shadow: var(--wn-focus-ring);
-}
-
-.wn-library-star:disabled {
-  cursor: progress;
-}
-
-.wn-library-star--overlay {
-  position: absolute;
-  top: 8px;
-  right: 8px;
-  background: rgb(12 12 18 / 80%);
-}
-
 /* "Читаю" cards - list view (default): 3 columns of horizontal cards. */
 .wn-library-grid {
   display: grid;
@@ -8057,7 +7914,8 @@ a.ui-title-card:focus-visible .ui-title-card__cover {
   display: none;
 }
 
-/* "Ещё в библиотеке" (not started) and "Избранное" side by side, 8 + 4 columns. */
+/* "Ещё в библиотеке" (not started) - the whole row since "Избранное" beside it went
+   away (PR 293). */
 .wn-library__more {
   display: grid;
   grid-template-columns: repeat(12, minmax(0, 1fr));
@@ -8066,14 +7924,7 @@ a.ui-title-card:focus-visible .ui-title-card__cover {
 }
 
 .wn-library__not-started {
-  grid-column: span 8;
-  display: flex;
-  flex-direction: column;
-  gap: var(--wn-space-2);
-}
-
-.wn-library__favorite {
-  grid-column: 9 / span 4;
+  grid-column: 1 / -1;
   display: flex;
   flex-direction: column;
   gap: var(--wn-space-2);
@@ -8098,7 +7949,7 @@ a.ui-title-card:focus-visible .ui-title-card__cover {
 
 .wn-library-posters {
   display: grid;
-  grid-template-columns: repeat(5, minmax(0, 1fr));
+  grid-template-columns: repeat(8, minmax(0, 1fr));
   gap: 20px;
 }
 
@@ -8154,104 +8005,6 @@ a.ui-title-card:focus-visible .ui-title-card__cover {
   font: var(--wn-weight-semi-bold) 13px/1 var(--wn-font-ui);
 }
 
-/* Favorite title: the cover blurred behind a dark scrim, like the hero zones. */
-.wn-library-fav {
-  position: relative;
-  display: flex;
-  align-items: center;
-  gap: var(--wn-space-2);
-  overflow: hidden;
-  padding: 18px;
-  border: 1px solid #2a2838;
-  border-radius: var(--wn-radius-lg);
-  background: var(--wn-surface);
-  text-decoration: none;
-  isolation: isolate;
-  transition: border-color 160ms ease;
-}
-
-@media (hover: hover) {
-  .wn-library-fav:hover {
-    border-color: #3a3650;
-  }
-}
-
-.wn-library-fav:focus-visible {
-  outline: none;
-  box-shadow: var(--wn-focus-ring);
-}
-
-.wn-library-fav__backdrop {
-  position: absolute;
-  inset: -40px;
-  z-index: -2;
-  width: calc(100% + 80px);
-  height: calc(100% + 80px);
-  object-fit: cover;
-  filter: blur(40px) saturate(0.5) brightness(0.5);
-}
-
-.wn-library-fav__scrim {
-  position: absolute;
-  inset: 0;
-  z-index: -1;
-  background: rgb(12 12 18 / 78%);
-}
-
-.wn-library-fav__cover {
-  flex: none;
-  width: 64px;
-  height: 96px;
-  overflow: hidden;
-  border-radius: var(--wn-radius-sm);
-  background: var(--wn-surface-raised);
-}
-
-.wn-library-fav__cover img {
-  display: block;
-  width: 100%;
-  height: 100%;
-  object-fit: cover;
-  object-position: top;
-}
-
-.wn-library-fav__copy {
-  display: flex;
-  flex-direction: column;
-  gap: var(--wn-space-1);
-  min-width: 0;
-}
-
-.wn-library-fav__name {
-  color: #f2f0f7;
-  font: var(--wn-weight-bold) 16px/1.3 var(--wn-font-ui);
-}
-
-.wn-library-fav__meta {
-  color: #cfcbdd;
-  font: var(--wn-weight-medium) 14px/1.2 var(--wn-font-ui);
-}
-
-.wn-library-fav--lg {
-  max-width: 720px;
-  gap: var(--wn-space-3);
-  padding: var(--wn-space-3);
-}
-
-.wn-library-fav--lg .wn-library-fav__cover {
-  width: 120px;
-  height: 180px;
-  border-radius: 10px;
-}
-
-.wn-library-fav--lg .wn-library-fav__name {
-  font: var(--wn-weight-extra-bold) 24px/1.2 var(--wn-font-ui);
-}
-
-.wn-library-fav--lg .wn-library-fav__meta {
-  font-size: 15px;
-}
-
 @media (max-width: 1199px) {
   .wn-library-grid {
     grid-template-columns: repeat(2, minmax(0, 1fr));
@@ -8276,8 +8029,7 @@ a.ui-title-card:focus-visible .ui-title-card__cover {
     width: auto;
   }
 
-  .wn-library__not-started,
-  .wn-library__favorite {
+  .wn-library__not-started {
     grid-column: 1 / -1;
   }
 
@@ -8490,33 +8242,11 @@ a.ui-title-card:focus-visible .ui-title-card__cover {
     min-height: 44px;
   }
 
-  /* Stars: the same 32px chip with a 44px hit area around it (PR 282). */
-  .wn-library-star {
-    position: relative;
-  }
-
-  .wn-library-star::before {
-    content: "";
-    position: absolute;
-    inset: -6px;
-  }
-
-  .wn-library-star--overlay {
-    position: absolute;
-  }
-
   /* Grid view (PR 282): as many 128px+ columns as fit - two from 320px to 430px. In
-     those narrow cards the star sits on the cover's corner (like the posters'), the
-     title gets the full width and wraps in full, and the CTA drops its verb. */
+     those narrow cards the title gets the full width and wraps in full, and the CTA
+     drops its verb. */
   .wn-library__titles--grid .wn-library-card {
     position: relative;
-  }
-
-  .wn-library__titles--grid .wn-library-card__top .wn-library-star {
-    position: absolute;
-    top: 20px;
-    right: 20px;
-    background: rgb(12 12 18 / 80%);
   }
 
   .wn-library__titles--grid .wn-library-card__name {
@@ -8540,20 +8270,6 @@ a.ui-title-card:focus-visible .ui-title-card__cover {
   .wn-library-posters {
     grid-template-columns: repeat(3, minmax(0, 1fr));
     gap: 12px;
-  }
-
-  .wn-library-fav--lg {
-    gap: var(--wn-space-2);
-    padding: var(--wn-space-2);
-  }
-
-  .wn-library-fav--lg .wn-library-fav__cover {
-    width: 84px;
-    height: 126px;
-  }
-
-  .wn-library-fav--lg .wn-library-fav__name {
-    font-size: 19px;
   }
 }
 
@@ -13983,7 +13699,7 @@ body.reader-hud-visible .reader-hud {
   }
 }
 
-/* "Читает сейчас" 5 / "Друзья" 3 / "Избранное" 4. */
+/* "Читает сейчас" 7 / "Друзья" 5 ("Избранное" was the third card until PR 293). */
 .wn-profile__row {
   display: grid;
   grid-template-columns: repeat(12, minmax(0, 1fr));
@@ -13991,15 +13707,11 @@ body.reader-hud-visible .reader-hud {
 }
 
 .wn-profile-current {
-  grid-column: span 5;
+  grid-column: span 7;
 }
 
 .wn-profile-friends {
-  grid-column: span 3;
-}
-
-.wn-profile-favorite {
-  grid-column: span 4;
+  grid-column: span 5;
 }
 
 .wn-profile-cover {
@@ -14142,7 +13854,6 @@ body.reader-hud-visible .reader-hud {
 @media (hover: hover) {
   .wn-profile-friend:hover .wn-profile-friend__name,
   .wn-profile-current__name:hover,
-  .wn-profile-favorite__body:hover .wn-profile-favorite__name,
   .wn-profile-poster:hover .wn-profile-poster__name {
     color: #ffffff;
   }
@@ -14151,51 +13862,6 @@ body.reader-hud-visible .reader-hud {
 .wn-profile-friend__sub {
   color: var(--wn-text-muted);
   font: var(--wn-weight-medium) 13px/1.1 var(--wn-font-ui);
-}
-
-.wn-profile-favorite__body {
-  display: flex;
-  align-items: center;
-  gap: var(--wn-space-2);
-  border-radius: var(--wn-radius-sm);
-  text-decoration: none;
-}
-
-.wn-profile-favorite__body:focus-visible {
-  outline: none;
-  box-shadow: var(--wn-focus-ring);
-}
-
-.wn-profile-favorite__cover {
-  width: 64px;
-  height: 96px;
-  border-radius: var(--wn-radius-sm);
-}
-
-.wn-profile-favorite__copy {
-  display: flex;
-  flex-direction: column;
-  gap: var(--wn-space-1);
-  min-width: 0;
-}
-
-.wn-profile-favorite__name {
-  color: var(--wn-text);
-  font: var(--wn-weight-bold) 15px/1.3 var(--wn-font-ui);
-}
-
-.wn-profile-favorite__badge {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  color: #f2c14e;
-  font: var(--wn-weight-semi-bold) 13px/1 var(--wn-font-ui);
-}
-
-.wn-profile-favorite__badge svg {
-  width: 13px;
-  height: 13px;
-  fill: currentColor;
 }
 
 /* Library preview: up to seven covers with their progress. */
@@ -14266,16 +13932,9 @@ body.reader-hud-visible .reader-hud {
     grid-template-columns: repeat(2, minmax(112px, 1fr));
   }
 
-  .wn-profile-current {
-    grid-column: 1 / -1;
-  }
-
+  .wn-profile-current,
   .wn-profile-friends {
-    grid-column: span 6;
-  }
-
-  .wn-profile-favorite {
-    grid-column: span 6;
+    grid-column: 1 / -1;
   }
 
   .wn-profile-library__grid {
@@ -14382,8 +14041,7 @@ body.reader-hud-visible .reader-hud {
   }
 
   .wn-profile-current,
-  .wn-profile-friends,
-  .wn-profile-favorite {
+  .wn-profile-friends {
     grid-column: 1;
   }
 
@@ -14393,7 +14051,6 @@ body.reader-hud-visible .reader-hud {
   }
 
   .wn-profile-current__name,
-  .wn-profile-favorite__name,
   .wn-profile-friend__name,
   .wn-profile-friend__sub {
     overflow: visible;

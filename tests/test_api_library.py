@@ -5,7 +5,6 @@ wiped and re-migrated per test (see tests/db_reset.py), with an explicit
 `with TestClient(app) as client:` so app.main's lifespan (migrations) actually runs.
 """
 
-import re
 from collections.abc import Iterator
 from unittest.mock import patch
 
@@ -322,7 +321,7 @@ def test_show_library_anonymous_gets_the_locked_state(client: TestClient) -> Non
 
 
 async def test_show_library_counts_titles_on_the_tabs(client: TestClient) -> None:
-    """PR 275: "Читаю" counts started titles only, "Избранное" the one favorite."""
+    """PR 275: "Читаю" counts started titles only."""
     _register(client)
     title_a = _fake_title(slug_url="1--first")
     with patch("app.services.client.RanobeLib", return_value=_FakeClient(title_a)):
@@ -330,15 +329,13 @@ async def test_show_library_counts_titles_on_the_tabs(client: TestClient) -> Non
         client.post("/library/2--second/add")
     async with connection() as conn:
         await record_progress(conn, user_id=1, slug_url="1--first", volume="1", number="2")
-    client.post("/library/2--second/favorite")
 
     with patch("app.services.client.RanobeLib", return_value=_FakeClient(title_a)):
         response = client.get("/library")
 
     reading_tab = 'aria-current="page">Читаю<span class="library-tabs__count">1</span></a>'
     assert reading_tab in response.text
-    assert 'Избранное<span class="library-tabs__count">1</span></a>' in response.text
-    assert 'href="/library?tab=favorites"' in response.text
+    assert response.text.count('class="library-tabs__count"') == 1
 
 
 def test_catalog_tabs_have_no_counts(client: TestClient) -> None:
@@ -355,7 +352,7 @@ def test_catalog_tabs_have_no_counts(client: TestClient) -> None:
         response = client.get("/library/catalog")
 
     assert response.status_code == 200
-    assert 'href="/library?tab=favorites"' in response.text
+    assert 'href="/library/catalog" aria-current="page"' in response.text
     assert "library-tabs__count" not in response.text
 
 
@@ -544,71 +541,32 @@ def test_add_by_url_requires_login(client: TestClient) -> None:
     assert response.headers["location"] == "/login"
 
 
-# --- PR 123: the one favorite title -------------------------------------------------
+# --- PR 293: "Избранное" is gone ---------------------------------------------------
 
 
-def test_favorite_toggle_requires_login(client: TestClient) -> None:
-    response = client.post("/library/6712--test-novel/favorite", follow_redirects=False)
-
-    assert response.status_code == 303
-    assert response.headers["location"] == "/login"
-
-
-def test_favorite_toggle_marks_a_title_favorite(client: TestClient) -> None:
+def test_favorite_toggle_route_is_gone(client: TestClient) -> None:
     _register(client)
     title = _fake_title()
     with patch("app.services.client.RanobeLib", return_value=_FakeClient(title)):
         client.post("/library/6712--test-novel/add")
 
     response = client.post("/library/6712--test-novel/favorite")
-
-    assert response.status_code == 200
-    assert response.json() == {"is_favorite": True}
-
-
-def test_favorite_toggle_unmarks_an_already_favorite_title(client: TestClient) -> None:
-    _register(client)
-    title = _fake_title()
-    with patch("app.services.client.RanobeLib", return_value=_FakeClient(title)):
-        client.post("/library/6712--test-novel/add")
-    client.post("/library/6712--test-novel/favorite")
-
-    response = client.post("/library/6712--test-novel/favorite")
-
-    assert response.status_code == 200
-    assert response.json() == {"is_favorite": False}
-
-
-def test_favorite_toggle_clears_the_previous_favorite(client: TestClient) -> None:
-    _register(client)
-    title_a = _fake_title(slug_url="1--first")
-    title_b = _fake_title(slug_url="2--second")
-    with patch("app.services.client.RanobeLib", return_value=_FakeClient(title_a)):
-        client.post("/library/1--first/add")
-    with patch("app.services.client.RanobeLib", return_value=_FakeClient(title_b)):
-        client.post("/library/2--second/add")
-    client.post("/library/1--first/favorite")
-
-    response = client.post("/library/2--second/favorite")
-
-    assert response.status_code == 200
-    assert response.json() == {"is_favorite": True}
-    with patch("app.services.client.RanobeLib", return_value=_FakeClient(title_a)):
-        library_response = client.get("/library")
-    # Exactly one card is favorited - "2--second", not "1--first" anymore.
-    assert library_response.text.count('aria-pressed="true"') == 1
-    favorite_slug = re.search(
-        r'data-slug-url="([^"]+)"\s+aria-pressed="true"', library_response.text
-    ).group(1)
-    assert favorite_slug == "2--second"
-
-
-def test_favorite_toggle_unknown_title_is_not_found(client: TestClient) -> None:
-    _register(client)
-
-    response = client.post("/library/does-not-exist/favorite")
 
     assert response.status_code == 404
+
+
+def test_show_library_has_no_favorites(client: TestClient) -> None:
+    """No star on the cards, no "Избранное" tab or card, no favorite-toggle.js."""
+    _register(client)
+    title = _fake_title(cover=Cover(default="https://example.com/cover.jpg"))
+    with patch("app.services.client.RanobeLib", return_value=_FakeClient(title)):
+        client.post("/library/6712--test-novel/add")
+        response = client.get("/library")
+
+    assert response.status_code == 200
+    assert 'data-role="library-item"' in response.text
+    assert "favorite" not in response.text
+    assert "Избранн" not in response.text
 
 
 # --- PR 205: default_translation_index ("перевод по умолчанию для тайтла") -------------
@@ -725,23 +683,6 @@ def test_set_default_translation_rejects_garbage_value(client: TestClient) -> No
     assert response.status_code == 422
 
 
-def test_show_library_renders_the_favorite_star_button(client: TestClient) -> None:
-    _register(client)
-    title = _fake_title()
-    with patch("app.services.client.RanobeLib", return_value=_FakeClient(title)):
-        client.post("/library/6712--test-novel/add")
-    client.post("/library/6712--test-novel/favorite")
-
-    with patch("app.services.client.RanobeLib", return_value=_FakeClient(title)):
-        response = client.get("/library")
-
-    assert response.status_code == 200
-    favorite_slug = re.search(
-        r'data-slug-url="([^"]+)"\s+aria-pressed="true"', response.text
-    ).group(1)
-    assert favorite_slug == "6712--test-novel"
-
-
 async def test_show_library_reading_card_has_continue_cta_and_last_read_line(
     client: TestClient,
 ) -> None:
@@ -775,51 +716,3 @@ def test_show_library_wires_the_toolbar_script(client: TestClient) -> None:
     assert "static/js/library-toolbar.js" in response.text
     # Hidden until library-toolbar.js shows it - without JS it would do nothing.
     assert 'data-role="library-toolbar" hidden' in response.text
-
-
-def test_show_library_shows_the_favorite_as_a_blurred_card(client: TestClient) -> None:
-    _register(client)
-    title = _fake_title(cover=Cover(default="https://example.com/cover.jpg"))
-    with patch("app.services.client.RanobeLib", return_value=_FakeClient(title)):
-        client.post("/library/6712--test-novel/add")
-    client.post("/library/6712--test-novel/favorite")
-
-    with patch("app.services.client.RanobeLib", return_value=_FakeClient(title)):
-        response = client.get("/library")
-
-    assert 'data-role="library-favorite-card"' in response.text
-    assert 'class="wn-library-fav__backdrop" src="https://example.com/cover.jpg"' in response.text
-
-
-def test_show_library_favorites_tab_without_a_favorite(client: TestClient) -> None:
-    _register(client)
-    title = _fake_title()
-    with patch("app.services.client.RanobeLib", return_value=_FakeClient(title)):
-        client.post("/library/6712--test-novel/add")
-        response = client.get("/library?tab=favorites")
-
-    assert response.status_code == 200
-    assert 'href="/library?tab=favorites" aria-current="page"' in response.text
-    assert "В избранном пусто" in response.text
-    assert 'data-role="library-toolbar"' not in response.text
-
-
-def test_show_library_favorites_tab_shows_only_the_favorite(client: TestClient) -> None:
-    _register(client)
-    title_a = _fake_title(slug_url="1--first")
-    with patch("app.services.client.RanobeLib", return_value=_FakeClient(title_a)):
-        client.post("/library/1--first/add")
-        client.post("/library/2--second/add")
-    client.post("/library/1--first/favorite")
-
-    with patch("app.services.client.RanobeLib", return_value=_FakeClient(title_a)):
-        response = client.get("/library?tab=favorites")
-
-    assert 'class="wn-library-fav wn-library-fav--lg" href="/titles/1--first"' in response.text
-    assert "/titles/2--second" not in response.text
-
-
-def test_show_library_rejects_an_unknown_tab(client: TestClient) -> None:
-    response = client.get("/library?tab=whatever")
-
-    assert response.status_code == 422

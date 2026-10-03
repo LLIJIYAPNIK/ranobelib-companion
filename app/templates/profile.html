@@ -8,15 +8,12 @@
   PR 277 (Webnovells Redesign, screen A5): hero with the avatar blurred behind it, a teal
   ring around the avatar, name, bio or «Добавить о себе», meta line, stat pills and
   «Редактировать» / the friend-request buttons; the reading calendar (PR 136/160/177/178
-  - same data, hooks and tooltip, new palette); "Читает сейчас", "Друзья" and "Избранное"
-  side by side; then a preview row of the library. Sections hidden by the owner's privacy
+  - same data, hooks and tooltip, new palette); "Читает сейчас" and "Друзья" side by
+  side; then a preview row of the library. Sections hidden by the owner's privacy
   settings aren't rendered at all (app/api/profile.py). A guest looking at /profile gets
   the locked state. `.profile__avatar img` is what image-lightbox.js opens (PR 173).
 #}
 {% from "_friend_row.html" import ui_friend_request_actions %}
-{% macro star_icon() -%}
-<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 2l3 7 7 .3-5.5 4.7 2 7L12 17l-6.5 4 2-7L2 9.3 9 9z"/></svg>
-{%- endmacro %}
 {% macro progress(pct) -%}
 <div class="wn-profile-progress" aria-label="Прочитано {{ pct or 0 }}%">
   <span class="wn-profile-progress__bar"><span class="wn-profile-progress__fill" style="width: {{ pct or 0 }}%"></span></span>
@@ -116,7 +113,7 @@
     <div class="reading-calendar-tooltip" data-role="reading-calendar-tooltip" role="tooltip"></div>
   </section>
 
-  {% if currently_reading or friend_preview or favorite_item %}
+  {% if currently_reading or friend_preview %}
   <div class="wn-profile__row">
     {% if currently_reading %}
     {% set current_name = currently_reading.name or currently_reading.entry.slug_url %}
@@ -160,23 +157,6 @@
         </li>
         {% endfor %}
       </ul>
-    </section>
-    {% endif %}
-
-    {% if favorite_item %}
-    {% set favorite_name = favorite_item.name or favorite_item.entry.slug_url %}
-    <section class="wn-profile-card wn-profile-favorite" aria-labelledby="profile-favorite-title">
-      <div class="wn-profile-card__head">
-        <h2 class="wn-profile-card__title" id="profile-favorite-title">Избранное</h2>
-        <span class="wn-profile-card__count">1</span>
-      </div>
-      <a class="wn-profile-favorite__body" href="/titles/{{ favorite_item.entry.slug_url }}">
-        <span class="wn-profile-cover wn-profile-favorite__cover">{% if favorite_item.cover_url %}<img src="{{ favorite_item.cover_url }}" alt="" loading="lazy">{% endif %}</span>
-        <span class="wn-profile-favorite__copy">
-          <span class="wn-profile-favorite__name">{{ favorite_name }}</span>
-          <span class="wn-profile-favorite__badge">{{ star_icon() }}В избранном</span>
-        </span>
-      </a>
     </section>
     {% endif %}
   </div>
