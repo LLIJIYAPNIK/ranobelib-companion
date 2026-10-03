@@ -113,7 +113,7 @@ async def test_card_has_the_menu_and_the_confirmation(client: TestClient) -> Non
     assert ">Отмена</button>" in confirm and ">Удалить</button>" in confirm
 
 
-async def test_hero_menu_has_no_toc_item(client: TestClient) -> None:
+async def test_hero_menu_has_its_toc_item_for_phones_only(client: TestClient) -> None:
     register(client, "alice@example.com")
     _add(client, "1--first")
     async with connection() as conn:
@@ -122,7 +122,10 @@ async def test_hero_menu_has_no_toc_item(client: TestClient) -> None:
     hero = _library(client).split('data-role="library-hero"', 1)[1].split("</section>", 1)[0]
     menu = hero.split('data-role="library-menu" hidden>', 1)[1].split("</div>", 1)[0]
     assert "Страница тайтла" in menu
-    assert "Оглавление" not in menu
+    # Desktop has the «Оглавление» button beside «Продолжить»; phones drop it for the
+    # action sheet (PR 300), so the item is there but phone-only.
+    assert 'class="wn-library-menu__item wn-library-menu__item--phone-only"' in menu
+    assert "Оглавление" in menu
     assert "Удалить из библиотеки" in menu
     assert (
         'data-slug-url="1--first"' in _library(client).split('data-role="library-hero"', 1)[1][:80]

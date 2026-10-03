@@ -33,12 +33,13 @@ def test_ribbon_fades_only_where_there_is_more_and_reveals_the_active_item() -> 
     assert "mask-image" in _rule(".wn-ribbon--more-end")
 
 
-def _phone_rule(selector: str) -> str:
-    """PR 300: the last rule for `selector` in the LibraryMobile section."""
+def _phone_rule(selector: str, *, last: bool = True) -> str:
+    """PR 300: the last rule for `selector` in the LibraryMobile section (767px, then
+    359px blocks) - the first with last=False."""
     block = CSS.split("LibraryMobile (PR 300", 1)[1].split("title page (PR 253)", 1)[0]
     matches = re.findall(rf"\n  {re.escape(selector)} \{{([^}}]*)\}}", block)
     assert matches, selector
-    return matches[-1]
+    return matches[-1] if last else matches[0]
 
 
 def test_search_takes_its_own_row_and_the_add_form_wraps() -> None:
@@ -118,3 +119,25 @@ def test_narrow_grid_cards_keep_their_title_and_cta_inside() -> None:
 def test_continue_button_is_a_44px_target_on_phones() -> None:
     # Found by the 320/375/430 check: «Продолжить» was 38px tall in list and grid alike.
     assert "min-height: 44px;" in _rule(".wn-library-card__cta", indent="  ")
+
+
+def test_hero_is_compact_with_the_cover_beside_the_copy() -> None:
+    inner = _phone_rule(".wn-library .wn-library-hero__inner", last=False)
+    assert "grid-template-columns: 88px minmax(0, 1fr);" in inner
+    assert "grid-row: 1 / 5;" in _phone_rule(".wn-library .wn-library-hero__cover")
+    narrow = CSS.split("@media (max-width: 359px) {\n  .wn-library .wn-library-hero__inner {", 1)[1]
+    assert "grid-template-columns: 76px minmax(0, 1fr);" in narrow.split("}", 1)[0]
+    actions = _phone_rule(".wn-library .wn-library-hero__actions")
+    assert "grid-column: 1 / -1;" in actions
+    assert "flex: 1;" in _phone_rule(".wn-library .wn-library-hero__continue")
+
+
+def test_hero_toc_moves_into_its_action_sheet_on_phones() -> None:
+    page = (ROOT / "app/templates/library.html").read_text(encoding="utf-8")
+    assert 'actions_menu(hero_entry.slug_url, hero_name, toc="phone")' in page
+    assert '{% if toc == "phone" %} wn-library-menu__item--phone-only{% endif %}' in page
+    assert re.search(
+        r"@media \(min-width: 768px\) \{\n  \.wn-library-menu__item--phone-only \{\n"
+        r"    display: none;",
+        CSS,
+    )
