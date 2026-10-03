@@ -50,17 +50,28 @@ CATALOG_SORT_OPTIONS = {
 }
 
 
-@router.get("")
+@router.get("", response_model=None)
 async def show_library(
     request: Request,
     user: Annotated[User | None, Depends(get_current_user)],
-) -> HTMLResponse:
+    tab: str | None = None,
+) -> HTMLResponse | RedirectResponse:
     """Viewing the library page itself doesn't require an account - only an anonymous
     visitor can't have a personal reading list, so that's the one thing the page won't
     show them (library.html prompts them to log in/register instead of the list). conn is
     checked out below, not taken as a route-level Depends(get_connection) parameter, so an
     anonymous visitor never checks one out of the pool at all (see get_current_user()'s
-    own docstring for the same reasoning)."""
+    own docstring for the same reasoning).
+
+    `tab` is no longer a view of this page (PR 293, Catalog handoff.md): old links keep
+    working through a redirect - `?tab=all` to the catalog (any other query parameters
+    kept), every other value (`reading`, `favorites`, `fav`, ...) to the plain library."""
+    if tab is not None:
+        if tab == "all":
+            rest = [(k, v) for k, v in request.query_params.multi_items() if k != "tab"]
+            url = f"/library/catalog?{urlencode(rest)}" if rest else "/library/catalog"
+            return RedirectResponse(url=url, status_code=301)
+        return RedirectResponse(url="/library", status_code=301)
     if user is None:
         # A guest has no library to count - the tabs render without numbers.
         context = {**_library_context([]), "tab_counts": None}
@@ -68,6 +79,12 @@ async def show_library(
     async with connection() as conn:
         items = await library_items_for_user(user, conn)
     return templates.TemplateResponse(request, "library.html", _library_context(items))
+
+
+@router.get("/favorites")
+async def redirect_favorites() -> RedirectResponse:
+    """The old "Избранное" page address (PR 293) - the plain library now."""
+    return RedirectResponse(url="/library", status_code=301)
 
 
 def _library_context(

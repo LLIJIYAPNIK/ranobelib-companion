@@ -569,6 +569,54 @@ def test_show_library_has_no_favorites(client: TestClient) -> None:
     assert "Избранн" not in response.text
 
 
+@pytest.mark.parametrize("tab", ["favorites", "fav", "reading", "whatever"])
+def test_old_library_tabs_redirect_to_the_library(client: TestClient, tab: str) -> None:
+    response = client.get(f"/library?tab={tab}", follow_redirects=False)
+
+    assert response.status_code == 301
+    assert response.headers["location"] == "/library"
+
+
+def test_old_favorites_tab_drops_other_query_parameters(client: TestClient) -> None:
+    response = client.get("/library?tab=fav&sort=name", follow_redirects=False)
+
+    assert response.status_code == 301
+    assert response.headers["location"] == "/library"
+
+
+def test_old_all_tab_redirects_to_the_catalog(client: TestClient) -> None:
+    response = client.get("/library?tab=all", follow_redirects=False)
+
+    assert response.status_code == 301
+    assert response.headers["location"] == "/library/catalog"
+
+
+def test_old_all_tab_keeps_the_other_query_parameters(client: TestClient) -> None:
+    response = client.get(
+        "/library?tab=all&query=dragon&genres=1&genres=2&sort=views", follow_redirects=False
+    )
+
+    assert response.status_code == 301
+    assert response.headers["location"] == (
+        "/library/catalog?query=dragon&genres=1&genres=2&sort=views"
+    )
+
+
+def test_old_favorites_page_redirects_to_the_library(client: TestClient) -> None:
+    response = client.get("/library/favorites", follow_redirects=False)
+
+    assert response.status_code == 301
+    assert response.headers["location"] == "/library"
+
+
+def test_library_without_a_tab_is_not_redirected(client: TestClient) -> None:
+    _register(client)
+
+    response = client.get("/library", follow_redirects=False)
+
+    assert response.status_code == 200
+
+
 # --- PR 205: default_translation_index ("перевод по умолчанию для тайтла") -------------
 
 
