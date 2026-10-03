@@ -1,27 +1,55 @@
 // Infinite scroll for the catalog tab: watches a sentinel element and, once it enters
 // view, fetches the next page's card markup (app/api/library.py's catalog_page_fragment)
 // and appends it - no client-side templating, the server renders the cards.
+//
+// PR 295 (Catalog handoff.md): the feed cursor travels with each request (see below);
+// while a page loads, a row of skeleton cards and a role=status «Загружаем ещё…»; if it
+// fails, a compact role=alert plate with «Повторить» that retries the same page and
+// cursor - the cards already loaded stay, nothing reloads on its own until then.
 (() => {
   const grid = document.querySelector('[data-role="catalog-grid"]');
   const sentinel = document.querySelector('[data-role="catalog-sentinel"]');
   if (!grid || !sentinel) return;
+  const status = document.querySelector('[data-role="catalog-loading"]');
+  const errorBox = document.querySelector('[data-role="catalog-load-error"]');
 
   let nextPage = grid.dataset.nextPage ? Number(grid.dataset.nextPage) : null;
   let loading = false;
+  let failed = false;
 
-  // PR 251 (CATALOG-DEFAULT): two skeleton cards at the end of the grid while a page
-  // loads - the same size as the cards about to replace them.
+  // PR 251 (CATALOG-DEFAULT), PR 295: a row of skeleton cards at the end of the grid
+  // while a page loads - six, of which phones show two (app.css) - the same size as the
+  // cards about to replace them.
   const SKELETON_HTML =
     '<div class="ui-title-card catalog-grid__skeleton" aria-hidden="true">' +
     '<span class="ui-skeleton ui-skeleton--cover"></span>' +
     '<span class="ui-skeleton ui-skeleton--line" style="width: 85%"></span></div>';
 
-  function showSkeletons() {
-    grid.insertAdjacentHTML("beforeend", SKELETON_HTML + SKELETON_HTML);
+  function showLoading() {
+    grid.insertAdjacentHTML("beforeend", SKELETON_HTML.repeat(6));
+    grid.setAttribute("aria-busy", "true");
+    if (status) status.textContent = "Загружаем ещё…";
   }
 
-  function hideSkeletons() {
+  function hideLoading() {
     grid.querySelectorAll(".catalog-grid__skeleton").forEach((el) => el.remove());
+    grid.removeAttribute("aria-busy");
+    if (status) status.textContent = "";
+  }
+
+  function showError() {
+    failed = true;
+    if (!errorBox) return;
+    errorBox.innerHTML =
+      '<div class="catalog-feed-error">' +
+      '<span class="catalog-feed-error__text">Не удалось загрузить ещё</span>' +
+      '<button type="button" class="catalog-feed-error__retry" data-role="catalog-retry">Повторить</button>' +
+      "</div>";
+  }
+
+  function clearError() {
+    failed = false;
+    if (errorBox) errorBox.innerHTML = "";
   }
 
   // rootMargin extends the trigger zone below the viewport, so the next page starts
@@ -29,9 +57,9 @@
   // only once they hit the very bottom.
   const observer = new IntersectionObserver(
     (entries) => {
-      if (entries.some((entry) => entry.isIntersecting)) loadNextPage();
+      if (!failed && entries.some((entry) => entry.isIntersecting)) loadNextPage();
     },
-    { rootMargin: "600px 0px" }
+    { rootMargin: "800px 0px" }
   );
 
   async function loadNextPage() {
@@ -58,35 +86,40 @@
     params.set("shown", grid.dataset.shown || "0");
     params.set("featured", grid.dataset.featured || "0");
 
-    showSkeletons();
+    showLoading();
     let response;
     let html;
     try {
       response = await fetch(`/catalog/page?${params}`);
       html = response.ok ? await response.text() : null;
     } catch {
-      hideSkeletons();
-      loading = false;
-      return;
+      html = null;
     }
-    hideSkeletons();
+    hideLoading();
+    loading = false;
 
     if (html === null) {
-      observer.unobserve(sentinel);
-      loading = false;
+      showError();
       return;
     }
 
     grid.insertAdjacentHTML("beforeend", html);
     grid.dataset.shown = response.headers.get("X-Catalog-Shown") || grid.dataset.shown;
     grid.dataset.featured = response.headers.get("X-Catalog-Featured") || grid.dataset.featured;
-    nextPage =response.headers.get("X-Has-Next-Page") === "true" ? nextPage + 1 : null;
-    loading = false;
+    nextPage = response.headers.get("X-Has-Next-Page") === "true" ? nextPage + 1 : null;
     if (!nextPage) {
       observer.unobserve(sentinel);
       return;
     }
     rearm();
+  }
+
+  if (errorBox) {
+    errorBox.addEventListener("click", (event) => {
+      if (!event.target.closest('[data-role="catalog-retry"]')) return;
+      clearError();
+      loadNextPage();
+    });
   }
 
   // IntersectionObserver only reports a *change* in intersection - if the sentinel is

@@ -93,6 +93,11 @@
         {% include "_catalog_cards.html" %}
       </div>
       <div class="catalog-grid__sentinel" data-role="catalog-sentinel" aria-hidden="true"></div>
+      {# PR 295: live regions catalog-scroll.js fills - «Загружаем ещё…» while a page
+         loads, the «Повторить» plate if it fails. Always in the DOM so screen readers
+         announce what's put into them. #}
+      <p class="catalog-feed-status" data-role="catalog-loading" role="status"></p>
+      <div data-role="catalog-load-error" role="alert"></div>
       <noscript>
         {% if has_next_page %}
         <p class="catalog-page__hint">

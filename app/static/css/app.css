@@ -6765,6 +6765,59 @@ a.ui-title-card:focus-visible .ui-title-card__cover {
   height: 1px;
 }
 
+/* PR 295: phones show two of the six loading skeletons - one row either way. */
+@media (max-width: 767px) {
+  .catalog-grid__skeleton:nth-last-child(n + 3) {
+    display: none;
+  }
+}
+
+.catalog-feed-status {
+  margin: 8px 0 0;
+  color: #a3a0b5;
+  font: 500 14px/1.4 var(--wn-font-ui, sans-serif);
+  text-align: center;
+}
+
+.catalog-feed-status:empty {
+  display: none;
+}
+
+/* The next page failed: a compact glass plate with a pink edge and «Повторить». */
+.catalog-feed-error {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-top: 16px;
+  padding: 12px 12px 12px 16px;
+  border: 1px solid rgb(240 138 155 / 28%);
+  border-radius: 14px;
+  background: rgb(20 20 29 / 78%);
+}
+
+.catalog-feed-error__text {
+  color: #eeecf4;
+  font: 600 14px/1.4 var(--wn-font-ui, sans-serif);
+}
+
+.catalog-feed-error__retry {
+  min-height: 44px;
+  padding: 0 16px;
+  border: 1px solid rgb(255 255 255 / 14%);
+  border-radius: 12px;
+  background: rgb(255 255 255 / 6%);
+  color: #f2f0f7;
+  font: 700 14px/1 var(--wn-font-ui, sans-serif);
+  cursor: pointer;
+}
+
+.catalog-feed-error__retry:focus-visible {
+  outline: 2px solid #c5b6ff;
+  outline-offset: 2px;
+}
+
 /* PR 295: the editorial feed's featured insert - a whole grid row after every 12
    cards. A plain block here; the FeaturedCard look (backdrop, glow, flip) is PR 296. */
 .catalog-featured {
