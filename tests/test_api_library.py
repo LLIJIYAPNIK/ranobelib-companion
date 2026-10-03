@@ -338,6 +338,47 @@ async def test_show_library_counts_titles_on_the_tabs(client: TestClient) -> Non
     assert response.text.count('class="library-tabs__count"') == 1
 
 
+async def test_library_count_covers_every_title_on_both_pages(client: TestClient) -> None:
+    """PR 294: the «Библиотека» switch item counts all titles, started or not - on the
+    library page and on the catalog."""
+    _register(client)
+    title_a = _fake_title(slug_url="1--first")
+    with patch("app.services.client.RanobeLib", return_value=_FakeClient(title_a)):
+        client.post("/library/1--first/add")
+        client.post("/library/2--second/add")
+    async with connection() as conn:
+        await record_progress(conn, user_id=1, slug_url="1--first", volume="1", number="2")
+
+    with patch("app.services.client.RanobeLib", return_value=_FakeClient(title_a)):
+        library = client.get("/library")
+    with patch("app.api.library.list_genres", return_value=[]), patch(
+        "app.api.library.list_countries", return_value=[]
+    ), patch("app.api.library.get_catalog"), patch(
+        "app.api.library.list_catalog_titles"
+    ) as list_titles:
+        list_titles.return_value.items = []
+        list_titles.return_value.has_next_page = False
+        catalog = client.get("/catalog")
+
+    assert library.context["library_count"] == 2
+    assert catalog.context["library_count"] == 2
+
+
+def test_library_count_is_none_for_a_guest(client: TestClient) -> None:
+    library = client.get("/library")
+    with patch("app.api.library.list_genres", return_value=[]), patch(
+        "app.api.library.list_countries", return_value=[]
+    ), patch("app.api.library.get_catalog"), patch(
+        "app.api.library.list_catalog_titles"
+    ) as list_titles:
+        list_titles.return_value.items = []
+        list_titles.return_value.has_next_page = False
+        catalog = client.get("/catalog")
+
+    assert library.context["library_count"] is None
+    assert catalog.context["library_count"] is None
+
+
 def test_catalog_tabs_have_no_counts(client: TestClient) -> None:
     """The tabs partial is shared with the catalog, which has no size to show."""
     _register(client)

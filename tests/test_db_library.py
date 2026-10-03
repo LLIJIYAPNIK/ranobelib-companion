@@ -7,6 +7,7 @@ import pytest
 import app.db.migrate
 from app.db.library import (
     add_entry,
+    count_entries,
     get_currently_reading_entries,
     get_entry,
     list_entries,
@@ -85,6 +86,22 @@ async def test_list_entries_only_returns_this_users_entries(conn: psycopg.AsyncC
     await add_entry(conn, 2, "6712--test-novel")
 
     assert [entry.user_id for entry in await list_entries(conn, 1)] == [1]
+
+
+async def test_count_entries_counts_only_this_users_titles(
+    conn: psycopg.AsyncConnection,
+) -> None:
+    await conn.execute(
+        "INSERT INTO users (id, email, password_hash, created_at) "
+        "VALUES (2, 'bob@example.com', 'hash', 'now')"
+    )
+    assert await count_entries(conn, 1) == 0
+    await add_entry(conn, 1, "1--first")
+    await add_entry(conn, 1, "2--second")
+    await add_entry(conn, 2, "1--first")
+
+    assert await count_entries(conn, 1) == 2
+    assert await count_entries(conn, 2) == 1
 
 
 async def test_record_progress_updates_existing_entry(conn: psycopg.AsyncConnection) -> None:
