@@ -12075,6 +12075,70 @@ a.catalog-card__action {
   }
 }
 
+/* The ⋯ menu and the removal confirmation inside the bottom sheet (phones,
+   library-card-actions.js): the menu as 52px rows with 20px icons, the confirmation
+   as the sheet's text and two 48px buttons, under a pink top edge. */
+.bottom-sheet :is(.wn-library-menu, .wn-library-confirm) {
+  position: static;
+  width: auto;
+  max-width: none;
+  border: 0;
+  border-radius: 0;
+  background: none;
+  box-shadow: none;
+}
+
+.bottom-sheet .wn-library-menu {
+  margin: 0 -12px;
+  padding: 0;
+}
+
+.bottom-sheet .wn-library-menu__item {
+  gap: 14px;
+  min-height: 52px;
+  border-radius: 12px;
+  font: 600 16px/1 var(--wn-font-ui);
+}
+
+.bottom-sheet .wn-library-menu__item svg {
+  width: 20px;
+  height: 20px;
+}
+
+.bottom-sheet .wn-library-menu__sep {
+  margin: 6px 12px;
+}
+
+.bottom-sheet .wn-library-confirm {
+  gap: 16px;
+  padding: 6px 0 0;
+}
+
+.bottom-sheet .wn-library-confirm__title {
+  display: none;
+}
+
+.bottom-sheet .wn-library-confirm__text {
+  font: 500 15px/1.55 var(--wn-font-ui);
+  overflow-wrap: break-word;
+}
+
+.bottom-sheet .wn-library-confirm__actions {
+  flex-wrap: wrap;
+  margin: 0;
+}
+
+.bottom-sheet :is(.wn-library-confirm__cancel, .wn-library-confirm__remove) {
+  flex: 1 1 120px;
+  min-height: 48px;
+  border-radius: 12px;
+  font-size: 15px;
+}
+
+.bottom-sheet__panel:has(.wn-library-confirm:not([hidden])) {
+  border-top-color: rgb(240 138 155 / 40%);
+}
+
 /* ==========================================================================
    Aurora Ink screens - title page (PR 253): TITLE-DEFAULT / TITLE-IN-LIBRARY and
    M-TITLE-*. A blurred copy of the cover sits behind the hero; on mobile the

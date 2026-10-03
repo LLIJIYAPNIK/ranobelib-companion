@@ -98,7 +98,10 @@ async def test_card_has_the_menu_and_the_confirmation(client: TestClient) -> Non
 
     card = html.split('data-slug-url="1--first"', 1)[1].split("</article>", 1)[0]
     assert 'data-role="library-more"' in card
-    assert 'aria-label="Действия с тайтлом «Test Novel»"\n  hidden' in card
+    # PR 300: data-title-name heads the action sheet on phones.
+    assert (
+        'aria-label="Действия с тайтлом «Test Novel»"\n  data-title-name="Test Novel"\n  hidden'
+    ) in card
     menu = card.split('data-role="library-menu" hidden>', 1)[1].split("</div>", 1)[0]
     assert re.findall(r'role="menuitem"[^>]*>(?:<svg.*?</svg>)?([^<]+)<', menu, re.S) == [
         "Страница тайтла",

@@ -39,6 +39,7 @@
   aria-haspopup="menu"
   aria-expanded="false"
   aria-label="Действия с тайтлом «{{ name }}»"
+  data-title-name="{{ name }}"
   hidden
 ><svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><circle cx="5" cy="12" r="1.8"/><circle cx="12" cy="12" r="1.8"/><circle cx="19" cy="12" r="1.8"/></svg></button>
 <div class="wn-library-menu" role="menu" aria-label="Действия" data-role="library-menu" hidden>
@@ -51,7 +52,7 @@
   <span class="wn-library-confirm__title">Удалить из библиотеки?</span>
   <span class="wn-library-confirm__text">«{{ name }}» пропадёт из библиотеки. EPUB-файлы, которые вы уже скачали, останутся на устройстве.</span>
   <div class="wn-library-confirm__actions">
-    <button type="button" class="wn-library-confirm__cancel" data-role="library-confirm-cancel">Отмена</button>
+    <button type="button" class="wn-library-confirm__cancel" data-role="library-confirm-cancel" data-autofocus>Отмена</button>
     <button type="button" class="wn-library-confirm__remove" data-role="library-confirm-remove">Удалить</button>
   </div>
 </div>

@@ -153,3 +153,28 @@ def test_hero_toc_moves_into_its_action_sheet_on_phones() -> None:
         r"    display: none;",
         CSS,
     )
+
+
+def test_card_menu_opens_as_a_bottom_sheet_on_phones() -> None:
+    script = (ROOT / "app/static/js/library-card-actions.js").read_text(encoding="utf-8")
+    assert 'const phone = window.matchMedia("(max-width: 767px)");' in script
+    assert "if (phone.matches && window.bottomSheet) {" in script
+    assert 'title: confirming ? "Удалить из библиотеки?" : button.dataset.titleName,' in script
+    page = (ROOT / "app/templates/library.html").read_text(encoding="utf-8")
+    assert 'data-title-name="{{ name }}"' in page
+    assert 'data-role="library-confirm-cancel" data-autofocus>Отмена</button>' in page
+
+
+def test_confirm_sheet_has_a_pink_top_edge_and_48px_buttons() -> None:
+    edge = re.search(
+        r"\n\.bottom-sheet__panel:has\(\.wn-library-confirm:not\(\[hidden\]\)\) \{([^}]*)\}", CSS
+    )
+    assert edge
+    assert "border-top-color: rgb(240 138 155 / 40%);" in edge[1]
+    buttons = re.search(
+        r"\n\.bottom-sheet :is\(\.wn-library-confirm__cancel, \.wn-library-confirm__remove\) "
+        r"\{([^}]*)\}",
+        CSS,
+    )
+    assert buttons
+    assert "min-height: 48px;" in buttons[1]
