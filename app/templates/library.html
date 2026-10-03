@@ -7,13 +7,23 @@
   (library-toolbar.js), "Читаю" cards with progress and a continue CTA, not-started
   titles under "Ещё в библиотеке" (cover skeleton while it loads). A guest gets the
   locked state instead.
+  PR 297 (LibraryDesktop.dc.html): the catalog's desktop shell - a header card («Ваши
+  тайтлы · N тайтлов» + H1, the switch and the add-by-link form on the right) with the
+  toolbar as a sticky glass panel overlapping its bottom edge.
 #}
+{% macro titles_word(n) -%}
+{{ n }} {% if n % 10 == 1 and n % 100 != 11 %}тайтл{% elif n % 10 in [2, 3, 4] and n % 100 not in [12, 13, 14] %}тайтла{% else %}тайтлов{% endif %}
+{%- endmacro %}
 {% macro chapter_meta(entry) -%}
 Том {{ entry.last_read_volume }}, глава {{ entry.last_read_number }}
 {%- endmacro %}
-<div class="library-page wn-library">
-  <div class="wn-library__head">
-    <h1 class="wn-library__title">Библиотека</h1>
+<div class="library-page wn-library" data-mode="default">
+  <section class="wn-library__head">
+    <div class="wn-library__head-copy">
+      {% if current_user %}<span class="wn-library__eyebrow">Ваши тайтлы · {{ titles_word(items | length) }}</span>{% endif %}
+      <h1 class="wn-library__title">Библиотека</h1>
+    </div>
+    <div class="wn-library__head-side">
     {% include "_library_switch.html" %}
     {% if current_user %}
     <form class="wn-library__add" method="post" action="/library/add">
@@ -23,7 +33,7 @@
           class="wn-field__control wn-library__add-control"
           type="text"
           name="url"
-          placeholder="Ссылка на тайтл, чтобы добавить…"
+          placeholder="Ссылка на тайтл ranobelib.me"
           aria-label="Ссылка на тайтл, чтобы добавить в библиотеку"
           value="{{ submitted_url or '' }}"
           {% if error %}aria-invalid="true" aria-describedby="library-add-error"{% endif %}
@@ -36,10 +46,11 @@
       </button>
     </form>
     {% endif %}
-  </div>
-  {% if error %}
-  <p class="wn-field__caption wn-library__error" id="library-add-error" role="alert">{{ error }}</p>
-  {% endif %}
+    {% if error %}
+    <p class="wn-field__caption wn-library__error" id="library-add-error" role="alert">{{ error }}</p>
+    {% endif %}
+    </div>
+  </section>
   <main class="library-page__content library-tabs-content wn-library__content">
     {% if current_user %}
     <div class="wn-library__titles" data-role="library-titles">
@@ -50,21 +61,21 @@
           <input type="search" placeholder="Поиск в библиотеке" aria-label="Поиск в библиотеке" data-role="library-search" autocomplete="off">
         </label>
         <label class="wn-library-select">
-          <span>Сортировка:</span>
+          <span>Сортировка</span>
           <select data-role="library-sort" aria-label="Сортировка">
-            <option value="recent">недавно читал</option>
-            <option value="added">недавно добавлен</option>
-            <option value="name">по названию</option>
-            <option value="progress">по прогрессу</option>
+            <option value="recent">Недавно читал</option>
+            <option value="added">Недавно добавленные</option>
+            <option value="name">По названию</option>
+            <option value="progress">По прогрессу</option>
           </select>
         </label>
         <label class="wn-library-select">
-          <span>Прогресс:</span>
+          <span>Прогресс</span>
           <select data-role="library-progress" aria-label="Прогресс">
-            <option value="any">любой</option>
-            <option value="lt50">меньше 50%</option>
-            <option value="gte50">50% и больше</option>
-            <option value="not-started">не начато</option>
+            <option value="any">Любой</option>
+            <option value="started">Начатые</option>
+            <option value="new">Не начатые</option>
+            <option value="done">Дочитанные</option>
           </select>
         </label>
         {# PR 282 (Webnovells Mobile): on phones the two selects above give way to
@@ -85,6 +96,13 @@
           </button>
         </div>
         <div class="wn-library-chips" data-role="library-filter-chips"></div>
+        {# PR 297: the results mode's criteria row (desktop) - library-toolbar.js fills it. #}
+        <div class="wn-library-criteria" data-role="library-criteria" hidden>
+          <span class="wn-library-criteria__label" aria-hidden="true">Условия</span>
+          <div class="wn-library-criteria__chips" data-role="library-criteria-chips"></div>
+          <button type="button" class="wn-library-criteria__reset" data-role="library-criteria-reset">Сбросить всё</button>
+          <span class="wn-library-criteria__count" data-role="library-criteria-count" aria-live="polite"></span>
+        </div>
         <div class="wn-library-filters" id="library-filters" data-bottom-sheet-title="Фильтры и сортировка" hidden>
           <fieldset class="wn-library-filters__group" data-filter-for="library-sort"><legend>Сортировка</legend></fieldset>
           <fieldset class="wn-library-filters__group" data-filter-for="library-progress"><legend>Прогресс</legend></fieldset>
@@ -95,20 +113,80 @@
         </div>
       </div>
 
-      {% if reading %}
-      <section class="wn-library__reading" aria-label="Читаю" data-role="library-section">
+      {% if continue_item %}
+      {% set hero = continue_item %}
+      {% set hero_entry = hero.entry %}
+      {% set hero_name = hero.name or hero_entry.slug_url %}
+      {% set hero_href = "/titles/" ~ hero_entry.slug_url %}
+      {# PR 297 (LibraryDesktop): «Продолжить чтение» - the last opened title as the
+         page's hero. Its card in the list below stays hidden while the hero is shown
+         (data-hero; library-toolbar.js shows it again in the results mode). #}
+      <section class="wn-library-hero" aria-labelledby="library-continue-title" data-role="library-hero">
+        {% if hero.cover_url %}<img class="wn-library-hero__halo" src="{{ hero.cover_url }}" alt="" aria-hidden="true">{% endif %}
+        <article class="wn-library-hero__card">
+          {% if hero.cover_url %}<img class="wn-library-hero__backdrop" src="{{ hero.cover_url }}" alt="" aria-hidden="true">{% endif %}
+          <span class="wn-library-hero__scrim" aria-hidden="true"></span>
+          <div class="wn-library-hero__inner">
+            <a class="wn-library-hero__cover" href="{{ hero_href }}" tabindex="-1" aria-hidden="true">
+              {% if hero.cover_url %}<img class="wn-library-hero__cover-glow" src="{{ hero.cover_url }}" alt=""><img class="wn-library-hero__cover-img" src="{{ hero.cover_url }}" alt="">{% endif %}
+            </a>
+            <div class="wn-library-hero__copy">
+              <div class="wn-library-hero__eyebrow">
+                <span class="wn-library-hero__eyebrow-main"><span class="wn-library-hero__dot" aria-hidden="true"></span>Продолжить чтение</span>
+                {% if hero.last_read_label %}
+                <span class="wn-library-hero__eyebrow-sep" aria-hidden="true"></span>
+                <span class="wn-library-hero__last">{{ hero.last_read_label }}</span>
+                {% endif %}
+              </div>
+              <h2 class="wn-library-hero__title" id="library-continue-title"><a href="{{ hero_href }}">{{ hero_name }}</a></h2>
+              <span class="wn-library-hero__where">Том {{ hero_entry.last_read_volume }} · Глава {{ hero_entry.last_read_number }}</span>
+              <div class="wn-library-hero__actions">
+                <a class="wn-library-hero__continue" href="{{ hero_href }}/chapters/{{ hero_entry.last_read_volume }}/{{ hero_entry.last_read_number }}">
+                  <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 4v16l14-8z"/></svg>
+                  Продолжить · Гл. {{ hero_entry.last_read_number }}
+                </a>
+                <a class="wn-library-hero__toc" href="{{ hero_href }}#title-panel-toc">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" aria-hidden="true"><path d="M8 6h13M8 12h13M8 18h13M3 6h.01M3 12h.01M3 18h.01"/></svg>
+                  Оглавление
+                </a>
+              </div>
+            </div>
+            {% if hero.progress_percent is not none %}
+            <div class="wn-library-hero__progress">
+              <span class="wn-library-hero__progress-label">Прочитано</span>
+              <span class="wn-library-hero__pct">{{ hero.progress_percent }}<span>%</span></span>
+              <div class="wn-library-hero__bar" role="progressbar" aria-label="Прогресс чтения" aria-valuenow="{{ hero.progress_percent }}" aria-valuemin="0" aria-valuemax="100"><span style="width: {{ hero.progress_percent }}%"></span></div>
+              <span class="wn-library-hero__stopped">Остановились на главе {{ hero_entry.last_read_number }}</span>
+            </div>
+            {% endif %}
+          </div>
+        </article>
+      </section>
+      {% endif %}
+
+      {# PR 297 (LibraryDesktop): every title in one «Моя библиотека» grid - started or
+         not, the hero's own card included (hidden while the hero is shown) - ending in
+         the «Добавить из каталога» tile (library-toolbar.js keeps it last). #}
+      <section class="wn-library-shelf" aria-labelledby="library-shelf-title" data-role="library-section">
+        <div class="wn-library-shelf__head">
+          <span class="wn-library-shelf__dot" aria-hidden="true"></span>
+          <h2 class="wn-library-shelf__title" id="library-shelf-title">Моя библиотека</h2>
+          <span class="wn-library-shelf__count" data-role="library-rest">{% if continue_item %}{% if items | length > 1 %}ещё {{ titles_word(items | length - 1) }}{% else %}пока только этот{% endif %}{% else %}{{ titles_word(items | length) }}{% endif %}</span>
+          <span class="wn-library-shelf__rule" aria-hidden="true"></span>
+        </div>
         <div class="wn-library-grid" data-role="library-list">
-          {% for item in reading %}
+          {% for item in items %}
           {% set entry = item.entry %}
           {% set name = item.name or entry.slug_url %}
           {% set href = "/titles/" ~ entry.slug_url %}
+          {% set started = entry.last_read_volume is not none %}
           <article
-            class="wn-library-card"
-            data-role="library-item"
+            class="wn-library-card{% if not started %} wn-library-card--new{% endif %}"
+            data-role="library-item"{% if continue_item and item is sameas continue_item %} data-hero{% endif %}
             data-name="{{ name | lower }}"
             data-order="{{ loop.index0 }}"
             data-added="{{ entry.added_at }}"
-            data-progress="{{ item.progress_percent if item.progress_percent is not none else 0 }}"
+            data-progress="{% if not started %}-1{% elif item.progress_percent is not none %}{{ item.progress_percent }}{% else %}0{% endif %}"
           >
             <a class="wn-library-card__cover wn-skeleton" href="{{ href }}" tabindex="-1" aria-hidden="true">
               {% if item.cover_url %}<img src="{{ item.cover_url }}" alt="" loading="lazy">{% endif %}
@@ -117,7 +195,7 @@
               <div class="wn-library-card__top">
                 <a class="wn-library-card__name" href="{{ href }}" title="{{ name }}">{{ name }}</a>
               </div>
-              <span class="wn-library-card__meta">{{ chapter_meta(entry) }}</span>
+              <span class="wn-library-card__meta">{% if started %}{{ chapter_meta(entry) }}{% else %}Не начато{% endif %}</span>
               {% if item.last_read_label %}
               <span class="wn-library-card__last">{{ item.last_read_label }}</span>
               {% endif %}
@@ -130,53 +208,45 @@
                 </div>
               </div>
               {% endif %}
+              {% if started %}
               {# PR 282: the mobile grid's narrow cards drop the verb («Гл. 92», as in the
                  prototype); the aria-label keeps the full action for screen readers. #}
               <a class="wn-library-card__cta" href="{{ href }}/chapters/{{ entry.last_read_volume }}/{{ entry.last_read_number }}" aria-label="Продолжить · Глава {{ entry.last_read_number }}">
                 <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M7 4v16l13-8z"/></svg>
                 <span class="wn-library-card__cta-verb">Продолжить · </span>Гл. {{ entry.last_read_number }}
               </a>
+              {% else %}
+              <a class="wn-library-card__cta" href="{{ href }}" aria-label="Открыть «{{ name }}»">Открыть</a>
+              {% endif %}
             </div>
           </article>
           {% endfor %}
+          <a class="wn-library-add-tile" href="/catalog" data-role="library-add-tile">
+            <span class="wn-library-add-tile__icon" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M3 3h7v7H3zM14 3h7v7h-7zM3 14h7v7H3zM17.5 14v7M14 17.5h7"/></svg></span>
+            <span class="wn-library-add-tile__title">Добавить из каталога</span>
+            <span class="wn-library-add-tile__text">Найдите тайтл в каталоге и откройте его — или вставьте ссылку выше.</span>
+            <span class="wn-library-add-tile__link">Открыть каталог →</span>
+          </a>
         </div>
       </section>
-      {% endif %}
-
-      <div class="wn-library__more">
-        {% if not_started %}
-        <section class="wn-library__not-started" aria-labelledby="library-not-started-title" data-role="library-section">
-          <div class="wn-library-section-head">
-            <h2 id="library-not-started-title">Ещё в библиотеке</h2>
-            <span>не начаты · {{ not_started | length }}</span>
-          </div>
-          <div class="wn-library-posters" data-role="library-list">
-            {% for item in not_started %}
-            {% set entry = item.entry %}
-            {% set name = item.name or entry.slug_url %}
-            {% set href = "/titles/" ~ entry.slug_url %}
-            <article
-              class="wn-library-poster"
-              data-role="library-item"
-              data-name="{{ name | lower }}"
-              data-order="{{ loop.index0 }}"
-              data-added="{{ entry.added_at }}"
-              data-progress="-1"
-            >
-              <div class="wn-library-poster__cover wn-skeleton">
-                <a href="{{ href }}" tabindex="-1" aria-hidden="true">
-                  {% if item.cover_url %}<img src="{{ item.cover_url }}" alt="" loading="lazy">{% endif %}
-                </a>
-              </div>
-              <a class="wn-library-poster__name" href="{{ href }}" title="{{ name }}">{{ name }}</a>
-              <span class="wn-library-poster__meta">Не начато</span>
-            </article>
-            {% endfor %}
-          </div>
-        </section>
-        {% endif %}
+      <div class="wn-library-end" data-role="library-end">
+        <span class="wn-library-end__rule" aria-hidden="true"></span>
+        <span class="wn-library-end__text" data-role="library-end-text">Это вся библиотека · {{ titles_word(items | length) }}</span>
+        <a class="wn-library-end__link" href="/catalog" data-role="library-end-catalog">Найти новое в каталоге →</a>
+        <button type="button" class="wn-library-end__reset" data-role="library-end-reset" hidden>Сбросить условия</button>
+        <span class="wn-library-end__rule wn-library-end__rule--right" aria-hidden="true"></span>
       </div>
-      <p class="wn-library__empty" data-role="library-no-results" hidden>Ничего не найдено — попробуйте другой запрос или фильтр.</p>
+      {# PR 297 (LibraryDesktop preset=empty): nothing in the library matches - only
+         reachable in the results mode; library-toolbar.js names the search in the text. #}
+      <div class="catalog-empty wn-library-no-results" data-role="library-no-results" role="status" hidden>
+        <span class="catalog-empty__icon" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round"><circle cx="11" cy="11" r="7"/><path d="m21 21-4.3-4.3M8.5 11h5"/></svg></span>
+        <h2 class="catalog-empty__title">В библиотеке ничего не нашлось</h2>
+        <p class="catalog-empty__text" data-role="library-no-results-text">Под эти условия не подходит ни один тайтл из библиотеки.</p>
+        <div class="wn-library-no-results__actions">
+          <button type="button" class="catalog-empty__reset" data-role="library-no-results-reset">Сбросить условия</button>
+          <a class="wn-library-end__link" href="/catalog" data-role="library-no-results-catalog">Искать в каталоге →</a>
+        </div>
+      </div>
       {% else %}
       <p class="wn-library__empty">
         Пока пусто. Вставьте ссылку выше или откройте тайтл и нажмите «Добавить в библиотеку».

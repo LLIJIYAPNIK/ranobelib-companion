@@ -11,6 +11,12 @@
 // values as chips, and the shared bottom sheet (bottom-sheet.js) with a radio group per
 // select, built from that select's own options. A radio sets its select and fires
 // "change", so the selects stay the one source of state for both layouts.
+//
+// PR 297 (LibraryDesktop.dc.html): the page's two modes. The default one (no search,
+// «Недавно читал», «Любой») has the «Продолжить чтение» hero, «Моя библиотека» and the
+// «Добавить из каталога» tile; any criterion switches .wn-library's data-mode to
+// "results" - the hero's own card joins the grid (app.css), and the panel gets the
+// «Условия» chips (each drops its criterion), «Сбросить всё» and «K тайтлов из N».
 (() => {
   for (const img of document.querySelectorAll(".wn-skeleton img")) {
     const done = () => img.closest(".wn-skeleton")?.classList.add("is-loaded");
@@ -33,11 +39,91 @@
   const noResults = titles.querySelector('[data-role="library-no-results"]');
   const VIEW_KEY = "libraryView";
 
+  // data-progress: the percent read, 0 when opened but unknown, -1 never opened.
   function matchesProgress(value, pct) {
-    if (value === "not-started") return pct < 0;
-    if (value === "lt50") return pct >= 0 && pct < 50;
-    if (value === "gte50") return pct >= 50;
+    if (value === "started") return pct >= 0 && pct < 100;
+    if (value === "new") return pct < 0;
+    if (value === "done") return pct >= 100;
     return true;
+  }
+
+  const page = titles.closest(".wn-library");
+  const criteria = toolbar.querySelector('[data-role="library-criteria"]');
+  const criteriaChips = criteria?.querySelector('[data-role="library-criteria-chips"]');
+  const criteriaCount = criteria?.querySelector('[data-role="library-criteria-count"]');
+  const endText = titles.querySelector('[data-role="library-end-text"]');
+  const endReset = titles.querySelector('[data-role="library-end-reset"]');
+  const end = titles.querySelector('[data-role="library-end"]');
+  const noResultsText = titles.querySelector('[data-role="library-no-results-text"]');
+  const noResultsCatalog = titles.querySelector('[data-role="library-no-results-catalog"]');
+  const total = titles.querySelectorAll('[data-role="library-item"]').length;
+  const endDefault = endText?.textContent ?? "";
+
+  function titlesWord(n) {
+    const m10 = n % 10;
+    const m100 = n % 100;
+    if (m10 === 1 && m100 !== 11) return `${n} тайтл`;
+    if (m10 >= 2 && m10 <= 4 && (m100 < 12 || m100 > 14)) return `${n} тайтла`;
+    return `${n} тайтлов`;
+  }
+
+  function resetAll() {
+    search.value = "";
+    sort.selectedIndex = 0;
+    progress.selectedIndex = 0;
+    apply();
+  }
+
+  function criterionChip(key, value, clear) {
+    const chip = document.createElement("button");
+    chip.type = "button";
+    chip.className = "wn-library-criterion";
+    chip.setAttribute("aria-label", `Убрать: ${key} ${value}`);
+    const label = document.createElement("span");
+    label.className = "wn-library-criterion__key";
+    label.textContent = key;
+    chip.append(label, value);
+    chip.insertAdjacentHTML(
+      "beforeend",
+      '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" aria-hidden="true"><path d="M7 7l10 10M17 7 7 17"/></svg>'
+    );
+    chip.addEventListener("click", () => {
+      clear();
+      apply();
+    });
+    return chip;
+  }
+
+  function syncMode(visibleTotal) {
+    const query = search.value.trim();
+    const results = Boolean(query) || sort.selectedIndex !== 0 || progress.selectedIndex !== 0;
+    if (page) page.dataset.mode = results ? "results" : "default";
+    if (criteria) {
+      criteria.hidden = !results;
+      const chipsNow = [];
+      if (query) chipsNow.push(criterionChip("Поиск", `«${query}»`, () => (search.value = "")));
+      if (sort.selectedIndex !== 0) {
+        chipsNow.push(criterionChip("Сортировка", sort.options[sort.selectedIndex].text, () => (sort.selectedIndex = 0)));
+      }
+      if (progress.selectedIndex !== 0) {
+        chipsNow.push(criterionChip("Прогресс", progress.options[progress.selectedIndex].text, () => (progress.selectedIndex = 0)));
+      }
+      criteriaChips?.replaceChildren(...chipsNow);
+      if (criteriaCount) criteriaCount.textContent = `${titlesWord(visibleTotal)} из ${total}`;
+    }
+    if (endText) endText.textContent = results ? "Больше ничего не подходит под условия" : endDefault;
+    if (endReset) endReset.hidden = !results;
+    // Nothing matches: the empty card says what was searched for and offers the catalog
+    // with the same search; the end line goes.
+    if (end) end.hidden = visibleTotal === 0;
+    if (noResultsText) {
+      noResultsText.textContent = query
+        ? `Среди ваших тайтлов нет «${query}». Возможно, он ещё не добавлен — проверьте каталог.`
+        : "Под эти условия не подходит ни один тайтл из библиотеки.";
+    }
+    if (noResultsCatalog) {
+      noResultsCatalog.href = query ? `/catalog?${new URLSearchParams({ query })}` : "/catalog";
+    }
   }
 
   const collator = new Intl.Collator("ru");
@@ -63,11 +149,15 @@
         if (show) visible += 1;
         list.append(item);
       }
+      // PR 297: «Добавить из каталога» stays the grid's last cell whatever the order.
+      const tile = list.querySelector('[data-role="library-add-tile"]');
+      if (tile) list.append(tile);
       const section = list.closest('[data-role="library-section"]');
       if (section) section.hidden = visible === 0;
       visibleTotal += visible;
     }
     if (noResults) noResults.hidden = visibleTotal > 0;
+    syncMode(visibleTotal);
     syncFilters(visibleTotal);
   }
 
@@ -150,6 +240,12 @@
       button.setAttribute("aria-checked", button.dataset.view === view ? "true" : "false");
     }
   }
+
+  criteria?.querySelector('[data-role="library-criteria-reset"]')?.addEventListener("click", resetAll);
+  endReset?.addEventListener("click", resetAll);
+  titles
+    .querySelector('[data-role="library-no-results-reset"]')
+    ?.addEventListener("click", resetAll);
 
   buildFilters();
   syncFilters(titles.querySelectorAll('[data-role="library-item"]').length);

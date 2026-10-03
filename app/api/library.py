@@ -121,22 +121,24 @@ async def redirect_old_catalog(request: Request) -> RedirectResponse:
 def _library_context(
     items: list[dict[str, LibraryEntry | str | int | None]],
 ) -> dict[str, object]:
-    """PR 275 (Webnovells Redesign): the page splits the library into started titles
-    ("Читаю", cards with progress) and not-started ones ("Ещё в библиотеке") - both from
-    the same library_items_for_user() list, kept in its "most recently read first" order."""
+    """The library page's context, from library_items_for_user() in its "most recently
+    read first" order. PR 297 (LibraryDesktop): one «Моя библиотека» grid of every title,
+    with the most recently read one also as the «Продолжить чтение» hero."""
     today = datetime.now(UTC).date()
     items = [
         {**item, "last_read_label": _last_read_label(item["entry"].last_read_at, today)}  # type: ignore[union-attr]
         for item in items
     ]
-    reading = [item for item in items if item["entry"].last_read_volume is not None]  # type: ignore[union-attr]
-    not_started = [item for item in items if item["entry"].last_read_volume is None]  # type: ignore[union-attr]
+    # A title never opened can't be continued - the hero is the first one that was.
+    continue_item = next(
+        (item for item in items if item["entry"].last_read_volume is not None),  # type: ignore[union-attr]
+        None,
+    )
     return {
         "active_nav": "library",
         "active_tab": "library",
         "items": items,
-        "reading": reading,
-        "not_started": not_started,
+        "continue_item": continue_item,
         # PR 294: the «Библиотека» switch item counts every title, started or not.
         "library_count": len(items),
     }
