@@ -287,3 +287,34 @@ def test_results_mode_hides_the_default_blocks() -> None:
     assert "display: none;" in hidden
     # ...and the hero's own card is hidden only in the default mode.
     assert '.wn-library[data-mode="default"] [data-hero] {\n  display: none;' in CSS
+
+
+# --- states ---------------------------------------------------------------------------
+
+
+async def test_nothing_found_card_is_ready_and_hidden(client: TestClient) -> None:
+    register(client, "alice@example.com")
+    _add(client, "1--first")
+    html = _library(client)
+
+    empty = html.split('data-role="library-no-results"', 1)[1].split("</div>\n      </div>", 1)[0]
+    assert empty.startswith(' role="status" hidden>')
+    assert '<h2 class="catalog-empty__title">В библиотеке ничего не нашлось</h2>' in empty
+    assert ">Сбросить условия</button>" in empty
+    assert 'href="/catalog" data-role="library-no-results-catalog">Искать в каталоге →</a>' in empty
+
+
+def test_nothing_found_names_the_search_and_carries_it_to_the_catalog() -> None:
+    script = (ROOT / "app/static/js/library-toolbar.js").read_text(encoding="utf-8")
+    assert "`Среди ваших тайтлов нет «${query}». Возможно, он ещё не добавлен" in script
+    assert "`/catalog?${new URLSearchParams({ query })}`" in script
+    assert "if (end) end.hidden = visibleTotal === 0;" in script
+
+
+async def test_empty_library_keeps_its_own_message(client: TestClient) -> None:
+    register(client, "alice@example.com")
+
+    html = _library(client)
+
+    assert "Пока пусто." in html
+    assert 'data-role="library-hero"' not in html

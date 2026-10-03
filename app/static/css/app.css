@@ -8448,6 +8448,20 @@ a.ui-title-card:focus-visible .ui-title-card__cover {
   display: none;
 }
 
+.wn-library-no-results__actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  margin-top: 8px;
+}
+
+.wn-library-no-results__actions .catalog-empty__reset {
+  margin-top: 0;
+  cursor: pointer;
+}
+
 .wn-library-end__reset {
   padding: 0 4px;
   border: 0;

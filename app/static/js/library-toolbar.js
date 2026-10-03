@@ -53,6 +53,9 @@
   const criteriaCount = criteria?.querySelector('[data-role="library-criteria-count"]');
   const endText = titles.querySelector('[data-role="library-end-text"]');
   const endReset = titles.querySelector('[data-role="library-end-reset"]');
+  const end = titles.querySelector('[data-role="library-end"]');
+  const noResultsText = titles.querySelector('[data-role="library-no-results-text"]');
+  const noResultsCatalog = titles.querySelector('[data-role="library-no-results-catalog"]');
   const total = titles.querySelectorAll('[data-role="library-item"]').length;
   const endDefault = endText?.textContent ?? "";
 
@@ -110,6 +113,17 @@
     }
     if (endText) endText.textContent = results ? "Больше ничего не подходит под условия" : endDefault;
     if (endReset) endReset.hidden = !results;
+    // Nothing matches: the empty card says what was searched for and offers the catalog
+    // with the same search; the end line goes.
+    if (end) end.hidden = visibleTotal === 0;
+    if (noResultsText) {
+      noResultsText.textContent = query
+        ? `Среди ваших тайтлов нет «${query}». Возможно, он ещё не добавлен — проверьте каталог.`
+        : "Под эти условия не подходит ни один тайтл из библиотеки.";
+    }
+    if (noResultsCatalog) {
+      noResultsCatalog.href = query ? `/catalog?${new URLSearchParams({ query })}` : "/catalog";
+    }
   }
 
   const collator = new Intl.Collator("ru");
@@ -229,6 +243,9 @@
 
   criteria?.querySelector('[data-role="library-criteria-reset"]')?.addEventListener("click", resetAll);
   endReset?.addEventListener("click", resetAll);
+  titles
+    .querySelector('[data-role="library-no-results-reset"]')
+    ?.addEventListener("click", resetAll);
 
   buildFilters();
   syncFilters(titles.querySelectorAll('[data-role="library-item"]').length);

@@ -236,7 +236,17 @@
         <button type="button" class="wn-library-end__reset" data-role="library-end-reset" hidden>Сбросить условия</button>
         <span class="wn-library-end__rule wn-library-end__rule--right" aria-hidden="true"></span>
       </div>
-      <p class="wn-library__empty" data-role="library-no-results" hidden>Ничего не найдено — попробуйте другой запрос или фильтр.</p>
+      {# PR 297 (LibraryDesktop preset=empty): nothing in the library matches - only
+         reachable in the results mode; library-toolbar.js names the search in the text. #}
+      <div class="catalog-empty wn-library-no-results" data-role="library-no-results" role="status" hidden>
+        <span class="catalog-empty__icon" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round"><circle cx="11" cy="11" r="7"/><path d="m21 21-4.3-4.3M8.5 11h5"/></svg></span>
+        <h2 class="catalog-empty__title">В библиотеке ничего не нашлось</h2>
+        <p class="catalog-empty__text" data-role="library-no-results-text">Под эти условия не подходит ни один тайтл из библиотеки.</p>
+        <div class="wn-library-no-results__actions">
+          <button type="button" class="catalog-empty__reset" data-role="library-no-results-reset">Сбросить условия</button>
+          <a class="wn-library-end__link" href="/catalog" data-role="library-no-results-catalog">Искать в каталоге →</a>
+        </div>
+      </div>
       {% else %}
       <p class="wn-library__empty">
         Пока пусто. Вставьте ссылку выше или откройте тайтл и нажмите «Добавить в библиотеку».
