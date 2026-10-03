@@ -2,8 +2,8 @@
 {% block title %}Библиотека — RanobeLib Companion{% endblock %}
 {% block content %}
 {#
-  PR 275 (Webnovells Redesign, screen A3): "Библиотека" heading with the tabs and their
-  counts, the add-by-link field, a search/sort/progress toolbar with a list/grid switch
+  PR 275 (Webnovells Redesign, screen A3): "Библиотека" heading with the «Библиотека /
+  Каталог» switch (PR 294), the add-by-link field, a search/sort/progress toolbar with a list/grid switch
   (library-toolbar.js), "Читаю" cards with progress and a continue CTA, not-started
   titles under "Ещё в библиотеке" (cover skeleton while it loads). A guest gets the
   locked state instead.
@@ -14,7 +14,7 @@
 <div class="library-page wn-library">
   <div class="wn-library__head">
     <h1 class="wn-library__title">Библиотека</h1>
-    {% include "_library_tabs.html" %}
+    {% include "_library_switch.html" %}
     {% if current_user %}
     <form class="wn-library__add" method="post" action="/library/add">
       <label class="wn-library__add-field">
@@ -195,5 +195,5 @@
 </div>
 <script src="{{ url_for('static', path='js/library-toolbar.js') }}" defer></script>
 <script src="{{ url_for('static', path='js/library-tabs-swipe.js') }}" defer></script>
-<script src="{{ url_for('static', path='js/ribbon.js') }}" defer></script>
+<script src="{{ url_for('static', path='js/library-switch.js') }}" defer></script>
 {% endblock %}

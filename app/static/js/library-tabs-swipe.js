@@ -1,5 +1,5 @@
-// PR 211: swipe gesture handling for .library-tabs-content (_library_tabs.html's
-// "Читаю"/"Все тайтлы" tabs). Uses pointerdown/pointerup (not touchstart/touchend) so the
+// PR 211: swipe gesture handling for .library-tabs-content (the «Библиотека» /
+// «Каталог» items of _library_switch.html since PR 294). Uses pointerdown/pointerup (not touchstart/touchend) so the
 // same code path also works for a mouse drag in a desktop-width devtools emulator - the
 // same pattern image-lightbox.js already uses for its own drag-to-pan (PR 204).
 // Deliberately does not call setPointerCapture() or preventDefault(): a genuine vertical
@@ -51,7 +51,7 @@
     );
     if (activeIndex === -1) return;
 
-    // Swipe left ("Читаю" → "Все тайтлы") moves to the next tab link, swipe right moves
+    // Swipe left («Библиотека» → «Каталог») moves to the next tab link, swipe right moves
     // back to the previous one - there's nothing to move to past either end (missing
     // index just means `target` below is undefined).
     const target = tabLinks[deltaX < 0 ? activeIndex + 1 : activeIndex - 1];

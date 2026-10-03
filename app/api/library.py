@@ -77,8 +77,8 @@ async def show_library(
             return RedirectResponse(url=url, status_code=301)
         return RedirectResponse(url="/library", status_code=301)
     if user is None:
-        # A guest has no library to count - the tabs render without numbers.
-        context = {**_library_context([]), "tab_counts": None, "library_count": None}
+        # A guest has no library to count - the switch renders without a number.
+        context = {**_library_context([]), "library_count": None}
         return templates.TemplateResponse(request, "library.html", context)
     async with connection() as conn:
         items = await library_items_for_user(user, conn)
@@ -118,11 +118,10 @@ def _library_context(
     not_started = [item for item in items if item["entry"].last_read_volume is None]  # type: ignore[union-attr]
     return {
         "active_nav": "library",
-        "active_tab": "reading",
+        "active_tab": "library",
         "items": items,
         "reading": reading,
         "not_started": not_started,
-        "tab_counts": {"reading": len(reading)},
         # PR 294: the «Библиотека» switch item counts every title, started or not.
         "library_count": len(items),
     }

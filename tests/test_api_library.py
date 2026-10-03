@@ -317,11 +317,11 @@ def test_show_library_anonymous_gets_the_locked_state(client: TestClient) -> Non
     assert 'data-role="locked-feature"' in response.text
     assert "Список читаемого скрыт" in response.text
     assert 'data-role="library-titles"' not in response.text
-    assert "library-tabs__count" not in response.text  # PR 275: no counts for a guest
+    assert "library-switch-count" not in response.text  # no count for a guest
 
 
-async def test_show_library_counts_titles_on_the_tabs(client: TestClient) -> None:
-    """PR 275: "Читаю" counts started titles only."""
+async def test_show_library_counts_every_title_on_the_switch(client: TestClient) -> None:
+    """PR 294: the «Библиотека» item counts all titles, started or not."""
     _register(client)
     title_a = _fake_title(slug_url="1--first")
     with patch("app.services.client.RanobeLib", return_value=_FakeClient(title_a)):
@@ -333,9 +333,9 @@ async def test_show_library_counts_titles_on_the_tabs(client: TestClient) -> Non
     with patch("app.services.client.RanobeLib", return_value=_FakeClient(title_a)):
         response = client.get("/library")
 
-    reading_tab = 'aria-current="page">Читаю<span class="library-tabs__count">1</span></a>'
-    assert reading_tab in response.text
-    assert response.text.count('class="library-tabs__count"') == 1
+    assert 'data-role="library-switch-count">2</span>' in response.text
+    assert response.text.count('data-role="library-switch-count"') == 1
+    assert "static/js/library-switch.js" in response.text
 
 
 async def test_library_count_covers_every_title_on_both_pages(client: TestClient) -> None:
@@ -379,8 +379,9 @@ def test_library_count_is_none_for_a_guest(client: TestClient) -> None:
     assert catalog.context["library_count"] is None
 
 
-def test_catalog_tabs_have_no_counts(client: TestClient) -> None:
-    """The tabs partial is shared with the catalog, which has no size to show."""
+def test_catalog_item_on_the_switch_has_no_count(client: TestClient) -> None:
+    """The switch is shared with the catalog; only «Библиотека» is counted (the catalog
+    has no total) - an empty library still shows its 0."""
     _register(client)
 
     with patch("app.api.library.list_genres", return_value=[]), patch(
@@ -393,8 +394,10 @@ def test_catalog_tabs_have_no_counts(client: TestClient) -> None:
         response = client.get("/catalog")
 
     assert response.status_code == 200
-    assert 'href="/catalog" aria-current="page"' in response.text
-    assert "library-tabs__count" not in response.text
+    catalog_item = response.text.split('href="/catalog"\n', 1)[1].split("</a>", 1)[0]
+    assert 'aria-current="page"' in catalog_item
+    assert "library-switch-count" not in catalog_item
+    assert 'data-role="library-switch-count">0</span>' in response.text
 
 
 def test_add_by_url_error_keeps_the_reading_tab_active(client: TestClient) -> None:

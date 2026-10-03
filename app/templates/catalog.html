@@ -3,7 +3,8 @@
 {% block mobile_title %}Каталог{% endblock %}
 {% block content %}
 {#
-  PR 251 (Aurora Ink, CATALOG-DEFAULT/-FILTERS/-QUICKVIEW): tabs, a sticky
+  PR 251 (Aurora Ink, CATALOG-DEFAULT/-FILTERS/-QUICKVIEW): the «Библиотека /
+  Каталог» switch (PR 294), a sticky
   toolbar card (search · sort · «Фильтры · N» · «Искать»), the grid, and the filters
   panel - a 292px column beside the grid on desktop, a bottom sheet on mobile, both
   with a «Сбросить»/«Показать» footer.
@@ -11,7 +12,7 @@
 {% set filter_count = genres | length + countries | length %}
 {% set has_filters = all_genres or all_countries %}
 <div class="catalog-page">
-  {% include "_library_tabs.html" %}
+  {% include "_library_switch.html" %}
   <header class="catalog-toolbar" data-role="catalog-scroll-header">
     {# The form is display: contents - its fields sit in the toolbar row next to the
        filters toggle, which stays outside it (PR 111), and «Искать» joins via form=. #}
@@ -212,4 +213,5 @@
 <script src="{{ url_for('static', path='js/title-quickview.js') }}" defer></script>
 <script src="{{ url_for('static', path='js/image-lightbox.js') }}" defer></script>
 <script src="{{ url_for('static', path='js/library-tabs-swipe.js') }}" defer></script>
+<script src="{{ url_for('static', path='js/library-switch.js') }}" defer></script>
 {% endblock %}
