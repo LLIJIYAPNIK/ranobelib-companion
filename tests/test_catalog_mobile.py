@@ -16,9 +16,9 @@ CSS = (ROOT / "app/static/css/app.css").read_text(encoding="utf-8")
 client = TestClient(app)
 
 
-def _mobile_rule(selector: str) -> str:
+def _mobile_rule(selector: str, *, last: bool = True) -> str:
     """The body of the last rule for `selector` inside the CatalogMobile section's
-    max-width: 767px blocks."""
+    max-width blocks (767px, then 359px) - the first with last=False."""
     block = CSS.split("CatalogMobile (PR 299", 1)[1].split("LibraryDesktop (PR 297", 1)[0]
     matches = [
         body
@@ -26,7 +26,7 @@ def _mobile_rule(selector: str) -> str:
         if selector in [part.strip() for part in selectors.split(",")]
     ]
     assert matches, selector
-    return matches[-1]
+    return matches[-1] if last else matches[0]
 
 
 def _get(**params: object) -> str:
@@ -114,3 +114,25 @@ def test_list_view_is_a_row_card() -> None:
     assert "width: 64px;" in _mobile_rule('.catalog-grid[data-view="list"] .catalog-card__media')
     action = _mobile_rule('.catalog-grid[data-view="list"] .catalog-card__action')
     assert "position: static;" in action
+
+
+def test_featured_card_is_a_horizontal_block_with_the_cover_beside_the_copy() -> None:
+    inner = _mobile_rule(".wn-catalog .catalog-featured__inner", last=False)
+    assert "grid-template-columns: 92px minmax(0, 1fr);" in inner
+    assert "display: contents;" in _mobile_rule(".wn-catalog .catalog-featured__copy")
+    assert "grid-row: 1 / 5;" in _mobile_rule(".wn-catalog .catalog-featured__cover")
+    narrow = CSS.split("@media (max-width: 359px) {\n  .wn-catalog .catalog-featured__inner {", 1)
+    assert "grid-template-columns: 80px minmax(0, 1fr);" in narrow[1].split("}", 1)[0]
+    backdrop = _mobile_rule(".wn-catalog .catalog-featured__backdrop")
+    assert "filter: blur(40px) saturate(0.6) brightness(0.6);" in backdrop
+
+
+def test_featured_card_shows_two_genres_and_an_icon_library_button() -> None:
+    assert "display: none;" in _mobile_rule(
+        ".wn-catalog .catalog-featured__genres li:nth-child(n + 3)"
+    )
+    assert "width: 44px;" in _mobile_rule(".wn-catalog .catalog-featured__lib")
+    assert "display: none;" in _mobile_rule(".wn-catalog .catalog-featured__lib > span")
+    # The hidden label is still announced: the toggle carries its own aria-label.
+    cards = (ROOT / "app/templates/_catalog_cards.html").read_text(encoding="utf-8")
+    assert "aria-label=\"{{ ('«' ~ name ~ '» в библиотеке — убрать')" in cards

@@ -7303,9 +7303,9 @@ a.catalog-card__action {
 }
 
 /* PR 295/296: the editorial feed's featured insert, a whole grid row after every 12
-   cards - FeaturedCard (FeaturedCard.dc.html). Phones get a compact horizontal block
-   here (their own FeaturedCard is PR 299); the desktop layers are in the CatalogDesktop
-   block. */
+   cards - FeaturedCard (FeaturedCard.dc.html). A compact horizontal block here; the
+   phone layout is in the CatalogMobile block (PR 299), the desktop layers in the
+   CatalogDesktop one. */
 .catalog-featured {
   position: relative;
   grid-column: 1 / -1;
@@ -7657,8 +7657,8 @@ a.catalog-card__action {
    CatalogDesktop (PR 296, wave 36): the desktop shell from CatalogDesktop.dc.html /
    Catalog handoff.md - a dark page with two faint colour spots, noise and a vignette, a
    header card (eyebrow + H1, the «Библиотека / Каталог» switch on the right) and the
-   toolbar as a sticky glass panel overlapping its bottom edge. Phones keep the PR 251
-   layout until PR 299.
+   toolbar as a sticky glass panel overlapping its bottom edge. Phones: the CatalogMobile
+   block below (PR 299).
    ========================================================================== */
 
 /* «Искать» goes once catalog-sort-autosubmit.js makes sort changes submit on their own -
@@ -8678,6 +8678,144 @@ a.catalog-card__action {
   .catalog-grid[data-view="list"] .catalog-skeleton__cover {
     grid-row: span 2;
     border-radius: 8px;
+  }
+
+  /* FeaturedCard mobile: the whole row, a horizontal block shorter than one card
+     (≈270px) - the cover (92px, 80px under 360) beside eyebrow, title (3 lines),
+     «статус · N глав» and two genres, then the description and «Открыть тайтл» + a
+     44px «В библиотеку» across the full width. The cover blurred and desaturated is the
+     backdrop. The copy column's children join the inner grid (display: contents), so
+     the description and the buttons can run under the cover. */
+  .wn-catalog .catalog-featured__card {
+    padding: 14px;
+    border-color: #2a2838;
+    border-radius: 16px;
+  }
+
+  .wn-catalog .catalog-featured__backdrop {
+    position: absolute;
+    inset: -50px;
+    z-index: -2;
+    display: block;
+    width: calc(100% + 100px);
+    height: calc(100% + 100px);
+    object-fit: cover;
+    filter: blur(40px) saturate(0.6) brightness(0.6);
+  }
+
+  .wn-catalog .catalog-featured__scrim {
+    position: absolute;
+    inset: 0;
+    z-index: -1;
+    display: block;
+    background: linear-gradient(
+      180deg,
+      rgb(10 10 16 / 60%) 0%,
+      rgb(10 10 16 / 90%) 60%,
+      rgb(10 10 16 / 95%) 100%
+    );
+  }
+
+  .wn-catalog .catalog-featured__inner {
+    display: grid;
+    grid-template-columns: 92px minmax(0, 1fr);
+    grid-template-rows: auto auto auto 1fr auto auto;
+    gap: 6px 12px;
+  }
+
+  .wn-catalog .catalog-featured__copy {
+    display: contents;
+  }
+
+  .wn-catalog .catalog-featured__cover {
+    grid-row: 1 / 5;
+    grid-column: 1;
+    align-self: start;
+    width: auto;
+    box-shadow:
+      0 12px 26px rgb(0 0 0 / 50%),
+      0 0 0 1px rgb(255 255 255 / 10%);
+  }
+
+  .wn-catalog :is(.catalog-featured__eyebrow, .catalog-featured__name, .catalog-featured__facts, .catalog-featured__genres) {
+    grid-column: 2;
+  }
+
+  .wn-catalog .catalog-featured__dot {
+    display: none;
+  }
+
+  .wn-catalog .catalog-featured__genres {
+    grid-row: 4;
+    align-self: start;
+    display: block;
+    margin: 0;
+    padding: 0;
+    color: #a3a0b5;
+    font: 500 12px/1.35 var(--wn-font-ui);
+    list-style: none;
+  }
+
+  .wn-catalog .catalog-featured__genres li {
+    display: inline;
+  }
+
+  .wn-catalog .catalog-featured__genres li + li::before {
+    content: " · ";
+  }
+
+  .wn-catalog .catalog-featured__genres li:nth-child(n + 3) {
+    display: none;
+  }
+
+  .wn-catalog :is(.catalog-featured__summary, .catalog-featured__actions) {
+    grid-column: 1 / -1;
+    margin-top: 6px;
+  }
+
+  .wn-catalog .catalog-featured__summary {
+    grid-row: 5;
+  }
+
+  .wn-catalog .catalog-featured__actions {
+    grid-row: 6;
+    gap: 8px;
+  }
+
+  .wn-catalog .catalog-featured__open {
+    flex: 1;
+    justify-content: center;
+    min-width: 0;
+  }
+
+  .wn-catalog .catalog-featured__open svg {
+    display: none;
+  }
+
+  .wn-catalog .catalog-featured__lib {
+    flex: none;
+    justify-content: center;
+    width: 44px;
+    height: 44px;
+    padding: 0;
+    background: rgb(255 255 255 / 5%);
+    backdrop-filter: none;
+  }
+
+  .wn-catalog .catalog-featured__lib svg {
+    width: 18px;
+    height: 18px;
+  }
+
+  /* The label is the button's aria-label already. */
+  .wn-catalog .catalog-featured__lib > span {
+    display: none;
+  }
+}
+
+@media (max-width: 359px) {
+  .wn-catalog .catalog-featured__inner {
+    grid-template-columns: 80px minmax(0, 1fr);
   }
 }
 
