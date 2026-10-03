@@ -39,7 +39,7 @@
         >
         <kbd class="wn-catalog__kbd" aria-hidden="true">/</kbd>
       </label>
-      <span class="ui-select catalog-toolbar__sort">
+      <span class="ui-select catalog-toolbar__sort{% if sort != 'last_chapter_at' %} catalog-toolbar__sort--active{% endif %}">
         <select name="sort" class="toc__export-format" aria-label="Сортировка">
           {% for value, label in sort_options.items() %}
           <option value="{{ value }}"{% if value == sort %} selected{% endif %}>{{ label }}</option>

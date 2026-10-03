@@ -7628,9 +7628,10 @@ a.ui-title-card:focus-visible .ui-title-card__cover {
     pointer-events: none;
   }
 
+  /* A static file, not a data: URI - img-src is 'self' only (app/security_headers.py). */
   .wn-catalog::before {
     opacity: 0.05;
-    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='160'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.9' numOctaves='2' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+    background-image: url("../img/catalog-noise.svg");
   }
 
   .wn-catalog::after {
@@ -7770,6 +7771,7 @@ a.ui-title-card:focus-visible .ui-title-card__cover {
 
   /* A non-default value gets the teal edge (handoff: «с активным значением»). */
   .wn-catalog[data-mode="results"] .catalog-toolbar__search:has(.ui-input:not(:placeholder-shown)),
+  .wn-catalog .catalog-toolbar__sort--active,
   .wn-catalog .catalog-toolbar__filters:has(.ui-badge) {
     border-color: rgb(61 214 195 / 40%);
   }

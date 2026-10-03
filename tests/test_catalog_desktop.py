@@ -311,3 +311,16 @@ def test_next_page_skeleton_and_error_plate_follow_the_design() -> None:
     assert "Уже загруженные тайтлы останутся на месте" in script
     assert "animation-delay: calc(var(--i, 0) * 80ms);" in CSS
     assert "border-top-color: #3dd6c3;" in CSS
+
+
+def test_a_non_default_sort_gets_the_active_edge() -> None:
+    assert "catalog-toolbar__sort catalog-toolbar__sort--active" in _get(sort="views")
+    assert "catalog-toolbar__sort--active" not in _get()
+
+
+def test_noise_is_a_static_file_not_a_data_uri() -> None:
+    # img-src is 'self' only (app/security_headers.py) - a data: URI would be blocked.
+    noise = _desktop_rule(".wn-catalog::before")
+    assert 'url("../img/catalog-noise.svg")' in noise
+    assert "data:" not in noise
+    assert (ROOT / "app/static/img/catalog-noise.svg").is_file()
