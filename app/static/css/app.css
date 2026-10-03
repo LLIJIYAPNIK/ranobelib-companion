@@ -7174,6 +7174,264 @@ a.ui-title-card:focus-visible .ui-title-card__cover {
   right: calc(var(--catalog-pad-x) + 292px + var(--s-24));
 }
 
+/* ==========================================================================
+   CatalogDesktop (PR 296, wave 36): the desktop shell from CatalogDesktop.dc.html /
+   Catalog handoff.md - a dark page with two faint colour spots, noise and a vignette, a
+   header card (eyebrow + H1, the «Библиотека / Каталог» switch on the right) and the
+   toolbar as a sticky glass panel overlapping its bottom edge. Phones keep the PR 251
+   layout until PR 299.
+   ========================================================================== */
+
+/* «Искать» goes once catalog-sort-autosubmit.js makes sort changes submit on their own -
+   search submits on Enter, filters on «Показать» (was phones-only, PR 251). */
+.catalog-toolbar--autosubmit .catalog-toolbar__submit {
+  display: none;
+}
+
+.wn-catalog__hero-copy,
+.wn-catalog__kbd,
+.catalog-criteria__label {
+  display: none;
+}
+
+@media (min-width: 768px) {
+  .wn-catalog {
+    --wn-catalog-ctl-h: 52px;
+    position: relative;
+    isolation: isolate;
+    gap: 0;
+    padding: 28px 36px 64px;
+    background:
+      radial-gradient(1100px 520px at 78% -8%, rgb(122 82 244 / 7.5%), transparent 62%),
+      radial-gradient(800px 420px at -5% 0%, rgb(61 214 195 / 4%), transparent 60%),
+      linear-gradient(180deg, #0b0b10 0%, #08080c 40%);
+    font-family: var(--wn-font-ui);
+  }
+
+  .wn-catalog[data-mode="results"] {
+    --wn-catalog-ctl-h: 46px;
+  }
+
+  /* Noise (feTurbulence at 5%) and the inner vignette - decoration only. */
+  .wn-catalog::before,
+  .wn-catalog::after {
+    content: "";
+    position: absolute;
+    inset: 0;
+    z-index: -1;
+    pointer-events: none;
+  }
+
+  .wn-catalog::before {
+    opacity: 0.05;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='160'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.9' numOctaves='2' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+  }
+
+  .wn-catalog::after {
+    box-shadow: inset 0 0 220px rgb(0 0 0 / 55%);
+  }
+
+  .wn-catalog > .wn-catalog__hero,
+  .wn-catalog > .catalog-page__hint,
+  .wn-catalog > .catalog-layout {
+    width: 100%;
+    max-width: 1280px;
+    margin-inline: auto;
+  }
+
+  /* Header card. */
+  .wn-catalog__hero {
+    position: relative;
+    display: flex;
+    flex-wrap: wrap;
+    align-items: flex-end;
+    justify-content: space-between;
+    gap: 24px;
+    overflow: hidden;
+    padding: 36px 36px 80px;
+    border: 1px solid rgb(255 255 255 / 6.5%);
+    border-radius: 22px;
+    background:
+      radial-gradient(260px 180px at calc(100% - 200px) 20px, rgb(122 82 244 / 16%), transparent),
+      radial-gradient(260px 160px at 30% 100%, rgb(61 214 195 / 6%), transparent),
+      linear-gradient(180deg, rgb(26 25 36 / 92%) 0%, rgb(16 16 23 / 92%) 100%);
+    box-shadow:
+      inset 0 1px 0 rgb(255 255 255 / 6%),
+      0 30px 60px -30px rgb(0 0 0 / 70%);
+  }
+
+  /* The thin light line along the top edge. */
+  .wn-catalog__hero::before {
+    content: "";
+    position: absolute;
+    top: 0;
+    right: 0;
+    left: 0;
+    height: 1px;
+    background: linear-gradient(90deg, transparent, rgb(197 182 255 / 35%), transparent);
+  }
+
+  .wn-catalog__hero-copy {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+  }
+
+  .wn-catalog__eyebrow {
+    color: #8c889f;
+    font: 800 11px/1 var(--wn-font-ui);
+    letter-spacing: 0.2em;
+    text-transform: uppercase;
+  }
+
+  .wn-catalog__title {
+    margin: 0;
+    color: #f7f5fb;
+    font: 800 52px/1.02 var(--wn-font-ui);
+    letter-spacing: -0.035em;
+  }
+
+  .wn-catalog[data-mode="results"] .wn-catalog__hero {
+    padding: 24px 28px 68px;
+  }
+
+  .wn-catalog[data-mode="results"] .wn-catalog__title {
+    font-size: 36px;
+  }
+
+  /* Sticky glass panel, overlapping the header's bottom edge by 44px. */
+  .wn-catalog .catalog-toolbar {
+    top: 12px;
+    align-items: center;
+    gap: 10px;
+    width: calc(min(100%, 1280px) - 40px);
+    margin: -44px auto 0;
+    padding: 12px;
+    border: 1px solid rgb(255 255 255 / 9%);
+    border-radius: 16px;
+    background: rgb(20 20 29 / 78%);
+    box-shadow:
+      inset 0 1px 0 rgb(255 255 255 / 5%),
+      0 24px 48px -16px rgb(0 0 0 / 70%);
+    backdrop-filter: blur(18px) saturate(1.2);
+  }
+
+  .wn-catalog[data-mode="results"] .catalog-toolbar {
+    padding: 10px;
+  }
+
+  .wn-catalog .catalog-toolbar__search {
+    flex: 1 1 240px;
+    gap: 12px;
+    height: var(--wn-catalog-ctl-h);
+    padding: 0 16px;
+    border: 1px solid rgb(255 255 255 / 9%);
+    border-radius: 12px;
+    background: rgb(8 8 12 / 70%);
+    color: #8c889f;
+  }
+
+  .wn-catalog .catalog-toolbar__search > svg {
+    width: 20px;
+    height: 20px;
+  }
+
+  .wn-catalog .catalog-toolbar__search .ui-input {
+    font: 500 16px/1 var(--wn-font-ui);
+  }
+
+  .wn-catalog .catalog-toolbar__sort,
+  .wn-catalog .catalog-toolbar__filters {
+    height: var(--wn-catalog-ctl-h);
+    padding: 0 16px;
+    border: 1px solid rgb(255 255 255 / 9%);
+    border-radius: 12px;
+    background: rgb(255 255 255 / 4%);
+    color: #eeecf4;
+    font: 600 15px/1 var(--wn-font-ui);
+  }
+
+  .wn-catalog .catalog-toolbar__filters {
+    --ui-btn-bg: rgb(255 255 255 / 4%);
+    --ui-btn-hover: rgb(255 255 255 / 8%);
+    --ui-btn-border: rgb(255 255 255 / 9%);
+    font-weight: 700;
+  }
+
+  .wn-catalog .catalog-toolbar__filters[aria-expanded="true"] {
+    --ui-btn-border: #5b5380;
+  }
+
+  /* A non-default value gets the teal edge (handoff: «с активным значением»). */
+  .wn-catalog[data-mode="results"] .catalog-toolbar__search:has(.ui-input:not(:placeholder-shown)),
+  .wn-catalog .catalog-toolbar__filters:has(.ui-badge) {
+    border-color: rgb(61 214 195 / 40%);
+  }
+
+  .wn-catalog__kbd {
+    display: flex;
+    flex: none;
+    align-items: center;
+    justify-content: center;
+    min-width: 24px;
+    height: 24px;
+    border: 1px solid #33304a;
+    border-radius: 6px;
+    color: #8c889f;
+    font: 700 12px/1 var(--wn-font-ui);
+  }
+
+  /* The results mode's criteria join the panel as its second row. */
+  .wn-catalog .catalog-criteria {
+    flex: 1 1 100%;
+    gap: 8px;
+    padding-top: 12px;
+    border-top: 1px solid rgb(255 255 255 / 6%);
+  }
+
+  .catalog-criteria__label {
+    display: inline;
+    margin-right: 4px;
+    color: #8c889f;
+    font: 700 12px/1 var(--wn-font-ui);
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+  }
+
+  .wn-catalog .catalog-criteria__chip {
+    height: 34px;
+  }
+
+  .wn-catalog > .catalog-page__hint {
+    margin-top: 20px;
+  }
+
+  .wn-catalog > .catalog-layout {
+    margin-top: 40px;
+  }
+
+  .wn-catalog[data-mode="results"] > .catalog-layout {
+    margin-top: 28px;
+  }
+
+  /* «Фильтры» opens as a popover under its button (catalog-filters-toggle.js sets top /
+     right / max-height from the button's box) instead of the old 292px side column. */
+  .wn-catalog .catalog-filters.catalog-filters--enhanced {
+    position: fixed;
+    z-index: 60;
+    flex: none;
+    width: 360px;
+    border-color: #33304a;
+    border-radius: 14px;
+    background: #17171f;
+    box-shadow: 0 20px 50px rgb(0 0 0 / 60%);
+  }
+
+  .wn-catalog .back-to-top--filters-open {
+    right: var(--catalog-pad-x);
+  }
+}
+
 /* Quick view (title-quickview.js): a non-modal <dialog> over its own scrim, one level
    below the image lightbox (z-index 100) that its cover opens. */
 .title-quickview-scrim {
@@ -7308,8 +7566,7 @@ a.ui-title-card:focus-visible .ui-title-card__cover {
     padding: var(--s-4) var(--catalog-pad-x) var(--s-8);
   }
 
-  /* Search on its own row, sort and «Фильтры» on the second (M-CATALOG). «Искать» goes
-     once catalog-sort-autosubmit.js makes sort changes submit on their own. */
+  /* Search on its own row, sort and «Фильтры» on the second (M-CATALOG). */
   .catalog-toolbar__search {
     flex-basis: 100%;
   }
@@ -7317,10 +7574,6 @@ a.ui-title-card:focus-visible .ui-title-card__cover {
   .catalog-toolbar__sort {
     flex: 1 1 0;
     min-width: 0;
-  }
-
-  .catalog-toolbar--autosubmit .catalog-toolbar__submit {
-    display: none;
   }
 
   .catalog-layout {

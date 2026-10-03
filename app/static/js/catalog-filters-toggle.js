@@ -24,12 +24,32 @@
   // (body.catalog-filters-open, a no-op on desktop where the panel is a side column).
   const scrim = document.querySelector('[data-role="catalog-filters-scrim"]');
 
+  // PR 296 (CatalogDesktop.dc.html): on desktop the panel is a popover right under the
+  // toggle (app.css makes it position: fixed there) - placed from the toggle's own box,
+  // and kept there while the sticky toolbar moves with the page.
+  const desktopQuery = window.matchMedia("(min-width: 768px)");
+
+  function place() {
+    if (!desktopQuery.matches || panel.hidden) {
+      panel.style.removeProperty("top");
+      panel.style.removeProperty("right");
+      panel.style.removeProperty("max-height");
+      return;
+    }
+    const rect = toggle.getBoundingClientRect();
+    const top = Math.round(rect.bottom + 8);
+    panel.style.top = `${top}px`;
+    panel.style.right = `${Math.max(16, Math.round(window.innerWidth - rect.right))}px`;
+    panel.style.maxHeight = `${Math.max(240, window.innerHeight - top - 16)}px`;
+  }
+
   function isOpen() {
     return !panel.hidden;
   }
 
   function open() {
     panel.hidden = false;
+    place();
     panel.classList.remove("catalog-filters--closing");
     toggle.setAttribute("aria-expanded", "true");
     backToTop?.classList.add("back-to-top--filters-open");
@@ -61,4 +81,11 @@
   document.addEventListener("keydown", (event) => {
     if (event.key === "Escape" && isOpen()) close();
   });
+  window.addEventListener("scroll", place, { passive: true });
+  window.addEventListener("resize", place);
+  desktopQuery.addEventListener("change", place);
+  // The toolbar slides away on scroll-down (catalog-header-scroll.js) - follow it back.
+  document
+    .querySelector('[data-role="catalog-scroll-header"]')
+    ?.addEventListener("transitionend", place);
 })();

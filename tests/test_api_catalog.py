@@ -926,7 +926,7 @@ def test_catalog_mode_follows_query_sort_and_filters(
 
     assert response.context["editorial"] is editorial
     mode = "editorial" if editorial else "results"
-    assert f'class="catalog-page" data-mode="{mode}"' in response.text
+    assert f'class="catalog-page wn-catalog" data-mode="{mode}"' in response.text
 
 
 def _titles(start: int, count: int) -> list[Title]:
