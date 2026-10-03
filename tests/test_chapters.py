@@ -631,6 +631,27 @@ def test_read_chapter_omits_heartbeat_script_when_anonymous() -> None:
     assert "static/js/activity-heartbeat.js" not in response.text
 
 
+def test_read_chapter_includes_position_tick_script_when_logged_in(
+    logged_in_client: TestClient,
+) -> None:
+    chapter = Chapter(id=1, volume="1", number="5", content="<p>x</p>")
+    with patch("app.services.client.RanobeLib", return_value=_FakeClient(chapter)):
+        response = logged_in_client.get("/titles/6712--test-novel/chapters/1/5")
+
+    # Listening before the reader scripts announce their first position.
+    tick = response.text.index("static/js/reading-progress-tick.js")
+    assert tick < response.text.index("static/js/tap-to-read.js")
+    assert tick < response.text.index("static/js/reader-progress.js")
+
+
+def test_read_chapter_omits_position_tick_script_when_anonymous() -> None:
+    chapter = Chapter(id=1, volume="1", number="5", content="<p>x</p>")
+    with patch("app.services.client.RanobeLib", return_value=_FakeClient(chapter)):
+        response = client.get("/titles/6712--test-novel/chapters/1/5")
+
+    assert "static/js/reading-progress-tick.js" not in response.text
+
+
 async def test_read_chapter_records_activity_even_outside_the_library(
     logged_in_client: TestClient,
 ) -> None:

@@ -153,6 +153,8 @@
 
   function saveProgress(revealed) {
     localStorage.setItem(progressKey, JSON.stringify({ revealed, total: wraps.length }));
+    // PR 288: reading-progress-tick.js sends it on to the server (throttled).
+    emit("reader:position", { revealed, total: wraps.length });
   }
 
   function loadRevealedCount() {

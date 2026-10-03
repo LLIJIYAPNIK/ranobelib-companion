@@ -55,6 +55,14 @@
 
   function save() {
     localStorage.setItem(progressKey, JSON.stringify({ revealed: furthest, total: paragraphs.length }));
+    // PR 288: reading-progress-tick.js sends it on to the server (throttled) - its own
+    // event, not tap-to-read.js's "reader:progress", which reader-hud.js would read as
+    // the HUD bar's value in place of the scroll position it shows in this mode.
+    document.dispatchEvent(
+      new CustomEvent("reader:position", {
+        detail: { revealed: furthest, total: paragraphs.length },
+      })
+    );
   }
 
   // Re-saves immediately so a legacy bare-number entry (no `total`) gains one right
