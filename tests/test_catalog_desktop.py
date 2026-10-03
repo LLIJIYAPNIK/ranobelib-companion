@@ -212,3 +212,79 @@ def test_cinema_hover_follows_the_design() -> None:
     assert ".wn-catalog .catalog-card:hover {\n    transform: translateY(-4px);" in hover
     assert "opacity: 0.55;" in hover
     assert "transform: scale(1.03);" in hover
+
+
+# --- FeaturedCard desktop -----------------------------------------------------------
+
+
+def _featured_html(top: list[Title]) -> list[str]:
+    fake = _FakeCatalog(
+        CatalogPage(items=_titles(1, 30), page=1, has_next_page=False),
+        featured=[CatalogPage(items=top, page=1, has_next_page=False)],
+    )
+    with patch("app.services.catalog.Catalog", return_value=fake):
+        html = client.get("/catalog").text
+    return html.split('<article\n  class="catalog-featured')[1:]
+
+
+def test_featured_card_carries_the_design_content() -> None:
+    top = _title(
+        id=1001,
+        slug_url="1001--prince",
+        rus_name="Я стал наследным принцем Франции",
+        summary="Историк просыпается в теле дофина.",
+        genres=[Genre(id=i, name=f"Жанр {i}") for i in range(1, 6)],
+        chapter_count=812,
+    )
+    first = _featured_html([top, _title(id=1002, slug_url="1002--x")])[0]
+
+    assert 'aria-label="Популярно на RanobeLib: Я стал наследным принцем Франции"' in first
+    assert "Один из самых просматриваемых" in first
+    assert '<h3 class="catalog-featured__name">Я стал наследным принцем Франции</h3>' in first
+    assert '<p class="catalog-featured__facts">Онгоинг · 812 глав</p>' in first
+    assert "Историк просыпается в теле дофина." in first
+    assert first.count("<li>Жанр") == 3
+    assert 'class="catalog-featured__open" href="/titles/1001--prince"' in first
+    assert '<span class="catalog-featured__issue-number">01</span>' in first
+    assert "В библиотеку" not in first  # PR 298
+
+
+def test_even_inserts_flip_the_cover_to_the_right() -> None:
+    top = [_title(id=1000 + i, slug_url=f"{1000 + i}--t") for i in range(1, 4)]
+    fake = _FakeCatalog(
+        CatalogPage(items=_titles(1, 36), page=1, has_next_page=False),
+        featured=[CatalogPage(items=top, page=1, has_next_page=False)],
+    )
+    with patch("app.services.catalog.Catalog", return_value=fake):
+        html = client.get("/catalog").text
+
+    classes = re.findall(r'class="(catalog-featured(?: catalog-featured--flip)?)"', html)
+    flip = "catalog-featured catalog-featured--flip"
+    assert classes == ["catalog-featured", flip, "catalog-featured"]
+
+
+def test_chapter_plurals_on_the_featured_card() -> None:
+    cases = [
+        (1, "1 глава"),
+        (3, "3 главы"),
+        (11, "11 глав"),
+        (22, "22 главы"),
+        (1205, "1 205 глав"),
+    ]
+    for count, word in cases:
+        card = _featured_html([_title(id=1001, slug_url="1001--x", chapter_count=count)])[0]
+        assert f"Онгоинг · {word}</p>" in card, count
+
+
+def test_featured_desktop_layers_follow_the_design() -> None:
+    card = _desktop_rule(".wn-catalog .catalog-featured__card")
+    assert "min-height: 340px;" in card
+    assert "border-radius: 20px;" in card
+    backdrop = _desktop_rule(".wn-catalog .catalog-featured__backdrop")
+    assert "filter: blur(60px) saturate(1.05) brightness(0.62);" in backdrop
+    halo = _desktop_rule(".wn-catalog .catalog-featured__halo")
+    assert "filter: blur(90px) saturate(1.3);" in halo and "opacity: 0.32;" in halo
+    assert "flex-direction: row-reverse;" in _desktop_rule(
+        ".wn-catalog .catalog-featured--flip .catalog-featured__inner"
+    )
+    assert "800 36px/1.12" in _desktop_rule(".wn-catalog .catalog-featured__name")

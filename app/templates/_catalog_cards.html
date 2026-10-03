@@ -6,13 +6,21 @@
    the SDK doesn't return the last chapter's date (ranobelib-python-sdk#67).
    PR 295: `items` is the feed (app/services/catalog.py's StreamItem) - regular cards,
    and in the editorial mode a featured insert after every 12 of them, spanning the
-   whole row. The insert's full FeaturedCard look is PR 296; here it's the plain block.
+   whole row - FeaturedCard (PR 296, FeaturedCard.dc.html): the cover blurred as the
+   backdrop under a scrim, the cover itself with its own glow, «Популярно на RanobeLib»,
+   title, «статус · N глав», description, genres and «Открыть тайтл»; even inserts flip
+   the cover to the right. «Выпуск N» is the insert's number on the feed, not a rank.
+   «В библиотеку» on it is PR 298.
    PR 296: in the editorial mode the feed carries its section labels as full-row grid
    items too (CatalogDesktop.dc.html) - «Свежие обновления» opening the first page,
    «Продолжить каталог» after every insert that isn't the end of the feed. They're
    navigation inside the one feed, not separate listings; the results mode has none. #}
 {% macro chapters_label(count) -%}
 {{ "{:,}".format(count) | replace(",", " ") }} гл.
+{%- endmacro %}
+{% macro chapters_long(count) -%}
+{% set n10, n100 = count % 10, count % 100 -%}
+{{ "{:,}".format(count) | replace(",", " ") }} {% if n10 == 1 and n100 != 11 %}глава{% elif n10 in [2, 3, 4] and n100 not in [12, 13, 14] %}главы{% else %}глав{% endif %}
 {%- endmacro %}
 {% macro section_label(title, sub, fresh=false) -%}
 <div class="catalog-section{% if fresh %} catalog-section--fresh{% endif %}" data-role="catalog-section">
@@ -30,15 +38,44 @@
 {% set name = title.rus_name or title.name %}
 {% set cover = title.cover.default or title.cover.md or title.cover.thumbnail %}
 {% if item.kind == "featured" %}
-<article class="catalog-featured" data-role="catalog-featured" data-slug-url="{{ title.slug_url }}" data-issue="{{ item.issue }}">
-  <a class="catalog-featured__link" href="/titles/{{ title.slug_url }}">
-    <span class="catalog-featured__cover">{% if cover %}<img src="{{ cover }}" alt="" loading="lazy">{% endif %}</span>
-    <span class="catalog-featured__copy">
-      <span class="catalog-featured__eyebrow">Популярно на RanobeLib</span>
-      <span class="catalog-featured__name">{{ name }}</span>
-      {% if title.summary %}<span class="catalog-featured__summary">{{ title.summary | truncate(240) }}</span>{% endif %}
-    </span>
-  </a>
+{% set facts = [title.status.label if title.status else none, chapters_long(title.chapter_count) if title.chapter_count else none] | select | list %}
+<article
+  class="catalog-featured{% if item.issue is even %} catalog-featured--flip{% endif %}"
+  data-role="catalog-featured" data-slug-url="{{ title.slug_url }}" data-issue="{{ item.issue }}"
+  aria-label="Популярно на RanobeLib: {{ name }}"
+>
+  {% if cover %}<img class="catalog-featured__halo" src="{{ cover }}" alt="" aria-hidden="true" loading="lazy">{% endif %}
+  <div class="catalog-featured__card">
+    {% if cover %}<img class="catalog-featured__backdrop" src="{{ cover }}" alt="" aria-hidden="true" loading="lazy">{% endif %}
+    <span class="catalog-featured__scrim" aria-hidden="true"></span>
+    <span class="catalog-featured__issue" aria-hidden="true"><span class="catalog-featured__issue-label">Выпуск</span><span class="catalog-featured__issue-number">{{ "%02d" | format(item.issue) }}</span></span>
+    <div class="catalog-featured__inner">
+      <a class="catalog-featured__cover" href="/titles/{{ title.slug_url }}" tabindex="-1" aria-hidden="true">
+        {% if cover %}<img class="catalog-featured__cover-glow" src="{{ cover }}" alt="" loading="lazy"><img class="catalog-featured__cover-img" src="{{ cover }}" alt="" loading="lazy">{% endif %}
+      </a>
+      <div class="catalog-featured__copy">
+        <div class="catalog-featured__eyebrow">
+          <span class="catalog-featured__eyebrow-main"><span class="catalog-featured__dot" aria-hidden="true"></span>Популярно на RanobeLib</span>
+          <span class="catalog-featured__eyebrow-sep" aria-hidden="true"></span>
+          <span class="catalog-featured__eyebrow-sub">Один из самых просматриваемых</span>
+        </div>
+        <h3 class="catalog-featured__name">{{ name }}</h3>
+        {% if facts %}<p class="catalog-featured__facts">{{ facts | join(" · ") }}</p>{% endif %}
+        {% if title.summary %}<p class="catalog-featured__summary">{{ title.summary | truncate(320) }}</p>{% endif %}
+        {% if title.genres %}
+        <ul class="catalog-featured__genres" aria-label="Жанры">
+          {% for genre in title.genres[:3] %}<li>{{ genre.name }}</li>{% endfor %}
+        </ul>
+        {% endif %}
+        <div class="catalog-featured__actions">
+          <a class="catalog-featured__open" href="/titles/{{ title.slug_url }}">
+            Открыть тайтл
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12h14M13 6l6 6-6 6"/></svg>
+          </a>
+        </div>
+      </div>
+    </div>
+  </div>
 </article>
 {% if editorial and (not loop.last or has_next_page) %}
 {{ section_label("Продолжить каталог", "тот же поток, по обновлению") }}
