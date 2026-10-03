@@ -51,15 +51,24 @@
     {% endif %}
     <button class="ui-btn ui-btn--primary catalog-toolbar__submit" type="submit" form="catalog-search-form">Искать</button>
   </header>
-  {% set active_filters = [] %}
-  {% if genres %}{% set _ = active_filters.append("Жанр" ~ ("ы" if genres | length > 1 else "") ~ ": " ~ (selected_genre_names | join(", "))) %}{% endif %}
-  {% if countries %}{% set _ = active_filters.append(("Страны" if countries | length > 1 else "Страна") ~ ": " ~ (selected_country_names | join(", "))) %}{% endif %}
-  {% if tags %}{% set _ = active_filters.append("Тег" ~ ("и" if tags | length > 1 else "") ~ ": " ~ (selected_tag_names | join(", "))) %}{% endif %}
-  {% if active_filters %}
-  <p class="catalog-page__hint">
-    {{ active_filters | join(" · ") }} ·
-    <a href="?query={{ query or '' }}&sort={{ sort }}">Сбросить фильтр{{ "ы" if active_filters | length > 1 else "" }}</a>
-  </p>
+  {# PR 295: the results mode's active criteria (Catalog handoff.md) - a click on a chip
+     drops that one, «Сбросить всё» goes back to the editorial feed. No count: the API
+     returns no total. #}
+  {% if criteria_chips %}
+  <div class="catalog-criteria" data-role="catalog-criteria">
+    <ul class="catalog-criteria__chips" aria-label="Условия">
+      {% for chip in criteria_chips %}
+      <li>
+        <a class="catalog-criteria__chip" href="{{ chip.href }}" aria-label="Убрать: {{ chip.label }}">
+          {{ chip.label }}
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" aria-hidden="true"><path d="M7 7l10 10M17 7 7 17"/></svg>
+        </a>
+      </li>
+      {% endfor %}
+    </ul>
+    <a class="catalog-criteria__reset" href="/catalog" data-role="catalog-criteria-reset">Сбросить всё</a>
+    <span class="catalog-criteria__status">Показаны результаты</span>
+  </div>
   {% endif %}
   {% if random_empty %}
   <p class="catalog-page__hint" role="status">Не нашлось ранобэ по этим фильтрам</p>

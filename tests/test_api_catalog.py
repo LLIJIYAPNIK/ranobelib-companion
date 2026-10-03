@@ -322,8 +322,8 @@ def test_show_catalog_renders_tag_filter_chip_using_forwarded_name() -> None:
         )
 
     assert response.status_code == 200
-    assert "Тег: Реинкарнация" in response.text
-    assert "Сбросить фильтр<" in response.text  # singular - only one filter active
+    # PR 295: a criteria chip; dropping the only criterion goes back to /catalog.
+    assert 'href="/catalog" aria-label="Убрать: Реинкарнация"' in response.text
 
 
 def test_show_catalog_tag_without_forwarded_name_falls_back_to_the_id() -> None:
@@ -335,7 +335,7 @@ def test_show_catalog_tag_without_forwarded_name_falls_back_to_the_id() -> None:
         response = client.get("/catalog", params={"tags": 7})
 
     assert response.status_code == 200
-    assert "Тег: 7" in response.text
+    assert 'aria-label="Убрать: 7"' in response.text
 
 
 def test_show_catalog_renders_tags_in_grid_data_attribute() -> None:
@@ -414,7 +414,8 @@ def test_show_catalog_renders_genre_filter_chip_with_resolved_names() -> None:
         response = client.get("/catalog", params={"genres": [5, 8]})
 
     assert response.status_code == 200
-    assert "Жанры: Фэнтези, Романтика" in response.text
+    assert 'href="/catalog?genres=8" aria-label="Убрать: Фэнтези"' in response.text
+    assert 'href="/catalog?genres=5" aria-label="Убрать: Романтика"' in response.text
     assert 'data-genres="5,8"' in response.text
 
 
@@ -538,7 +539,8 @@ def test_show_catalog_renders_country_filter_chip_with_resolved_names() -> None:
         response = client.get("/catalog", params={"countries": [1, 2]})
 
     assert response.status_code == 200
-    assert "Страны: Япония, Корея" in response.text
+    assert 'href="/catalog?countries=2" aria-label="Убрать: Япония"' in response.text
+    assert 'href="/catalog?countries=1" aria-label="Убрать: Корея"' in response.text
     assert 'data-country="1,2"' in response.text
 
 
@@ -553,10 +555,10 @@ def test_show_catalog_renders_combined_filter_chip_and_plural_reset_link() -> No
         response = client.get("/catalog", params={"genres": 5, "countries": 1})
 
     assert response.status_code == 200
-    assert "Жанр: Фэнтези · Страна: Япония" in response.text
-    assert "Сбросить фильтры<" in response.text  # plural - two filters active
-    # the reset link drops both, not just one
-    assert 'href="?query=&sort=last_chapter_at"' in response.text
+    # PR 295: one chip per criterion, each dropping only itself; «Сбросить всё» both.
+    assert 'href="/catalog?countries=1" aria-label="Убрать: Фэнтези"' in response.text
+    assert 'href="/catalog?genres=5" aria-label="Убрать: Япония"' in response.text
+    assert 'href="/catalog" data-role="catalog-criteria-reset">Сбросить всё</a>' in response.text
 
 
 def test_show_catalog_without_genres_omits_the_filter_chip() -> None:
@@ -983,3 +985,49 @@ def test_catalog_scroll_sends_and_updates_the_cursor() -> None:
     assert 'params.set("featured", grid.dataset.featured || "0")' in script
     assert 'response.headers.get("X-Catalog-Shown")' in script
     assert 'response.headers.get("X-Catalog-Featured")' in script
+
+
+def test_criteria_chips_cover_search_and_sort_and_keep_the_rest() -> None:
+    page = CatalogPage(items=[], page=1, has_next_page=False)
+    genres = [Genre(id=5, name="Фэнтези")]
+    with patch("app.services.catalog.Catalog", return_value=_FakeCatalog(page, genres=genres)):
+        response = client.get(
+            "/catalog", params={"query": " dxd ", "sort": "views", "genres": 5}
+        )
+
+    chips = response.context["criteria_chips"]
+    assert [chip["label"] for chip in chips] == ["«dxd»", "По просмотрам", "Фэнтези"]
+    assert [chip["href"] for chip in chips] == [
+        "/catalog?sort=views&genres=5",
+        "/catalog?query=dxd&genres=5",
+        "/catalog?query=dxd&sort=views",
+    ]
+    assert "Показаны результаты" in response.text
+
+
+def test_editorial_catalog_has_no_criteria_row() -> None:
+    page = CatalogPage(items=[], page=1, has_next_page=False)
+    with patch("app.services.catalog.Catalog", return_value=_FakeCatalog(page)):
+        response = client.get("/catalog")
+
+    assert response.context["criteria_chips"] == []
+    assert 'data-role="catalog-criteria"' not in response.text
+
+
+def test_tag_chip_carries_its_forwarded_name_only_for_a_lone_tag() -> None:
+    page = CatalogPage(items=[], page=1, has_next_page=False)
+    with patch("app.services.catalog.Catalog", return_value=_FakeCatalog(page)):
+        lone = client.get(
+            "/catalog", params={"query": "x", "tags": 7, "tag_name": "Реинкарнация"}
+        )
+        several = client.get("/catalog", params={"tags": [1, 2], "tag_name": "Магия"})
+
+    # Dropping the search keeps the tag and its name together.
+    assert lone.context["criteria_chips"][0]["href"] == (
+        "/catalog?tags=7&tag_name=%D0%A0%D0%B5%D0%B8%D0%BD%D0%BA%D0%B0%D1%80%D0%BD%D0%B0%D1%86%D0%B8%D1%8F"
+    )
+    # With several tags the name belongs to none of them - it doesn't travel.
+    assert [chip["href"] for chip in several.context["criteria_chips"]] == [
+        "/catalog?tags=2",
+        "/catalog?tags=1",
+    ]

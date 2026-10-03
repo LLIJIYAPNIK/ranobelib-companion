@@ -6661,6 +6661,86 @@ a.ui-title-card:focus-visible .ui-title-card__cover {
   color: var(--primary-text);
 }
 
+/* PR 295: active criteria in the results mode (Catalog handoff.md) - teal chips, each a
+   link that drops its own criterion, then «Сбросить всё» and a neutral status. */
+.catalog-criteria {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px 12px;
+}
+
+.catalog-criteria__chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.catalog-criteria__chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  height: 36px;
+  padding: 0 8px 0 12px;
+  border: 1px solid rgb(61 214 195 / 32%);
+  border-radius: 999px;
+  background: rgb(61 214 195 / 7%);
+  color: #eeecf4;
+  font: 600 14px/1 var(--wn-font-ui, sans-serif);
+  text-decoration: none;
+}
+
+.catalog-criteria__chip svg {
+  width: 16px;
+  height: 16px;
+  color: #a3a0b5;
+}
+
+@media (hover: hover) {
+  .catalog-criteria__chip:hover {
+    border-color: rgb(61 214 195 / 55%);
+  }
+}
+
+.catalog-criteria__chip:focus-visible,
+.catalog-criteria__reset:focus-visible {
+  outline: 2px solid #c5b6ff;
+  outline-offset: 2px;
+}
+
+.catalog-criteria__reset {
+  color: #b7a6ff;
+  font: 700 14px/1 var(--wn-font-ui, sans-serif);
+  text-decoration: none;
+}
+
+.catalog-criteria__status {
+  margin-left: auto;
+  color: #8c889f;
+  font: 500 13px/1 var(--wn-font-ui, sans-serif);
+}
+
+/* Phones: one horizontal strip of chips (Catalog handoff.md, mobile). */
+@media (max-width: 767px) {
+  .catalog-criteria__chips {
+    flex-wrap: nowrap;
+    max-width: 100%;
+    overflow-x: auto;
+    scrollbar-width: none;
+  }
+
+  .catalog-criteria__chip {
+    flex: none;
+  }
+
+  .catalog-criteria__status {
+    display: none;
+  }
+}
+
 .catalog-layout {
   display: flex;
   align-items: flex-start;
