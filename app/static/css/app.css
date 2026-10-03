@@ -6818,6 +6818,83 @@ a.ui-title-card:focus-visible .ui-title-card__cover {
   outline-offset: 2px;
 }
 
+/* PR 295: the end of the feed - a rule with a diamond, «Вы посмотрели все тайтлы»,
+   a mode-specific line, «Наверх» (and «Сбросить условия» in the results mode). */
+.catalog-feed-end {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  margin-top: 40px;
+  text-align: center;
+}
+
+.catalog-feed-end[hidden] {
+  display: none;
+}
+
+.catalog-feed-end__rule {
+  position: relative;
+  width: 100%;
+  height: 1px;
+  margin-bottom: 16px;
+  background: linear-gradient(90deg, transparent, rgb(255 255 255 / 10%), transparent);
+}
+
+.catalog-feed-end__diamond {
+  position: absolute;
+  top: -4px;
+  left: calc(50% - 4px);
+  width: 8px;
+  height: 8px;
+  background: #3a3650;
+  transform: rotate(45deg);
+}
+
+.catalog-feed-end__title {
+  margin: 0;
+  color: #f2f0f7;
+  font: 800 18px/1.3 var(--wn-font-ui, sans-serif);
+}
+
+.catalog-feed-end__text {
+  margin: 0;
+  color: #8c889f;
+  font: 500 14px/1.4 var(--wn-font-ui, sans-serif);
+}
+
+.catalog-feed-end__actions {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 8px;
+  margin-top: 8px;
+}
+
+.catalog-feed-end__action {
+  display: inline-flex;
+  align-items: center;
+  min-height: 44px;
+  padding: 0 16px;
+  border: 1px solid rgb(255 255 255 / 14%);
+  border-radius: 12px;
+  background: rgb(255 255 255 / 6%);
+  color: #f2f0f7;
+  font: 700 14px/1 var(--wn-font-ui, sans-serif);
+  text-decoration: none;
+}
+
+.catalog-feed-end__action--reset {
+  border-color: transparent;
+  background: transparent;
+  color: #b7a6ff;
+}
+
+.catalog-feed-end__action:focus-visible {
+  outline: 2px solid #c5b6ff;
+  outline-offset: 2px;
+}
+
 /* PR 295: the editorial feed's featured insert - a whole grid row after every 12
    cards. A plain block here; the FeaturedCard look (backdrop, glow, flip) is PR 296. */
 .catalog-featured {

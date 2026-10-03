@@ -98,6 +98,22 @@
          announce what's put into them. #}
       <p class="catalog-feed-status" data-role="catalog-loading" role="status"></p>
       <div data-role="catalog-load-error" role="alert"></div>
+      {# PR 295: the end of the feed - shown here when this page already is the last one,
+         or by catalog-scroll.js once it loads the last page. «Наверх» is a plain #top
+         link, so it works without JS too. #}
+      <div class="catalog-feed-end" data-role="catalog-end"{% if has_next_page or not items %} hidden{% endif %}>
+        <span class="catalog-feed-end__rule" aria-hidden="true"><span class="catalog-feed-end__diamond"></span></span>
+        <p class="catalog-feed-end__title">Вы посмотрели все тайтлы</p>
+        {% if editorial %}
+        <p class="catalog-feed-end__text">Новые главы появятся в начале каталога</p>
+        {% else %}
+        <p class="catalog-feed-end__text">Больше ничего не подходит под условия</p>
+        {% endif %}
+        <div class="catalog-feed-end__actions">
+          <a class="catalog-feed-end__action" href="#">Наверх ↑</a>
+          {% if not editorial %}<a class="catalog-feed-end__action catalog-feed-end__action--reset" href="/catalog">Сбросить условия</a>{% endif %}
+        </div>
+      </div>
       <noscript>
         {% if has_next_page %}
         <p class="catalog-page__hint">

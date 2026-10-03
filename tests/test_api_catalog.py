@@ -1031,3 +1031,47 @@ def test_tag_chip_carries_its_forwarded_name_only_for_a_lone_tag() -> None:
         "/catalog?tags=2",
         "/catalog?tags=1",
     ]
+
+
+def _end_block(html: str) -> str:
+    return html.split('data-role="catalog-end"', 1)[1].split("</div>\n      </div>", 1)[0]
+
+
+def test_end_of_feed_shown_when_the_first_page_is_the_last() -> None:
+    page = CatalogPage(items=_titles(1, 5), page=1, has_next_page=False)
+    with patch("app.services.catalog.Catalog", return_value=_FakeCatalog(page)):
+        response = client.get("/catalog")
+
+    end = _end_block(response.text)
+    assert not end.startswith(" hidden")
+    assert "Вы посмотрели все тайтлы" in end
+    assert "Новые главы появятся в начале каталога" in end
+    assert 'href="#">Наверх ↑</a>' in end
+    assert "Сбросить условия" not in end
+
+
+def test_end_of_feed_in_results_mode_offers_a_reset() -> None:
+    page = CatalogPage(items=_titles(1, 5), page=1, has_next_page=False)
+    with patch("app.services.catalog.Catalog", return_value=_FakeCatalog(page)):
+        response = client.get("/catalog", params={"query": "dxd"})
+
+    end = _end_block(response.text)
+    assert "Больше ничего не подходит под условия" in end
+    assert 'href="/catalog">Сбросить условия</a>' in end
+
+
+@pytest.mark.parametrize(
+    "page",
+    [
+        CatalogPage(items=_titles(1, 5), page=1, has_next_page=True),
+        CatalogPage(items=[], page=1, has_next_page=False),
+    ],
+    ids=["more-to-come", "empty"],
+)
+def test_end_of_feed_hidden_while_more_is_coming_or_nothing_was_found(
+    page: CatalogPage,
+) -> None:
+    with patch("app.services.catalog.Catalog", return_value=_FakeCatalog(page)):
+        response = client.get("/catalog")
+
+    assert _end_block(response.text).startswith(" hidden")

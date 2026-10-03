@@ -42,7 +42,9 @@ async function run(responses, steps) {
     innerHTML: "",
     addEventListener: (name, fn) => clickListeners.push(fn),
   };
+  const end = { hidden: true };
   const elements = {
+    '[data-role="catalog-end"]': end,
     '[data-role="catalog-grid"]': grid,
     '[data-role="catalog-sentinel"]': sentinel,
     '[data-role="catalog-loading"]': status,
@@ -108,6 +110,7 @@ async function run(responses, steps) {
     appended: appended.length,
     cursor: { nextPage: grid.dataset.nextPage, shown: grid.dataset.shown, featured: grid.dataset.featured },
     observing: observed.has(sentinel),
+    endShown: end.hidden === false,
     log,
   };
 }

@@ -54,8 +54,14 @@ def test_loading_status_while_a_page_loads_and_cleared_after() -> None:
     assert result["log"][-1]["busy"] is None
 
 
-def test_last_page_stops_observing() -> None:
+def test_last_page_stops_observing_and_shows_the_end() -> None:
     assert _scenarios()["success"]["observing"] is False
+    assert _scenarios()["success"]["endShown"] is True
+
+
+def test_no_end_after_a_failure() -> None:
+    assert _scenarios()["networkFailureThenRetry"]["endShown"] is False
+    assert _scenarios()["serverError"]["endShown"] is False
 
 
 def test_failure_shows_the_retry_plate_and_pauses_loading() -> None:

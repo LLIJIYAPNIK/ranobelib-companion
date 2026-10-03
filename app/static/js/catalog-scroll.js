@@ -12,6 +12,8 @@
   if (!grid || !sentinel) return;
   const status = document.querySelector('[data-role="catalog-loading"]');
   const errorBox = document.querySelector('[data-role="catalog-load-error"]');
+  // PR 295: «Вы посмотрели все тайтлы» - revealed once the last page is in.
+  const end = document.querySelector('[data-role="catalog-end"]');
 
   let nextPage = grid.dataset.nextPage ? Number(grid.dataset.nextPage) : null;
   let loading = false;
@@ -109,6 +111,7 @@
     nextPage = response.headers.get("X-Has-Next-Page") === "true" ? nextPage + 1 : null;
     if (!nextPage) {
       observer.unobserve(sentinel);
+      if (end) end.hidden = false;
       return;
     }
     rearm();
