@@ -99,20 +99,32 @@ def test_mobile_toolbar_swaps_selects_for_the_filters_button() -> None:
     assert "display: none;" in _rule(".wn-library-filters-btn,\n.wn-library-chips")
 
 
-def test_grid_view_fits_two_columns_on_phones() -> None:
-    grid = _rule(
-        ".wn-library__titles--grid .wn-library-grid,\n"
-        "  .wn-library__titles--grid .wn-library-posters",
-        indent="  ",
-    )
-    assert "repeat(auto-fill, minmax(128px, 1fr))" in grid
+def test_phones_list_row_cards_only() -> None:
+    # PR 300 (LibraryMobile): one column of LibraryCard row - the grid view and its
+    # toggle are desktop-only now.
+    assert "display: none;" in _phone_rule(".wn-library .wn-library-view")
+    assert "grid-template-columns: minmax(0, 1fr);" in _phone_rule(".wn-library .wn-library-grid")
+    assert "wn-library__titles--grid .wn-library-card__cta-verb" not in CSS
 
 
-def test_narrow_grid_cards_keep_their_title_and_cta_inside() -> None:
-    name = _rule(".wn-library__titles--grid .wn-library-card__name", indent="  ")
-    assert "-webkit-line-clamp: unset;" in name  # titles wrap in full, no ellipsis
-    assert "display: none;" in _rule(
-        ".wn-library__titles--grid .wn-library-card__cta-verb", indent="  "
+def test_row_card_puts_the_menu_beside_continue() -> None:
+    body = _phone_rule(".wn-library .wn-library-card__body")
+    assert "grid-template-columns: minmax(0, 1fr) 44px;" in body
+    assert "display: contents;" in _phone_rule(".wn-library .wn-library-card__top")
+    cta = _phone_rule(".wn-library .wn-library-card__cta")
+    assert "grid-column: 1;" in cta
+    assert "background: rgb(61 214 195 / 7%);" in cta
+    more = _phone_rule(".wn-library .wn-library-card .wn-library-more")
+    assert "grid-column: 2;" in more
+    assert "width: 44px;" in more
+    assert "width: 76px;" in _phone_rule(".wn-library .wn-library-card__cover")
+
+
+def test_row_card_drops_the_verb_under_360px() -> None:
+    assert re.search(
+        r"@media \(max-width: 359px\) \{\n  \.wn-library \.wn-library-card__cta-verb \{\n"
+        r"    display: none;",
+        CSS,
     )
 
 

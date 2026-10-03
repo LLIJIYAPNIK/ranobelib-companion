@@ -252,8 +252,8 @@
               </div>
               {% endif %}
               {% if started %}
-              {# PR 282: the mobile grid's narrow cards drop the verb («Гл. 92», as in the
-                 prototype); the aria-label keeps the full action for screen readers. #}
+              {# PR 300: a row card under 360px drops the verb («Гл. 92») to fit beside ⋯;
+                 the aria-label keeps the full action for screen readers. #}
               <a class="wn-library-card__cta" href="{{ href }}/chapters/{{ entry.last_read_volume }}/{{ entry.last_read_number }}" aria-label="Продолжить · {{ chapter_label(entry.last_read_number) }}">
                 <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M7 4v16l13-8z"/></svg>
                 <span class="wn-library-card__cta-verb">Продолжить · </span>{{ chapter_short(entry.last_read_number) }}

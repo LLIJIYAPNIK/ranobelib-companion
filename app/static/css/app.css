@@ -11662,31 +11662,6 @@ a.catalog-card__action {
     min-height: 44px;
   }
 
-  /* Grid view (PR 282): as many 128px+ columns as fit - two from 320px to 430px. In
-     those narrow cards the title gets the full width and wraps in full, and the CTA
-     drops its verb. */
-  .wn-library__titles--grid .wn-library-card {
-    position: relative;
-  }
-
-  .wn-library__titles--grid .wn-library-card__name {
-    display: block;
-    overflow: visible;
-    font-size: 14px;
-    overflow-wrap: break-word;
-    -webkit-line-clamp: unset;
-  }
-
-  .wn-library__titles--grid .wn-library-card__cta-verb {
-    display: none;
-  }
-
-  .wn-library__titles--grid .wn-library-grid,
-  .wn-library__titles--grid .wn-library-posters {
-    grid-template-columns: repeat(auto-fill, minmax(128px, 1fr));
-    gap: 20px 14px;
-  }
-
   .wn-library-posters {
     grid-template-columns: repeat(3, minmax(0, 1fr));
     gap: 12px;
@@ -11941,6 +11916,162 @@ a.catalog-card__action {
 @media (max-width: 359px) {
   .wn-library .wn-library-hero__inner {
     grid-template-columns: 76px minmax(0, 1fr);
+  }
+}
+
+/* «Моя библиотека» on phones: one column of LibraryCard row - a 76px cover beside the
+   title in full, «Том X · Глава Y», when it was last read and the progress bar, then
+   «Продолжить · Гл. Y» (teal-tint outline) with the 44px ⋯ beside it. No grid view on
+   phones: the toggle goes and the grid view's own rules are overridden here. The title
+   row's wrapper joins the body grid (display: contents), so ⋯ can sit by the button. */
+@media (max-width: 767px) {
+  .wn-library .wn-library-view {
+    display: none;
+  }
+
+  .wn-library .wn-library-shelf {
+    gap: 12px;
+  }
+
+  .wn-library .wn-library-shelf__head {
+    align-items: baseline;
+    gap: 10px;
+  }
+
+  .wn-library .wn-library-shelf__dot,
+  .wn-library .wn-library-shelf__rule {
+    display: none;
+  }
+
+  .wn-library .wn-library-shelf__title {
+    font: 800 18px/1.25 var(--wn-font-ui);
+  }
+
+  .wn-library .wn-library-shelf__count {
+    color: #8c889f;
+    font: 500 13px/1 var(--wn-font-ui);
+  }
+
+  .wn-library .wn-library-grid {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 12px;
+  }
+
+  .wn-library .wn-library-card {
+    flex-direction: row;
+    gap: 14px;
+    padding: 12px;
+    border-color: #24222f;
+    border-radius: 16px;
+    background: #13131b;
+  }
+
+  .wn-library .wn-library-card__cover {
+    align-self: flex-start;
+    width: 76px;
+    height: 114px;
+    border-radius: 9px;
+    aspect-ratio: auto;
+  }
+
+  .wn-library .wn-library-card__body {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) 44px;
+    align-content: start;
+    gap: 5px 8px;
+  }
+
+  .wn-library .wn-library-card__top {
+    display: contents;
+  }
+
+  .wn-library .wn-library-card__name {
+    display: block;
+    grid-row: 1;
+    grid-column: 1 / -1;
+    overflow: visible;
+    color: #f2f0f7;
+    font: 700 15px/1.3 var(--wn-font-ui);
+    overflow-wrap: break-word;
+  }
+
+  .wn-library .wn-library-card__meta {
+    grid-row: 2;
+    grid-column: 1 / -1;
+    color: #cfcbdd;
+    font: 600 13px/1.3 var(--wn-font-ui);
+  }
+
+  .wn-library .wn-library-card__last {
+    display: block;
+    grid-row: 3;
+    grid-column: 1 / -1;
+    color: #8c889f;
+    font: 500 12px/1.3 var(--wn-font-ui);
+  }
+
+  .wn-library .wn-library-card__spacer {
+    display: none;
+  }
+
+  .wn-library .wn-library-card__progress {
+    grid-row: 4;
+    grid-column: 1 / -1;
+    margin-top: 4px;
+  }
+
+  .wn-library .wn-library-card__progress .ui-progress {
+    gap: 8px;
+  }
+
+  .wn-library .wn-library-card__progress .ui-progress__pct {
+    font: 800 13px/1 var(--wn-font-ui);
+  }
+
+  .wn-library .wn-library-card__cta {
+    grid-row: 5;
+    grid-column: 1;
+    gap: 0;
+    min-width: 0;
+    height: 44px;
+    min-height: 44px;
+    margin-top: 6px;
+    padding: 0 10px;
+    border-color: rgb(61 214 195 / 28%);
+    border-radius: 12px;
+    background: rgb(61 214 195 / 7%);
+    color: #eeecf4;
+  }
+
+  .wn-library .wn-library-card__cta svg {
+    flex: none;
+    width: 11px;
+    height: 11px;
+    margin-right: 8px;
+  }
+
+  /* Its trailing space is kept - the button isn't a flex gap away from «Гл. Y». */
+  .wn-library .wn-library-card__cta-verb {
+    display: inline;
+    white-space: pre;
+  }
+
+  .wn-library .wn-library-card .wn-library-more {
+    grid-row: 5;
+    grid-column: 2;
+    width: 44px;
+    height: 44px;
+    margin: 6px 0 0;
+    border: 1px solid #2a2838;
+    border-radius: 12px;
+  }
+}
+
+/* «Продолжить · Гл. Y» doesn't fit beside ⋯ in a 320px row card - «Гл. Y» alone (the
+   link's aria-label keeps the full action). */
+@media (max-width: 359px) {
+  .wn-library .wn-library-card__cta-verb {
+    display: none;
   }
 }
 
