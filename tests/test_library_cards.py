@@ -222,3 +222,39 @@ def test_toggle_script_flips_at_once_and_never_asks() -> None:
     assert "confirm(" not in script  # nothing to lose for a catalog title
     assert 'window.location.assign("/login");' in script  # a session that ended
     assert 'showToast("Не удалось обновить библиотеку");' in script
+
+
+# --- no star anywhere: «В библиотеку» / «Удалить из библиотеки» only -----------------
+
+STAR_PATH = "M12 2l3 7 7 .3"  # the old favorite star's icon (PR 123, removed in PR 293)
+
+
+async def test_library_actions_are_never_mistaken_for_the_old_star(client: TestClient) -> None:
+    register(client, "alice@example.com")
+    _add(client, "1--test-novel-1", "2--test-novel-2")
+    async with connection() as conn:
+        await record_progress(conn, 1, "1--test-novel-1", "1", "3")
+    fake = _FakeCatalog(
+        CatalogPage(items=_titles(1, 14), page=1, has_next_page=False),
+        featured=[CatalogPage(items=_titles(1001, 2), page=1, has_next_page=False)],
+    )
+
+    pages = {"/library": _library(client)}
+    with patch("app.services.catalog.Catalog", return_value=fake):
+        pages["/catalog"] = client.get("/catalog").text
+    with patch("app.services.client.RanobeLib", return_value=_FakeClient(_fake_title())):
+        pages["/profile"] = client.get("/profile").text
+    pages["/settings/account"] = client.get("/settings/account").text
+
+    for path, html in pages.items():
+        assert STAR_PATH not in html, path
+        assert "избранн" not in html.lower(), path
+        assert "favorite" not in html.lower(), path
+
+    # What the library and the catalog do say instead.
+    assert "Удалить из библиотеки" in pages["/library"]
+    toggles = re.findall(
+        r'data-role="catalog-library-toggle"[^>]*aria-label="([^"]+)"', pages["/catalog"]
+    )
+    assert toggles and all("библиотек" in label for label in toggles)
+    assert '<span data-role="catalog-library-label">В библиотеку</span>' in pages["/catalog"]
