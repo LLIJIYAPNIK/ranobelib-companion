@@ -254,6 +254,7 @@
   }
 
   trigger.addEventListener("click", () => (isOpen() ? close() : open()));
+  window.addEventListener("sidebar:statechange", closeOnLayoutChange);
 
   document.addEventListener("click", (event) => {
     if (isOpen() && !trigger.contains(event.target) && !panel.contains(event.target)) {
