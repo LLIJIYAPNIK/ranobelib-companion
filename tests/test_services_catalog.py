@@ -18,10 +18,14 @@ def test_get_catalog_constructs_catalog_with_configured_cache() -> None:
 
 class _FakeCatalog:
     def __init__(
-        self, genres: list[Genre] | None = None, countries: list[Country] | None = None
+        self,
+        genres: list[Genre] | None = None,
+        countries: list[Country] | None = None,
+        statuses: list[Label] | None = None,
     ) -> None:
         self._genres = genres or []
         self._countries = countries or []
+        self._statuses = statuses or []
 
     async def __aenter__(self) -> "_FakeCatalog":
         return self
@@ -34,6 +38,9 @@ class _FakeCatalog:
 
     async def list_countries(self) -> list[Country]:
         return self._countries
+
+    async def list_statuses(self) -> list[Label]:
+        return self._statuses
 
 
 async def test_list_genres_delegates_to_the_catalog_client() -> None:
@@ -126,6 +133,8 @@ async def test_no_genre_passes_none_to_the_sdk() -> None:
             "genres": None,
             "countries": None,
             "tags": None,
+            "statuses": None,
+            "min_chapters": None,
         }
     ]
 

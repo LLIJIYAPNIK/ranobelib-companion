@@ -177,7 +177,9 @@ def test_sheet_buttons_show_the_sort_and_the_filter_count() -> None:
 def test_sheet_script_keeps_a_draft() -> None:
     script = (ROOT / "app/static/js/catalog-mobile.js").read_text(encoding="utf-8")
     assert "if (!applying) sheetForm.reset();" in script
-    assert 'field.type === "radio" && field.value === sheetForm.dataset.defaultSort' in script
+    # PR 303: «Сбросить» checks the default sort and «Любое» chapters (value 0).
+    assert 'field.name === "sort" ? sheetForm.dataset.defaultSort : "0"' in script
+    assert 'field.type === "radio" && field.value === fallback' in script
     assert "sheetQuery.value = input.value.trim();" in script
     assert 'page.classList.add("wn-catalog--sheet");' in script
 

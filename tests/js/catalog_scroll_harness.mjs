@@ -8,7 +8,7 @@ import vm from "node:vm";
 const source = readFileSync(process.argv[2], "utf8");
 const flush = () => new Promise((resolve) => setImmediate(resolve));
 
-async function run(responses, steps) {
+async function run(responses, steps, filters = {}) {
   const fetched = [];
   const appended = [];
   let observerCallback = null;
@@ -16,7 +16,7 @@ async function run(responses, steps) {
   const clickListeners = [];
 
   const grid = {
-    dataset: { nextPage: "2", shown: "30", featured: "2", sort: "last_chapter_at" },
+    dataset: { nextPage: "2", shown: "30", featured: "2", sort: "last_chapter_at", ...filters },
     attrs: {},
     skeletons: 0,
     insertAdjacentHTML(_where, html) {
@@ -137,5 +137,11 @@ console.log(
       "retry",
     ]),
     serverError: await run([{ ok: false }], ["scroll"]),
+    // PR 303: the status and chapter-count filters ride along on every page.
+    filters: await run([ok("<a>cards</a>", false, "30", "2")], ["scroll"], {
+      sort: "views",
+      statuses: "1,2",
+      minChapters: "100",
+    }),
   })
 );

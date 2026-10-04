@@ -7592,6 +7592,40 @@ a.catalog-card__action {
   font: 500 14px/1.2 var(--font-ui);
 }
 
+/* PR 303: «Количество глав» is one threshold - a real radio, drawn like .ui-checkbox's
+   box but round, with a white dot when picked. */
+.catalog-filters__option input[type="radio"] {
+  appearance: none;
+  -webkit-appearance: none;
+  flex: 0 0 auto;
+  width: 20px;
+  height: 20px;
+  margin: 0;
+  border: 1.5px solid var(--disabled);
+  border-radius: 50%;
+  background: transparent;
+  cursor: pointer;
+  transition:
+    background-color var(--dur-press) var(--ease),
+    border-color var(--dur-press) var(--ease),
+    box-shadow var(--dur-press) var(--ease);
+}
+
+.catalog-filters__option input[type="radio"]:checked {
+  border-color: #8b5cf6;
+  background: #8b5cf6;
+  box-shadow: inset 0 0 0 4px #8b5cf6, inset 0 0 0 10px #ffffff;
+}
+
+.catalog-filters__option input[type="radio"]:focus-visible {
+  outline: none;
+  box-shadow: var(--focus-ring);
+}
+
+.catalog-filters__option input[type="radio"]:checked:focus-visible {
+  box-shadow: inset 0 0 0 4px #8b5cf6, inset 0 0 0 10px #ffffff, var(--focus-ring);
+}
+
 @media (hover: hover) {
   .catalog-filters__option:hover {
     background: var(--surface-2);
@@ -10515,7 +10549,8 @@ a.catalog-card__action {
     font-size: 15px;
   }
 
-  .catalog-filters__option input[type="checkbox"] {
+  .catalog-filters__option input[type="checkbox"],
+  .catalog-filters__option input[type="radio"] {
     width: 22px;
     height: 22px;
   }
