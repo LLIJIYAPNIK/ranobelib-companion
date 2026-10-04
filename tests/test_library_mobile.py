@@ -20,8 +20,16 @@ def test_library_switch_spans_the_row_on_phones() -> None:
     page = (ROOT / "app/templates/library.html").read_text(encoding="utf-8")
     assert '{% include "_library_switch.html" %}' in page
     assert "js/ribbon.js" not in page
-    assert "width: 100%;" in _rule(".wn-lib-switch", indent="  ")
-    assert "padding: 0 10px;" in _rule(".wn-lib-switch__tab", indent="  ")
+    switch = _rule(".wn-lib-switch", indent="  ")
+    assert "display: grid;" in switch
+    assert "grid-template-columns: repeat(2, minmax(0, 1fr));" in switch
+    assert "width: 100%;" in switch
+    tab = _rule(".wn-lib-switch__tab", indent="  ")
+    assert "width: 100%;" in tab
+    assert "min-width: 0;" in tab
+    assert "padding: 0 6px;" in tab
+    assert "font-size: 14px;" in tab
+    assert "display: none;" in _rule(".wn-lib-switch__tab svg", indent="  ")
 
 
 def test_ribbon_fades_only_where_there_is_more_and_reveals_the_active_item() -> None:

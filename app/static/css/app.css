@@ -10790,6 +10790,7 @@ a.catalog-card__action {
 
 .wn-lib-switch {
   display: flex;
+  flex: 0 0 auto;
   box-sizing: border-box;
   width: max-content;
   max-width: 100%;
@@ -10803,13 +10804,14 @@ a.catalog-card__action {
 }
 
 .wn-lib-switch__tab {
-  flex: 1 1 0;
+  flex: 0 0 auto;
   display: flex;
   align-items: center;
   justify-content: center;
   gap: 8px;
-  min-width: 0;
-  height: 40px;
+  min-width: 142px;
+  min-height: 44px;
+  height: 44px;
   padding: 0 18px;
   border: 1px solid transparent;
   border-radius: 11px;
@@ -10827,6 +10829,11 @@ a.catalog-card__action {
   flex: none;
   width: 17px;
   height: 17px;
+}
+
+.wn-lib-switch__tab > span:not(.wn-lib-switch__count) {
+  flex: none;
+  white-space: nowrap;
 }
 
 @media (hover: hover) {
@@ -10854,7 +10861,18 @@ a.catalog-card__action {
   outline-offset: 1px;
 }
 
+.wn-lib-switch__tab:not([aria-selected="true"]):active {
+  background: rgb(255 255 255 / 9%);
+  color: #f7f5fb;
+}
+
+.wn-lib-switch__tab[aria-selected="true"]:active {
+  background: #1c1b27;
+  box-shadow: inset 0 1px 3px rgb(0 0 0 / 45%);
+}
+
 .wn-lib-switch__count {
+  flex: none;
   box-sizing: border-box;
   min-width: 22px;
   height: 22px;
@@ -10872,21 +10890,29 @@ a.catalog-card__action {
   color: #3dd6c3;
 }
 
-/* Mobile (LibraryMobile: fill, compact under 360px): the track spans the row and both
-   items fit even at 320px - no horizontal scroll. */
+/* Mobile: the track spans the row and divides it evenly. Icons yield their space to the
+   labels/count at 320px; neither text nor the count pill is allowed to collapse. */
 @media (max-width: 767px) {
   .wn-lib-switch {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
     width: 100%;
   }
-}
 
-/* Under 360px the items share the track by content, not in equal halves - «Библиотека»
-   with its count needs ~156px, more than half of a 320px screen's track. */
-@media (max-width: 359px) {
   .wn-lib-switch__tab {
-    flex: 1 1 auto;
+    width: 100%;
+    min-width: 0;
     gap: 6px;
-    padding: 0 10px;
+    padding: 0 6px;
+    font-size: 14px;
+  }
+
+  .wn-lib-switch__tab svg {
+    display: none;
+  }
+
+  .wn-lib-switch__count {
+    padding-inline: 5px;
   }
 }
 
