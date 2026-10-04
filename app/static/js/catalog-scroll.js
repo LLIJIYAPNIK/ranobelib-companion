@@ -91,6 +91,11 @@
     if (grid.dataset.tags) {
       for (const id of grid.dataset.tags.split(",")) params.append("tags", id);
     }
+    // PR 303: «Статус» (a repeated list param, like countries) and «Количество глав».
+    if (grid.dataset.statuses) {
+      for (const id of grid.dataset.statuses.split(",")) params.append("statuses", id);
+    }
+    if (grid.dataset.minChapters) params.set("min_chapters", grid.dataset.minChapters);
     // PR 295: the feed cursor - regular cards and featured inserts so far - so the
     // server keeps one featured insert per 12 cards across the whole feed.
     params.set("shown", grid.dataset.shown || "0");

@@ -11,8 +11,8 @@
   results mode's criteria row inside that panel, and «Фильтры» as a popover under its
   button (catalog-filters-toggle.js).
 #}
-{% set filter_count = genres | length + countries | length %}
-{% set has_filters = all_genres or all_countries %}
+{% set filter_count = statuses | length + (1 if min_chapters else 0) + genres | length + countries | length %}
+{% set has_filters = all_statuses or all_genres or all_countries %}
 <div class="catalog-page wn-catalog" data-mode="{{ 'editorial' if editorial else 'results' }}">
   <section class="wn-catalog__hero">
     <div class="wn-catalog__hero-copy">
@@ -137,7 +137,7 @@
          reset; popular titles are deliberately not mixed in (Catalog handoff.md). #}
       {% set asked = [] %}
       {% if (query or "").strip() %}{% set _ = asked.append("запросу «" ~ query.strip() ~ "»") %}{% endif %}
-      {% if genres or countries or tags %}{% set _ = asked.append("выбранным фильтрам") %}{% endif %}
+      {% if statuses or min_chapters or genres or countries or tags %}{% set _ = asked.append("выбранным фильтрам") %}{% endif %}
       <div class="catalog-empty" data-role="catalog-empty" role="status">
         <span class="catalog-empty__icon" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round"><circle cx="11" cy="11" r="7"/><path d="m21 21-4.3-4.3M8.5 11h5"/></svg></span>
         <h2 class="catalog-empty__title">Ничего не нашлось</h2>
@@ -157,6 +157,8 @@
         data-genres="{{ genres | join(',') }}"
         data-country="{{ countries | join(',') }}"
         data-tags="{{ tags | join(',') }}"
+        data-statuses="{{ statuses | join(',') }}"
+        data-min-chapters="{{ min_chapters or '' }}"
         data-next-page="{{ page + 1 if has_next_page else '' }}"
         data-shown="{{ stream.shown }}"
         data-featured="{{ stream.featured }}"
@@ -188,7 +190,7 @@
       <noscript>
         {% if has_next_page %}
         <p class="catalog-page__hint">
-          <a href="?query={{ query or '' }}&sort={{ sort }}{% for g in genres %}&genres={{ g }}{% endfor %}{% for c in countries %}&countries={{ c }}{% endfor %}{% for t in tags %}&tags={{ t }}{% endfor %}&page={{ page + 1 }}&shown={{ stream.shown }}&featured={{ stream.featured }}">Следующая страница</a>
+          <a href="?query={{ query or '' }}&sort={{ sort }}{% for g in genres %}&genres={{ g }}{% endfor %}{% for c in countries %}&countries={{ c }}{% endfor %}{% for t in tags %}&tags={{ t }}{% endfor %}{% for s in statuses %}&statuses={{ s }}{% endfor %}{% if min_chapters %}&min_chapters={{ min_chapters }}{% endif %}&page={{ page + 1 }}&shown={{ stream.shown }}&featured={{ stream.featured }}">Следующая страница</a>
         </p>
         {% endif %}
       </noscript>

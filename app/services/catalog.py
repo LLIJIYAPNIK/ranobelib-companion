@@ -7,7 +7,7 @@ from typing import Literal
 
 from ranobelib import Catalog, CatalogPage
 from ranobelib.catalog import MAX_PER_PAGE, MIN_PER_PAGE
-from ranobelib.models import Country, Genre, Title
+from ranobelib.models import Country, Genre, Label, Title
 
 from app.config import get_settings
 
@@ -42,6 +42,15 @@ async def list_countries() -> list[Country]:
         return await catalog.list_countries()
 
 
+async def list_statuses() -> list[Label]:
+    """Every title status `Catalog.list_titles(statuses=[...])` can filter by (PR 303's
+    «Статус» filter group), sourced from `Catalog.list_statuses()` (SDK >=0.12.0) rather
+    than a hardcoded id -> label table, same reasoning as `list_genres()`.
+    """
+    async with get_catalog() as catalog:
+        return await catalog.list_statuses()
+
+
 # How many titles one page of the merged any-genre listing holds - list_titles()'s own
 # `per_page` default, i.e. the same page size the 0/1-genre path (which doesn't pass
 # `per_page` at all) already gets, so infinite scroll pages look the same either way.
@@ -61,6 +70,8 @@ async def list_catalog_titles(
     genres: list[int],
     countries: list[int],
     tags: list[int],
+    statuses: list[int] | None = None,
+    min_chapters: int | None = None,
 ) -> CatalogPage:
     """One page of the catalog listing (PR 228): straight `Catalog.list_titles()` for 0
     or 1 selected genre - nothing changes on the wire there - and
@@ -75,6 +86,8 @@ async def list_catalog_titles(
             genres=genres or None,
             countries=countries or None,
             tags=tags or None,
+            statuses=statuses or None,
+            min_chapters=min_chapters,
         )
     return await list_titles_any_genre(
         catalog,
@@ -84,6 +97,8 @@ async def list_catalog_titles(
         genres=genres,
         countries=countries,
         tags=tags,
+        statuses=statuses,
+        min_chapters=min_chapters,
     )
 
 
@@ -96,6 +111,8 @@ async def list_titles_any_genre(
     genres: list[int],
     countries: list[int],
     tags: list[int],
+    statuses: list[int] | None = None,
+    min_chapters: int | None = None,
 ) -> CatalogPage:
     """Titles matching *any* of `genres` (OR), built from one single-genre
     `list_titles()` listing per genre, merged and re-paginated here.
@@ -122,7 +139,16 @@ async def list_titles_any_genre(
     every genre hits `_MAX_PAGES_PER_GENRE`.
     """
     all_streams = [
-        _genre_stream(catalog, genre, query=query, sort=sort, countries=countries, tags=tags)
+        _genre_stream(
+            catalog,
+            genre,
+            query=query,
+            sort=sort,
+            countries=countries,
+            tags=tags,
+            statuses=statuses,
+            min_chapters=min_chapters,
+        )
         for genre in genres
     ]
     start = (page - 1) * _ANY_GENRE_PAGE_SIZE
@@ -163,6 +189,8 @@ async def _genre_stream(
     sort: str,
     countries: list[int],
     tags: list[int],
+    statuses: list[int] | None = None,
+    min_chapters: int | None = None,
 ) -> AsyncGenerator[Title, None]:
     """One genre's listing, title by title, fetching API pages only as they're consumed."""
     for api_page in range(1, _MAX_PAGES_PER_GENRE + 1):
@@ -174,6 +202,8 @@ async def _genre_stream(
             genres=[genre],
             countries=countries or None,
             tags=tags or None,
+            statuses=statuses or None,
+            min_chapters=min_chapters,
         )
         for title in result.items:
             yield title
@@ -251,6 +281,8 @@ async def catalog_stream(
     genres: list[int],
     countries: list[int],
     tags: list[int],
+    statuses: list[int] | None = None,
+    min_chapters: int | None = None,
 ) -> CatalogStream:
     """One page of the catalog feed. The results mode (a search, another sort or any
     filter) is the plain listing - list_catalog_titles(), no inserts, cursor untouched.
@@ -268,12 +300,22 @@ async def catalog_stream(
             genres=genres,
             countries=countries,
             tags=tags,
+            statuses=statuses,
+            min_chapters=min_chapters,
         )
         items = [StreamItem("card", title) for title in result.items]
         return CatalogStream(items, result.has_next_page, shown, featured)
 
     regular = await list_catalog_titles(
-        catalog, page=page, query=None, sort=_EDITORIAL_SORT, genres=[], countries=[], tags=[]
+        catalog,
+        page=page,
+        query=None,
+        sort=_EDITORIAL_SORT,
+        genres=[],
+        countries=[],
+        tags=[],
+        statuses=[],
+        min_chapters=None,
     )
     # Inserts this page can hold at most (if none of its titles is dropped as a dup).
     slots = (shown + len(regular.items)) // FEATURED_EVERY - shown // FEATURED_EVERY
@@ -294,6 +336,8 @@ async def pick_random_title(
     genres: list[int],
     countries: list[int],
     tags: list[int],
+    statuses: list[int] | None = None,
+    min_chapters: int | None = None,
 ) -> Title | None:
     """One random title matching the current catalog filters (PR 230's "Случайно"), or
     `None` if nothing matches them.
@@ -323,6 +367,8 @@ async def pick_random_title(
             genres=genre_filter,
             countries=countries or None,
             tags=tags or None,
+            statuses=statuses or None,
+            min_chapters=min_chapters,
             refresh=True,
         )
         if result.items:
