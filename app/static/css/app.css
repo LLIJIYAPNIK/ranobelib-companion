@@ -10861,6 +10861,16 @@ a.catalog-card__action {
   outline-offset: 1px;
 }
 
+.wn-lib-switch__tab:not([aria-selected="true"]):active {
+  background: rgb(255 255 255 / 9%);
+  color: #f7f5fb;
+}
+
+.wn-lib-switch__tab[aria-selected="true"]:active {
+  background: #1c1b27;
+  box-shadow: inset 0 1px 3px rgb(0 0 0 / 45%);
+}
+
 .wn-lib-switch__count {
   flex: none;
   box-sizing: border-box;
