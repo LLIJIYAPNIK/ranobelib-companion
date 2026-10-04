@@ -373,8 +373,8 @@
      (bottom-sheet.js) takes it in. Its own form is the draft: nothing applies until
      «Показать результаты» sends it, «Сбросить» (moved into the sheet's head) clears the
      draft, and closing the sheet without sending puts the form back as the page has it
-     (catalog-mobile.js). Groups: sort (one), genres and countries (several). Status and
-     chapter-count groups wait for the SDK (ranobelib-python-sdk#68, #69). The search
+     (catalog-mobile.js). Groups: sort (one), status (several), chapter count (one -
+     PR 303, SDK 0.12.0), genres and countries (several). The search
      and a tag filter from a title page aren't in the sheet - they ride along unchanged.
      autocomplete="off": no browser form restore on Back - the draft starts as the page. #}
   <div class="catalog-sheet" id="catalog-filters-sheet" data-role="catalog-filters-sheet" data-bottom-sheet-title="Фильтры" hidden>
@@ -389,6 +389,24 @@
         <div class="catalog-sheet__options">
           {% for value, label in sort_options.items() %}
           <label class="catalog-sheet__option"><input type="radio" name="sort" value="{{ value }}"{% if value == sort %} checked{% endif %}>{{ check }}<span>{{ label }}</span></label>
+          {% endfor %}
+        </div>
+      </fieldset>
+      {% if all_statuses %}
+      <fieldset class="catalog-sheet__group">
+        <legend class="catalog-sheet__legend">Статус</legend>
+        <div class="catalog-sheet__options">
+          {% for status in all_statuses %}
+          <label class="catalog-sheet__option"><input type="checkbox" name="statuses" value="{{ status.id }}"{% if status.id in statuses %} checked{% endif %}>{{ check }}<span>{{ status.label }}</span></label>
+          {% endfor %}
+        </div>
+      </fieldset>
+      {% endif %}
+      <fieldset class="catalog-sheet__group">
+        <legend class="catalog-sheet__legend">Количество глав</legend>
+        <div class="catalog-sheet__options">
+          {% for value in [0] + min_chapters_options | list %}
+          <label class="catalog-sheet__option"><input type="radio" name="min_chapters" value="{{ value }}"{% if value == min_chapters %} checked{% endif %}>{{ check }}<span>{{ "от " ~ value if value else "Любое" }}</span></label>
           {% endfor %}
         </div>
       </fieldset>
