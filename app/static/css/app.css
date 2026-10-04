@@ -5739,12 +5739,6 @@ a.ui-title-card:focus-visible .ui-title-card__cover {
   padding-left: 42px;
 }
 
-.wn-home__error {
-  min-height: 0;
-  margin: calc(-1 * var(--wn-space-3)) 0 0;
-  color: var(--wn-danger);
-}
-
 .wn-home__stage {
   display: grid;
   grid-template-columns: minmax(0, 1fr) 320px;
@@ -10073,11 +10067,6 @@ a.catalog-card__action {
     background: rgb(255 255 255 / 10%);
   }
 
-  .wn-library .wn-library__error {
-    margin: 0;
-    text-align: right;
-  }
-
   .wn-library > .wn-library__content {
     margin-top: 0;
   }
@@ -10933,12 +10922,6 @@ a.catalog-card__action {
   height: 16px;
 }
 
-.wn-library__error {
-  margin: calc(-1 * var(--wn-space-2)) 0 0;
-  color: var(--wn-danger);
-  text-align: right;
-}
-
 .wn-library__content {
   gap: var(--wn-space-3);
 }
@@ -11541,10 +11524,6 @@ a.catalog-card__action {
     width: auto;
   }
 
-  .wn-library__error {
-    text-align: left;
-  }
-
   .wn-library-search {
     flex: 1 1 200px;
     width: auto;
@@ -11641,7 +11620,7 @@ a.catalog-card__action {
 /* ==========================================================================
    LibraryMobile (PR 300, wave 36): the phone library from LibraryMobile.dc.html /
    Catalog handoff.md -> Mobile «Библиотека». «Ваши тайтлы · N» over H1 30, the
-   full-width switch, the add-by-link form (field + glass «Добавить», wrapping at 320),
+   full-width switch, catalog search (field + glass «Найти», stacked at 320),
    then the toolbar, the compact «Продолжить чтение» hero and one column of row cards.
    ========================================================================== */
 
@@ -11710,11 +11689,6 @@ a.catalog-card__action {
   .wn-library .wn-library__add .wn-btn svg {
     width: 15px;
     height: 15px;
-  }
-
-  .wn-library .wn-library__error {
-    margin: -6px 0 0;
-    text-align: left;
   }
 
   /* Toolbar: the 48px search with a ✕, then the sort (ellipsis) and «Прогресс» with a
@@ -12057,6 +12031,12 @@ a.catalog-card__action {
 }
 
 @media (max-width: 359px) {
+  .wn-library .wn-library__add-field,
+  .wn-library .wn-library__add .wn-btn {
+    flex-basis: 100%;
+    width: 100%;
+  }
+
   .wn-library .wn-library-hero__inner {
     grid-template-columns: 76px minmax(0, 1fr);
   }

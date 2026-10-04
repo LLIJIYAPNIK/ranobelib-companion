@@ -33,7 +33,7 @@ from app.services.catalog import (
     list_statuses,
     pick_random_title,
 )
-from app.services.client import get_client, open_client
+from app.services.client import open_client
 from app.templating import templates
 
 router = APIRouter(prefix="/library")
@@ -505,35 +505,6 @@ async def catalog_page_fragment(
     response.headers["X-Catalog-Shown"] = str(stream.shown)
     response.headers["X-Catalog-Featured"] = str(stream.featured)
     return response
-
-
-@router.post("/add", response_model=None)
-async def add_to_library_by_url(
-    request: Request,
-    user: Annotated[User, Depends(require_current_user)],
-    conn: Annotated[AsyncConnection, Depends(get_connection)],
-    url: Annotated[str, Form()],
-) -> Response:
-    """The library page's own "paste a link" form - same URL resolution as `open_title`
-    in app/api/titles.py (PR 4), just followed by adding the resolved title instead of
-    only redirecting to it."""
-    try:
-        async with get_client(url) as lib:
-            title = await lib.get_info()
-    except ValueError:
-        items = await library_items_for_user(user, conn)
-        return templates.TemplateResponse(
-            request,
-            "library.html",
-            {
-                **_library_context(items),
-                "error": "Не удалось распознать ссылку на тайтл",
-                "submitted_url": url,
-            },
-            status_code=400,
-        )
-    await add_entry(conn, user.id, title.slug_url)
-    return RedirectResponse(url=f"/titles/{title.slug_url}", status_code=303)
 
 
 def _wants_json(request: Request) -> bool:
