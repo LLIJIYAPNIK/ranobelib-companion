@@ -353,7 +353,9 @@ async def test_library_count_covers_every_title_on_both_pages(client: TestClient
         library = client.get("/library")
     with patch("app.api.library.list_genres", return_value=[]), patch(
         "app.api.library.list_countries", return_value=[]
-    ), patch("app.api.library.get_catalog"), patch(
+    ), patch("app.api.library.list_statuses", return_value=[]), patch(
+        "app.api.library.get_catalog"
+    ), patch(
         "app.api.library.catalog_stream"
     ) as list_titles:
         list_titles.return_value.items = []
@@ -370,7 +372,9 @@ def test_library_count_is_none_for_a_guest(client: TestClient) -> None:
     library = client.get("/library")
     with patch("app.api.library.list_genres", return_value=[]), patch(
         "app.api.library.list_countries", return_value=[]
-    ), patch("app.api.library.get_catalog"), patch(
+    ), patch("app.api.library.list_statuses", return_value=[]), patch(
+        "app.api.library.get_catalog"
+    ), patch(
         "app.api.library.catalog_stream"
     ) as list_titles:
         list_titles.return_value.items = []
@@ -390,7 +394,9 @@ def test_catalog_item_on_the_switch_has_no_count(client: TestClient) -> None:
 
     with patch("app.api.library.list_genres", return_value=[]), patch(
         "app.api.library.list_countries", return_value=[]
-    ), patch("app.api.library.get_catalog"), patch(
+    ), patch("app.api.library.list_statuses", return_value=[]), patch(
+        "app.api.library.get_catalog"
+    ), patch(
         "app.api.library.catalog_stream"
     ) as list_titles:
         list_titles.return_value.items = []
