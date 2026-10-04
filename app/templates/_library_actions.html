@@ -1,0 +1,27 @@
+{# Shared by LibraryCard and PR 306's continue-reading hero. #}
+{% macro library_actions_menu(slug_url, name, toc=true) -%}
+<button
+  type="button"
+  class="wn-library-more"
+  data-role="library-more"
+  aria-haspopup="menu"
+  aria-expanded="false"
+  aria-label="Действия с тайтлом «{{ name }}»"
+  data-title-name="{{ name }}"
+  hidden
+><svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><circle cx="5" cy="12" r="1.8"/><circle cx="12" cy="12" r="1.8"/><circle cx="19" cy="12" r="1.8"/></svg></button>
+<div class="wn-library-menu" role="menu" aria-label="Действия" data-role="library-menu" hidden>
+  <a class="wn-library-menu__item" role="menuitem" href="/titles/{{ slug_url }}"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M14 4h6v6M20 4l-9 9M18 14v5a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1V7a1 1 0 0 1 1-1h5"/></svg>Страница тайтла</a>
+  {% if toc %}<a class="wn-library-menu__item{% if toc == "phone" %} wn-library-menu__item--phone-only{% endif %}" role="menuitem" href="/titles/{{ slug_url }}#title-panel-toc"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" aria-hidden="true"><path d="M8 6h13M8 12h13M8 18h13M3 6h.01M3 12h.01M3 18h.01"/></svg>Оглавление</a>{% endif %}
+  <span class="wn-library-menu__sep" role="separator"></span>
+  <button type="button" class="wn-library-menu__item wn-library-menu__item--danger" role="menuitem" data-role="library-remove"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 7h16M10 11v6M14 11v6M6 7l1 13h10l1-13M9 7V4h6v3"/></svg>Удалить из библиотеки</button>
+</div>
+<div class="wn-library-confirm" role="alertdialog" aria-label="Удалить из библиотеки?" data-role="library-confirm" hidden>
+  <span class="wn-library-confirm__title">Удалить из библиотеки?</span>
+  <span class="wn-library-confirm__text">«{{ name }}» пропадёт из библиотеки. EPUB-файлы, которые вы уже скачали, останутся на устройстве.</span>
+  <div class="wn-library-confirm__actions">
+    <button type="button" class="wn-library-confirm__cancel" data-role="library-confirm-cancel" data-autofocus>Отмена</button>
+    <button type="button" class="wn-library-confirm__remove" data-role="library-confirm-remove">Удалить</button>
+  </div>
+</div>
+{%- endmacro %}

@@ -1,0 +1,71 @@
+{% from "_library_actions.html" import library_actions_menu %}
+
+{% macro chapter_label(number) -%}
+{% if number == "0" %}Пролог{% else %}Глава {{ number }}{% endif %}
+{%- endmacro %}
+
+{% macro chapter_short(number) -%}
+{% if number == "0" %}Пролог{% else %}Гл. {{ number }}{% endif %}
+{%- endmacro %}
+
+{% macro chapter_meta(entry) -%}
+Том {{ entry.last_read_volume }} · {{ chapter_label(entry.last_read_number) }}
+{%- endmacro %}
+
+{#
+  PR 306: one continue-reading card for both / and /library. The variant is deliberately
+  limited to page semantics and responsive hooks; links, progress and actions stay one
+  DOM contract so the two screens cannot drift again.
+#}
+{% macro continue_reading_hero(hero, variant="library", title_tag="h2", title_id="continue-reading-title") -%}
+{% set entry = hero.entry %}
+{% set name = hero.name or entry.slug_url %}
+{% set href = "/titles/" ~ entry.slug_url %}
+<section
+  class="wn-library-hero wn-continue-hero--{{ variant }}"
+  aria-labelledby="{{ title_id }}"
+  data-role="{{ 'library-hero' if variant == 'library' else 'home-reading-hero' }}"
+  data-slug-url="{{ entry.slug_url }}"
+>
+  {% if hero.cover_url %}<img class="wn-library-hero__halo" src="{{ hero.cover_url }}" alt="" aria-hidden="true">{% endif %}
+  <article class="wn-library-hero__card">
+    {% if hero.cover_url %}<img class="wn-library-hero__backdrop" src="{{ hero.cover_url }}" alt="" aria-hidden="true">{% endif %}
+    <span class="wn-library-hero__scrim" aria-hidden="true"></span>
+    <div class="wn-library-hero__inner">
+      <a class="wn-library-hero__cover" href="{{ href }}" tabindex="-1" aria-hidden="true">
+        {% if hero.cover_url %}<img class="wn-library-hero__cover-glow" src="{{ hero.cover_url }}" alt=""><img class="wn-library-hero__cover-img" src="{{ hero.cover_url }}" alt="">{% endif %}
+      </a>
+      <div class="wn-library-hero__copy">
+        <div class="wn-library-hero__eyebrow">
+          <span class="wn-library-hero__eyebrow-main"><span class="wn-library-hero__dot" aria-hidden="true"></span>Продолжить чтение</span>
+          {% if hero.last_read_label %}
+          <span class="wn-library-hero__eyebrow-sep" aria-hidden="true"></span>
+          <span class="wn-library-hero__last">{{ hero.last_read_label }}</span>
+          {% endif %}
+        </div>
+        <{{ title_tag }} class="wn-library-hero__title" id="{{ title_id }}"><a href="{{ href }}">{{ name }}</a></{{ title_tag }}>
+        <span class="wn-library-hero__where">{{ chapter_meta(entry) }}</span>
+        <div class="wn-library-hero__actions">
+          <a class="wn-library-hero__continue" href="{{ href }}/chapters/{{ entry.last_read_volume }}/{{ entry.last_read_number }}">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 4v16l14-8z"/></svg>
+            Продолжить · {{ chapter_short(entry.last_read_number) }}
+          </a>
+          <a class="wn-library-hero__toc" href="{{ href }}#title-panel-toc">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" aria-hidden="true"><path d="M8 6h13M8 12h13M8 18h13M3 6h.01M3 12h.01M3 18h.01"/></svg>
+            Оглавление
+          </a>
+          <div class="wn-library-hero__more">{{ library_actions_menu(entry.slug_url, name, toc="phone") }}</div>
+        </div>
+      </div>
+      {% if hero.progress_percent is not none %}
+      <div class="wn-library-hero__progress">
+        <span class="wn-library-hero__progress-label">Прочитано</span>
+        <span class="wn-library-hero__pct">{{ hero.progress_percent }}<span>%</span></span>
+        <div class="wn-library-hero__bar" role="progressbar" aria-label="Прогресс чтения" aria-valuenow="{{ hero.progress_percent }}" aria-valuemin="0" aria-valuemax="100"><span style="width: {{ hero.progress_percent }}%"></span></div>
+        <span class="wn-library-hero__stopped">Остановились на {% if entry.last_read_number == "0" %}прологе{% else %}главе {{ entry.last_read_number }}{% endif %}</span>
+      </div>
+      {% endif %}
+    </div>
+  </article>
+</section>
+{%- endmacro %}
