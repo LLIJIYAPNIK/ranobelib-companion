@@ -1,6 +1,8 @@
 {% extends "base.html" %}
 {% block title %}Библиотека — RanobeLib Companion{% endblock %}
 {% block content %}
+{% from "_continue_reading_hero.html" import chapter_label, chapter_short, chapter_meta, continue_reading_hero %}
+{% from "_library_actions.html" import library_actions_menu as actions_menu %}
 {#
   PR 275 (Webnovells Redesign, screen A3): "Библиотека" heading with the «Библиотека /
   Каталог» switch (PR 294), the add-by-link field, a search/sort/progress toolbar with a list/grid switch
@@ -13,49 +15,6 @@
 #}
 {% macro titles_word(n) -%}
 {{ n }} {% if n % 10 == 1 and n % 100 != 11 %}тайтл{% elif n % 10 in [2, 3, 4] and n % 100 not in [12, 13, 14] %}тайтла{% else %}тайтлов{% endif %}
-{%- endmacro %}
-{# PR 298 (LibraryCard): «Том X · Глава Y», «Пролог» for chapter 0. #}
-{% macro chapter_label(number) -%}
-{% if number == "0" %}Пролог{% else %}Глава {{ number }}{% endif %}
-{%- endmacro %}
-{% macro chapter_short(number) -%}
-{% if number == "0" %}Пролог{% else %}Гл. {{ number }}{% endif %}
-{%- endmacro %}
-{% macro chapter_meta(entry) -%}
-Том {{ entry.last_read_volume }} · {{ chapter_label(entry.last_read_number) }}
-{%- endmacro %}
-{#
-  PR 298 (LibraryCard.dc.html): the ⋯ menu of a library card or the hero - «Страница
-  тайтла», «Оглавление» (cards only - the hero has its own button; toc="phone" keeps it
-  for phones, where the hero drops that button - PR 300), and «Удалить из
-  библиотеки», which always asks first. Hidden until library-card-actions.js wires it up
-  (no menu without JS - the title page still has its own remove button).
-#}
-{% macro actions_menu(slug_url, name, toc=true) -%}
-<button
-  type="button"
-  class="wn-library-more"
-  data-role="library-more"
-  aria-haspopup="menu"
-  aria-expanded="false"
-  aria-label="Действия с тайтлом «{{ name }}»"
-  data-title-name="{{ name }}"
-  hidden
-><svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><circle cx="5" cy="12" r="1.8"/><circle cx="12" cy="12" r="1.8"/><circle cx="19" cy="12" r="1.8"/></svg></button>
-<div class="wn-library-menu" role="menu" aria-label="Действия" data-role="library-menu" hidden>
-  <a class="wn-library-menu__item" role="menuitem" href="/titles/{{ slug_url }}"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M14 4h6v6M20 4l-9 9M18 14v5a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1V7a1 1 0 0 1 1-1h5"/></svg>Страница тайтла</a>
-  {% if toc %}<a class="wn-library-menu__item{% if toc == "phone" %} wn-library-menu__item--phone-only{% endif %}" role="menuitem" href="/titles/{{ slug_url }}#title-panel-toc"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" aria-hidden="true"><path d="M8 6h13M8 12h13M8 18h13M3 6h.01M3 12h.01M3 18h.01"/></svg>Оглавление</a>{% endif %}
-  <span class="wn-library-menu__sep" role="separator"></span>
-  <button type="button" class="wn-library-menu__item wn-library-menu__item--danger" role="menuitem" data-role="library-remove"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 7h16M10 11v6M14 11v6M6 7l1 13h10l1-13M9 7V4h6v3"/></svg>Удалить из библиотеки</button>
-</div>
-<div class="wn-library-confirm" role="alertdialog" aria-label="Удалить из библиотеки?" data-role="library-confirm" hidden>
-  <span class="wn-library-confirm__title">Удалить из библиотеки?</span>
-  <span class="wn-library-confirm__text">«{{ name }}» пропадёт из библиотеки. EPUB-файлы, которые вы уже скачали, останутся на устройстве.</span>
-  <div class="wn-library-confirm__actions">
-    <button type="button" class="wn-library-confirm__cancel" data-role="library-confirm-cancel" data-autofocus>Отмена</button>
-    <button type="button" class="wn-library-confirm__remove" data-role="library-confirm-remove">Удалить</button>
-  </div>
-</div>
 {%- endmacro %}
 <div class="library-page wn-library" data-mode="default">
   <section class="wn-library__head">
@@ -162,55 +121,10 @@
       </div>
 
       {% if continue_item %}
-      {% set hero = continue_item %}
-      {% set hero_entry = hero.entry %}
-      {% set hero_name = hero.name or hero_entry.slug_url %}
-      {% set hero_href = "/titles/" ~ hero_entry.slug_url %}
       {# PR 297 (LibraryDesktop): «Продолжить чтение» - the last opened title as the
          page's hero. Its card in the list below stays hidden while the hero is shown
          (data-hero; library-toolbar.js shows it again in the results mode). #}
-      <section class="wn-library-hero" aria-labelledby="library-continue-title" data-role="library-hero" data-slug-url="{{ hero_entry.slug_url }}">
-        {% if hero.cover_url %}<img class="wn-library-hero__halo" src="{{ hero.cover_url }}" alt="" aria-hidden="true">{% endif %}
-        <article class="wn-library-hero__card">
-          {% if hero.cover_url %}<img class="wn-library-hero__backdrop" src="{{ hero.cover_url }}" alt="" aria-hidden="true">{% endif %}
-          <span class="wn-library-hero__scrim" aria-hidden="true"></span>
-          <div class="wn-library-hero__inner">
-            <a class="wn-library-hero__cover" href="{{ hero_href }}" tabindex="-1" aria-hidden="true">
-              {% if hero.cover_url %}<img class="wn-library-hero__cover-glow" src="{{ hero.cover_url }}" alt=""><img class="wn-library-hero__cover-img" src="{{ hero.cover_url }}" alt="">{% endif %}
-            </a>
-            <div class="wn-library-hero__copy">
-              <div class="wn-library-hero__eyebrow">
-                <span class="wn-library-hero__eyebrow-main"><span class="wn-library-hero__dot" aria-hidden="true"></span>Продолжить чтение</span>
-                {% if hero.last_read_label %}
-                <span class="wn-library-hero__eyebrow-sep" aria-hidden="true"></span>
-                <span class="wn-library-hero__last">{{ hero.last_read_label }}</span>
-                {% endif %}
-              </div>
-              <h2 class="wn-library-hero__title" id="library-continue-title"><a href="{{ hero_href }}">{{ hero_name }}</a></h2>
-              <span class="wn-library-hero__where">{{ chapter_meta(hero_entry) }}</span>
-              <div class="wn-library-hero__actions">
-                <a class="wn-library-hero__continue" href="{{ hero_href }}/chapters/{{ hero_entry.last_read_volume }}/{{ hero_entry.last_read_number }}">
-                  <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 4v16l14-8z"/></svg>
-                  Продолжить · {{ chapter_short(hero_entry.last_read_number) }}
-                </a>
-                <a class="wn-library-hero__toc" href="{{ hero_href }}#title-panel-toc">
-                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" aria-hidden="true"><path d="M8 6h13M8 12h13M8 18h13M3 6h.01M3 12h.01M3 18h.01"/></svg>
-                  Оглавление
-                </a>
-                <div class="wn-library-hero__more">{{ actions_menu(hero_entry.slug_url, hero_name, toc="phone") }}</div>
-              </div>
-            </div>
-            {% if hero.progress_percent is not none %}
-            <div class="wn-library-hero__progress">
-              <span class="wn-library-hero__progress-label">Прочитано</span>
-              <span class="wn-library-hero__pct">{{ hero.progress_percent }}<span>%</span></span>
-              <div class="wn-library-hero__bar" role="progressbar" aria-label="Прогресс чтения" aria-valuenow="{{ hero.progress_percent }}" aria-valuemin="0" aria-valuemax="100"><span style="width: {{ hero.progress_percent }}%"></span></div>
-              <span class="wn-library-hero__stopped">Остановились на {% if hero_entry.last_read_number == "0" %}прологе{% else %}главе {{ hero_entry.last_read_number }}{% endif %}</span>
-            </div>
-            {% endif %}
-          </div>
-        </article>
-      </section>
+      {{ continue_reading_hero(continue_item, title_id="library-continue-title") }}
       {% endif %}
 
       {# PR 297 (LibraryDesktop): every title in one «Моя библиотека» grid - started or
