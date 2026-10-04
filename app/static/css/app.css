@@ -499,8 +499,8 @@ a {
    Bar of the Claude Design import, plus the shell rows of "05 Спецификация". Desktop
    (>= 768px): an 84px rail, icon over label, that expands to 248px (sidebarExpanded in
    localStorage, as before). Mobile (<= 767px): the same <nav> is the Quiet Edge Bar and
-   .sidebar__account the top strip. The rail is a grid so the one toggle button can sit
-   at the bottom when collapsed and in the header row when expanded.
+   .sidebar__account the top strip. PR 310 keeps the toggle at one fixed bottom coordinate
+   in both desktop states, so expanding the rail never moves its control across the page.
    ========================================================================== */
 
 :root {
@@ -531,10 +531,10 @@ body:has(.sidebar--expanded) {
   height: 100dvh;
   display: grid;
   grid-template-columns: minmax(0, 1fr);
-  grid-template-rows: auto auto auto 1fr auto auto;
-  grid-template-areas: "brand" "sep" "nav" "." "account" "toggle";
+  grid-template-rows: auto auto auto 1fr auto;
+  grid-template-areas: "brand" "sep" "nav" "." "account";
   justify-items: center;
-  padding: 18px 0 14px;
+  padding: 18px 0 62px;
   background: var(--bg-nav);
   border-right: 1px solid var(--divider);
   overflow-x: hidden;
@@ -547,6 +547,11 @@ body:has(.sidebar--expanded) {
 
 .sidebar::-webkit-scrollbar {
   display: none;
+}
+
+.sidebar--initializing,
+.sidebar--initializing + .main {
+  transition: none !important;
 }
 
 .sidebar__brand {
@@ -575,12 +580,14 @@ body:has(.sidebar--expanded) {
 }
 
 .sidebar__toggle {
-  grid-area: toggle;
+  position: absolute;
+  left: 20px;
+  bottom: 14px;
   display: grid;
   place-items: center;
   width: 44px;
-  height: 32px;
-  margin-top: 6px;
+  height: 40px;
+  margin: 0;
   padding: 0;
   border: 0;
   border-radius: var(--r-md);
@@ -641,9 +648,20 @@ body:has(.sidebar--expanded) {
 }
 
 .sidebar__link--active {
-  background: var(--surface-selected);
+  background: rgba(34, 211, 197, 0.06);
   color: var(--text-1);
   font-weight: 700;
+}
+
+.sidebar__link--active::before {
+  content: "";
+  position: absolute;
+  top: 14px;
+  left: -8px;
+  width: 3px;
+  height: 32px;
+  border-radius: 0 3px 3px 0;
+  background: var(--accent);
 }
 
 .sidebar__link--active .sidebar__icon {
@@ -803,7 +821,8 @@ body:has(.sidebar--expanded) {
   width: 68px;
   min-height: 56px;
   border-radius: var(--r-lg);
-  background: var(--surface-2);
+  background: transparent;
+  box-shadow: inset 0 0 0 1px var(--border);
   color: var(--text-1);
   font: 700 11px/1 var(--font-ui);
   text-decoration: none;
@@ -860,17 +879,17 @@ body:has(.sidebar--expanded) {
   transition: margin-left var(--dur-base) var(--ease);
 }
 
-/* Expanded rail (248px): header row with the full wordmark and the collapse button,
-   full-width rows, bell row with its label, account card. Desktop only - the mobile
-   block below never has to undo any of it. */
+/* Expanded rail (248px): the same vertical geometry as the compact rail, with labels,
+   full-width rows, bell row and account card. Desktop only - the mobile block below
+   never has to undo any of it. */
 @media (min-width: 768px) {
   .sidebar--expanded {
     width: 248px;
-    grid-template-columns: minmax(0, 1fr) auto;
+    grid-template-columns: minmax(0, 1fr);
     grid-template-rows: auto auto auto 1fr auto;
-    grid-template-areas: "brand toggle" "sep sep" "nav nav" ". ." "account account";
+    grid-template-areas: "brand" "sep" "nav" "." "account";
     justify-items: stretch;
-    padding: 16px 12px 12px;
+    padding: 16px 12px 62px;
   }
 
   .sidebar--expanded .sidebar__brand {
@@ -889,10 +908,24 @@ body:has(.sidebar--expanded) {
   }
 
   .sidebar--expanded .sidebar__toggle {
-    align-self: center;
-    width: 36px;
-    height: 36px;
+    left: 20px;
+    bottom: 14px;
+    grid-template-columns: 44px minmax(0, 1fr);
+    place-items: center start;
+    width: 208px;
+    height: 40px;
     margin: 0;
+    font: 600 14px/1 var(--font-ui);
+  }
+
+  .sidebar--expanded .sidebar__toggle svg {
+    grid-area: 1 / 1;
+    justify-self: center;
+  }
+
+  .sidebar--expanded .sidebar__toggle-label {
+    display: block;
+    grid-column: 2;
   }
 
   .sidebar--expanded .sidebar__toggle-expand {
@@ -908,22 +941,31 @@ body:has(.sidebar--expanded) {
     margin: 12px 6px 10px;
   }
 
+  .sidebar--expanded .sidebar__nav {
+    padding: 0 8px;
+  }
+
   .sidebar--expanded .sidebar__link,
   .sidebar--expanded .sidebar__bell {
-    flex-direction: row;
-    justify-content: flex-start;
-    gap: 14px;
-    width: auto;
+    display: grid;
+    grid-template-columns: 44px minmax(0, 1fr);
+    align-items: center;
+    gap: 0;
+    width: 100%;
     height: 46px;
-    padding: 0 12px;
+    padding: 0 8px 0 0;
     color: var(--text-2);
     font: 600 15px/1 var(--font-ui);
+    text-align: left;
   }
 
   .sidebar--expanded .sidebar__bell {
-    display: flex;
-    align-items: center;
     height: 44px;
+  }
+
+  .sidebar--expanded .sidebar__link .sidebar__icon,
+  .sidebar--expanded .sidebar__bell .sidebar__icon {
+    justify-self: center;
   }
 
   .sidebar--expanded .sidebar__link--active,
@@ -972,6 +1014,7 @@ body:has(.sidebar--expanded) {
     align-items: stretch;
     gap: 4px;
     width: auto;
+    padding: 10px 8px 0;
   }
 
   .sidebar--expanded .profile-menu {
@@ -979,18 +1022,20 @@ body:has(.sidebar--expanded) {
   }
 
   .sidebar--expanded .sidebar__account-trigger {
-    display: flex;
+    display: grid;
+    grid-template-columns: 44px minmax(0, 1fr) 20px;
     align-items: center;
-    gap: 12px;
+    gap: 0;
     width: 100%;
     height: 56px;
-    padding: 0 10px;
+    padding: 0 8px 0 0;
     border-radius: var(--r-lg);
-    background: var(--surface-2);
-    box-shadow: inset 0 0 0 1px var(--border-strong);
+    background: rgba(255, 255, 255, 0.025);
+    box-shadow: inset 0 0 0 1px var(--border);
   }
 
   .sidebar--expanded .sidebar__avatar {
+    justify-self: center;
     border: 0;
   }
 
@@ -1009,13 +1054,14 @@ body:has(.sidebar--expanded) {
   }
 
   .sidebar--expanded .sidebar__guest {
-    flex-direction: row;
-    justify-content: flex-start;
-    gap: 14px;
-    width: auto;
+    display: grid;
+    grid-template-columns: 44px minmax(0, 1fr);
+    gap: 0;
+    width: 100%;
     min-height: 46px;
-    padding: 0 12px;
+    padding: 0 8px 0 0;
     font: 700 15px/1 var(--font-ui);
+    text-align: left;
   }
 }
 
@@ -5939,6 +5985,10 @@ a.ui-title-card:focus-visible .ui-title-card__cover {
   font-size: 12px;
   font-weight: var(--wn-weight-bold);
   text-decoration: none;
+}
+
+.sidebar__toggle-label {
+  display: none;
 }
 
 @media (hover: hover) {

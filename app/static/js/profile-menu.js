@@ -98,6 +98,7 @@
   }
 
   trigger.addEventListener("click", () => (isOpen() ? close() : open()));
+  window.addEventListener("sidebar:statechange", closeOnLayoutChange);
 
   // The sheet closes itself (backdrop, «Закрыть», drag, Escape) - a click on its head
   // must not count as a click outside.
