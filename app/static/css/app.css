@@ -4195,7 +4195,7 @@ img.paragraph-comment__attachment {
   box-shadow: none;
 }
 
-/* Field + action on one line ("Вставьте ссылку…" + «Открыть»). */
+/* Field + action on one line (catalog query + submit). */
 .ui-input-row {
   display: flex;
   gap: 10px;
@@ -6327,7 +6327,7 @@ a.ui-title-card:focus-visible .ui-title-card__cover {
     padding: var(--wn-space-1) var(--wn-space-2) var(--wn-space-3);
   }
 
-  /* Field and «Открыть» share a row while both fit, then the button drops under the
+  /* Field and «Найти» share a row while both fit, then the button drops under the
      field (PR 280) - no breakpoint. */
   .wn-home__open {
     flex-wrap: wrap;
@@ -9790,7 +9790,7 @@ a.catalog-card__action {
     font: 500 14px/1 var(--wn-font-ui);
   }
 
-  /* The add-by-link form goes in the results mode (handoff: «header компактнее»). */
+  /* The catalog-search form goes in the results mode (handoff: «header компактнее»). */
   .wn-library[data-mode="results"] .wn-library__add {
     display: none;
   }
@@ -10056,7 +10056,7 @@ a.catalog-card__action {
     gap: 24px 32px;
   }
 
-  /* The switch over the add-by-link form, right-aligned. */
+  /* The switch over the catalog-search form, right-aligned. */
   .wn-library__head-side {
     display: flex;
     flex: 0 1 auto;
@@ -10093,7 +10093,7 @@ a.catalog-card__action {
     font: 500 15px/1 var(--wn-font-ui);
   }
 
-  /* «Добавить» is a glass button here, not the page's purple CTA. */
+  /* «Найти» is a glass button here, not the page's purple CTA. */
   .wn-library .wn-library__add .wn-btn {
     height: 44px;
     padding: 0 16px;
@@ -11609,7 +11609,7 @@ a.catalog-card__action {
     font-size: 26px;
   }
 
-  /* The link field and «Добавить» share a row while both fit; at 320px the button drops
+  /* The catalog field and «Найти» share a row while both fit; at 320px the button drops
      under the field (PR 282). */
   .wn-library__add {
     flex-wrap: wrap;

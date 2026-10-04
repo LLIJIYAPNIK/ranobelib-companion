@@ -24,31 +24,24 @@
     </div>
     <div class="wn-library__head-side">
     {% include "_library_switch.html" %}
-    {% if current_user %}
-    <form class="wn-library__add" method="post" action="/library/add">
+    <form class="wn-library__add" method="get" action="/catalog" role="search" aria-label="Поиск по каталогу">
       <label class="wn-library__add-field">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" aria-hidden="true"><path d="M10 14a5 5 0 0 0 7 0l3-3a5 5 0 0 0-7-7l-1 1M14 10a5 5 0 0 0-7 0l-3 3a5 5 0 0 0 7 7l1-1"/></svg>
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="m16 16 4 4"/></svg>
         <input
           class="wn-field__control wn-library__add-control"
-          type="text"
-          name="url"
-          placeholder="Ссылка на тайтл ranobelib.me"
-          data-placeholder-short="Ссылка на тайтл"
-          aria-label="Ссылка на тайтл, чтобы добавить в библиотеку"
-          value="{{ submitted_url or '' }}"
-          {% if error %}aria-invalid="true" aria-describedby="library-add-error"{% endif %}
+          type="search"
+          name="query"
+          placeholder="Найти тайтл по названию…"
+          aria-label="Название тайтла"
+          enterkeyhint="search"
           required
         >
       </label>
       <button class="wn-btn wn-btn--primary" type="submit">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg>
-        Добавить
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="m16 16 4 4"/></svg>
+        Найти
       </button>
     </form>
-    {% endif %}
-    {% if error %}
-    <p class="wn-field__caption wn-library__error" id="library-add-error" role="alert">{{ error }}</p>
-    {% endif %}
     </div>
   </section>
   <main class="library-page__content library-tabs-content wn-library__content">
