@@ -412,15 +412,6 @@ def test_catalog_item_on_the_switch_has_no_count(client: TestClient) -> None:
     assert 'data-role="library-switch-count">0</span>' in response.text
 
 
-def test_add_by_url_error_keeps_the_reading_tab_active(client: TestClient) -> None:
-    _register(client)
-
-    response = client.post("/library/add", data={"url": "not a link"})
-
-    assert response.status_code == 400
-    assert 'href="/library" aria-current="page"' in response.text
-
-
 def test_show_library_empty_state(client: TestClient) -> None:
     _register(client)
 
@@ -561,40 +552,6 @@ def test_show_library_survives_one_unreachable_title(client: TestClient) -> None
 
     assert response.status_code == 200
     assert "6712--test-novel" in response.text
-
-
-def test_add_by_url_resolves_and_adds(client: TestClient) -> None:
-    _register(client)
-    title = _fake_title()
-
-    with patch("app.services.client.RanobeLib", return_value=_FakeClient(title)):
-        response = client.post(
-            "/library/add",
-            data={"url": "https://ranobelib.me/ru/book/6712--test-novel"},
-            follow_redirects=False,
-        )
-
-    assert response.status_code == 303
-    assert response.headers["location"] == "/titles/6712--test-novel"
-
-
-def test_add_by_url_rejects_unparseable_input(client: TestClient) -> None:
-    _register(client)
-
-    response = client.post("/library/add", data={"url": "not a link at all"})
-
-    assert response.status_code == 400
-    assert "Не удалось распознать ссылку" in response.text
-
-
-def test_add_by_url_requires_login(client: TestClient) -> None:
-    response = client.post(
-        "/library/add", data={"url": "https://ranobelib.me/ru/book/6712--x"},
-        follow_redirects=False,
-    )
-
-    assert response.status_code == 303
-    assert response.headers["location"] == "/login"
 
 
 # --- PR 293: "Избранное" is gone ---------------------------------------------------

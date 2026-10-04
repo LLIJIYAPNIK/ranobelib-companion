@@ -50,16 +50,22 @@ def _phone_rule(selector: str, *, last: bool = True) -> str:
     return matches[-1] if last else matches[0]
 
 
-def test_search_takes_its_own_row_and_the_add_form_wraps() -> None:
+def test_searches_take_their_own_rows_and_catalog_search_stacks_at_320() -> None:
     search = _rule(".wn-library-search", indent="  ")
     assert "flex: 1 1 100%;" in search
     assert "flex-wrap: wrap;" in _rule(".wn-library__add", indent="  ")
-    # PR 300 (LibraryMobile): a 180px+ field beside a 112px+ «Добавить» - the button
-    # drops under the field at 320px.
+    # PR 309: the catalog query field and submit button each fill their row at 320px.
     assert "flex: 1 1 180px;" in _phone_rule(".wn-library .wn-library__add-field")
-    button = _phone_rule(".wn-library .wn-library__add .wn-btn")
+    button = _phone_rule(".wn-library .wn-library__add .wn-btn", last=False)
     assert "min-width: 112px;" in button
     assert "background: rgb(255 255 255 / 6%);" in button  # glass, not the purple CTA
+    mobile = CSS.split("LibraryMobile (PR 300", 1)[1].split("title page (PR 253)", 1)[0]
+    narrow = mobile.split("@media (max-width: 359px)", 1)[1]
+    stack = narrow.split("}", 1)[0]
+    assert ".wn-library .wn-library__add-field" in stack
+    assert ".wn-library .wn-library__add .wn-btn" in stack
+    assert "flex-basis: 100%;" in stack
+    assert "width: 100%;" in stack
 
 
 def test_head_is_eyebrow_h1_then_the_switch() -> None:
@@ -69,12 +75,11 @@ def test_head_is_eyebrow_h1_then_the_switch() -> None:
     assert "gap: 14px;" in head
 
 
-def test_add_field_gets_a_short_placeholder_on_phones() -> None:
+def test_catalog_search_needs_no_phone_placeholder_script() -> None:
     page = (ROOT / "app/templates/library.html").read_text(encoding="utf-8")
-    assert 'data-placeholder-short="Ссылка на тайтл"' in page
-    assert "js/library-mobile.js" in page
-    script = (ROOT / "app/static/js/library-mobile.js").read_text(encoding="utf-8")
-    assert "phone.matches ? field.dataset.placeholderShort : full" in script
+    assert 'placeholder="Найти тайтл по названию…"' in page
+    assert "data-placeholder-short" not in page
+    assert "js/library-mobile.js" not in page
 
 
 def test_sort_and_progress_buttons_and_the_sheet_are_in_the_toolbar() -> None:
@@ -175,8 +180,8 @@ def test_hero_is_compact_with_the_cover_beside_the_copy() -> None:
     inner = _phone_rule(".wn-library .wn-library-hero__inner", last=False)
     assert "grid-template-columns: 88px minmax(0, 1fr);" in inner
     assert "grid-row: 1 / 5;" in _phone_rule(".wn-library .wn-library-hero__cover")
-    narrow = CSS.split("@media (max-width: 359px) {\n  .wn-library .wn-library-hero__inner {", 1)[1]
-    assert "grid-template-columns: 76px minmax(0, 1fr);" in narrow.split("}", 1)[0]
+    narrow = _phone_rule(".wn-library .wn-library-hero__inner")
+    assert "grid-template-columns: 76px minmax(0, 1fr);" in narrow
     actions = _phone_rule(".wn-library .wn-library-hero__actions")
     assert "grid-column: 1 / -1;" in actions
     assert "flex: 1;" in _phone_rule(".wn-library .wn-library-hero__continue")

@@ -2,7 +2,7 @@ from unittest.mock import patch
 from urllib.parse import quote
 
 from fastapi.testclient import TestClient
-from ranobelib import AccessBlockedError, RanobeLibError, RateLimitError, TitleNotFoundError
+from ranobelib import RanobeLibError, RateLimitError, TitleNotFoundError
 from ranobelib.models import Chapter, Country, Cover, Genre, Label, Tag, Title, Volume
 
 from app.main import app
@@ -82,93 +82,6 @@ class _AssertNeverCalledClient:
 
     async def get_table_of_contents(self) -> list[Volume]:
         raise AssertionError("show_title() must not call the SDK - that's title_data()'s job")
-
-
-def test_open_title_redirects_to_canonical_slug_url() -> None:
-    title = _fake_title()
-    with patch("app.services.client.RanobeLib", return_value=_FakeClient(title)):
-        response = client.get(
-            "/titles/open",
-            params={"url": "https://ranobelib.me/ru/book/6712--test-novel"},
-        )
-
-    assert response.status_code == 302
-    assert response.headers["location"] == "/titles/6712--test-novel"
-
-
-def test_open_title_rejects_unparseable_input() -> None:
-    response = client.get("/titles/open", params={"url": "not a link at all"})
-
-    assert response.status_code == 400
-    assert "Не удалось распознать ссылку" in response.text
-
-
-def test_open_title_rate_limited() -> None:
-    exc = RateLimitError(retry_after=30)
-    with patch("app.services.client.RanobeLib", return_value=_RaisingClient(exc)):
-        response = client.get(
-            "/titles/open",
-            params={"url": "https://ranobelib.me/ru/book/6712--test-novel"},
-        )
-
-    assert response.status_code == 429
-    assert response.json() == {
-        "detail": "ranobelib сейчас ограничивает запросы, попробуйте позже"
-    }
-
-
-def test_open_title_unknown_title_renders_the_404_page() -> None:
-    # PR 265 (ERROR-404): a pasted link to a title ranobelib.me doesn't have, opened in the
-    # browser, lands on error.html - the code, the mapped detail, the stale-link hint and
-    # the way home.
-    exc = TitleNotFoundError("99999--no-such-title")
-    with patch("app.services.client.RanobeLib", return_value=_RaisingClient(exc)):
-        response = client.get(
-            "/titles/open",
-            params={"url": "https://ranobelib.me/ru/book/99999--no-such-title"},
-            headers={"accept": "text/html"},
-        )
-
-    assert response.status_code == 404
-    assert '<span class="error-page__status">404</span>' in response.text
-    assert '<h1 class="error-page__detail">Тайтл не найден, проверьте ссылку</h1>' in response.text
-    assert "Возможно, ссылка устарела" in response.text
-    assert '<a class="ui-btn" href="/">На главную</a>' in response.text
-
-
-def test_open_title_blocked_by_site_protection_renders_a_503_page() -> None:
-    # PR 269: DDoS-Guard turning the request away is a temporary outage on ranobelib's
-    # side - the page must say so, not claim a login is needed or show the stale-link hint.
-    exc = AccessBlockedError("https://api.cdnlibs.org/api/manga/6712--test-novel")
-    with patch("app.services.client.RanobeLib", return_value=_RaisingClient(exc)):
-        response = client.get(
-            "/titles/open",
-            params={"url": "https://ranobelib.me/ru/book/6712--test-novel"},
-            headers={"accept": "text/html"},
-        )
-
-    assert response.status_code == 503
-    assert '<span class="error-page__status">503</span>' in response.text
-    assert (
-        '<h1 class="error-page__detail">'
-        "ranobelib.me временно блокирует наши запросы, попробуйте позже</h1>"
-    ) in response.text
-    assert "авторизац" not in response.text.lower()
-    assert "Возможно, ссылка устарела" not in response.text
-
-
-def test_error_page_hint_is_404_only() -> None:
-    exc = RateLimitError(retry_after=30)
-    with patch("app.services.client.RanobeLib", return_value=_RaisingClient(exc)):
-        response = client.get(
-            "/titles/open",
-            params={"url": "https://ranobelib.me/ru/book/6712--test-novel"},
-            headers={"accept": "text/html"},
-        )
-
-    assert response.status_code == 429
-    assert "ranobelib сейчас ограничивает запросы" in response.text
-    assert "Возможно, ссылка устарела" not in response.text
 
 
 # --- PR 203: show_title() itself - a skeleton, no SDK call, never hangs/errors ----------
