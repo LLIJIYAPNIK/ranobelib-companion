@@ -2,6 +2,7 @@
 {% block title %}RanobeLib Companion{% endblock %}
 {% block content %}
 {% from "_title_card.html" import ui_title_card %}
+{% from "_continue_reading_hero.html" import continue_reading_hero %}
 <main class="home wn-home">
   <form class="home__open wn-home__open" method="get" action="/titles/open">
     <label class="wn-home__open-field">
@@ -38,41 +39,9 @@
     </div>
   </section>
   {% else %}
-  <div class="wn-home__stage">
+  <div class="wn-home__stage" data-role="continue-reading-root">
     {% if dashboard.hero %}
-    {% set hero = dashboard.hero %}
-    {% set hero_entry = hero.entry %}
-    {% set hero_name = hero.name or hero_entry.slug_url %}
-    <section class="wn-home-hero" aria-labelledby="continue-reading-title">
-      {% if hero.cover_url %}
-      <img class="wn-home-hero__backdrop" src="{{ hero.cover_url }}" alt="">
-      {% endif %}
-      <div class="wn-home-hero__scrim"></div>
-      <div class="wn-home-hero__content">
-        <a class="wn-home-hero__cover" href="/titles/{{ hero_entry.slug_url }}" aria-label="{{ hero_name }}">
-          {% if hero.cover_url %}<img src="{{ hero.cover_url }}" alt="">{% endif %}
-        </a>
-        {# PR 280: __text groups what sits beside the cover on mobile (and drops under it
-           on the narrowest phones); progress and actions become full-width rows there. #}
-        <div class="wn-home-hero__copy">
-          <div class="wn-home-hero__text">
-            <span class="wn-home-hero__eyebrow">Продолжить чтение</span>
-            <h1 class="wn-home-hero__title" id="continue-reading-title">{{ hero_name }}</h1>
-            <p class="wn-home-hero__chapter">Том {{ hero_entry.last_read_volume }} · Глава {{ hero_entry.last_read_number }}</p>
-          </div>
-          {% if hero.progress_percent is not none %}
-          <div class="wn-home-progress ui-progress" aria-label="Прочитано {{ hero.progress_percent }}%">
-            <div class="wn-home-progress__label"><span>Прочитано</span><b>{{ hero.progress_percent }}%</b></div>
-            <span class="ui-progress__bar"><span class="ui-progress__fill" style="width: {{ hero.progress_percent }}%"></span></span>
-          </div>
-          {% endif %}
-          <div class="wn-home-hero__actions">
-            <a class="wn-btn wn-btn--primary" href="/titles/{{ hero_entry.slug_url }}/chapters/{{ hero_entry.last_read_volume }}/{{ hero_entry.last_read_number }}"><svg class="wn-home-hero__icon" viewBox="0 0 24 24" width="14" height="14" fill="currentColor" aria-hidden="true"><path d="M7 4v16l13-8z"/></svg><span>Продолжить · Глава {{ hero_entry.last_read_number }}</span></a>
-            <a class="wn-btn wn-btn--secondary" href="/titles/{{ hero_entry.slug_url }}"><svg class="wn-home-hero__icon" viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" aria-hidden="true"><path d="M8 6h13M8 12h13M8 18h13M3 6h.01M3 12h.01M3 18h.01"/></svg><span>Оглавление</span></a>
-          </div>
-        </div>
-      </div>
-    </section>
+    {{ continue_reading_hero(dashboard.hero, variant="home", title_tag="h1", title_id="continue-reading-title") }}
     {% else %}
     <section class="wn-home-hero wn-home-hero--empty" data-role="home-reading-empty">
       <span class="wn-home-hero__eyebrow">Ваша следующая история</span>
@@ -199,5 +168,6 @@
   {% endif %}
 </main>
 <script src="{{ url_for('static', path='js/recent-titles-forget.js') }}" defer></script>
+<script src="{{ url_for('static', path='js/library-card-actions.js') }}" defer></script>
 <script src="{{ url_for('static', path='js/image-lightbox.js') }}" defer></script>
 {% endblock %}
