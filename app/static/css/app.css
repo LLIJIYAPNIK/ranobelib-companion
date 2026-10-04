@@ -10880,21 +10880,24 @@ a.catalog-card__action {
   color: #3dd6c3;
 }
 
-/* Mobile (LibraryMobile: fill, compact under 360px): the track spans the row and both
-   items fit even at 320px - no horizontal scroll. */
+/* Mobile: the track spans the row and divides it evenly. Icons yield their space to the
+   labels/count at 320px; neither text nor the count pill is allowed to collapse. */
 @media (max-width: 767px) {
   .wn-lib-switch {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
     width: 100%;
   }
-}
 
-/* Under 360px the items share the track by content, not in equal halves - «Библиотека»
-   with its count needs ~156px, more than half of a 320px screen's track. */
-@media (max-width: 359px) {
   .wn-lib-switch__tab {
-    flex: 1 1 auto;
+    width: 100%;
+    min-width: 0;
     gap: 6px;
-    padding: 0 10px;
+    padding: 0 6px;
+  }
+
+  .wn-lib-switch__tab svg {
+    display: none;
   }
 }
 
