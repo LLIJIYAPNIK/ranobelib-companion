@@ -82,3 +82,10 @@ def test_a_server_error_shows_the_plate_too() -> None:
     result = _scenarios()["serverError"]
     assert result["log"][0]["error"] is True
     assert result["appended"] == 0
+
+
+def test_pages_carry_the_status_and_chapter_count_filters() -> None:
+    # PR 303: data-statuses / data-min-chapters off the grid, like genres/countries.
+    (url,) = _scenarios()["filters"]["fetched"]
+    assert "statuses=1&statuses=2" in url
+    assert "min_chapters=100" in url

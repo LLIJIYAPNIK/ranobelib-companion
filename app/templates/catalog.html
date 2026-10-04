@@ -11,8 +11,8 @@
   results mode's criteria row inside that panel, and «Фильтры» as a popover under its
   button (catalog-filters-toggle.js).
 #}
-{% set filter_count = genres | length + countries | length %}
-{% set has_filters = all_genres or all_countries %}
+{% set filter_count = statuses | length + (1 if min_chapters else 0) + genres | length + countries | length %}
+{% set has_filters = all_statuses or all_genres or all_countries %}
 <div class="catalog-page wn-catalog" data-mode="{{ 'editorial' if editorial else 'results' }}">
   <section class="wn-catalog__hero">
     <div class="wn-catalog__hero-copy">
@@ -137,7 +137,7 @@
          reset; popular titles are deliberately not mixed in (Catalog handoff.md). #}
       {% set asked = [] %}
       {% if (query or "").strip() %}{% set _ = asked.append("запросу «" ~ query.strip() ~ "»") %}{% endif %}
-      {% if genres or countries or tags %}{% set _ = asked.append("выбранным фильтрам") %}{% endif %}
+      {% if statuses or min_chapters or genres or countries or tags %}{% set _ = asked.append("выбранным фильтрам") %}{% endif %}
       <div class="catalog-empty" data-role="catalog-empty" role="status">
         <span class="catalog-empty__icon" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round"><circle cx="11" cy="11" r="7"/><path d="m21 21-4.3-4.3M8.5 11h5"/></svg></span>
         <h2 class="catalog-empty__title">Ничего не нашлось</h2>
@@ -157,6 +157,8 @@
         data-genres="{{ genres | join(',') }}"
         data-country="{{ countries | join(',') }}"
         data-tags="{{ tags | join(',') }}"
+        data-statuses="{{ statuses | join(',') }}"
+        data-min-chapters="{{ min_chapters or '' }}"
         data-next-page="{{ page + 1 if has_next_page else '' }}"
         data-shown="{{ stream.shown }}"
         data-featured="{{ stream.featured }}"
@@ -188,7 +190,7 @@
       <noscript>
         {% if has_next_page %}
         <p class="catalog-page__hint">
-          <a href="?query={{ query or '' }}&sort={{ sort }}{% for g in genres %}&genres={{ g }}{% endfor %}{% for c in countries %}&countries={{ c }}{% endfor %}{% for t in tags %}&tags={{ t }}{% endfor %}&page={{ page + 1 }}&shown={{ stream.shown }}&featured={{ stream.featured }}">Следующая страница</a>
+          <a href="?query={{ query or '' }}&sort={{ sort }}{% for g in genres %}&genres={{ g }}{% endfor %}{% for c in countries %}&countries={{ c }}{% endfor %}{% for t in tags %}&tags={{ t }}{% endfor %}{% for s in statuses %}&statuses={{ s }}{% endfor %}{% if min_chapters %}&min_chapters={{ min_chapters }}{% endif %}&page={{ page + 1 }}&shown={{ stream.shown }}&featured={{ stream.featured }}">Следующая страница</a>
         </p>
         {% endif %}
       </noscript>
@@ -212,6 +214,78 @@
         ><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M6 6l12 12M18 6 6 18"/></svg></button>
       </div>
       <div class="catalog-filters__body">
+        {# PR 303 (CatalogDesktop): «Статус» (several, OR) and «Количество глав» (one
+           threshold) come first, as in the design's filters popover - statuses from
+           list_statuses(), the thresholds are the design's presets. «Любое» is the
+           radio group's way back to no threshold. #}
+        {% if all_statuses %}
+        <section
+          class="catalog-filters__section"
+          data-role="catalog-filters-section"
+          data-section-key="statuses"
+        >
+          <h3 class="catalog-filters__section-title">
+            <button
+              class="catalog-filters__section-toggle"
+              type="button"
+              data-role="catalog-filters-section-toggle"
+              aria-expanded="true"
+              aria-controls="catalog-filters-statuses-options"
+            >Статус{% if statuses %} ({{ statuses | length }}){% endif %}</button>
+          </h3>
+          <div
+            class="catalog-filters__options"
+            id="catalog-filters-statuses-options"
+            data-role="catalog-filters-section-options"
+          >
+            {% for status in all_statuses %}
+            <label class="ui-checkbox catalog-filters__option">
+              <input
+                type="checkbox"
+                name="statuses"
+                value="{{ status.id }}"
+                form="catalog-search-form"
+                {% if status.id in statuses %}checked{% endif %}
+              >
+              <span>{{ status.label }}</span>
+            </label>
+            {% endfor %}
+          </div>
+        </section>
+        {% endif %}
+        <section
+          class="catalog-filters__section"
+          data-role="catalog-filters-section"
+          data-section-key="min-chapters"
+        >
+          <h3 class="catalog-filters__section-title">
+            <button
+              class="catalog-filters__section-toggle"
+              type="button"
+              data-role="catalog-filters-section-toggle"
+              aria-expanded="true"
+              aria-controls="catalog-filters-min-chapters-options"
+            >Количество глав{% if min_chapters %} (от {{ min_chapters }}){% endif %}</button>
+          </h3>
+          <div
+            class="catalog-filters__options"
+            id="catalog-filters-min-chapters-options"
+            data-role="catalog-filters-section-options"
+          >
+            {% for value in [0] + min_chapters_options | list %}
+            <label class="ui-checkbox catalog-filters__option">
+              <input
+                type="radio"
+                name="min_chapters"
+                value="{{ value }}"
+                form="catalog-search-form"
+                {% if value == min_chapters %}checked{% endif %}
+              >
+              <span>{{ "от " ~ value if value else "Любое" }}</span>
+            </label>
+            {% endfor %}
+          </div>
+        </section>
         {% if all_genres %}
         <section
           class="catalog-filters__section"
@@ -283,7 +357,7 @@
         </section>
         {% endif %}
       </div>
-      {# «Сбросить» drops genres/countries only - the search, sort and any tag filter
+      {# «Сбросить» drops statuses/chapters/genres/countries only - the search, sort and any tag filter
          (set from a title page badge, not from this panel) stay. #}
       <div class="catalog-filters__foot">
         <a
@@ -299,8 +373,8 @@
      (bottom-sheet.js) takes it in. Its own form is the draft: nothing applies until
      «Показать результаты» sends it, «Сбросить» (moved into the sheet's head) clears the
      draft, and closing the sheet without sending puts the form back as the page has it
-     (catalog-mobile.js). Groups: sort (one), genres and countries (several). Status and
-     chapter-count groups wait for the SDK (ranobelib-python-sdk#68, #69). The search
+     (catalog-mobile.js). Groups: sort (one), status (several), chapter count (one -
+     PR 303, SDK 0.12.0), genres and countries (several). The search
      and a tag filter from a title page aren't in the sheet - they ride along unchanged.
      autocomplete="off": no browser form restore on Back - the draft starts as the page. #}
   <div class="catalog-sheet" id="catalog-filters-sheet" data-role="catalog-filters-sheet" data-bottom-sheet-title="Фильтры" hidden>
@@ -315,6 +389,24 @@
         <div class="catalog-sheet__options">
           {% for value, label in sort_options.items() %}
           <label class="catalog-sheet__option"><input type="radio" name="sort" value="{{ value }}"{% if value == sort %} checked{% endif %}>{{ check }}<span>{{ label }}</span></label>
+          {% endfor %}
+        </div>
+      </fieldset>
+      {% if all_statuses %}
+      <fieldset class="catalog-sheet__group">
+        <legend class="catalog-sheet__legend">Статус</legend>
+        <div class="catalog-sheet__options">
+          {% for status in all_statuses %}
+          <label class="catalog-sheet__option"><input type="checkbox" name="statuses" value="{{ status.id }}"{% if status.id in statuses %} checked{% endif %}>{{ check }}<span>{{ status.label }}</span></label>
+          {% endfor %}
+        </div>
+      </fieldset>
+      {% endif %}
+      <fieldset class="catalog-sheet__group">
+        <legend class="catalog-sheet__legend">Количество глав</legend>
+        <div class="catalog-sheet__options">
+          {% for value in [0] + min_chapters_options | list %}
+          <label class="catalog-sheet__option"><input type="radio" name="min_chapters" value="{{ value }}"{% if value == min_chapters %} checked{% endif %}>{{ check }}<span>{{ "от " ~ value if value else "Любое" }}</span></label>
           {% endfor %}
         </div>
       </fieldset>

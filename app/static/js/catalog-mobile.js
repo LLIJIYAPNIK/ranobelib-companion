@@ -60,9 +60,12 @@
     }
     page.classList.add("wn-catalog--sheet");
 
+    // The draft's defaults: the default sort, «Любое» chapters (PR 303, value 0), nothing
+    // else checked.
     reset?.addEventListener("click", () => {
       for (const field of sheetForm.querySelectorAll("input[type=radio], input[type=checkbox]")) {
-        field.checked = field.type === "radio" && field.value === sheetForm.dataset.defaultSort;
+        const fallback = field.name === "sort" ? sheetForm.dataset.defaultSort : "0";
+        field.checked = field.type === "radio" && field.value === fallback;
       }
     });
 

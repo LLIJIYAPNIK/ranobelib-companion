@@ -31,11 +31,13 @@ class _FakeCatalog:
         genres: list[Genre] | None = None,
         countries: list[Country] | None = None,
         featured: list[CatalogPage] | None = None,
+        statuses: list[Label] | None = None,
     ) -> None:
         self._page = page
         self._exc = exc
         self._genres = genres or []
         self._countries = countries or []
+        self._statuses = statuses or []
         # PR 295: the editorial feed's `sort="views"` listing (page by page) - empty by
         # default, so a test about the regular listing sees only its own cards.
         self._featured = featured or []
@@ -70,6 +72,9 @@ class _FakeCatalog:
 
     async def list_countries(self) -> list[Country]:
         return self._countries
+
+    async def list_statuses(self) -> list[Label]:
+        return self._statuses
 
 
 def test_show_catalog_renders_countries_in_grid_data_attribute() -> None:
@@ -664,7 +669,9 @@ def test_show_catalog_genre_section_is_an_accordion_toggle() -> None:
 
     assert response.status_code == 200
     assert 'data-section-key="genres"' in response.text
-    toggle = re.search(r'data-role="catalog-filters-section-toggle"[^>]*>', response.text)
+    # PR 303: «Количество глав» (always there) comes before the genres section now.
+    genres_section = response.text.split('data-section-key="genres"', 1)[1]
+    toggle = re.search(r'data-role="catalog-filters-section-toggle"[^>]*>', genres_section)
     assert toggle is not None
     assert 'aria-expanded="true"' in toggle.group(0)
     assert 'aria-controls="catalog-filters-genres-options"' in toggle.group(0)

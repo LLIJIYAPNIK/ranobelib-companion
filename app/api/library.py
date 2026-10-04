@@ -30,6 +30,7 @@ from app.services.catalog import (
     get_catalog,
     list_countries,
     list_genres,
+    list_statuses,
     pick_random_title,
 )
 from app.services.client import get_client, open_client
@@ -52,10 +53,20 @@ CATALOG_SORT_OPTIONS = {
     "rate_avg": "По рейтингу",
     "random": "Случайно",
 }
+# PR 303: the «Количество глав» thresholds - CatalogDesktop/CatalogMobile's own presets,
+# a UI choice like the sort labels above, not domain data. Sent as `min_chapters`
+# (Catalog.list_titles(min_chapters=...), SDK >=0.12.0); 0 is «Любое», no filter.
+CATALOG_MIN_CHAPTERS_OPTIONS = (100, 500, 1000)
 
 
 def _is_editorial(
-    query: str | None, sort: str, genres: list[int], countries: list[int], tags: list[int]
+    query: str | None,
+    sort: str,
+    genres: list[int],
+    countries: list[int],
+    tags: list[int],
+    statuses: list[int],
+    min_chapters: int,
 ) -> bool:
     """PR 295 (Catalog handoff.md): the catalog's default "editorial" mode - no search,
     the default sort and no filter - gets the featured inserts; anything else is the
@@ -66,6 +77,8 @@ def _is_editorial(
         and not genres
         and not countries
         and not tags
+        and not statuses
+        and not min_chapters
     )
 
 
@@ -189,6 +202,8 @@ async def show_catalog(
     genres: Annotated[list[int] | None, Query()] = None,
     countries: Annotated[list[int] | None, Query()] = None,
     tags: Annotated[list[int] | None, Query()] = None,
+    statuses: Annotated[list[int] | None, Query()] = None,
+    min_chapters: Annotated[int, Query(ge=0)] = 0,
     tag_name: str | None = None,
     page: Annotated[int, Query(ge=1)] = 1,
     shown: Annotated[int, Query(ge=0)] = 0,
@@ -222,21 +237,30 @@ async def show_catalog(
     clicked tag's own already-known label (title.html already has it - it's the link's
     own text) through to the hint chip; only meaningful for the single-tag case a badge
     click produces today, so it's ignored if more than one tag id is present.
+
+    `statuses` / `min_chapters` (PR 303): the «Статус» and «Количество глав» groups,
+    straight through to `Catalog.list_titles(statuses=[...], min_chapters=...)` (SDK
+    >=0.12.0) - statuses match OR-style (a title has one status), like `countries`, and
+    their labels come from `list_statuses()`. `min_chapters=0` («Любое») is no filter.
     """
     genres = genres or []
     countries = countries or []
     tags = tags or []
+    statuses = statuses or []
     if sort == "random":
         # PR 230: the no-JS path (catalog-random-redirect.js normally never lets the form
         # submit sort=random) - same one-random-title redirect, not a reshuffled list.
-        params = _catalog_filter_params(query, genres, countries, tags, tag_name)
+        params = _catalog_filter_params(
+            query, genres, countries, tags, tag_name, statuses, min_chapters
+        )
         return RedirectResponse(url=f"/catalog/random?{urlencode(params)}", status_code=303)
     in_library = await _in_library(user)
     # PR 294: the «Библиотека» switch item shows the library's size here too.
     library_count = len(in_library) if in_library is not None else None
     all_genres = await list_genres()
     all_countries = await list_countries()
-    editorial = _is_editorial(query, sort, genres, countries, tags)
+    all_statuses = await list_statuses()
+    editorial = _is_editorial(query, sort, genres, countries, tags, statuses, min_chapters)
     async with get_catalog() as catalog:
         stream = await catalog_stream(
             catalog,
@@ -249,6 +273,8 @@ async def show_catalog(
             genres=genres,
             countries=countries,
             tags=tags,
+            statuses=statuses,
+            min_chapters=min_chapters or None,
         )
     genre_names_by_id = {genre.id: genre.name for genre in all_genres}
     country_names_by_id = {c.id: c.name for c in all_countries}
@@ -257,6 +283,8 @@ async def show_catalog(
     )
     selected_genre_names = [genre_names_by_id.get(g, str(g)) for g in genres]
     selected_country_names = [country_names_by_id.get(c, str(c)) for c in countries]
+    status_labels_by_id = {s.id: s.label for s in all_statuses}
+    selected_status_labels = [status_labels_by_id.get(s, str(s)) for s in statuses]
     return templates.TemplateResponse(
         request,
         "catalog.html",
@@ -276,6 +304,10 @@ async def show_catalog(
             "all_countries": all_countries,
             "countries": countries,
             "selected_country_names": selected_country_names,
+            "all_statuses": all_statuses,
+            "statuses": statuses,
+            "min_chapters": min_chapters,
+            "min_chapters_options": CATALOG_MIN_CHAPTERS_OPTIONS,
             "tags": tags,
             "selected_tag_names": selected_tag_names,
             "tag_name": tag_name,
@@ -288,6 +320,9 @@ async def show_catalog(
                 countries=countries,
                 tags=tags,
                 tag_name=tag_name,
+                statuses=statuses,
+                min_chapters=min_chapters,
+                status_labels=selected_status_labels,
                 genre_names=selected_genre_names,
                 country_names=selected_country_names,
                 tag_names=selected_tag_names,
@@ -304,6 +339,8 @@ async def random_catalog_title(
     genres: Annotated[list[int] | None, Query()] = None,
     countries: Annotated[list[int] | None, Query()] = None,
     tags: Annotated[list[int] | None, Query()] = None,
+    statuses: Annotated[list[int] | None, Query()] = None,
+    min_chapters: Annotated[int, Query(ge=0)] = 0,
     tag_name: str | None = None,
 ) -> RedirectResponse:
     """PR 230, "Случайно": straight to one random title matching the current filters,
@@ -313,13 +350,22 @@ async def random_catalog_title(
     genres = genres or []
     countries = countries or []
     tags = tags or []
+    statuses = statuses or []
     async with get_catalog() as catalog:
         title = await pick_random_title(
-            catalog, query=query or None, genres=genres, countries=countries, tags=tags
+            catalog,
+            query=query or None,
+            genres=genres,
+            countries=countries,
+            tags=tags,
+            statuses=statuses,
+            min_chapters=min_chapters or None,
         )
     if title is not None:
         return RedirectResponse(url=f"/titles/{title.slug_url}", status_code=303)
-    params = _catalog_filter_params(query, genres, countries, tags, tag_name)
+    params = _catalog_filter_params(
+        query, genres, countries, tags, tag_name, statuses, min_chapters
+    )
     params.append(("random_empty", "1"))
     return RedirectResponse(url=f"/catalog?{urlencode(params)}", status_code=303)
 
@@ -332,19 +378,27 @@ def _criteria_chips(
     countries: list[int],
     tags: list[int],
     tag_name: str | None,
+    statuses: list[int],
+    min_chapters: int,
+    status_labels: list[str],
     genre_names: list[str],
     country_names: list[str],
     tag_names: list[str],
 ) -> list[dict[str, str]]:
     """PR 295: the results mode's row of active criteria (Catalog handoff.md) - search,
-    a non-default sort, each genre, country and tag. Each chip links to /catalog with
-    every criterion but its own, so a click drops just that one; with none left the
-    catalog is back in the editorial mode."""
+    a non-default sort, each status and the chapter threshold (PR 303), each genre,
+    country and tag. Each chip links to /catalog with every criterion but its own, so a
+    click drops just that one; with none left the catalog is back in the editorial mode."""
     criteria: list[tuple[str, list[tuple[str, str | int]]]] = []
     if (query or "").strip():
         criteria.append((f"«{query.strip()}»", [("query", query.strip())]))  # type: ignore[union-attr]
     if sort != DEFAULT_CATALOG_SORT:
         criteria.append((CATALOG_SORT_OPTIONS.get(sort, sort), [("sort", sort)]))
+    criteria += [
+        (label, [("statuses", s)]) for s, label in zip(statuses, status_labels, strict=True)
+    ]
+    if min_chapters:
+        criteria.append((f"от {min_chapters} глав", [("min_chapters", min_chapters)]))
     criteria += [(name, [("genres", g)]) for g, name in zip(genres, genre_names, strict=True)]
     criteria += [
         (name, [("countries", c)]) for c, name in zip(countries, country_names, strict=True)
@@ -370,6 +424,8 @@ def _catalog_filter_params(
     countries: list[int],
     tags: list[int],
     tag_name: str | None,
+    statuses: list[int],
+    min_chapters: int,
 ) -> list[tuple[str, str | int]]:
     params: list[tuple[str, str | int]] = []
     if query:
@@ -377,6 +433,9 @@ def _catalog_filter_params(
     params += [("genres", g) for g in genres]
     params += [("countries", c) for c in countries]
     params += [("tags", t) for t in tags]
+    params += [("statuses", s) for s in statuses]
+    if min_chapters:
+        params.append(("min_chapters", min_chapters))
     if tag_name:
         params.append(("tag_name", tag_name))
     return params
@@ -401,6 +460,8 @@ async def catalog_page_fragment(
     genres: Annotated[list[int] | None, Query()] = None,
     countries: Annotated[list[int] | None, Query()] = None,
     tags: Annotated[list[int] | None, Query()] = None,
+    statuses: Annotated[list[int] | None, Query()] = None,
+    min_chapters: Annotated[int, Query(ge=0)] = 0,
     page: Annotated[int, Query(ge=1)] = 1,
     shown: Annotated[int, Query(ge=0)] = 0,
     featured: Annotated[int, Query(ge=0)] = 0,
@@ -412,7 +473,8 @@ async def catalog_page_fragment(
     genres = genres or []
     countries = countries or []
     tags = tags or []
-    editorial = _is_editorial(query, sort, genres, countries, tags)
+    statuses = statuses or []
+    editorial = _is_editorial(query, sort, genres, countries, tags, statuses, min_chapters)
     async with get_catalog() as catalog:
         stream = await catalog_stream(
             catalog,
@@ -425,6 +487,8 @@ async def catalog_page_fragment(
             genres=genres,
             countries=countries,
             tags=tags,
+            statuses=statuses,
+            min_chapters=min_chapters or None,
         )
     response = templates.TemplateResponse(
         request,
