@@ -214,7 +214,11 @@ def test_home_renders_signed_in_cinematic_dashboard(monkeypatch: pytest.MonkeyPa
     assert 'aria-label="Прогресс чтения" aria-valuenow="41"' in response.text
     assert 'id="today-title"' in response.text
     assert 'class="wn-home-reading"' in response.text
+    assert 'href="/library">Вся библиотека</a>' in response.text
+    assert "Вся библиотека →" not in response.text
     assert 'id="latest-downloads-title"' in response.text
+    assert 'href="/downloads">Все загрузки</a>' in response.text
+    assert "Все загрузки →" not in response.text
     assert "Отличная глава!" in response.text
     assert "/titles/6712--test-novel/chapters/1/5" in response.text
 
