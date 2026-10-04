@@ -214,6 +214,78 @@
         ><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M6 6l12 12M18 6 6 18"/></svg></button>
       </div>
       <div class="catalog-filters__body">
+        {# PR 303 (CatalogDesktop): «Статус» (several, OR) and «Количество глав» (one
+           threshold) come first, as in the design's filters popover - statuses from
+           list_statuses(), the thresholds are the design's presets. «Любое» is the
+           radio group's way back to no threshold. #}
+        {% if all_statuses %}
+        <section
+          class="catalog-filters__section"
+          data-role="catalog-filters-section"
+          data-section-key="statuses"
+        >
+          <h3 class="catalog-filters__section-title">
+            <button
+              class="catalog-filters__section-toggle"
+              type="button"
+              data-role="catalog-filters-section-toggle"
+              aria-expanded="true"
+              aria-controls="catalog-filters-statuses-options"
+            >Статус{% if statuses %} ({{ statuses | length }}){% endif %}</button>
+          </h3>
+          <div
+            class="catalog-filters__options"
+            id="catalog-filters-statuses-options"
+            data-role="catalog-filters-section-options"
+          >
+            {% for status in all_statuses %}
+            <label class="ui-checkbox catalog-filters__option">
+              <input
+                type="checkbox"
+                name="statuses"
+                value="{{ status.id }}"
+                form="catalog-search-form"
+                {% if status.id in statuses %}checked{% endif %}
+              >
+              <span>{{ status.label }}</span>
+            </label>
+            {% endfor %}
+          </div>
+        </section>
+        {% endif %}
+        <section
+          class="catalog-filters__section"
+          data-role="catalog-filters-section"
+          data-section-key="min-chapters"
+        >
+          <h3 class="catalog-filters__section-title">
+            <button
+              class="catalog-filters__section-toggle"
+              type="button"
+              data-role="catalog-filters-section-toggle"
+              aria-expanded="true"
+              aria-controls="catalog-filters-min-chapters-options"
+            >Количество глав{% if min_chapters %} (от {{ min_chapters }}){% endif %}</button>
+          </h3>
+          <div
+            class="catalog-filters__options"
+            id="catalog-filters-min-chapters-options"
+            data-role="catalog-filters-section-options"
+          >
+            {% for value in [0] + min_chapters_options | list %}
+            <label class="ui-checkbox catalog-filters__option">
+              <input
+                type="radio"
+                name="min_chapters"
+                value="{{ value }}"
+                form="catalog-search-form"
+                {% if value == min_chapters %}checked{% endif %}
+              >
+              <span>{{ "от " ~ value if value else "Любое" }}</span>
+            </label>
+            {% endfor %}
+          </div>
+        </section>
         {% if all_genres %}
         <section
           class="catalog-filters__section"
@@ -285,7 +357,7 @@
         </section>
         {% endif %}
       </div>
-      {# «Сбросить» drops genres/countries only - the search, sort and any tag filter
+      {# «Сбросить» drops statuses/chapters/genres/countries only - the search, sort and any tag filter
          (set from a title page badge, not from this panel) stay. #}
       <div class="catalog-filters__foot">
         <a
