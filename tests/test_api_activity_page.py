@@ -255,9 +255,12 @@ async def test_show_activity_read_today_card_links_to_the_last_chapter(
 
     assert "Том 2, глава 9" in response.text
     assert "1 глава сегодня" in response.text
-    assert '<a class="wn-activity-link" href="/titles/6712--test-novel/chapters/2/9">' in (
-        response.text
-    )
+    assert (
+        '<a class="wn-activity-link" href="/titles/6712--test-novel/chapters/2/9">'
+        "Продолжить</a>"
+    ) in response.text
+    assert "Продолжить →" not in response.text
+    assert '>Все загрузки</a>' in response.text
 
 
 async def test_show_activity_mentions_the_last_download_date(client: TestClient) -> None:

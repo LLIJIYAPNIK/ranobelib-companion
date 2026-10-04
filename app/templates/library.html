@@ -190,14 +190,14 @@
             <span class="wn-library-add-tile__icon" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M3 3h7v7H3zM14 3h7v7h-7zM3 14h7v7H3zM17.5 14v7M14 17.5h7"/></svg></span>
             <span class="wn-library-add-tile__title">Добавить из каталога</span>
             <span class="wn-library-add-tile__text">Найдите тайтл в каталоге и нажмите «В библиотеку» — или вставьте ссылку выше.</span>
-            <span class="wn-library-add-tile__link">Открыть каталог →</span>
+            <span class="wn-library-add-tile__link">Открыть каталог</span>
           </a>
         </div>
       </section>
       <div class="wn-library-end" data-role="library-end">
         <span class="wn-library-end__rule" aria-hidden="true"></span>
         <span class="wn-library-end__text" data-role="library-end-text">Это вся библиотека · {{ titles_word(items | length) }}</span>
-        <a class="wn-library-end__link" href="/catalog" data-role="library-end-catalog">Найти новое в каталоге →</a>
+        <a class="wn-library-end__link" href="/catalog" data-role="library-end-catalog">Найти новое в каталоге</a>
         <button type="button" class="wn-library-end__reset" data-role="library-end-reset" hidden>Сбросить условия</button>
         <span class="wn-library-end__rule wn-library-end__rule--right" aria-hidden="true"></span>
       </div>
@@ -209,7 +209,7 @@
         <p class="catalog-empty__text" data-role="library-no-results-text">Под эти условия не подходит ни один тайтл из библиотеки.</p>
         <div class="wn-library-no-results__actions">
           <button type="button" class="catalog-empty__reset" data-role="library-no-results-reset">Сбросить условия</button>
-          <a class="wn-library-end__link" href="/catalog" data-role="library-no-results-catalog">Искать в каталоге →</a>
+          <a class="wn-library-end__link" href="/catalog" data-role="library-no-results-catalog">Искать в каталоге</a>
         </div>
       </div>
       {% else %}

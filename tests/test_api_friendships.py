@@ -463,6 +463,8 @@ async def test_friends_invite_card_without_a_nickname_points_to_settings(
 
     assert 'data-role="friends-invite-copy"' not in response.text
     assert 'href="/settings/account">настройках аккаунта</a>' in response.text
+    assert 'href="/settings/account">Настройки приватности</a>' in response.text
+    assert "Настройки приватности →" not in response.text
 
 
 async def test_friends_privacy_switch_flips_only_currently_reading(client: TestClient) -> None:

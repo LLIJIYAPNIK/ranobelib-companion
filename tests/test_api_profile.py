@@ -678,7 +678,7 @@ async def test_profile_omits_show_all_link_within_the_preview_limit(
     assert _FRIEND_PREVIEW_LIMIT > 1  # sanity - a single friend must stay within it
     response = client.get(f"/profile/{alice_id}")
 
-    assert "Все →" not in response.text
+    assert f'href="/profile/{alice_id}/friends"' not in response.text
 
 
 async def test_profile_shows_a_show_all_link_over_the_preview_limit(
@@ -698,8 +698,8 @@ async def test_profile_shows_a_show_all_link_over_the_preview_limit(
     assert response.status_code == 200
     count = _FRIEND_PREVIEW_LIMIT + 1
     assert f'<span class="wn-profile-card__count">{count}</span>' in response.text
-    assert f'href="/profile/{alice_id}/friends"' in response.text
-    assert "Все →" in response.text
+    assert f'href="/profile/{alice_id}/friends">Все</a>' in response.text
+    assert "Все →" not in response.text
     # only the preview limit's worth of rows actually render on the profile page itself
     assert response.text.count('class="wn-profile-friend"') == _FRIEND_PREVIEW_LIMIT
 
@@ -936,7 +936,8 @@ async def test_profile_library_preview_shows_at_most_seven_titles(client: TestCl
     assert _LIBRARY_PREVIEW_LIMIT == 7
     assert response.text.count('class="wn-profile-poster"') == 7
     assert "9 тайтлов" in response.text
-    assert 'href="/library">Открыть библиотеку →</a>' in response.text
+    assert 'href="/library">Открыть библиотеку</a>' in response.text
+    assert "Открыть библиотеку →" not in response.text
 
 
 async def test_profile_calendar_counts_days_with_reading(client: TestClient) -> None:

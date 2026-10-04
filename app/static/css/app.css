@@ -5947,6 +5947,20 @@ a.ui-title-card:focus-visible .ui-title-card__cover {
   text-decoration: none;
 }
 
+@media (hover: hover) {
+  .wn-home-section-head a:hover {
+    color: #d3c8ff;
+    text-decoration: underline;
+    text-underline-offset: 3px;
+  }
+}
+
+.wn-home-section-head a:focus-visible {
+  outline: none;
+  border-radius: 4px;
+  box-shadow: var(--wn-focus-ring);
+}
+
 .wn-home-today__stats {
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
@@ -6505,11 +6519,6 @@ a.ui-title-card:focus-visible .ui-title-card__cover {
     color: #b7a6ff;
     font: 700 14px/1.2 var(--wn-font-ui);
     white-space: nowrap;
-  }
-
-  .wn-home-today .wn-home-section-head a::after {
-    content: " →";
-    white-space: pre;
   }
 
   .wn-home-today__stats {
@@ -9301,6 +9310,14 @@ a.catalog-card__action {
   font: 700 14px/1 var(--wn-font-ui);
   text-decoration: none;
   white-space: nowrap;
+}
+
+@media (hover: hover) {
+  .wn-library-end__link:hover {
+    color: #d3c8ff;
+    text-decoration: underline;
+    text-underline-offset: 3px;
+  }
 }
 
 .wn-library-end__link:focus-visible {
@@ -12363,7 +12380,7 @@ a.catalog-card__action {
 }
 
 /* «В библиотеке ничего не нашлось» on phones (LibraryMobile preset=results, empty):
-   a quiet note - no icon, H3 20, one 44px reset, then «Искать в каталоге →». */
+   a quiet note - no icon, H3 20, one 44px reset, then «Искать в каталоге». */
 @media (max-width: 767px) {
   .wn-library .wn-library-no-results {
     gap: 12px;

@@ -85,7 +85,7 @@
           <span class="wn-activity-today__count">{{ first.chapters_read }} {{ plural(first.chapters_read, "глава", "главы", "глав") }} сегодня</span>
           <span class="wn-activity-today__spacer"></span>
           {% if highlight.volume and highlight.number %}
-          <a class="wn-activity-link" href="/titles/{{ first.slug_url }}/chapters/{{ highlight.volume }}/{{ highlight.number }}">Продолжить →</a>
+          <a class="wn-activity-link" href="/titles/{{ first.slug_url }}/chapters/{{ highlight.volume }}/{{ highlight.number }}">Продолжить</a>
           {% endif %}
         </div>
       </div>
@@ -133,7 +133,7 @@
     <section class="wn-activity-card wn-activity-events" aria-labelledby="activity-events-title">
       <div class="wn-activity-card__head">
         <h2 class="wn-activity-card__title" id="activity-events-title">История событий</h2>
-        <a class="wn-activity-link wn-activity-card__more" href="/downloads">Все загрузки →</a>
+        <a class="wn-activity-link wn-activity-card__more" href="/downloads">Все загрузки</a>
       </div>
       {% if overview.events %}
       <ul class="wn-activity-events__list" data-role="activity-events">

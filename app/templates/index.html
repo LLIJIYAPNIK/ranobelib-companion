@@ -102,7 +102,7 @@
   <section class="wn-home__section" aria-labelledby="reading-title">
     <div class="wn-home-section-head wn-home-section-head--large">
       <div><h2 id="reading-title">Читаю</h2><span>{{ dashboard.reading | length }} тайтла</span></div>
-      <a href="/library">Вся библиотека →</a>
+      <a href="/library">Вся библиотека</a>
     </div>
     <div class="wn-home-reading">
       {% for item in dashboard.reading %}
@@ -153,7 +153,7 @@
   <section class="wn-home__section" aria-labelledby="latest-downloads-title">
     <div class="wn-home-section-head wn-home-section-head--large">
       <h2 id="latest-downloads-title">Последние загрузки</h2>
-      <a href="/downloads">Все загрузки →</a>
+      <a href="/downloads">Все загрузки</a>
     </div>
     <div class="wn-home-downloads">
       {% for item in dashboard.recent_downloads %}

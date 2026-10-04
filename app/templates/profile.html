@@ -141,7 +141,7 @@
         <h2 class="wn-profile-card__title" id="profile-friends-title">Друзья</h2>
         <span class="wn-profile-card__count">{{ friend_count }}</span>
         {% if friend_count > friend_preview | length %}
-        <a class="wn-profile-link wn-profile-card__more" href="/profile/{{ profile_user.id }}/friends">Все →</a>
+        <a class="wn-profile-link wn-profile-card__more" href="/profile/{{ profile_user.id }}/friends">Все</a>
         {% endif %}
       </div>
       <ul class="wn-profile-friends__list">
@@ -167,7 +167,7 @@
     <div class="wn-profile-card__head">
       <h2 class="wn-profile-library__title" id="profile-library-title">Библиотека</h2>
       <span class="wn-profile-card__aside">{{ library_items | length }} {% if library_items | length % 10 == 1 and library_items | length % 100 != 11 %}тайтл{% elif library_items | length % 10 in [2, 3, 4] and library_items | length % 100 not in [12, 13, 14] %}тайтла{% else %}тайтлов{% endif %}</span>
-      {% if is_own_profile %}<a class="wn-profile-link wn-profile-card__more" href="/library">Открыть библиотеку →</a>{% endif %}
+      {% if is_own_profile %}<a class="wn-profile-link wn-profile-card__more" href="/library">Открыть библиотеку</a>{% endif %}
     </div>
     <div class="wn-profile-library__grid" data-role="profile-library">
       {% for item in library_preview %}

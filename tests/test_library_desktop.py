@@ -202,7 +202,7 @@ async def test_one_grid_of_every_title_ending_in_the_add_tile(client: TestClient
     assert f"{shelf_title}Моя библиотека</h2>" in html
     assert 'data-role="library-rest">ещё 2 тайтла</span>' in html
     assert 'data-role="library-end-text">Это вся библиотека · 3 тайтла</span>' in html
-    assert 'href="/catalog" data-role="library-end-catalog">Найти новое в каталоге →</a>' in html
+    assert 'href="/catalog" data-role="library-end-catalog">Найти новое в каталоге</a>' in html
 
 
 async def test_shelf_counts_everything_without_a_hero(client: TestClient) -> None:
@@ -304,7 +304,7 @@ async def test_nothing_found_card_is_ready_and_hidden(client: TestClient) -> Non
     assert empty.startswith(' role="status" hidden>')
     assert '<h2 class="catalog-empty__title">В библиотеке ничего не нашлось</h2>' in empty
     assert ">Сбросить условия</button>" in empty
-    assert 'href="/catalog" data-role="library-no-results-catalog">Искать в каталоге →</a>' in empty
+    assert 'href="/catalog" data-role="library-no-results-catalog">Искать в каталоге</a>' in empty
 
 
 def test_nothing_found_names_the_search_and_carries_it_to_the_catalog() -> None:
