@@ -21,7 +21,9 @@
 // the action sheet, «Удалить из библиотеки» swaps it for the confirmation (headed
 // «Удалить из библиотеки?», a pink top edge in app.css) in the same sheet.
 (() => {
-  const root = document.querySelector('[data-role="library-titles"]');
+  const root = document.querySelector(
+    '[data-role="library-titles"], [data-role="continue-reading-root"]'
+  );
   if (!root) return;
 
   const UNDO_MS = 6000;
@@ -105,7 +107,8 @@
     const escaped = CSS.escape(slug);
     return [...document.querySelectorAll(
       `[data-role="library-item"][data-slug-url="${escaped}"], ` +
-        `[data-role="library-hero"][data-slug-url="${escaped}"]`
+        `[data-role="library-hero"][data-slug-url="${escaped}"], ` +
+        `[data-role="home-reading-hero"][data-slug-url="${escaped}"]`
     )];
   }
 

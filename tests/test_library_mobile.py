@@ -175,9 +175,10 @@ def test_hero_is_compact_with_the_cover_beside_the_copy() -> None:
 
 
 def test_hero_toc_moves_into_its_action_sheet_on_phones() -> None:
-    page = (ROOT / "app/templates/library.html").read_text(encoding="utf-8")
-    assert 'actions_menu(hero_entry.slug_url, hero_name, toc="phone")' in page
-    assert '{% if toc == "phone" %} wn-library-menu__item--phone-only{% endif %}' in page
+    hero = (ROOT / "app/templates/_continue_reading_hero.html").read_text(encoding="utf-8")
+    actions = (ROOT / "app/templates/_library_actions.html").read_text(encoding="utf-8")
+    assert 'library_actions_menu(entry.slug_url, name, toc="phone")' in hero
+    assert '{% if toc == "phone" %} wn-library-menu__item--phone-only{% endif %}' in actions
     assert re.search(
         r"@media \(min-width: 768px\) \{\n  \.wn-library-menu__item--phone-only \{\n"
         r"    display: none;",
@@ -190,9 +191,9 @@ def test_card_menu_opens_as_a_bottom_sheet_on_phones() -> None:
     assert 'const phone = window.matchMedia("(max-width: 767px)");' in script
     assert "if (phone.matches && window.bottomSheet) {" in script
     assert 'title: confirming ? "Удалить из библиотеки?" : button.dataset.titleName,' in script
-    page = (ROOT / "app/templates/library.html").read_text(encoding="utf-8")
-    assert 'data-title-name="{{ name }}"' in page
-    assert 'data-role="library-confirm-cancel" data-autofocus>Отмена</button>' in page
+    actions = (ROOT / "app/templates/_library_actions.html").read_text(encoding="utf-8")
+    assert 'data-title-name="{{ name }}"' in actions
+    assert 'data-role="library-confirm-cancel" data-autofocus>Отмена</button>' in actions
 
 
 def test_confirm_sheet_has_a_pink_top_edge_and_48px_buttons() -> None:

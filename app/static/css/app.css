@@ -9796,6 +9796,19 @@ a.catalog-card__action {
   position: relative;
 }
 
+/* PR 306: on the home dashboard the shared hero needs the whole stage width for the
+   cover / copy / progress composition. The dashboard rail follows as two useful cards;
+   the library keeps its existing flow below the toolbar. */
+.wn-home .wn-continue-hero--home {
+  grid-column: 1 / -1;
+}
+
+.wn-home .wn-continue-hero--home + .wn-home__rail {
+  grid-column: 1 / -1;
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
 .wn-library-hero__halo,
 .wn-library-hero__backdrop,
 .wn-library-hero__scrim,
@@ -12044,6 +12057,160 @@ a.catalog-card__action {
 @media (max-width: 359px) {
   .wn-library .wn-library-hero__inner {
     grid-template-columns: 76px minmax(0, 1fr);
+  }
+}
+
+/* PR 280's home hero stays more spacious than PR 300's compact library card. Both use
+   the same markup, but at tablet/phone widths the home keeps its responsive cover beside
+   the copy and lets «Продолжить» / «Оглавление» wrap naturally around the action menu. */
+@media (max-width: 1100px) {
+  .wn-home .wn-continue-hero--home .wn-library-hero__halo,
+  .wn-home .wn-continue-hero--home .wn-library-hero__cover-glow,
+  .wn-home .wn-continue-hero--home .wn-library-hero__eyebrow-sep {
+    display: none;
+  }
+
+  .wn-home .wn-continue-hero--home .wn-library-hero__card {
+    min-height: 0;
+    padding: 20px;
+    border-color: rgb(255 255 255 / 9%);
+    border-radius: var(--wn-radius-xl);
+  }
+
+  .wn-home .wn-continue-hero--home .wn-library-hero__backdrop {
+    inset: -48px;
+    display: block;
+    width: calc(100% + 96px);
+    height: calc(100% + 96px);
+    filter: blur(44px) saturate(0.7) brightness(0.55);
+  }
+
+  .wn-home .wn-continue-hero--home .wn-library-hero__scrim {
+    display: block;
+    background: linear-gradient(
+      180deg,
+      rgb(12 12 18 / 55%) 0%,
+      rgb(12 12 18 / 82%) 55%,
+      rgb(12 12 18 / 94%) 100%
+    );
+  }
+
+  .wn-home .wn-continue-hero--home .wn-library-hero__inner {
+    display: grid;
+    grid-template-columns: clamp(88px, 20vw, 136px) minmax(0, 1fr);
+    grid-template-rows: auto auto auto auto auto;
+    gap: 8px 18px;
+    min-height: 0;
+    padding: 0;
+  }
+
+  .wn-home .wn-continue-hero--home .wn-library-hero__copy,
+  .wn-home .wn-continue-hero--home .wn-library-hero__eyebrow {
+    display: contents;
+  }
+
+  .wn-home .wn-continue-hero--home .wn-library-hero__cover {
+    grid-row: 1 / 4;
+    grid-column: 1;
+    width: auto;
+    overflow: hidden;
+    background: #1b1a25;
+    box-shadow:
+      0 0 0 1px rgb(255 255 255 / 14%),
+      0 18px 36px rgb(0 0 0 / 50%);
+  }
+
+  .wn-home .wn-continue-hero--home .wn-library-hero__cover-img {
+    border-radius: 0;
+    box-shadow: none;
+  }
+
+  .wn-home .wn-continue-hero--home .wn-library-hero__eyebrow-main,
+  .wn-home .wn-continue-hero--home .wn-library-hero__title,
+  .wn-home .wn-continue-hero--home .wn-library-hero__where,
+  .wn-home .wn-continue-hero--home .wn-library-hero__last {
+    grid-column: 2;
+  }
+
+  .wn-home .wn-continue-hero--home .wn-library-hero__title {
+    max-width: 100%;
+    font: 800 clamp(19px, 4vw, 27px) / 1.2 var(--wn-font-ui);
+    overflow-wrap: anywhere;
+  }
+
+  .wn-home .wn-continue-hero--home .wn-library-hero__progress {
+    grid-row: 4;
+    grid-column: 1 / -1;
+    flex-direction: row;
+    align-items: center;
+    gap: 10px;
+    width: auto;
+    margin-top: 10px;
+    padding: 0;
+    border: 0;
+  }
+
+  .wn-home .wn-continue-hero--home .wn-library-hero__progress-label,
+  .wn-home .wn-continue-hero--home .wn-library-hero__stopped {
+    display: none;
+  }
+
+  .wn-home .wn-continue-hero--home .wn-library-hero__bar {
+    flex: 1;
+    height: 6px;
+  }
+
+  .wn-home .wn-continue-hero--home .wn-library-hero__pct {
+    flex: none;
+    order: 1;
+    color: #3dd6c3;
+    font: 800 14px/1 var(--wn-font-ui);
+    letter-spacing: 0;
+  }
+
+  .wn-home .wn-continue-hero--home .wn-library-hero__pct span {
+    color: inherit;
+    font: inherit;
+  }
+
+  .wn-home .wn-continue-hero--home .wn-library-hero__actions {
+    grid-row: 5;
+    grid-column: 1 / -1;
+    flex-wrap: wrap;
+    gap: 8px;
+    margin-top: 10px;
+  }
+
+  .wn-home .wn-continue-hero--home .wn-library-hero__continue {
+    flex: 1 1 160px;
+    justify-content: center;
+  }
+
+  .wn-home .wn-continue-hero--home .wn-library-hero__toc {
+    display: inline-flex;
+    flex: 1 1 120px;
+    justify-content: center;
+  }
+
+  .wn-home .wn-continue-hero--home .wn-library-hero__more {
+    flex: none;
+  }
+}
+
+@media (max-width: 767px) {
+  .wn-home .wn-continue-hero--home + .wn-home__rail {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 359px) {
+  .wn-home .wn-continue-hero--home .wn-library-hero__card {
+    padding: 14px;
+  }
+
+  .wn-home .wn-continue-hero--home .wn-library-hero__inner {
+    grid-template-columns: 76px minmax(0, 1fr);
+    gap-inline: 14px;
   }
 }
 
