@@ -7086,7 +7086,7 @@ a.ui-title-card:focus-visible .ui-title-card__cover {
 }
 
 /* PR 296: the catalog card (CatalogCard.dc.html) - 2:3 cover with a bottom scrim,
-   title, «жанр · статус», «N гл.», the corner action. The desktop «cinema» hover
+   title, «жанр · статус», the corner action. The desktop «cinema» hover
    (lift, zoom, the cover's own blurred glow) is in the CatalogDesktop block. */
 .catalog-card {
   position: relative;
@@ -8609,10 +8609,9 @@ a.catalog-card__action {
   }
 }
 
-/* The card's status sits in «жанр · статус» on desktop and in «статус · N гл.» on
+/* The card's status sits in «жанр · статус» on desktop and on a line of its own on
    phones (CatalogCard grid/row) - _catalog_cards.html renders it in both. */
-.catalog-card__sub-status,
-.catalog-card__sub--status-only {
+.catalog-card__sub {
   display: none;
 }
 
@@ -8623,11 +8622,7 @@ a.catalog-card__action {
     display: none;
   }
 
-  .catalog-card__sub-status {
-    display: inline;
-  }
-
-  .catalog-card__sub--status-only {
+  .catalog-card__sub {
     display: block;
   }
 
@@ -8653,7 +8648,7 @@ a.catalog-card__action {
   }
 
   /* CatalogCard row - the list view (catalog-mobile.js): a 64px cover, the title in
-     full, «жанр · статус · N гл.», and the library button as a 44px outlined square. */
+     full, «жанр · статус», and the library button as a 44px outlined square. */
   .wn-catalog .catalog-grid[data-view="list"] {
     grid-template-columns: minmax(0, 1fr);
     gap: 10px;
@@ -8688,7 +8683,7 @@ a.catalog-card__action {
     box-shadow: none;
   }
 
-  /* One run of text under the title, so «жанр · статус · N гл.» wraps word by word. */
+  /* One run of text under the title, so «жанр · статус» wraps word by word. */
   .catalog-grid[data-view="list"] .catalog-card__body {
     display: block;
     flex: 1;
@@ -8753,7 +8748,7 @@ a.catalog-card__action {
 
   /* FeaturedCard mobile: the whole row, a horizontal block shorter than one card
      (≈270px) - the cover (92px, 80px under 360) beside eyebrow, title (3 lines),
-     «статус · N глав» and two genres, then the description and «Открыть тайтл» + a
+     «статус» and two genres, then the description and «Открыть тайтл» + a
      44px «В библиотеку» across the full width. The cover blurred and desaturated is the
      backdrop. The copy column's children join the inner grid (display: contents), so
      the description and the buttons can run under the cover. */

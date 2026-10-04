@@ -101,13 +101,15 @@ async def list_titles_any_genre(
     `list_titles()` listing per genre, merged and re-paginated here.
 
     TEMPORARY workaround (PR 228): the ranobelib.me API - and so `Catalog.list_titles()`
-    in SDK 0.9.0, the latest release - only filters genres with AND semantics and has no
+    in SDK 0.12.0, the latest release - only filters genres with AND semantics and has no
     "any of" switch. This fan-out belongs in the SDK, not here.
     TODO(PR 228): replace with an SDK-side OR option once one exists.
 
     Merge order: every per-genre listing already comes back sorted by the API by the same
-    `sort`, but `Title` carries none of the fields most sorts use (views, rating,
-    last_chapter_at, created_at), so the lists can't be re-sorted by that key here.
+    `sort`, but listing items carry none of the values most sorts use: `Title` has no
+    views, rating or created_at, and `last_chapter_at` (SDK 0.12.0) is filled in by
+    `get_info()` only - it's always None on `list_titles()` items (ranobelib-python-sdk#74,
+    PR 304). So the lists can't be re-sorted by that key here.
     Instead they're interleaved round-robin by rank (1st of each genre, then 2nd of each,
     ...), skipping titles already emitted - a title in two selected genres appears once.
     That keeps each genre's own order and puts the top results of every genre on the

@@ -186,43 +186,39 @@ def _title(**overrides: object) -> Title:
         "age_restriction": Label(id=0, label="16+"),
         "status": Label(id=1, label="Онгоинг"),
         "genres": [Genre(id=5, name="Тёмное фэнтези"), Genre(id=6, name="Выживание")],
-        "chapter_count": 1133,
     }
     fields.update(overrides)
     return Title(**fields)
 
 
-def test_card_shows_title_genre_status_and_chapter_count() -> None:
+def test_card_shows_title_genre_and_status() -> None:
     card = _card_html(_title())
 
     assert 'href="/titles/7--dragon" title="Последнее пламя в долгой ночи"' in card
     assert '<span class="catalog-card__title">Последнее пламя в долгой ночи</span>' in card
     # PR 299: the status is in both lines - «жанр · статус» shows on desktop,
-    # «статус · N гл.» on phones (app.css); the count keeps no-break spaces.
+    # «статус» on its own on phones (app.css).
     assert (
         '<span class="catalog-card__meta">Тёмное фэнтези'
         '<span class="catalog-card__meta-status"> · Онгоинг</span></span>'
     ) in card
-    assert (
-        '<span class="catalog-card__sub">'
-        '<span class="catalog-card__sub-status">Онгоинг · </span>1 133 гл.</span>'
-    ) in card
+    assert '<span class="catalog-card__sub">Онгоинг</span>' in card
+    # PR 304/305: the listing never has a chapter count (SDK #74) - the card has no
+    # «N гл.» line, even for a Title that happens to carry one.
+    assert "гл." not in _card_html(_title(chapter_count=1133))
     assert 'class="catalog-card__glow" src="https://example.com/c.jpg"' in card
     assert 'href="/login" aria-label="Войдите, чтобы добавить' in card  # a guest
 
 
-def test_card_without_genres_chapters_or_cover_drops_those_lines() -> None:
-    card = _card_html(_title(genres=[], chapter_count=None, cover=Cover()))
+def test_card_without_genres_or_cover_drops_those_lines() -> None:
+    card = _card_html(_title(genres=[], cover=Cover()))
 
     assert (
         '<span class="catalog-card__meta catalog-card__meta--status-only">'
         '<span class="catalog-card__meta-status">Онгоинг</span></span>'
     ) in card
-    # Only the status left for the second line - shown on phones, hidden on desktop.
-    assert (
-        '<span class="catalog-card__sub catalog-card__sub--status-only">'
-        '<span class="catalog-card__sub-status">Онгоинг</span></span>'
-    ) in card
+    # The second line is the status - shown on phones, hidden on desktop.
+    assert '<span class="catalog-card__sub">Онгоинг</span>' in card
     assert "catalog-card__glow" not in card
     assert "<img" not in card
 
@@ -257,14 +253,13 @@ def test_featured_card_carries_the_design_content() -> None:
         rus_name="Я стал наследным принцем Франции",
         summary="Историк просыпается в теле дофина.",
         genres=[Genre(id=i, name=f"Жанр {i}") for i in range(1, 6)],
-        chapter_count=812,
     )
     first = _featured_html([top, _title(id=1002, slug_url="1002--x")])[0]
 
     assert 'aria-label="Популярно на RanobeLib: Я стал наследным принцем Франции"' in first
     assert "Один из самых просматриваемых" in first
     assert '<h3 class="catalog-featured__name">Я стал наследным принцем Франции</h3>' in first
-    assert '<p class="catalog-featured__facts">Онгоинг · 812 глав</p>' in first
+    assert '<p class="catalog-featured__facts">Онгоинг</p>' in first
     assert "Историк просыпается в теле дофина." in first
     assert first.count("<li>Жанр") == 3
     assert 'class="catalog-featured__open" href="/titles/1001--prince"' in first
@@ -286,19 +281,6 @@ def test_even_inserts_flip_the_cover_to_the_right() -> None:
     classes = re.findall(r'class="(catalog-featured(?: catalog-featured--flip)?)"', html)
     flip = "catalog-featured catalog-featured--flip"
     assert classes == ["catalog-featured", flip, "catalog-featured"]
-
-
-def test_chapter_plurals_on_the_featured_card() -> None:
-    cases = [
-        (1, "1 глава"),
-        (3, "3 главы"),
-        (11, "11 глав"),
-        (22, "22 главы"),
-        (1205, "1 205 глав"),
-    ]
-    for count, word in cases:
-        card = _featured_html([_title(id=1001, slug_url="1001--x", chapter_count=count)])[0]
-        assert f"Онгоинг · {word}</p>" in card, count
 
 
 def test_featured_desktop_layers_follow_the_design() -> None:

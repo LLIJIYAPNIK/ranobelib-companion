@@ -2,13 +2,17 @@
    catalog.html or appended by catalog-scroll.js.
    PR 296: the card is CatalogCard variant="cinema" (CatalogCard.dc.html) - 2:3 cover
    with a bottom scrim and, on desktop, a blurred copy of itself as the hover glow;
-   title (2 lines), «жанр · статус», «N гл.». No update date or «+N главы» badge yet:
-   the SDK doesn't return the last chapter's date (ranobelib-python-sdk#67).
+   title (2 lines), «жанр · статус». No chapter count, update date or «+N главы» badge:
+   the catalog listing doesn't return them - in SDK 0.12.0 `chapter_count` and
+   `last_chapter_at` are filled in by `get_info()` only and stay None on
+   `list_titles()` items, and the API has no way to get them for a page
+   (ranobelib-python-sdk#74). One `get_info()` per card would be an N+1 per page,
+   so the lines are dropped from the catalog spec (PR 304), not worked around.
    PR 295: `items` is the feed (app/services/catalog.py's StreamItem) - regular cards,
    and in the editorial mode a featured insert after every 12 of them, spanning the
    whole row - FeaturedCard (PR 296, FeaturedCard.dc.html): the cover blurred as the
    backdrop under a scrim, the cover itself with its own glow, «Популярно на RanobeLib»,
-   title, «статус · N глав», description, genres and «Открыть тайтл»; even inserts flip
+   title, «статус», description, genres and «Открыть тайтл»; even inserts flip
    the cover to the right. «Выпуск N» is the insert's number on the feed, not a rank.
    PR 298: the one action on both cards is «В библиотеку» / «В библиотеке» (+ / a check
    on teal) - not a favorite. catalog-library-toggle.js adds or removes the title without
@@ -18,14 +22,6 @@
    items too (CatalogDesktop.dc.html) - «Свежие обновления» opening the first page,
    «Продолжить каталог» after every insert that isn't the end of the feed. They're
    navigation inside the one feed, not separate listings; the results mode has none. #}
-{# PR 299: no-break spaces - «37 038 гл.» never splits in the phone list view. #}
-{% macro chapters_label(count) -%}
-{{ "{:,}".format(count) | replace(",", " ") }} гл.
-{%- endmacro %}
-{% macro chapters_long(count) -%}
-{% set n10, n100 = count % 10, count % 100 -%}
-{{ "{:,}".format(count) | replace(",", " ") }} {% if n10 == 1 and n100 != 11 %}глава{% elif n10 in [2, 3, 4] and n100 not in [12, 13, 14] %}главы{% else %}глав{% endif %}
-{%- endmacro %}
 {% macro library_toggle(slug_url, name, featured=false) -%}
 {% set plus %}<svg class="catalog-lib__plus" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg><svg class="catalog-lib__check" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m5 12.5 4.5 4.5L19 7.5"/></svg>{% endset %}
 {% if in_library is not defined or in_library is none %}
@@ -64,7 +60,6 @@
 {% set name = title.rus_name or title.name %}
 {% set cover = title.cover.default or title.cover.md or title.cover.thumbnail %}
 {% if item.kind == "featured" %}
-{% set facts = [title.status.label if title.status else none, chapters_long(title.chapter_count) if title.chapter_count else none] | select | list %}
 <article
   class="catalog-featured{% if item.issue is even %} catalog-featured--flip{% endif %}"
   data-role="catalog-featured" data-slug-url="{{ title.slug_url }}" data-issue="{{ item.issue }}"
@@ -86,7 +81,7 @@
           <span class="catalog-featured__eyebrow-sub">Один из самых просматриваемых</span>
         </div>
         <h3 class="catalog-featured__name">{{ name }}</h3>
-        {% if facts %}<p class="catalog-featured__facts">{{ facts | join(" · ") }}</p>{% endif %}
+        {% if title.status %}<p class="catalog-featured__facts">{{ title.status.label }}</p>{% endif %}
         {% if title.summary %}<p class="catalog-featured__summary">{{ title.summary | truncate(320) }}</p>{% endif %}
         {% if title.genres %}
         <ul class="catalog-featured__genres" aria-label="Жанры">
@@ -109,7 +104,7 @@
 {% endif %}
 {% else %}
 {# PR 299: phones split the lines the other way (CatalogCard grid/row: «жанр», then
-   «статус · N гл.») - the status is in both lines and CSS shows one of them. #}
+   «статус») - the status is in both lines and CSS shows one of them. #}
 {% set genre = title.genres[0].name if title.genres else none %}
 {% set status = title.status.label if title.status else none %}
 <div class="catalog-card">
@@ -129,12 +124,7 @@
         {%- if status %}<span class="catalog-card__meta-status">{% if genre %} · {% endif %}{{ status }}</span>{% endif -%}
       </span>
       {%- endif %}
-      {%- if status or title.chapter_count -%}
-      <span class="catalog-card__sub{% if not title.chapter_count %} catalog-card__sub--status-only{% endif %}">
-        {%- if status %}<span class="catalog-card__sub-status">{{ status }}{% if title.chapter_count %} · {% endif %}</span>{% endif -%}
-        {%- if title.chapter_count %}{{ chapters_label(title.chapter_count) }}{% endif -%}
-      </span>
-      {%- endif %}
+      {%- if status %}<span class="catalog-card__sub">{{ status }}</span>{% endif %}
     </span>
   </a>
   {{ library_toggle(title.slug_url, name) }}
