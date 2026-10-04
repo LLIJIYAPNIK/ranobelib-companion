@@ -6167,43 +6167,6 @@ a.ui-title-card:focus-visible .ui-title-card__cover {
   color: var(--wn-text);
 }
 
-.wn-home-open-card {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  min-height: 246px;
-  padding: var(--wn-space-2);
-  border: 1px dashed var(--wn-border-strong);
-  border-radius: var(--wn-radius-md);
-  color: var(--wn-text-secondary);
-  text-align: center;
-  text-decoration: none;
-}
-
-.wn-home-open-card > span {
-  display: grid;
-  place-items: center;
-  width: 40px;
-  height: 40px;
-  margin-bottom: 12px;
-  border-radius: 50%;
-  background: var(--wn-surface-raised);
-  color: var(--wn-teal);
-  font-size: 24px;
-}
-
-.wn-home-open-card b {
-  color: var(--wn-text);
-  font-size: 13px;
-}
-
-.wn-home-open-card small {
-  margin-top: 4px;
-  color: var(--wn-text-muted);
-  font-size: 11px;
-}
-
 .wn-home-empty-card,
 .wn-home .home-guest {
   border-color: var(--wn-border-strong);
@@ -6567,10 +6530,6 @@ a.ui-title-card:focus-visible .ui-title-card__cover {
 
   .wn-home__recent-grid {
     grid-template-columns: repeat(2, minmax(0, 1fr));
-  }
-
-  .wn-home-open-card {
-    min-height: 218px;
   }
 
   .wn-home-download {
