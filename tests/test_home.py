@@ -207,9 +207,11 @@ def test_home_renders_signed_in_cinematic_dashboard(monkeypatch: pytest.MonkeyPa
         app.dependency_overrides.pop(get_current_user, None)
 
     assert response.status_code == 200
-    assert 'class="wn-home-hero__backdrop"' in response.text
-    assert "Продолжить · Глава 92" in response.text
-    assert 'aria-label="Прочитано 41%"' in response.text
+    assert 'data-role="home-reading-hero"' in response.text
+    assert 'class="wn-library-hero__backdrop"' in response.text
+    assert "Продолжить · Гл. 92" in response.text
+    assert 'href="/titles/6712--test-novel#title-panel-toc"' in response.text
+    assert 'aria-label="Прогресс чтения" aria-valuenow="41"' in response.text
     assert 'id="today-title"' in response.text
     assert 'class="wn-home-reading"' in response.text
     assert 'id="latest-downloads-title"' in response.text
