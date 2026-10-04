@@ -355,7 +355,8 @@ async def test_run_download_job_keeps_partial_progress_when_blocked_by_site_prot
     assert fake.download_calls == 1
     assert sleeps == []
     assert job.error == (
-        "ranobelib.me временно блокирует наши запросы, попробуйте позже (скачано 2 из 5 глав)"
+        "Источник тайтлов временно блокирует наши запросы, попробуйте позже "
+        "(скачано 2 из 5 глав)"
     )
 
 

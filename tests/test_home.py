@@ -18,8 +18,11 @@ def test_home_renders_search_form() -> None:
     response = client.get("/")
 
     assert response.status_code == 200
-    assert 'action="/titles/open"' in response.text
-    assert 'name="url"' in response.text
+    assert 'method="get" action="/catalog" role="search"' in response.text
+    assert 'type="search"' in response.text
+    assert 'name="query"' in response.text
+    assert 'enterkeyhint="search"' in response.text
+    assert '<button class="wn-btn wn-btn--primary" type="submit">Найти</button>' in response.text
     # PR 210: the search field's autofocus is blurred back off on mobile, so its keyboard
     # doesn't pop the instant the page loads.
     assert "static/js/disable-mobile-autofocus.js" in response.text
@@ -78,7 +81,7 @@ def test_home_recent_card_keeps_forget_button() -> None:
     assert 'data-role="forget-recent-title"' in response.text
     assert 'data-slug-url="6712--test-novel"' in response.text
     assert 'class="home__grid wn-home__recent-grid"' in response.text
-    assert 'href="#home-open-url" data-role="focus-open-title"' in response.text
+    assert 'data-role="focus-open-title"' not in response.text
 
 
 async def test_home_dashboard_reuses_existing_services_and_limits_reading(

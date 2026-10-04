@@ -4195,7 +4195,7 @@ img.paragraph-comment__attachment {
   box-shadow: none;
 }
 
-/* Field + action on one line ("Вставьте ссылку…" + «Открыть»). */
+/* Field + action on one line (catalog query + submit). */
 .ui-input-row {
   display: flex;
   gap: 10px;
@@ -5739,12 +5739,6 @@ a.ui-title-card:focus-visible .ui-title-card__cover {
   padding-left: 42px;
 }
 
-.wn-home__error {
-  min-height: 0;
-  margin: calc(-1 * var(--wn-space-3)) 0 0;
-  color: var(--wn-danger);
-}
-
 .wn-home__stage {
   display: grid;
   grid-template-columns: minmax(0, 1fr) 320px;
@@ -6167,43 +6161,6 @@ a.ui-title-card:focus-visible .ui-title-card__cover {
   color: var(--wn-text);
 }
 
-.wn-home-open-card {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  min-height: 246px;
-  padding: var(--wn-space-2);
-  border: 1px dashed var(--wn-border-strong);
-  border-radius: var(--wn-radius-md);
-  color: var(--wn-text-secondary);
-  text-align: center;
-  text-decoration: none;
-}
-
-.wn-home-open-card > span {
-  display: grid;
-  place-items: center;
-  width: 40px;
-  height: 40px;
-  margin-bottom: 12px;
-  border-radius: 50%;
-  background: var(--wn-surface-raised);
-  color: var(--wn-teal);
-  font-size: 24px;
-}
-
-.wn-home-open-card b {
-  color: var(--wn-text);
-  font-size: 13px;
-}
-
-.wn-home-open-card small {
-  margin-top: 4px;
-  color: var(--wn-text-muted);
-  font-size: 11px;
-}
-
 .wn-home-empty-card,
 .wn-home .home-guest {
   border-color: var(--wn-border-strong);
@@ -6327,7 +6284,7 @@ a.ui-title-card:focus-visible .ui-title-card__cover {
     padding: var(--wn-space-1) var(--wn-space-2) var(--wn-space-3);
   }
 
-  /* Field and «Открыть» share a row while both fit, then the button drops under the
+  /* Field and «Найти» share a row while both fit, then the button drops under the
      field (PR 280) - no breakpoint. */
   .wn-home__open {
     flex-wrap: wrap;
@@ -6567,10 +6524,6 @@ a.ui-title-card:focus-visible .ui-title-card__cover {
 
   .wn-home__recent-grid {
     grid-template-columns: repeat(2, minmax(0, 1fr));
-  }
-
-  .wn-home-open-card {
-    min-height: 218px;
   }
 
   .wn-home-download {
@@ -9790,7 +9743,7 @@ a.catalog-card__action {
     font: 500 14px/1 var(--wn-font-ui);
   }
 
-  /* The add-by-link form goes in the results mode (handoff: «header компактнее»). */
+  /* The catalog-search form goes in the results mode (handoff: «header компактнее»). */
   .wn-library[data-mode="results"] .wn-library__add {
     display: none;
   }
@@ -10056,7 +10009,7 @@ a.catalog-card__action {
     gap: 24px 32px;
   }
 
-  /* The switch over the add-by-link form, right-aligned. */
+  /* The switch over the catalog-search form, right-aligned. */
   .wn-library__head-side {
     display: flex;
     flex: 0 1 auto;
@@ -10093,7 +10046,7 @@ a.catalog-card__action {
     font: 500 15px/1 var(--wn-font-ui);
   }
 
-  /* «Добавить» is a glass button here, not the page's purple CTA. */
+  /* «Найти» is a glass button here, not the page's purple CTA. */
   .wn-library .wn-library__add .wn-btn {
     height: 44px;
     padding: 0 16px;
@@ -10112,11 +10065,6 @@ a.catalog-card__action {
 
   .wn-library .wn-library__add .wn-btn:active {
     background: rgb(255 255 255 / 10%);
-  }
-
-  .wn-library .wn-library__error {
-    margin: 0;
-    text-align: right;
   }
 
   .wn-library > .wn-library__content {
@@ -10974,12 +10922,6 @@ a.catalog-card__action {
   height: 16px;
 }
 
-.wn-library__error {
-  margin: calc(-1 * var(--wn-space-2)) 0 0;
-  color: var(--wn-danger);
-  text-align: right;
-}
-
 .wn-library__content {
   gap: var(--wn-space-3);
 }
@@ -11582,10 +11524,6 @@ a.catalog-card__action {
     width: auto;
   }
 
-  .wn-library__error {
-    text-align: left;
-  }
-
   .wn-library-search {
     flex: 1 1 200px;
     width: auto;
@@ -11609,7 +11547,7 @@ a.catalog-card__action {
     font-size: 26px;
   }
 
-  /* The link field and «Добавить» share a row while both fit; at 320px the button drops
+  /* The catalog field and «Найти» share a row while both fit; at 320px the button drops
      under the field (PR 282). */
   .wn-library__add {
     flex-wrap: wrap;
@@ -11682,7 +11620,7 @@ a.catalog-card__action {
 /* ==========================================================================
    LibraryMobile (PR 300, wave 36): the phone library from LibraryMobile.dc.html /
    Catalog handoff.md -> Mobile «Библиотека». «Ваши тайтлы · N» over H1 30, the
-   full-width switch, the add-by-link form (field + glass «Добавить», wrapping at 320),
+   full-width switch, catalog search (field + glass «Найти», stacked at 320),
    then the toolbar, the compact «Продолжить чтение» hero and one column of row cards.
    ========================================================================== */
 
@@ -11751,11 +11689,6 @@ a.catalog-card__action {
   .wn-library .wn-library__add .wn-btn svg {
     width: 15px;
     height: 15px;
-  }
-
-  .wn-library .wn-library__error {
-    margin: -6px 0 0;
-    text-align: left;
   }
 
   /* Toolbar: the 48px search with a ✕, then the sort (ellipsis) and «Прогресс» with a
@@ -12098,6 +12031,12 @@ a.catalog-card__action {
 }
 
 @media (max-width: 359px) {
+  .wn-library .wn-library__add-field,
+  .wn-library .wn-library__add .wn-btn {
+    flex-basis: 100%;
+    width: 100%;
+  }
+
   .wn-library .wn-library-hero__inner {
     grid-template-columns: 76px minmax(0, 1fr);
   }

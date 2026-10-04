@@ -4,28 +4,24 @@
 {% from "_title_card.html" import ui_title_card %}
 {% from "_continue_reading_hero.html" import continue_reading_hero %}
 <main class="home wn-home">
-  <form class="home__open wn-home__open" method="get" action="/titles/open">
+  <form class="home__open wn-home__open" method="get" action="/catalog" role="search" aria-label="Поиск по каталогу">
     <label class="wn-home__open-field">
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M10 14a5 5 0 0 0 7 0l3-3a5 5 0 0 0-7-7l-1 1M14 10a5 5 0 0 0-7 0l-3 3a5 5 0 0 0 7 7l1-1"/></svg>
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="m16 16 4 4"/></svg>
       <input
-        id="home-open-url"
+        id="home-catalog-query"
         class="wn-field__control wn-home__open-control"
-        type="text"
-        name="url"
-        placeholder="Вставьте ссылку на тайтл ranobelib.me…"
-        aria-label="Ссылка на тайтл ranobelib.me"
-        value="{{ submitted_url or '' }}"
-        {% if error %}aria-invalid="true" aria-describedby="home-open-error"{% endif %}
+        type="search"
+        name="query"
+        placeholder="Найти тайтл по названию…"
+        aria-label="Название тайтла"
+        enterkeyhint="search"
         required
         autofocus
       >
     </label>
-    <button class="wn-btn wn-btn--primary" type="submit">Открыть</button>
+    <button class="wn-btn wn-btn--primary" type="submit">Найти</button>
   </form>
   <script src="{{ url_for('static', path='js/disable-mobile-autofocus.js') }}"></script>
-  {% if error %}
-  <p class="wn-field__caption wn-home__error" id="home-open-error" role="alert">{{ error }}</p>
-  {% endif %}
 
   {% if not current_user %}
   <section class="home-guest" aria-label="Аккаунт">
@@ -46,7 +42,7 @@
     <section class="wn-home-hero wn-home-hero--empty" data-role="home-reading-empty">
       <span class="wn-home-hero__eyebrow">Ваша следующая история</span>
       <h1 class="wn-home-hero__title">Начните читать — продолжение появится здесь</h1>
-      <p class="wn-home-hero__chapter">Откройте тайтл по ссылке или выберите его в каталоге.</p>
+      <p class="wn-home-hero__chapter">Найдите тайтл в каталоге и начните читать.</p>
       <a class="wn-btn wn-btn--primary" href="/catalog">Открыть каталог</a>
     </section>
     {% endif %}
@@ -135,15 +131,12 @@
       <button type="button" class="ui-title-card__action ui-title-card__action--sm" data-role="forget-recent-title" data-slug-url="{{ item.slug_url }}" aria-label="Убрать «{{ item.name }}» из недавних" title="Убрать из недавних"><span class="ui-title-card__action-chip"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" aria-hidden="true"><path d="M6 6l12 12M18 6 6 18"/></svg></span></button>
       {% endcall %}
       {% endfor %}
-      <a class="wn-home-open-card" href="#home-open-url" data-role="focus-open-title">
-        <span>+</span><b>Открыть новый тайтл</b><small>по ссылке ranobelib.me</small>
-      </a>
     </div>
     {% else %}
     <section class="home-empty-card wn-home-empty-card" data-role="home-empty">
       <h2 class="home-empty-card__title">Здесь появятся недавно открытые тайтлы</h2>
-      <p class="home-empty-card__text">Вставьте ссылку на тайтл ranobelib.me в поле выше, чтобы начать.</p>
-      <p class="home-empty-card__note">Все тайтлы и главы загружаются напрямую через публичный API RanobeLib.</p>
+      <p class="home-empty-card__text">Найдите тайтл по названию в каталоге, чтобы начать.</p>
+      <p class="home-empty-card__note">Недавно открытые тайтлы сохранятся здесь.</p>
       <a class="wn-btn wn-btn--secondary home-empty-card__cta" href="/catalog">Открыть каталог</a>
     </section>
     {% endif %}

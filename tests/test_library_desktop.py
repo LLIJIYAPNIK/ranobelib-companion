@@ -71,7 +71,7 @@ def test_header_card_counts_the_titles(client: TestClient, count: int, word: str
     assert f'<span class="wn-library__eyebrow">Ваши тайтлы · {word}</span>' in html
 
 
-def test_header_card_holds_the_switch_and_the_add_form(client: TestClient) -> None:
+def test_header_card_holds_the_switch_and_catalog_search(client: TestClient) -> None:
     register(client, "alice@example.com")
     html = _library(client)
 
@@ -79,16 +79,11 @@ def test_header_card_holds_the_switch_and_the_add_form(client: TestClient) -> No
     assert '<h1 class="wn-library__title">Библиотека</h1>' in head
     side = head.split('<div class="wn-library__head-side">', 1)[1]
     assert 'data-role="library-switch"' in side
-    assert 'action="/library/add"' in side
-    assert 'placeholder="Ссылка на тайтл ranobelib.me"' in side
-
-
-def test_add_error_stays_inside_the_header_card(client: TestClient) -> None:
-    register(client, "alice@example.com")
-    response = client.post("/library/add", data={"url": "not a link"})
-
-    head = response.text.split('<section class="wn-library__head">', 1)[1].split("</section>", 1)[0]
-    assert 'id="library-add-error"' in head
+    assert 'method="get" action="/catalog" role="search"' in side
+    assert 'type="search"' in side
+    assert 'name="query"' in side
+    assert 'enterkeyhint="search"' in side
+    assert 'type="submit"' in side
 
 
 def test_guest_header_has_no_count(client: TestClient) -> None:
@@ -107,7 +102,7 @@ def test_toolbar_is_the_shared_sticky_glass_panel() -> None:
     assert "height: var(--wn-library-ctl-h);" in search
 
 
-def test_add_button_is_glass_not_the_purple_cta() -> None:
+def test_catalog_search_button_is_glass_not_the_purple_cta() -> None:
     button = _library_rule(".wn-library .wn-library__add .wn-btn")
     assert "background: rgb(255 255 255 / 6%);" in button
     assert "height: 44px;" in button

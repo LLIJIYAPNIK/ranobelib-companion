@@ -55,7 +55,7 @@ def test_downloads_template_exposes_search_filter_and_clear_contracts() -> None:
     ):
         assert role in template
 
-    assert "Ссылка" in template
+    assert "Каталог" in template
     assert "Главы" in template
     assert "EPUB" in template
 

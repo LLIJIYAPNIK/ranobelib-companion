@@ -106,7 +106,7 @@ def test_access_blocked_is_not_reported_as_auth_required() -> None:
 
     assert response.status_code == 503
     assert response.json() == {
-        "detail": "ranobelib.me временно блокирует наши запросы, попробуйте позже"
+        "detail": "Источник тайтлов временно блокирует наши запросы, попробуйте позже"
     }
     assert "авторизац" not in response.text.lower()
     assert "cdnlibs" not in response.text

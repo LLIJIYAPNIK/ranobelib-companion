@@ -5,12 +5,12 @@
 {% from "_library_actions.html" import library_actions_menu as actions_menu %}
 {#
   PR 275 (Webnovells Redesign, screen A3): "Библиотека" heading with the «Библиотека /
-  Каталог» switch (PR 294), the add-by-link field, a search/sort/progress toolbar with a list/grid switch
+  Каталог» switch (PR 294), catalog search, a search/sort/progress toolbar with a list/grid switch
   (library-toolbar.js), "Читаю" cards with progress and a continue CTA, not-started
   titles under "Ещё в библиотеке" (cover skeleton while it loads). A guest gets the
   locked state instead.
   PR 297 (LibraryDesktop.dc.html): the catalog's desktop shell - a header card («Ваши
-  тайтлы · N тайтлов» + H1, the switch and the add-by-link form on the right) with the
+  тайтлы · N тайтлов» + H1, the switch and catalog search on the right) with the
   toolbar as a sticky glass panel overlapping its bottom edge.
 #}
 {% macro titles_word(n) -%}
@@ -24,31 +24,24 @@
     </div>
     <div class="wn-library__head-side">
     {% include "_library_switch.html" %}
-    {% if current_user %}
-    <form class="wn-library__add" method="post" action="/library/add">
+    <form class="wn-library__add" method="get" action="/catalog" role="search" aria-label="Поиск по каталогу">
       <label class="wn-library__add-field">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" aria-hidden="true"><path d="M10 14a5 5 0 0 0 7 0l3-3a5 5 0 0 0-7-7l-1 1M14 10a5 5 0 0 0-7 0l-3 3a5 5 0 0 0 7 7l1-1"/></svg>
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="m16 16 4 4"/></svg>
         <input
           class="wn-field__control wn-library__add-control"
-          type="text"
-          name="url"
-          placeholder="Ссылка на тайтл ranobelib.me"
-          data-placeholder-short="Ссылка на тайтл"
-          aria-label="Ссылка на тайтл, чтобы добавить в библиотеку"
-          value="{{ submitted_url or '' }}"
-          {% if error %}aria-invalid="true" aria-describedby="library-add-error"{% endif %}
+          type="search"
+          name="query"
+          placeholder="Найти тайтл по названию…"
+          aria-label="Название тайтла"
+          enterkeyhint="search"
           required
         >
       </label>
       <button class="wn-btn wn-btn--primary" type="submit">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg>
-        Добавить
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="m16 16 4 4"/></svg>
+        Найти
       </button>
     </form>
-    {% endif %}
-    {% if error %}
-    <p class="wn-field__caption wn-library__error" id="library-add-error" role="alert">{{ error }}</p>
-    {% endif %}
     </div>
   </section>
   <main class="library-page__content library-tabs-content wn-library__content">
@@ -189,7 +182,7 @@
           <a class="wn-library-add-tile" href="/catalog" data-role="library-add-tile">
             <span class="wn-library-add-tile__icon" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M3 3h7v7H3zM14 3h7v7h-7zM3 14h7v7H3zM17.5 14v7M14 17.5h7"/></svg></span>
             <span class="wn-library-add-tile__title">Добавить из каталога</span>
-            <span class="wn-library-add-tile__text">Найдите тайтл в каталоге и нажмите «В библиотеку» — или вставьте ссылку выше.</span>
+            <span class="wn-library-add-tile__text">Найдите тайтл в каталоге и нажмите «В библиотеку».</span>
             <span class="wn-library-add-tile__link">Открыть каталог</span>
           </a>
         </div>
@@ -214,7 +207,8 @@
       </div>
       {% else %}
       <p class="wn-library__empty">
-        Пока пусто. Вставьте ссылку выше или откройте тайтл и нажмите «Добавить в библиотеку».
+        Пока пусто. <a class="wn-library-end__link" href="/catalog">Открыть каталог</a>
+        и добавить первый тайтл.
       </p>
       {% endif %}
     </div>
@@ -230,7 +224,6 @@
 </div>
 <script src="{{ url_for('static', path='js/library-toolbar.js') }}" defer></script>
 <script src="{{ url_for('static', path='js/library-card-actions.js') }}" defer></script>
-<script src="{{ url_for('static', path='js/library-mobile.js') }}" defer></script>
 <script src="{{ url_for('static', path='js/library-tabs-swipe.js') }}" defer></script>
 <script src="{{ url_for('static', path='js/library-switch.js') }}" defer></script>
 {% endblock %}

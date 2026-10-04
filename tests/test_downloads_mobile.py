@@ -28,7 +28,7 @@ def _rule(selector: str, *, indent: str = "") -> str:
 
 def test_steps_carry_a_mobile_only_hint_each() -> None:
     for label, hint in (
-        ("Ссылка", "вставьте адрес тайтла"),
+        ("Каталог", "найдите тайтл по названию"),
         ("Главы", "выберите тома или диапазон"),
         ("EPUB", "файл появится в истории ниже"),
     ):

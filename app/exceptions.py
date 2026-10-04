@@ -91,7 +91,8 @@ def build_error_response(exc: RanobeLibError) -> ErrorResponse:
         # temporary outage on their side, not a permissions problem, so 503 rather than
         # AuthRequiredError's 403, and nothing in the text that hints at logging in.
         return ErrorResponse(
-            503, {"detail": "ranobelib.me временно блокирует наши запросы, попробуйте позже"}
+            503,
+            {"detail": "Источник тайтлов временно блокирует наши запросы, попробуйте позже"},
         )
 
     if isinstance(exc, RateLimitError):
