@@ -50,3 +50,10 @@ def test_routes_invoke_the_shared_macro_instead_of_copying_hero_markup() -> None
     assert 'continue_reading_hero(continue_item, title_id="library-continue-title")' in library
     assert "wn-library-hero__card" not in home
     assert "wn-library-hero__card" not in library
+
+
+def test_home_action_menu_can_remove_its_hero() -> None:
+    script = (ROOT / "app/static/js/library-card-actions.js").read_text(encoding="utf-8")
+
+    assert '[data-role="continue-reading-root"]' in script
+    assert '[data-role="home-reading-hero"][data-slug-url="${escaped}"]' in script

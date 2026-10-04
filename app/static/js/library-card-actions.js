@@ -107,7 +107,8 @@
     const escaped = CSS.escape(slug);
     return [...document.querySelectorAll(
       `[data-role="library-item"][data-slug-url="${escaped}"], ` +
-        `[data-role="library-hero"][data-slug-url="${escaped}"]`
+        `[data-role="library-hero"][data-slug-url="${escaped}"], ` +
+        `[data-role="home-reading-hero"][data-slug-url="${escaped}"]`
     )];
   }
 
