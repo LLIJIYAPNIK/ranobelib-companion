@@ -10904,10 +10904,15 @@ a.catalog-card__action {
     min-width: 0;
     gap: 6px;
     padding: 0 6px;
+    font-size: 14px;
   }
 
   .wn-lib-switch__tab svg {
     display: none;
+  }
+
+  .wn-lib-switch__count {
+    padding-inline: 5px;
   }
 }
 
