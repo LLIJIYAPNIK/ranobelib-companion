@@ -96,15 +96,12 @@ def test_grid_is_strictly_two_columns() -> None:
     assert "display: none;" in _mobile_rule(".catalog-section")
 
 
-def test_card_lines_switch_to_genre_then_status_and_chapters() -> None:
+def test_card_lines_switch_to_genre_then_status() -> None:
     hidden = _mobile_rule(".catalog-card__meta-status")
     assert "display: none;" in hidden
-    assert "display: inline;" in _mobile_rule(".catalog-card__sub-status")
-    # Desktop keeps «жанр · статус» / «N гл.» - the phone-only parts are off there.
-    assert re.search(
-        r"\n\.catalog-card__sub-status,\n\.catalog-card__sub--status-only \{\n  display: none;",
-        CSS,
-    )
+    assert "display: block;" in _mobile_rule(".catalog-card__sub")
+    # Desktop keeps «жанр · статус» in one line - the phone-only status line is off there.
+    assert re.search(r"\n\.catalog-card__sub \{\n  display: none;", CSS)
 
 
 def test_list_view_is_a_row_card() -> None:
