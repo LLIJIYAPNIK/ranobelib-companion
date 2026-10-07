@@ -2374,10 +2374,9 @@ html:has(dialog[open]) body {
 .reading-calendar-card {
   --reading-calendar-cell: 11px;
   --reading-calendar-gap: 3px;
-  /* Intensity relative to this user's own busiest day in the window (see
-     _build_reading_calendar's level calculation), not a fixed absolute scale - a light
-     reader's best day and a heavy reader's best day both land on level 4, in the site's
-     accent teal rather than GitHub's own green. Shared as variables (not just set
+  /* PR 323: a day's level is its reading time on fixed thresholds, the same for every
+     user (app/api/profile.py's _calendar_level / CALENDAR_LEGEND), in the site's accent
+     teal rather than GitHub's own green. Shared as variables (not just set
      directly on .reading-calendar__day--level-N below) so the always-present legend
      swatches can reuse the same colors under their own class names, instead of the
      legend colliding with the "no level-N cell present" assertions the day grid's own

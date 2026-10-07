@@ -232,9 +232,10 @@ async def test_profile_reading_calendar_marks_todays_activity(client: TestClient
         response = client.get("/profile")
 
     assert response.status_code == 200
-    # The only day with any reading is automatically this user's own busiest day, so it's
-    # level 4 (intensity is relative to the user's own max, not a fixed absolute scale).
-    assert 'reading-calendar__day--level-4' in response.text
+    # PR 323: chapters opened but no reading time logged - the lowest reading level, not
+    # "this user's busiest day" (levels are fixed reading-time thresholds now).
+    assert "reading-calendar__day--level-1" in response.text
+    assert "reading-calendar__day--level-4" not in response.text
     today = datetime.now(UTC).date().strftime("%d.%m.%Y")
     # PR 140: no heartbeat recorded today, so the tooltip's time portion reads "0 мин" -
     # always shown, not omitted, same as a real day with reading but no active-time ticks.

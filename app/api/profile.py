@@ -37,6 +37,15 @@ router = APIRouter()
 
 _CALENDAR_WEEKS = 52
 
+# PR 323: a calendar day's level is that day's reading time (heartbeat seconds) on fixed
+# thresholds, the same for every user - not its chapter count relative to the user's own
+# busiest day, where one outlier repainted the rest of the year and a long reading
+# session on an already-open chapter (minutes, no new chapter_read) read as empty.
+# Level 1 is "under 15 min", which includes a day with chapters opened but no time
+# logged (a short visit); then 15-45, 45-90 and 90+ minutes.
+_LEVEL_LIMITS = (15 * 60, 45 * 60, 90 * 60)
+CALENDAR_LEGEND = ("Нет чтения", "до 15 мин", "15–45 мин", "45–90 мин", "больше 90 мин")
+
 # PR 201: how many friends the profile page's own "Друзья" section previews before
 # pointing at the full list (GET /profile/{user_id}/friends) instead of listing everyone
 # right there - same idea as PR 159's _MAX_TITLES_IN_LABEL, just for this section.
@@ -60,7 +69,7 @@ class CalendarDay:
     """One cell of the reading-activity heatmap (PR 136)."""
 
     count: int
-    level: int  # 0 (no activity) - 4 (this user's own busiest day in the window)
+    level: int  # 0 (no reading) - 4 (90+ min), see _calendar_level()
     label: str  # tooltip text: exact date + chapter count
 
 
@@ -75,6 +84,8 @@ class ReadingCalendar:
     total_duration_label: str  # e.g. "128 ч 4 мин чтения за последний год"
     total_duration: str = ""  # PR 277: just "128 ч 4 мин", for the hero's stat pill
     reading_days: int = 0  # PR 277: days in the window with at least one chapter read
+    # PR 323: what each level means, level 0 first - the legend's swatch labels.
+    legend: tuple[str, ...] = CALENDAR_LEGEND
 
 
 @router.get("/profile")
@@ -278,7 +289,6 @@ async def _build_reading_calendar(user_id: int, conn: AsyncConnection, tz: str) 
     # a title read on 20 different days over the year still only needs its name fetched
     # once, reused for every one of that title's cells below.
     title_names = await _title_names({slug for slugs in titles_by_day.values() for slug in slugs})
-    max_count = max(counts.values(), default=0)
 
     today = local_today(tz)
     start = today - timedelta(days=_CALENDAR_WEEKS * 7 - 1)
@@ -292,7 +302,7 @@ async def _build_reading_calendar(user_id: int, conn: AsyncConnection, tz: str) 
         day_key = current.isoformat()
         count = counts.get(day_key, 0)
         seconds = active_seconds.get(day_key, 0)
-        level = 0 if max_count == 0 or count == 0 else max(1, round(count / max_count * 4))
+        level = _calendar_level(count, seconds)
         # PR 140: the chapter count alone doesn't say how long that reading actually took
         # - _format_duration() reuses the same heartbeat seconds already summed for
         # "Активность"'s "today" stat (total_active_seconds_today()), just grouped by day
@@ -323,6 +333,13 @@ async def _build_reading_calendar(user_id: int, conn: AsyncConnection, tz: str) 
         total_duration=total_duration,
         reading_days=sum(1 for n in counts.values() if n > 0),
     )
+
+
+def _calendar_level(chapters: int, seconds: int) -> int:
+    """0-4 on the fixed _LEVEL_LIMITS (see CALENDAR_LEGEND for what each one means)."""
+    if seconds <= 0:
+        return 1 if chapters > 0 else 0
+    return 1 + sum(seconds >= limit for limit in _LEVEL_LIMITS)
 
 
 # PR 160: Russian 3-letter month abbreviations for the labels above the grid, index 0 = Jan
