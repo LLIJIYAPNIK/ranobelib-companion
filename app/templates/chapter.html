@@ -159,6 +159,9 @@
     <h2 class="reader-aa__title" id="reader-aa-title">Настройки чтения</h2>
     <button type="button" class="ui-icon-btn reader-aa__close" data-role="reader-aa-close" aria-label="Закрыть (Esc)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M6 6l12 12M18 6 6 18"/></svg></button>
   </div>
+  {# PR 321: the controls and the foot move into the shared bottom sheet on phones
+     (reader-hud.js); the dialog itself stays the desktop popover. #}
+  <div class="reader-aa__content" data-role="reader-aa-content">
   <div class="reader-aa__body">
     <div class="reader-aa__row">
       <span class="reader-aa__label">Тема</span>
@@ -208,6 +211,7 @@
   <div class="reader-aa__foot">
     <a class="reader-aa__more" href="/settings/reading">Дополнительно ›</a>
     <button type="button" class="reader-aa__reset" data-role="reader-settings-reset">Сбросить настройки</button>
+  </div>
   </div>
 </dialog>
 

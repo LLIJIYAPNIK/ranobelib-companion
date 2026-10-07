@@ -586,7 +586,10 @@
     "[role='toolbar'], [role='dialog'], .reader-hud-bottom, .reader-end, .reader-onboarding, " +
     ".paragraph-reactions, .paragraph-comments, .paragraph-reactions-host, .paragraph-menu__panel, " +
     ".image-lightbox";
-  const OPEN_LAYER = "dialog[open], .paragraph-menu__panel--open, .image-lightbox--open";
+  // PR 321: the shared bottom sheet too (Aa and comments on phones) - a tap on its
+  // backdrop closes the sheet and must not also turn a paragraph.
+  const OPEN_LAYER =
+    "dialog[open], .paragraph-menu__panel--open, .image-lightbox--open, .bottom-sheet:not([hidden])";
 
   let press = null;
   document.addEventListener("pointerdown", (event) => {
