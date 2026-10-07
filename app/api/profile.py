@@ -83,7 +83,7 @@ class ReadingCalendar:
     month_labels: list[str]  # one entry per column of `days` (see _month_labels())
     total_duration_label: str  # e.g. "128 ч 4 мин чтения за последний год"
     total_duration: str = ""  # PR 277: just "128 ч 4 мин", for the hero's stat pill
-    reading_days: int = 0  # PR 277: days in the window with at least one chapter read
+    reading_days: int = 0  # PR 277: days in the window with reading (PR 323: chapters or time)
     # PR 323: what each level means, level 0 first - the legend's swatch labels.
     legend: tuple[str, ...] = CALENDAR_LEGEND
 
@@ -331,7 +331,12 @@ async def _build_reading_calendar(user_id: int, conn: AsyncConnection, tz: str) 
         month_labels=month_labels,
         total_duration_label=total_duration_label,
         total_duration=total_duration,
-        reading_days=sum(1 for n in counts.values() if n > 0),
+        # PR 323: a day with only reading time (no chapter opened) is a reading day too -
+        # it's colored as one, and «Активность» counts it the same way.
+        reading_days=len(
+            {day for day, n in counts.items() if n > 0}
+            | {day for day, n in active_seconds.items() if n > 0}
+        ),
     )
 
 
