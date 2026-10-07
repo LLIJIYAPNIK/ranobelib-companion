@@ -24,11 +24,34 @@ function classList(initial = []) {
   };
 }
 
+// PR 320: rail items whose label becomes a tooltip while collapsed (the third one has
+// no label element, like an icon-only control, and never gets a title).
+function railItem(labelText) {
+  const attributes = {};
+  const label = labelText === null ? null : { textContent: `  ${labelText}
+` };
+  return {
+    get title() {
+      return attributes.title ?? null;
+    },
+    set title(value) {
+      attributes.title = value;
+    },
+    removeAttribute: (name) => delete attributes[name],
+    querySelector: () => label,
+  };
+}
+
 function loadPage() {
   const frames = [];
   const events = [];
   const listeners = {};
-  const sidebar = { classList: classList() };
+  const items = [railItem("Главная"), railItem("Войти"), railItem(null)];
+  const sidebar = {
+    classList: classList(),
+    querySelectorAll: (selector) =>
+      selector === ".sidebar__link, .sidebar__bell, .sidebar__guest" ? items : [],
+  };
   const attributes = {};
   const toggle = {
     title: "",
@@ -69,6 +92,7 @@ function loadPage() {
     classes: sidebar.classList.snapshot(),
     ariaExpanded: attributes["aria-expanded"],
     label: attributes["aria-label"],
+    titles: items.map((item) => item.title),
   };
   while (frames.length) frames.shift()();
 
@@ -81,6 +105,7 @@ function loadPage() {
       classes: sidebar.classList.snapshot(),
       ariaExpanded: attributes["aria-expanded"],
       label: attributes["aria-label"],
+      titles: items.map((item) => item.title),
       stored: values.get("sidebarExpanded") ?? null,
       events: events.map((event) => ({ type: event.type, detail: event.detail })),
     }),
@@ -104,6 +129,7 @@ console.log(
     secondAfterPaint: second.afterPaint,
     afterCollapse,
     thirdBeforeDeferred: third.beforeDeferred,
+    firstAfterDeferred: first.afterDeferred,
     thirdAfterDeferred: third.afterDeferred,
   }),
 );

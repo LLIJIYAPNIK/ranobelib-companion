@@ -58,3 +58,14 @@ def test_toggle_announces_each_geometry_change() -> None:
     assert result["afterCollapse"]["events"] == [
         {"type": "sidebar:statechange", "detail": {"expanded": False}}
     ]
+
+
+def test_collapsed_rail_labels_become_tooltips_and_expanded_drops_them() -> None:
+    result = _result()
+
+    collapsed = ["Главная", "Войти", None]
+    assert result["firstAfterDeferred"]["titles"] == collapsed
+    assert result["afterExpand"]["titles"] == [None, None, None]
+    assert result["secondAfterDeferred"]["titles"] == [None, None, None]
+    assert result["afterCollapse"]["titles"] == collapsed
+    assert result["thirdAfterDeferred"]["titles"] == collapsed

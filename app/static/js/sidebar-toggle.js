@@ -16,11 +16,25 @@
     }
   }
 
+  // PR 320: the collapsed rail shows icons only - each label stays in the DOM as the
+  // control's accessible name and becomes its hover tooltip; expanded, the visible label
+  // says it already.
+  const labelled = [...sidebar.querySelectorAll(".sidebar__link, .sidebar__bell, .sidebar__guest")];
+
+  function syncTooltips(expanded) {
+    for (const item of labelled) {
+      const label = item.querySelector(".sidebar__label, .sidebar__guest-label");
+      if (expanded || !label) item.removeAttribute("title");
+      else item.title = label.textContent.trim();
+    }
+  }
+
   function apply(expanded) {
     sidebar.classList.toggle("sidebar--expanded", expanded);
     toggle.setAttribute("aria-expanded", String(expanded));
     toggle.setAttribute("aria-label", expanded ? "Свернуть меню" : "Развернуть меню");
     toggle.title = expanded ? "Свернуть меню" : "Развернуть меню";
+    syncTooltips(expanded);
   }
 
   apply(savedExpanded());

@@ -879,32 +879,36 @@ body:has(.sidebar--expanded) {
   transition: margin-left var(--dur-base) var(--ease);
 }
 
-/* Expanded rail (248px): the same vertical geometry as the compact rail, with labels,
-   full-width rows, bell row and account card. Desktop only - the mobile block below
+/* Desktop rail (PR 320): one geometry for both states - a fixed 44px icon column 20px
+   from the rail's left edge (icons centered at x = 42), 46px rows, the same brand,
+   separator and account heights. Collapsed (84px) shows icons only - labels stay in the
+   DOM as each control's accessible name, sidebar-toggle.js adds them as tooltips;
+   expanded (248px) only widens the rail and reveals the labels, account card and badge
+   pills beside the same icons, so expanding never moves a control. The mobile block below
    never has to undo any of it. */
 @media (min-width: 768px) {
-  .sidebar--expanded {
-    width: 248px;
-    grid-template-columns: minmax(0, 1fr);
-    grid-template-rows: auto auto auto 1fr auto;
-    grid-template-areas: "brand" "sep" "nav" "." "account";
+  .sidebar {
     justify-items: stretch;
     padding: 16px 12px 62px;
   }
 
-  .sidebar--expanded .sidebar__brand {
+  .sidebar--expanded {
+    width: 248px;
+  }
+
+  .sidebar__brand {
     height: 40px;
-    padding: 0 8px;
-    font-size: 19px;
-    letter-spacing: -0.02em;
+    padding: 0 0 0 19px;
+    font-size: 22px;
+    letter-spacing: -0.03em;
+  }
+
+  .sidebar__brand-dot {
+    margin-top: 10px;
   }
 
   .sidebar--expanded .sidebar__brand-rest {
     display: inline;
-  }
-
-  .sidebar--expanded .sidebar__brand-dot {
-    margin-top: 9px;
   }
 
   .sidebar--expanded .sidebar__toggle {
@@ -936,36 +940,80 @@ body:has(.sidebar--expanded) {
     display: block;
   }
 
-  .sidebar--expanded .sidebar__sep {
+  .sidebar__sep {
     width: auto;
     margin: 12px 6px 10px;
   }
 
-  .sidebar--expanded .sidebar__nav {
+  .sidebar__nav {
     padding: 0 8px;
+  }
+
+  .sidebar__link,
+  .sidebar__bell,
+  .sidebar__guest {
+    display: grid;
+    grid-template-columns: 44px minmax(0, 1fr);
+    align-items: center;
+    /* The bell's base place-items: center would center its label in the column. */
+    justify-items: start;
+    gap: 0;
+    width: 100%;
+    min-height: 0;
+    height: 46px;
+    padding: 0;
+    font: 600 15px/1 var(--font-ui);
+    text-align: left;
+    white-space: nowrap;
+  }
+
+  .sidebar__bell {
+    height: 44px;
+  }
+
+  .sidebar__guest {
+    font-weight: 700;
+  }
+
+  .sidebar__link .sidebar__icon,
+  .sidebar__bell .sidebar__icon,
+  .sidebar__guest svg {
+    justify-self: center;
+  }
+
+  .sidebar__link--active::before {
+    top: 7px;
+  }
+
+  .sidebar__icon svg {
+    width: 21px;
+    height: 21px;
+  }
+
+  /* Collapsed: the label is the control's accessible name only. */
+  .sidebar:not(.sidebar--expanded) .sidebar__label,
+  .sidebar:not(.sidebar--expanded) .sidebar__guest-label {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    margin: -1px;
+    padding: 0;
+    overflow: hidden;
+    clip: rect(0 0 0 0);
+    clip-path: inset(50%);
+    white-space: nowrap;
+    border: 0;
+  }
+
+  .sidebar--expanded .sidebar__link,
+  .sidebar--expanded .sidebar__bell,
+  .sidebar--expanded .sidebar__guest {
+    padding-right: 8px;
   }
 
   .sidebar--expanded .sidebar__link,
   .sidebar--expanded .sidebar__bell {
-    display: grid;
-    grid-template-columns: 44px minmax(0, 1fr);
-    align-items: center;
-    gap: 0;
-    width: 100%;
-    height: 46px;
-    padding: 0 8px 0 0;
     color: var(--text-2);
-    font: 600 15px/1 var(--font-ui);
-    text-align: left;
-  }
-
-  .sidebar--expanded .sidebar__bell {
-    height: 44px;
-  }
-
-  .sidebar--expanded .sidebar__link .sidebar__icon,
-  .sidebar--expanded .sidebar__bell .sidebar__icon {
-    justify-self: center;
   }
 
   .sidebar--expanded .sidebar__link--active,
@@ -973,11 +1021,6 @@ body:has(.sidebar--expanded) {
   .sidebar--expanded .sidebar__bell[aria-expanded="true"] {
     color: var(--text-1);
     font-weight: 700;
-  }
-
-  .sidebar--expanded .sidebar__icon svg {
-    width: 21px;
-    height: 21px;
   }
 
   .sidebar--expanded .sidebar__bell .sidebar__label {
@@ -1010,32 +1053,39 @@ body:has(.sidebar--expanded) {
     font-weight: 800;
   }
 
-  .sidebar--expanded .sidebar__account {
+  .sidebar__account {
     align-items: stretch;
     gap: 4px;
     width: auto;
     padding: 10px 8px 0;
   }
 
-  .sidebar--expanded .profile-menu {
+  .profile-menu {
     display: block;
   }
 
-  .sidebar--expanded .sidebar__account-trigger {
+  .sidebar__account-trigger {
     display: grid;
     grid-template-columns: 44px minmax(0, 1fr) 20px;
     align-items: center;
     gap: 0;
     width: 100%;
     height: 56px;
-    padding: 0 8px 0 0;
+    padding: 0;
     border-radius: var(--r-lg);
+  }
+
+  .sidebar__avatar {
+    justify-self: center;
+  }
+
+  .sidebar--expanded .sidebar__account-trigger {
+    padding-right: 8px;
     background: rgba(255, 255, 255, 0.025);
     box-shadow: inset 0 0 0 1px var(--border);
   }
 
   .sidebar--expanded .sidebar__avatar {
-    justify-self: center;
     border: 0;
   }
 
@@ -1051,17 +1101,6 @@ body:has(.sidebar--expanded) {
     display: block;
     flex: 0 0 auto;
     color: var(--text-3);
-  }
-
-  .sidebar--expanded .sidebar__guest {
-    display: grid;
-    grid-template-columns: 44px minmax(0, 1fr);
-    gap: 0;
-    width: 100%;
-    min-height: 46px;
-    padding: 0 8px 0 0;
-    font: 700 15px/1 var(--font-ui);
-    text-align: left;
   }
 }
 
