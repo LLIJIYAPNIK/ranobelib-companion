@@ -37,6 +37,15 @@ router = APIRouter()
 
 _CALENDAR_WEEKS = 52
 
+# PR 323: a calendar day's level is that day's reading time (heartbeat seconds) on fixed
+# thresholds, the same for every user - not its chapter count relative to the user's own
+# busiest day, where one outlier repainted the rest of the year and a long reading
+# session on an already-open chapter (minutes, no new chapter_read) read as empty.
+# Level 1 is "under 15 min", which includes a day with chapters opened but no time
+# logged (a short visit); then 15-45, 45-90 and 90+ minutes.
+_LEVEL_LIMITS = (15 * 60, 45 * 60, 90 * 60)
+CALENDAR_LEGEND = ("Нет чтения", "до 15 мин", "15–45 мин", "45–90 мин", "больше 90 мин")
+
 # PR 201: how many friends the profile page's own "Друзья" section previews before
 # pointing at the full list (GET /profile/{user_id}/friends) instead of listing everyone
 # right there - same idea as PR 159's _MAX_TITLES_IN_LABEL, just for this section.
@@ -60,8 +69,9 @@ class CalendarDay:
     """One cell of the reading-activity heatmap (PR 136)."""
 
     count: int
-    level: int  # 0 (no activity) - 4 (this user's own busiest day in the window)
+    level: int  # 0 (no reading) - 4 (90+ min), see _calendar_level()
     label: str  # tooltip text: exact date + chapter count
+    is_today: bool = False  # PR 323: ringed, so the newest cell reads as "today"
 
 
 @dataclass(frozen=True)
@@ -74,7 +84,9 @@ class ReadingCalendar:
     month_labels: list[str]  # one entry per column of `days` (see _month_labels())
     total_duration_label: str  # e.g. "128 ч 4 мин чтения за последний год"
     total_duration: str = ""  # PR 277: just "128 ч 4 мин", for the hero's stat pill
-    reading_days: int = 0  # PR 277: days in the window with at least one chapter read
+    reading_days: int = 0  # PR 277: days in the window with reading (PR 323: chapters or time)
+    # PR 323: what each level means, level 0 first - the legend's swatch labels.
+    legend: tuple[str, ...] = CALENDAR_LEGEND
 
 
 @router.get("/profile")
@@ -262,15 +274,15 @@ _MAX_TITLES_IN_LABEL = 3
 
 async def _build_reading_calendar(user_id: int, conn: AsyncConnection, tz: str) -> ReadingCalendar:
     """Every day in the trailing _CALENDAR_WEEKS weeks, oldest first, padded back to the
-    most recent Sunday on/before the window's own start so the flat list can be dropped
-    straight into a `grid-auto-flow: column; grid-template-rows: repeat(7, ...)` grid
-    (app.css's .reading-calendar) and land each day in the correct weekday row - the same
-    "whole Sunday-to-Saturday weeks, partial leading week zero-filled" alignment GitHub's
-    own contribution graph uses. A day with no chapter_read events at all (including every
-    padding day, which by construction predates anything daily_reading_activity() even
-    queried for) gets level 0, same as a real day with zero chapters read - there's no
-    distinct "no data" state, an empty calendar for a user with no reading history at all
-    just means every cell is level 0, not an empty/missing grid."""
+    Monday on/before the window's own start so the flat list can be dropped straight into
+    a `grid-auto-flow: column; grid-template-rows: repeat(7, ...)` grid (app.css's
+    .reading-calendar) and land each day in the correct weekday row - whole Monday-to-
+    Sunday weeks (PR 323: the Russian week, as the «Пн/Ср/Пт» row labels say; it used to
+    be GitHub's Sunday-first one), partial leading week zero-filled. A day with no reading
+    at all (including every padding day, which by construction predates anything the
+    daily_* queries even looked at) gets level 0 - there's no distinct "no data" state,
+    an empty calendar for a user with no reading history at all just means every cell is
+    level 0, not an empty/missing grid."""
     counts = await daily_reading_activity(conn, user_id, weeks=_CALENDAR_WEEKS, tz=tz)
     active_seconds = await daily_active_seconds(conn, user_id, weeks=_CALENDAR_WEEKS, tz=tz)
     titles_by_day = await daily_titles_read(conn, user_id, weeks=_CALENDAR_WEEKS, tz=tz)
@@ -278,13 +290,11 @@ async def _build_reading_calendar(user_id: int, conn: AsyncConnection, tz: str) 
     # a title read on 20 different days over the year still only needs its name fetched
     # once, reused for every one of that title's cells below.
     title_names = await _title_names({slug for slugs in titles_by_day.values() for slug in slugs})
-    max_count = max(counts.values(), default=0)
 
     today = local_today(tz)
     start = today - timedelta(days=_CALENDAR_WEEKS * 7 - 1)
-    # date.weekday() is Monday=0..Sunday=6, so days-since-the-most-recent-Sunday is
-    # (weekday + 1) % 7.
-    grid_start = start - timedelta(days=(start.weekday() + 1) % 7)
+    # date.weekday() is Monday=0..Sunday=6 - days since the most recent Monday.
+    grid_start = start - timedelta(days=start.weekday())
 
     days: list[CalendarDay] = []
     current = grid_start
@@ -292,7 +302,7 @@ async def _build_reading_calendar(user_id: int, conn: AsyncConnection, tz: str) 
         day_key = current.isoformat()
         count = counts.get(day_key, 0)
         seconds = active_seconds.get(day_key, 0)
-        level = 0 if max_count == 0 or count == 0 else max(1, round(count / max_count * 4))
+        level = _calendar_level(count, seconds)
         # PR 140: the chapter count alone doesn't say how long that reading actually took
         # - _format_duration() reuses the same heartbeat seconds already summed for
         # "Активность"'s "today" stat (total_active_seconds_today()), just grouped by day
@@ -307,7 +317,14 @@ async def _build_reading_calendar(user_id: int, conn: AsyncConnection, tz: str) 
             f"{_format_duration(seconds)}",
             *_title_lines(titles_by_day.get(day_key, []), title_names),
         ]
-        days.append(CalendarDay(count=count, level=level, label="\n".join(label_lines)))
+        days.append(
+            CalendarDay(
+                count=count,
+                level=level,
+                label="\n".join(label_lines),
+                is_today=current == today,
+            )
+        )
         current += timedelta(days=1)
 
     # PR 160: total across the whole window, not just today's total_active_seconds_today()
@@ -321,8 +338,20 @@ async def _build_reading_calendar(user_id: int, conn: AsyncConnection, tz: str) 
         month_labels=month_labels,
         total_duration_label=total_duration_label,
         total_duration=total_duration,
-        reading_days=sum(1 for n in counts.values() if n > 0),
+        # PR 323: a day with only reading time (no chapter opened) is a reading day too -
+        # it's colored as one, and «Активность» counts it the same way.
+        reading_days=len(
+            {day for day, n in counts.items() if n > 0}
+            | {day for day, n in active_seconds.items() if n > 0}
+        ),
     )
+
+
+def _calendar_level(chapters: int, seconds: int) -> int:
+    """0-4 on the fixed _LEVEL_LIMITS (see CALENDAR_LEGEND for what each one means)."""
+    if seconds <= 0:
+        return 1 if chapters > 0 else 0
+    return 1 + sum(seconds >= limit for limit in _LEVEL_LIMITS)
 
 
 # PR 160: Russian 3-letter month abbreviations for the labels above the grid, index 0 = Jan
@@ -342,7 +371,7 @@ _MIN_MONTH_LABEL_GAP = 3
 def _month_labels(grid_start: date, total_days: int) -> list[str]:
     """One entry per column of the day grid (columns run left→right, oldest first, same
     order `days` auto-flows into via app.css's `grid-auto-flow: column`), empty unless that
-    column is where a new month starts - i.e. its first (Sunday) row falls in a different
+    column is where a new month starts - i.e. its first (Monday) row falls in a different
     month than the previous column's first row. Purely a function of `grid_start`/
     `total_days` (calendar dates), not of any reading activity, so it renders the same
     correct labels whether the user has a year of history or none at all."""

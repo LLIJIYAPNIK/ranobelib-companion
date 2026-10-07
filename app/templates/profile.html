@@ -68,19 +68,19 @@
     <div class="wn-profile-card__head">
       <h2 class="wn-profile-card__title" id="reading-calendar-title">{{ reading_calendar.total_duration_label }}</h2>
       <span class="wn-profile-card__aside">{{ reading_calendar.reading_days }} {% if reading_calendar.reading_days % 10 == 1 and reading_calendar.reading_days % 100 != 11 %}день{% elif reading_calendar.reading_days % 10 in [2, 3, 4] and reading_calendar.reading_days % 100 not in [12, 13, 14] %}дня{% else %}дней{% endif %} с чтением</span>
-      <div class="reading-calendar-legend" aria-hidden="true">
-        <span>Меньше</span>
-        <span class="reading-calendar-legend__swatch"></span>
-        <span class="reading-calendar-legend__swatch reading-calendar-legend__swatch--level-1"></span>
-        <span class="reading-calendar-legend__swatch reading-calendar-legend__swatch--level-2"></span>
-        <span class="reading-calendar-legend__swatch reading-calendar-legend__swatch--level-3"></span>
-        <span class="reading-calendar-legend__swatch reading-calendar-legend__swatch--level-4"></span>
-        <span>Больше</span>
+      {# PR 323: each swatch names its own threshold (time read that day). #}
+      <div class="reading-calendar-legend" role="group" aria-label="Время чтения за день">
+        <span aria-hidden="true">Меньше</span>
+        {% for text in reading_calendar.legend %}
+        <span class="reading-calendar-legend__swatch{% if not loop.first %} reading-calendar-legend__swatch--level-{{ loop.index0 }}{% endif %}" role="img" title="{{ text }}" aria-label="{{ text }}"></span>
+        {% endfor %}
+        <span aria-hidden="true">Больше</span>
       </div>
     </div>
     <div class="reading-calendar-body">
       <div class="reading-calendar-weekdays" aria-hidden="true">
-        {% for weekday in ["", "Пн", "", "Ср", "", "Пт", ""] %}
+        {# PR 323: rows run Monday to Sunday (see _build_reading_calendar). #}
+        {% for weekday in ["Пн", "", "Ср", "", "Пт", "", ""] %}
         <span>{{ weekday }}</span>
         {% endfor %}
       </div>
@@ -103,7 +103,7 @@
         >
           {% for day in reading_calendar.days %}
           <span
-            class="reading-calendar__day reading-calendar__day--level-{{ day.level }}"
+            class="reading-calendar__day reading-calendar__day--level-{{ day.level }}{% if day.is_today %} reading-calendar__day--today{% endif %}"
             data-tooltip="{{ day.label }}"
           ></span>
           {% endfor %}
