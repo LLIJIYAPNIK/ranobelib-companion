@@ -273,15 +273,15 @@ _MAX_TITLES_IN_LABEL = 3
 
 async def _build_reading_calendar(user_id: int, conn: AsyncConnection, tz: str) -> ReadingCalendar:
     """Every day in the trailing _CALENDAR_WEEKS weeks, oldest first, padded back to the
-    most recent Sunday on/before the window's own start so the flat list can be dropped
-    straight into a `grid-auto-flow: column; grid-template-rows: repeat(7, ...)` grid
-    (app.css's .reading-calendar) and land each day in the correct weekday row - the same
-    "whole Sunday-to-Saturday weeks, partial leading week zero-filled" alignment GitHub's
-    own contribution graph uses. A day with no chapter_read events at all (including every
-    padding day, which by construction predates anything daily_reading_activity() even
-    queried for) gets level 0, same as a real day with zero chapters read - there's no
-    distinct "no data" state, an empty calendar for a user with no reading history at all
-    just means every cell is level 0, not an empty/missing grid."""
+    Monday on/before the window's own start so the flat list can be dropped straight into
+    a `grid-auto-flow: column; grid-template-rows: repeat(7, ...)` grid (app.css's
+    .reading-calendar) and land each day in the correct weekday row - whole Monday-to-
+    Sunday weeks (PR 323: the Russian week, as the «Пн/Ср/Пт» row labels say; it used to
+    be GitHub's Sunday-first one), partial leading week zero-filled. A day with no reading
+    at all (including every padding day, which by construction predates anything the
+    daily_* queries even looked at) gets level 0 - there's no distinct "no data" state,
+    an empty calendar for a user with no reading history at all just means every cell is
+    level 0, not an empty/missing grid."""
     counts = await daily_reading_activity(conn, user_id, weeks=_CALENDAR_WEEKS, tz=tz)
     active_seconds = await daily_active_seconds(conn, user_id, weeks=_CALENDAR_WEEKS, tz=tz)
     titles_by_day = await daily_titles_read(conn, user_id, weeks=_CALENDAR_WEEKS, tz=tz)
@@ -292,9 +292,8 @@ async def _build_reading_calendar(user_id: int, conn: AsyncConnection, tz: str) 
 
     today = local_today(tz)
     start = today - timedelta(days=_CALENDAR_WEEKS * 7 - 1)
-    # date.weekday() is Monday=0..Sunday=6, so days-since-the-most-recent-Sunday is
-    # (weekday + 1) % 7.
-    grid_start = start - timedelta(days=(start.weekday() + 1) % 7)
+    # date.weekday() is Monday=0..Sunday=6 - days since the most recent Monday.
+    grid_start = start - timedelta(days=start.weekday())
 
     days: list[CalendarDay] = []
     current = grid_start
@@ -364,7 +363,7 @@ _MIN_MONTH_LABEL_GAP = 3
 def _month_labels(grid_start: date, total_days: int) -> list[str]:
     """One entry per column of the day grid (columns run left→right, oldest first, same
     order `days` auto-flows into via app.css's `grid-auto-flow: column`), empty unless that
-    column is where a new month starts - i.e. its first (Sunday) row falls in a different
+    column is where a new month starts - i.e. its first (Monday) row falls in a different
     month than the previous column's first row. Purely a function of `grid_start`/
     `total_days` (calendar dates), not of any reading activity, so it renders the same
     correct labels whether the user has a year of history or none at all."""

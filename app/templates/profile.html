@@ -79,7 +79,8 @@
     </div>
     <div class="reading-calendar-body">
       <div class="reading-calendar-weekdays" aria-hidden="true">
-        {% for weekday in ["", "Пн", "", "Ср", "", "Пт", ""] %}
+        {# PR 323: rows run Monday to Sunday (see _build_reading_calendar). #}
+        {% for weekday in ["Пн", "", "Ср", "", "Пт", "", ""] %}
         <span>{{ weekday }}</span>
         {% endfor %}
       </div>
