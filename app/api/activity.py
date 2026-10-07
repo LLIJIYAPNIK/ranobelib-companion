@@ -5,6 +5,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 from datetime import UTC, date, datetime, timedelta
 from typing import Annotated, Literal
+from zoneinfo import ZoneInfo
 
 from fastapi import APIRouter, Depends, Form, Request
 from fastapi.responses import HTMLResponse, Response
@@ -34,6 +35,7 @@ from app.jobs.models import DownloadJob
 from app.jobs.store import list_active_jobs_for_user
 from app.services.client import open_client
 from app.templating import templates
+from app.timezones import day_start_utc, local_today, user_timezone
 
 router = APIRouter(prefix="/activity")
 
@@ -62,14 +64,16 @@ class ActivitySummary:
 
 async def build_activity_summary(user: User, conn: AsyncConnection) -> ActivitySummary:
     """Everything the "Активность" page (see the upcoming GET /activity route) shows for
-    today - "today" meaning the UTC calendar date, matching app/db/activity.py."""
-    read_today = await _read_today_items(user, conn)
+    today - "today" meaning the user's own calendar day (PR 322, users.timezone; UTC
+    when unset), matching app/db/activity.py."""
+    tz = user_timezone(user.timezone)
+    read_today = await _read_today_items(user, conn, tz)
     return ActivitySummary(
         read_today=read_today,
         chapters_read_today=sum(item.chapters_read for item in read_today),
-        active_time_label=_format_active_time(await total_active_seconds_today(conn, user.id)),
+        active_time_label=_format_active_time(await total_active_seconds_today(conn, user.id, tz)),
         active_jobs=list_active_jobs_for_user(user.id),
-        downloads_today=await list_download_history_today(conn, user.id),
+        downloads_today=await list_download_history_today(conn, user.id, tz),
     )
 
 
@@ -149,11 +153,13 @@ async def build_activity_overview(
     for item in summary.read_today:
         titles.remember(item.slug_url, item.name, item.cover_url)
 
-    today = datetime.now(UTC).date()
-    period_start = (today - timedelta(days=_PERIOD_DAYS[period] - 1)).isoformat()
-    chapters_by_day = await daily_reading_activity(conn, user.id)
-    seconds_by_day = await daily_active_seconds(conn, user.id)
-    titles_by_day = await daily_titles_read(conn, user.id)
+    tz = user_timezone(user.timezone)
+    today = local_today(tz)
+    period_start_day = today - timedelta(days=_PERIOD_DAYS[period] - 1)
+    period_start = period_start_day.isoformat()
+    chapters_by_day = await daily_reading_activity(conn, user.id, tz=tz)
+    seconds_by_day = await daily_active_seconds(conn, user.id, tz=tz)
+    titles_by_day = await daily_titles_read(conn, user.id, tz=tz)
     recent_reads = await list_recent_chapter_reads(conn, user.id, limit=_EVENTS_LIMIT)
     recent_downloads = await list_download_history(conn, user.id, limit=_EVENTS_LIMIT)
     last_download = recent_downloads[0] if recent_downloads else None
@@ -163,7 +169,9 @@ async def build_activity_overview(
     if period == "today":
         downloads_in_period = len(summary.downloads_today)
     else:
-        downloads_in_period = await count_downloads_since(conn, user.id, period_start)
+        downloads_in_period = await count_downloads_since(
+            conn, user.id, day_start_utc(period_start_day, tz)
+        )
 
     # Titles read in the period, most recently read first.
     period_slugs: list[str] = []
@@ -195,7 +203,7 @@ async def build_activity_overview(
             "Скачано",
             str(downloads_in_period),
             "",
-            f"Последняя загрузка {_short_date(last_download.finished_at)}"
+            f"Последняя загрузка {_short_date(last_download.finished_at, tz)}"
             if last_download
             else "Загрузок ещё не было",
         ),
@@ -230,8 +238,8 @@ async def build_activity_overview(
         chart_total_label="".join(_split_active_time(chart_seconds)),
         chart_reading_days=sum(1 for day in chart_days if day.minutes > 0),
         read_today_highlight=highlight,
-        last_download_label=_long_date(last_download.finished_at) if last_download else None,
-        events=await _events(recent_reads, recent_downloads, titles, today),
+        last_download_label=_long_date(last_download.finished_at, tz) if last_download else None,
+        events=await _events(recent_reads, recent_downloads, titles, today, tz),
     )
 
 
@@ -279,7 +287,7 @@ async def heartbeat(
     return Response(status_code=204)
 
 
-async def _read_today_items(user: User, conn: AsyncConnection) -> list[ReadToday]:
+async def _read_today_items(user: User, conn: AsyncConnection, tz: str) -> list[ReadToday]:
     """Each read-today title's display name/cover, fetched fresh through the SDK - same
     approach as `_library_items()` in app/api/library.py, for the same reason (avoid a
     second cache of SDK response data, see CLAUDE.md, "Архитектура"). A title that's
@@ -287,7 +295,7 @@ async def _read_today_items(user: User, conn: AsyncConnection) -> list[ReadToday
     label and no cover.
     """
     items: list[ReadToday] = []
-    for count in await list_chapters_read_today(conn, user.id):
+    for count in await list_chapters_read_today(conn, user.id, tz):
         name: str | None = None
         cover_url: str | None = None
         try:
@@ -349,20 +357,25 @@ def _parse_utc(timestamp: str) -> datetime:
     return parsed.astimezone(UTC)
 
 
-def _short_date(timestamp: str) -> str:
-    return _parse_utc(timestamp).strftime("%d.%m")
+def _local(timestamp: str, tz: str) -> datetime:
+    """A stored UTC timestamp on the user's own clock (PR 322)."""
+    return _parse_utc(timestamp).astimezone(ZoneInfo(tz))
 
 
-def _long_date(timestamp: str) -> str:
-    day = _parse_utc(timestamp).date()
+def _short_date(timestamp: str, tz: str) -> str:
+    return _local(timestamp, tz).strftime("%d.%m")
+
+
+def _long_date(timestamp: str, tz: str) -> str:
+    day = _local(timestamp, tz).date()
     return f"{day.day} {_MONTHS_GENITIVE[day.month - 1]}"
 
 
-def _event_time(timestamp: str, today: date) -> str:
+def _event_time(timestamp: str, today: date, tz: str) -> str:
     """The time column of "История событий": "Сегодня · 14:05", "Вчера · 09:12" or
-    "06.09 · 19:17" - in UTC, like every other timestamp the app shows (see
-    app/db/activity.py's module docstring)."""
-    moment = _parse_utc(timestamp)
+    "06.09 · 19:17" - on the user's own clock and calendar (PR 322), the same days the
+    stats above it count in."""
+    moment = _local(timestamp, tz)
     clock = moment.strftime("%H:%M")
     if moment.date() == today:
         return f"Сегодня · {clock}"
@@ -444,6 +457,7 @@ async def _events(
     downloads: list[DownloadHistoryEntry],
     titles: _TitleLookup,
     today: date,
+    tz: str,
 ) -> list[ActivityEvent]:
     """"История событий": the latest chapter reads and downloads, merged newest first."""
     events: list[ActivityEvent] = []
@@ -459,7 +473,7 @@ async def _events(
                 kind="read",
                 title=f"Прочитана глава {read.number} · {name}",
                 sub=sub,
-                time_label=_event_time(read.created_at, today),
+                time_label=_event_time(read.created_at, today, tz),
                 href=f"/titles/{read.slug_url}/chapters/{read.volume}/{read.number}",
                 sort_key=_parse_utc(read.created_at).isoformat(),
             )
@@ -481,7 +495,7 @@ async def _events(
                 kind=kind,
                 title=title,
                 sub=sub,
-                time_label=_event_time(entry.finished_at, today),
+                time_label=_event_time(entry.finished_at, today, tz),
                 href=f"/titles/{entry.slug_url}",
                 sort_key=_parse_utc(entry.finished_at).isoformat(),
             )

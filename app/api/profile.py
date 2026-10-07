@@ -15,7 +15,7 @@ something is set to hidden and go fix it in /settings/account.
 from __future__ import annotations
 
 from dataclasses import dataclass
-from datetime import UTC, date, datetime, timedelta
+from datetime import date, datetime, timedelta
 from typing import Annotated
 
 from fastapi import APIRouter, Depends, HTTPException, Request
@@ -31,6 +31,7 @@ from app.db.friendships import get_friend_button_state, list_friends
 from app.db.users import User, get_user_by_id
 from app.services.titles import title_summaries
 from app.templating import templates
+from app.timezones import local_today, user_timezone
 
 router = APIRouter()
 
@@ -153,7 +154,10 @@ async def _render_profile(
 
     friend_preview = friends[:_FRIEND_PREVIEW_LIMIT]
     comment_count = await count_comments_by_user(conn, profile_user.id)
-    reading_calendar = await _build_reading_calendar(profile_user.id, conn)
+    # PR 322: the profile owner's own days, whoever is looking at them.
+    reading_calendar = await _build_reading_calendar(
+        profile_user.id, conn, user_timezone(profile_user.timezone)
+    )
     # PR 277: a hidden section counts as empty here too - the same neutral "0" a genuinely
     # empty library/friend list shows, never a different state that would reveal a flag.
     stats = [
@@ -256,7 +260,7 @@ def _format_date(iso_timestamp: str) -> str:
 _MAX_TITLES_IN_LABEL = 3
 
 
-async def _build_reading_calendar(user_id: int, conn: AsyncConnection) -> ReadingCalendar:
+async def _build_reading_calendar(user_id: int, conn: AsyncConnection, tz: str) -> ReadingCalendar:
     """Every day in the trailing _CALENDAR_WEEKS weeks, oldest first, padded back to the
     most recent Sunday on/before the window's own start so the flat list can be dropped
     straight into a `grid-auto-flow: column; grid-template-rows: repeat(7, ...)` grid
@@ -267,16 +271,16 @@ async def _build_reading_calendar(user_id: int, conn: AsyncConnection) -> Readin
     queried for) gets level 0, same as a real day with zero chapters read - there's no
     distinct "no data" state, an empty calendar for a user with no reading history at all
     just means every cell is level 0, not an empty/missing grid."""
-    counts = await daily_reading_activity(conn, user_id, weeks=_CALENDAR_WEEKS)
-    active_seconds = await daily_active_seconds(conn, user_id, weeks=_CALENDAR_WEEKS)
-    titles_by_day = await daily_titles_read(conn, user_id, weeks=_CALENDAR_WEEKS)
+    counts = await daily_reading_activity(conn, user_id, weeks=_CALENDAR_WEEKS, tz=tz)
+    active_seconds = await daily_active_seconds(conn, user_id, weeks=_CALENDAR_WEEKS, tz=tz)
+    titles_by_day = await daily_titles_read(conn, user_id, weeks=_CALENDAR_WEEKS, tz=tz)
     # One lookup per unique title across the whole window, not per day it was read on -
     # a title read on 20 different days over the year still only needs its name fetched
     # once, reused for every one of that title's cells below.
     title_names = await _title_names({slug for slugs in titles_by_day.values() for slug in slugs})
     max_count = max(counts.values(), default=0)
 
-    today = datetime.now(UTC).date()
+    today = local_today(tz)
     start = today - timedelta(days=_CALENDAR_WEEKS * 7 - 1)
     # date.weekday() is Monday=0..Sunday=6, so days-since-the-most-recent-Sunday is
     # (weekday + 1) % 7.

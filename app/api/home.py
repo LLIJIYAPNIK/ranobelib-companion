@@ -23,6 +23,7 @@ from app.reading_progress import reading_progress_percent
 from app.recent_titles import forget, read_recent
 from app.services.client import open_client
 from app.templating import templates
+from app.timezones import user_timezone
 
 router = APIRouter()
 
@@ -177,7 +178,11 @@ async def _friend_activity_cards(user: User | None) -> list[FriendActivityCard]:
             ):
                 currently_reading = None
             recent_comments = await list_recent_comments_by_user(conn, entry.user.id)
-            streak_days = reading_streak_days(await daily_reading_activity(conn, entry.user.id))
+            # PR 322: counted on the friend's own calendar.
+            friend_tz = user_timezone(friend_user.timezone if friend_user else None)
+            streak_days = reading_streak_days(
+                await daily_reading_activity(conn, entry.user.id, tz=friend_tz), friend_tz
+            )
             cards.append(
                 FriendActivityCard(
                     friend=entry.user,
