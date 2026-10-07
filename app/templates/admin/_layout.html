@@ -1,0 +1,19 @@
+<!doctype html>
+<html lang="ru">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  {# PR 324: never indexed (X-Robots-Tag is set on every /admin* response as well). #}
+  <meta name="robots" content="noindex, nofollow">
+  <title>{% block title %}Админ-панель{% endblock %} — Webnovells</title>
+  <link rel="icon" type="image/png" sizes="32x32" href="{{ url_for('static', path='favicon/favicon-32x32.png') }}">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&display=swap">
+  <link rel="stylesheet" href="{{ static_url('css/app.css') }}">
+</head>
+{# The admin isn't a site user - none of base.html's navigation or account UI here. #}
+<body class="wn-admin">
+  {% block content %}{% endblock %}
+</body>
+</html>

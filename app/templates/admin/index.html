@@ -1,0 +1,15 @@
+{% extends "admin/_layout.html" %}
+{% block title %}Обзор{% endblock %}
+{% block content %}
+<main class="wn-admin__center">
+  <section class="wn-admin__card" aria-labelledby="admin-home-title">
+    <h1 class="wn-admin__title" id="admin-home-title">Админ-панель</h1>
+    {# PR 325 fills this in: the overview and the read-only data browser. #}
+    <p class="wn-admin__hint">Вход выполнен. Обзор и просмотр данных появятся здесь.</p>
+    <form method="post" action="/admin/logout">
+      <input type="hidden" name="csrf" value="{{ csrf_token }}">
+      <button class="ui-btn" type="submit">Выйти</button>
+    </form>
+  </section>
+</main>
+{% endblock %}
