@@ -140,7 +140,7 @@
   if (!tapMode) {
     document.addEventListener("click", (event) => {
       if (lastPointerType === "mouse") return;
-      if (event.target.closest("a, button, input, textarea, select, label, img, sup, dialog, [role='toolbar'], .reader-hud-bottom, .paragraph-reactions, .paragraph-comments, .paragraph-menu__panel")) return;
+      if (event.target.closest("a, button, input, textarea, select, label, img, sup, dialog, [role='dialog'], [role='toolbar'], .reader-hud-bottom, .paragraph-reactions, .paragraph-comments, .paragraph-menu__panel")) return;
       if (String(window.getSelection() || "")) return;
       const x = event.clientX / window.innerWidth;
       if (x >= CENTER_ZONE[0] && x < CENTER_ZONE[1]) toggle();
