@@ -85,8 +85,10 @@ def test_desktop_layer_sits_in_the_flow_under_the_paragraph() -> None:
 
 
 def test_touch_targets_are_44px() -> None:
-    touch = ".paragraph-comments__toggle,\n  .paragraph-comment__action,\n  "
-    assert "min-height: 44px;" in _rule(touch + ".paragraph-comment__reaction", indent="  ")
+    touch = ".paragraph-comments__toggle,\n  .paragraph-comment__action"
+    assert "min-height: 44px;" in _rule(touch, indent="  ")
+    # PR 313: votes and reaction chips are .wn-reaction - 44px tall on touch.
+    assert "--reaction-h: 44px;" in _rule(".wn-reaction", indent="  ")
     icon = _rule(".paragraph-comments__icon-btn", indent="  ")
     assert "width: 44px;" in icon
     assert "height: 44px;" in icon

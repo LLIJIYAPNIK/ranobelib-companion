@@ -2957,28 +2957,28 @@ html.bottom-sheet-lock body {
   transition: background-color 0.15s ease;
 }
 
-/* PR 131: the paragraph context menu (right-click on a paragraph opens Реакции/
-   Комментировать - Комментировать stays a stub until PR 133). Portaled to <body> and
-   positioned from the click point with inline left/top (paragraph-menu.js), the same
-   reason .profile-menu__panel (PR 97) is portaled rather than nested where it's used: an
-   ancestor's overflow would otherwise clip it. Same fade/no-slide-direction-needed open
-   styling as that panel, just anchored at a point instead of a trigger element's rect. */
+/* PR 131: the paragraph context menu (right-click / long press / Tap Focus «⋯» on a
+   paragraph: Реакции, Комментировать, Цитировать). Portaled to <body> and positioned
+   from the click point with inline left/top (paragraph-menu.js) so no ancestor's
+   overflow can clip it. PR 313: on the reader-theme --pc-* tokens like the comment layer
+   (see .paragraph-comments below), the emoji picker as a 5x2 grid of 44px cells. */
 .paragraph-menu__panel {
   display: flex;
   flex-direction: column;
   gap: 2px;
   position: fixed;
   z-index: 40;
-  min-width: 180px;
+  min-width: 200px;
   padding: 6px;
-  background: var(--bg-surface);
-  border: 1px solid var(--legacy-border);
-  border-radius: 8px;
-  box-shadow: 0 10px 24px rgba(0, 0, 0, 0.35);
+  border: 1px solid var(--pc-line);
+  border-radius: 14px;
+  background: var(--pc-surface);
+  box-shadow: 0 16px 40px rgb(0 0 0 / 35%);
+  color: var(--pc-text);
   opacity: 0;
   pointer-events: none;
-  transition: opacity 0.15s ease, transform 0.15s ease;
   transform: scale(0.97);
+  transition: opacity 0.15s ease, transform 0.15s ease;
 }
 
 .paragraph-menu__panel--open {
@@ -2992,172 +2992,213 @@ html.bottom-sheet-lock body {
   align-items: center;
   gap: 6px;
   width: 100%;
-  padding: 8px 10px;
+  min-height: 40px;
+  padding: 0 12px;
   border: none;
-  border-radius: 6px;
+  border-radius: 10px;
   background: none;
-  color: var(--text-secondary);
-  font-family: inherit;
-  font-size: 13px;
+  color: var(--pc-text);
+  font: 600 14px/1 var(--font-ui);
   text-align: left;
   text-decoration: none;
   cursor: pointer;
-  transition: background-color 0.1s ease, color 0.1s ease;
+  transition: background-color 0.1s ease;
 }
 
-.paragraph-menu__item:disabled {
-  color: var(--text-muted);
-  cursor: default;
-}
-
-@media (hover: hover) {
-  .paragraph-menu__item:not(:disabled):hover {
-    background: rgba(34, 211, 197, 0.12);
-    color: var(--text-primary);
-  }
-}
-
-/* PR 132: the "← Назад" row that swaps the two-item list for the emoji picker below, and
-   back again - a plain left-aligned button styled like a lighter-weight .paragraph-menu__item. */
+/* PR 132: «← Назад» back from the picker to the item list. */
 .paragraph-menu__back {
   align-self: flex-start;
-  padding: 4px 6px;
-  margin-bottom: 2px;
+  min-height: 32px;
+  padding: 0 8px;
   border: none;
+  border-radius: 8px;
   background: none;
-  color: var(--text-muted);
-  font-family: inherit;
-  font-size: 12px;
+  color: var(--pc-muted);
+  font: 600 12px/1 var(--font-ui);
   cursor: pointer;
 }
 
-@media (hover: hover) {
-  .paragraph-menu__back:hover {
-    color: var(--text-primary);
-  }
-}
-
-/* PR 132: the 10-emoji reaction picker that replaces the menu's item list once
-   "Реакции" is clicked - a fixed 5-column grid, wide enough for all ten without the
-   panel growing much past its usual two-item width. */
 .paragraph-menu__emoji-picker {
   display: grid;
-  grid-template-columns: repeat(5, 1fr);
+  grid-template-columns: repeat(5, 44px);
   gap: 2px;
 }
 
 .paragraph-menu__emoji {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  width: 36px;
-  height: 36px;
+  display: grid;
+  place-items: center;
+  width: 44px;
+  height: 44px;
   border: 1px solid transparent;
-  border-radius: 6px;
+  border-radius: 12px;
   background: none;
-  font-size: 18px;
+  font-size: 22px;
   line-height: 1;
   cursor: pointer;
   transition: background-color 0.1s ease, border-color 0.1s ease;
 }
 
-.paragraph-menu__emoji--active {
-  border-color: var(--accent-teal);
-  background: rgba(34, 211, 197, 0.12);
+/* The reader's current reaction - the same tint and outline as a .wn-reaction--mine chip. */
+.paragraph-menu__emoji[aria-checked="true"] {
+  border-color: color-mix(in srgb, var(--pc-accent) 55%, transparent);
+  background: var(--pc-tint);
 }
 
 @media (hover: hover) {
+  .paragraph-menu__item:hover,
   .paragraph-menu__emoji:hover {
-    background: rgba(34, 211, 197, 0.12);
+    background: var(--pc-tint);
+  }
+
+  .paragraph-menu__back:hover {
+    color: var(--pc-text);
   }
 }
 
-/* PR 132: the aggregated reaction counts rendered under a paragraph - one pill per emoji
-   that has at least one reaction, nothing rendered at all for a paragraph with none (same
-   "empty state = show nothing" rule PR 122's profile sections already follow).
+.paragraph-menu__item:focus-visible,
+.paragraph-menu__back:focus-visible,
+.paragraph-menu__emoji:focus-visible {
+  outline: none;
+  box-shadow: 0 0 0 2px var(--pc-focus);
+}
 
-   Two hosts, one rule each for when the strip is visible:
-   - .reader-content__paragraph-wrap (tap-to-read mode, PR 62) already renders as a
-     standalone plate, so the strip just sits in its normal flow, always visible, right
-     under the timestamp (PR 64).
-   - .paragraph-reactions-host (the ordinary reading mode - paragraph-menu.js lazily wraps
-     a paragraph in one of these the first time it needs to host a strip, since the SDK's
-     own raw element underneath can be anything, including a bare <img> that can't have
-     children at all) shows it as a compact overlay on hover/focus, so it doesn't push
-     the running text around just because a paragraph happens to have reactions. */
-.paragraph-reactions {
-  display: flex;
-  flex-wrap: wrap;
+@media (pointer: coarse) {
+  .paragraph-menu__item {
+    min-height: 44px;
+  }
+}
+
+/* PR 313 (Webnovells): one reaction chip for everything reaction-shaped - a paragraph's
+   emoji counts, its «+N» / «+» chips, and a comment's like/dislike. Secondary by design:
+   no fill at rest, a pill the height of the comments pill beside it. Being the reader's
+   own pick changes color, tint and outline only - the border is always 1px and the
+   weight never changes, so selecting, hovering or sending never shifts the row; counts
+   are tabular. --quiet (comment votes) keeps the outline transparent until it's yours. */
+.wn-reaction {
+  --reaction-h: 32px;
+  appearance: none;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
   gap: 6px;
-  margin-top: 6px;
+  min-width: var(--reaction-h);
+  height: var(--reaction-h);
+  padding: 0 10px;
+  border: 1px solid color-mix(in srgb, var(--pc-muted) 28%, transparent);
+  border-radius: var(--r-full);
+  background: transparent;
+  color: var(--pc-muted);
+  font: 600 13px/1 var(--font-ui);
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+  cursor: pointer;
+  transition: background-color 160ms ease, border-color 160ms ease, color 160ms ease,
+    opacity 160ms ease;
+  -webkit-tap-highlight-color: transparent;
 }
 
-.reader-content__paragraph-wrap > .paragraph-reactions {
-  padding: 0 14px 10px;
+.wn-reaction__emoji {
+  font-size: 15px;
+  line-height: 1;
 }
 
+.wn-reaction__icon {
+  display: grid;
+}
+
+.wn-reaction__count {
+  min-width: 1ch;
+}
+
+.wn-reaction--quiet {
+  padding: 0 8px;
+  border-color: transparent;
+}
+
+.wn-reaction--mine {
+  border-color: color-mix(in srgb, var(--pc-accent) 55%, transparent);
+  background: var(--pc-tint);
+  color: var(--pc-accent);
+}
+
+.wn-reaction--mine .wn-reaction__icon svg {
+  fill: color-mix(in srgb, var(--pc-accent) 30%, transparent);
+}
+
+.wn-reaction--add {
+  padding: 0 8px;
+}
+
+/* Sending: the chip just picked pulses; the rest of the row waits (disabled-looking,
+   still the same size). */
+.wn-reaction[aria-busy="true"] {
+  cursor: progress;
+  animation: wn-reaction-pending 0.9s ease-in-out infinite alternate;
+}
+
+[aria-busy="true"] > .wn-reaction:not([aria-busy="true"]) {
+  opacity: 0.55;
+  cursor: progress;
+}
+
+@keyframes wn-reaction-pending {
+  to {
+    opacity: 0.55;
+  }
+}
+
+@media (hover: hover) {
+  .wn-reaction:hover {
+    border-color: color-mix(in srgb, var(--pc-muted) 50%, transparent);
+    background: var(--pc-tint);
+    color: var(--pc-text);
+  }
+
+  .wn-reaction--quiet:hover {
+    border-color: transparent;
+  }
+
+  .wn-reaction--mine:hover {
+    border-color: var(--pc-accent);
+    color: var(--pc-accent);
+  }
+}
+
+.wn-reaction:focus-visible {
+  outline: none;
+  box-shadow: 0 0 0 2px var(--pc-focus);
+}
+
+@media (pointer: coarse) {
+  .wn-reaction {
+    --reaction-h: 44px;
+    padding: 0 12px;
+  }
+
+  .wn-reaction--quiet,
+  .wn-reaction--add {
+    padding: 0 10px;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .wn-reaction[aria-busy="true"] {
+    animation: none;
+    opacity: 0.7;
+  }
+}
+
+/* The ordinary reading mode wraps a paragraph that gets a comments/reactions row in a
+   plain host (paragraph-menu.js's paragraphHostFor()) - the SDK's own element can be
+   anything, even a bare <img>. */
 .paragraph-reactions-host {
-  position: relative;
-  /* PR 153: unlike .reader-content__paragraph-wrap, this host doesn't zero its child's
-     own margin, so the wrapped paragraph's `.reader-content p` margin-bottom (16px) was
-     free to collapse against `.paragraph-comments`'s margin-top (6px) below - sibling
-     margins always collapse to the larger of the two, so the toggle ended up sitting a
-     fixed but unintended 16px down instead of the 6px actually specified. Zeroing the
-     wrapped element's own bottom margin (below) and owning that 16px here instead keeps
-     a bare host (no reactions/comments attached yet) visually identical to a plain
-     paragraph, while letting .paragraph-comments's margin-top apply on its own. */
+  /* PR 153: the wrapped paragraph's own margin-bottom would collapse against the row's
+     margin-top below - the host owns the paragraph gap instead. */
   margin-bottom: 16px;
 }
 
 .paragraph-reactions-host > :first-child {
   margin-bottom: 0;
-}
-
-/* PR 180: a zero-height positioning context of its own, inserted right after the
-   paragraph's own text (paragraph-menu.js's reactionsAnchorFor()) - not the whole host,
-   which .paragraph-comments (a normal-flow sibling below) would otherwise stretch,
-   dragging the strip's `bottom: -8px` down along with it whenever a paragraph has both. */
-.paragraph-reactions-anchor {
-  position: relative;
-}
-
-.paragraph-reactions-anchor > .paragraph-reactions {
-  position: absolute;
-  /* Right-aligned, not left: correctly anchoring this to right after the paragraph text
-     (above) puts it in the exact same row .paragraph-comments__toggle ("N комментариев")
-     occupies when a paragraph has both - that button is left-aligned, so anchoring the
-     strip from the right instead keeps the two from landing on the same pixels. */
-  right: 0;
-  bottom: -8px;
-  transform: translateY(100%);
-  opacity: 0;
-  pointer-events: none;
-  transition: opacity 0.15s ease;
-  z-index: 1;
-}
-
-.paragraph-reactions-host:hover > .paragraph-reactions-anchor > .paragraph-reactions,
-.paragraph-reactions-host:focus-within > .paragraph-reactions-anchor > .paragraph-reactions {
-  opacity: 1;
-  pointer-events: auto;
-}
-
-.paragraph-reactions__pill {
-  display: inline-flex;
-  align-items: center;
-  gap: 4px;
-  padding: 2px 8px;
-  border-radius: 999px;
-  background: var(--bg-surface);
-  border: 1px solid var(--legacy-border);
-  font-size: 12px;
-  color: var(--text-secondary);
-  white-space: nowrap;
-}
-
-.paragraph-reactions__pill--mine {
-  border-color: var(--accent-teal);
-  color: var(--text-primary);
 }
 
 /* PR 312 (Webnovells): the paragraph comment layer (paragraph-menu.js). Under a
@@ -3166,7 +3207,9 @@ html.bottom-sheet-lock body {
    covers it or hangs off the viewport), inside the shared bottom sheet on phones - with
    the paragraph's own context, the thread and the composer.
    Colors go through --pc-*: the reader theme's --r-* tokens inline (all 5 themes, light
-   ones included), the sheet's dark Webnovells palette once the layer moves in there. */
+   ones included), the sheet's dark Webnovells palette once the layer moves in there.
+   PR 313: the paragraph menu/picker and the reaction chips use them too. */
+.paragraph-menu__panel,
 .paragraph-comments,
 .paragraph-comments__layer {
   --pc-text: var(--r-text);
@@ -3246,6 +3289,35 @@ html.bottom-sheet-lock body {
     border-color: color-mix(in srgb, var(--pc-muted) 50%, transparent);
     color: var(--pc-text);
   }
+}
+
+/* PR 313: the paragraph's row - comments pill, reaction chips, «+N», «+» - wrapping onto
+   a second line rather than overflowing the column. */
+.paragraph-comments__bar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+}
+
+.paragraph-reactions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+}
+
+.paragraph-reactions:empty {
+  display: none;
+}
+
+.paragraph-comments__bar-error {
+  color: var(--pc-danger);
+  font: 600 12px/1.3 var(--font-ui);
+}
+
+.paragraph-comments__bar-error[hidden] {
+  display: none;
 }
 
 /* The layer: context head, status line, thread, composer. */
@@ -3608,8 +3680,7 @@ img.paragraph-comment__attachment {
   display: none;
 }
 
-.paragraph-comment__action,
-.paragraph-comment__reaction {
+.paragraph-comment__action {
   appearance: none;
   display: inline-flex;
   align-items: center;
@@ -3626,31 +3697,16 @@ img.paragraph-comment__attachment {
   transition: background-color 160ms ease, color 160ms ease;
 }
 
+/* PR 313: like/dislike are .wn-reaction--quiet chips; the dislike flips the thumb. */
 .paragraph-comment__reactions {
   display: inline-flex;
   align-items: center;
   gap: 2px;
+  margin-right: 4px;
 }
 
-.paragraph-comment__reaction-count {
-  min-width: 1ch;
-  font-variant-numeric: tabular-nums;
-}
-
-.paragraph-comment__reaction--down .paragraph-comment__reaction-icon svg {
+.paragraph-comment__reaction--down .wn-reaction__icon svg {
   transform: scaleY(-1);
-}
-
-.paragraph-comment__reaction-icon {
-  display: grid;
-}
-
-.paragraph-comment__reaction--mine {
-  color: var(--pc-accent);
-}
-
-.paragraph-comment__reaction--mine .paragraph-comment__reaction-icon svg {
-  fill: color-mix(in srgb, var(--pc-accent) 30%, transparent);
 }
 
 .paragraph-comment__reply-toggle[aria-expanded="true"],
@@ -3659,8 +3715,7 @@ img.paragraph-comment__attachment {
 }
 
 @media (hover: hover) {
-  .paragraph-comment__action:hover,
-  .paragraph-comment__reaction:hover {
+  .paragraph-comment__action:hover {
     background: var(--pc-tint);
     color: var(--pc-text);
   }
@@ -3940,7 +3995,6 @@ img.paragraph-comment__attachment {
 .paragraph-comments__icon-btn:focus-visible,
 .paragraph-comments__emoji:focus-visible,
 .paragraph-comment__action:focus-visible,
-.paragraph-comment__reaction:focus-visible,
 .paragraph-comment__author:focus-visible,
 .paragraph-comments__login a:focus-visible {
   outline: none;
@@ -3950,13 +4004,11 @@ img.paragraph-comment__attachment {
 /* Touch: every control at least 44px tall. */
 @media (pointer: coarse) {
   .paragraph-comments__toggle,
-  .paragraph-comment__action,
-  .paragraph-comment__reaction {
+  .paragraph-comment__action {
     min-height: 44px;
   }
 
-  .paragraph-comment__action,
-  .paragraph-comment__reaction {
+  .paragraph-comment__action {
     padding: 0 6px;
   }
 
