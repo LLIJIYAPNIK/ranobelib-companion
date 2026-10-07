@@ -4,7 +4,7 @@ from typing import Annotated
 
 import psycopg
 from fastapi import APIRouter, Depends, File, Form, Request, UploadFile
-from fastapi.responses import HTMLResponse, RedirectResponse
+from fastapi.responses import HTMLResponse, RedirectResponse, Response
 from psycopg import AsyncConnection
 
 from app.auth.avatar import AvatarUploadError, save_avatar
@@ -26,8 +26,10 @@ from app.db.users import (
     update_user_account,
     update_user_avatar,
     update_user_password,
+    update_user_timezone,
 )
 from app.templating import templates
+from app.timezones import DEFAULT_TIMEZONE, is_valid_timezone, timezone_choices
 
 router = APIRouter()
 
@@ -63,6 +65,9 @@ def _account_context(user: User, **extra: object) -> dict[str, object]:
         "show_library": user.show_library,
         "show_friends_activity_home": user.show_friends_activity_home,
         "show_friends": user.show_friends,
+        # PR 322: the activity day zone - unset (UTC) until the browser reports one.
+        "timezone": user.timezone or DEFAULT_TIMEZONE,
+        "timezone_choices": timezone_choices(),
         **extra,
     }
 
@@ -178,6 +183,41 @@ async def update_privacy(
     return templates.TemplateResponse(
         request, "settings_account.html", _account_context(updated, privacy_saved=True)
     )
+
+
+@router.post("/settings/account/timezone", response_model=None)
+async def update_timezone(
+    request: Request,
+    user: Annotated[User, Depends(require_current_user)],
+    conn: Annotated[AsyncConnection, Depends(get_connection)],
+    timezone: str = Form(...),
+) -> HTMLResponse:
+    """PR 322: the manual picker - always overrides, unlike POST /settings/timezone."""
+    if not await is_valid_timezone(conn, timezone):
+        context = _account_context(user, timezone_error="Неизвестный часовой пояс")
+        return templates.TemplateResponse(
+            request, "settings_account.html", context, status_code=400
+        )
+    updated = await update_user_timezone(conn, user.id, timezone)
+    return templates.TemplateResponse(
+        request, "settings_account.html", _account_context(updated, timezone_saved=True)
+    )
+
+
+@router.post("/settings/timezone", response_model=None)
+async def report_browser_timezone(
+    user: Annotated[User, Depends(require_current_user)],
+    conn: Annotated[AsyncConnection, Depends(get_connection)],
+    timezone: str = Form(...),
+) -> Response:
+    """PR 322: the browser's own zone (timezone-sync.js, Intl...resolvedOptions().timeZone),
+    sent once while the account has none. It only fills an empty value - a zone picked by
+    hand in the account settings is never overwritten by whichever device logs in next."""
+    if not await is_valid_timezone(conn, timezone):
+        return Response(status_code=400)
+    if user.timezone is None:
+        await update_user_timezone(conn, user.id, timezone)
+    return Response(status_code=204)
 
 
 @router.get("/settings/security")
