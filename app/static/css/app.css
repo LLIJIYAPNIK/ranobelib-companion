@@ -2939,6 +2939,11 @@ html.bottom-sheet-lock body {
    happens at the same points normal text would. */
 .reader-content__word {
   display: inline-block;
+  /* PR 316: an inline-block is atomic - a word wider than the column would overflow it
+     whole; capped at the line width, it wraps inside itself instead (overflow-wrap:
+     anywhere, inherited from .reader-content). Ordinary words never get that wide and
+     keep the inline-block box the transitions rely on. */
+  max-width: 100%;
 }
 
 .reader-content__word--pending {
@@ -14579,8 +14584,16 @@ body.reader-hud-visible .reader-hud {
 }
 
 .reader-content {
+  min-width: 0;
   color: var(--r-text);
   text-wrap: pretty;
+  /* PR 316: a paragraph of one huge "word" (a long URL, «ААААА!!!») breaks inside it
+     instead of pushing the column wider than the screen. */
+  overflow-wrap: anywhere;
+}
+
+.reader-content__paragraph-wrap {
+  min-width: 0;
 }
 
 .reader-content a {
