@@ -25,7 +25,10 @@ that CSS can't express with a selector anyway - so ``style-src`` keeps
 cover and chapter-content images are hotlinked straight from those domains (SDK/API is
 read-only, see CLAUDE.md "Что явно не делать" - this app never re-hosts them), the same
 two hosts already trusted by the image-download proxy's own allowlist
-(``app/api/images.py``'s ``_ALLOWED_HOSTS``).
+(``app/api/images.py``'s ``_ALLOWED_HOSTS``). ``blob:`` is there for local previews of a
+file the visitor just picked (comment attachment chip, avatar upload) - an object URL
+only this page's own script can mint for a file already on the device; ``data:`` stays
+out, since any injected markup or CSS could inline an image through it.
 
 ``fonts.googleapis.com`` (the stylesheet) and ``fonts.gstatic.com`` (the font files it
 points at) are the Aurora Ink redesign's webfonts (PR 247) - Manrope, Literata, Golos
@@ -52,7 +55,7 @@ _CONTENT_SECURITY_POLICY = (
     "script-src 'self'; "
     "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; "
     "font-src 'self' https://fonts.gstatic.com; "
-    "img-src 'self' https://ranobelib.me https://*.cdnlibs.org; "
+    "img-src 'self' blob: https://ranobelib.me https://*.cdnlibs.org; "
     "object-src 'none'; "
     "base-uri 'self'; "
     "form-action 'self'; "
