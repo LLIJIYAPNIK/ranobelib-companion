@@ -2939,6 +2939,11 @@ html.bottom-sheet-lock body {
    happens at the same points normal text would. */
 .reader-content__word {
   display: inline-block;
+  /* PR 316: an inline-block is atomic - a word wider than the column would overflow it
+     whole; capped at the line width, it wraps inside itself instead (overflow-wrap:
+     anywhere, inherited from .reader-content). Ordinary words never get that wide and
+     keep the inline-block box the transitions rely on. */
+  max-width: 100%;
 }
 
 .reader-content__word--pending {
@@ -14540,10 +14545,15 @@ body.reader-hud-visible .reader-hud {
   display: none;
 }
 
-/* Reading column. */
+/* Reading column. PR 316: a flex item of the .main column - auto side margins there turn
+   off stretching and shrink the column to its content (a short paragraph gave a narrow
+   frame, one unbreakable word widened it past the screen), so the width is explicit and
+   the item centers itself with align-self; min-width: 0 drops the flex min-content floor. */
 .reader {
-  width: min(var(--reader-width), calc(100% - 64px));
-  margin: 0 auto;
+  width: 100%;
+  max-width: min(var(--reader-width), calc(100% - 64px));
+  min-width: 0;
+  align-self: center;
   padding: 112px 0 var(--s-64);
 }
 
@@ -14574,8 +14584,16 @@ body.reader-hud-visible .reader-hud {
 }
 
 .reader-content {
+  min-width: 0;
   color: var(--r-text);
   text-wrap: pretty;
+  /* PR 316: a paragraph of one huge "word" (a long URL, «ААААА!!!») breaks inside it
+     instead of pushing the column wider than the screen. */
+  overflow-wrap: anywhere;
+}
+
+.reader-content__paragraph-wrap {
+  min-width: 0;
 }
 
 .reader-content a {
@@ -14950,7 +14968,7 @@ body.reader-hud-visible .reader-hud {
   }
 
   .reader {
-    width: auto;
+    max-width: 100%;
     padding: calc(env(safe-area-inset-top, 0px) + var(--s-16)) 22px calc(var(--s-64) + env(safe-area-inset-bottom, 0px));
   }
 
