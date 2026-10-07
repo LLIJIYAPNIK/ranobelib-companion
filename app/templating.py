@@ -3,9 +3,11 @@
 from pathlib import Path
 
 from fastapi.templating import Jinja2Templates
+from jinja2 import pass_context
 from starlette.requests import Request
 
 from app.auth.avatar import avatar_initials, avatar_url
+from app.static_assets import asset_hash
 
 
 def plural(n: int, one: str, few: str, many: str) -> str:
@@ -17,6 +19,16 @@ def plural(n: int, one: str, few: str, many: str) -> str:
     if n % 10 in (2, 3, 4) and n % 100 not in (12, 13, 14):
         return few
     return many
+
+
+@pass_context
+def static_url(context: dict, path: str) -> str:
+    """url_for('static', path=...) plus ``?v=<content hash>`` (PR 317) - the URL changes
+    whenever the file does, so a deploy never leaves a browser on a cached old copy.
+    Used for css/js; app/static_assets.py sends the matching cache headers."""
+    url = str(context["request"].url_for("static", path=path))
+    version = asset_hash(path)
+    return f"{url}?v={version}" if version else url
 
 
 def _inject_current_user(request: Request) -> dict:
@@ -38,3 +50,4 @@ templates = Jinja2Templates(
 templates.env.globals["avatar_initials"] = avatar_initials
 templates.env.globals["avatar_url"] = avatar_url
 templates.env.globals["plural"] = plural
+templates.env.globals["static_url"] = static_url

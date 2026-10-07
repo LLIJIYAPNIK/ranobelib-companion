@@ -14,7 +14,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&family=Literata:ital,opsz,wght@0,7..72,400;0,7..72,500;1,7..72,400&family=Golos+Text:wght@400;500&family=JetBrains+Mono:wght@400;500&display=swap">
-  <link rel="stylesheet" href="{{ url_for('static', path='css/app.css') }}">
+  <link rel="stylesheet" href="{{ static_url('css/app.css') }}">
   {% block head_extra %}{% endblock %}
 </head>
 <body class="{% block body_class %}{% endblock %}">
@@ -26,7 +26,7 @@
        Друзья and Настройки live in the Account hub (profile-menu-panel), the bell in
        .sidebar__account. #}
     <nav class="sidebar" data-role="sidebar" aria-label="Основная навигация">
-      <script src="{{ url_for('static', path='js/sidebar-expand-init.js') }}"></script>
+      <script src="{{ static_url('js/sidebar-expand-init.js') }}"></script>
       <a class="sidebar__brand" href="/" aria-label="Webnovells — на главную"><span aria-hidden="true">W</span><span class="sidebar__brand-rest" aria-hidden="true">ebnovells</span><span class="sidebar__brand-dot" aria-hidden="true"></span></a>
       <button
         class="sidebar__toggle"
@@ -178,31 +178,31 @@
     </div>
   </div>
   {% include "_cookie_notice.html" %}
-  <script src="{{ url_for('static', path='js/sidebar-toggle.js') }}" defer></script>
-  <script src="{{ url_for('static', path='js/cookie-notice.js') }}" defer></script>
+  <script src="{{ static_url('js/sidebar-toggle.js') }}" defer></script>
+  <script src="{{ static_url('js/cookie-notice.js') }}" defer></script>
   <!-- PR 253: the mobile header's back button (strip_back_href). The bell is rendered
        inside .sidebar__account-actions to begin with now (PR 249), so nothing is
        reparented any more and notifications-panel.js doesn't depend on running after this. -->
-  <script src="{{ url_for('static', path='js/mobile-account-strip.js') }}" defer></script>
+  <script src="{{ static_url('js/mobile-account-strip.js') }}" defer></script>
   <!-- PR 217: queries the Quiet Edge Bar's links fresh on every swipe, long after page
        load, not once up front. -->
-  <script src="{{ url_for('static', path='js/mobile-navbar-swipe.js') }}" defer></script>
+  <script src="{{ static_url('js/mobile-navbar-swipe.js') }}" defer></script>
   <!-- PR 279: hides the bottom navigation while the on-screen keyboard is open. -->
-  <script src="{{ url_for('static', path='js/mobile-keyboard.js') }}" defer></script>
+  <script src="{{ static_url('js/mobile-keyboard.js') }}" defer></script>
   <!-- PR 227: loaded on every page (not only from the forms themselves) - see its own
        comment on why the auth modal's injected card can't bring its own copy. -->
-  <script src="{{ url_for('static', path='js/password-toggle.js') }}" defer></script>
+  <script src="{{ static_url('js/password-toggle.js') }}" defer></script>
   <!-- PR 279: before profile-menu.js, which opens its mobile sheet through it. -->
-  <script src="{{ url_for('static', path='js/bottom-sheet.js') }}" defer></script>
+  <script src="{{ static_url('js/bottom-sheet.js') }}" defer></script>
   {% if not current_user %}
-  <script src="{{ url_for('static', path='js/auth-modal.js') }}" defer></script>
+  <script src="{{ static_url('js/auth-modal.js') }}" defer></script>
   {% endif %}
   {% if current_user %}
-  <script src="{{ url_for('static', path='js/download-ready.js') }}" defer></script>
-  <script src="{{ url_for('static', path='js/downloads-status.js') }}" defer></script>
-  <script src="{{ url_for('static', path='js/profile-menu.js') }}" defer></script>
-  <script src="{{ url_for('static', path='js/notifications-panel.js') }}" defer></script>
-  <script src="{{ url_for('static', path='js/notifications-actions.js') }}" defer></script>
+  <script src="{{ static_url('js/download-ready.js') }}" defer></script>
+  <script src="{{ static_url('js/downloads-status.js') }}" defer></script>
+  <script src="{{ static_url('js/profile-menu.js') }}" defer></script>
+  <script src="{{ static_url('js/notifications-panel.js') }}" defer></script>
+  <script src="{{ static_url('js/notifications-actions.js') }}" defer></script>
   {% endif %}
 </body>
 </html>

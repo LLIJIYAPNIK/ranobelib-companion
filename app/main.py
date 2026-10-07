@@ -2,7 +2,6 @@ import asyncio
 import sys
 from collections.abc import AsyncIterator
 from contextlib import asynccontextmanager
-from pathlib import Path
 
 from fastapi import Depends, FastAPI
 from fastapi.staticfiles import StaticFiles
@@ -32,6 +31,7 @@ from app.db import connection as db_connection
 from app.db.migrate import run_migrations
 from app.exceptions import register_exception_handlers
 from app.security_headers import install_security_headers
+from app.static_assets import STATIC_DIR, VersionedStaticFiles, install_html_no_cache
 
 if sys.platform == "win32":
     # psycopg's async mode refuses to run on Windows' default ProactorEventLoop (see
@@ -62,6 +62,7 @@ app = FastAPI(
     dependencies=[Depends(get_current_user)],
 )
 install_security_headers(app)
+install_html_no_cache(app)
 app.add_middleware(
     RememberMeSessionMiddleware,
     secret_key=get_settings().session_secret_key,
@@ -71,7 +72,8 @@ app.add_middleware(
     same_site="lax",
     https_only=get_settings().is_production,
 )
-app.mount("/static", StaticFiles(directory=Path(__file__).parent / "static"), name="static")
+# PR 317: immutable for a matching ?v= hash (static_url()), no-cache otherwise.
+app.mount("/static", VersionedStaticFiles(directory=STATIC_DIR), name="static")
 # Uploaded avatars (PR 96) live outside app/static - user data, not an app asset, same
 # reasoning as cache_dir/db_path being kept outside the source tree. StaticFiles requires
 # the directory to exist at mount time, unlike app/static which ships with the repo.

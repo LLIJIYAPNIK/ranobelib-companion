@@ -40,7 +40,7 @@
       </form>
     </div>
   </section>
-  <script src="{{ url_for('static', path='js/custom-dropdown.js') }}" defer></script>
+  <script src="{{ static_url('js/custom-dropdown.js') }}" defer></script>
   <ul class="download-status__ambiguous">
     {% for chapter in job.ambiguous_chapters %}
     <li class="download-status__ambiguous-item">
@@ -83,7 +83,7 @@
   {% endif %}
   {% endif %}
   {% if job.status not in ("done", "error", "needs_translation", "cancelled") %}
-  <script src="{{ url_for('static', path='js/download-status.js') }}" defer></script>
+  <script src="{{ static_url('js/download-status.js') }}" defer></script>
   {% endif %}
 </main>
 {% endblock %}

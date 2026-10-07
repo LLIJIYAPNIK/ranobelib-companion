@@ -21,7 +21,7 @@
     </label>
     <button class="wn-btn wn-btn--primary" type="submit">Найти</button>
   </form>
-  <script src="{{ url_for('static', path='js/disable-mobile-autofocus.js') }}"></script>
+  <script src="{{ static_url('js/disable-mobile-autofocus.js') }}"></script>
 
   {% if not current_user %}
   <section class="home-guest" aria-label="Аккаунт">
@@ -160,7 +160,7 @@
   </section>
   {% endif %}
 </main>
-<script src="{{ url_for('static', path='js/recent-titles-forget.js') }}" defer></script>
-<script src="{{ url_for('static', path='js/library-card-actions.js') }}" defer></script>
-<script src="{{ url_for('static', path='js/image-lightbox.js') }}" defer></script>
+<script src="{{ static_url('js/recent-titles-forget.js') }}" defer></script>
+<script src="{{ static_url('js/library-card-actions.js') }}" defer></script>
+<script src="{{ static_url('js/image-lightbox.js') }}" defer></script>
 {% endblock %}

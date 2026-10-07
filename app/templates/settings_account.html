@@ -140,6 +140,6 @@
 {% endblock %}
 {% block settings_scripts %}
 {% if current_user %}
-<script src="{{ url_for('static', path='js/avatar-upload.js') }}" defer></script>
+<script src="{{ static_url('js/avatar-upload.js') }}" defer></script>
 {% endif %}
 {% endblock %}
