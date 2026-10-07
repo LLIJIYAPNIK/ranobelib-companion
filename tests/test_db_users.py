@@ -448,7 +448,10 @@ async def test_migration_grandfathers_existing_accounts_as_verified(
         ("old@example.com", "hash", "2026-01-01T00:00:00+00:00"),
     )
 
-    shutil.copy(source / "0023_email_verification.sql", tmp_path)
+    # 0023 and every later migration - get_user_by_email() reads their columns too.
+    for path in sorted(source.glob("*.sql")):
+        if path.name >= "0023":
+            shutil.copy(path, tmp_path / path.name)
     await run_migrations(connection)
 
     user = await get_user_by_email(connection, "old@example.com")
