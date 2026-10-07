@@ -65,6 +65,12 @@ configure the SMTP connection ``app/email.py`` sends through - not tied to any s
 transactional-email provider, any SMTP-compatible one works. Left unset in local dev/CI on
 purpose (``email_host`` being empty is what tells ``app/email.py`` to log instead of
 actually sending) - a real deploy needs all of these set, see DEPLOY.md.
+
+``admin_password`` (PR 324) is the one password for the separate /admin panel - not a
+user account, nothing in the database. Unset or empty means the panel doesn't exist:
+every /admin* route answers 404 exactly like an unknown URL, in production too (a
+forgotten variable turns the panel off, never on). ``admin_session_ttl`` is how long an
+admin login lasts (seconds), independent of the site session's own lifetime.
 """
 
 from __future__ import annotations
@@ -89,6 +95,7 @@ _DEFAULT_COMMENT_ATTACHMENT_DIR = ".ranobelib_comment_attachments"
 _DEFAULT_PASSWORD_RESET_TOKEN_TTL_SECONDS = 60 * 60  # 1 hour
 _DEFAULT_EMAIL_VERIFICATION_TOKEN_TTL_SECONDS = 24 * 60 * 60  # 24 hours
 _DEFAULT_EMAIL_PORT = 587
+_DEFAULT_ADMIN_SESSION_TTL_SECONDS = 2 * 60 * 60  # 2 hours
 
 
 @dataclass(frozen=True)
@@ -110,6 +117,12 @@ class Settings:
     email_user: str | None
     email_password: str | None
     email_from: str | None
+    admin_password: str | None = None
+    admin_session_ttl: float = _DEFAULT_ADMIN_SESSION_TTL_SECONDS
+
+    @property
+    def admin_enabled(self) -> bool:
+        return bool(self.admin_password)
 
 
 @lru_cache
@@ -164,4 +177,8 @@ def get_settings() -> Settings:
         email_user=os.environ.get("EMAIL_USER") or None,
         email_password=os.environ.get("EMAIL_PASSWORD") or None,
         email_from=os.environ.get("EMAIL_FROM") or None,
+        admin_password=os.environ.get("ADMIN_PASSWORD") or None,
+        admin_session_ttl=float(
+            os.environ.get("ADMIN_SESSION_TTL_SECONDS", _DEFAULT_ADMIN_SESSION_TTL_SECONDS)
+        ),
     )
