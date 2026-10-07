@@ -14,6 +14,8 @@ from typing import Any
 
 from psycopg import AsyncConnection
 
+from app.timezones import DEFAULT_TIMEZONE, day_start_utc, local_today
+
 
 @dataclass(frozen=True)
 class DownloadHistoryEntry:
@@ -93,17 +95,17 @@ async def list_download_history(
 
 
 async def list_download_history_today(
-    conn: AsyncConnection, user_id: int
+    conn: AsyncConnection, user_id: int, tz: str = DEFAULT_TIMEZONE
 ) -> list[DownloadHistoryEntry]:
-    """Today's finished downloads (UTC calendar date) - the "скачано сегодня" part of the
-    Активность section (see app/api/activity.py). Includes both "done" and "error"
-    entries, same as `list_download_history()` - a failed download still happened today.
+    """Today's finished downloads (the user's calendar day in `tz`, PR 322) - the
+    "скачано сегодня" part of the Активность section (see app/api/activity.py). Includes
+    both "done" and "error" entries, same as `list_download_history()` - a failed
+    download still happened today.
     """
-    today = datetime.now(UTC).date().isoformat()
     cursor = await conn.execute(
         "SELECT * FROM download_history WHERE user_id = %s AND finished_at >= %s "
         "ORDER BY finished_at DESC, id DESC",
-        (user_id, today),
+        (user_id, day_start_utc(local_today(tz), tz)),
     )
     rows = await cursor.fetchall()
     return [_row_to_entry(row) for row in rows]
@@ -111,8 +113,9 @@ async def list_download_history_today(
 
 async def count_downloads_since(conn: AsyncConnection, user_id: int, since: str) -> int:
     """Finished downloads (any status, same as list_download_history_today()) from the
-    UTC date/timestamp `since` onward - the "Скачано" metric of the Активность page for
-    its 7/30-day periods (PR 276)."""
+    UTC timestamp `since` onward (a local midnight from app/timezones.py's
+    day_start_utc(), PR 322) - the "Скачано" metric of the Активность page for its
+    7/30-day periods (PR 276)."""
     cursor = await conn.execute(
         "SELECT COUNT(*) AS n FROM download_history WHERE user_id = %s AND finished_at >= %s",
         (user_id, since),
