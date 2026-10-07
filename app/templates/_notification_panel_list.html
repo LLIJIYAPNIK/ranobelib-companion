@@ -1,0 +1,11 @@
+{# PR 311: the bell panel's list (GET /notifications/panel) - its unread cards, and the
+   empty state notifications-actions.js reveals once the last of them is read/deleted. #}
+{% from "_notification_card.html" import notification_card %}
+{% for n in notifications %}
+{{ notification_card(n) }}
+{% endfor %}
+<div class="wn-notices-empty wn-notices-empty--compact" data-role="notifications-empty"{% if notifications %} hidden{% endif %}>
+  <span class="wn-notices-empty__icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 12.5 9.5 18 20 6"/></svg></span>
+  <b>Всё прочитано</b>
+  <span>Новые реакции на комментарии и заявки в друзья появятся здесь.</span>
+</div>
