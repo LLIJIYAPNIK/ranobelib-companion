@@ -71,6 +71,7 @@ class CalendarDay:
     count: int
     level: int  # 0 (no reading) - 4 (90+ min), see _calendar_level()
     label: str  # tooltip text: exact date + chapter count
+    is_today: bool = False  # PR 323: ringed, so the newest cell reads as "today"
 
 
 @dataclass(frozen=True)
@@ -316,7 +317,14 @@ async def _build_reading_calendar(user_id: int, conn: AsyncConnection, tz: str) 
             f"{_format_duration(seconds)}",
             *_title_lines(titles_by_day.get(day_key, []), title_names),
         ]
-        days.append(CalendarDay(count=count, level=level, label="\n".join(label_lines)))
+        days.append(
+            CalendarDay(
+                count=count,
+                level=level,
+                label="\n".join(label_lines),
+                is_today=current == today,
+            )
+        )
         current += timedelta(days=1)
 
     # PR 160: total across the whole window, not just today's total_active_seconds_today()

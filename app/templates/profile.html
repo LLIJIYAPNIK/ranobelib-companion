@@ -103,7 +103,7 @@
         >
           {% for day in reading_calendar.days %}
           <span
-            class="reading-calendar__day reading-calendar__day--level-{{ day.level }}"
+            class="reading-calendar__day reading-calendar__day--level-{{ day.level }}{% if day.is_today %} reading-calendar__day--today{% endif %}"
             data-tooltip="{{ day.label }}"
           ></span>
           {% endfor %}

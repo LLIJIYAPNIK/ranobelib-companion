@@ -2519,6 +2519,12 @@ html:has(dialog[open]) body {
   background: var(--reading-calendar-level-4);
 }
 
+/* PR 323: today's cell - an inset ring (an outline would be clipped by the scrolling
+   ribbon, today being its last column), visible on every level's color. */
+.reading-calendar__day--today {
+  box-shadow: inset 0 0 0 2px var(--text-1);
+}
+
 /* PR 160: custom tooltip replacing the native `title` attribute (see reading-calendar-
    tooltip.js) - same floating-panel language as .profile-menu__panel/.paragraph-menu__panel
    (fixed position, computed from the hovered cell's own getBoundingClientRect(), fade
