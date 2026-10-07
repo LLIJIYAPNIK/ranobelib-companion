@@ -631,6 +631,9 @@
     emojiToggle.addEventListener("click", () => {
       palette.hidden = !palette.hidden;
       emojiToggle.setAttribute("aria-expanded", palette.hidden ? "false" : "true");
+      // PR 318: the palette opens under the composer - at the very bottom of the phone
+      // bottom sheet's scroll area that is below the fold, so bring it into view.
+      if (!palette.hidden) palette.scrollIntoView({ block: "nearest", behavior: "smooth" });
     });
     triggers.append(emojiToggle);
 
