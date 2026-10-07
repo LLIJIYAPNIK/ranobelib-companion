@@ -158,6 +158,7 @@ def test_guest_sign_in_in_the_mobile_header_is_a_44px_target() -> None:
     # under the 44px floor.
     css = (Path(__file__).parents[1] / "app/static/css/app.css").read_text(encoding="utf-8")
 
-    mobile_guest = re.search(r"\n  \.sidebar__guest \{([^}]*)\}", css)
+    phone = css.split("@media (max-width: 767px)", 1)[1]
+    mobile_guest = re.search(r"\n  \.sidebar__guest \{([^}]*)\}", phone)
     assert mobile_guest
     assert "min-height: 44px;" in mobile_guest.group(1)
