@@ -169,6 +169,26 @@ async def test_list_notifications_page_reports_no_next_page_on_the_last_page(
     assert has_next_page is False
 
 
+async def test_list_notifications_page_puts_unread_before_read(
+    conn: psycopg.AsyncConnection,
+) -> None:
+    """PR 311: the page groups them as «Новые»/«Ранее» - unread first, each newest first,
+    so a newer read notification still comes after an older unread one."""
+    comments = [
+        await create_comment(conn, 1, "6712--test-novel", "1", "5", "", 0, f"comment {i}")
+        for i in range(3)
+    ]
+    for comment in comments:
+        await notify_comment_reaction(conn, comment.id, actor_user_id=2)
+    [newest], _ = await list_notifications_page(conn, 1, page=1, page_size=1)
+    await mark_notification_read(conn, newest.id, 1)
+
+    page, _ = await list_notifications_page(conn, 1, page=1, page_size=3)
+
+    assert [n.comment_id for n in page] == [comments[1].id, comments[0].id, comments[2].id]
+    assert [n.is_read for n in page] == [False, False, True]
+
+
 async def test_list_notifications_page_is_empty_with_none(conn: psycopg.AsyncConnection) -> None:
     page, has_next_page = await list_notifications_page(conn, 1, page=1, page_size=2)
 

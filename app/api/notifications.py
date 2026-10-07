@@ -8,11 +8,16 @@ reusing the exact same card markup as the bell panel (app/templates/_notificatio
 PR 170 adds mark-read/delete (POST .../read, DELETE ...) - both return the fresh
 unread_count in the response body so notifications-actions.js can update the bell's badge
 without a page reload.
+
+PR 311 (Webnovells): the bell panel stops building its cards in JS - GET /panel returns
+the same _notification_card.html macro's markup as the page, so both surfaces share one
+card implementation instead of a Jinja one and a renderNotification() kept in sync by
+hand. The page groups its cards as «Новые»/«Ранее» (_group() below).
 """
 
 from __future__ import annotations
 
-from datetime import datetime
+from datetime import UTC, datetime
 from typing import Annotated, Any
 
 from fastapi import APIRouter, Depends, HTTPException, Query, Request
@@ -78,7 +83,7 @@ async def show_notifications(
         "notifications.html",
         {
             "active_nav": "notifications",
-            "notifications": [_to_template_context(n) for n in notifications],
+            "groups": _group(notifications),
             "page": page,
             "has_next_page": has_next_page,
         },
@@ -97,11 +102,29 @@ async def notifications_page_fragment(
     catalog_page_fragment."""
     notifications, has_next_page = await list_notifications_page(conn, user.id, page, PAGE_SIZE)
     response = templates.TemplateResponse(
-        request,
-        "_notification_cards.html",
-        {"notifications": [_to_template_context(n) for n in notifications]},
+        request, "_notification_groups.html", {"groups": _group(notifications)}
     )
     response.headers["X-Has-Next-Page"] = "true" if has_next_page else "false"
+    return response
+
+
+@router.get("/panel", response_model=None)
+async def notifications_panel_fragment(
+    request: Request,
+    user: Annotated[User, Depends(require_current_user)],
+    conn: Annotated[AsyncConnection, Depends(get_connection)],
+) -> Response:
+    """PR 311: the bell panel's list as card markup - the unread notifications
+    /recent returns as JSON, rendered by the same macro as the page. The unread count
+    for the badge and the panel header travels in X-Unread-Count."""
+    notifications = await list_recent_notifications(conn, user.id, limit=RECENT_LIMIT)
+    now = datetime.now(UTC)
+    response = templates.TemplateResponse(
+        request,
+        "_notification_panel_list.html",
+        {"notifications": [_to_template_context(n, now) for n in notifications]},
+    )
+    response.headers["X-Unread-Count"] = str(await count_unread_notifications(conn, user.id))
     return response
 
 
@@ -127,10 +150,23 @@ async def delete(
     return JSONResponse({"unread_count": await count_unread_notifications(conn, user.id)})
 
 
-def _to_template_context(notification: Notification) -> dict[str, Any]:
-    """What notifications.html/_notification_cards.html render - the same fields as
-    _to_dict() below plus a server-formatted created_at, since these are plain server-
-    rendered <a>/<div> cards rather than notifications-panel.js's client-rendered ones."""
+def _group(notifications: list[Notification]) -> list[dict[str, Any]]:
+    """«Новые» (unread) and «Ранее» (read) - list_notifications_page() already returns
+    unread first, so each group is one contiguous run; an empty group is left out.
+    notifications-page.js merges a next page's groups into the ones already shown."""
+    now = datetime.now(UTC)
+    groups = []
+    for key, title, is_read in (("new", "Новые", False), ("earlier", "Ранее", True)):
+        items = [_to_template_context(n, now) for n in notifications if n.is_read == is_read]
+        if items:
+            groups.append({"key": key, "title": title, "notifications": items})
+    return groups
+
+
+def _to_template_context(notification: Notification, now: datetime) -> dict[str, Any]:
+    """What _notification_card.html renders - the same fields as _to_dict() below plus
+    the server-formatted relative time (<time datetime> keeps the exact one)."""
+    created_at = datetime.fromisoformat(notification.created_at)
     return {
         "id": notification.id,
         "kind": notification.kind,
@@ -141,15 +177,29 @@ def _to_template_context(notification: Notification) -> dict[str, Any]:
         "actor_avatar_initials": notification.actor_avatar_initials,
         "comment_excerpt": notification.comment_excerpt,
         "comment_url": notification.comment_url,
-        "created_at_display": _format_time(notification.created_at),
+        "created_at": notification.created_at,
+        "created_at_relative": relative_time(created_at, now),
     }
 
 
-def _format_time(iso: str) -> str:
-    """Same day/month/year/hour/minute shape as notifications-panel.js's own formatTime()
-    - kept in sync by hand, same as every other piece of formatting this codebase
-    duplicates once on each side of the server/client line rather than sharing."""
-    return datetime.fromisoformat(iso).strftime("%d.%m.%Y %H:%M")
+_MONTHS = "янв. февр. мар. апр. мая июн. июл. авг. сент. окт. нояб. дек.".split()
+
+
+def relative_time(moment: datetime, now: datetime) -> str:
+    """«только что» / «5 мин назад» / «3 ч назад» / «2 дн. назад», then a short date
+    («3 окт.», with the year once it's not this one). Durations only - the server
+    doesn't know the visitor's time zone, so no «вчера» that could be the wrong day."""
+    seconds = max(0, int((now - moment).total_seconds()))
+    if seconds < 60:
+        return "только что"
+    if seconds < 3600:
+        return f"{seconds // 60} мин назад"
+    if seconds < 86400:
+        return f"{seconds // 3600} ч назад"
+    if seconds < 7 * 86400:
+        return f"{seconds // 86400} дн. назад"
+    date = f"{moment.day} {_MONTHS[moment.month - 1]}"
+    return date if moment.year == now.year else f"{date} {moment.year}"
 
 
 def _to_dict(notification: Notification) -> dict[str, Any]:

@@ -1,56 +1,83 @@
-{# PR 169: the server-rendered twin of notifications-panel.js's renderNotification() (PR
-   168) - same .notifications-panel__item/__avatar/__body/__text/__time classes/structure,
-   reused as-is by app.css rather than a second set of styles for this page's own cards.
+{# The one Notification card - the bell panel (GET /notifications/panel) and the
+   /notifications page (and its /page fragment) all render it from this macro.
 
-   PR 170: the outer element is always a <div> now (was <a>/<div> depending on
-   comment_url) - the mark-read/delete buttons below are real interactive elements, and
-   nesting a <button> inside an <a> both reads wrong semantically and would fire the
-   link's own navigation on every button click unless every handler fought it with
-   stopPropagation(). The link (when there's somewhere to send the visitor - a notification
-   whose comment has since been deleted, PR 172, has none) now only wraps the avatar+body,
-   not the actions. data-notification-id is what notifications-actions.js's delegated
-   click handler reads to know which row a click on either button belongs to.
+   PR 170: the outer element is never a link - mark-read/delete are real buttons, and a
+   <button> inside an <a> would both read wrong and fire the link on every click. The
+   link (when there's somewhere to send the visitor - a notification whose comment has
+   since been deleted, PR 172, has none) wraps the avatar+body only. data-notification-id
+   is what notifications-actions.js's delegated click handler reads.
 
-   PR 199: friend_request/friend_accept aren't about a comment at all (comment_url is
-   always None for them) - they link to the actor's own profile instead.
+   PR 199: friend_request/friend_accept aren't about a comment (comment_url is always None
+   for them) - they link to the actor's own profile instead.
 
-   PR 259 (Aurora Ink): same markup and classes, restyled as the "02 Components"
-   Notification card - 16px icons as in the design. #}
+   PR 311 (Webnovells): avatar with a small kind marker, «<b>actor</b> action» over a
+   one-line excerpt and the relative time; an unread card gets a teal dot before the time
+   and a faint tint. The actions keep their own column, so revealing them on hover/focus
+   (always shown on touch, app.css) never moves the text. #}
+{% macro notification_icon(kind) -%}
+{% if kind == "friend_request" -%}
+<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="9" cy="8" r="3.5"/><path d="M3 20c0-3.3 2.7-6 6-6s6 2.7 6 6M19 8v6M16 11h6"/></svg>
+{%- elif kind == "friend_accept" -%}
+<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="9" cy="8" r="3.5"/><path d="M3 20c0-3.3 2.7-6 6-6s6 2.7 6 6M16 11l2 2 4-4"/></svg>
+{%- else -%}
+<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 5h16v11H9l-5 4z"/></svg>
+{%- endif %}
+{%- endmacro %}
 {% macro notification_card(n) %}
 {% set link_url = n.comment_url or (("/profile/" ~ n.actor_user_id) if n.kind in ("friend_request", "friend_accept") else none) %}
-<div class="notifications-panel__item{% if not n.is_read %} notifications-panel__item--unread{% endif %}" data-notification-id="{{ n.id }}">
-  {% if link_url %}<a class="notifications-panel__item-link" href="{{ link_url }}">
-  {% else %}<div class="notifications-panel__item-link">
+<article class="wn-notice wn-notice--{{ n.kind | replace('_', '-') }}{% if not n.is_read %} wn-notice--unread{% endif %}" data-notification-id="{{ n.id }}">
+  {% if link_url %}<a class="wn-notice__link" href="{{ link_url }}">
+  {% else %}<div class="wn-notice__link">
   {% endif %}
-    <span class="notifications-panel__avatar">
+    <span class="wn-notice__avatar">
       {% if n.actor_avatar_url %}<img class="avatar-img" src="{{ n.actor_avatar_url }}" alt="">{% else %}{{ n.actor_avatar_initials }}{% endif %}
+      <span class="wn-notice__kind">{{ notification_icon(n.kind) }}</span>
     </span>
-    <span class="notifications-panel__body">
-      <span class="notifications-panel__text">
-        <strong>{{ n.actor_name }}</strong>
+    <span class="wn-notice__body">
+      <span class="wn-notice__text">
+        <strong class="wn-notice__actor">{{ n.actor_name }}</strong>
         {% if n.kind == "friend_request" %}отправил(а) вам заявку в друзья
         {% elif n.kind == "friend_accept" %}принял(а) вашу заявку в друзья
-        {% else %}отреагировал(а) на ваш комментарий{% if n.comment_excerpt %} «{{ n.comment_excerpt }}»{% endif %}
+        {% else %}отреагировал(а) на ваш комментарий
         {% endif %}
       </span>
-      <span class="notifications-panel__time">{{ n.created_at_display }}</span>
+      {% if n.comment_excerpt %}<span class="wn-notice__excerpt">{{ n.comment_excerpt }}</span>{% endif %}
+      <span class="wn-notice__meta">
+        {% if not n.is_read %}<span class="wn-notice__dot" aria-hidden="true"></span><span class="wn-notice__sr">Новое, </span>{% endif %}
+        <time class="wn-notice__time" datetime="{{ n.created_at }}">{{ n.created_at_relative }}</time>
+      </span>
     </span>
   {% if link_url %}</a>{% else %}</div>{% endif %}
-  <div class="notifications-panel__actions">
+  <div class="wn-notice__actions">
     {% if not n.is_read %}
-    <button type="button" class="notifications-panel__action" data-role="notification-mark-read" title="Отметить прочитанным" aria-label="Отметить прочитанным">
-      <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+    <button type="button" class="wn-notice__action wn-notice__action--read" data-role="notification-mark-read" title="Отметить прочитанным" aria-label="Отметить прочитанным">
+      <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
         <path d="M4 12.5 9.5 18 20 6"/>
       </svg>
     </button>
     {% endif %}
-    <button type="button" class="notifications-panel__action" data-role="notification-delete" title="Удалить" aria-label="Удалить">
-      <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+    <button type="button" class="wn-notice__action wn-notice__action--delete" data-role="notification-delete" title="Удалить" aria-label="Удалить">
+      <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
         <path d="M5 6h14"/>
         <path d="M9 6V4h6v2"/>
         <path d="M7 6l1 14h8l1-14"/>
       </svg>
     </button>
   </div>
+</article>
+{% endmacro %}
+{# PR 311: placeholder cards of the same geometry - the bell panel's list until its first
+   load, and the rows notifications-page.js shows while the next page loads. #}
+{% macro notification_skeleton(count) %}
+{% for _ in range(count) %}
+<div class="wn-notice wn-notice--skeleton" aria-hidden="true">
+  <span class="wn-notice__link">
+    <span class="wn-notice__avatar wn-skeleton"></span>
+    <span class="wn-notice__body">
+      <span class="wn-notice__bone wn-skeleton"></span>
+      <span class="wn-notice__bone wn-notice__bone--short wn-skeleton"></span>
+    </span>
+  </span>
 </div>
+{% endfor %}
 {% endmacro %}
