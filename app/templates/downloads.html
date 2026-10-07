@@ -58,7 +58,7 @@
         </div>
         <dl class="wn-downloads-summary__stats">
           <div class="wn-downloads-summary__stat wn-downloads-summary__stat--done"><dt>Готово</dt><dd data-role="summary-done">{{ summary.done }}</dd></div>
-          <div class="wn-downloads-summary__stat wn-downloads-summary__stat--error"><dt>С ошибкой</dt><dd data-role="summary-error">{{ summary.errors }}</dd></div>
+          <div class="wn-downloads-summary__stat{% if summary.errors %} wn-downloads-summary__stat--error{% endif %}" data-role="summary-error-stat"><dt>С ошибкой</dt><dd data-role="summary-error">{{ summary.errors }}</dd></div>
           <div class="wn-downloads-summary__stat"><dt>Отменено</dt><dd data-role="summary-cancelled">{{ summary.cancelled }}</dd></div>
         </dl>
         {% set last = summary.last %}
