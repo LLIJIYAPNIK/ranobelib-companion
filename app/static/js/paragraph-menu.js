@@ -29,6 +29,10 @@
 // in app.css). PR 165: renderCommentNode() does track its own depth now, just to cap how
 // far the indent grows - see MAX_INDENT_DEPTH above.
 //
+// PR 312 (Webnovells): the comment layer - paragraph context, thread and composer -
+// opens inline under the paragraph on desktop and in the shared bottom sheet on phones;
+// see "PR 133: comments" below.
+//
 // PR 134: readerSettings.showParagraphSocial (default true, like every other reading
 // setting) gates this whole file - once it's explicitly false there is nothing left for
 // a right-click to open (both PR 132's reactions and PR 133's comments are it), so
@@ -279,29 +283,79 @@
   }
 
   // --- PR 133: comments -----------------------------------------------------------
+  //
+  // PR 312 (Webnovells): the comment layer was a 240px composer squeezed into the
+  // floating menu plus an early thread layout. Now every paragraph with comments (or one
+  // the visitor has just chosen to comment on) gets one layer: a header naming the
+  // paragraph and quoting it, the thread (loading/empty/error states), and the composer.
+  // On desktop it opens inline, in normal flow right under the paragraph - it pushes the
+  // text down rather than floating over it, so it can never cover it or be clipped by the
+  // viewport edge. On phones the same element is handed to the shared bottom sheet
+  // (bottom-sheet.js, PR 279), which puts it back when it closes. Endpoints, data and the
+  // reply/edit/delete/markdown/attachment behavior are unchanged.
 
-  function pluralizeComments(n) {
+  const phoneQuery = window.matchMedia("(max-width: 767px)");
+  const MAX_COMMENT_LENGTH = 2000; // mirrors MAX_COMMENT_LENGTH in app/db/comments.py
+  const COUNTER_FROM = 1800; // the length counter only shows once it starts to matter
+
+  function plural(n, one, few, many) {
     const mod10 = n % 10;
     const mod100 = n % 100;
-    if (mod10 === 1 && mod100 !== 11) return "комментарий";
-    if (mod10 >= 2 && mod10 <= 4 && !(mod100 >= 12 && mod100 <= 14)) return "комментария";
-    return "комментариев";
+    if (mod10 === 1 && mod100 !== 11) return one;
+    if (mod10 >= 2 && mod10 <= 4 && !(mod100 >= 12 && mod100 <= 14)) return few;
+    return many;
   }
 
-  function formatCommentTime(iso) {
+  function pluralizeComments(n) {
+    return plural(n, "комментарий", "комментария", "комментариев");
+  }
+
+  // Same rules as app/api/notifications.py's relative_time() (PR 311): durations, then a
+  // short date - one way of saying "when" across the site.
+  const MONTHS = "янв. февр. мар. апр. мая июн. июл. авг. сент. окт. нояб. дек.".split(" ");
+  function relativeTime(iso) {
+    const moment = new Date(iso);
+    const seconds = Math.max(0, Math.floor((Date.now() - moment.getTime()) / 1000));
+    if (seconds < 60) return "только что";
+    if (seconds < 3600) return `${Math.floor(seconds / 60)} мин назад`;
+    if (seconds < 86400) return `${Math.floor(seconds / 3600)} ч назад`;
+    if (seconds < 7 * 86400) return `${Math.floor(seconds / 86400)} дн. назад`;
+    const date = `${moment.getDate()} ${MONTHS[moment.getMonth()]}`;
+    return moment.getFullYear() === new Date().getFullYear() ? date : `${date} ${moment.getFullYear()}`;
+  }
+
+  function fullTime(iso) {
     return new Date(iso).toLocaleString("ru-RU", {
-      day: "2-digit",
-      month: "2-digit",
+      day: "numeric",
+      month: "long",
       year: "numeric",
       hour: "2-digit",
       minute: "2-digit",
     });
   }
 
+  function svgIcon(paths, strokeWidth = 1.8) {
+    return (
+      `<svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" ` +
+      `stroke-width="${strokeWidth}" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">` +
+      paths +
+      "</svg>"
+    );
+  }
+
+  const ICON_COMMENT = svgIcon('<path d="M4 5h16v11H9l-5 4z"/>');
+  const ICON_SMILE = svgIcon(
+    '<circle cx="12" cy="12" r="9"/><path d="M8.5 14.5c.9 1.2 2.1 1.8 3.5 1.8s2.6-.6 3.5-1.8"/>' +
+      '<path d="M9 9.5h.01M15 9.5h.01" stroke-width="2.6"/>'
+  );
+  const ICON_CLIP = svgIcon(
+    '<path d="m20 11.5-8.1 8.1a5 5 0 0 1-7.1-7.1l8.5-8.5a3.3 3.3 0 0 1 4.7 4.7l-8.4 8.4a1.7 1.7 0 0 1-2.4-2.4l7.7-7.7"/>'
+  );
+  const ICON_CLOSE = svgIcon('<path d="M6 6l12 12M18 6 6 18"/>', 2);
+
   // PR 147: the same picture-or-initials pairing base.html's Jinja templates render via
   // avatar_url(user)/avatar_initials(user) - comment.avatar_url/avatar_initials arrive
-  // already computed by the same server-side helpers (app/auth/avatar.py), so this just
-  // picks which one to show, same as {% if avatar_url(user) %} does there.
+  // already computed by the same server-side helpers (app/auth/avatar.py).
   function buildCommentAvatar(comment) {
     const avatar = document.createElement("span");
     avatar.className = "paragraph-comment__avatar";
@@ -318,27 +372,25 @@
   }
 
   // Per-paragraph comment state, keyed by index:
-  // - commentCountByIndex is the single source of truth for the number shown on the
-  //   toggle ("N комментариев") - set from the initial bulk fetch and refreshed after
-  //   every post, never recomputed from the tree below (whose root-level length isn't
-  //   the same "replies included" count the server reports).
-  // - commentTreeByIndex is the full nested tree, populated lazily the first time that
-  //   paragraph's "▾" is clicked (loadCommentTree below) and reused on every later
-  //   toggle, so reopening an already-loaded thread needs no request.
-  // - commentsExpandedByIndex tracks only whether the list is currently shown, for the
-  //   toggle's own arrow direction.
+  // - commentCountByIndex is the single source of truth for the number on the toggle -
+  //   set from the initial bulk fetch and refreshed after every post, never recomputed
+  //   from the tree (whose root-level length isn't the "replies included" count).
+  // - commentTreeByIndex is the nested tree, loaded lazily the first time the layer opens
+  //   and reused afterwards, so reopening needs no request.
+  // - commentsExpandedByIndex tracks which layers are open.
+  // - loadFailedIndexes: the last tree load failed - the layer offers «Повторить».
+  // - collapsedCommentIds: reply threads the visitor folded - kept across re-renders.
   const commentCountByIndex = new Map();
   const commentTreeByIndex = new Map();
   const commentsExpandedByIndex = new Set();
+  const loadingIndexes = new Set();
+  const loadFailedIndexes = new Set();
+  const collapsedCommentIds = new Set();
 
-  // PR 149: one shared floating emoji picker for every composer's own free-form
-  // insertion into its textarea - not the fixed 10-emoji EMOJI reaction picker above,
-  // which reacts to a whole paragraph rather than typing into anything. Same "one
-  // portaled node, position: fixed, reused by however many composers/reply forms exist
-  // on the page" approach as `panel` below, just anchored to the trigger button's own
-  // rect (getBoundingClientRect()) instead of a right-click point, and reusing that
-  // panel's exact CSS classes (.paragraph-menu__panel/__emoji-picker/__emoji) rather than
-  // inventing a second visual language for what's already the same kind of floating menu.
+  // PR 149: free-form emoji for the composer - not the 10-emoji paragraph reaction
+  // palette above. PR 312: an inline palette inside the composer itself rather than a
+  // floating popover, so it can't be clipped, works the same inside the bottom sheet and
+  // stays in the sheet's focus order.
   const COMMENT_EMOJI = [
     "😀", "😁", "😂", "🤣", "😊", "😉", "😍", "😘", "😜", "🤔",
     "😐", "😴", "😭", "😢", "😡", "🥳", "😱", "🤯", "🥰", "😎",
@@ -347,124 +399,77 @@
     "🎉", "✨", "⭐", "☀️", "🌙", "☕", "🍕", "🎮",
   ];
 
-  const emojiPicker = document.createElement("div");
-  emojiPicker.className = "paragraph-menu__panel";
-  emojiPicker.setAttribute("role", "menu");
-  const emojiGrid = document.createElement("div");
-  emojiGrid.className = "paragraph-menu__emoji-picker comment-emoji-picker__grid";
-  for (const emoji of COMMENT_EMOJI) {
-    const button = document.createElement("button");
-    button.type = "button";
-    button.className = "paragraph-menu__emoji";
-    button.setAttribute("role", "menuitem");
-    button.textContent = emoji;
-    button.addEventListener("click", (event) => {
-      event.stopPropagation();
-      insertAtCursor(emojiPickerTarget, emoji);
-      closeEmojiPicker();
-    });
-    emojiGrid.append(button);
-  }
-  emojiPicker.append(emojiGrid);
-  document.body.append(emojiPicker);
-
-  let emojiPickerTarget = null;
-
-  function isEmojiPickerOpen() {
-    return emojiPicker.classList.contains("paragraph-menu__panel--open");
-  }
-
-  function positionEmojiPicker(anchor) {
-    const rect = anchor.getBoundingClientRect();
-    emojiPicker.style.left = "0px";
-    emojiPicker.style.top = "0px";
-    const width = emojiPicker.offsetWidth;
-    const height = emojiPicker.offsetHeight;
-    const left = Math.min(rect.left, window.innerWidth - width - GAP);
-    const top = Math.min(rect.bottom + 4, window.innerHeight - height - GAP);
-    emojiPicker.style.left = `${Math.max(GAP, left)}px`;
-    emojiPicker.style.top = `${Math.max(GAP, top)}px`;
-  }
-
-  function openEmojiPicker(anchor, textarea) {
-    emojiPickerTarget = textarea;
-    emojiPicker.classList.add("paragraph-menu__panel--open");
-    positionEmojiPicker(anchor);
-  }
-
-  function closeEmojiPicker() {
-    emojiPicker.classList.remove("paragraph-menu__panel--open");
-    emojiPickerTarget = null;
-  }
-
   // Inserts at the caret (replacing any current selection) rather than always appending
-  // to the end, so picking an emoji mid-sentence lands where the visitor was actually
-  // typing.
+  // to the end, so picking an emoji mid-sentence lands where the visitor was typing.
   function insertAtCursor(textarea, text) {
-    if (!textarea) return;
     const start = textarea.selectionStart ?? textarea.value.length;
     const end = textarea.selectionEnd ?? textarea.value.length;
     textarea.value = textarea.value.slice(0, start) + text + textarea.value.slice(end);
     const caret = start + text.length;
     textarea.focus();
     textarea.setSelectionRange(caret, caret);
+    textarea.dispatchEvent(new Event("input"));
   }
 
-  document.addEventListener("click", (event) => {
-    if (isEmojiPickerOpen() && !emojiPicker.contains(event.target)) closeEmojiPicker();
-  });
+  let composerSeq = 0;
 
-  document.addEventListener("keydown", (event) => {
-    if (event.key === "Escape" && isEmojiPickerOpen()) closeEmojiPicker();
-  });
-
-  // A reusable textarea + emoji-picker/attachment triggers + "Отправить" button, shared
-  // by the menu's "Комментировать" composer and every comment's own "Ответить" reply
-  // form - the only difference between them is what `onSubmit` does with the typed body
-  // (and, PR 150/151, the staged attachment file, if any).
-  // PR 156: `initialValue` pre-fills the textarea at creation time - used for the
-  // context menu's "Цитировать" (renderCommentComposer below builds a fresh composer per
-  // open, so a constructor argument is all that's needed there).
-  // PR 172: `allowAttachment: false` (used for "Изменить") hides the attachment picker -
-  // editComment() only ever overwrites `body`, so a staged file there would silently be
-  // discarded rather than actually changing the comment's attachment.
-  function buildComposer(onSubmit, placeholder, initialValue = "", { allowAttachment = true } = {}) {
+  // A composer: an auto-growing textarea with emoji/attachment triggers and one primary
+  // submit, shared by the layer's own "new comment" box, every comment's reply form and
+  // "Изменить". `onSubmit(body, file)` resolves to {ok} or {ok: false, message}; the text
+  // (and staged file) is only cleared on success. `context` adds a line above the field
+  // («Ответ для …», «Редактирование») with a cancel button; Escape cancels too.
+  // PR 156: `initialValue` pre-fills the textarea. PR 172: `allowAttachment: false` for
+  // «Изменить», which only ever overwrites `body`.
+  function buildComposer({
+    onSubmit,
+    placeholder,
+    initialValue = "",
+    allowAttachment = true,
+    submitLabel = "Отправить",
+    context = null,
+    onCancel = null,
+    modifier = null,
+  }) {
+    const id = ++composerSeq;
     const wrap = document.createElement("div");
     wrap.className = "paragraph-comments__composer";
+    if (modifier) wrap.classList.add(`paragraph-comments__composer--${modifier}`);
+
+    if (context) {
+      const contextRow = document.createElement("div");
+      contextRow.className = "paragraph-comments__composer-context";
+      const label = document.createElement("span");
+      label.textContent = context;
+      contextRow.append(label);
+      if (onCancel) {
+        const cancel = document.createElement("button");
+        cancel.type = "button";
+        cancel.className = "paragraph-comments__icon-btn";
+        cancel.setAttribute("aria-label", "Отменить");
+        cancel.title = "Отменить";
+        cancel.innerHTML = ICON_CLOSE;
+        cancel.addEventListener("click", () => onCancel());
+        contextRow.append(cancel);
+      }
+      wrap.append(contextRow);
+    }
+
+    const field = document.createElement("div");
+    field.className = "paragraph-comments__field";
+
     const textarea = document.createElement("textarea");
     textarea.className = "paragraph-comments__textarea";
+    textarea.id = `comment-composer-${id}`;
     textarea.placeholder = placeholder;
-    textarea.rows = 3;
-    textarea.maxLength = 2000; // mirrors MAX_COMMENT_LENGTH in app/db/comments.py
+    textarea.setAttribute("aria-label", placeholder.replace(/…$/, ""));
+    textarea.rows = 2;
+    textarea.maxLength = MAX_COMMENT_LENGTH;
     textarea.value = initialValue;
-    const emojiToggle = document.createElement("button");
-    emojiToggle.type = "button";
-    emojiToggle.className = "paragraph-comments__emoji-toggle";
-    emojiToggle.setAttribute("aria-label", "Вставить эмодзи");
-    emojiToggle.title = "Вставить эмодзи";
-    emojiToggle.textContent = "🙂";
-    emojiToggle.addEventListener("click", (event) => {
-      event.stopPropagation();
-      if (isEmojiPickerOpen() && emojiPickerTarget === textarea) {
-        closeEmojiPicker();
-      } else {
-        openEmojiPicker(emojiToggle, textarea);
-      }
-    });
+    field.append(textarea);
 
-    // PR 148: the same minimal subset app/markdown_render.py actually renders - not a
-    // full Markdown cheatsheet, so it doesn't promise syntax (headings, code blocks,
-    // images) this feature silently drops.
-    const hint = document.createElement("p");
-    hint.className = "paragraph-comments__hint";
-    hint.textContent = "Поддерживается: **жирный**, *курсив*, ~~зачёркнутый~~, [ссылка](url), списки";
-
-    // PR 150/151: staged client-side until the visitor actually hits "Отправить" - the
-    // file itself is what travels to the server (as multipart, submitComment below), this
-    // composer never does its own upload request. null when nothing's staged, the steady
-    // state for the overwhelming majority of comments. One button for image/video/GIF
-    // alike (not a separate button per file type) - app/comment_attachment.py sniffs the
-    // actual bytes server-side to decide what to do with it.
+    // PR 150/151: staged client-side until «Отправить» - the file itself travels to the
+    // server as multipart (submitComment below). One button for image/video/GIF alike -
+    // app/comment_attachment.py sniffs the bytes server-side.
     let stagedAttachment = null;
     let attachmentInput = null;
     let attachmentChip = null;
@@ -475,10 +480,10 @@
       if (attachmentInput) attachmentInput.value = "";
       attachmentChip?.remove();
       attachmentChip = null;
-      // Revoked only after the <img> using it is gone - revoking first would leave that
-      // preview broken for the brief moment before removal takes effect.
+      // Revoked only after the <img> using it is gone.
       if (attachmentPreviewUrl) URL.revokeObjectURL(attachmentPreviewUrl);
       attachmentPreviewUrl = null;
+      updateSubmitState();
     }
 
     function stageAttachment(file) {
@@ -489,10 +494,7 @@
 
       attachmentChip = document.createElement("div");
       attachmentChip.className = "paragraph-comments__attachment-chip";
-
-      // PR 151: a real thumbnail for an image (GIF included - it animates in the
-      // preview just like it will once posted), a filename is preview enough for a
-      // video (a moving preview client-side isn't worth the complexity here).
+      // PR 151: a real thumbnail for an image (GIF included), the name for a video.
       if (file.type.startsWith("image/")) {
         attachmentPreviewUrl = URL.createObjectURL(file);
         const thumb = document.createElement("img");
@@ -501,22 +503,58 @@
         thumb.alt = "";
         attachmentChip.append(thumb);
       }
-
       const name = document.createElement("span");
       name.className = "paragraph-comments__attachment-chip-name";
       name.textContent = file.name;
       const remove = document.createElement("button");
       remove.type = "button";
-      remove.className = "paragraph-comments__attachment-chip-remove";
+      remove.className = "paragraph-comments__icon-btn";
       remove.setAttribute("aria-label", "Убрать вложение");
       remove.title = "Убрать вложение";
-      remove.textContent = "×";
-      remove.addEventListener("click", clearStagedAttachment);
+      remove.innerHTML = ICON_CLOSE;
+      remove.addEventListener("click", () => {
+        clearStagedAttachment();
+        textarea.focus();
+      });
       attachmentChip.append(name, remove);
-      wrap.insertBefore(attachmentChip, hint);
+      toolbar.before(attachmentChip);
+      updateSubmitState();
     }
 
-    let attachmentToggle = null;
+    const toolbar = document.createElement("div");
+    toolbar.className = "paragraph-comments__toolbar";
+    const triggers = document.createElement("div");
+    triggers.className = "paragraph-comments__triggers";
+
+    const palette = document.createElement("div");
+    palette.className = "paragraph-comments__emoji-palette";
+    palette.id = `comment-emoji-${id}`;
+    palette.setAttribute("role", "group");
+    palette.setAttribute("aria-label", "Эмодзи");
+    palette.hidden = true;
+    for (const emoji of COMMENT_EMOJI) {
+      const button = document.createElement("button");
+      button.type = "button";
+      button.className = "paragraph-comments__emoji";
+      button.textContent = emoji;
+      button.addEventListener("click", () => insertAtCursor(textarea, emoji));
+      palette.append(button);
+    }
+
+    const emojiToggle = document.createElement("button");
+    emojiToggle.type = "button";
+    emojiToggle.className = "paragraph-comments__icon-btn paragraph-comments__emoji-toggle";
+    emojiToggle.setAttribute("aria-label", "Эмодзи");
+    emojiToggle.setAttribute("aria-expanded", "false");
+    emojiToggle.setAttribute("aria-controls", palette.id);
+    emojiToggle.title = "Эмодзи";
+    emojiToggle.innerHTML = ICON_SMILE;
+    emojiToggle.addEventListener("click", () => {
+      palette.hidden = !palette.hidden;
+      emojiToggle.setAttribute("aria-expanded", palette.hidden ? "false" : "true");
+    });
+    triggers.append(emojiToggle);
+
     if (allowAttachment) {
       attachmentInput = document.createElement("input");
       attachmentInput.type = "file";
@@ -526,64 +564,159 @@
         const file = attachmentInput.files?.[0];
         if (file) stageAttachment(file);
       });
-
-      attachmentToggle = document.createElement("button");
+      const attachmentToggle = document.createElement("button");
       attachmentToggle.type = "button";
-      attachmentToggle.className = "paragraph-comments__attachment-toggle";
-      attachmentToggle.setAttribute("aria-label", "Прикрепить файл");
+      attachmentToggle.className = "paragraph-comments__icon-btn paragraph-comments__attachment-toggle";
+      attachmentToggle.setAttribute("aria-label", "Прикрепить изображение, GIF или видео");
       attachmentToggle.title = "Прикрепить изображение, GIF или видео";
-      attachmentToggle.textContent = "📎";
-      attachmentToggle.addEventListener("click", (event) => {
-        event.stopPropagation();
-        attachmentInput.click();
-      });
+      attachmentToggle.innerHTML = ICON_CLIP;
+      attachmentToggle.addEventListener("click", () => attachmentInput.click());
+      triggers.append(attachmentToggle, attachmentInput);
     }
+
+    const counter = document.createElement("span");
+    counter.className = "paragraph-comments__counter";
+    counter.hidden = true;
 
     const submit = document.createElement("button");
     submit.type = "button";
-    submit.className = "btn btn--sm";
-    submit.textContent = "Отправить";
-    submit.addEventListener("click", async () => {
+    submit.className = "ui-btn ui-btn--primary ui-btn--sm paragraph-comments__submit";
+    submit.textContent = submitLabel;
+
+    toolbar.append(triggers, counter, submit);
+    field.append(toolbar);
+
+    const error = document.createElement("p");
+    error.className = "paragraph-comments__error";
+    error.setAttribute("role", "alert");
+    error.hidden = true;
+
+    // PR 148: the same minimal subset app/markdown_render.py actually renders.
+    const hint = document.createElement("p");
+    hint.className = "paragraph-comments__hint";
+    hint.textContent = "**жирный**, *курсив*, ~~зачёркнутый~~, [ссылка](url), списки";
+    const hintKeys = document.createElement("span");
+    hintKeys.className = "paragraph-comments__hint-keys"; // hidden on touch screens
+    hintKeys.textContent = " · Ctrl+Enter — отправить";
+    hint.append(hintKeys);
+
+    wrap.append(field, palette, error, hint);
+
+    // Grows with its text up to a cap (app.css max-height), then scrolls.
+    function autosize() {
+      textarea.style.height = "auto";
+      textarea.style.height = `${textarea.scrollHeight + 2}px`;
+    }
+
+    function updateSubmitState() {
+      const empty = !textarea.value.trim() && !stagedAttachment;
+      submit.setAttribute("aria-disabled", empty ? "true" : "false");
+      const length = textarea.value.length;
+      counter.hidden = length < COUNTER_FROM;
+      counter.textContent = `${length} / ${MAX_COMMENT_LENGTH}`;
+      counter.classList.toggle("paragraph-comments__counter--limit", length >= MAX_COMMENT_LENGTH);
+    }
+
+    function showError(message) {
+      error.textContent = message;
+      error.hidden = false;
+    }
+
+    let sending = false;
+    async function send() {
+      if (sending) return;
       const body = textarea.value.trim();
-      if (!body && !stagedAttachment) return;
-      submit.disabled = true;
+      if (!body && !stagedAttachment) {
+        textarea.focus();
+        return;
+      }
+      sending = true;
+      error.hidden = true;
+      submit.setAttribute("aria-busy", "true");
+      submit.textContent = "Отправка…";
+      textarea.readOnly = true;
+      wrap.setAttribute("aria-busy", "true");
+      let result;
       try {
-        // Only clears the box on a confirmed success - a rejected/network-failed post
-        // (onSubmit returning false) leaves the typed text (and any staged attachment)
-        // in place so neither is lost, same reasoning a normal <form> submit failure
-        // wouldn't wipe the field either.
-        if (await onSubmit(body, stagedAttachment)) {
-          textarea.value = "";
-          clearStagedAttachment();
-        }
+        result = await onSubmit(body, stagedAttachment);
       } finally {
-        submit.disabled = false;
+        sending = false;
+        submit.removeAttribute("aria-busy");
+        submit.textContent = submitLabel;
+        textarea.readOnly = false;
+        wrap.removeAttribute("aria-busy");
+      }
+      // A rejected or failed post keeps the text and the staged file - nothing typed or
+      // picked is lost, same as a normal <form> whose submit failed.
+      if (result.ok) {
+        textarea.value = "";
+        clearStagedAttachment();
+        palette.hidden = true;
+        emojiToggle.setAttribute("aria-expanded", "false");
+        autosize();
+        updateSubmitState();
+      } else {
+        showError(result.message || "Не удалось отправить. Проверьте соединение и попробуйте ещё раз.");
+        if (wrap.isConnected) textarea.focus();
+      }
+    }
+
+    submit.addEventListener("click", send);
+    textarea.addEventListener("input", () => {
+      autosize();
+      updateSubmitState();
+    });
+    textarea.addEventListener("keydown", (event) => {
+      if (event.key === "Enter" && (event.ctrlKey || event.metaKey)) {
+        event.preventDefault();
+        send();
+      } else if (event.key === "Escape" && onCancel) {
+        event.preventDefault();
+        event.stopPropagation();
+        onCancel();
       }
     });
 
-    const toolbar = document.createElement("div");
-    toolbar.className = "paragraph-comments__toolbar";
-    const triggers = document.createElement("div");
-    triggers.className = "paragraph-comments__triggers";
-    triggers.append(emojiToggle);
-    if (allowAttachment) triggers.append(attachmentToggle, attachmentInput);
-    toolbar.append(triggers, submit);
+    updateSubmitState();
 
-    wrap.append(textarea, hint, toolbar);
+    // For the callers: focus with the caret at the end, and «Цитировать»'s quote insert.
+    wrap.focusComposer = () => {
+      textarea.focus({ preventScroll: true });
+      const end = textarea.value.length;
+      textarea.setSelectionRange(end, end);
+      autosize();
+    };
+    wrap.insertText = (text) => {
+      const current = textarea.value.trimEnd();
+      textarea.value = current ? `${current}\n\n${text}\n\n` : `${text}\n\n`;
+      autosize();
+      updateSubmitState();
+    };
+    wrap.resetComposer = () => {
+      textarea.value = initialValue;
+      error.hidden = true;
+      clearStagedAttachment();
+      palette.hidden = true;
+      emojiToggle.setAttribute("aria-expanded", "false");
+      autosize();
+    };
+    wrap.textarea = textarea;
     return wrap;
   }
 
+  // The server's own message for a rejected post (400 detail: too long, bad attachment,
+  // ...), or null to fall back to the generic one.
+  async function errorMessage(response) {
+    try {
+      const data = await response.json();
+      return typeof data.detail === "string" ? data.detail : null;
+    } catch {
+      return null;
+    }
+  }
+
   // PR 155: like/dislike on a comment itself - a separate feature and endpoint from
-  // pickReaction() above (which reacts to a whole paragraph via a 10-emoji palette). Same
-  // toggle-by-clicking-again/switch-by-clicking-the-other semantics, server-enforced
-  // (app/db/comment_reactions.py), mirrored here just to update the UI immediately without
-  // waiting on a second round-trip.
-  //
-  // `comment` is the exact object instance stored in commentTreeByIndex (renderCommentList
-  // passes tree entries straight through, never a copy), so mutating comment.reactions/
-  // comment.my_reaction here keeps that shared state in sync the same way pickReaction
-  // keeps mineByIndex in sync - a later unrelated re-render of this same tree (e.g. after
-  // posting a new reply) won't revert this comment's reaction display.
+  // pickReaction() above. Mutates the shared tree object so a later re-render keeps it.
   async function pickCommentReaction(comment, value, onUpdate) {
     const body = new URLSearchParams({ value: String(value) });
     let data;
@@ -606,20 +739,14 @@
     onUpdate();
   }
 
-  // PR 162: outline thumb icon (Feather-style, same viewBox/stroke convention as the
-  // rest of the app's inline SVGs - see toc-tap-progress.js/base.html) - one shared path
-  // for both buttons, the dislike button just flips it vertically via CSS
-  // (.paragraph-comment__reaction--down) rather than carrying a second, mirrored path.
+  // PR 162: outline thumb icon - the dislike button flips the same path via CSS.
   const THUMB_ICON =
     '<svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" ' +
     'stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">' +
     '<path d="M14 9V5a3 3 0 0 0-3-3l-4 9v11h11.28a2 2 0 0 0 2-1.7l1.38-9a2 2 0 0 0-2-2.3z"/>' +
     '<path d="M7 22H4a2 2 0 0 1-2-2v-7a2 2 0 0 1 2-2h3"/></svg>';
 
-  // Unauthenticated visitors still see the counts (reading who reacted what needs no
-  // account, same as the paragraph reactions strip) but clicking sends them to /login
-  // instead of posting - the same "action needs a session, viewing doesn't" split as the
-  // reply toggle just below, just without swapping the whole control for an <a> for it.
+  // Guests still see the counts, but a click sends them to /login.
   function buildCommentReactions(comment) {
     const wrap = document.createElement("span");
     wrap.className = "paragraph-comment__reactions";
@@ -661,17 +788,29 @@
     return wrap;
   }
 
-  // PR 162: .paragraph-comment__side (avatar + vote buttons) vs .paragraph-comment__main
-  // (everything else) - the split that will become the left/right columns once the next
-  // commit turns .paragraph-comment into an actual grid. For now these are just two
-  // stacked blocks; the visual "column" doesn't exist yet.
-  function renderCommentNode(index, comment, depth = 0) {
-    const el = document.createElement("div");
-    el.className = "paragraph-comment";
+  function countReplies(comment) {
+    return comment.replies.reduce((n, reply) => n + 1 + countReplies(reply), 0);
+  }
 
-    // PR 183: just the avatar now - the vote buttons that used to sit below it moved into
-    // .paragraph-comment__actions (see below), so this narrow column no longer needs to
-    // fit anything but a 20x20 picture.
+  function actionButton(className, label) {
+    const button = document.createElement("button");
+    button.type = "button";
+    button.className = `paragraph-comment__action ${className}`;
+    button.textContent = label;
+    return button;
+  }
+
+  // One comment: avatar | author · time · (изменено), body, attachment, then the action
+  // row (votes, Ответить, Изменить/Удалить on your own, fold the replies) and the reply
+  // composer under it. Replies hang under a thin guide line, indented per level up to
+  // MAX_INDENT_DEPTH (PR 165).
+  function renderCommentNode(index, comment, depth = 0) {
+    const el = document.createElement("article");
+    el.className = "paragraph-comment";
+    if (depth > 0) el.classList.add("paragraph-comment--reply");
+    el.dataset.commentId = String(comment.id);
+    el.tabIndex = -1;
+
     const side = document.createElement("div");
     side.className = "paragraph-comment__side";
     side.append(buildCommentAvatar(comment));
@@ -686,33 +825,26 @@
     author.className = "paragraph-comment__author";
     author.href = `/profile/${comment.user_id}`;
     author.textContent = comment.author;
-    const time = document.createElement("span");
+    const time = document.createElement("time");
     time.className = "paragraph-comment__time";
-    time.textContent = formatCommentTime(comment.created_at);
+    time.dateTime = comment.created_at;
+    time.title = fullTime(comment.created_at);
+    time.textContent = relativeTime(comment.created_at);
     meta.append(author, time);
-    // PR 172: "(изменено)" next to the timestamp once edit_comment() has overwritten the
-    // body - never shown for a deleted comment (delete_comment() also sets updated_at, but
-    // there's no edit to call out once the whole body is gone), same "edited" convention as
-    // most forums/social apps.
+    // PR 172: «изменено» once edit_comment() has overwritten the body - never for a
+    // deleted comment.
     if (comment.updated_at && !comment.is_deleted) {
       const edited = document.createElement("span");
       edited.className = "paragraph-comment__edited";
-      edited.textContent = "(изменено)";
+      edited.textContent = "изменено";
+      edited.title = fullTime(comment.updated_at);
       meta.append(edited);
     }
     main.append(meta);
 
-    // PR 148: comment.body_html is already-sanitized HTML from the same server-side
-    // renderer (app/markdown_render.py) for every comment, regardless of source - setting
-    // it via innerHTML rather than textContent is what actually turns Markdown into
-    // formatting; safe here specifically because nh3.clean() ran server-side on an
-    // allow-list, not because this is "just our own data". A <div>, not a <p>, since the
-    // rendered HTML brings its own block-level structure (paragraphs, <br>, lists) -
-    // nesting that inside a <p> would be invalid.
-    //
-    // PR 172: a deleted comment's own body_html is just whatever render_comment_body("")
-    // produces (empty) - rendered as a fixed placeholder here instead, so nothing about
-    // deletion depends on the server happening to send an empty string.
+    // PR 148: body_html is HTML sanitized server-side (app/markdown_render.py, nh3 on an
+    // allow-list) - innerHTML is what turns the Markdown into formatting. PR 172: a deleted
+    // comment shows a fixed placeholder instead.
     const body = document.createElement("div");
     body.className = "paragraph-comment__body";
     if (comment.is_deleted) {
@@ -723,14 +855,8 @@
     }
     main.append(body);
 
-    // PR 150/151: the one attachment a comment can carry - "gif" is a plain upload
-    // converted server-side (app/gif_video.py) into a silent looping mp4, rendered the
-    // same way as one so it behaves like a video (autoplay/loop/muted/no controls)
-    // instead of like the picture it visually resembles. "image"/"video" are stored
-    // as-is (app/comment_attachment.py) and rendered plainly - <img>, or <video controls>
-    // since an intentional video upload isn't meant to be a silent background loop.
-    // delete_comment() clears attachment_url server-side, so these simply don't fire for a
-    // deleted comment - no explicit is_deleted check needed here.
+    // PR 150/151: "gif" is an upload converted server-side into a silent looping mp4;
+    // "image"/"video" are rendered plainly. delete_comment() clears attachment_url.
     if (comment.attachment_url && comment.attachment_kind === "gif") {
       const video = document.createElement("video");
       video.className = "paragraph-comment__attachment";
@@ -750,173 +876,163 @@
       const img = document.createElement("img");
       img.className = "paragraph-comment__attachment";
       img.src = comment.attachment_url;
-      img.alt = "";
+      img.alt = "Вложение к комментарию";
       main.append(img);
     }
 
-    // PR 181: one shared flex container for the whole "Ответить"/"Изменить"/"Удалить"
-    // row instead of each button setting its own margin-left - a gap on the container
-    // guarantees spacing between every pair of buttons, rather than relying on each new
-    // button remembering to add its own (see this PR's own diagnosis: .reply-toggle never
-    // did, which is exactly how it ended up glued to "Удалить").
     const actions = document.createElement("div");
     actions.className = "paragraph-comment__actions";
-
-    // PR 183: vote buttons first in the row, ahead of "Ответить"/"Изменить"/"Удалить" -
-    // moved out of the narrow .paragraph-comment__side column (28px was a cramped tap
-    // target, worse still under a few levels of reply indent), now a compact icon+count
-    // pair among the row's other buttons instead. No vote buttons on a deleted comment -
-    // there's no content left to vote on, and delete_comment() doesn't touch
-    // comment_reactions rows anyway (they just become unreachable once nothing links to
-    // them from the UI).
     if (!comment.is_deleted) actions.append(buildCommentReactions(comment));
 
-    // PR 172: "Изменить"/"Удалить" - only on the visitor's own, non-deleted comments.
-    // Hiding these client-side is purely a UI nicety: the real check is server-side
-    // (edit_comment()/delete_comment() scope their UPDATE by user_id), so this can't be
-    // bypassed into actually editing/deleting someone else's comment even if someone
-    // forced these buttons to render.
-    if (isAuthenticated && currentUserId === comment.user_id && !comment.is_deleted) {
-      const editToggle = document.createElement("button");
-      editToggle.type = "button";
-      editToggle.className = "paragraph-comment__edit-toggle";
-      editToggle.textContent = "Изменить";
-      const editForm = buildComposer(
-        (text) => editComment(index, comment.id, text),
-        "Текст комментария…",
-        comment.body,
-        { allowAttachment: false }
-      );
-      editForm.hidden = true;
-      // "Изменить" swaps .paragraph-comment__body itself for the composer in place (not
-      // shown alongside it, unlike "Ответить"'s reply form below the original text) -
-      // matches the roadmap's "turns .paragraph-comment__body back into a composer".
-      // Clicking again while editing cancels back to the plain body without saving.
-      editToggle.addEventListener("click", () => {
-        const entering = editForm.hidden;
-        body.hidden = entering;
-        editForm.hidden = !entering;
-        editToggle.textContent = entering ? "Отмена" : "Изменить";
-      });
-      body.after(editForm);
-
-      const deleteToggle = document.createElement("button");
-      deleteToggle.type = "button";
-      deleteToggle.className = "paragraph-comment__delete-toggle";
-      deleteToggle.textContent = "Удалить";
-      deleteToggle.addEventListener("click", () => {
-        if (window.confirm("Удалить комментарий?")) removeComment(index, comment.id);
-      });
-
-      actions.append(editToggle, deleteToggle);
-    }
+    const actionError = document.createElement("p");
+    actionError.className = "paragraph-comments__error";
+    actionError.setAttribute("role", "alert");
+    actionError.hidden = true;
 
     let replyForm = null;
-    if (isAuthenticated) {
-      const replyToggle = document.createElement("button");
-      replyToggle.type = "button";
-      replyToggle.className = "paragraph-comment__reply-toggle";
-      replyToggle.textContent = "Ответить";
-      replyForm = buildComposer(
-        (text, attachmentFile) => submitComment(index, text, comment.id, attachmentFile),
-        "Ваш ответ…"
-      );
+    if (isAuthenticated && !comment.is_deleted) {
+      const replyToggle = actionButton("paragraph-comment__reply-toggle", "Ответить");
+      replyToggle.setAttribute("aria-expanded", "false");
+      const closeReply = () => {
+        replyForm.hidden = true;
+        replyForm.resetComposer();
+        replyToggle.setAttribute("aria-expanded", "false");
+        replyToggle.focus();
+      };
+      replyForm = buildComposer({
+        onSubmit: (text, attachmentFile) =>
+          submitComment(index, text, comment.id, attachmentFile, { focusNewest: true }),
+        placeholder: "Ваш ответ…",
+        context: `Ответ для ${comment.author}`,
+        onCancel: closeReply,
+        modifier: "inline",
+      });
       replyForm.hidden = true;
       replyToggle.addEventListener("click", () => {
-        replyForm.hidden = !replyForm.hidden;
+        if (!replyForm.hidden) {
+          closeReply();
+          return;
+        }
+        replyForm.hidden = false;
+        replyToggle.setAttribute("aria-expanded", "true");
+        replyForm.focusComposer();
       });
-
       actions.append(replyToggle);
-    } else {
+    } else if (!isAuthenticated) {
       const link = document.createElement("a");
-      link.className = "paragraph-comment__reply-toggle";
+      link.className = "paragraph-comment__action paragraph-comment__reply-toggle";
       link.href = "/login";
       link.textContent = "Войти, чтобы ответить";
       actions.append(link);
     }
 
-    main.append(actions);
-    // Not part of `actions` itself - a whole composer form, not a button in the row, so
-    // it renders on its own line right below the row instead of squeezed inside it.
-    if (replyForm) main.append(replyForm);
+    // PR 172: «Изменить»/«Удалить» on the visitor's own comments only - a UI nicety, the
+    // real ownership check is server-side (edit_comment()/delete_comment()).
+    if (isAuthenticated && currentUserId === comment.user_id && !comment.is_deleted) {
+      const editToggle = actionButton("paragraph-comment__edit-toggle", "Изменить");
+      editToggle.setAttribute("aria-expanded", "false");
+      // «Изменить» swaps the body itself for the composer in place.
+      const closeEdit = () => {
+        editForm.hidden = true;
+        editForm.resetComposer();
+        body.hidden = false;
+        actions.hidden = false;
+        editToggle.setAttribute("aria-expanded", "false");
+        editToggle.focus();
+      };
+      const editForm = buildComposer({
+        onSubmit: (text) => editComment(index, comment.id, text),
+        placeholder: "Текст комментария…",
+        initialValue: comment.body,
+        allowAttachment: false,
+        submitLabel: "Сохранить",
+        context: "Редактирование",
+        onCancel: closeEdit,
+        modifier: "inline",
+      });
+      editForm.hidden = true;
+      editToggle.addEventListener("click", () => {
+        body.hidden = true;
+        actions.hidden = true;
+        editForm.hidden = false;
+        editToggle.setAttribute("aria-expanded", "true");
+        editForm.focusComposer();
+      });
+      body.after(editForm);
 
-    // PR 152: two equivalent triggers for the same collapse state - the "[–]"/"[+]"
-    // button in the comment's own header (PR 182 - moved out of the actions row below
-    // it, see that PR's own diagnosis), and a click on the reply thread's own vertical
-    // guide line (.paragraph-comment__replies' left border/padding, the same visual
-    // element YouTube uses). Both just flip repliesDiv.hidden - commentTreeByIndex isn't
-    // touched, so re-expanding never needs a request, and a collapsed parent thread takes
-    // every nested sub-thread with it for free, since they're all inside this one DOM node.
+      const deleteToggle = actionButton(
+        "paragraph-comment__delete-toggle paragraph-comment__action--danger",
+        "Удалить"
+      );
+      deleteToggle.addEventListener("click", async () => {
+        if (!window.confirm("Удалить комментарий?")) return;
+        actionError.hidden = true;
+        el.setAttribute("aria-busy", "true");
+        const ok = await removeComment(index, comment.id);
+        el.removeAttribute("aria-busy");
+        if (!ok) {
+          actionError.textContent = "Не удалось удалить комментарий. Попробуйте ещё раз.";
+          actionError.hidden = false;
+        }
+      });
+      actions.append(editToggle, deleteToggle);
+    }
+
+    // PR 152: folding a reply thread - the action-row button and a click on the thread's
+    // guide line both flip the same state, kept across re-renders (collapsedCommentIds).
     let repliesDiv = null;
     let collapseToggle = null;
+    const replyCount = countReplies(comment);
 
     function setRepliesCollapsed(collapsed) {
-      if (repliesDiv) repliesDiv.hidden = collapsed;
-      if (collapseToggle) {
-        collapseToggle.textContent = collapsed ? "[+]" : "[–]";
-        collapseToggle.setAttribute("aria-expanded", collapsed ? "false" : "true");
-      }
+      if (collapsed) collapsedCommentIds.add(comment.id);
+      else collapsedCommentIds.delete(comment.id);
+      repliesDiv.hidden = collapsed;
+      collapseToggle.textContent = collapsed
+        ? `Показать ${replyCount} ${plural(replyCount, "ответ", "ответа", "ответов")}`
+        : "Свернуть ответы";
+      collapseToggle.setAttribute("aria-expanded", collapsed ? "false" : "true");
     }
 
     if (comment.replies.length > 0) {
-      collapseToggle = document.createElement("button");
-      collapseToggle.type = "button";
-      collapseToggle.className = "paragraph-comment__collapse-toggle";
-      collapseToggle.textContent = "[–]";
-      collapseToggle.setAttribute("aria-expanded", "true");
-      collapseToggle.setAttribute("aria-label", "Свернуть ветку ответов");
-      collapseToggle.addEventListener("click", () => setRepliesCollapsed(!repliesDiv.hidden));
-      // PR 182: collapsing is an action on the whole reply thread, not on the comment
-      // itself the way "Ответить"/"Изменить"/"Удалить" (.paragraph-comment__actions) are -
-      // sits in the header next to the author/timestamp instead, Reddit/HN-style (see
-      // PR 162's own comment on the two-column layout this app already follows).
-      meta.append(collapseToggle);
+      collapseToggle = actionButton("paragraph-comment__collapse-toggle", "");
+      actions.append(collapseToggle);
 
       repliesDiv = document.createElement("div");
       repliesDiv.className = "paragraph-comment__replies";
+      repliesDiv.id = `comment-replies-${comment.id}`;
+      collapseToggle.setAttribute("aria-controls", repliesDiv.id);
       if (depth + 1 > MAX_INDENT_DEPTH) {
         repliesDiv.classList.add("paragraph-comment__replies--flat");
       }
-
-      // PR 164: the guide line as its own real element, not a border drawn on repliesDiv
-      // itself - a plain border/`:hover` on the container matched anywhere in its
-      // full-width box (any reply's text, not just the line), and a nested .replies'
-      // hover bubbled up and lit every ancestor's line too, since nested boxes sit
-      // geometrically inside their parent's. A pseudo-element (::before) doesn't fix
-      // this either - real browsers don't hit-test `:hover` against a pseudo-element's
-      // own rendered box independently of its host, `::before:hover` behaves exactly
-      // like `:hover::before` (still keyed off the host's own hover state, still the
-      // same bug). A real element sitting at its own fixed position/width does get
-      // proper independent :hover matching, and each nesting level's own line sits at a
-      // different x-offset than every other level's (see app.css), so they can never
-      // geometrically overlap.
+      // PR 164: the guide line as its own element, so hovering one level's line never
+      // lights up an ancestor's.
       const line = document.createElement("span");
       line.className = "paragraph-comment__replies-line";
+      line.title = "Свернуть ответы";
       repliesDiv.append(line);
-
       for (const reply of comment.replies) {
         repliesDiv.append(renderCommentNode(index, reply, depth + 1));
       }
-      // Either the line itself or the bare strip around it (repliesDiv's own padding,
-      // not any nested reply) should toggle - event.target is one of those two exactly
-      // when the click landed there, since every actual reply fills the rest of the
-      // width.
-      repliesDiv.addEventListener("click", (event) => {
-        if (event.target === repliesDiv || event.target === line) {
-          setRepliesCollapsed(!repliesDiv.hidden);
-        }
-      });
+      line.addEventListener("click", () => setRepliesCollapsed(true));
+      collapseToggle.addEventListener("click", () => setRepliesCollapsed(!repliesDiv.hidden));
+      setRepliesCollapsed(collapsedCommentIds.has(comment.id));
     }
 
+    main.append(actions, actionError);
+    if (replyForm) main.append(replyForm);
     el.append(main);
     if (repliesDiv) el.append(repliesDiv);
-
     return el;
   }
 
-  // Everything under a paragraph's own comments toggle - created once per paragraph,
-  // found again on every later call instead of rebuilt (renderCommentsToggle mutates
-  // its label/visibility in place, toggleComments shows/hides `.list`).
+  function paragraphQuote(index) {
+    const el = paragraphContentElementFor(index);
+    return el ? el.textContent.replace(/\s+/g, " ").trim() : "";
+  }
+
+  // Everything a paragraph's comments need, created once and found again afterwards:
+  // the «N комментариев» toggle under the paragraph and the layer it opens.
   function commentsSectionFor(index) {
     const host = paragraphHostFor(index);
     if (!host) return null;
@@ -925,98 +1041,262 @@
 
     section = document.createElement("div");
     section.className = "paragraph-comments";
-    section.hidden = true; // renderCommentsToggle below reveals it once count > 0
+    section.hidden = true; // syncSection() reveals it once there's something to show
 
+    const layerId = `paragraph-comments-${index}`;
     const toggle = document.createElement("button");
     toggle.type = "button";
     toggle.className = "paragraph-comments__toggle";
     toggle.setAttribute("aria-expanded", "false");
-    toggle.addEventListener("click", () => toggleComments(index));
-    section.append(toggle);
+    toggle.setAttribute("aria-controls", layerId);
+    toggle.innerHTML = ICON_COMMENT;
+    const toggleLabel = document.createElement("span");
+    toggleLabel.className = "paragraph-comments__toggle-label";
+    toggle.append(toggleLabel);
+    toggle.addEventListener("click", () => {
+      if (commentsExpandedByIndex.has(index)) closeThread(index);
+      else openThread(index);
+    });
+
+    const layer = document.createElement("section");
+    layer.className = "paragraph-comments__layer";
+    layer.id = layerId;
+    layer.hidden = true;
+    layer.setAttribute("aria-label", `Комментарии к абзацу ${index + 1}`);
+
+    // The paragraph this is about - the reader can lose sight of it once the thread
+    // opens under it, and inside the bottom sheet it's not on screen at all.
+    const head = document.createElement("header");
+    head.className = "paragraph-comments__head";
+    const contextBox = document.createElement("div");
+    contextBox.className = "paragraph-comments__context";
+    const kicker = document.createElement("span");
+    kicker.className = "paragraph-comments__kicker";
+    kicker.textContent = `Абзац ${index + 1}`;
+    const quote = document.createElement("p");
+    quote.className = "paragraph-comments__quote";
+    quote.textContent = paragraphQuote(index);
+    contextBox.append(kicker, quote);
+    const closeButton = document.createElement("button");
+    closeButton.type = "button";
+    closeButton.className = "paragraph-comments__icon-btn paragraph-comments__close";
+    closeButton.setAttribute("aria-label", "Свернуть комментарии");
+    closeButton.title = "Свернуть комментарии";
+    closeButton.innerHTML = ICON_CLOSE;
+    closeButton.addEventListener("click", () => {
+      closeThread(index);
+      toggle.focus();
+    });
+    head.append(contextBox, closeButton);
+
+    const status = document.createElement("div");
+    status.className = "paragraph-comments__status";
+    status.setAttribute("aria-live", "polite");
 
     const list = document.createElement("div");
     list.className = "paragraph-comments__list";
-    list.hidden = true;
-    section.append(list);
 
+    const footer = document.createElement("div");
+    footer.className = "paragraph-comments__footer";
+    if (isAuthenticated) {
+      const composer = buildComposer({
+        onSubmit: (text, attachmentFile) => submitComment(index, text, null, attachmentFile),
+        placeholder: "Написать комментарий…",
+      });
+      composer.dataset.role = "paragraph-comment-composer";
+      footer.append(composer);
+    } else {
+      const login = document.createElement("p");
+      login.className = "paragraph-comments__login";
+      login.innerHTML = '<a href="/login">Войдите</a>, чтобы комментировать и отвечать.';
+      footer.append(login);
+    }
+
+    layer.append(head, status, list, footer);
+    section.append(toggle, layer);
     host.append(section);
     return section;
   }
 
-  // Re-renders the toggle's label/arrow from commentCountByIndex/commentsExpandedByIndex
-  // - callers update one of those two maps/sets first, then call this to reflect it.
-  function renderCommentsToggle(index) {
+  function partsFor(index) {
     const section = commentsSectionFor(index);
-    if (!section) return;
+    if (!section) return null;
+    return {
+      section,
+      toggle: section.querySelector(":scope > .paragraph-comments__toggle"),
+      label: section.querySelector(".paragraph-comments__toggle-label"),
+      layer: document.getElementById(`paragraph-comments-${index}`),
+    };
+  }
+
+  function layerPart(index, selector) {
+    return document.getElementById(`paragraph-comments-${index}`)?.querySelector(selector);
+  }
+
+  // The toggle shows whenever there are comments or the layer is open; its label is the
+  // count, «Комментарии» for a paragraph the visitor has opened before anyone commented.
+  function syncSection(index) {
+    const parts = partsFor(index);
+    if (!parts) return;
     const count = commentCountByIndex.get(index) ?? 0;
-    section.hidden = count <= 0; // empty state = show nothing, same as the reactions strip
-    const toggle = section.querySelector(":scope > .paragraph-comments__toggle");
     const expanded = commentsExpandedByIndex.has(index);
-    toggle.textContent = "";
-    toggle.append(`${count} ${pluralizeComments(count)} `);
-    const arrow = document.createElement("span");
-    arrow.className = "paragraph-comments__arrow";
-    arrow.textContent = expanded ? "▴" : "▾";
-    toggle.append(arrow);
-    toggle.setAttribute("aria-expanded", expanded ? "true" : "false");
+    parts.section.hidden = count <= 0 && !expanded;
+    parts.label.textContent = count > 0 ? `${count} ${pluralizeComments(count)}` : "Комментарии";
+    parts.toggle.setAttribute("aria-expanded", expanded ? "true" : "false");
+    parts.section.classList.toggle("paragraph-comments--open", expanded);
   }
 
   function setCommentCount(index, count) {
     commentCountByIndex.set(index, count);
-    renderCommentsToggle(index);
+    syncSection(index);
+    renderStatus(index);
   }
 
-  function renderCommentList(index, comments) {
-    const section = commentsSectionFor(index);
-    if (!section) return;
-    const list = section.querySelector(":scope > .paragraph-comments__list");
-    list.replaceChildren();
-    for (const comment of comments) {
-      list.append(renderCommentNode(index, comment));
+  const SKELETON =
+    '<div class="paragraph-comment paragraph-comment--skeleton" aria-hidden="true">' +
+    '<div class="paragraph-comment__side"><span class="paragraph-comment__avatar"></span></div>' +
+    '<div class="paragraph-comment__main"><span class="paragraph-comments__bone"></span>' +
+    '<span class="paragraph-comments__bone paragraph-comments__bone--long"></span></div></div>';
+
+  // The line between the head and the list: skeletons while the thread loads, an error
+  // with «Повторить», or the empty state - nothing once there are comments to show.
+  function renderStatus(index) {
+    const status = layerPart(index, ".paragraph-comments__status");
+    const list = layerPart(index, ".paragraph-comments__list");
+    if (!status) return;
+    status.replaceChildren();
+    list.removeAttribute("aria-busy");
+    if (loadingIndexes.has(index)) {
+      list.setAttribute("aria-busy", "true");
+      status.innerHTML = SKELETON + SKELETON + '<span class="paragraph-comments__sr">Загружаем комментарии…</span>';
+    } else if (loadFailedIndexes.has(index)) {
+      const box = document.createElement("div");
+      box.className = "paragraph-comments__load-error";
+      const text = document.createElement("span");
+      text.textContent = "Не удалось загрузить комментарии";
+      const retry = document.createElement("button");
+      retry.type = "button";
+      retry.className = "ui-btn ui-btn--sm paragraph-comments__retry";
+      retry.textContent = "Повторить";
+      retry.addEventListener("click", () => loadCommentTree(index));
+      box.append(text, retry);
+      status.append(box);
+    } else if ((commentCountByIndex.get(index) ?? 0) === 0) {
+      const empty = document.createElement("p");
+      empty.className = "paragraph-comments__empty";
+      empty.textContent = isAuthenticated
+        ? "Здесь пока пусто — начните обсуждение этого абзаца."
+        : "У этого абзаца пока нет комментариев.";
+      status.append(empty);
     }
   }
 
+  function renderCommentList(index, comments) {
+    const list = layerPart(index, ".paragraph-comments__list");
+    if (!list) return;
+    list.replaceChildren(...comments.map((comment) => renderCommentNode(index, comment)));
+  }
+
   async function loadCommentTree(index) {
+    loadingIndexes.add(index);
+    loadFailedIndexes.delete(index);
+    renderStatus(index);
     try {
       const response = await fetch(
         `/titles/${slugUrl}/chapters/${volume}/${number}/comments` +
           `?paragraph_index=${index}&branch_id=${encodeURIComponent(branchId)}`
       );
-      if (!response.ok) return;
+      if (!response.ok) throw new Error(String(response.status));
       const data = await response.json();
       commentTreeByIndex.set(index, data.comments);
       renderCommentList(index, data.comments);
     } catch {
-      // Same "fails silently, the chapter itself still reads fine" reasoning as
-      // loadInitialReactions/loadInitialCommentCounts.
+      loadFailedIndexes.add(index);
+    } finally {
+      loadingIndexes.delete(index);
+      renderStatus(index);
     }
   }
 
-  async function toggleComments(index) {
-    const expanded = commentsExpandedByIndex.has(index);
-    if (expanded) {
-      commentsExpandedByIndex.delete(index);
+  // Opens the layer - inline on desktop, in the bottom sheet on phones. `compose` puts
+  // the caret into the new-comment box (menu «Комментировать»), `quote` (PR 156,
+  // «Цитировать») drops the paragraph's text into it as a Markdown quote first.
+  function openThread(index, { compose = false, quote = "" } = {}) {
+    const parts = partsFor(index);
+    if (!parts) return;
+    commentsExpandedByIndex.add(index);
+    syncSection(index);
+    const loaded = commentTreeByIndex.has(index);
+    if (!loaded && (commentCountByIndex.get(index) ?? 0) > 0) loadCommentTree(index);
+    else renderStatus(index);
+
+    const composer = parts.layer.querySelector('[data-role="paragraph-comment-composer"]');
+    if (quote && composer) composer.insertText(quote);
+
+    if (phoneQuery.matches && window.bottomSheet) {
+      if (compose && composer) composer.textarea.dataset.autofocus = "";
+      window.bottomSheet.open({
+        title: "Комментарии к абзацу",
+        content: parts.layer,
+        opener: parts.toggle,
+        onClose: () => {
+          if (composer) delete composer.textarea.dataset.autofocus;
+          commentsExpandedByIndex.delete(index);
+          syncSection(index);
+        },
+      });
+      return;
+    }
+
+    parts.layer.hidden = false;
+    if (compose && composer) {
+      composer.focusComposer();
+      composer.scrollIntoView({ block: "nearest", behavior: "smooth" });
     } else {
-      commentsExpandedByIndex.add(index);
-      if (!commentTreeByIndex.has(index)) await loadCommentTree(index);
+      parts.layer.scrollIntoView({ block: "nearest", behavior: "smooth" });
     }
-    const section = commentsSectionFor(index);
-    const list = section?.querySelector(":scope > .paragraph-comments__list");
-    if (list) list.hidden = !commentsExpandedByIndex.has(index);
-    renderCommentsToggle(index); // just the arrow direction - the count itself is untouched
   }
 
-  // Returns whether the post actually went through - buildComposer's caller uses this to
-  // decide whether to clear the textarea/staged attachment (a rejected/network-failed
-  // post shouldn't lose what the visitor typed or picked).
-  //
-  // PR 150: always FormData now, even for a plain text comment with no attachment - a
-  // second urlencoded-vs-multipart code path here just to avoid a FormData object for the
-  // common case isn't worth carrying once the endpoint itself already accepts multipart
-  // unconditionally (it has to, for the attachment case). No Content-Type header set -
-  // the browser fills in FormData's own multipart boundary, which a hardcoded header
-  // would break.
-  async function submitComment(index, body, parentCommentId, attachmentFile) {
+  function closeThread(index) {
+    const parts = partsFor(index);
+    if (!parts) return;
+    if (window.bottomSheet?.isOpen() && parts.layer.closest('[data-role="bottom-sheet"]')) {
+      window.bottomSheet.close(); // its onClose (openThread) updates the state
+      return;
+    }
+    commentsExpandedByIndex.delete(index);
+    parts.layer.hidden = true;
+    syncSection(index);
+  }
+
+  function newestCommentId(comments) {
+    let max = 0;
+    for (const comment of comments) {
+      max = Math.max(max, comment.id, newestCommentId(comment.replies));
+    }
+    return max;
+  }
+
+  // Shared tail of submitComment/editComment/removeComment - all three endpoints return
+  // the same {count, comments} shape (app/api/chapters.py's _comments_response()). A
+  // reply/edit re-renders the composer it came from away, so focus moves to the comment
+  // it produced (marked briefly, --fresh) instead of falling back to <body>.
+  function applyCommentTreeResponse(index, data, focusCommentId = null) {
+    commentTreeByIndex.set(index, data.comments);
+    loadFailedIndexes.delete(index);
+    renderCommentList(index, data.comments);
+    setCommentCount(index, data.count);
+    if (focusCommentId == null) return;
+    const node = layerPart(index, `[data-comment-id="${focusCommentId}"]`);
+    if (!node) return;
+    node.classList.add("paragraph-comment--fresh");
+    node.focus({ preventScroll: true });
+    node.scrollIntoView({ block: "nearest", behavior: "smooth" });
+  }
+
+  // PR 150: always FormData - the endpoint accepts multipart unconditionally (it has to,
+  // for the attachment case). No Content-Type header - the browser adds the boundary.
+  async function submitComment(index, body, parentCommentId, attachmentFile, { focusNewest = false } = {}) {
     const formData = new FormData();
     formData.set("paragraph_index", String(index));
     formData.set("body", body);
@@ -1029,34 +1309,16 @@
         method: "POST",
         body: formData,
       });
-      if (!response.ok) return false;
+      if (!response.ok) return { ok: false, message: await errorMessage(response) };
       data = await response.json();
     } catch {
-      return false;
+      return { ok: false, message: null };
     }
-    applyCommentTreeResponse(index, data);
-    return true;
+    applyCommentTreeResponse(index, data, focusNewest ? newestCommentId(data.comments) : null);
+    return { ok: true };
   }
 
-  // Shared tail of submitComment/editComment/removeComment below - all three POST/PATCH/
-  // DELETE endpoints return the exact same {count, comments} shape (app/api/chapters.py's
-  // _comments_response()), so re-rendering from it is identical regardless of which one
-  // just ran.
-  function applyCommentTreeResponse(index, data) {
-    commentTreeByIndex.set(index, data.comments);
-    commentsExpandedByIndex.add(index);
-    renderCommentList(index, data.comments);
-    const section = commentsSectionFor(index);
-    const list = section?.querySelector(":scope > .paragraph-comments__list");
-    if (list) list.hidden = false;
-    // The response always carries its own authoritative count right there, replies
-    // included - no reason to leave the toggle showing a stale number until the next full
-    // page load.
-    setCommentCount(index, data.count);
-  }
-
-  // PR 172: "Изменить" on a comment's own body - returns whether it went through, same
-  // "leave the composer's text in place on failure" contract as submitComment above.
+  // PR 172: «Изменить» - same {ok, message} contract as submitComment.
   async function editComment(index, commentId, body) {
     const formData = new FormData();
     formData.set("body", body);
@@ -1066,17 +1328,17 @@
         `/titles/${slugUrl}/chapters/${volume}/${number}/comments/${commentId}`,
         { method: "PATCH", body: formData }
       );
-      if (!response.ok) return false;
+      if (!response.ok) return { ok: false, message: await errorMessage(response) };
       data = await response.json();
     } catch {
-      return false;
+      return { ok: false, message: null };
     }
-    applyCommentTreeResponse(index, data);
-    return true;
+    applyCommentTreeResponse(index, data, commentId);
+    return { ok: true };
   }
 
-  // PR 172: "Удалить" on a comment's own body - the confirm() prompt lives at the call
-  // site (renderCommentNode), not here, so this stays a plain "do the delete" action.
+  // PR 172: «Удалить» - the confirm() lives at the call site. The comment stays in the
+  // tree as «Комментарий удалён» when it has replies, so focus goes back to it.
   async function removeComment(index, commentId) {
     let data;
     try {
@@ -1089,7 +1351,10 @@
     } catch {
       return false;
     }
-    applyCommentTreeResponse(index, data);
+    applyCommentTreeResponse(index, data, commentId);
+    if (!layerPart(index, `[data-comment-id="${commentId}"]`)) {
+      layerPart(index, '[data-role="paragraph-comment-composer"] textarea')?.focus({ preventScroll: true });
+    }
     return true;
   }
 
@@ -1111,34 +1376,6 @@
     }
   }
   loadInitialCommentCounts();
-
-  // `quotedText` (PR 156) pre-fills the composer when opened via "Цитировать" instead of
-  // "Комментировать" - empty for the latter, same composer either way.
-  function renderCommentComposer(index, quotedText = "") {
-    panel.replaceChildren();
-
-    const back = document.createElement("button");
-    back.type = "button";
-    back.className = "paragraph-menu__back";
-    back.textContent = "← Назад";
-    back.addEventListener("click", (event) => {
-      event.stopPropagation();
-      renderMenuItems(index);
-      position(lastX, lastY);
-    });
-    panel.append(back);
-
-    const composer = buildComposer(
-      async (text, attachmentFile) => {
-        const ok = await submitComment(index, text, null, attachmentFile);
-        if (ok) close();
-        return ok;
-      },
-      "Написать комментарий…",
-      quotedText
-    );
-    panel.append(composer);
-  }
 
   const panel = document.createElement("div");
   panel.className = "paragraph-menu__panel";
@@ -1224,10 +1461,12 @@
     commentItem.className = "paragraph-menu__item";
     commentItem.setAttribute("role", "menuitem");
     commentItem.textContent = "Комментировать";
+    // PR 312: opens the paragraph's comment layer with the caret in its composer,
+    // instead of a composer squeezed into this menu.
     commentItem.addEventListener("click", (event) => {
       event.stopPropagation();
-      renderCommentComposer(index);
-      position(lastX, lastY);
+      close();
+      openThread(index, { compose: true });
     });
     panel.append(commentItem);
 
@@ -1241,8 +1480,8 @@
     quoteItem.textContent = "Цитировать";
     quoteItem.addEventListener("click", (event) => {
       event.stopPropagation();
-      renderCommentComposer(index, quoteParagraphText(index));
-      position(lastX, lastY);
+      close();
+      openThread(index, { compose: true, quote: quoteParagraphText(index) });
     });
     panel.append(quoteItem);
   }

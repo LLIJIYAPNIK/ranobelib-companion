@@ -3160,222 +3160,343 @@ html.bottom-sheet-lock body {
   color: var(--text-primary);
 }
 
-/* PR 133: the "N комментариев ▾" toggle and the thread under it, both nested inside the
-   same .paragraph-reactions-host/.reader-content__paragraph-wrap the reactions strip
-   uses (paragraph-menu.js's paragraphHostFor()) - but unlike that strip, always visible
-   in both reading modes rather than a hover/focus-only overlay. Comments are a more
-   durable affordance than a decorative reaction row, so they stay in normal document
-   flow instead of the reactions strip's absolute-positioned overlay treatment. */
+/* PR 312 (Webnovells): the paragraph comment layer (paragraph-menu.js). Under a
+   paragraph with comments: the «N комментариев» pill. It opens the layer - inline, in
+   normal flow right under the paragraph on desktop (it pushes the text down, never
+   covers it or hangs off the viewport), inside the shared bottom sheet on phones - with
+   the paragraph's own context, the thread and the composer.
+   Colors go through --pc-*: the reader theme's --r-* tokens inline (all 5 themes, light
+   ones included), the sheet's dark Webnovells palette once the layer moves in there. */
+.paragraph-comments,
+.paragraph-comments__layer {
+  --pc-text: var(--r-text);
+  --pc-muted: var(--r-muted);
+  --pc-surface: var(--r-surface);
+  --pc-field: var(--r-bg);
+  --pc-line: var(--r-track);
+  --pc-accent: var(--r-accent);
+  --pc-tint: var(--r-active-tint);
+  --pc-focus: var(--r-focus);
+  --pc-danger: #e5566b;
+  font-family: var(--font-ui);
+}
+
+.bottom-sheet .paragraph-comments__layer {
+  --pc-text: var(--wn-text);
+  --pc-muted: var(--wn-text-muted);
+  --pc-surface: transparent;
+  --pc-field: #101017;
+  --pc-line: #2a2838;
+  --pc-accent: var(--wn-teal);
+  --pc-tint: rgb(61 214 195 / 8%);
+  --pc-focus: var(--wn-teal);
+  --pc-danger: var(--wn-danger);
+  margin: 0;
+  padding: 0;
+  border: 0;
+  animation: none;
+}
+
 .paragraph-comments {
-  margin-top: 6px;
+  margin-top: 8px;
+}
+
+.paragraph-comments[hidden] {
+  display: none;
 }
 
 .reader-content__paragraph-wrap > .paragraph-comments {
-  padding: 0 14px 10px;
+  padding: 0 14px 12px;
 }
 
-/* PR 153: gives the comments block its own breathing room before the host's margin-bottom
-   (above) closes it off, rather than butting straight up against the next paragraph the
-   way it did with no bottom spacing of its own at all. */
+/* PR 153: room before the host's own margin-bottom closes the block off. */
 .paragraph-reactions-host > .paragraph-comments {
   padding-bottom: 12px;
 }
 
-/* PR 158: comment text/metadata/toggles across this whole file bumped a notch (12px ->
-   13px, 13px -> 14px for the body itself) - the same class of polish already done for
-   the "Фильтры" panel (PR 118), and vertical gaps/margins nudged up to match rather than
-   leaving the same tight spacing under now-slightly-taller lines.
-   PR 166: that 13px is now 1px under --comment-font-size (settings_reading.html) rather
-   than a second hardcoded number that could drift from .paragraph-comment__body's own -
-   same reasoning as .paragraph-comment__meta below. */
 .paragraph-comments__toggle {
+  appearance: none;
   display: inline-flex;
   align-items: center;
-  gap: 4px;
-  padding: 2px 0;
-  border: none;
-  background: none;
-  color: var(--text-muted);
-  font-family: inherit;
-  font-size: calc(var(--comment-font-size) - 1px);
+  gap: 6px;
+  min-height: 32px;
+  padding: 0 12px 0 10px;
+  border: 1px solid color-mix(in srgb, var(--pc-muted) 28%, transparent);
+  border-radius: var(--r-full);
+  background: transparent;
+  color: var(--pc-muted);
+  font: 600 calc(var(--comment-font-size) - 1px) / 1 var(--font-ui);
   cursor: pointer;
-  transition: color 0.1s ease;
+  transition: color 160ms ease, border-color 160ms ease, background-color 160ms ease;
+}
+
+.paragraph-comments__toggle svg {
+  width: 16px;
+  height: 16px;
+}
+
+.paragraph-comments--open > .paragraph-comments__toggle {
+  border-color: color-mix(in srgb, var(--pc-accent) 45%, transparent);
+  background: var(--pc-tint);
+  color: var(--pc-accent);
 }
 
 @media (hover: hover) {
   .paragraph-comments__toggle:hover {
-    color: var(--text-primary);
+    border-color: color-mix(in srgb, var(--pc-muted) 50%, transparent);
+    color: var(--pc-text);
   }
 }
 
-.paragraph-comments__arrow {
-  font-size: 11px;
+/* The layer: context head, status line, thread, composer. */
+.paragraph-comments__layer {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  margin-top: 12px;
+  padding: 16px 18px 18px;
+  border: 1px solid var(--pc-line);
+  border-radius: var(--r-xl);
+  background: var(--pc-surface);
+  color: var(--pc-text);
+  text-align: left;
+  animation: paragraph-comments-in 180ms ease-out;
 }
 
+.paragraph-comments__layer[hidden] {
+  display: none;
+}
+
+@keyframes paragraph-comments-in {
+  from {
+    opacity: 0;
+    transform: translateY(-4px);
+  }
+}
+
+.paragraph-comments__head {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+}
+
+.paragraph-comments__context {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  gap: 6px;
+  min-width: 0;
+}
+
+.paragraph-comments__kicker {
+  color: var(--pc-accent);
+  font: 700 11px/14px var(--font-ui);
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.paragraph-comments__quote {
+  display: -webkit-box;
+  margin: 0;
+  padding-left: 10px;
+  overflow: hidden;
+  border-left: 2px solid var(--pc-line);
+  color: var(--pc-muted);
+  font: 500 14px/1.5 var(--font-ui);
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+}
+
+/* The sheet has its own ✕. */
+.bottom-sheet .paragraph-comments__close {
+  display: none;
+}
+
+/* Icon buttons: close, emoji, attachment, remove-attachment, cancel. */
+.paragraph-comments__icon-btn {
+  appearance: none;
+  display: grid;
+  place-items: center;
+  flex: 0 0 auto;
+  width: 36px;
+  height: 36px;
+  padding: 0;
+  border: 0;
+  border-radius: 10px;
+  background: transparent;
+  color: var(--pc-muted);
+  cursor: pointer;
+  transition: background-color 160ms ease, color 160ms ease;
+}
+
+.paragraph-comments__icon-btn[aria-expanded="true"] {
+  background: var(--pc-tint);
+  color: var(--pc-accent);
+}
+
+@media (hover: hover) {
+  .paragraph-comments__icon-btn:hover {
+    background: var(--pc-tint);
+    color: var(--pc-text);
+  }
+}
+
+/* Status: skeleton comments while loading, an error with «Повторить», the empty state. */
+.paragraph-comments__status:empty {
+  display: none;
+}
+
+.paragraph-comments__status {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.paragraph-comments__empty {
+  margin: 0;
+  color: var(--pc-muted);
+  font: 500 14px/1.5 var(--font-ui);
+}
+
+.paragraph-comments__load-error {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 10px 10px 10px 14px;
+  border: 1px solid color-mix(in srgb, var(--pc-danger) 35%, transparent);
+  border-radius: 12px;
+  background: color-mix(in srgb, var(--pc-danger) 8%, transparent);
+  color: var(--pc-text);
+  font: 500 14px/1.4 var(--font-ui);
+}
+
+.paragraph-comments__bone {
+  display: block;
+  width: 30%;
+  height: 10px;
+  margin-top: 4px;
+  border-radius: 5px;
+  background: color-mix(in srgb, var(--pc-muted) 18%, transparent);
+}
+
+.paragraph-comments__bone--long {
+  width: 85%;
+  margin-top: 10px;
+}
+
+.paragraph-comment--skeleton .paragraph-comment__avatar {
+  background: color-mix(in srgb, var(--pc-muted) 18%, transparent);
+}
+
+.paragraph-comment--skeleton {
+  animation: paragraph-comments-pulse 1.2s ease-in-out infinite alternate;
+}
+
+@keyframes paragraph-comments-pulse {
+  to {
+    opacity: 0.45;
+  }
+}
+
+.paragraph-comments__sr {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  white-space: nowrap;
+}
+
+/* The thread. */
 .paragraph-comments__list {
   display: flex;
   flex-direction: column;
-  gap: 12px;
-  margin-top: 8px;
+  gap: 18px;
 }
 
-.paragraph-comments__list[hidden] {
+.paragraph-comments__list:empty {
   display: none;
 }
 
-/* Reddit-style nesting: each level of reply indents via its own .replies wrapper's
-   margin/border, not a JS-computed depth * N inline style - depth (PR 165) only ever
-   decides *whether* a level still gets this fixed per-level indent at all
-   (.paragraph-comment__replies--flat below), never its actual magnitude. */
-/* PR 162: spans both grid columns of the parent .paragraph-comment (its own grid item,
-   auto-placed into the row below .side/.main) - without this it would auto-place into
-   just the narrow left column instead, squeezing the whole reply thread into ~28px.
-   margin-left is 0 now (not the old fixed 12px) so the border-left guide line sits flush
-   with .paragraph-comment's own left edge - the same x-position .side already occupies
-   above it, so the line visually originates from under the avatar/vote column instead of
-   drifting off into the middle of it. padding-left pushes the nested reply's own content
-   clear of that line, past the full width .side used to need. */
-.paragraph-comment__replies {
-  position: relative;
-  grid-column: 1 / -1;
-  display: flex;
-  flex-direction: column;
-  gap: 12px;
-  margin: 8px 0 0 0;
-  cursor: pointer;
+.paragraph-comments__list[aria-busy="true"] {
+  opacity: 0.6;
 }
 
-/* PR 164: the guide line as its own real element (paragraph-menu.js's
-   .paragraph-comment__replies-line, the first child of every .paragraph-comment__replies)
-   rather than a border-left drawn directly on the container (as it used to be) - that
-   older approach made `:hover` match anywhere in the flex container's full-width box
-   (any reply's text, not just the line), and made a nested .replies' own hover bubble up
-   and light up every ancestor's line too, since nested boxes are geometrically inside
-   their parent's. A CSS pseudo-element (::before) doesn't fix this: real browsers don't
-   hit-test `:hover` against a pseudo-element's own rendered box independently of its
-   host - `::before:hover` behaves exactly like `:hover::before`, still keyed off the
-   *host's* hover state, still the same bug. A real element gets proper independent
-   :hover matching against its own box. `left`/`top` on an absolutely positioned element
-   resolve against the *padding* box of its containing block - the indent below is on
-   each reply's own margin-left now, not .paragraph-comment__replies' own padding-left
-   like before, so this line's `left: 0` actually lands at the container's bare left edge
-   (the empty gutter) instead of at the padding edge, which is exactly where the replies
-   themselves already start. Every level's own line sits at a different x-offset than
-   every other level's (each is offset by its own ancestors' cumulative indent), so they
-   never geometrically overlap and hovering one can never register as hovering another. */
-.paragraph-comment__replies-line {
-  position: absolute;
-  left: 0;
-  top: 0;
-  bottom: 0;
-  width: calc(var(--side-width) + 10px);
-  border-left: 1px solid var(--legacy-border);
-  transition: border-left-color 0.1s ease;
+/* One comment: avatar | author · time · изменено, body, attachment, action row;
+   replies below, spanning both columns under a thin guide line. */
+.paragraph-comment {
+  --avatar: 32px;
+  display: grid;
+  grid-template-columns: var(--avatar) minmax(0, 1fr);
+  column-gap: 12px;
+  border-radius: 12px;
 }
 
-/* PR 157: the guide line's cursor: pointer above already hints it's clickable, but
-   nothing about it visually reacted to a hover before this - same border-left-color
-   highlight the other collapse/reply controls already use for their own :hover (color
-   instead, since there's no text here to recolor). (hover: hover) keeps it from getting
-   stuck highlighted on touch, where there's no real "hover" to leave, only a tap that
-   would otherwise leave the :hover state applied until the next unrelated tap.
-   PR 164: targets .paragraph-comment__replies-line specifically now, not the whole
-   .paragraph-comment__replies box - see that element's own comment above. */
-@media (hover: hover) {
-  .paragraph-comment__replies-line:hover {
-    border-left-color: var(--accent-teal);
+.paragraph-comment--reply {
+  --avatar: 26px;
+}
+
+.paragraph-comment:focus {
+  outline: none;
+}
+
+.paragraph-comment:focus-visible {
+  outline: 2px solid var(--pc-focus);
+  outline-offset: 4px;
+}
+
+.paragraph-comment--fresh > .paragraph-comment__main {
+  animation: paragraph-comment-fresh 1.8s ease-out;
+}
+
+@keyframes paragraph-comment-fresh {
+  from {
+    background: var(--pc-tint);
+    box-shadow: 0 0 0 6px var(--pc-tint);
   }
 }
 
-/* PR 152: the pointer cursor above is a hover hint for the bare guide-line strip
-   (paragraph-menu.js only toggles collapse when the click lands directly on the
-   container, not on a nested reply) - reset back to normal over actual reply content,
-   which otherwise inherits the pointer and implies the whole area is clickable.
-   PR 164: margin-left (the indent past the guide line) moved here from
-   .paragraph-comment__replies' own padding-left, so that container has no padding of its
-   own for its guide line's `left: 0` to land inside of - see that element's own comment
-   above. */
-.paragraph-comment__replies > .paragraph-comment {
-  cursor: auto;
-  margin-left: calc(var(--side-width) + 10px);
-}
-
-/* PR 165: past MAX_INDENT_DEPTH levels (paragraph-menu.js), the fixed per-level
-   margin-left above compounds into most of the comment column's width, leaving deeper
-   replies' own text a few characters wide - unreadable long before any thread actually
-   gets 6+ levels deep. paragraph-menu.js tags a .replies container past that depth with
-   this modifier, which cancels the indent for its own children only (not its own
-   position, which is still offset by every shallower ancestor) - deeper threads stop
-   marching right and stay flush at the last indented level instead. The guide line
-   itself (.paragraph-comment__replies-line) still renders per level and is still its own
-   real, independently-hoverable element (PR 164) even where several of them now share
-   the same x-offset. */
-.paragraph-comment__replies--flat > .paragraph-comment {
-  margin-left: 0;
-}
-
-.paragraph-comment__replies[hidden] {
-  display: none;
-}
-
-/* PR 162: two-column layout (Reddit/Hacker News pattern) - a narrow left column for the
-   avatar (.paragraph-comment__side) and a wide right column for everything else
-   (.paragraph-comment__main). --side-width is reused by .paragraph-comment__replies
-   further down so its own guide line lines up with this left column instead of the full
-   comment width. PR 183: 20px, not 28px - the vote buttons that used to share this
-   column with the avatar moved into .paragraph-comment__actions, so it only has to fit
-   the 20x20 avatar now. */
-.paragraph-comment {
-  --side-width: 20px;
-  display: grid;
-  grid-template-columns: var(--side-width) 1fr;
-  column-gap: 10px;
+.paragraph-comment[aria-busy="true"] {
+  opacity: 0.55;
 }
 
 .paragraph-comment__side {
   grid-column: 1;
 }
 
-/* min-width: 0 stops long unbreakable content (e.g. a URL in the body) from forcing the
-   grid wider than .paragraph-comment itself, which would otherwise squeeze the left
-   column off-screen on narrow viewports instead of just wrapping. */
 .paragraph-comment__main {
   grid-column: 2;
   min-width: 0;
+  border-radius: 8px;
 }
 
-/* PR 162: author + time only now - the avatar moved out into .paragraph-comment__side
-   above, rather than sitting inline in this row. */
-.paragraph-comment__meta {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  /* PR 166: 1px under the body's own --comment-font-size, preserving the PR 158
-     proportion (13px meta vs 14px body) at every slider value instead of just at the
-     default. */
-  font-size: calc(var(--comment-font-size) - 1px);
-}
-
-/* PR 147: same picture-or-initials box as .sidebar__avatar (PR 88), just small enough to
-   sit at the top of the narrow .paragraph-comment__side column. */
 .paragraph-comment__avatar {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  flex: 0 0 auto;
-  width: 20px;
-  height: 20px;
+  display: grid;
+  place-items: center;
+  width: var(--avatar);
+  height: var(--avatar);
   border-radius: 50%;
-  background: var(--legacy-accent);
-  color: var(--text-primary);
-  font-size: 9px;
-  font-weight: 600;
+  background: color-mix(in srgb, var(--pc-muted) 22%, transparent);
+  color: var(--pc-text);
+  font: 700 calc(var(--avatar) * 0.36) / 1 var(--font-ui);
   overflow: hidden;
 }
 
-.paragraph-comment__author {
-  color: var(--text-primary);
-  font-weight: 600;
+.paragraph-comment__meta {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  column-gap: 8px;
+  row-gap: 2px;
+  min-height: 20px;
+  font: 500 12px/18px var(--font-ui);
+}
+
+.paragraph-comment__meta .paragraph-comment__author {
+  color: var(--pc-text);
+  font: 700 calc(var(--comment-font-size) - 1px) / 18px var(--font-ui);
   text-decoration: none;
 }
 
@@ -3385,25 +3506,26 @@ html.bottom-sheet-lock body {
   }
 }
 
-.paragraph-comment__time {
-  color: var(--text-muted);
-}
-
-/* PR 172: the "edited" mark - same muted, unemphasized treatment as the timestamp it sits
-   next to, not a call to attention. */
+.paragraph-comment__time,
 .paragraph-comment__edited {
-  color: var(--text-muted);
+  color: var(--pc-muted);
 }
 
-/* PR 148: body_html already brings its own block structure (<p>/<br>/<ul>/<ol> from
-   app/markdown_render.py) - no white-space: pre-wrap here anymore, that was only needed
-   to preserve line breaks in plain textContent, and would otherwise also render the
-   whitespace nh3.clean() leaves between tags. */
+.paragraph-comment__edited::before {
+  content: "· ";
+}
+
+/* PR 148: body_html brings its own block structure (<p>/<br>/<ul>/<ol>). */
 .paragraph-comment__body {
-  margin: 6px 0;
+  margin: 4px 0 0;
+  color: var(--pc-text);
   font-size: var(--comment-font-size);
-  color: var(--text-secondary);
+  line-height: 1.55;
   overflow-wrap: break-word;
+}
+
+.paragraph-comment__body[hidden] {
+  display: none;
 }
 
 .paragraph-comment__body p {
@@ -3414,11 +3536,9 @@ html.bottom-sheet-lock body {
   margin-bottom: 0;
 }
 
-/* PR 172: the "Комментарий удалён" placeholder delete_comment() leaves behind - muted and
-   italic, the same "this isn't real content" signal .paragraph-comment__body blockquote
-   already uses for quoted text below. */
+/* PR 172: «Комментарий удалён». */
 .paragraph-comment__body--deleted {
-  color: var(--text-muted);
+  color: var(--pc-muted);
   font-style: italic;
 }
 
@@ -3434,18 +3554,15 @@ html.bottom-sheet-lock body {
 }
 
 .paragraph-comment__body a {
-  color: var(--accent-teal);
+  color: var(--pc-accent);
 }
 
-/* PR 156: quoted text (either the chapter paragraph itself or an earlier comment,
-   inserted by paragraph-menu.js's "Цитировать" trigger) - a left rule + muted color is
-   the standard "this text isn't the commenter's own words" convention, same reasoning as
-   .paragraph-comment__replies' own left border marking nested structure a few rules down. */
+/* PR 156: quoted text - the paragraph itself or an earlier comment. */
 .paragraph-comment__body blockquote {
   margin: 0 0 8px;
   padding: 2px 0 2px 10px;
-  border-left: 2px solid var(--legacy-border);
-  color: var(--text-muted);
+  border-left: 2px solid var(--pc-line);
+  color: var(--pc-muted);
 }
 
 .paragraph-comment__body blockquote:last-child {
@@ -3460,316 +3577,419 @@ html.bottom-sheet-lock body {
   margin-bottom: 0;
 }
 
-/* PR 150: the GIF-as-video attachment a comment can carry - rendered <video>, not <img>
-   (app/gif_video.py converts it server-side), capped to the same size the composer
-   itself uses so it never dwarfs the surrounding thread.
-
-   PR 154: a plain `max-width: 240px` here was losing to .reader-content img's own
-   `max-width: 100%` (PR 6) - both attachment and reader body images live under
-   .reader-content, and that rule's extra type-selector specificity (0,1,1) beat this
-   class-only one (0,1,0) regardless of source order, so attachments rendered at their
-   natural size up to the full reading column width instead of the intended cap. Scoping
-   this selector to the attachment's actual parent (0,2,0) wins outright, and a fixed
-   box + object-fit: cover (rather than a max-width alone) gives every attachment - image,
-   video, or gif - the same uniform thumbnail size regardless of its original dimensions,
-   instead of preserving whatever aspect ratio it happened to be uploaded at.
-
-   PR 162: scoped to .paragraph-comment__main now, not .paragraph-comment directly - the
-   attachment is a grandchild since the side/main restructuring, still specific enough
-   (0,2,0) to keep winning over .reader-content img's own rule. */
+/* PR 150/154: one uniform thumbnail for image/video/gif - scoped to __main so it beats
+   .reader-content img's own max-width rule. */
 .paragraph-comment__main > .paragraph-comment__attachment {
   display: block;
-  width: 200px;
-  height: 200px;
+  width: 220px;
+  max-width: 100%;
+  height: 220px;
+  margin: 10px 0 2px;
+  border-radius: 12px;
   object-fit: cover;
-  margin: 6px 0;
-  border-radius: 8px;
 }
 
-/* PR 154: cursor set here (not inline via JS) because the click listener that opens the
-   lightbox for these is delegated (image-lightbox.js) - comments load lazily after the
-   page itself, so there's no single "attach time" a script-set inline style could hook
-   into, same reasoning PR 142 already applied to .title-hero__cover. Scoped to <img>
-   only: video/gif attachments share this class but shouldn't open the image lightbox. */
+/* PR 154: images open the lightbox (image-lightbox.js). */
 img.paragraph-comment__attachment {
   cursor: zoom-in;
 }
 
-/* PR 155/162/183: like/dislike on the comment itself - a compact icon+count pair in
-   .paragraph-comment__actions, first in the row ahead of "Ответить" (PR 183 moved it out
-   of the narrow .paragraph-comment__side vote column, which left the buttons a cramped
-   tap target, worse yet under a few levels of reply indent). Not the pill/badge look
-   .paragraph-reactions__pill uses for paragraph reactions (PR 132) - that strip is a
-   hover-only overlay meant to stand out over running text, this is a permanent part of a
-   comment's own layout, closer to Reddit/Hacker News's vote buttons. */
-.paragraph-comment__reactions {
+/* Action row: votes, Ответить, Изменить, Удалить, fold the replies - quiet text buttons,
+   pulled left by their own padding so their text lines up with the body. */
+.paragraph-comment__actions {
   display: flex;
+  flex-wrap: wrap;
   align-items: center;
-  gap: 8px;
+  gap: 2px;
+  margin: 6px 0 0 -8px;
 }
 
-/* PR 162: outline SVG icon (`stroke: currentColor`, no fill at rest) + count - replaces
-   the plain 👍/👎 emoji-and-number text this used to be. The dislike button reuses the
-   exact same "thumbs up" SVG path (paragraph-menu.js's THUMB_ICON) flipped vertically
-   below, rather than carrying a second, mirrored path. */
-/* PR 183: icon beside the count, not above it - .paragraph-comment__actions is a
-   horizontal row of same-height buttons now, not the narrow vertical vote column this
-   used to sit in (PR 162). */
+.paragraph-comment__actions[hidden] {
+  display: none;
+}
+
+.paragraph-comment__action,
 .paragraph-comment__reaction {
-  display: flex;
+  appearance: none;
+  display: inline-flex;
   align-items: center;
-  gap: 3px;
-  padding: 3px;
-  border: none;
-  background: none;
-  color: var(--text-muted);
-  font-family: inherit;
-  font-size: 10px;
-  line-height: 1;
+  gap: 5px;
+  min-height: 32px;
+  padding: 0 8px;
+  border: 0;
+  border-radius: 8px;
+  background: transparent;
+  color: var(--pc-muted);
+  font: 600 13px/1 var(--font-ui);
+  text-decoration: none;
   cursor: pointer;
-  transition: color 0.1s ease;
+  transition: background-color 160ms ease, color 160ms ease;
+}
+
+.paragraph-comment__reactions {
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+}
+
+.paragraph-comment__reaction-count {
+  min-width: 1ch;
+  font-variant-numeric: tabular-nums;
 }
 
 .paragraph-comment__reaction--down .paragraph-comment__reaction-icon svg {
   transform: scaleY(-1);
 }
 
-@media (hover: hover) {
-  .paragraph-comment__reaction:hover {
-    color: var(--accent-teal);
-  }
+.paragraph-comment__reaction-icon {
+  display: grid;
 }
 
-/* Same "active pick" question as .paragraph-reactions__pill--mine (PR 132) answers for
-   paragraph reactions, just a different presentation: the outline stays teal (`color`,
-   inherited by the SVG's `stroke: currentColor`) and the icon itself gets a solid fill -
-   replaces PR 155's original "just recolor the text" treatment now that there's an icon
-   to fill instead of only a number to recolor. */
 .paragraph-comment__reaction--mine {
-  color: var(--accent-teal);
+  color: var(--pc-accent);
 }
 
 .paragraph-comment__reaction--mine .paragraph-comment__reaction-icon svg {
-  fill: var(--text-primary);
+  fill: color-mix(in srgb, var(--pc-accent) 30%, transparent);
 }
 
-/* PR 181: the whole "Ответить"/"Изменить"/"Удалить" row as one flex container instead
-   of each button setting its own margin-left - a shared gap guarantees spacing between
-   every pair of buttons, rather than relying on each one to remember to add its own (see
-   this PR's own diagnosis: .reply-toggle never did, which is exactly how it ended up
-   glued to "Удалить"). .paragraph-comment__collapse-toggle (PR 152) used to be this row's
-   own last child too, but PR 182 moved it into .paragraph-comment__meta instead - it's a
-   thread-level action, not a per-comment one like the three that stayed here. */
-.paragraph-comment__actions {
-  display: inline-flex;
-  align-items: center;
-  gap: 10px;
-}
-
-.paragraph-comment__reply-toggle {
-  padding: 0;
-  border: none;
-  background: none;
-  color: var(--text-muted);
-  font-family: inherit;
-  font-size: calc(var(--comment-font-size) - 1px);
-  text-decoration: none;
-  cursor: pointer;
-  transition: color 0.1s ease;
+.paragraph-comment__reply-toggle[aria-expanded="true"],
+.paragraph-comment__edit-toggle[aria-expanded="true"] {
+  color: var(--pc-accent);
 }
 
 @media (hover: hover) {
-  .paragraph-comment__reply-toggle:hover {
-    color: var(--accent-teal);
+  .paragraph-comment__action:hover,
+  .paragraph-comment__reaction:hover {
+    background: var(--pc-tint);
+    color: var(--pc-text);
+  }
+
+  .paragraph-comment__action--danger:hover {
+    color: var(--pc-danger);
   }
 }
 
-/* PR 172: "Изменить"/"Удалить" on the visitor's own comment - same ghost-text treatment
-   as .paragraph-comment__reply-toggle (they sit in the same row, PR 181's .actions). */
-.paragraph-comment__edit-toggle,
-.paragraph-comment__delete-toggle {
-  padding: 0;
-  border: none;
-  background: none;
-  color: var(--text-muted);
-  font-family: inherit;
-  font-size: calc(var(--comment-font-size) - 1px);
+/* Replies: indented past the avatar column, the guide line centered under it. */
+.paragraph-comment__replies {
+  position: relative;
+  grid-column: 1 / -1;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  margin-top: 14px;
+  padding-left: calc(var(--avatar) + 12px);
+}
+
+.paragraph-comment__replies[hidden] {
+  display: none;
+}
+
+/* PR 165: past MAX_INDENT_DEPTH, deeper replies stop marching right. */
+.paragraph-comment__replies--flat {
+  padding-left: 0;
+}
+
+.paragraph-comment__replies--flat > .paragraph-comment__replies-line {
+  display: none;
+}
+
+/* PR 164: its own element (not a border/pseudo on the container), so hovering one
+   level's line never lights up an ancestor's. A 16px hit area, a 2px line. */
+.paragraph-comment__replies-line {
+  position: absolute;
+  top: 0;
+  bottom: 4px;
+  left: calc(var(--avatar) / 2 - 8px);
+  width: 16px;
   cursor: pointer;
-  transition: color 0.1s ease;
+}
+
+.paragraph-comment__replies-line::before {
+  content: "";
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: 7px;
+  width: 2px;
+  border-radius: 1px;
+  background: var(--pc-line);
+  transition: background-color 160ms ease;
 }
 
 @media (hover: hover) {
-  .paragraph-comment__edit-toggle:hover {
-    color: var(--accent-teal);
-  }
-
-  /* A destructive action gets the same warning color .downloads-history__delete already
-     uses for one, not teal like every other hover here. */
-  .paragraph-comment__delete-toggle:hover {
-    color: var(--accent-orange);
+  .paragraph-comment__replies-line:hover::before {
+    background: var(--pc-accent);
   }
 }
 
-/* PR 152: the "[–]"/"[+]" collapse trigger - same ghost-text treatment as
-   .paragraph-comment__reply-toggle. PR 182 moved it into .paragraph-comment__meta
-   (next to the author/timestamp) instead of the actions row below - no margin-left of
-   its own needed here any more, meta's own `gap` already spaces every child evenly,
-   this one included. */
-.paragraph-comment__collapse-toggle {
-  padding: 0;
-  border: none;
-  background: none;
-  color: var(--text-muted);
-  font-family: inherit;
-  font-size: calc(var(--comment-font-size) - 1px);
-  cursor: pointer;
-  transition: color 0.1s ease;
+/* Composer: the field (auto-growing textarea, attachment chip, toolbar with emoji /
+   attachment, a length counter near the limit and the one primary «Отправить»), the
+   inline emoji palette, an error line and the Markdown hint. */
+.paragraph-comments__footer {
+  padding-top: 4px;
 }
 
-@media (hover: hover) {
-  .paragraph-comment__collapse-toggle:hover {
-    color: var(--accent-teal);
-  }
-}
-
-/* PR 133: the composer shared by the menu's "Комментировать" item and every comment's
-   own "Ответить" - a plain textarea + .btn.btn--sm, sized to fit inside the same compact
-   .paragraph-menu__panel the reaction picker replaces (paragraph-menu.js's
-   buildComposer()), as well as inline under a comment when used as a reply form. */
 .paragraph-comments__composer {
   display: flex;
   flex-direction: column;
-  gap: 6px;
-  width: 240px;
-  max-width: 100%;
-  margin-top: 6px;
+  gap: 8px;
 }
 
 .paragraph-comments__composer[hidden] {
   display: none;
 }
 
-.paragraph-comments__textarea {
-  width: 100%;
-  min-height: 64px;
-  padding: 8px 10px;
-  border: 1px solid var(--legacy-border);
-  border-radius: 6px;
-  background: var(--legacy-bg-page);
-  color: var(--text-primary);
-  font-family: inherit;
-  font-size: 13px;
-  resize: vertical;
+.paragraph-comments__composer--inline {
+  margin-top: 10px;
 }
 
-.paragraph-comments__textarea:focus-visible {
-  outline: none;
-  border-color: var(--accent-teal);
-}
-
-/* PR 149: the trigger buttons + "Отправить" row - submit used to be the composer's only
-   other child, right-aligned via `.btn { align-self: flex-end }`; now that it shares a
-   row with the trigger buttons (PR 149's emoji picker, PR 150's GIF picker), alignment
-   comes from this row's own justify-content instead. */
-.paragraph-comments__toolbar {
+.paragraph-comments__composer-context {
   display: flex;
   align-items: center;
   justify-content: space-between;
   gap: 8px;
+  margin-bottom: -4px;
+  color: var(--pc-muted);
+  font: 600 12px/16px var(--font-ui);
 }
 
-/* PR 150/151: groups the emoji/attachment trigger buttons as one flex item on the
-   toolbar's left side, so .paragraph-comments__toolbar itself still only ever has two
-   children (this group, submit) regardless of how many triggers end up in it. */
+.paragraph-comments__composer-context .paragraph-comments__icon-btn {
+  width: 28px;
+  height: 28px;
+}
+
+.paragraph-comments__field {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 10px 8px 8px 14px;
+  border: 1px solid var(--pc-line);
+  border-radius: 14px;
+  background: var(--pc-field);
+  transition: border-color 160ms ease, box-shadow 160ms ease;
+}
+
+.paragraph-comments__field:focus-within {
+  border-color: var(--pc-focus);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--pc-focus) 18%, transparent);
+}
+
+.paragraph-comments__composer[aria-busy="true"] .paragraph-comments__field {
+  opacity: 0.7;
+}
+
+.paragraph-comments__textarea {
+  display: block;
+  width: 100%;
+  min-height: 48px;
+  max-height: min(40vh, 320px);
+  margin: 0;
+  padding: 4px 6px 0 0;
+  border: 0;
+  background: transparent;
+  color: var(--pc-text);
+  font: 500 var(--comment-font-size) / 1.5 var(--font-ui);
+  resize: none;
+  overflow-y: auto;
+}
+
+.paragraph-comments__textarea::placeholder {
+  color: var(--pc-muted);
+}
+
+.paragraph-comments__textarea:focus {
+  outline: none;
+}
+
+.paragraph-comments__toolbar {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
 .paragraph-comments__triggers {
   display: flex;
   align-items: center;
-  gap: 4px;
+  gap: 2px;
+  margin-right: auto;
+  margin-left: -6px;
 }
 
-.paragraph-comments__emoji-toggle,
-.paragraph-comments__attachment-toggle {
+.paragraph-comments__counter {
+  color: var(--pc-muted);
+  font: 600 12px/1 var(--font-ui);
+  font-variant-numeric: tabular-nums;
+}
+
+.paragraph-comments__counter--limit {
+  color: var(--pc-danger);
+}
+
+.paragraph-comments__submit {
   flex: 0 0 auto;
-  padding: 4px 6px;
-  border: 1px solid transparent;
-  border-radius: 6px;
-  background: none;
-  font-size: 15px;
+}
+
+/* Nothing to send yet: still the violet primary, just dimmed - .ui-btn's own disabled
+   grey belongs to the app's dark surfaces, not to a sepia or light reader theme. */
+.paragraph-comments__toolbar .paragraph-comments__submit[aria-disabled="true"] {
+  border-color: transparent;
+  background: var(--primary);
+  color: #ffffff;
+  opacity: 0.45;
+  cursor: default;
+}
+
+.paragraph-comments__emoji-palette {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(40px, 1fr));
+  max-height: 176px;
+  padding: 6px;
+  overflow-y: auto;
+  border: 1px solid var(--pc-line);
+  border-radius: 12px;
+  background: var(--pc-field);
+  overscroll-behavior: contain;
+}
+
+.paragraph-comments__emoji-palette[hidden] {
+  display: none;
+}
+
+.paragraph-comments__emoji {
+  appearance: none;
+  height: 40px;
+  padding: 0;
+  border: 0;
+  border-radius: 8px;
+  background: transparent;
+  font-size: 20px;
   line-height: 1;
   cursor: pointer;
-  transition: background-color 0.1s ease, border-color 0.1s ease;
 }
 
 @media (hover: hover) {
-  .paragraph-comments__emoji-toggle:hover,
-  .paragraph-comments__attachment-toggle:hover {
-    background: rgba(34, 211, 197, 0.12);
+  .paragraph-comments__emoji:hover {
+    background: var(--pc-tint);
   }
 }
 
-/* PR 150/151: the staged-file chip shown once an image/video/GIF is picked, before
-   "Отправить" is clicked - same reasoning as the PDF-export precedent
-   (app/services/exports.py) for never promising an action the visitor hasn't actually
-   confirmed yet. */
+/* PR 150/151: the staged file, before «Отправить». */
 .paragraph-comments__attachment-chip {
   display: flex;
   align-items: center;
-  gap: 6px;
-  padding: 4px 8px;
-  border: 1px solid var(--legacy-border);
-  border-radius: 6px;
-  background: var(--legacy-bg-page);
-  font-size: 12px;
+  gap: 8px;
+  align-self: flex-start;
+  max-width: 100%;
+  padding: 4px 4px 4px 6px;
+  border-radius: 10px;
+  background: var(--pc-tint);
+  font: 500 13px/1.3 var(--font-ui);
 }
 
-/* PR 151: a real thumbnail for a staged image (GIF included) - stageAttachment() only
-   creates this element for an image/* file, a video's chip has just the name/remove. */
 .paragraph-comments__attachment-chip-thumb {
   flex: 0 0 auto;
-  width: 28px;
-  height: 28px;
+  width: 36px;
+  height: 36px;
+  border-radius: 6px;
   object-fit: cover;
-  border-radius: 4px;
 }
 
 .paragraph-comments__attachment-chip-name {
-  flex: 1 1 auto;
+  min-width: 0;
   overflow: hidden;
-  color: var(--text-secondary);
+  color: var(--pc-text);
   text-overflow: ellipsis;
   white-space: nowrap;
 }
 
-.paragraph-comments__attachment-chip-remove {
-  flex: 0 0 auto;
-  padding: 0 4px;
-  border: none;
-  background: none;
-  color: var(--text-muted);
-  font-size: 14px;
-  line-height: 1;
-  cursor: pointer;
+.paragraph-comments__attachment-chip .paragraph-comments__icon-btn {
+  width: 28px;
+  height: 28px;
 }
 
-@media (hover: hover) {
-  .paragraph-comments__attachment-chip-remove:hover {
-    color: var(--text-primary);
+.paragraph-comments__error {
+  margin: 0;
+  color: var(--pc-danger);
+  font: 600 13px/1.4 var(--font-ui);
+}
+
+.paragraph-comments__error[hidden] {
+  display: none;
+}
+
+/* PR 148: the Markdown subset app/markdown_render.py actually renders. */
+.paragraph-comments__hint {
+  margin: 0;
+  color: var(--pc-muted);
+  font: 500 11.5px/1.4 var(--font-ui);
+}
+
+.paragraph-comments__login {
+  margin: 0;
+  color: var(--pc-muted);
+  font: 500 14px/1.5 var(--font-ui);
+}
+
+.paragraph-comments__login a {
+  color: var(--pc-accent);
+  font-weight: 700;
+}
+
+.paragraph-comments__toggle:focus-visible,
+.paragraph-comments__icon-btn:focus-visible,
+.paragraph-comments__emoji:focus-visible,
+.paragraph-comment__action:focus-visible,
+.paragraph-comment__reaction:focus-visible,
+.paragraph-comment__author:focus-visible,
+.paragraph-comments__login a:focus-visible {
+  outline: none;
+  box-shadow: 0 0 0 2px var(--pc-focus);
+}
+
+/* Touch: every control at least 44px tall. */
+@media (pointer: coarse) {
+  .paragraph-comments__toggle,
+  .paragraph-comment__action,
+  .paragraph-comment__reaction {
+    min-height: 44px;
+  }
+
+  .paragraph-comment__action,
+  .paragraph-comment__reaction {
+    padding: 0 6px;
+  }
+
+  .paragraph-comments__hint-keys {
+    display: none;
+  }
+
+  .paragraph-comments__icon-btn {
+    width: 44px;
+    height: 44px;
+  }
+
+  .paragraph-comments__composer-context .paragraph-comments__icon-btn,
+  .paragraph-comments__attachment-chip .paragraph-comments__icon-btn {
+    width: 40px;
+    height: 40px;
+  }
+
+  .paragraph-comments__emoji {
+    height: 44px;
+  }
+
+  .paragraph-comment__actions {
+    margin-top: 2px;
   }
 }
 
-/* PR 149: the free-insertion emoji picker reuses .paragraph-menu__panel/__emoji-picker/
-   __emoji (PR 131/132) wholesale for its look/open-close animation - this just widens the
-   grid from 5 to 8 columns, since its emoji set is much larger than the 10-item reaction
-   picker's and would otherwise grow tall instead of wide. */
-.comment-emoji-picker__grid {
-  grid-template-columns: repeat(8, 1fr);
-}
-
-/* PR 148: syntax hint for the subset app/markdown_render.py actually renders. */
-.paragraph-comments__hint {
-  margin: 0;
-  font-size: 11px;
-  color: var(--text-muted);
+@media (prefers-reduced-motion: reduce) {
+  .paragraph-comments__layer,
+  .paragraph-comment--skeleton,
+  .paragraph-comment--fresh > .paragraph-comment__main {
+    animation: none;
+  }
 }
 
 .reading-speed-test__status {
