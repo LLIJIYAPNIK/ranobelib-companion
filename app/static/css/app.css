@@ -14540,10 +14540,15 @@ body.reader-hud-visible .reader-hud {
   display: none;
 }
 
-/* Reading column. */
+/* Reading column. PR 316: a flex item of the .main column - auto side margins there turn
+   off stretching and shrink the column to its content (a short paragraph gave a narrow
+   frame, one unbreakable word widened it past the screen), so the width is explicit and
+   the item centers itself with align-self; min-width: 0 drops the flex min-content floor. */
 .reader {
-  width: min(var(--reader-width), calc(100% - 64px));
-  margin: 0 auto;
+  width: 100%;
+  max-width: min(var(--reader-width), calc(100% - 64px));
+  min-width: 0;
+  align-self: center;
   padding: 112px 0 var(--s-64);
 }
 
@@ -14950,7 +14955,7 @@ body.reader-hud-visible .reader-hud {
   }
 
   .reader {
-    width: auto;
+    max-width: 100%;
     padding: calc(env(safe-area-inset-top, 0px) + var(--s-16)) 22px calc(var(--s-64) + env(safe-area-inset-bottom, 0px));
   }
 
