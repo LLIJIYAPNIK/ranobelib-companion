@@ -1386,6 +1386,16 @@ html.bottom-sheet-lock body {
   overflow: hidden;
 }
 
+/* PR 321: while any sheet or modal dialog is open, a downward swipe never reaches the
+   browser's pull-to-refresh (Android Chrome) or the page's rubber band (iOS Safari) -
+   the sheet's own body handles it: a scroll above its top, closing at its top. */
+html.bottom-sheet-lock,
+html.bottom-sheet-lock body,
+html:has(dialog[open]),
+html:has(dialog[open]) body {
+  overscroll-behavior-y: contain;
+}
+
 @media (prefers-reduced-motion: reduce) {
   .bottom-sheet__panel,
   .bottom-sheet__backdrop {
@@ -5904,6 +5914,7 @@ a.ui-title-card:focus-visible .ui-title-card__cover {
 
   .ui-dialog--sheet .ui-dialog__grabber {
     display: block;
+    touch-action: none;
     flex: 0 0 auto;
     width: 36px;
     height: 4px;
@@ -15186,8 +15197,10 @@ body.reader-hud-visible .reader-hud {
   font-variant-numeric: tabular-nums;
 }
 
-/* Aa panel: a sheet on mobile (.ui-dialog--sheet), a popover under the HUD's Aa on
-   desktop. The HUD stays up while it's open (reader-hud.js). */
+/* Aa panel: a popover under the HUD's Aa on desktop (the <dialog>); on phones its
+   content moves into the shared bottom sheet (PR 321, reader-hud.js). The HUD stays up
+   while it's open. Rules for the controls hang off .reader-aa__content, which travels
+   with them, not off the dialog. */
 .reader-aa {
   width: 304px;
 }
@@ -15217,6 +15230,13 @@ body.reader-hud-visible .reader-hud {
 .reader-aa__close svg {
   width: 16px;
   height: 16px;
+}
+
+.reader-aa__content {
+  display: flex;
+  flex: 1 1 auto;
+  flex-direction: column;
+  min-height: 0;
 }
 
 .reader-aa__body {
@@ -15257,26 +15277,26 @@ body.reader-hud-visible .reader-hud {
   flex: 1;
 }
 
-.reader-aa .ui-segmented__item span {
+.reader-aa__content .ui-segmented__item span {
   height: 32px;
   font-size: 12px;
 }
 
-.reader-aa .reader-themes {
+.reader-aa__content .reader-themes {
   gap: 0;
 }
 
-.reader-aa .reader-theme {
+.reader-aa__content .reader-theme {
   width: 52px;
 }
 
-.reader-aa .reader-theme__swatch {
+.reader-aa__content .reader-theme__swatch {
   width: 34px;
   height: 34px;
   font-size: 13px;
 }
 
-.reader-aa .reader-theme__name {
+.reader-aa__content .reader-theme__name {
   font-size: 10px;
 }
 
@@ -15357,16 +15377,16 @@ body.reader-hud-visible .reader-hud {
     font-size: 13px;
   }
 
-  .reader-aa .ui-segmented__item span {
+  .reader-aa__content .ui-segmented__item span {
     height: 36px;
     font-size: 13px;
   }
 
-  .reader-aa .reader-theme {
+  .reader-aa__content .reader-theme {
     width: 58px;
   }
 
-  .reader-aa .reader-theme__swatch {
+  .reader-aa__content .reader-theme__swatch {
     width: 40px;
     height: 40px;
     font-size: 15px;
@@ -15387,6 +15407,16 @@ body.reader-hud-visible .reader-hud {
   .reader-aa__more {
     height: 44px;
     font-size: 14px;
+  }
+
+  /* In the sheet: its body scrolls and pads (incl. the safe area), not the panel's. */
+  .bottom-sheet .reader-aa__body {
+    padding: 0;
+    overflow: visible;
+  }
+
+  .bottom-sheet .reader-aa__foot {
+    padding: var(--s-4) 0 0;
   }
 }
 

@@ -34,8 +34,14 @@
 
   let hideTimer = null;
 
+  function sheetOpen() {
+    return window.bottomSheet?.isOpen() === true;
+  }
+
   function pinned() {
-    return document.querySelector("dialog[open]") !== null || hud.contains(document.activeElement);
+    return (
+      document.querySelector("dialog[open]") !== null || sheetOpen() || hud.contains(document.activeElement)
+    );
   }
 
   function show() {
@@ -140,7 +146,7 @@
   if (!tapMode) {
     document.addEventListener("click", (event) => {
       if (lastPointerType === "mouse") return;
-      if (event.target.closest("a, button, input, textarea, select, label, img, sup, dialog, [role='dialog'], [role='toolbar'], .reader-hud-bottom, .paragraph-reactions, .paragraph-comments, .paragraph-menu__panel")) return;
+      if (event.target.closest("a, button, input, textarea, select, label, img, sup, dialog, [role='dialog'], [role='toolbar'], .reader-hud-bottom, .paragraph-reactions, .paragraph-comments, .paragraph-menu__panel, .bottom-sheet")) return;
       if (String(window.getSelection() || "")) return;
       const x = event.clientX / window.innerWidth;
       if (x >= CENTER_ZONE[0] && x < CENTER_ZONE[1]) toggle();
@@ -182,19 +188,40 @@
   // Opened from the HUD's Aa (a plain /settings/reading link without JS). Changes apply
   // as they're made (reader-settings.js); switching Scroll <-> Tap Focus reloads the
   // chapter, since tap-to-read.js sets the text up once on load.
+  // PR 321: on phones the controls open in the shared bottom sheet (drag to close, focus
+  // trap, background lock - bottom-sheet.js); the <dialog> is the desktop popover.
   const aaPanel = document.querySelector('[data-role="reader-aa-panel"]');
+  const aaContent = aaPanel?.querySelector('[data-role="reader-aa-content"]');
+  const phone = window.matchMedia("(max-width: 767px)");
   if (aa && aaPanel) {
     aa.setAttribute("aria-haspopup", "dialog");
+    const aaInSheet = () => sheetOpen() && aaContent?.closest('[data-role="bottom-sheet"]') != null;
     aa.addEventListener("click", (event) => {
       event.preventDefault();
       if (aaPanel.open) {
         aaPanel.close();
         return;
       }
+      if (aaInSheet()) {
+        window.bottomSheet.close(); // its onClose resets aria-expanded
+        return;
+      }
       body.classList.add("reader-hud-visible");
       clearTimeout(hideTimer);
-      aaPanel.showModal();
       aa.setAttribute("aria-expanded", "true");
+      if (phone.matches && window.bottomSheet && aaContent) {
+        window.bottomSheet.open({
+          title: "Настройки чтения",
+          content: aaContent,
+          opener: aa,
+          onClose: () => {
+            aa.setAttribute("aria-expanded", "false");
+            scheduleHide();
+          },
+        });
+        return;
+      }
+      aaPanel.showModal();
     });
     aaPanel.querySelector('[data-role="reader-aa-close"]')?.addEventListener("click", () => aaPanel.close());
     aaPanel.addEventListener("click", (event) => {
@@ -226,7 +253,7 @@
       if (!tocLink) return;
       event.preventDefault();
       tocLink.click();
-    } else if (event.key === "Escape" && !document.querySelector("dialog[open]")) {
+    } else if (event.key === "Escape" && !document.querySelector("dialog[open]") && !sheetOpen()) {
       if (document.querySelector(".paragraph-menu__panel--open, .image-lightbox--open")) return;
       if (hud.contains(document.activeElement)) document.activeElement.blur();
       hide();
