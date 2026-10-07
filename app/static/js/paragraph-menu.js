@@ -170,69 +170,125 @@
     return el ? quoteLines(el.innerText.trim()) : "";
   }
 
-  // PR 180: in the ordinary reading mode (.paragraph-reactions-host), the strip anchors
-  // against a dedicated zero-height element placed right after the paragraph's own text -
-  // not against the host as a whole. .paragraph-comments (commentsSectionFor below) is a
-  // normal-flow sibling of that same host, so anchoring the strip's `position: absolute`
-  // to the host's own bottom edge instead would drag it down by the comments block's
-  // height once a paragraph has both (see this PR's own diagnosis). The anchor has no
-  // content of its own, so it naturally collapses to zero height and sits exactly where
-  // the paragraph's own bottom edge is, comments or not.
-  function reactionsAnchorFor(host) {
-    let anchor = host.querySelector(":scope > .paragraph-reactions-anchor");
-    if (!anchor) {
-      anchor = document.createElement("div");
-      anchor.className = "paragraph-reactions-anchor";
-      // Always right after the paragraph's own raw element (host's first child, see
-      // paragraphHostFor's own comment) regardless of whether .paragraph-comments has
-      // already been appended by the time this runs - host.append() always adds that one
-      // at the end, so inserting this anchor at index 1 keeps it between the two either
-      // way.
-      host.insertBefore(anchor, host.children[1] || null);
-    }
-    return anchor;
+  // PR 313 (Webnovells): paragraph reactions live in the paragraph's own row - the same
+  // .paragraph-comments__bar as the «N комментариев» pill (PR 312), always visible rather
+  // than a hover-only overlay. Each emoji is a .wn-reaction chip with its count; clicking
+  // one toggles it exactly as picking it in the picker does, «+» opens the picker, and
+  // past stripLimit() emoji (fewer on phones, where chips are 44px) the rest fold behind
+  // a «+N» chip. Clicks render at once and roll
+  // back if the server refuses (reaction-state.js).
+  const narrowQuery = window.matchMedia("(max-width: 767px)");
+  const stripLimit = () => (narrowQuery.matches ? 3 : 5);
+  const EMOJI_LABELS = new Map(EMOJI);
+  const reactionsByIndex = new Map(); // index -> { counts, mine }
+  const pendingReactions = new Set();
+  const expandedStrips = new Set();
+  const reactionState = window.reactionState;
+
+  const ICON_ADD_REACTION =
+    '<svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" ' +
+    'stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">' +
+    '<path d="M20.5 11.5a8.5 8.5 0 1 1-8-8.49"/><path d="M8.5 14.5c.9 1.2 2.1 1.8 3.5 1.8s2.6-.6 3.5-1.8"/>' +
+    '<path d="M9 9.5h.01M15 9.5h.01" stroke-width="2.6"/><path d="M19 2v6M16 5h6"/></svg>';
+
+  function hasReactions(index) {
+    const state = reactionsByIndex.get(index);
+    return Boolean(state && Object.values(state.counts || {}).some((n) => n > 0));
   }
 
-  function renderStrip(index, counts, mineEmoji) {
-    const host = paragraphHostFor(index);
-    if (!host) return;
-    // Tap-to-read's .reader-content__paragraph-wrap strip was never absolutely
-    // positioned in the first place (PR 64 - normal flow, right under the timestamp), so
-    // it doesn't need an anchor at all - only .paragraph-reactions-host does.
-    const ordinary = host.classList.contains("paragraph-reactions-host");
-    let strip = ordinary
-      ? host.querySelector(":scope > .paragraph-reactions-anchor > .paragraph-reactions")
-      : host.querySelector(":scope > .paragraph-reactions");
-    const entries = Object.entries(counts || {}).filter(([, n]) => n > 0);
-    if (entries.length === 0) {
-      strip?.remove();
-      return;
-    }
-    if (!strip) {
-      strip = document.createElement("div");
-      strip.className = "paragraph-reactions";
-      (ordinary ? reactionsAnchorFor(host) : host).append(strip);
-    }
+  function reactionChip(index, emoji, n, mine, pending) {
+    const chip = document.createElement("button");
+    chip.type = "button";
+    chip.className = "wn-reaction";
+    chip.dataset.key = emoji;
+    if (mine) chip.classList.add("wn-reaction--mine");
+    chip.setAttribute("aria-pressed", mine ? "true" : "false");
+    chip.setAttribute("aria-label", `${EMOJI_LABELS.get(emoji) || emoji}: ${n}`);
+    chip.title = EMOJI_LABELS.get(emoji) || emoji;
+    if (pending) chip.setAttribute("aria-busy", "true");
+    const glyph = document.createElement("span");
+    glyph.className = "wn-reaction__emoji";
+    glyph.textContent = emoji;
+    const count = document.createElement("span");
+    count.className = "wn-reaction__count";
+    count.textContent = String(n);
+    chip.append(glyph, count);
+    chip.addEventListener("click", () => {
+      if (!isAuthenticated) {
+        window.location.href = "/login";
+        return;
+      }
+      toggleReaction(index, emoji);
+    });
+    return chip;
+  }
+
+  // Redraws the paragraph's reaction chips from reactionsByIndex - in a fixed order (the
+  // picker's), so a click never reshuffles the row under the pointer.
+  function renderStrip(index, pending = false) {
+    const parts = partsFor(index);
+    if (!parts) return;
+    const strip = parts.strip;
+    const state = reactionsByIndex.get(index) || { counts: {}, mine: null };
+    const entries = EMOJI.map(([emoji]) => [emoji, state.counts?.[emoji] || 0]).filter(
+      ([, n]) => n > 0
+    );
+    // Re-rendering replaces the chips - focus goes back to the same one (by data-key).
+    const focusedKey = strip.contains(document.activeElement) ? document.activeElement.dataset.key : null;
     strip.replaceChildren();
-    for (const [emoji, n] of entries) {
-      const pill = document.createElement("span");
-      pill.className = "paragraph-reactions__pill";
-      if (emoji === mineEmoji) pill.classList.add("paragraph-reactions__pill--mine");
-      pill.textContent = `${emoji} ${n}`;
-      strip.append(pill);
+    strip.toggleAttribute("aria-busy", pending);
+    const limit = stripLimit();
+    const folded = entries.length > limit && !expandedStrips.has(index);
+    const shown = folded
+      ? entries.filter(([emoji], i) => i < limit - 1 || emoji === state.mine)
+      : entries;
+    for (const [emoji, n] of shown) {
+      strip.append(reactionChip(index, emoji, n, emoji === state.mine, pending && emoji === state.mine));
     }
+    if (folded) {
+      const more = document.createElement("button");
+      more.type = "button";
+      more.className = "wn-reaction wn-reaction--more";
+      more.dataset.key = "more";
+      const hiddenCount = entries.length - shown.length;
+      more.textContent = `+${hiddenCount}`;
+      more.setAttribute("aria-label", `Показать ещё ${hiddenCount} ${plural(hiddenCount, "реакцию", "реакции", "реакций")}`);
+      more.addEventListener("click", () => {
+        expandedStrips.add(index);
+        renderStrip(index);
+        strip.children[Math.min(limit - 1, strip.children.length - 1)]?.focus();
+      });
+      strip.append(more);
+    }
+    if (isAuthenticated && entries.length > 0) {
+      const add = document.createElement("button");
+      add.type = "button";
+      add.className = "wn-reaction wn-reaction--add";
+      add.dataset.key = "add";
+      add.setAttribute("aria-label", "Добавить реакцию");
+      add.title = "Добавить реакцию";
+      add.innerHTML = ICON_ADD_REACTION;
+      add.addEventListener("click", (event) => {
+        event.stopPropagation();
+        const rect = add.getBoundingClientRect();
+        open(rect.left, rect.bottom + 6, index, { picker: true, opener: add });
+      });
+      strip.append(add);
+    }
+    if (focusedKey) {
+      const again = [...strip.children].find((el) => el.dataset.key === focusedKey);
+      (again || strip.querySelector(".wn-reaction"))?.focus({ preventScroll: true });
+    }
+    syncSection(index);
   }
 
-  // The visitor's own current pick per paragraph, kept in memory from the initial bulk
-  // fetch and updated after every toggle - the picker (renderReactionPicker below) reads
-  // this synchronously to highlight the active emoji instead of firing a request every
-  // time the menu opens.
-  const mineByIndex = new Map();
+  function setReactions(index, state, pending = false) {
+    reactionsByIndex.set(index, { counts: state.counts || {}, mine: state.mine ?? null });
+    renderStrip(index, pending);
+  }
 
   // One bulk fetch for the whole chapter on load, not one per paragraph - a chapter page
-  // can have dozens, and this is the same "counts under an already-revealed paragraph
-  // shouldn't need a request of its own" reasoning as the endpoint itself (see
-  // app/db/reactions.py's count_reactions()).
+  // can have dozens (see app/db/reactions.py's count_reactions()).
   async function loadInitialReactions() {
     try {
       const response = await fetch(
@@ -240,46 +296,69 @@
       );
       if (!response.ok) return;
       const data = await response.json();
-      for (const [indexStr, emoji] of Object.entries(data.mine || {})) {
-        mineByIndex.set(Number(indexStr), emoji);
-      }
       for (const [indexStr, counts] of Object.entries(data.counts || {})) {
         const index = Number(indexStr);
-        renderStrip(index, counts, mineByIndex.get(index) ?? null);
+        setReactions(index, { counts, mine: data.mine?.[indexStr] ?? null });
       }
     } catch {
-      // No network, or the server errored - the chapter itself still reads fine without
-      // reaction counts, so this fails silently rather than surfacing an error banner
-      // over content that has nothing to do with reactions.
+      // No network, or the server errored - the chapter still reads fine without counts.
     }
   }
   loadInitialReactions();
 
-  async function pickReaction(index, emoji) {
-    const body = new URLSearchParams({
-      paragraph_index: String(index),
-      emoji,
-      branch_id: branchId,
+  // The chip, the picker and the menu all end up here: shown at once, confirmed or rolled
+  // back by the server's answer (one request per paragraph at a time).
+  async function toggleReaction(index, emoji) {
+    if (pendingReactions.has(index)) return;
+    pendingReactions.add(index);
+    const previous = reactionsByIndex.get(index) || { counts: {}, mine: null };
+    const ok = await reactionState.optimistic({
+      previous,
+      guess: reactionState.toggleEmoji(previous.counts, previous.mine, emoji),
+      render: (state, pending) => setReactions(index, state, pending),
+      request: async () => {
+        const body = new URLSearchParams({
+          paragraph_index: String(index),
+          emoji,
+          branch_id: branchId,
+        });
+        const response = await fetch(`/titles/${slugUrl}/chapters/${volume}/${number}/reactions`, {
+          method: "POST",
+          headers: { "Content-Type": "application/x-www-form-urlencoded" },
+          body,
+        });
+        return response.ok ? response.json() : null;
+      },
     });
-    let data;
-    try {
-      const response = await fetch(`/titles/${slugUrl}/chapters/${volume}/${number}/reactions`, {
-        method: "POST",
-        headers: { "Content-Type": "application/x-www-form-urlencoded" },
-        body,
+    pendingReactions.delete(index);
+    if (!ok) flashBarError(index, "Не удалось сохранить реакцию");
+  }
+
+  // A short-lived note in the paragraph's row after a rolled-back reaction.
+  function flashBarError(index, message) {
+    const parts = partsFor(index);
+    if (!parts) return;
+    parts.error.textContent = message;
+    parts.error.hidden = false;
+    clearTimeout(parts.error.hideTimer);
+    parts.error.hideTimer = setTimeout(() => {
+      parts.error.hidden = true;
+    }, 4000);
+  }
+
+  function pickReaction(index, emoji) {
+    const fromRow = menuOpener && partsFor(index)?.strip.contains(menuOpener);
+    close(true);
+    const done = toggleReaction(index, emoji);
+    if (fromRow) {
+      // The strip is redrawn under it - land on the new «+» (or the row's first chip).
+      done.then(() => {
+        const strip = partsFor(index)?.strip;
+        (strip?.querySelector('[data-key="add"]') || strip?.querySelector(".wn-reaction"))?.focus({
+          preventScroll: true,
+        });
       });
-      if (!response.ok) return;
-      data = await response.json();
-    } catch {
-      return;
     }
-    if (data.mine) {
-      mineByIndex.set(index, data.mine);
-    } else {
-      mineByIndex.delete(index);
-    }
-    renderStrip(index, data.counts, data.mine);
-    close();
   }
 
   // --- PR 133: comments -----------------------------------------------------------
@@ -715,75 +794,90 @@
     }
   }
 
-  // PR 155: like/dislike on a comment itself - a separate feature and endpoint from
-  // pickReaction() above. Mutates the shared tree object so a later re-render keeps it.
-  async function pickCommentReaction(comment, value, onUpdate) {
-    const body = new URLSearchParams({ value: String(value) });
-    let data;
-    try {
-      const response = await fetch(
-        `/titles/${slugUrl}/chapters/${volume}/${number}/comments/${comment.id}/reactions`,
-        {
-          method: "POST",
-          headers: { "Content-Type": "application/x-www-form-urlencoded" },
-          body,
-        }
-      );
-      if (!response.ok) return;
-      data = await response.json();
-    } catch {
-      return;
-    }
-    comment.reactions = data.counts;
-    comment.my_reaction = data.mine;
-    onUpdate();
-  }
-
-  // PR 162: outline thumb icon - the dislike button flips the same path via CSS.
+  // PR 155: like/dislike on a comment - a separate endpoint from the paragraph reactions
+  // above. PR 313: the same .wn-reaction chip (the quiet variant - no outline until it's
+  // yours), optimistic like the paragraph chips. Mutates the shared tree object so a later
+  // re-render of the thread keeps it. Guests see the counts; a click sends them to /login.
   const THUMB_ICON =
     '<svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" ' +
     'stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">' +
     '<path d="M14 9V5a3 3 0 0 0-3-3l-4 9v11h11.28a2 2 0 0 0 2-1.7l1.38-9a2 2 0 0 0-2-2.3z"/>' +
     '<path d="M7 22H4a2 2 0 0 1-2-2v-7a2 2 0 0 1 2-2h3"/></svg>';
 
-  // Guests still see the counts, but a click sends them to /login.
-  function buildCommentReactions(comment) {
+  function buildCommentReactions(comment, onError) {
     const wrap = document.createElement("span");
     wrap.className = "paragraph-comment__reactions";
+    wrap.setAttribute("role", "group");
+    wrap.setAttribute("aria-label", "Оценка комментария");
+    let pending = false;
 
     function renderButtons() {
+      const focusedValue = wrap.contains(document.activeElement)
+        ? document.activeElement.dataset.value
+        : null;
       wrap.replaceChildren();
-      for (const [value, modifier, label] of [
-        [1, null, "Нравится"],
-        [-1, "paragraph-comment__reaction--down", "Не нравится"],
+      for (const [value, label] of [
+        [1, "Нравится"],
+        [-1, "Не нравится"],
       ]) {
         const btn = document.createElement("button");
         btn.type = "button";
-        btn.className = "paragraph-comment__reaction";
-        if (modifier) btn.classList.add(modifier);
-        if (comment.my_reaction === value) {
-          btn.classList.add("paragraph-comment__reaction--mine");
-        }
-        btn.setAttribute("aria-pressed", comment.my_reaction === value ? "true" : "false");
-        btn.setAttribute("aria-label", label);
+        btn.className = "wn-reaction wn-reaction--quiet paragraph-comment__reaction";
+        btn.dataset.value = String(value);
+        if (value === -1) btn.classList.add("paragraph-comment__reaction--down");
+        const mine = comment.my_reaction === value;
+        if (mine) btn.classList.add("wn-reaction--mine");
+        if (pending && mine) btn.setAttribute("aria-busy", "true");
+        btn.setAttribute("aria-pressed", mine ? "true" : "false");
+        const count = comment.reactions?.[value === 1 ? "like" : "dislike"] || 0;
+        btn.setAttribute("aria-label", `${label}: ${count}`);
+        btn.title = label;
         const icon = document.createElement("span");
-        icon.className = "paragraph-comment__reaction-icon";
+        icon.className = "wn-reaction__icon";
         icon.innerHTML = THUMB_ICON;
-        const count = (comment.reactions?.[value === 1 ? "like" : "dislike"]) || 0;
         const countEl = document.createElement("span");
-        countEl.className = "paragraph-comment__reaction-count";
+        countEl.className = "wn-reaction__count";
         countEl.textContent = String(count);
         btn.append(icon, countEl);
-        btn.addEventListener("click", () => {
-          if (!isAuthenticated) {
-            window.location.href = "/login";
-            return;
-          }
-          pickCommentReaction(comment, value, renderButtons);
-        });
+        btn.addEventListener("click", () => vote(value));
         wrap.append(btn);
       }
+      if (focusedValue) wrap.querySelector(`[data-value="${focusedValue}"]`)?.focus({ preventScroll: true });
     }
+
+    async function vote(value) {
+      if (!isAuthenticated) {
+        window.location.href = "/login";
+        return;
+      }
+      if (pending) return;
+      pending = true;
+      const previous = { counts: comment.reactions, mine: comment.my_reaction ?? null };
+      const ok = await reactionState.optimistic({
+        previous,
+        guess: reactionState.toggleVote(previous.counts, previous.mine, value),
+        render: (state, isPending) => {
+          comment.reactions = state.counts;
+          comment.my_reaction = state.mine;
+          pending = isPending;
+          renderButtons();
+        },
+        request: async () => {
+          const response = await fetch(
+            `/titles/${slugUrl}/chapters/${volume}/${number}/comments/${comment.id}/reactions`,
+            {
+              method: "POST",
+              headers: { "Content-Type": "application/x-www-form-urlencoded" },
+              body: new URLSearchParams({ value: String(value) }),
+            }
+          );
+          return response.ok ? response.json() : null;
+        },
+      });
+      pending = false;
+      if (!ok) onError("Не удалось сохранить оценку. Попробуйте ещё раз.");
+    }
+
     renderButtons();
     return wrap;
   }
@@ -882,7 +976,14 @@
 
     const actions = document.createElement("div");
     actions.className = "paragraph-comment__actions";
-    if (!comment.is_deleted) actions.append(buildCommentReactions(comment));
+    if (!comment.is_deleted) {
+      actions.append(
+        buildCommentReactions(comment, (message) => {
+          actionError.textContent = message;
+          actionError.hidden = false;
+        })
+      );
+    }
 
     const actionError = document.createElement("p");
     actionError.className = "paragraph-comments__error";
@@ -1058,6 +1159,20 @@
       else openThread(index);
     });
 
+    // PR 313: the paragraph's row - the comments pill, the reaction chips (renderStrip)
+    // and a short-lived error note after a rolled-back reaction.
+    const bar = document.createElement("div");
+    bar.className = "paragraph-comments__bar";
+    const strip = document.createElement("div");
+    strip.className = "paragraph-reactions";
+    strip.setAttribute("role", "group");
+    strip.setAttribute("aria-label", "Реакции");
+    const barError = document.createElement("span");
+    barError.className = "paragraph-comments__bar-error";
+    barError.setAttribute("role", "status");
+    barError.hidden = true;
+    bar.append(toggle, strip, barError);
+
     const layer = document.createElement("section");
     layer.className = "paragraph-comments__layer";
     layer.id = layerId;
@@ -1113,7 +1228,7 @@
     }
 
     layer.append(head, status, list, footer);
-    section.append(toggle, layer);
+    section.append(bar, layer);
     host.append(section);
     return section;
   }
@@ -1123,8 +1238,10 @@
     if (!section) return null;
     return {
       section,
-      toggle: section.querySelector(":scope > .paragraph-comments__toggle"),
+      toggle: section.querySelector(".paragraph-comments__toggle"),
       label: section.querySelector(".paragraph-comments__toggle-label"),
+      strip: section.querySelector(".paragraph-reactions"),
+      error: section.querySelector(".paragraph-comments__bar-error"),
       layer: document.getElementById(`paragraph-comments-${index}`),
     };
   }
@@ -1133,15 +1250,17 @@
     return document.getElementById(`paragraph-comments-${index}`)?.querySelector(selector);
   }
 
-  // The toggle shows whenever there are comments or the layer is open; its label is the
-  // count, «Комментарии» for a paragraph the visitor has opened before anyone commented.
+  // The row shows whenever there are comments or reactions, or the layer is open. The
+  // pill's label is the count - «Комментарии» for an open layer nobody has commented in
+  // yet, «Обсудить» next to reactions on a paragraph without comments.
   function syncSection(index) {
     const parts = partsFor(index);
     if (!parts) return;
     const count = commentCountByIndex.get(index) ?? 0;
     const expanded = commentsExpandedByIndex.has(index);
-    parts.section.hidden = count <= 0 && !expanded;
-    parts.label.textContent = count > 0 ? `${count} ${pluralizeComments(count)}` : "Комментарии";
+    parts.section.hidden = count <= 0 && !expanded && !hasReactions(index);
+    parts.label.textContent =
+      count > 0 ? `${count} ${pluralizeComments(count)}` : expanded ? "Комментарии" : "Обсудить";
     parts.toggle.setAttribute("aria-expanded", expanded ? "true" : "false");
     parts.section.classList.toggle("paragraph-comments--open", expanded);
   }
@@ -1401,29 +1520,30 @@
     panel.append(item);
   }
 
-  function renderReactionPicker(index) {
+  function renderReactionPicker(index, { standalone = false } = {}) {
     panel.replaceChildren();
 
-    const back = document.createElement("button");
-    back.type = "button";
-    back.className = "paragraph-menu__back";
-    back.textContent = "← Назад";
-    back.addEventListener("click", (event) => {
-      event.stopPropagation();
-      renderMenuItems(index);
-      position(lastX, lastY);
-    });
-    panel.append(back);
+    if (!standalone) {
+      const back = document.createElement("button");
+      back.type = "button";
+      back.className = "paragraph-menu__back";
+      back.textContent = "← Назад";
+      back.addEventListener("click", (event) => {
+        event.stopPropagation();
+        renderMenuItems(index);
+        position(lastX, lastY);
+      });
+      panel.append(back);
+    }
 
     const picker = document.createElement("div");
     picker.className = "paragraph-menu__emoji-picker";
     picker.setAttribute("role", "menu");
-    const mineEmoji = mineByIndex.get(index) ?? null;
+    const mineEmoji = reactionsByIndex.get(index)?.mine ?? null;
     for (const [emoji, label] of EMOJI) {
       const button = document.createElement("button");
       button.type = "button";
       button.className = "paragraph-menu__emoji";
-      if (emoji === mineEmoji) button.classList.add("paragraph-menu__emoji--active");
       button.setAttribute("role", "menuitemradio");
       button.setAttribute("aria-checked", emoji === mineEmoji ? "true" : "false");
       button.setAttribute("aria-label", label);
@@ -1497,20 +1617,32 @@
     panel.style.top = `${Math.max(GAP, top)}px`;
   }
 
-  function open(x, y, index) {
+  // PR 313: `picker` opens straight onto the emoji grid (the row's «+»); `opener` gets
+  // focus back when it closes.
+  let menuOpener = null;
+  function open(x, y, index, { picker = false, opener = null } = {}) {
     lastX = x;
     lastY = y;
-    renderMenuItems(index);
+    menuOpener = opener;
+    if (picker) renderReactionPicker(index, { standalone: true });
+    else renderMenuItems(index);
     panel.classList.add("paragraph-menu__panel--open");
     position(x, y);
+    if (picker) {
+      (panel.querySelector('[aria-checked="true"]') || panel.querySelector(".paragraph-menu__emoji"))?.focus({
+        preventScroll: true,
+      });
+    }
     window.addEventListener("scroll", close, true);
     window.addEventListener("resize", close);
   }
 
-  function close() {
+  function close(refocus = false) {
     panel.classList.remove("paragraph-menu__panel--open");
     window.removeEventListener("scroll", close, true);
     window.removeEventListener("resize", close);
+    if (refocus === true && menuOpener?.isConnected) menuOpener.focus({ preventScroll: true });
+    menuOpener = null;
   }
 
   content.addEventListener("contextmenu", (event) => {
@@ -1526,6 +1658,6 @@
   });
 
   document.addEventListener("keydown", (event) => {
-    if (event.key === "Escape" && isOpen()) close();
+    if (event.key === "Escape" && isOpen()) close(true);
   });
 })();
