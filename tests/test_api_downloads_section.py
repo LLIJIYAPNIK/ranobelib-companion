@@ -286,7 +286,8 @@ async def test_show_downloads_history_title_link_downloads_the_file_while_its_re
 
     assert response.status_code == 200
     file_href = f'href="/titles/6712--test-novel/download/{job.id}/file"'
-    assert response.text.count(file_href) == 2  # both the title link and "Скачать"
+    # The title link, "Скачать", and (PR 314) the «Последняя загрузка» link in Сводка.
+    assert response.text.count(file_href) == 3
     assert '>/titles/6712--test-novel<' not in response.text
 
 
