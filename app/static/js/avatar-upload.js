@@ -14,15 +14,13 @@
     const file = input.files && input.files[0];
     if (!file) return;
 
-    const reader = new FileReader();
-    reader.onload = () => {
-      const img = document.createElement("img");
-      img.className = "avatar-img";
-      img.alt = "";
-      img.src = String(reader.result);
-      preview.replaceChildren(img);
-      form.submit();
-    };
-    reader.readAsDataURL(file);
+    // An object URL, not a FileReader data: URL - the CSP's img-src allows blob: but not
+    // data: (app/security_headers.py). Not revoked: the submit reloads the page anyway.
+    const img = document.createElement("img");
+    img.className = "avatar-img";
+    img.alt = "";
+    img.src = URL.createObjectURL(file);
+    preview.replaceChildren(img);
+    form.submit();
   });
 })();
