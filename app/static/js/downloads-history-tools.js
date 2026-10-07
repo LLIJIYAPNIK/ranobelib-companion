@@ -1,4 +1,6 @@
 // Client-side search/filter and the explicit "clear history" action (PR 274).
+// PR 314: keeps the «Сводка» card in step with the rows on the page - recounted from
+// their data-history-outcome after a delete (or its undo), gone with «Очистить».
 (() => {
   const root = document.querySelector('[data-role="download-history-groups"]');
   if (!root) return;
@@ -23,6 +25,42 @@
     }
     if (noResults) noResults.hidden = visible !== 0;
   };
+
+  const summary = document.querySelector('[data-role="downloads-summary"]');
+  const plural = (n, one, few, many) => {
+    if (n % 10 === 1 && n % 100 !== 11) return one;
+    if (n % 10 >= 2 && n % 10 <= 4 && !(n % 100 >= 12 && n % 100 <= 14)) return few;
+    return many;
+  };
+
+  function refreshSummary() {
+    if (!summary) return;
+    const rows = [...root.querySelectorAll(".downloads-history__item")];
+    if (rows.length === 0) {
+      summary.hidden = true;
+      return;
+    }
+    summary.hidden = false;
+    const count = (outcome) => rows.filter((row) => row.dataset.historyOutcome === outcome).length;
+    const set = (role, text) => {
+      const el = summary.querySelector(`[data-role="${role}"]`);
+      if (el) el.textContent = text;
+    };
+    set("summary-scope", `${rows.length} ${plural(rows.length, "последняя загрузка", "последние загрузки", "последних загрузок")}`);
+    set("summary-done", String(count("done")));
+    set("summary-error", String(count("error")));
+    set("summary-cancelled", String(count("cancelled")));
+    // Rows are newest first, so the first one left is the last download.
+    const link = rows[0].querySelector(".downloads-history__link");
+    const name = summary.querySelector('[data-role="summary-last-name"]');
+    if (name && link) {
+      name.textContent = link.textContent;
+      name.href = link.getAttribute("href");
+    }
+    set("summary-last-meta", rows[0].dataset.historyMeta || "");
+  }
+
+  document.addEventListener("downloads:historychange", refreshSummary);
 
   search?.addEventListener("input", update);
   for (const button of filters) {
@@ -55,10 +93,15 @@
       const count = document.querySelector('[data-role="history-count"]');
       if (count) count.textContent = "0";
       clear.remove();
+      // PR 314: the whole table (one header for every day) goes, and the toolbar with it.
+      document.querySelector(".wn-downloads__tools")?.remove();
+      if (noResults) noResults.hidden = true;
       const empty = document.createElement("p");
-      empty.className = "ui-empty";
+      empty.className = "wn-downloads-history-empty wn-downloads-history-empty--plain";
+      empty.dataset.role = "download-history-empty";
       empty.textContent = "Пока ничего не скачивали.";
-      root.replaceWith(empty);
+      (document.querySelector('[data-role="download-history-table"]') || root).replaceWith(empty);
+      refreshSummary();
     } catch {
       clear.disabled = false;
     }

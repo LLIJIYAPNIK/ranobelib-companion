@@ -26,21 +26,22 @@ def _rule(selector: str, *, indent: str = "") -> str:
     return matches[-1]
 
 
-def test_steps_carry_a_mobile_only_hint_each() -> None:
+def test_steps_carry_a_hint_each() -> None:
+    # PR 314: the steps live in the «Как скачать» card on every width now, so their
+    # hints - mobile-only since PR 281 - show everywhere.
     for label, hint in (
         ("Каталог", "найдите тайтл по названию"),
         ("Главы", "выберите тома или диапазон"),
-        ("EPUB", "файл появится в истории ниже"),
+        ("Файл", "EPUB, FB2 или TXT появится в истории ниже"),
     ):
         assert f'{label}<small class="wn-downloads-steps__hint"> — {hint}</small>' in TEMPLATE
-    assert "display: none;" in _rule(".wn-downloads-steps__hint")
-    assert "display: inline;" in _rule(".wn-downloads-steps__hint", indent="  ")
+    assert "display: inline;" in _rule(".wn-downloads-steps__hint")
 
 
-def test_steps_are_a_vertical_list_on_mobile() -> None:
-    assert "flex-direction: column;" in _rule(".wn-downloads-steps", indent="  ")
-    assert "display: none;" in _rule(".wn-downloads-steps li:nth-child(even)", indent="  ")
-    assert "flex: none;" in _rule(".wn-downloads-steps b", indent="  ")
+def test_steps_are_a_vertical_list() -> None:
+    assert "flex-direction: column;" in _rule(".wn-downloads-steps")
+    assert "display: none;" in _rule(".wn-downloads-steps li:nth-child(even)")
+    assert "flex: none;" in _rule(".wn-downloads-steps b")
     # The decorative connectors between steps aren't announced as empty list items.
     assert TEMPLATE.count('<li aria-hidden="true"><i></i></li>') == 2
 

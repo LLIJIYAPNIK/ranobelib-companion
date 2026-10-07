@@ -57,7 +57,7 @@ def test_downloads_template_exposes_search_filter_and_clear_contracts() -> None:
 
     assert "Каталог" in template
     assert "Главы" in template
-    assert "EPUB" in template
+    assert "Файл" in template
 
 
 def test_downloads_history_script_uses_existing_delete_endpoint_and_bulk_clear() -> None:

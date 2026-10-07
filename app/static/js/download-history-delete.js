@@ -14,9 +14,11 @@
   let pending = null; // { entryId, row, parent, next, group, timer }
   let toast = null;
 
+  // PR 314: also tells downloads-history-tools.js to recount the «Сводка» card.
   function updateCount() {
     const count = document.querySelector('[data-role="history-count"]');
     if (count) count.textContent = String(document.querySelectorAll(".downloads-history__item").length);
+    document.dispatchEvent(new CustomEvent("downloads:historychange"));
   }
 
   function showToast(message, action) {
