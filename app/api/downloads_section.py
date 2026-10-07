@@ -41,6 +41,18 @@ class DownloadHistoryGroup:
     entries: list[DownloadHistoryEntry]
 
 
+@dataclass(frozen=True)
+class DownloadHistorySummary:
+    """PR 314: the «Сводка» card - counted from the history the page already loaded
+    (list_download_history()'s most recent entries), nothing fetched or estimated on top."""
+
+    total: int
+    done: int
+    errors: int
+    cancelled: int
+    last: DownloadHistoryEntry | None
+
+
 @router.get("")
 async def show_downloads(
     request: Request,
@@ -79,6 +91,7 @@ async def show_downloads(
             "active_jobs": active_jobs,
             "history": history,
             "history_groups": _group_history(history),
+            "history_summary": _summarize_history(history),
             "ready_files": ready_files,
             "history_titles": history_titles,
         },
@@ -138,6 +151,19 @@ def _group_history(entries: list[DownloadHistoryEntry]) -> list[DownloadHistoryG
             label = day
         groups.append(DownloadHistoryGroup(day, label, [entry]))
     return groups
+
+
+def _summarize_history(entries: list[DownloadHistoryEntry]) -> DownloadHistorySummary:
+    def count(status: str) -> int:
+        return sum(1 for entry in entries if entry.status == status)
+
+    return DownloadHistorySummary(
+        total=len(entries),
+        done=count("done"),
+        errors=count("error"),
+        cancelled=count("cancelled"),
+        last=entries[0] if entries else None,
+    )
 
 
 def _job_summary(job: DownloadJob) -> dict[str, Any]:
