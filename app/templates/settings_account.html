@@ -129,6 +129,31 @@
       <button class="ui-btn ui-btn--primary settings-form__submit" type="submit">Сохранить</button>
     </form>
   </section>
+
+  {# PR 322: filled in from the browser after login; changeable here by hand. #}
+  <section class="settings-card">
+    <h2 class="settings-card__title">Часовой пояс</h2>
+    {% if timezone_saved %}
+    <p class="ui-notice">Часовой пояс сохранён</p>
+    {% endif %}
+    {% if timezone_error %}
+    <p class="ui-notice ui-notice--error">{{ timezone_error }}</p>
+    {% endif %}
+    <p class="settings-card__hint">
+      По нему считаются дни в «Активности», календаре чтения и серии дней подряд.
+    </p>
+    <form class="settings-form" method="post" action="/settings/account/timezone" autocomplete="off">
+      <div class="ui-field">
+        <label class="ui-field__label" for="account-timezone">Часовой пояс</label>
+        <select class="ui-input" id="account-timezone" name="timezone">
+          {% for zone in timezone_choices %}
+          <option value="{{ zone }}"{% if zone == timezone %} selected{% endif %}>{{ zone }}</option>
+          {% endfor %}
+        </select>
+      </div>
+      <button class="ui-btn ui-btn--primary settings-form__submit" type="submit">Сохранить</button>
+    </form>
+  </section>
   </div>
   {% else %}
   {% from "_locked_feature.html" import locked_feature %}

@@ -13,6 +13,7 @@ dependencies = [
     "psycopg[binary,pool]>=3.2.0",
     "python-multipart>=0.0.32",
     "ranobelib-python-sdk>=0.12.0",
+    "tzdata>=2026.3",
     "uvicorn[standard]>=0.52.1",
 ]
 

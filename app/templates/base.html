@@ -203,6 +203,9 @@
   <script src="{{ static_url('js/profile-menu.js') }}" defer></script>
   <script src="{{ static_url('js/notifications-panel.js') }}" defer></script>
   <script src="{{ static_url('js/notifications-actions.js') }}" defer></script>
+  {% if not current_user.timezone %}
+  <script src="{{ static_url('js/timezone-sync.js') }}" defer></script>
+  {% endif %}
   {% endif %}
 </body>
 </html>
