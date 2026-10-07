@@ -3,7 +3,8 @@
 still in the table but no longer read or written since PR 293 removed "Избранное",
 0015_users_notification_flags.sql for ``notifications_enabled``/``do_not_disturb``,
 0019_users_friends_privacy_flags.sql for ``show_friends_activity_home``/``show_friends``,
-0023_email_verification.sql for ``email_verified_at``).
+0023_email_verification.sql for ``email_verified_at``, 0025_users_timezone.sql for
+``timezone``).
 """
 
 from __future__ import annotations
@@ -57,6 +58,8 @@ class User:
     # until then). Accounts that existed before PR 246 were set to their own created_at
     # by migrations/0023_email_verification.sql, so they count as verified.
     email_verified_at: str | None = None
+    # PR 322: IANA zone name for activity day boundaries (app/timezones.py); None = UTC.
+    timezone: str | None = None
 
     @property
     def is_email_verified(self) -> bool:
@@ -225,11 +228,20 @@ async def update_notification_settings(
     return user
 
 
+async def update_user_timezone(conn: AsyncConnection, user_id: int, timezone: str) -> User:
+    """PR 322: `timezone` is an IANA name the caller has already validated
+    (app/timezones.py's is_valid_timezone())."""
+    await conn.execute("UPDATE users SET timezone = %s WHERE id = %s", (timezone, user_id))
+    user = await get_user_by_id(conn, user_id)
+    assert user is not None  # just updated
+    return user
+
+
 _USER_COLUMNS = (
     "id, email, password_hash, created_at, nickname, bio, avatar_path, "
     "show_currently_reading, show_library, "
     "show_friends_activity_home, show_friends, "
-    "notifications_enabled, do_not_disturb, session_version, email_verified_at"
+    "notifications_enabled, do_not_disturb, session_version, email_verified_at, timezone"
 )
 
 
@@ -310,6 +322,7 @@ def _row_to_user(row: dict[str, Any]) -> User:
         do_not_disturb=bool(row["do_not_disturb"]),
         session_version=row["session_version"],
         email_verified_at=row["email_verified_at"],
+        timezone=row["timezone"],
     )
 
 
