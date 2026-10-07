@@ -92,6 +92,45 @@ def require_admin(request: Request) -> None:
         raise HTTPException(status_code=303, headers={"Location": LOGIN_PATH})
 
 
+# --- login throttling (per IP) ---------------------------------------------------------
+# In-memory, process-wide - same single-process MVP treatment as app/auth/rate_limit.py.
+# The first _FREE_FAILURES wrong passwords cost nothing; every one after that locks the IP
+# out for _BASE_LOCK_SECONDS * 2^(n - _FREE_FAILURES - 1), capped at _MAX_LOCK_SECONDS.
+# While locked, the password isn't even checked - a correct guess doesn't get through
+# either. A success clears the IP's count; an IP quiet for _FORGET_AFTER is forgotten.
+_FREE_FAILURES = 3
+_BASE_LOCK_SECONDS = 15.0
+_MAX_LOCK_SECONDS = 60 * 60.0
+_FORGET_AFTER = 24 * 60 * 60.0
+
+# ip -> (failures, locked_until, last_failure)
+_failures: dict[str, tuple[int, float, float]] = {}
+
+
+def login_locked_for(ip: str) -> float:
+    """Seconds this IP must still wait before its next login attempt (0 = go ahead)."""
+    entry = _failures.get(ip)
+    if entry is None:
+        return 0.0
+    return max(0.0, entry[1] - _now())
+
+
+def record_failed_login(ip: str) -> None:
+    now = _now()
+    for stale in [key for key, (_, _, last) in _failures.items() if now - last > _FORGET_AFTER]:
+        del _failures[stale]
+    count = _failures.get(ip, (0, 0.0, 0.0))[0] + 1
+    locked_until = 0.0
+    if count > _FREE_FAILURES:
+        lock = _BASE_LOCK_SECONDS * 2 ** (count - _FREE_FAILURES - 1)
+        locked_until = now + min(lock, _MAX_LOCK_SECONDS)
+    _failures[ip] = (count, locked_until, now)
+
+
+def reset_failed_logins(ip: str) -> None:
+    _failures.pop(ip, None)
+
+
 def csrf_token(request: Request) -> str:
     token = request.session.get(CSRF_SESSION_KEY)
     if not isinstance(token, str) or not token:

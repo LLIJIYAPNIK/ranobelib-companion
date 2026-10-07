@@ -7,6 +7,7 @@ data browser come in PR 325; this PR only establishes who may see them.
 
 from __future__ import annotations
 
+import math
 from collections.abc import Awaitable, Callable
 from typing import Annotated
 
@@ -19,9 +20,12 @@ from app.auth.admin import (
     csrf_token,
     end_admin_session,
     is_admin,
+    login_locked_for,
     password_matches,
+    record_failed_login,
     require_admin,
     require_admin_enabled,
+    reset_failed_logins,
     start_admin_session,
 )
 from app.config import get_settings
@@ -51,8 +55,17 @@ async def admin_login(
     csrf: Annotated[str, Form()] = "",
 ) -> Response:
     check_csrf(request, csrf)
+    ip = request.client.host if request.client is not None else "unknown"
+    wait = login_locked_for(ip)
+    if wait > 0:
+        return _locked_page(request, wait)
     if not password_matches(password):
+        record_failed_login(ip)
+        wait = login_locked_for(ip)
+        if wait > 0:
+            return _locked_page(request, wait)
         return _login_page(request, error="Неверный пароль", status_code=401)
+    reset_failed_logins(ip)
     start_admin_session(request)
     return RedirectResponse("/admin", status_code=303)
 
@@ -74,6 +87,17 @@ def _login_page(
         {"csrf_token": csrf_token(request), "error": error},
         status_code=status_code,
     )
+
+
+def _locked_page(request: Request, wait: float) -> HTMLResponse:
+    seconds = max(1, math.ceil(wait))
+    response = _login_page(
+        request,
+        error=f"Слишком много попыток. Повторите через {seconds} с.",
+        status_code=429,
+    )
+    response.headers["Retry-After"] = str(seconds)
+    return response
 
 
 def install_admin_headers(app: FastAPI) -> None:
