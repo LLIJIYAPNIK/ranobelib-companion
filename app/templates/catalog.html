@@ -434,20 +434,20 @@
     hidden
   ><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m6 15 6-6 6 6"/></svg></button>
 </div>
-<script src="{{ url_for('static', path='js/catalog-scroll.js') }}" defer></script>
-<script src="{{ url_for('static', path='js/catalog-header-scroll.js') }}" defer></script>
-<script src="{{ url_for('static', path='js/catalog-back-to-top.js') }}" defer></script>
-<script src="{{ url_for('static', path='js/custom-dropdown.js') }}" defer></script>
-<script src="{{ url_for('static', path='js/catalog-random-redirect.js') }}" defer></script>
-<script src="{{ url_for('static', path='js/catalog-sort-autosubmit.js') }}" defer></script>
-<script src="{{ url_for('static', path='js/catalog-search-shortcut.js') }}" defer></script>
+<script src="{{ static_url('js/catalog-scroll.js') }}" defer></script>
+<script src="{{ static_url('js/catalog-header-scroll.js') }}" defer></script>
+<script src="{{ static_url('js/catalog-back-to-top.js') }}" defer></script>
+<script src="{{ static_url('js/custom-dropdown.js') }}" defer></script>
+<script src="{{ static_url('js/catalog-random-redirect.js') }}" defer></script>
+<script src="{{ static_url('js/catalog-sort-autosubmit.js') }}" defer></script>
+<script src="{{ static_url('js/catalog-search-shortcut.js') }}" defer></script>
 {% if has_filters %}
-<script src="{{ url_for('static', path='js/catalog-filters-toggle.js') }}" defer></script>
-<script src="{{ url_for('static', path='js/catalog-filters-accordion.js') }}" defer></script>
+<script src="{{ static_url('js/catalog-filters-toggle.js') }}" defer></script>
+<script src="{{ static_url('js/catalog-filters-accordion.js') }}" defer></script>
 {% endif %}
-<script src="{{ url_for('static', path='js/catalog-library-toggle.js') }}" defer></script>
-<script src="{{ url_for('static', path='js/catalog-mobile.js') }}" defer></script>
-<script src="{{ url_for('static', path='js/image-lightbox.js') }}" defer></script>
-<script src="{{ url_for('static', path='js/library-tabs-swipe.js') }}" defer></script>
-<script src="{{ url_for('static', path='js/library-switch.js') }}" defer></script>
+<script src="{{ static_url('js/catalog-library-toggle.js') }}" defer></script>
+<script src="{{ static_url('js/catalog-mobile.js') }}" defer></script>
+<script src="{{ static_url('js/image-lightbox.js') }}" defer></script>
+<script src="{{ static_url('js/library-tabs-swipe.js') }}" defer></script>
+<script src="{{ static_url('js/library-switch.js') }}" defer></script>
 {% endblock %}

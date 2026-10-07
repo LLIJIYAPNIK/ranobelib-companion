@@ -222,8 +222,8 @@
     {% endif %}
   </main>
 </div>
-<script src="{{ url_for('static', path='js/library-toolbar.js') }}" defer></script>
-<script src="{{ url_for('static', path='js/library-card-actions.js') }}" defer></script>
-<script src="{{ url_for('static', path='js/library-tabs-swipe.js') }}" defer></script>
-<script src="{{ url_for('static', path='js/library-switch.js') }}" defer></script>
+<script src="{{ static_url('js/library-toolbar.js') }}" defer></script>
+<script src="{{ static_url('js/library-card-actions.js') }}" defer></script>
+<script src="{{ static_url('js/library-tabs-swipe.js') }}" defer></script>
+<script src="{{ static_url('js/library-switch.js') }}" defer></script>
 {% endblock %}

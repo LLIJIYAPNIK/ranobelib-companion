@@ -1,8 +1,8 @@
 {% extends "base.html" %}
 {% block title %}Глава {{ chapter.number }} — RanobeLib Companion{% endblock %}
 {% block head_extra %}
-<script src="{{ url_for('static', path='js/scroll-restoration.js') }}"></script>
-<script src="{{ url_for('static', path='js/reader-theme-early.js') }}"></script>
+<script src="{{ static_url('js/scroll-restoration.js') }}"></script>
+<script src="{{ static_url('js/reader-theme-early.js') }}"></script>
 {% endblock %}
 {% block body_class %}reader-page{% endblock %}
 {% block content %}
@@ -239,15 +239,15 @@
 </div>
 
 {% if current_user %}
-<script src="{{ url_for('static', path='js/activity-heartbeat.js') }}" defer></script>
+<script src="{{ static_url('js/activity-heartbeat.js') }}" defer></script>
 {# Before tap-to-read.js/reader-progress.js - listening by the time they announce a position. #}
-<script src="{{ url_for('static', path='js/reading-progress-tick.js') }}" defer></script>
+<script src="{{ static_url('js/reading-progress-tick.js') }}" defer></script>
 {% endif %}
-<script src="{{ url_for('static', path='js/reader-settings.js') }}" defer></script>
-<script src="{{ url_for('static', path='js/tap-to-read.js') }}" defer></script>
-<script src="{{ url_for('static', path='js/reader-progress.js') }}" defer></script>
-<script src="{{ url_for('static', path='js/reader-hud.js') }}" defer></script>
-<script src="{{ url_for('static', path='js/image-lightbox.js') }}" defer></script>
-<script src="{{ url_for('static', path='js/reaction-state.js') }}" defer></script>
-<script src="{{ url_for('static', path='js/paragraph-menu.js') }}" defer></script>
+<script src="{{ static_url('js/reader-settings.js') }}" defer></script>
+<script src="{{ static_url('js/tap-to-read.js') }}" defer></script>
+<script src="{{ static_url('js/reader-progress.js') }}" defer></script>
+<script src="{{ static_url('js/reader-hud.js') }}" defer></script>
+<script src="{{ static_url('js/image-lightbox.js') }}" defer></script>
+<script src="{{ static_url('js/reaction-state.js') }}" defer></script>
+<script src="{{ static_url('js/paragraph-menu.js') }}" defer></script>
 {% endblock %}
