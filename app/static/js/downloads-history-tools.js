@@ -49,6 +49,10 @@
     set("summary-scope", `${rows.length} ${plural(rows.length, "последняя загрузка", "последние загрузки", "последних загрузок")}`);
     set("summary-done", String(count("done")));
     set("summary-error", String(count("error")));
+    // Red only when there is something wrong - «0» errors isn't an alarm.
+    summary
+      .querySelector('[data-role="summary-error-stat"]')
+      ?.classList.toggle("wn-downloads-summary__stat--error", count("error") > 0);
     set("summary-cancelled", String(count("cancelled")));
     // Rows are newest first, so the first one left is the last download.
     const link = rows[0].querySelector(".downloads-history__link");

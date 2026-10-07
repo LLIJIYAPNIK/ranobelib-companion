@@ -3360,8 +3360,10 @@ html.bottom-sheet-lock body {
   min-width: 0;
 }
 
+/* PR 315: the accent alone was 4.04:1 on the sepia card - pulled 30% toward the
+   theme's text it clears 4.5:1 in all five themes. */
 .paragraph-comments__kicker {
-  color: var(--pc-accent);
+  color: color-mix(in srgb, var(--pc-accent) 70%, var(--pc-text));
   font: 700 11px/14px var(--font-ui);
   letter-spacing: 0.08em;
   text-transform: uppercase;
@@ -10647,6 +10649,12 @@ a.catalog-card__action {
 
   .wn-library .wn-library__add .wn-btn:active {
     background: rgb(255 255 255 / 10%);
+  }
+
+  /* PR 315: the glass style's `box-shadow: none` above outranked .wn-btn:focus-visible,
+     so keyboard focus on «Найти» showed nothing. */
+  .wn-library .wn-library__add .wn-btn:focus-visible {
+    box-shadow: var(--wn-focus-ring);
   }
 
   .wn-library > .wn-library__content {
@@ -17968,6 +17976,24 @@ body.reader-hud-visible .reader-hud {
     font-size: 24px;
   }
 
+  /* PR 315: at 320px «Настройки» pushed the heading row 1px past the screen - on phones
+     it's a 44px icon button, the label kept for screen readers. */
+  .wn-notices__settings {
+    justify-content: center;
+    width: 44px;
+    min-height: 44px;
+    padding: 0;
+  }
+
+  .wn-notices__settings-label {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip: rect(0 0 0 0);
+    white-space: nowrap;
+  }
+
   .wn-notices__list {
     gap: 22px;
   }
@@ -20237,9 +20263,10 @@ body.reader-hud-visible .reader-hud {
   font-family: var(--wn-font-technical);
 }
 
+/* PR 315: #7d7990 was 4.4:1 on the row - --wn-text-muted clears 4.5:1. */
 .wn-downloads-row__file {
   overflow: hidden;
-  color: #7d7990;
+  color: var(--wn-text-muted);
   font: 400 12px/1.2 var(--wn-font-technical);
   text-overflow: ellipsis;
   white-space: nowrap;
