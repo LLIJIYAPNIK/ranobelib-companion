@@ -1,5 +1,7 @@
 """Baseline security response headers (PR 189, app/security_headers.py)."""
 
+from pathlib import Path
+
 from fastapi.testclient import TestClient
 
 from app.config import get_settings
@@ -42,7 +44,25 @@ def test_csp_allows_hotlinked_cover_and_chapter_image_hosts() -> None:
     response = client.get("/health")
 
     csp = response.headers["Content-Security-Policy"]
-    assert "img-src 'self' https://ranobelib.me https://*.cdnlibs.org" in csp
+    assert "img-src 'self' blob: https://ranobelib.me https://*.cdnlibs.org" in csp
+
+
+def test_csp_allows_blob_previews_but_not_data_images() -> None:
+    # A picked file's local preview (comment attachment chip, avatar upload) is a blob:
+    # object URL; data: stays blocked - injected markup/CSS could inline images with it.
+    response = client.get("/health")
+
+    img_src = response.headers["Content-Security-Policy"].split("img-src", 1)[1].split(";")[0]
+    assert " blob:" in img_src
+    assert "data:" not in img_src
+
+
+def test_local_file_previews_use_object_urls_not_data_urls() -> None:
+    scripts = Path(__file__).parents[1] / "app/static/js"
+    for name in ("paragraph-menu.js", "avatar-upload.js"):
+        assert "URL.createObjectURL(" in (scripts / name).read_text(encoding="utf-8"), name
+    for script in scripts.glob("*.js"):
+        assert "readAsDataURL" not in script.read_text(encoding="utf-8"), script.name
 
 
 def test_csp_allows_google_fonts_stylesheet_and_files() -> None:
