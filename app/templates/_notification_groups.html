@@ -1,0 +1,15 @@
+{# PR 311: the /notifications list - «Новые» (unread) and «Ранее» (read) groups of
+   Notification cards. Rendered for the first page by notifications.html and for every
+   further page by GET /notifications/page; notifications-page.js appends a fetched
+   group's cards to the group with the same data-group when it's already on the page. #}
+{% from "_notification_card.html" import notification_card %}
+{% for group in groups %}
+<section class="wn-notices-group" data-role="notifications-group" data-group="{{ group.key }}" aria-labelledby="notifications-group-{{ group.key }}">
+  <h2 class="wn-notices-group__title" id="notifications-group-{{ group.key }}">{{ group.title }}</h2>
+  <div class="wn-notices-group__list" data-role="notifications-group-list">
+    {% for n in group.notifications %}
+    {{ notification_card(n) }}
+    {% endfor %}
+  </div>
+</section>
+{% endfor %}

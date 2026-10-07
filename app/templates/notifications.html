@@ -5,20 +5,40 @@
 {% block title %}Уведомления — RanobeLib Companion{% endblock %}
 {% block content %}
 {#
-  PR 259 (Aurora Ink, NOTIFICATIONS): a list of Notification cards - unread ones tinted,
-  mark-read (cyan) and delete as 44px icon buttons - with the same infinite scroll
-  (notifications-page.js) and actions (notifications-actions.js) as before.
+  PR 311 (Webnovells): heading with a link to the notification settings, then the cards
+  grouped as «Новые»/«Ранее» (_notification_groups.html) - the same card macro as the
+  bell panel. notifications-page.js loads further pages on scroll with skeleton cards,
+  a «Повторить» plate on failure and a closing note on the last page; mark-read/delete
+  are notifications-actions.js. The empty state is always in the markup (hidden while
+  there are cards) so deleting the last card can reveal it without a reload.
 #}
-<main class="notifications-page">
-  <h1 class="notifications-page__title">Уведомления</h1>
+<main class="wn-notices">
+  <header class="wn-notices__head">
+    <h1 class="wn-notices__title" tabindex="-1" data-role="notifications-page-title">Уведомления</h1>
+    <a class="wn-notices__settings" href="/settings/notifications">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 7h10M18 7h2M4 17h4M12 17h8"/><circle cx="16" cy="7" r="2"/><circle cx="10" cy="17" r="2"/></svg>
+      Настройки
+    </a>
+  </header>
   <div
-    class="notifications-page__list"
+    class="wn-notices__list"
     data-role="notifications-page-list"
     data-next-page="{{ page + 1 if has_next_page else '' }}"
   >
-    {% include "_notification_cards.html" %}
+    {% include "_notification_groups.html" %}
   </div>
-  <div class="notifications-page__sentinel" data-role="notifications-page-sentinel" aria-hidden="true"></div>
+  <div class="wn-notices-empty" data-role="notifications-page-empty"{% if groups %} hidden{% endif %}>
+    <span class="wn-notices-empty__icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 8a6 6 0 0 1 12 0c0 4 1.5 6 2 6.5H4c.5-.5 2-2.5 2-6.5ZM10 19a2 2 0 0 0 4 0"/></svg></span>
+    <b>Пока нет уведомлений</b>
+    <span>Здесь появятся реакции на ваши комментарии к абзацам, заявки в друзья и ответы на них.</span>
+    <a class="wn-notices-empty__cta" href="/catalog">Открыть каталог</a>
+  </div>
+  {% from "_notification_card.html" import notification_skeleton %}
+  <template data-role="notifications-page-skeleton">{{ notification_skeleton(3) }}</template>
+  <div class="wn-notices__status" data-role="notifications-page-loading" role="status"></div>
+  <div data-role="notifications-page-error"></div>
+  <p class="wn-notices__end" data-role="notifications-page-end"{% if has_next_page or not groups %} hidden{% endif %}>Это все уведомления</p>
+  <div class="wn-notices__sentinel" data-role="notifications-page-sentinel" aria-hidden="true"></div>
   <noscript>
     {% if has_next_page %}
     <p class="ui-empty"><a href="?page={{ page + 1 }}">Следующая страница</a></p>
