@@ -89,13 +89,17 @@
             </span>
             <span class="sidebar__label">Уведомления</span>
           </button>
-          <div class="notifications-panel" data-role="notifications-panel">
+          {# PR 311: header with the unread count and a settings link, the list
+             (skeleton -> GET /notifications/panel's cards, or an error with «Повторить»;
+             notifications-panel.js), footer link to the full page. #}
+          <div class="notifications-panel" data-role="notifications-panel" role="dialog" aria-labelledby="notifications-panel-title" tabindex="-1">
             <div class="notifications-panel__header">
-              <h2 class="notifications-panel__title">Уведомления</h2>
+              <h2 class="notifications-panel__title" id="notifications-panel-title">Уведомления</h2>
+              <span class="notifications-panel__count" data-role="notifications-panel-count" hidden></span>
+              <a class="notifications-panel__settings" href="/settings/notifications" aria-label="Настройки уведомлений" title="Настройки уведомлений"><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 7h10M18 7h2M4 17h4M12 17h8"/><circle cx="16" cy="7" r="2"/><circle cx="10" cy="17" r="2"/></svg></a>
             </div>
-            <div class="notifications-panel__list" data-role="notifications-list">
-              <p class="notifications-panel__empty" data-role="notifications-empty" hidden>Пока нет уведомлений</p>
-            </div>
+            {% from "_notification_card.html" import notification_skeleton %}
+            <div class="notifications-panel__list" data-role="notifications-list">{{ notification_skeleton(3) }}</div>
             <a class="notifications-panel__footer" href="/notifications">Все уведомления</a>
           </div>
           {% endif %}

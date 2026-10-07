@@ -188,8 +188,11 @@ async def list_notifications_page(
     there's no such response to read it off here, so this table computes its own.
 
     Full history, read and unread both - unlike the bell panel above (PR 179), this page
-    is where a read notification keeps living, distinguished only by the
-    `.notifications-panel__item--unread` CSS modifier."""
+    is where a read notification keeps living.
+
+    PR 311: unread first, then read, each newest first - the page groups them as «Новые»/
+    «Ранее», and with that order every page continues the group the previous one ended
+    on instead of interleaving the two."""
     rows = await _list_notifications(
         conn, user_id, offset=(page - 1) * page_size, limit=page_size + 1
     )
@@ -207,7 +210,10 @@ async def _list_notifications(
     Orders by `id DESC` as a tiebreaker after `created_at DESC` - two notifications
     created microseconds apart (e.g. in a tight loop, as tests do) can land on the same
     ISO timestamp, and `created_at` alone would then leave their relative order to
-    Postgres's own unspecified tie-breaking instead of "most recently inserted first"."""
+    Postgres's own unspecified tie-breaking instead of "most recently inserted first".
+
+    PR 311: unread before read (a no-op for the unread-only bell panel) - see
+    list_notifications_page()."""
     unread_clause = "AND notifications.is_read = 0 " if unread_only else ""
     cursor = await conn.execute(
         "SELECT notifications.id, notifications.kind, notifications.is_read, "
@@ -221,7 +227,8 @@ async def _list_notifications(
         "JOIN users AS actor ON actor.id = notifications.actor_user_id "
         "LEFT JOIN comments ON comments.id = notifications.comment_id "
         "WHERE notifications.user_id = %s " + unread_clause + "ORDER BY "
-        "notifications.created_at DESC, notifications.id DESC LIMIT %s OFFSET %s",
+        "notifications.is_read, notifications.created_at DESC, notifications.id DESC "
+        "LIMIT %s OFFSET %s",
         (user_id, limit, offset),
     )
     rows = await cursor.fetchall()

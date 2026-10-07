@@ -1423,21 +1423,29 @@ html.bottom-sheet-lock body {
   color: #f2879a;
 }
 
-/* Notifications popover - header, list of Notification cards (PR 259, below), footer
-   link. Portaled to <body> and placed by notifications-panel.js. */
+/* Notifications popover (PR 311, Webnovells): header with the unread count and a
+   settings link, a height-capped list that scrolls on its own (contained, so the page
+   behind it stays put), footer link to the full page. Portaled to <body> and placed by
+   notifications-panel.js. The cards are .wn-notice (below), shared with /notifications. */
 .notifications-panel {
+  --wn-notice-ring: var(--wn-surface);
   display: none;
   flex-direction: column;
-  width: 380px;
+  width: 400px;
   max-width: calc(100vw - 24px);
-  max-height: min(560px, calc(100dvh - 16px));
-  border: 1px solid var(--border);
-  border-radius: var(--r-xl);
-  background: var(--surface-2);
-  box-shadow: var(--shadow-popover);
-  color: var(--text-1);
+  max-height: min(600px, calc(100dvh - 24px));
+  border: 1px solid var(--wn-border);
+  border-radius: var(--wn-radius-xl);
+  background: var(--wn-surface);
+  box-shadow: 0 24px 64px rgb(0 0 0 / 55%);
+  color: var(--wn-text);
+  font-family: var(--wn-font-ui);
   overflow: hidden;
   z-index: 80;
+}
+
+.notifications-panel:focus {
+  outline: none;
 }
 
 .notifications-panel--open {
@@ -1448,32 +1456,56 @@ html.bottom-sheet-lock body {
 .notifications-panel__header {
   display: flex;
   align-items: center;
+  gap: 10px;
   flex: 0 0 auto;
-  height: 52px;
-  padding: 0 18px;
-  border-bottom: 1px solid var(--border);
+  min-height: 56px;
+  padding: 0 10px 0 20px;
+  border-bottom: 1px solid var(--wn-border);
 }
 
 .notifications-panel__title {
   margin: 0;
-  font: 800 16px/1 var(--font-ui);
+  font: var(--wn-weight-extra-bold) 17px/1.2 var(--wn-font-ui);
+  letter-spacing: -0.01em;
+}
+
+.notifications-panel__count {
+  padding: 3px 9px;
+  border-radius: 999px;
+  background: rgb(61 214 195 / 12%);
+  color: var(--wn-teal);
+  font: var(--wn-weight-bold) 12px/16px var(--wn-font-ui);
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+.notifications-panel__count[hidden] {
+  display: none;
+}
+
+.notifications-panel__settings {
+  display: grid;
+  place-items: center;
+  flex: 0 0 auto;
+  width: 40px;
+  height: 40px;
+  margin-left: auto;
+  border-radius: var(--wn-radius-sm);
+  color: var(--wn-text-muted);
+  transition: background-color 160ms ease, color 160ms ease;
 }
 
 .notifications-panel__list {
   display: flex;
   flex-direction: column;
+  gap: 2px;
   flex: 1;
   min-height: 0;
-  padding: 6px;
+  padding: 8px;
   overflow-y: auto;
   overscroll-behavior: contain;
-}
-
-.notifications-panel__empty {
-  margin: 0;
-  padding: 18px 12px;
-  color: var(--text-3);
-  font: 500 14px/1.5 var(--font-ui);
+  scrollbar-width: thin;
+  scrollbar-color: var(--wn-border-strong) transparent;
 }
 
 .notifications-panel__footer {
@@ -1481,23 +1513,33 @@ html.bottom-sheet-lock body {
   place-items: center;
   flex: 0 0 auto;
   height: 48px;
-  border-top: 1px solid var(--border);
-  color: var(--primary-text);
-  font: 700 14px/1 var(--font-ui);
+  border-top: 1px solid var(--wn-border);
+  color: #b7a6ff;
+  font: var(--wn-weight-semi-bold) 14px/1 var(--wn-font-ui);
   text-decoration: none;
-  transition: background-color var(--dur-base) var(--ease);
+  transition: background-color 160ms ease, color 160ms ease;
 }
 
 @media (hover: hover) {
-  .notifications-panel__footer:hover {
-    background: var(--surface-3);
-    color: var(--primary-text);
+  .notifications-panel__settings:hover {
+    background: var(--wn-surface-hover);
+    color: var(--wn-text);
   }
+
+  .notifications-panel__footer:hover {
+    background: var(--wn-surface-raised);
+    color: #cbbfff;
+  }
+}
+
+.notifications-panel__settings:focus-visible {
+  outline: none;
+  box-shadow: var(--wn-focus-ring);
 }
 
 .notifications-panel__footer:focus-visible {
   outline: none;
-  box-shadow: inset 0 0 0 2px var(--focus);
+  box-shadow: inset 0 0 0 2px var(--wn-teal);
 }
 
 /* Mobile: bottom navigation + top header. PR 279 restyled both to "Webnovells Mobile"
@@ -1797,125 +1839,343 @@ html.bottom-sheet-lock body {
   border-radius: inherit;
 }
 
-/* Notification card (PR 259, Aurora Ink "02 Components"): avatar + "<b>actor</b> text"
-   + time as the link, mark-read (cyan) / delete as icon buttons beside it - outside the
-   <a>, see _notification_card.html. Unread cards keep a cyan tint, hover or not. This is
-   the compact popover size (36px avatar, text clamped to 2 lines); the /notifications
-   page scales it up below (.notifications-page__list). Class names are the PR 168-170
-   ones - notifications-actions.js and the tests key off them. */
-.notifications-panel__item {
+/* Notification card (PR 311, Webnovells) - one component for the bell panel and the
+   /notifications page (_notification_card.html). Avatar with a kind marker (violet for a
+   comment reaction, teal for friends), «<b>actor</b> action», a one-line excerpt behind a
+   quote rule, the relative time. Unread: a faint teal tint, a teal dot and teal time.
+   The actions keep their own column: on a mouse they fade in on hover/focus without
+   moving the text, on touch they're always shown. --wn-notice-ring is the surface the
+   card sits on, so the marker's cut-out ring matches it. */
+.wn-notice {
+  position: relative;
   display: flex;
   align-items: flex-start;
-  gap: var(--s-4);
-  padding: 10px;
-  border-radius: var(--r-lg);
-  transition: background-color var(--dur-base) var(--ease);
+  gap: 4px;
+  padding: 10px 6px 10px 10px;
+  border-radius: var(--wn-radius-md);
+  font-family: var(--wn-font-ui);
+  transition: background-color 160ms ease, opacity 160ms ease;
+}
+
+.wn-notice--unread {
+  background: rgb(61 214 195 / 5%);
+}
+
+/* The panel lists unread ones only - the dot and teal time are enough there. */
+.notifications-panel .wn-notice--unread {
+  background: transparent;
 }
 
 @media (hover: hover) {
-  .notifications-panel__item:hover {
-    background: var(--surface-3);
+  .wn-notice:not(.wn-notice--skeleton):hover {
+    background: var(--wn-surface-hover);
   }
 }
 
-.notifications-panel__item--unread,
-.notifications-panel__item--unread:hover {
-  background: rgba(34, 211, 197, 0.06);
+.wn-notice[aria-busy="true"] {
+  opacity: 0.55;
 }
 
-.notifications-panel__item-link {
+.wn-notice__link {
   display: flex;
   flex: 1;
   min-width: 0;
-  gap: 10px;
-  border-radius: var(--r-md);
+  gap: 12px;
+  border-radius: var(--wn-radius-sm);
   color: inherit;
   text-decoration: none;
 }
 
-.notifications-panel__item-link:focus-visible {
+.wn-notice__link:focus-visible {
   outline: none;
-  box-shadow: var(--focus-ring);
+  box-shadow: var(--wn-focus-ring);
 }
 
-.notifications-panel__avatar {
+.wn-notice__avatar {
+  position: relative;
   display: grid;
   place-items: center;
   flex: 0 0 auto;
-  width: 36px;
-  height: 36px;
+  width: 40px;
+  height: 40px;
   border-radius: 50%;
-  background: var(--surface-3);
-  color: var(--text-2);
-  font: 800 12px/1 var(--font-ui);
-  overflow: hidden;
+  background: #272536;
+  color: var(--wn-text-secondary);
+  font: var(--wn-weight-extra-bold) 13px/1 var(--wn-font-ui);
 }
 
-.notifications-panel__body {
+.wn-notice__kind {
+  position: absolute;
+  right: -3px;
+  bottom: -3px;
+  display: grid;
+  place-items: center;
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  background: var(--wn-primary);
+  box-shadow: 0 0 0 2px var(--wn-notice-ring, var(--wn-surface));
+  color: #fff;
+}
+
+.wn-notice--friend-request .wn-notice__kind,
+.wn-notice--friend-accept .wn-notice__kind {
+  background: var(--wn-teal);
+  color: #062420;
+}
+
+.wn-notice__kind svg {
+  width: 11px;
+  height: 11px;
+}
+
+.wn-notice__body {
   display: flex;
   flex-direction: column;
-  gap: var(--s-4);
+  gap: 4px;
   min-width: 0;
+  padding-top: 1px;
 }
 
-.notifications-panel__text {
-  display: -webkit-box;
-  -webkit-line-clamp: 2;
-  -webkit-box-orient: vertical;
-  overflow: hidden;
-  color: #e4e0f2;
-  font: 500 13px/1.4 var(--font-ui);
+.wn-notice__text {
+  color: var(--wn-text-secondary);
+  font: var(--wn-weight-medium) 14px/20px var(--wn-font-ui);
   overflow-wrap: anywhere;
 }
 
-.notifications-panel__text strong {
-  color: var(--text-1);
-  font-weight: 700;
+.wn-notice__actor {
+  color: var(--wn-text);
+  font-weight: var(--wn-weight-bold);
 }
 
-.notifications-panel__time {
-  color: var(--text-3);
-  font: 500 11px/1 var(--font-ui);
+.wn-notice__excerpt {
+  overflow: hidden;
+  padding-left: 8px;
+  border-left: 2px solid var(--wn-border-strong);
+  color: var(--wn-text-muted);
+  font: var(--wn-weight-medium) 13px/18px var(--wn-font-ui);
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
-.notifications-panel__actions {
+.wn-notice__meta {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  color: var(--wn-text-muted);
+  font: var(--wn-weight-medium) 12px/16px var(--wn-font-ui);
+}
+
+.wn-notice__dot {
+  flex: 0 0 auto;
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: var(--wn-teal);
+}
+
+.wn-notice--unread .wn-notice__time {
+  color: var(--wn-teal);
+}
+
+.wn-notice__sr {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  margin: -1px;
+  padding: 0;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  white-space: nowrap;
+}
+
+.wn-notice__actions {
   display: flex;
   flex: 0 0 auto;
-  margin: -2px -4px -2px 0;
+  gap: 2px;
 }
 
-.notifications-panel__action {
+.wn-notice__action {
   appearance: none;
   display: grid;
   place-items: center;
-  width: 32px;
-  height: 32px;
+  width: 36px;
+  height: 36px;
   padding: 0;
   border: 0;
-  border-radius: var(--r-md);
+  border-radius: var(--wn-radius-sm);
   background: transparent;
-  color: var(--text-3);
+  color: var(--wn-text-muted);
   cursor: pointer;
-  transition: background-color var(--dur-base) var(--ease), color var(--dur-base) var(--ease);
+  transition: background-color 160ms ease, color 160ms ease;
 }
 
-.notifications-panel__action[data-role="notification-mark-read"] {
-  color: var(--accent-text);
+.wn-notice__action--read {
+  color: var(--wn-teal);
+}
+
+.wn-notice[aria-busy="true"] .wn-notice__action {
+  cursor: progress;
+}
+
+.wn-notice__action:focus-visible {
+  outline: none;
+  box-shadow: var(--wn-focus-ring);
+}
+
+@media (pointer: coarse) {
+  .wn-notice__action {
+    width: 44px;
+    height: 44px;
+  }
+}
+
+@media (hover: hover) and (pointer: fine) {
+  .wn-notice__actions {
+    opacity: 0;
+    transition: opacity 120ms ease;
+  }
+
+  .wn-notice:hover .wn-notice__actions,
+  .wn-notice:focus-within .wn-notice__actions {
+    opacity: 1;
+  }
+
+  .wn-notice__action:hover {
+    background: #2c2a3a;
+    color: var(--wn-text);
+  }
+
+  .wn-notice__action--read:hover {
+    color: var(--wn-teal);
+  }
+
+  .wn-notice__action--delete:hover {
+    color: var(--wn-danger);
+  }
+}
+
+/* Skeleton card: the same avatar and two text bones, shimmering (.wn-skeleton). */
+.wn-notice--skeleton .wn-notice__body {
+  flex: 1;
+}
+
+.wn-notice__bone {
+  display: block;
+  width: 78%;
+  height: 12px;
+  margin-top: 4px;
+  border-radius: 6px;
+}
+
+.wn-notice__bone--short {
+  width: 38%;
+}
+
+/* Empty and error states, shared by the panel and the page. */
+.wn-notices-empty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 10px;
+  padding: 48px 24px;
+  border: 1px solid var(--wn-border);
+  border-radius: var(--wn-radius-lg);
+  background: var(--wn-surface);
+  font-family: var(--wn-font-ui);
+  text-align: center;
+}
+
+.wn-notices-empty[hidden] {
+  display: none;
+}
+
+.wn-notices-empty--compact {
+  padding: 32px 16px;
+  border: 0;
+  background: transparent;
+}
+
+.wn-notices-empty__icon {
+  display: grid;
+  place-items: center;
+  width: 48px;
+  height: 48px;
+  margin-bottom: 4px;
+  border-radius: 50%;
+  background: rgb(61 214 195 / 10%);
+  color: var(--wn-teal);
+}
+
+.wn-notices-empty__icon svg {
+  width: 24px;
+  height: 24px;
+}
+
+.wn-notices-empty b {
+  color: var(--wn-text);
+  font: var(--wn-weight-bold) 16px/1.3 var(--wn-font-ui);
+}
+
+.wn-notices-empty > span:not(.wn-notices-empty__icon) {
+  max-width: 380px;
+  color: var(--wn-text-muted);
+  font: var(--wn-weight-medium) 14px/1.45 var(--wn-font-ui);
+  text-wrap: pretty;
+}
+
+.wn-notices-empty__cta {
+  display: inline-flex;
+  align-items: center;
+  min-height: 44px;
+  margin-top: 8px;
+  padding: 0 18px;
+  border: 1px solid var(--wn-border-strong);
+  border-radius: var(--wn-radius-md);
+  color: var(--wn-text);
+  font: var(--wn-weight-semi-bold) 14px/1 var(--wn-font-ui);
+  text-decoration: none;
+  transition: background-color 160ms ease;
+}
+
+.wn-notices-error {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin: 4px;
+  padding: 10px 10px 10px 16px;
+  border: 1px solid rgb(242 104 122 / 30%);
+  border-radius: var(--wn-radius-md);
+  background: rgb(242 104 122 / 8%);
+  color: #f4b4be;
+  font: var(--wn-weight-medium) 14px/1.4 var(--wn-font-ui);
+}
+
+.wn-notices-error__retry {
+  appearance: none;
+  flex: 0 0 auto;
+  min-height: 36px;
+  padding: 0 14px;
+  border: 0;
+  border-radius: var(--wn-radius-sm);
+  background: var(--wn-surface-raised);
+  color: var(--wn-text);
+  font: var(--wn-weight-semi-bold) 13px/1 var(--wn-font-ui);
+  cursor: pointer;
 }
 
 @media (hover: hover) {
-  .notifications-panel__action:hover {
-    background: var(--surface-pressed);
-  }
-
-  .notifications-panel__action[data-role="notification-delete"]:hover {
-    color: var(--danger-text);
+  .wn-notices-empty__cta:hover,
+  .wn-notices-error__retry:hover {
+    background: var(--wn-surface-hover);
   }
 }
 
-.notifications-panel__action:focus-visible {
+.wn-notices-empty__cta:focus-visible,
+.wn-notices-error__retry:focus-visible {
   outline: none;
-  box-shadow: var(--focus-ring);
+  box-shadow: var(--wn-focus-ring);
 }
 
 /* Auth forms (sign-in card, reset, verify - PR 262-264): a column of ui-field rows and a
@@ -17274,104 +17534,189 @@ body.reader-hud-visible .reader-hud {
 }
 
 /* ==========================================================================
-   Aurora Ink screens - notifications (PR 259): NOTIFICATIONS. The same Notification
-   cards as the popover at full size - 40px avatar, text unclamped, 44px icon buttons -
-   with 6px between cards. Content capped at 760px, as in the design.
+   Webnovells - notifications page (PR 311): heading with a settings link, «Новые»/
+   «Ранее» groups as surface cards of .wn-notice rows (44px avatar and actions here),
+   skeleton rows and the «Повторить» plate while/if the next page fails, a closing note.
+   Content capped at 760px.
    ========================================================================== */
-.notifications-page {
+.wn-notices {
+  --wn-notice-ring: var(--wn-surface);
   flex: 1;
   display: flex;
   flex-direction: column;
-  gap: var(--s-16);
+  gap: var(--wn-space-3);
   width: 100%;
-  max-width: calc(760px + 2 * var(--s-40));
-  padding: var(--s-32) var(--s-40) var(--s-40);
+  max-width: calc(760px + 2 * var(--wn-space-5));
+  padding: var(--wn-space-4) var(--wn-space-5) var(--wn-space-5);
+  font-family: var(--wn-font-ui);
 }
 
-.notifications-page__title {
-  margin: 0;
-  color: var(--text-1);
-  font: var(--type-h1);
-}
-
-.notifications-page__list {
+.wn-notices__head {
   display: flex;
-  flex-direction: column;
-  gap: 6px;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--wn-space-2);
 }
 
-.notifications-page__list .notifications-panel__item {
-  padding: 10px 6px 10px var(--s-12);
-  border-radius: 14px;
+.wn-notices__title {
+  margin: 0;
+  color: #f2f0f7;
+  font: var(--wn-weight-extra-bold) 32px/1.1 var(--wn-font-ui);
+  letter-spacing: -0.02em;
+}
+
+.wn-notices__title:focus {
+  outline: none;
+}
+
+.wn-notices__settings {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 40px;
+  padding: 0 14px;
+  border: 1px solid var(--wn-border);
+  border-radius: var(--wn-radius-md);
+  color: var(--wn-text-secondary);
+  font: var(--wn-weight-semi-bold) 14px/1 var(--wn-font-ui);
+  text-decoration: none;
+  transition: background-color 160ms ease, color 160ms ease;
+}
+
+.wn-notices__settings svg {
+  width: 18px;
+  height: 18px;
 }
 
 @media (hover: hover) {
-  .notifications-page__list .notifications-panel__item:hover {
-    background: var(--surface-1);
+  .wn-notices__settings:hover {
+    background: var(--wn-surface-hover);
+    color: var(--wn-text);
   }
 }
 
-.notifications-page__list .notifications-panel__item--unread,
-.notifications-page__list .notifications-panel__item--unread:hover {
-  background: rgba(34, 211, 197, 0.06);
+.wn-notices__settings:focus-visible {
+  outline: none;
+  box-shadow: var(--wn-focus-ring);
 }
 
-.notifications-page__list .notifications-panel__item-link {
-  gap: var(--s-12);
-  padding: 2px 0;
+.wn-notices__list {
+  display: flex;
+  flex-direction: column;
+  gap: 28px;
 }
 
-.notifications-page__list .notifications-panel__avatar {
-  width: 40px;
-  height: 40px;
-  font-size: 13px;
+.wn-notices-group {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
 }
 
-.notifications-page__list .notifications-panel__body {
-  gap: 5px;
+.wn-notices-group__title {
+  margin: 0 0 0 4px;
+  color: var(--wn-text-muted);
+  font: var(--wn-weight-bold) 12px/16px var(--wn-font-ui);
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
 }
 
-.notifications-page__list .notifications-panel__text {
-  display: block;
+.wn-notices-group__list,
+.wn-notices__skeleton {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 6px;
+  border: 1px solid var(--wn-border);
+  border-radius: var(--wn-radius-lg);
+  background: var(--wn-surface);
+}
+
+.wn-notices .wn-notice {
+  padding: 12px 8px 12px 12px;
+}
+
+.wn-notices .wn-notice__avatar {
+  width: 44px;
+  height: 44px;
   font-size: 14px;
-  line-height: 1.45;
 }
 
-.notifications-page__list .notifications-panel__time {
-  font-size: 12px;
+.wn-notices .wn-notice__text {
+  font-size: 15px;
+  line-height: 22px;
 }
 
-.notifications-page__list .notifications-panel__actions {
-  margin: 0;
-}
-
-.notifications-page__list .notifications-panel__action {
+.wn-notices .wn-notice__action {
   width: 44px;
   height: 44px;
 }
 
-.notifications-page__list .notifications-panel__empty {
-  padding: 0;
+.wn-notices .wn-notices-error {
+  margin: 0;
 }
 
-.notifications-page__sentinel {
+.wn-notices__status {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  white-space: nowrap;
+}
+
+.wn-notices__end {
+  margin: 0;
+  color: var(--wn-text-muted);
+  font: var(--wn-weight-medium) 13px/18px var(--wn-font-ui);
+  text-align: center;
+}
+
+.wn-notices__end[hidden] {
+  display: none;
+}
+
+.wn-notices__sentinel {
   height: 1px;
 }
 
 @media (max-width: 1199px) {
-  .notifications-page {
-    padding: 28px var(--s-32) var(--s-32);
+  .wn-notices {
+    padding: 28px var(--wn-space-4) var(--wn-space-4);
   }
 }
 
 @media (max-width: 767px) {
-  .notifications-page {
-    padding: var(--s-4) var(--s-20) var(--s-8);
+  .wn-notices {
+    gap: 20px;
+    padding: 4px var(--wn-space-2) var(--wn-space-1);
   }
 
-  .notifications-page__title {
-    font-size: 22px;
-    line-height: 1;
+  .wn-notices__title {
+    font-size: 24px;
+  }
+
+  .wn-notices__list {
+    gap: 22px;
+  }
+
+  .wn-notices-group__list,
+  .wn-notices__skeleton {
+    padding: 4px;
+  }
+
+  .wn-notices .wn-notice {
+    padding: 10px 4px 10px 10px;
+  }
+
+  .wn-notices .wn-notice__avatar {
+    width: 40px;
+    height: 40px;
+  }
+
+  .wn-notices .wn-notice__text {
+    font-size: 14px;
+    line-height: 20px;
   }
 }
 

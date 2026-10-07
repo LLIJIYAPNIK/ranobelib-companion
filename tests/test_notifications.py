@@ -6,6 +6,7 @@ list_notifications_page()'s pagination math in isolation; these exercise the who
 path end to end, including the actor/comment context the responses add on top of the raw
 table."""
 
+import re
 from collections.abc import Iterator
 
 import pytest
@@ -163,10 +164,8 @@ def test_notifications_page_renders_a_card_reused_from_the_panel(
     response = client.get("/notifications")
 
     assert 'data-role="notifications-page-list"' in response.text
-    # Same card classes as the bell panel (PR 168) - not a second set of styles.
-    assert 'class="notifications-panel__item notifications-panel__item--unread"' in (
-        response.text
-    )
+    # PR 311: the same .wn-notice card as the bell panel - not a second set of styles.
+    assert 'class="wn-notice wn-notice--comment-reaction wn-notice--unread"' in response.text
     assert "bob@example.com" in response.text
     assert "Согласен, но с оговорками" in response.text
     assert 'href="/titles/6712--test-novel/chapters/1/5"' in response.text
@@ -228,14 +227,17 @@ def test_notifications_page_fragment_paginates(
     first_page = client.get("/notifications")
 
     assert 'data-next-page="2"' in first_page.text
-    assert "«second»" in first_page.text
-    assert "«first»" not in first_page.text
+    assert '<span class="wn-notice__excerpt">second</span>' in first_page.text
+    assert '<span class="wn-notice__excerpt">first</span>' not in first_page.text
 
     fragment = client.get("/notifications/page", params={"page": "2"})
 
     assert fragment.headers["X-Has-Next-Page"] == "false"
-    assert "«first»" in fragment.text
-    assert "«second»" not in fragment.text
+    assert '<span class="wn-notice__excerpt">first</span>' in fragment.text
+    assert '<span class="wn-notice__excerpt">second</span>' not in fragment.text
+    # The fragment is a bare group of cards for notifications-page.js to merge.
+    assert 'data-role="notifications-group" data-group="new"' in fragment.text
+    assert "<html" not in fragment.text
 
 
 def test_notifications_panel_footer_links_to_the_full_page(client: TestClient) -> None:
@@ -246,6 +248,138 @@ def test_notifications_panel_footer_links_to_the_full_page(client: TestClient) -
     assert 'data-role="notifications-panel"' in response.text
     assert 'class="notifications-panel__footer" href="/notifications"' in response.text
     assert "Все уведомления" in response.text
+
+
+def _card(html: str, notification_id: int) -> str:
+    match = re.search(
+        rf'<article class="wn-notice[^"]*" data-notification-id="{notification_id}">.*?</article>',
+        html,
+        re.S,
+    )
+    assert match, f"no card for notification {notification_id}"
+    return match.group(0)
+
+
+def test_notifications_panel_fragment_requires_login(client: TestClient) -> None:
+    response = client.get("/notifications/panel", follow_redirects=False)
+
+    assert response.status_code == 303
+    assert response.headers["location"] == "/login"
+
+
+def test_notifications_panel_fragment_renders_the_same_card_as_the_page(
+    client: TestClient,
+) -> None:
+    """PR 311: one card implementation - the bell panel's markup comes from the same
+    _notification_card.html macro as /notifications, not from a client-side renderer."""
+    notification_id = _create_notification_for_alice(client)
+
+    panel = client.get("/notifications/panel")
+    page = client.get("/notifications")
+
+    assert panel.headers["X-Unread-Count"] == "1"
+    assert "<html" not in panel.text
+    assert _card(panel.text, notification_id) == _card(page.text, notification_id)
+    card = _card(panel.text, notification_id)
+    assert 'href="/titles/6712--test-novel/chapters/1/5"' in card
+    assert '<span class="wn-notice__excerpt">hi</span>' in card
+    assert '<time class="wn-notice__time" datetime="' in card
+    assert ">только что</time>" in card
+    assert 'data-role="notification-mark-read"' in card
+    assert 'data-role="notification-delete"' in card
+    # The empty state ships with the list, hidden while there are cards.
+    assert 'data-role="notifications-empty" hidden' in panel.text
+
+
+def test_notifications_panel_fragment_shows_the_empty_state_once_all_are_read(
+    client: TestClient,
+) -> None:
+    notification_id = _create_notification_for_alice(client)
+    client.post(f"/notifications/{notification_id}/read")
+
+    panel = client.get("/notifications/panel")
+
+    assert panel.headers["X-Unread-Count"] == "0"
+    assert "data-notification-id" not in panel.text
+    assert 'data-role="notifications-empty">' in panel.text
+    assert "Всё прочитано" in panel.text
+
+
+def test_notifications_page_groups_unread_as_new_before_read_as_earlier(
+    client: TestClient,
+) -> None:
+    _register(client, "alice@example.com")
+    read_comment, unread_comment = (
+        client.post(
+            "/titles/6712--test-novel/chapters/1/5/comments",
+            data={"paragraph_index": str(index), "body": body},
+        ).json()["comments"][0]
+        for index, body in enumerate(("read me", "leave me unread"))
+    )
+    _register(client, "bob@example.com")
+    # The read one is the newer of the two - it still goes under «Ранее».
+    for comment in (unread_comment, read_comment):
+        client.post(
+            f"/titles/6712--test-novel/chapters/1/5/comments/{comment['id']}/reactions",
+            data={"value": "1"},
+        )
+    _login(client, "alice@example.com")
+    by_excerpt = {
+        n["comment_excerpt"]: n["id"]
+        for n in client.get("/notifications/recent").json()["notifications"]
+    }
+    client.post(f"/notifications/{by_excerpt['read me']}/read")
+
+    html = client.get("/notifications").text
+
+    new_at = html.index('data-group="new"')
+    earlier_at = html.index('data-group="earlier"')
+    assert new_at < html.index(">Новые</h2>") < earlier_at < html.index(">Ранее</h2>")
+    assert new_at < html.index(f'data-notification-id="{by_excerpt["leave me unread"]}"')
+    assert earlier_at < html.index(f'data-notification-id="{by_excerpt["read me"]}"')
+    assert 'data-role="notifications-page-empty" hidden' in html
+    # One page only - the closing note shows straight away.
+    assert 'data-role="notifications-page-end">' in html
+
+
+def test_notifications_page_empty_state_points_to_the_catalog(client: TestClient) -> None:
+    _register(client, "alice@example.com")
+
+    html = client.get("/notifications").text
+
+    assert 'data-role="notifications-page-empty">' in html
+    assert 'class="wn-notices-empty__cta" href="/catalog"' in html
+    assert 'data-role="notifications-group"' not in html
+    assert 'data-role="notifications-page-end" hidden' in html
+    assert 'href="/settings/notifications"' in html
+
+
+def test_notifications_page_ships_skeleton_and_error_slots_for_the_next_page(
+    client: TestClient,
+) -> None:
+    _register(client, "alice@example.com")
+
+    html = client.get("/notifications").text
+
+    assert '<template data-role="notifications-page-skeleton">' in html
+    assert html.count("wn-notice--skeleton") >= 3
+    assert 'data-role="notifications-page-loading" role="status"' in html
+    assert 'data-role="notifications-page-error"' in html
+
+
+def test_notifications_panel_ships_a_skeleton_header_count_and_settings_link(
+    client: TestClient,
+) -> None:
+    _register(client, "alice@example.com")
+
+    html = client.get("/").text
+    panel = html[html.index('data-role="notifications-panel"') :]
+    panel = panel[: panel.index('class="notifications-panel__footer"')]
+
+    assert 'role="dialog"' in html[html.index('<div class="notifications-panel"') :][:200]
+    assert 'data-role="notifications-panel-count" hidden' in panel
+    assert 'href="/settings/notifications"' in panel
+    assert panel.count("wn-notice--skeleton") == 3
 
 
 def _create_notification_for_alice(client: TestClient) -> int:
