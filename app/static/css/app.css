@@ -12654,15 +12654,23 @@ a.catalog-card__action {
     border-radius: var(--wn-radius-xl);
   }
 
+  /* PR 319: positioned here, not only in the min-width: 768px block - on phones that
+     block doesn't apply, and the backdrop fell into the flow as a tall image. */
   .wn-home .wn-continue-hero--home .wn-library-hero__backdrop {
+    position: absolute;
     inset: -48px;
+    z-index: -3;
     display: block;
     width: calc(100% + 96px);
     height: calc(100% + 96px);
+    object-fit: cover;
     filter: blur(44px) saturate(0.7) brightness(0.55);
   }
 
   .wn-home .wn-continue-hero--home .wn-library-hero__scrim {
+    position: absolute;
+    inset: 0;
+    z-index: -2;
     display: block;
     background: linear-gradient(
       180deg,
@@ -12787,7 +12795,7 @@ a.catalog-card__action {
 
   .wn-home .wn-continue-hero--home .wn-library-hero__inner {
     grid-template-columns: 76px minmax(0, 1fr);
-    gap-inline: 14px;
+    column-gap: 14px;
   }
 }
 
