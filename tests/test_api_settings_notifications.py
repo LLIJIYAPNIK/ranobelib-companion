@@ -122,6 +122,8 @@ def test_notifications_nav_link_sits_between_security_and_reading(client: TestCl
     response = client.get("/settings/notifications")
 
     security_pos = response.text.index('href="/settings/security"')
-    notifications_pos = response.text.index('href="/settings/notifications"')
+    # From the security link on - the bell panel's header (PR 311) links to
+    # /settings/notifications too, earlier in the page.
+    notifications_pos = response.text.index('href="/settings/notifications"', security_pos)
     reading_pos = response.text.index('href="/settings/reading"')
     assert security_pos < notifications_pos < reading_pos
