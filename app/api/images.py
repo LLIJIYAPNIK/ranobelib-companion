@@ -45,6 +45,40 @@ async def download_image(url: Annotated[str, Query()]) -> Response:
     """Fetches `url` itself and re-serves it as a same-origin attachment - not an open
     proxy: `_is_allowed_image_url` rejects anything outside the site's own domains, so
     this can't be used to fetch/relay arbitrary third-party URLs through this server."""
+    response = await _fetch(url, failure="Не удалось скачать изображение")
+    filename = urlsplit(url).path.rsplit("/", 1)[-1] or "image"
+    return Response(
+        content=response.content,
+        media_type=response.headers.get("content-type", "application/octet-stream"),
+        headers={"Content-Disposition": f'attachment; filename="{filename}"'},
+    )
+
+
+# Raster formats only: an SVG served from our own origin is a document that can carry
+# script, and nothing in chapter content needs one.
+_VIEWABLE_TYPES = frozenset({"image/jpeg", "image/png", "image/webp", "image/gif", "image/avif"})
+_VIEW_CACHE_CONTROL = "public, max-age=604800"
+
+
+@router.get("/images/view")
+async def view_image(url: Annotated[str, Query()]) -> Response:
+    """PR 329: the same proxy, but inline - what a chapter saved for offline reading
+    points its <img> at (app/api/offline.py). A hotlinked cross-origin image can only be
+    stored opaque (unreadable, and padded against the storage quota); a same-origin copy
+    is an ordinary response the browser can keep beside the chapter's text. Same host
+    allowlist as /images/download; only a raster image type is passed through."""
+    response = await _fetch(url, failure="Не удалось загрузить изображение")
+    media_type = response.headers.get("content-type", "").split(";")[0].strip().lower()
+    if media_type not in _VIEWABLE_TYPES:
+        raise HTTPException(status_code=502, detail="Не удалось загрузить изображение")
+    return Response(
+        content=response.content,
+        media_type=media_type,
+        headers={"Cache-Control": _VIEW_CACHE_CONTROL},
+    )
+
+
+async def _fetch(url: str, *, failure: str) -> httpx.Response:
     if not _is_allowed_image_url(url):
         raise HTTPException(status_code=400, detail="Недопустимый адрес изображения")
 
@@ -57,16 +91,8 @@ async def download_image(url: Annotated[str, Query()]) -> Response:
             response = await client.get(url, timeout=15, headers={"Referer": _REFERER})
             response.raise_for_status()
         except httpx.HTTPError as exc:
-            raise HTTPException(
-                status_code=502, detail="Не удалось скачать изображение"
-            ) from exc
-
-    filename = urlsplit(url).path.rsplit("/", 1)[-1] or "image"
-    return Response(
-        content=response.content,
-        media_type=response.headers.get("content-type", "application/octet-stream"),
-        headers={"Content-Disposition": f'attachment; filename="{filename}"'},
-    )
+            raise HTTPException(status_code=502, detail=failure) from exc
+    return response
 
 
 def _is_allowed_image_url(url: str) -> bool:

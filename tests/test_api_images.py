@@ -1,6 +1,7 @@
 from unittest.mock import patch
 
 import httpx
+import pytest
 from fastapi.testclient import TestClient
 
 from app.main import app
@@ -160,5 +161,48 @@ def test_download_image_surfaces_bad_upstream_status_as_502() -> None:
             "/images/download",
             params={"url": "https://ranobelib.me/uploads/ranobe/1/chapters/2/missing.jpg"},
         )
+
+    assert response.status_code == 502
+
+
+# --- /images/view (PR 329): the inline proxy offline chapters point their <img> at ---
+
+_CHAPTER_IMAGE = "https://ranobelib.me/uploads/ranobe/1/chapters/2/a.png"
+
+
+def test_view_image_serves_inline_and_cacheable() -> None:
+    fake = _FakeHttpxClient(_FakeResponse(b"\x89PNG", content_type="image/png"))
+    with patch("app.api.images.httpx.AsyncClient", return_value=fake):
+        response = client.get("/images/view", params={"url": _CHAPTER_IMAGE})
+
+    assert response.status_code == 200
+    assert response.content == b"\x89PNG"
+    assert response.headers["content-type"] == "image/png"
+    assert "content-disposition" not in response.headers
+    assert response.headers["cache-control"] == "public, max-age=604800"
+    assert fake.received_url == _CHAPTER_IMAGE
+    assert fake.received_headers == {"Referer": "https://ranobelib.me/"}
+
+
+def test_view_image_keeps_the_host_allowlist() -> None:
+    response = client.get("/images/view", params={"url": "https://evil.example.com/x.png"})
+
+    assert response.status_code == 400
+
+
+@pytest.mark.parametrize("content_type", ["image/svg+xml", "text/html", "application/json", ""])
+def test_view_image_passes_through_raster_images_only(content_type: str) -> None:
+    fake = _FakeHttpxClient(_FakeResponse(b"<svg/>", content_type=content_type))
+    with patch("app.api.images.httpx.AsyncClient", return_value=fake):
+        response = client.get("/images/view", params={"url": _CHAPTER_IMAGE})
+
+    assert response.status_code == 502
+    assert response.json() == {"detail": "Не удалось загрузить изображение"}
+
+
+def test_view_image_surfaces_upstream_failure_as_502() -> None:
+    fake = _FakeHttpxClient(error=httpx.ConnectError("boom"))
+    with patch("app.api.images.httpx.AsyncClient", return_value=fake):
+        response = client.get("/images/view", params={"url": _CHAPTER_IMAGE})
 
     assert response.status_code == 502
