@@ -14339,7 +14339,8 @@ a.catalog-card__action {
   /* Download and library move into the «⋯» sheet - but only once the script that
      opens it is running (it un-hides «⋯»). */
   .title-hero__actions:has(.title-hero__more:not([hidden])) .title-hero__library,
-  .title-hero__actions:has(.title-hero__more:not([hidden])) .title-download {
+  .title-hero__actions:has(.title-hero__more:not([hidden])) .title-download,
+  .title-hero__actions:has(.title-hero__more:not([hidden])) .title-offline-open {
     display: none;
   }
 
@@ -21276,4 +21277,190 @@ body.reader-hud-visible .reader-hud {
   justify-content: center;
   gap: var(--s-12);
   margin-top: var(--s-8);
+}
+
+/* ==========================================================================
+   Reading without a network (PR 330): the title page's «Без интернета» button, the
+   manager in the shared bottom sheet (.wn-offline) and the progress strip under the hero
+   actions; «Скачано» on /downloads. Built from the existing primitives - ui-segmented,
+   ui-field/ui-select, ui-download-progress, ui-notice, ui-btn - no screen of its own in
+   the design.
+   ========================================================================== */
+.title-offline-open[hidden] {
+  display: none;
+}
+
+.title-offline-status {
+  margin-top: var(--s-16);
+  max-width: 560px;
+}
+
+.title-offline-status[hidden] {
+  display: none;
+}
+
+.title-offline-status__note {
+  margin: 0;
+  color: var(--text-2);
+  font: 500 13px/1.45 var(--font-ui);
+  overflow-wrap: anywhere;
+}
+
+.title-offline-status__note[hidden] {
+  display: none;
+}
+
+.title-offline-status__actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--s-8);
+}
+
+.title-offline-status__actions [hidden] {
+  display: none;
+}
+
+.title-offline-status__link {
+  margin-left: auto;
+  color: var(--primary-text);
+  font: 600 13px/1.3 var(--font-ui);
+}
+
+.wn-offline {
+  display: flex;
+  flex-direction: column;
+  gap: var(--s-16);
+  padding-top: var(--s-4);
+}
+
+.wn-offline[hidden],
+.wn-offline [hidden] {
+  display: none;
+}
+
+.wn-offline__lead,
+.wn-offline__loading,
+.wn-offline__summary {
+  margin: 0;
+  color: var(--text-2);
+  font: 500 14px/1.5 var(--font-ui);
+}
+
+.wn-offline__loading {
+  display: flex;
+  align-items: center;
+  gap: var(--s-8);
+}
+
+.wn-offline__summary {
+  color: var(--text-1);
+  font-weight: 600;
+}
+
+.wn-offline__form {
+  display: flex;
+  flex-direction: column;
+  gap: var(--s-16);
+}
+
+.wn-offline__modes .ui-segmented__item {
+  flex: 1;
+}
+
+.wn-offline__range {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: var(--s-12);
+}
+
+.wn-offline .ui-select,
+.wn-offline select {
+  width: 100%;
+  min-width: 0;
+}
+
+@media (max-width: 420px) {
+  .wn-offline__range {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
+/* «Скачано» on /downloads (PR 330): the downloads page's own section head, one row per
+   title - cover, name over «N глав · size · date» in mono, «Удалить». */
+.wn-offline-saved[hidden],
+.wn-offline-saved [hidden] {
+  display: none;
+}
+
+.wn-offline-saved__usage {
+  color: var(--text-3);
+  font-size: 13px;
+}
+
+.wn-offline-saved__list {
+  display: flex;
+  flex-direction: column;
+  gap: var(--s-8);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.wn-offline-saved__item {
+  display: flex;
+  align-items: center;
+  gap: var(--s-12);
+  min-width: 0;
+  padding: 10px 12px;
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  background: var(--surface-1);
+}
+
+.wn-offline-saved__cover {
+  display: grid;
+  flex: none;
+  place-items: center;
+  width: 40px;
+  height: 56px;
+  overflow: hidden;
+  border-radius: 8px;
+  background: var(--surface-2);
+}
+
+.wn-offline-saved__cover img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.wn-offline-saved__names {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+
+.wn-offline-saved__name {
+  overflow: hidden;
+  color: var(--text-1);
+  font: 700 15px/1.3 var(--font-ui);
+  text-decoration: none;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.wn-offline-saved__name:hover {
+  text-decoration: underline;
+}
+
+.wn-offline-saved__meta {
+  color: var(--text-3);
+  font-size: 12px;
+}
+
+.wn-offline-saved__delete {
+  flex: none;
 }

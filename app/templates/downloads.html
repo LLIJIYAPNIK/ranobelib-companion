@@ -82,6 +82,8 @@
     </aside>
   </div>
 
+  {% include "_offline_saved.html" %}
+
   <section class="downloads-section wn-downloads__section" data-role="downloads-history-section">
     <div class="wn-downloads__section-head wn-downloads__history-head">
       <div><h2 class="downloads-section__title">История</h2>{% if history %}<span data-role="history-count">{{ history | length }}</span>{% endif %}</div>
@@ -167,8 +169,12 @@
   {% call locked_feature("Загрузки скрыты", "/login", "Войти") %}
   <a href="/login">Войдите</a> или <a href="/register">зарегистрируйтесь</a>, чтобы видеть свои загрузки и их историю.
   {% endcall %}
+  {% include "_offline_saved.html" %}
   {% endif %}
 </main>
 <script src="{{ static_url('js/download-history-delete.js') }}" defer></script>
 <script src="{{ static_url('js/downloads-history-tools.js') }}" defer></script>
+{# PR 330: «Скачано» - read from this device's offline index. #}
+<script src="{{ static_url('js/offline-store.js') }}" defer></script>
+<script src="{{ static_url('js/offline-saved.js') }}" defer></script>
 {% endblock %}

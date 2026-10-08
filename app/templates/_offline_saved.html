@@ -1,0 +1,29 @@
+{# PR 330: «Скачано» - titles kept on this device for reading without a network.
+   Nothing here comes from the server: offline-saved.js fills the list from the IndexedDB
+   index (offline-store.js) and leaves the section hidden when there's nothing, or no
+   IndexedDB/Cache Storage at all. Shown to guests too - the copy belongs to the device,
+   not to an account. #}
+<section class="downloads-section wn-downloads__section wn-offline-saved" id="offline" data-role="offline-saved" aria-labelledby="offline-saved-title" hidden>
+  <div class="wn-downloads__section-head">
+    <div><h2 class="downloads-section__title" id="offline-saved-title">Скачано для чтения без интернета</h2><span data-role="offline-saved-count"></span></div>
+    <span class="wn-offline-saved__usage wn-technical" data-role="offline-saved-usage"></span>
+  </div>
+  <ul class="wn-offline-saved__list" data-role="offline-saved-list"></ul>
+  <template data-role="offline-saved-row">
+    <li class="wn-offline-saved__item">
+      <span class="wn-offline-saved__cover" aria-hidden="true"><img alt="" loading="lazy"></span>
+      <span class="wn-offline-saved__names">
+        <a class="wn-offline-saved__name"></a>
+        <span class="wn-offline-saved__meta wn-technical"></span>
+      </span>
+      <button type="button" class="ui-btn ui-btn--sm ui-btn--quiet wn-offline-saved__delete" data-role="offline-saved-delete">Удалить</button>
+    </li>
+  </template>
+  <div class="wn-sheet-confirm" id="offline-delete-confirm" data-bottom-sheet-title="Удалить скачанное?" hidden>
+    <p class="wn-sheet-confirm__text" data-role="offline-delete-text"></p>
+    <div class="wn-sheet-confirm__actions">
+      <button class="wn-sheet-confirm__cancel" type="button" data-bottom-sheet-close data-autofocus>Отмена</button>
+      <button class="wn-sheet-confirm__danger" type="button" data-role="offline-delete-confirm">Удалить</button>
+    </div>
+  </div>
+</section>

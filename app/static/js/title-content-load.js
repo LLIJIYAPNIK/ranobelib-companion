@@ -52,6 +52,7 @@
       if (window.initTocTapProgress) window.initTocTapProgress();
       if (window.initTitlePageUi) window.initTitlePageUi();
       if (window.initTitleActionsSheet) window.initTitleActionsSheet();
+      if (window.initOfflineDownload) window.initOfflineDownload();
     })
     .catch(() => showError("Не удалось загрузить тайтл"));
 })();
