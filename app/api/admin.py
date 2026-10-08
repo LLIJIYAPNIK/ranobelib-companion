@@ -34,7 +34,11 @@ from app.db.admin_data import MASK, browse_table, list_tables, overview, table_c
 from app.db.connection import get_connection
 from app.templating import templates
 
-router = APIRouter(prefix="/admin", dependencies=[Depends(require_admin_enabled)])
+# PR 326: out of the public /openapi.json and /docs - listing the paths there would
+# announce the panel even with ADMIN_PASSWORD unset, when it must look like it isn't there.
+router = APIRouter(
+    prefix="/admin", dependencies=[Depends(require_admin_enabled)], include_in_schema=False
+)
 
 
 Admin = Annotated[None, Depends(require_admin)]
