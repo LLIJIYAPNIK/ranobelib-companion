@@ -148,16 +148,18 @@
     return new HttpError(response.status, detail);
   }
 
-  // One chapter: its fragment (PR 329), then its images one after another through the
-  // same-origin proxy, then into offlineStore. A missing image doesn't fail the chapter.
+  // One chapter: its fragment (PR 329), its reader page (PR 331), then its images one
+  // after another through the same-origin proxy, then into offlineStore - every request
+  // waits for the one before. A missing image doesn't fail the chapter.
   async function downloadChapter(title, item, signal) {
     const query = item.branchId != null ? `?branch_id=${encodeURIComponent(item.branchId)}` : "";
-    const response = await fetch(
-      window.offlineStore.chapterUrl(title.slug, item.volume, item.number) + query,
-      { signal, headers: { Accept: "application/json" } },
-    );
+    const base = window.offlineStore.chapterUrl(title.slug, item.volume, item.number);
+    const response = await fetch(base + query, { signal, headers: { Accept: "application/json" } });
     if (!response.ok) throw await readError(response);
     const fragment = await response.json();
+    const pageResponse = await fetch(`${base}/page${query}`, { signal });
+    if (!pageResponse.ok) throw await readError(pageResponse);
+    const page = await pageResponse.text();
     const images = [];
     for (const url of fragment.images) {
       if (signal.aborted) throw new DOMException("Aborted", "AbortError");
@@ -169,7 +171,7 @@
       }
     }
     if (signal.aborted) throw new DOMException("Aborted", "AbortError");
-    return window.offlineStore.saveChapter(title, fragment, images);
+    return window.offlineStore.saveChapter(title, fragment, page, images);
   }
 
   OfflineQueue.HttpError = HttpError;

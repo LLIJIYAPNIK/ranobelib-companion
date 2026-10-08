@@ -21464,3 +21464,113 @@ body.reader-hud-visible .reader-hud {
 .wn-offline-saved__delete {
   flex: none;
 }
+
+/* PR 331: reading without a network. The offline page's shelf - what's on this device,
+   «Продолжить» and the downloaded chapters per title (offline-page.js) - and, in a
+   downloaded chapter, the neighbour links that won't open offline (reader-offline.js). */
+.offline-shelf {
+  display: flex;
+  flex-direction: column;
+  gap: var(--s-12);
+  width: min(520px, 100%);
+  margin-top: var(--s-24);
+  text-align: left;
+}
+
+.offline-shelf[hidden] {
+  display: none;
+}
+
+.offline-shelf__title {
+  margin: 0;
+  color: var(--text-1);
+  font: 700 15px/1.3 var(--font-ui);
+}
+
+.offline-shelf__list {
+  display: flex;
+  flex-direction: column;
+  gap: var(--s-8);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.offline-shelf__item {
+  padding: 12px 14px;
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  background: var(--surface-1);
+}
+
+.offline-shelf__row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--s-8) var(--s-12);
+}
+
+.offline-shelf__name {
+  min-width: 0;
+  color: var(--text-1);
+  font: 700 15px/1.3 var(--font-ui);
+  overflow-wrap: anywhere;
+}
+
+.offline-shelf__chapters {
+  margin-top: var(--s-8);
+  color: var(--text-2);
+  font: 500 13px/1.5 var(--font-ui);
+}
+
+.offline-shelf__chapters summary {
+  cursor: pointer;
+}
+
+.offline-shelf__chapters ol {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  max-height: 50vh;
+  margin: var(--s-8) 0 0;
+  padding: 0;
+  overflow-y: auto;
+  list-style: none;
+}
+
+.offline-shelf__chapters a {
+  display: block;
+  padding: 6px 0;
+  color: var(--text-1);
+  text-decoration: none;
+  overflow-wrap: anywhere;
+}
+
+.offline-shelf__chapters a:hover {
+  text-decoration: underline;
+}
+
+.reader-link--not-downloaded {
+  opacity: 0.55;
+}
+
+.reader-link__note {
+  color: var(--text-3);
+  font-weight: 500;
+}
+
+/* A downloaded copy (PR 331): one quiet line under the chapter title about what needs
+   the network; no account block - the copy is nobody's page, so it would only ever show
+   a guest's «Войти» - and no Tap Focus «⋯», whose menu (reactions, comments) isn't
+   loaded in a copy. */
+.reader-offline-note {
+  margin: 0;
+  color: var(--r-muted);
+  font: 500 13px/1.45 var(--font-ui);
+}
+
+body.reader-page--offline-copy .sidebar__account,
+body.reader-page--offline-copy .reader-paragraph-more {
+  display: none;
+}

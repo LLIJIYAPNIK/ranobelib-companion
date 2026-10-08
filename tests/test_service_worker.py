@@ -124,10 +124,16 @@ def test_offline_page_stands_alone_without_any_user_data() -> None:
     assert "Нет соединения" in html
     # No shell: its sidebar would freeze whoever was signed in when it was cached.
     assert 'data-role="sidebar"' not in html
-    assert "<script" not in html
     assert re.search(r'<a class="ui-btn ui-btn--primary" href="">Повторить</a>', html)
-    assert 'href="/downloads"' in html
     assert f"/static/css/app.css?v={asset_hash('css/app.css')}" in html
+    # PR 331: only the two scripts that read this device's own offline index - the page
+    # itself stays the same for everyone.
+    scripts = re.findall(r'<script src="([^"?]+)', html)
+    assert scripts == [
+        "http://testserver/static/js/offline-store.js",
+        "http://testserver/static/js/offline-page.js",
+    ]
+    assert 'data-role="offline-shelf" aria-labelledby="offline-shelf-title" hidden' in html
 
 
 def test_every_page_registers_the_worker_and_fetches_fonts_with_cors() -> None:
@@ -325,3 +331,67 @@ def test_nothing_is_offered_without_an_old_version_to_replace(register: dict[str
     assert register["firstInstall"]["offered"] is False
     assert register["firstInstall"]["reloads"] == 0
     assert register["claimedWithoutTap"]["reloads"] == 0
+
+
+# --- PR 331: reading without a network ----------------------------------------------
+
+
+@needs_node
+def test_proxied_chapter_images_come_from_the_device_first(worker: dict[str, Any]) -> None:
+    assert dict(worker["routes"])["GET /images/view?url=x no-cors"] == "offline-image"
+    reading = worker["offlineReading"]
+
+    # Downloaded: from the device even online (no second trip to the source)...
+    assert reading["online"]["image"] == {"body": "image:a", "answered": True, "fetched": []}
+    assert reading["offline"]["image"]["body"] == "image:a"
+    # ...anything else straight to the proxy, as before.
+    assert reading["online"]["otherImage"]["fetched"] == [
+        "https://app.test/images/view?url=https%3A%2F%2Franobelib.me%2Fb.png"
+    ]
+
+
+@needs_node
+def test_online_the_reader_always_comes_from_the_network(worker: dict[str, Any]) -> None:
+    chapter = worker["offlineReading"]["online"]["chapter"]
+
+    assert chapter["body"] == "net:https://app.test/titles/6712--test-novel/chapters/1/3"
+
+
+@needs_node
+def test_offline_a_downloaded_chapter_is_its_kept_copy(worker: dict[str, Any]) -> None:
+    offline = worker["offlineReading"]["offline"]
+
+    assert offline["chapter"]["body"] == "copy:1/3"
+    # The copy is the translation picked at download: ?branch_id= finds the same one.
+    assert offline["chapterWithBranch"]["body"] == "copy:1/3"
+    # Already known to be offline: no attempt at all.
+    assert worker["offlineReading"]["deviceOffline"]["chapter"] == {
+        "body": "copy:1/3",
+        "fetched": [],
+    }
+
+
+@needs_node
+def test_offline_anything_not_downloaded_is_the_offline_page(worker: dict[str, Any]) -> None:
+    offline = worker["offlineReading"]["offline"]
+
+    # It says «Глава не скачана» / lists the shelf itself (offline-page.js) - never a 5xx.
+    assert offline["notDownloaded"]["body"] == "offline-page"
+    assert offline["titlePage"]["body"] == "offline-page"
+    assert offline["otherTitle"]["body"] == "offline-page"
+
+
+@needs_node
+def test_offline_an_old_stylesheet_version_falls_back_to_the_current_one(
+    worker: dict[str, Any],
+) -> None:
+    reading = worker["offlineReading"]
+
+    # A copy downloaded before a deploy still names the old ?v=.
+    assert reading["offline"]["oldCss"]["body"] == "css:new"
+    assert reading["online"]["oldCss"]["body"].startswith("net:")
+
+
+@needs_node
+def test_the_worker_never_writes_the_devices_offline_copy(worker: dict[str, Any]) -> None:
+    assert worker["offlineReading"]["offlineCacheAfter"] == [2, 2]

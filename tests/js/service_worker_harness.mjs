@@ -13,8 +13,17 @@ class FakeCache {
     this.entries = new Map();
     this.fetchFn = fetchFn;
   }
-  async match(input) {
-    const response = this.entries.get(absolute(input));
+  async match(input, options = {}) {
+    let response = this.entries.get(absolute(input));
+    if (!response && options.ignoreSearch) {
+      const path = new URL(absolute(input)).pathname;
+      for (const [url, entry] of this.entries) {
+        if (new URL(url).pathname === path) {
+          response = entry;
+          break;
+        }
+      }
+    }
     return response ? response.clone() : undefined;
   }
   async put(input, response) {
@@ -140,6 +149,7 @@ results.config = config;
     ["GET", "/avatars/7.png", "no-cors"],
     ["GET", "/comment-attachments/a.mp4", "no-cors"],
     ["GET", "/images/download?url=x", "cors"],
+    ["GET", "/images/view?url=x", "no-cors"],
     ["GET", "/static/css/app.css?v=abc", "no-cors"],
     ["GET", "/static/js/reader-hud.js?v=abc", "no-cors"],
     ["GET", "/static/js/reader-hud.js", "no-cors"],
@@ -293,6 +303,72 @@ async function page(sw, url) {
   results.fonts = {
     cached: Object.keys(await contents(sw.store.get("wn-fonts"))),
     refetchedFontFile: sw.fetched.length - before,
+  };
+}
+
+// PR 331: reading without a network. The device's "wn-offline" cache holds a downloaded
+// chapter's page under the reader URL and its proxied images; the worker reads it, never
+// writes it.
+{
+  const precache = `wn-static-${config.version}`;
+  const COPY = "/titles/6712--test-novel/chapters/1/3";
+  const IMAGE = "/images/view?url=https%3A%2F%2Franobelib.me%2Fa.png";
+  const seed = async (sw) => {
+    const offline = await sw.store.get("wn-offline");
+    await offline.put(COPY, new Response("copy:1/3"));
+    await offline.put(IMAGE, new Response("image:a"));
+    const statics = await sw.store.get(precache);
+    await statics.put("/offline", new Response("offline-page"));
+    await statics.put("/static/css/app.css?v=new0000000", new Response("css:new"));
+  };
+  const make = async (options) => {
+    const sw = boot({ ...options, caches: ["wn-offline", precache] });
+    await seed(sw);
+    return sw;
+  };
+  const navigate = async (sw, url) => {
+    const before = sw.fetched.length;
+    const response = await sw.dispatch("fetch", { request: navigation(url) });
+    return { body: await response.text(), fetched: sw.fetched.slice(before) };
+  };
+  const get = async (sw, url, mode = "no-cors") => {
+    const before = sw.fetched.length;
+    const response = await sw.dispatch("fetch", { request: { method: "GET", mode, url: absolute(url) } });
+    return {
+      body: response ? await response.text() : null,
+      answered: response !== null,
+      fetched: sw.fetched.slice(before),
+    };
+  };
+
+  const online = await make({});
+  const offline = await make({ online: false });
+  const deviceOffline = await make({ onLine: false });
+  results.offlineReading = {
+    online: {
+      // Online the reader is always the network's - the copy is only the fallback.
+      chapter: await navigate(online, COPY),
+      image: await get(online, IMAGE),
+      otherImage: await get(online, "/images/view?url=https%3A%2F%2Franobelib.me%2Fb.png"),
+      oldCss: await get(online, "/static/css/app.css?v=old0000000"),
+    },
+    offline: {
+      chapter: await navigate(offline, COPY),
+      chapterWithBranch: await navigate(offline, `${COPY}?branch_id=7`),
+      notDownloaded: await navigate(offline, "/titles/6712--test-novel/chapters/1/4"),
+      titlePage: await navigate(offline, "/titles/6712--test-novel"),
+      otherTitle: await navigate(offline, "/titles/1--other/chapters/1/3"),
+      image: await get(offline, IMAGE),
+      oldCss: await get(offline, "/static/css/app.css?v=old0000000"),
+    },
+    deviceOffline: {
+      chapter: await navigate(deviceOffline, COPY),
+    },
+    // Nothing the worker did above added a single entry to the device's copy.
+    offlineCacheAfter: [
+      Object.keys(await contents(online.store.get("wn-offline"))).length,
+      Object.keys(await contents(offline.store.get("wn-offline"))).length,
+    ],
   };
 }
 

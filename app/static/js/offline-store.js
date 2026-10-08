@@ -1,8 +1,10 @@
 // PR 330: what's downloaded for reading without a network, kept only on this device.
 //
-//   Cache Storage "wn-offline" - the bytes: each chapter's fragment (GET /offline/titles/
-//     {slug}/chapters/{volume}/{number}, PR 329) under that URL without a query, and every
-//     image it points at (/images/view?url=...), plus the title's cover the same way.
+//   Cache Storage "wn-offline" - the bytes: each chapter's reader page (PR 331, GET
+//     /offline/titles/{slug}/chapters/{volume}/{number}/page) under the reader's own URL,
+//     /titles/{slug}/chapters/{volume}/{number} without a query - what the service worker
+//     answers that URL with when there's no network - and every image it points at
+//     (/images/view?url=...), plus the title's cover the same way.
 //   IndexedDB "wn-offline" - the index: titles (slug, name, cover, dates) and chapters
 //     (slug, volume, number, name, branch, bytes, images, date), for «Скачано», sizes and
 //     "is this one already here?".
@@ -61,6 +63,10 @@
   const chapterUrl = (slug, volume, number) =>
     `/offline/titles/${encodeURIComponent(slug)}/chapters/${encodeURIComponent(volume)}/${encodeURIComponent(number)}`;
 
+  // Where a chapter's page is kept: the reader URL itself (the worker looks it up by path).
+  const readerUrl = (slug, volume, number) =>
+    `/titles/${encodeURIComponent(slug)}/chapters/${encodeURIComponent(volume)}/${encodeURIComponent(number)}`;
+
   const coverUrl = (url) => (url ? `/images/view?url=${encodeURIComponent(url)}` : null);
 
   async function chaptersOf(slug) {
@@ -73,13 +79,14 @@
     return new Set((await chaptersOf(slug)).map((chapter) => `${chapter.volume}--${chapter.number}`));
   }
 
-  // Stores one downloaded chapter: `fragment` is the PR 329 JSON, `images` the
-  // [{ url, response }] of those of fragment.images that could be fetched (images are
-  // best effort, as in the SDK's own exports). Returns the bytes it took.
-  async function saveChapter(title, fragment, images) {
+  // Stores one downloaded chapter: `fragment` is the PR 329 JSON (what the index needs),
+  // `page` the reader page's HTML (PR 331), `images` the [{ url, response }] of those of
+  // fragment.images that could be fetched (images are best effort, as in the SDK's own
+  // exports). Returns the bytes it took.
+  async function saveChapter(title, fragment, page, images) {
     const cache = await caches.open(CACHE_NAME);
-    const body = JSON.stringify(fragment);
-    let bytes = new Blob([body]).size;
+    const body = new Blob([page], { type: "text/html; charset=utf-8" });
+    let bytes = body.size;
     const stored = [];
     for (const { url, response } of images) {
       const blob = await response.blob();
@@ -88,8 +95,8 @@
       stored.push(url);
     }
     await cache.put(
-      chapterUrl(fragment.slug_url, fragment.volume, fragment.number),
-      new Response(body, { headers: { "Content-Type": "application/json" } }),
+      readerUrl(fragment.slug_url, fragment.volume, fragment.number),
+      new Response(body, { headers: { "Content-Type": "text/html; charset=utf-8" } }),
     );
 
     const db = await openDb();
@@ -101,6 +108,9 @@
       slug: fragment.slug_url,
       name: title.name || existing?.name || fragment.slug_url,
       cover: title.cover || existing?.cover || null,
+      // PR 331: the title's chapter order from the manifest ([volume, number] in SDK
+      // order) - how the offline page lists what's downloaded without sorting numbers.
+      toc: title.toc || existing?.toc || null,
       savedAt: existing?.savedAt || now,
       updatedAt: now,
     });
@@ -167,6 +177,8 @@
 
     const cache = await caches.open(CACHE_NAME);
     for (const chapter of own) {
+      await cache.delete(readerUrl(slug, chapter.volume, chapter.number));
+      // PR 330 kept the JSON fragment here instead of the page.
       await cache.delete(chapterUrl(slug, chapter.volume, chapter.number));
       for (const image of chapter.images || []) if (!keep.has(image)) await cache.delete(image);
     }
@@ -205,8 +217,10 @@
     upgrade,
     supported,
     chapterUrl,
+    readerUrl,
     coverUrl,
     savedKeys,
+    chaptersOf,
     saveChapter,
     saveCover,
     listTitles,

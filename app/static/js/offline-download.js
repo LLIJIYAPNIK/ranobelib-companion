@@ -37,6 +37,25 @@
     return `${value.toLocaleString("ru-RU", { maximumFractionDigits: digits })} ${units[unit]}`;
   }
 
+  // The reader's own faces (app.css --font-reader-serif/-sans) are only fetched once
+  // their glyphs are drawn - never on this page. Asking for them now, with Cyrillic and
+  // Latin text, lets the service worker keep them (PR 328's font cache), so an offline
+  // chapter (PR 331) reads in the same type as online.
+  const READER_FACES = [
+    "400 1em Literata",
+    "500 1em Literata",
+    "italic 400 1em Literata",
+    '400 1em "Golos Text"',
+    '500 1em "Golos Text"',
+  ];
+  function warmReaderFonts() {
+    try {
+      READER_FACES.forEach((face) => document.fonts.load(face, "Ночь Night").catch(() => {}));
+    } catch {
+      // no FontFace API: the copy falls back to the stack's next face
+    }
+  }
+
   function chaptersWord(n) {
     if (n % 10 === 1 && n % 100 !== 11) return "глава";
     if ([2, 3, 4].includes(n % 10) && ![12, 13, 14].includes(n % 100)) return "главы";
@@ -281,6 +300,7 @@
         slug,
         name: root.dataset.titleName,
         cover: await store.saveCover(root.dataset.coverUrl),
+        toc: chapters.map((chapter) => [chapter.volume, chapter.number]),
       };
       queue = new window.OfflineQueue(items, {
         download: (item, signal) => window.OfflineQueue.downloadChapter(title, item, signal),
@@ -288,6 +308,7 @@
       });
       window.bottomSheet.close();
       status.scrollIntoView?.({ block: "nearest", behavior: "smooth" });
+      warmReaderFonts();
       queue.start();
     }
 

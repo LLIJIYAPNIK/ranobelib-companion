@@ -1,0 +1,42 @@
+// PR 331: the reader's side of reading without a network. On every chapter page it notes
+// which chapter of the title was opened last (readerLastChapter:{slug}) - the offline
+// page's «Продолжить» (offline-page.js) starts from it. In a downloaded copy (the page
+// the service worker serves offline, data-offline-copy) it also marks the links to
+// neighbouring chapters that aren't on the device - HUD arrows, the bottom bar, the end
+// card - as «не скачана», so it's clear before tapping that they won't open offline.
+(() => {
+  const chapter = document.querySelector('[data-role="chapter"]');
+  if (!chapter) return;
+  const { slugUrl, volume, number } = chapter.dataset;
+  try {
+    localStorage.setItem(`readerLastChapter:${slugUrl}`, `${volume}--${number}`);
+  } catch {
+    // no storage: «Продолжить» falls back to the first downloaded chapter
+  }
+
+  if (chapter.dataset.offlineCopy !== "1" || !window.offlineStore?.supported()) return;
+
+  const CHAPTER_PATH = /^\/titles\/([^/]+)\/chapters\/([^/]+)\/([^/]+)$/;
+  const neighbours = [...document.querySelectorAll("a[href]")]
+    .map((link) => ({ link, match: CHAPTER_PATH.exec(new URL(link.href, location.href).pathname) }))
+    .filter(({ match }) => match && decodeURIComponent(match[1]) === slugUrl);
+
+  window.offlineStore
+    .savedKeys(slugUrl)
+    .then((saved) => {
+      for (const { link, match } of neighbours) {
+        const key = `${decodeURIComponent(match[2])}--${decodeURIComponent(match[3])}`;
+        if (saved.has(key)) continue;
+        link.classList.add("reader-link--not-downloaded");
+        const label = link.getAttribute("aria-label");
+        if (label) link.setAttribute("aria-label", `${label} — не скачана`);
+        if (link.textContent.trim()) {
+          const note = document.createElement("span");
+          note.className = "reader-link__note";
+          note.textContent = " · не скачана";
+          link.append(note);
+        }
+      }
+    })
+    .catch(() => {});
+})();
