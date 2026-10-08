@@ -17,13 +17,15 @@ from __future__ import annotations
 from typing import Any
 from urllib.parse import quote
 
-from fastapi import APIRouter, Query
-from fastapi.responses import JSONResponse
+from fastapi import APIRouter, Query, Request
+from fastapi.responses import HTMLResponse, JSONResponse
 from ranobelib import RanobeLibError, chapter_size
 from ranobelib.models import Volume
 
+from app.api.chapters import load_reader_chapter, reader_context
 from app.services.client import open_client
 from app.services.offline import image_urls, rewrite_images
+from app.templating import templates
 
 router = APIRouter(prefix="/offline/titles/{slug_url}")
 
@@ -102,6 +104,52 @@ async def offline_chapter(
             "footnotes": [rewrite_images(footnote, _proxied) for footnote in footnotes],
             "images": [_proxied(url) for url in image_urls(content, *footnotes)],
             "estimated_bytes": chapter_size(chapter) if chapter.content is not None else 0,
+        },
+        headers={"Cache-Control": "no-cache"},
+    )
+
+
+@router.get("/chapters/{volume}/{number}/page", response_class=HTMLResponse)
+async def offline_chapter_page(
+    request: Request,
+    slug_url: str,
+    volume: int,
+    number: str,
+    branch_id: int | None = Query(default=None),
+) -> HTMLResponse:
+    """PR 331: the reader page itself, as the device keeps it - the service worker serves
+    it for /titles/{slug}/chapters/{volume}/{number} when there's no network. The same
+    chapter.html and context as the online reader (HUD, Aa, Tap Focus, footnotes, the
+    end card and its neighbours in SDK order), with three differences:
+
+    - nobody's page: rendered as for a guest - no account in the sidebar, no saved
+      paragraph, no progress/activity scripts - so a stored copy never carries personal
+      data (PR 328/333) and opening it here records nothing (unlike the reader route,
+      which adds to the library and logs the read);
+    - images on the same-origin proxy, stored beside the page (PR 329/330);
+    - no comments, reactions or chapter export - they need the network
+      (``offline_copy`` in the template)."""
+    async with open_client(slug_url) as lib:
+        chapter, volumes, title = await load_reader_chapter(lib, volume, number, branch_id)
+    chapter = chapter.model_copy(
+        update={
+            "content": rewrite_images(chapter.content or "", _proxied),
+            "footnotes": [
+                footnote.model_copy(update={"content": rewrite_images(footnote.content, _proxied)})
+                for footnote in chapter.footnotes
+            ],
+        }
+    )
+    request.state.current_user = None
+    return templates.TemplateResponse(
+        request,
+        "chapter.html",
+        {
+            **reader_context(slug_url, str(volume), number, chapter, volumes, title, branch_id),
+            "export_formats": [],
+            "saved_paragraph": None,
+            "saved_paragraph_total": None,
+            "offline_copy": True,
         },
         headers={"Cache-Control": "no-cache"},
     )

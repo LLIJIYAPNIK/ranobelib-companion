@@ -5,7 +5,8 @@ from typing import Annotated
 from fastapi import APIRouter, Depends, File, Form, HTTPException, Query, Request, UploadFile
 from fastapi.responses import HTMLResponse, JSONResponse
 from psycopg import AsyncConnection
-from ranobelib.models import Volume
+from ranobelib import RanobeLib
+from ranobelib.models import Chapter, Title, Volume
 
 from app.auth.dependencies import get_current_user, require_current_user
 from app.comment_attachment import CommentAttachmentError, save_comment_attachment
@@ -59,14 +60,7 @@ async def read_chapter(
     branch_id: int | None = Query(default=None),
 ) -> HTMLResponse:
     async with open_client(slug_url) as lib:
-        chapter = await lib.get_chapter(volume, number, branch_id=branch_id)
-        volumes = await lib.get_table_of_contents()
-        # PR 253/254: the end-of-chapter card names what comes next - the next chapter,
-        # or, after the title's last chapter, the title itself («Тайтл прочитан»). Only
-        # that last case needs get_info(), so every other chapter keeps its two calls.
-        position = _chapter_position(volumes, str(volume), number)
-        is_last = position is not None and position[0] == position[1] - 1
-        title = await lib.get_info() if is_last else None
+        chapter, volumes, title = await load_reader_chapter(lib, volume, number, branch_id)
     saved_paragraph: int | None = None
     saved_paragraph_total: int | None = None
     if current_user is not None:
@@ -91,31 +85,66 @@ async def read_chapter(
             # Unlike record_progress, this always writes - it's an activity feed entry,
             # not a library-membership check (see app/db/activity.py).
             await record_chapter_read(conn, current_user.id, slug_url, str(volume), number)
-    prev_url, next_url = _adjacent_chapter_urls(slug_url, volumes, str(volume), number)
-    chapters = [(vol.number, ch) for vol in volumes for ch in vol.chapters]
-    next_chapter = chapters[position[0] + 1][1] if position and not is_last else None
-    prev_chapter = chapters[position[0] - 1][1] if position and position[0] > 0 else None
     return templates.TemplateResponse(
         request,
         "chapter.html",
         {
-            "slug_url": slug_url,
-            "chapter": chapter,
-            "prev_url": prev_url,
-            "next_url": next_url,
-            "next_chapter": next_chapter,
-            "prev_chapter": prev_chapter,
-            # Share of the title read once this chapter is done - the end card's «тайтл
-            # прочитан на N%», same measure as the title page's progress.
-            "title_percent": reading_progress_percent(volumes, str(volume), number),
-            "is_last_chapter": is_last,
-            "title_name": (title.rus_name or title.name) if title is not None else None,
-            "branch_id": branch_id,
+            **reader_context(slug_url, str(volume), number, chapter, volumes, title, branch_id),
             "export_formats": available_export_formats(),
             "saved_paragraph": saved_paragraph,
             "saved_paragraph_total": saved_paragraph_total,
         },
     )
+
+
+async def load_reader_chapter(
+    lib: RanobeLib, volume: int, number: str, branch_id: int | None
+) -> tuple[Chapter, list[Volume], Title | None]:
+    """What chapter.html needs from the SDK - shared with the offline copy (PR 331,
+    app/api/offline.py), so both render the same page."""
+    chapter = await lib.get_chapter(volume, number, branch_id=branch_id)
+    volumes = await lib.get_table_of_contents()
+    # PR 253/254: the end-of-chapter card names what comes next - the next chapter, or,
+    # after the title's last chapter, the title itself («Тайтл прочитан»). Only that last
+    # case needs get_info(), so every other chapter keeps its two calls.
+    position = _chapter_position(volumes, str(volume), number)
+    is_last = position is not None and position[0] == position[1] - 1
+    title = await lib.get_info() if is_last else None
+    return chapter, volumes, title
+
+
+def reader_context(
+    slug_url: str,
+    volume: str,
+    number: str,
+    chapter: Chapter,
+    volumes: list[Volume],
+    title: Title | None,
+    branch_id: int | None,
+) -> dict[str, object]:
+    """chapter.html's chapter-and-neighbours context, without anything about the visitor -
+    the online reader adds export formats and the saved paragraph on top. ``volume`` and
+    ``number`` are the ones from the URL, as the reader has always positioned itself."""
+    position = _chapter_position(volumes, volume, number)
+    is_last = position is not None and position[0] == position[1] - 1
+    prev_url, next_url = _adjacent_chapter_urls(slug_url, volumes, volume, number)
+    chapters = [(vol.number, ch) for vol in volumes for ch in vol.chapters]
+    next_chapter = chapters[position[0] + 1][1] if position and not is_last else None
+    prev_chapter = chapters[position[0] - 1][1] if position and position[0] > 0 else None
+    return {
+        "slug_url": slug_url,
+        "chapter": chapter,
+        "prev_url": prev_url,
+        "next_url": next_url,
+        "next_chapter": next_chapter,
+        "prev_chapter": prev_chapter,
+        # Share of the title read once this chapter is done - the end card's «тайтл
+        # прочитан на N%», same measure as the title page's progress.
+        "title_percent": reading_progress_percent(volumes, volume, number),
+        "is_last_chapter": is_last,
+        "title_name": (title.rus_name or title.name) if title is not None else None,
+        "branch_id": branch_id,
+    }
 
 
 @router.get("/{volume}/{number}/reactions")
