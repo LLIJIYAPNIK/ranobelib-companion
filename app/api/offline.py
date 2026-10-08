@@ -15,13 +15,15 @@ A chapter with several translations is never resolved here: ``get_chapter()`` wi
 from __future__ import annotations
 
 from typing import Any
+from urllib.parse import quote
 
-from fastapi import APIRouter
+from fastapi import APIRouter, Query
 from fastapi.responses import JSONResponse
-from ranobelib import RanobeLibError
+from ranobelib import RanobeLibError, chapter_size
 from ranobelib.models import Volume
 
 from app.services.client import open_client
+from app.services.offline import image_urls, rewrite_images
 
 router = APIRouter(prefix="/offline/titles/{slug_url}")
 
@@ -75,3 +77,35 @@ def _volume(slug_url: str, volume: Volume) -> dict[str, Any]:
             for chapter in volume.chapters
         ],
     }
+
+
+@router.get("/chapters/{volume}/{number}")
+async def offline_chapter(
+    slug_url: str, volume: int, number: str, branch_id: int | None = Query(default=None)
+) -> JSONResponse:
+    """One chapter as the device stores it: the same sanitized content and footnotes the
+    reader renders, with every image pointed at the same-origin /images/view proxy so it
+    can be stored too, and the list of those image URLs to fetch. ``branch_id`` is the
+    translation the visitor picked - without one, an ambiguous chapter is a 409."""
+    async with open_client(slug_url) as lib:
+        chapter = await lib.get_chapter(volume, number, branch_id=branch_id)
+    content = chapter.content or ""
+    footnotes = [footnote.content for footnote in chapter.footnotes]
+    return JSONResponse(
+        {
+            "slug_url": slug_url,
+            "volume": chapter.volume,
+            "number": chapter.number,
+            "name": chapter.name,
+            "branch_id": branch_id,
+            "content": rewrite_images(content, _proxied),
+            "footnotes": [rewrite_images(footnote, _proxied) for footnote in footnotes],
+            "images": [_proxied(url) for url in image_urls(content, *footnotes)],
+            "estimated_bytes": chapter_size(chapter) if chapter.content is not None else 0,
+        },
+        headers={"Cache-Control": "no-cache"},
+    )
+
+
+def _proxied(url: str) -> str:
+    return f"/images/view?url={quote(url, safe='')}"

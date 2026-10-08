@@ -2,16 +2,19 @@
 fragment the browser-side download manager stores on the device."""
 
 import asyncio
+import html
 from collections.abc import Iterator
 from datetime import UTC, datetime
 from unittest.mock import patch
+from urllib.parse import quote
 
 import pytest
 from fastapi.testclient import TestClient
-from ranobelib import RateLimitError
+from ranobelib import RateLimitError, chapter_size
 from ranobelib.models import Chapter, ChapterBranch, ChapterUser, Team, Volume
 
 from app.main import app
+from app.services.offline import image_urls, rewrite_images
 
 client = TestClient(app)
 
@@ -143,3 +146,83 @@ def test_a_failed_estimate_leaves_the_list_intact() -> None:
     assert response.json()["estimated_bytes"] is None
     assert response.json()["estimated_bytes_per_chapter"] is None
     assert response.json()["chapter_count"] == 3
+
+
+# --- chapter fragment ---------------------------------------------------------------
+
+_IMG_A = "https://ranobelib.me/uploads/ranobe/1/a.png"
+_IMG_B = "https://cover.cdnlibs.org/uploads/b.jpg?w=1&h=2"
+
+
+def _view(url: str) -> str:
+    return "/images/view?url=" + quote(url, safe="")
+
+
+def _chapter_with_images() -> Chapter:
+    # A str content goes through the SDK's own sanitizer, like a real response would.
+    return Chapter(
+        id=5,
+        volume="1",
+        number="5",
+        name="Глава с картинками",
+        content=(
+            f'<p>До &lt;img src="x"&gt;</p><p><img src="{_IMG_A}"></p>'
+            f'<p><img src="{html.escape(_IMG_B)}"></p><p><img src="{_IMG_A}"></p>'
+            f'<p>↑ Сноска <img src="{_IMG_B.replace("&", "&amp;")}"></p>'
+        ),
+    )
+
+
+def _fragment(chapter: Chapter, **params: object) -> tuple[_FakeClient, dict]:
+    fake = _FakeClient(chapter=chapter)
+    with patch("app.services.client.RanobeLib", return_value=fake):
+        response = client.get(f"/offline/titles/{SLUG}/chapters/1/5", params=params)
+    assert response.status_code == 200, response.text
+    return fake, response.json()
+
+
+def test_fragment_carries_the_chapter_with_images_on_the_proxy() -> None:
+    chapter = _chapter_with_images()
+    _, body = _fragment(chapter)
+
+    assert body["slug_url"] == SLUG
+    assert (body["volume"], body["number"], body["name"]) == ("1", "5", "Глава с картинками")
+    assert body["branch_id"] is None
+    a = f'<img loading="lazy" src="{html.escape(_view(_IMG_A))}" />'
+    b = f'<img loading="lazy" src="{html.escape(_view(_IMG_B))}" />'
+    # Every <img> on the same-origin proxy; escaped text that merely looks like a tag
+    # stays text.
+    assert body["content"] == (
+        f"<p>До &lt;img src=&quot;x&quot;&gt;</p><p>{a}</p><p>{b}</p><p>{a}</p>"
+    )
+    assert body["footnotes"] == [
+        f'Сноска <img loading="lazy" src="{html.escape(_view(_IMG_B))}" />'
+    ]
+    # Each image once, in document order, ready to fetch and store.
+    assert body["images"] == [_view(_IMG_A), _view(_IMG_B)]
+    assert body["estimated_bytes"] == chapter_size(chapter)
+
+
+def test_fragment_passes_the_picked_translation_through() -> None:
+    fake, body = _fragment(_chapter_with_images(), branch_id=2)
+
+    assert fake.calls == [("get_chapter", 1, "5", 2)]
+    assert body["branch_id"] == 2
+
+
+def test_fragment_without_images_has_an_empty_list() -> None:
+    _, body = _fragment(Chapter(id=6, volume="1", number="5", content="<p>Текст</p>"))
+
+    assert body["images"] == []
+    assert body["content"] == "<p>Текст</p>"
+    assert body["footnotes"] == []
+
+
+def test_rewrite_handles_the_sdks_unescaped_attachment_tags() -> None:
+    # The SDK's ProseMirror path writes attachment URLs into src without escaping "&".
+    raw = '<p><img loading="lazy" src="https://ranobelib.me/a.png?x=1&y=2" /></p>'
+
+    assert image_urls(raw) == ["https://ranobelib.me/a.png?x=1&y=2"]
+    assert rewrite_images(raw, lambda url: "/v?u=" + url) == (
+        '<p><img loading="lazy" src="/v?u=https://ranobelib.me/a.png?x=1&amp;y=2" /></p>'
+    )
