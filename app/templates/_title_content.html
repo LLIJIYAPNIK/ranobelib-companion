@@ -168,6 +168,12 @@
       </form>
       {% endif %}
 
+      {# PR 330: reading without a network - hidden until offline-download.js finds
+         IndexedDB and Cache Storage. On mobile it's a row in the «⋯» sheet instead. #}
+      <button type="button" class="ui-btn ui-btn--lg title-offline-open" data-role="offline-download-open" aria-haspopup="dialog" title="Скачать для чтения без интернета" hidden>
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M7 18a4.5 4.5 0 0 1-.6-8.96A6 6 0 0 1 18 9.5a4 4 0 0 1-.5 7.97M12 11v8m0 0-3-3m3 3 3-3"/></svg><span>Без интернета</span>
+      </button>
+
       <button
         type="button"
         class="ui-btn ui-btn--lg title-hero__more"
@@ -178,6 +184,26 @@
       >
         <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><circle cx="5" cy="12" r="2"/><circle cx="12" cy="12" r="2"/><circle cx="19" cy="12" r="2"/></svg>
       </button>
+    </div>
+
+    {# PR 330: the offline download's progress, on the page itself - the sheet that
+       starts it closes, and the queue keeps going while the visitor stays on the page. #}
+    <div class="title-offline-status" data-role="offline-download-status" hidden>
+      <div class="ui-download-progress">
+        <div class="ui-download-progress__head">
+          <span data-role="offline-status-text"></span>
+          <span class="ui-download-progress__eta" data-role="offline-status-size"></span>
+        </div>
+        <span class="ui-progress__bar"><span class="ui-progress__fill" data-role="offline-status-fill"></span></span>
+        <p class="title-offline-status__note" data-role="offline-status-note" hidden></p>
+        <div class="title-offline-status__actions">
+          <button type="button" class="ui-btn ui-btn--sm" data-role="offline-pause">Пауза</button>
+          <button type="button" class="ui-btn ui-btn--sm ui-btn--primary" data-role="offline-resume" hidden>Продолжить</button>
+          <button type="button" class="ui-btn ui-btn--sm" data-role="offline-retry" hidden>Повторить</button>
+          <button type="button" class="ui-btn ui-btn--sm ui-btn--quiet" data-role="offline-cancel">Отмена</button>
+          <a class="title-offline-status__link" href="/downloads#offline" data-role="offline-saved-link" hidden>Скачано</a>
+        </div>
+      </div>
     </div>
   </div>
 </section>
@@ -330,6 +356,12 @@
     </button>
     <hr class="title-sheet__sep">
     {% endif %}
+    <button type="button" class="title-sheet__row" data-role="offline-download-open" hidden>
+      <span class="title-sheet__icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M7 18a4.5 4.5 0 0 1-.6-8.96A6 6 0 0 1 18 9.5a4 4 0 0 1-.5 7.97M12 11v8m0 0-3-3m3 3 3-3"/></svg></span>
+      <span class="title-sheet__text"><b>Скачать для чтения без интернета</b><span>Главы останутся на этом устройстве</span></span>
+      <svg class="title-sheet__chev" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="m9 6 6 6-6 6"/></svg>
+    </button>
+    <hr class="title-sheet__sep" data-role="offline-download-sep" hidden>
     {% if not current_user %}
     <a class="title-sheet__row" href="/login" data-role="auth-modal-trigger">
       <span class="title-sheet__icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round" aria-hidden="true"><path d="{{ bookmark_icon }}"/></svg></span>
@@ -388,3 +420,56 @@
   <button type="button" class="ui-btn ui-btn--lg ui-btn--block title-sheet__cancel" data-role="title-sheet-close">Отмена</button>
 </dialog>
 {% endif %}
+
+{# PR 330: «Скачать без интернета» - the content the shared bottom sheet takes in
+   (bottom-sheet.js), on desktop and mobile alike. offline-download.js fills it from GET
+   /offline/titles/{slug}/manifest (PR 329) once opened. By default: the next unread
+   chapters after the reading position (from the first chapter without one). #}
+<div
+  class="wn-offline"
+  id="offline-download-sheet"
+  data-role="offline-download"
+  data-bottom-sheet-title="Скачать без интернета"
+  data-slug-url="{{ title.slug_url }}"
+  data-title-name="{{ display_name }}"
+  data-cover-url="{{ cover_url or '' }}"
+  data-current-index="{{ current_chapter_index if current_chapter_index is not none else '' }}"
+  data-default-translation="{{ default_translation_index if default_translation_index is not none else '' }}"
+  hidden
+>
+  <p class="wn-offline__lead">Главы сохранятся на этом устройстве и откроются без интернета.</p>
+  <p class="wn-offline__loading" data-role="offline-loading"><span class="spinner" aria-hidden="true"></span>Загружаем оглавление…</p>
+  <p class="ui-notice ui-notice--error" data-role="offline-error" hidden></p>
+  <form class="wn-offline__form" data-role="offline-form" hidden>
+    <div class="ui-segmented wn-offline__modes" role="radiogroup" aria-label="Какие главы скачать">
+      <label class="ui-segmented__item"><input type="radio" name="offline-mode" value="next" checked><span>Следующие</span></label>
+      <label class="ui-segmented__item"><input type="radio" name="offline-mode" value="range"><span>Диапазон</span></label>
+      <label class="ui-segmented__item"><input type="radio" name="offline-mode" value="all"><span>Все</span></label>
+    </div>
+    <label class="ui-field wn-offline__field" data-role="offline-next">
+      <span class="ui-field__label">Непрочитанные главы после текущей</span>
+      <span class="ui-select">
+        <select name="offline-next-count" data-role="offline-next-count">
+          {% for n in [10, 25, 50, 100] %}<option value="{{ n }}">{{ n }} {{ plural(n, "глава", "главы", "глав") }}</option>{% endfor %}
+        </select>
+      </span>
+    </label>
+    <div class="wn-offline__range" data-role="offline-range" hidden>
+      <label class="ui-field"><span class="ui-field__label">С главы</span><span class="ui-select"><select name="offline-from" data-role="offline-from"></select></span></label>
+      <label class="ui-field"><span class="ui-field__label">По главу</span><span class="ui-select"><select name="offline-to" data-role="offline-to"></select></span></label>
+    </div>
+    <label class="ui-field wn-offline__field" data-role="offline-translation" hidden>
+      <span class="ui-field__label">Перевод для глав, где их несколько</span>
+      <span class="ui-select">
+        <select name="offline-translation" data-role="offline-translation-select">
+          <option value="">Выберите вариант</option>
+        </select>
+      </span>
+      <span class="ui-field__hint">Сайт не выбирает перевод за вас. Глава без такого варианта не скачается.</span>
+    </label>
+    <p class="wn-offline__summary" data-role="offline-summary" aria-live="polite"></p>
+    <p class="ui-notice ui-notice--error" data-role="offline-space" hidden></p>
+    <p class="ui-field__hint wn-offline__hint" data-role="offline-ios-hint" hidden>На iPhone и iPad Safari может удалить скачанное, если сайт не установлен на экран «Домой»: «Поделиться» → «На экран „Домой“».</p>
+    <button type="submit" class="ui-btn ui-btn--primary ui-btn--lg ui-btn--block" data-role="offline-start">Скачать</button>
+  </form>
+</div>
