@@ -20,6 +20,7 @@ from ranobelib import (
 )
 from ranobelib.models import Chapter, ChapterBranch, ChapterUser, Team, Volume
 
+from app.config import get_settings
 from app.main import app
 from app.services.offline import image_urls, rewrite_images
 
@@ -296,3 +297,43 @@ def test_the_online_reader_still_shows_its_html_pages() -> None:
 
     assert response.status_code == 409
     assert response.headers["content-type"].startswith("text/html")
+
+
+# --- no second cache, no parallel SDK calls ------------------------------------------
+
+
+def test_each_request_goes_to_the_sdk_nothing_is_kept_on_the_server() -> None:
+    fake = _FakeClient(chapter=_chapter_with_images())
+    with patch("app.services.client.RanobeLib", return_value=fake) as sdk:
+        first = client.get(f"/offline/titles/{SLUG}/chapters/1/5")
+        second = client.get(f"/offline/titles/{SLUG}/chapters/1/5")
+
+    assert first.json() == second.json()
+    # The SDK's own disk cache is the only cache: the server asks it every time.
+    assert fake.calls == [("get_chapter", 1, "5", None)] * 2
+    # One client per request, on the one shared cache_dir - nothing of the app's own.
+    assert sdk.call_count == 2
+    settings = get_settings()
+    for call in sdk.call_args_list:
+        assert call.kwargs == {"cache_dir": settings.cache_dir, "cache_ttl": settings.cache_ttl}
+    # And nothing for an HTTP cache to keep as a duplicate either: the device stores the
+    # fragment on purpose (PR 330), not as a side effect of browsing.
+    assert first.headers["cache-control"] == "no-cache"
+
+
+def test_the_manifest_calls_the_sdk_one_after_another(fake: _FakeClient) -> None:
+    response = client.get(f"/offline/titles/{SLUG}/manifest")
+
+    assert response.headers["cache-control"] == "no-cache"
+    assert fake.calls == [("get_table_of_contents",), ("estimate_title_size",)]
+    assert fake.max_in_flight == 1
+
+
+def test_a_chapter_is_one_sdk_call() -> None:
+    fake = _FakeClient(chapter=_chapter_with_images())
+    with patch("app.services.client.RanobeLib", return_value=fake):
+        client.get(f"/offline/titles/{SLUG}/chapters/1/5", params={"branch_id": 1})
+
+    # No table of contents, no prefetch of neighbours: the client asks chapter by chapter.
+    assert fake.calls == [("get_chapter", 1, "5", 1)]
+    assert fake.max_in_flight == 1
