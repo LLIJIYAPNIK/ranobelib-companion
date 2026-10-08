@@ -142,5 +142,11 @@ async def _handle_ranobelib_error(request: Request, exc: RanobeLibError) -> Resp
 
 def _wants_html(request: Request) -> bool:
     """True for a browser page navigation, so it gets an error.html page instead of raw
-    JSON - this app is server-rendered, not a JSON API consumed by a separate client."""
+    JSON - this app is server-rendered, not a JSON API consumed by a separate client.
+
+    Except the offline-reading API (PR 329, app/api/offline.py): only the download
+    manager's script calls it, and it needs the 409's list of translations as data to
+    ask the visitor - never the «Выберите перевод» page, whatever Accept says."""
+    if request.url.path.startswith("/offline/"):
+        return False
     return "text/html" in request.headers.get("accept", "")
