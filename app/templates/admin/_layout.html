@@ -14,6 +14,20 @@
 </head>
 {# The admin isn't a site user - none of base.html's navigation or account UI here. #}
 <body class="wn-admin">
+  {% if admin_section %}
+  {# PR 325: the panel's own header (only once logged in - the login page has none). #}
+  <header class="wn-admin__bar">
+    <span class="wn-admin__brand">Админ-панель</span>
+    <nav class="wn-admin__nav" aria-label="Разделы панели">
+      <a href="/admin"{% if admin_section == "overview" %} aria-current="page"{% endif %}>Обзор</a>
+      <a href="/admin/tables"{% if admin_section == "tables" %} aria-current="page"{% endif %}>Таблицы</a>
+    </nav>
+    <form class="wn-admin__logout" method="post" action="/admin/logout">
+      <input type="hidden" name="csrf" value="{{ csrf_token }}">
+      <button class="ui-btn" type="submit">Выйти</button>
+    </form>
+  </header>
+  {% endif %}
   {% block content %}{% endblock %}
 </body>
 </html>

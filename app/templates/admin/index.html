@@ -1,15 +1,62 @@
 {% extends "admin/_layout.html" %}
 {% block title %}Обзор{% endblock %}
 {% block content %}
-<main class="wn-admin__center">
-  <section class="wn-admin__card" aria-labelledby="admin-home-title">
-    <h1 class="wn-admin__title" id="admin-home-title">Админ-панель</h1>
-    {# PR 325 fills this in: the overview and the read-only data browser. #}
-    <p class="wn-admin__hint">Вход выполнен. Обзор и просмотр данных появятся здесь.</p>
-    <form method="post" action="/admin/logout">
-      <input type="hidden" name="csrf" value="{{ csrf_token }}">
-      <button class="ui-btn" type="submit">Выйти</button>
-    </form>
+<main class="wn-admin__main" aria-labelledby="admin-overview-title">
+  <h1 class="wn-admin__title" id="admin-overview-title">Обзор</h1>
+
+  <ul class="wn-admin__stats">
+    {% for label, count in overview.counts %}
+    <li class="wn-admin__stat"><span class="wn-admin__stat-value">{{ count }}</span><span class="wn-admin__stat-label">{{ label }}</span></li>
+    {% endfor %}
+  </ul>
+
+  <section class="wn-admin__section" aria-labelledby="admin-recent-users">
+    <h2 class="wn-admin__subtitle" id="admin-recent-users">Последние регистрации</h2>
+    {% if overview.recent_users %}
+    <div class="wn-admin__scroll">
+      <table class="wn-admin__table">
+        <thead><tr><th>id</th><th>email</th><th>Никнейм</th><th>Зарегистрирован</th><th>Email подтверждён</th></tr></thead>
+        <tbody>
+          {% for user in overview.recent_users %}
+          <tr>
+            <td>{{ user.id }}</td>
+            <td>{{ user.email }}</td>
+            <td>{{ user.nickname or "—" }}</td>
+            <td>{{ user.created_at }}</td>
+            <td>{{ "да" if user.email_verified_at else "нет" }}</td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+    {% else %}
+    <p class="wn-admin__hint">Пользователей пока нет.</p>
+    {% endif %}
+  </section>
+
+  <section class="wn-admin__section" aria-labelledby="admin-download-errors">
+    <h2 class="wn-admin__subtitle" id="admin-download-errors">Последние ошибки загрузок</h2>
+    {% if overview.recent_download_errors %}
+    <div class="wn-admin__scroll">
+      <table class="wn-admin__table">
+        <thead><tr><th>id</th><th>Пользователь</th><th>Тайтл</th><th>Формат</th><th>Ошибка</th><th>Когда</th></tr></thead>
+        <tbody>
+          {% for entry in overview.recent_download_errors %}
+          <tr>
+            <td>{{ entry.id }}</td>
+            <td>{{ entry.email }}</td>
+            <td>{{ entry.slug_url }}</td>
+            <td>{{ entry.fmt }}</td>
+            <td title="{{ entry.error or '' }}">{{ (entry.error or "—") | truncate(120) }}</td>
+            <td>{{ entry.finished_at }}</td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+    {% else %}
+    <p class="wn-admin__hint">Ошибок загрузок нет.</p>
+    {% endif %}
   </section>
 </main>
 {% endblock %}

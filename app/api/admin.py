@@ -1,8 +1,8 @@
-"""/admin (PR 324): the panel's login, logout and landing page.
+"""/admin: the panel's login/logout (PR 324), overview and read-only data browser (PR 325).
 
 Every route sits behind ``require_admin_enabled`` (404 without ADMIN_PASSWORD), every page
-but the login form behind ``require_admin`` (app/auth/admin.py). The overview and the
-data browser come in PR 325; this PR only establishes who may see them.
+but the login form behind ``require_admin`` (app/auth/admin.py). The data pages only read
+(app/db/admin_data.py); changing data is a separate, later decision.
 """
 
 from __future__ import annotations
@@ -11,8 +11,9 @@ import math
 from collections.abc import Awaitable, Callable
 from typing import Annotated
 
-from fastapi import APIRouter, Depends, FastAPI, Form, Request
+from fastapi import APIRouter, Depends, FastAPI, Form, HTTPException, Query, Request
 from fastapi.responses import HTMLResponse, RedirectResponse, Response
+from psycopg import AsyncConnection
 
 from app.auth.admin import (
     LOGIN_PATH,
@@ -29,15 +30,52 @@ from app.auth.admin import (
     start_admin_session,
 )
 from app.config import get_settings
+from app.db.admin_data import MASK, browse_table, list_tables, overview, table_columns
+from app.db.connection import get_connection
 from app.templating import templates
 
 router = APIRouter(prefix="/admin", dependencies=[Depends(require_admin_enabled)])
 
 
+Admin = Annotated[None, Depends(require_admin)]
+Connection = Annotated[AsyncConnection, Depends(get_connection)]
+
+
 @router.get("", response_model=None)
-async def admin_home(request: Request, _: Annotated[None, Depends(require_admin)]) -> HTMLResponse:
+async def admin_home(request: Request, _: Admin, conn: Connection) -> HTMLResponse:
+    return _page(request, "admin/index.html", "overview", overview=await overview(conn))
+
+
+@router.get("/tables", response_model=None)
+async def admin_tables(request: Request, _: Admin, conn: Connection) -> HTMLResponse:
+    return _page(request, "admin/tables.html", "tables", tables=await list_tables(conn))
+
+
+@router.get("/tables/{name}", response_model=None)
+async def admin_table(
+    request: Request,
+    name: str,
+    _: Admin,
+    conn: Connection,
+    page: Annotated[int, Query(ge=1, le=1_000_000)] = 1,
+    sort: str | None = None,
+    order: str = "desc",
+    q: Annotated[str, Query(max_length=200)] = "",
+) -> HTMLResponse:
+    columns = (await table_columns(conn)).get(name)
+    if columns is None:
+        raise HTTPException(status_code=404)
+    data = await browse_table(
+        conn, name, columns, page=page, sort=sort, descending=order != "asc", query=q
+    )
+    return _page(request, "admin/table.html", "tables", data=data, mask=MASK)
+
+
+def _page(request: Request, template: str, section: str, **context: object) -> HTMLResponse:
     return templates.TemplateResponse(
-        request, "admin/index.html", {"csrf_token": csrf_token(request)}
+        request,
+        template,
+        {"csrf_token": csrf_token(request), "admin_section": section, **context},
     )
 
 

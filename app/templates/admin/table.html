@@ -1,0 +1,68 @@
+{% extends "admin/_layout.html" %}
+{% block title %}{{ data.table }}{% endblock %}
+{% block content %}
+<main class="wn-admin__main" aria-labelledby="admin-table-title">
+  <p class="wn-admin__crumbs"><a href="/admin/tables">Таблицы</a> /</p>
+  <h1 class="wn-admin__title" id="admin-table-title">{{ data.table }}</h1>
+
+  <form class="wn-admin__search" method="get" action="/admin/tables/{{ data.table }}" role="search">
+    <input type="hidden" name="sort" value="{{ data.sort }}">
+    <input type="hidden" name="order" value="{{ 'desc' if data.descending else 'asc' }}">
+    <input class="ui-input" type="search" name="q" value="{{ data.query }}" maxlength="200" placeholder="Поиск по видимым колонкам" aria-label="Поиск по таблице">
+    <button class="ui-btn" type="submit">Найти</button>
+    {% if data.query %}<a class="ui-btn" href="/admin/tables/{{ data.table }}">Сбросить</a>{% endif %}
+  </form>
+
+  <p class="wn-admin__hint">
+    {% if data.query %}Найдено строк: {{ data.total }}{% else %}Строк: {{ data.total }}{% endif %}
+    · страница {{ data.page }} из {{ data.pages }}
+  </p>
+
+  <div class="wn-admin__scroll">
+    <table class="wn-admin__table">
+      <thead>
+        <tr>
+          {% for column in data.columns %}
+          {% if column in data.secret %}
+          <th title="Скрытая колонка">{{ column }}</th>
+          {% else %}
+          {% set active = column == data.sort %}
+          {% set next_order = "asc" if active and data.descending else "desc" %}
+          <th{% if active %} aria-sort="{{ 'descending' if data.descending else 'ascending' }}"{% endif %}>
+            <a href="?{{ {'sort': column, 'order': next_order, 'q': data.query} | urlencode }}">{{ column }}{% if active %} {{ "↓" if data.descending else "↑" }}{% endif %}</a>
+          </th>
+          {% endif %}
+          {% endfor %}
+        </tr>
+      </thead>
+      <tbody>
+        {% for row in data.rows %}
+        <tr>
+          {% for column in data.columns %}
+          {% if column in data.secret %}
+          <td class="wn-admin__masked">{{ mask }}</td>
+          {% elif row[column] is none %}
+          <td class="wn-admin__null">—</td>
+          {% else %}
+          {% set text = row[column] | string %}
+          <td{% if text | length > 120 %} title="{{ text | truncate(1000) }}"{% endif %}>{{ text | truncate(120) }}</td>
+          {% endif %}
+          {% endfor %}
+        </tr>
+        {% else %}
+        <tr><td colspan="{{ data.columns | length }}" class="wn-admin__null">{% if data.query %}Ничего не найдено{% else %}Таблица пуста{% endif %}</td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+
+  {% if data.pages > 1 %}
+  {% set base = {'sort': data.sort, 'order': 'desc' if data.descending else 'asc', 'q': data.query} %}
+  <nav class="wn-admin__pager" aria-label="Страницы">
+    {% if data.page > 1 %}<a class="ui-btn" href="?{{ dict(base, page=data.page - 1) | urlencode }}">← Назад</a>{% endif %}
+    <span>{{ data.page }} / {{ data.pages }}</span>
+    {% if data.page < data.pages %}<a class="ui-btn" href="?{{ dict(base, page=data.page + 1) | urlencode }}">Дальше →</a>{% endif %}
+  </nav>
+  {% endif %}
+</main>
+{% endblock %}
