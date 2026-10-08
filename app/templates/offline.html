@@ -6,6 +6,9 @@
   <meta name="robots" content="noindex">
   <meta name="theme-color" content="#0c0c12">
   <title>Нет соединения — Webnovells</title>
+  <link rel="icon" type="image/png" sizes="32x32" href="{{ url_for('static', path='favicon/favicon-32x32.png') }}">
+  {# The same webfonts as base.html - offline they come from the worker's font cache. #}
+  <link rel="stylesheet" crossorigin href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&family=Literata:ital,opsz,wght@0,7..72,400;0,7..72,500;1,7..72,400&family=Golos+Text:wght@400;500&family=JetBrains+Mono:wght@400;500&display=swap">
   <link rel="stylesheet" href="{{ static_url('css/app.css') }}">
 </head>
 {#
