@@ -21,6 +21,7 @@ from app.api import (
     library,
     notifications,
     profile,
+    pwa,
     reading_progress,
     settings,
     titles,
@@ -105,6 +106,7 @@ app.include_router(library.router)
 app.include_router(library.catalog_router)
 app.include_router(notifications.router)
 app.include_router(profile.router)
+app.include_router(pwa.router)
 app.include_router(reading_progress.router)
 app.include_router(settings.router)
 app.include_router(titles.router)

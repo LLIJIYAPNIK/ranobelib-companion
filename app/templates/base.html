@@ -8,6 +8,15 @@
   <link rel="icon" type="image/png" sizes="32x32" href="{{ url_for('static', path='favicon/favicon-32x32.png') }}">
   <link rel="icon" type="image/png" sizes="48x48" href="{{ url_for('static', path='favicon/favicon-48x48.png') }}">
   <link rel="apple-touch-icon" sizes="180x180" href="{{ url_for('static', path='favicon/apple-touch-icon.png') }}">
+  {# PR 327: installable app. The status bar is opaque "black" rather than
+     "black-translucent": translucent draws the page under it, and without
+     viewport-fit=cover the safe-area insets PR 279 relies on are 0. #}
+  <link rel="manifest" href="/manifest.webmanifest">
+  <meta name="theme-color" content="#0c0c12">
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black">
+  <meta name="apple-mobile-web-app-title" content="Webnovells">
   {# PR 247 (Aurora Ink, "01 Foundations"): UI, both reader text faces and mono, same
      family/weight set as the Claude Design import. Only loaded here - the tokens in
      app.css that name these families aren't wired to any markup until PR 248+. #}
@@ -194,6 +203,9 @@
   <script src="{{ static_url('js/password-toggle.js') }}" defer></script>
   <!-- PR 279: before profile-menu.js, which opens its mobile sheet through it. -->
   <script src="{{ static_url('js/bottom-sheet.js') }}" defer></script>
+  <!-- PR 327: holds the browser's install prompt on every page (no mini-infobar); it's
+       only offered from the reading settings page. -->
+  <script src="{{ static_url('js/pwa-install.js') }}" defer></script>
   {% if not current_user %}
   <script src="{{ static_url('js/auth-modal.js') }}" defer></script>
   {% endif %}
