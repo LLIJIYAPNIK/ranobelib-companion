@@ -15456,6 +15456,13 @@ body.reader-hud-visible .reader-hud {
   gap: var(--s-12) var(--s-20);
 }
 
+/* PR 327: the «Приложение» card and its button stay hidden until pwa-install.js has
+   something to offer - their display rules would otherwise beat [hidden]. */
+.reader-settings-card[hidden],
+.reader-settings-card [data-role="pwa-install-button"][hidden] {
+  display: none;
+}
+
 .reader-settings-card__intro {
   display: flex;
   flex-direction: column;

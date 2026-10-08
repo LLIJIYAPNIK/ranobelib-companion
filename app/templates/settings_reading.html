@@ -162,6 +162,16 @@
       </p>
     </div>
 
+    {# PR 327: install as an app (pwa-install.js shows this only when there's something
+       to offer - a held browser prompt, the iOS hint, or "already installed"). #}
+    <section class="reader-settings-card reader-settings-card--speed" data-role="pwa-install" hidden>
+      <div class="reader-settings-card__intro">
+        <h2 class="reader-settings-card__title">Приложение</h2>
+        <p class="reader-settings-row__hint" data-role="pwa-install-text">Установите Webnovells на телефон или компьютер — он откроется отдельным окном, как приложение.</p>
+      </div>
+      <button type="button" class="ui-btn ui-btn--primary" data-role="pwa-install-button" hidden>Установить приложение</button>
+    </section>
+
     <button type="button" class="reader-settings-reset" data-role="reader-settings-reset">Сбросить настройки</button>
   </div>
 {% endblock %}
