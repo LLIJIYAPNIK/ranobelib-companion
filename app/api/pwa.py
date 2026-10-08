@@ -17,7 +17,7 @@ from pathlib import Path
 from fastapi import APIRouter
 from fastapi.responses import Response
 
-from app.static_assets import NO_CACHE, asset_hash
+from app.static_assets import NO_CACHE, STATIC_DIR, asset_hash
 
 router = APIRouter()
 
@@ -26,25 +26,27 @@ THEME_COLOR = "#0c0c12"  # --wn-canvas in app.css
 SERVICE_WORKER_SOURCE = Path(__file__).parents[1] / "pwa" / "service-worker.js"
 
 
-def _icon(path: str) -> str:
+def _static(path: str) -> str:
     version = asset_hash(path)
     return f"/static/{path}?v={version}" if version else f"/static/{path}"
 
 
 def manifest() -> dict[str, object]:
     icons = [
-        {"src": _icon(f"icons/icon-{size}.png"), "sizes": f"{size}x{size}", "type": "image/png"}
+        {"src": _static(f"icons/icon-{size}.png"), "sizes": f"{size}x{size}", "type": "image/png"}
         for size in (192, 512)
     ] + [
         {
-            "src": _icon(f"icons/icon-maskable-{size}.png"),
+            "src": _static(f"icons/icon-maskable-{size}.png"),
             "sizes": f"{size}x{size}",
             "type": "image/png",
             "purpose": "maskable",
         }
         for size in (192, 512)
     ]
-    shortcut_icon = [{"src": _icon("icons/icon-192.png"), "sizes": "192x192", "type": "image/png"}]
+    shortcut_icon = [
+        {"src": _static("icons/icon-192.png"), "sizes": "192x192", "type": "image/png"}
+    ]
     return {
         "id": "/",
         "name": "Webnovells",
@@ -79,9 +81,22 @@ def service_worker_config() -> dict[str, object]:
     """What the route prepends to app/pwa/service-worker.js as ``self.SW_CONFIG``. The
     version hashes everything the worker's behaviour depends on, its own source included,
     so a change to any of it is a new worker the browser installs."""
-    source = SERVICE_WORKER_SOURCE.read_bytes()
-    version = hashlib.sha256(source).hexdigest()[:10]
-    return {"version": version}
+    precache = precache_urls()
+    digest = hashlib.sha256(SERVICE_WORKER_SOURCE.read_bytes())
+    digest.update("\n".join(precache).encode())
+    return {"version": digest.hexdigest()[:10], "precache": precache}
+
+
+def precache_urls() -> list[str]:
+    """Every stylesheet and script under app/static, at the same ``?v=`` URL
+    static_url() gives the pages (PR 317) - so the precached copy is exactly what a page
+    asks for, and a changed file is a new URL (and a new worker version)."""
+    paths = sorted(
+        file.relative_to(STATIC_DIR).as_posix()
+        for pattern in ("css/*.css", "js/*.js")
+        for file in STATIC_DIR.glob(pattern)
+    )
+    return [_static(path) for path in paths]
 
 
 @router.get("/service-worker.js", include_in_schema=False)
