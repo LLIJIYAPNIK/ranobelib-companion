@@ -34,6 +34,12 @@ out, since any injected markup or CSS could inline an image through it.
 points at) are the Aurora Ink redesign's webfonts (PR 247) - Manrope, Literata, Golos
 Text, JetBrains Mono - loaded by ``base.html`` through Google's ordinary ``<link>``.
 
+The service worker (PR 328) is the one response with a policy of its own. A worker's CSP
+is the one on its script, and ``fetch()`` inside it is ``connect-src`` - which falls back
+to ``default-src 'self'``, so the worker couldn't pass the webfonts through (let alone
+cache them for offline use) without the two Google Fonts hosts there. Only the worker gets
+them: pages never ``fetch()`` those hosts themselves.
+
 ``Strict-Transport-Security`` is gated on ``Settings.is_production`` (PR 187) - sending
 it unconditionally would tell a browser to force HTTPS for this host, which permanently
 breaks a plain ``http://localhost`` dev server until the browser's HSTS cache for it
@@ -62,6 +68,12 @@ _CONTENT_SECURITY_POLICY = (
     "frame-ancestors 'none'"
 )
 
+_SERVICE_WORKER_PATH = "/service-worker.js"
+_SERVICE_WORKER_CONTENT_SECURITY_POLICY = (
+    _CONTENT_SECURITY_POLICY
+    + "; connect-src 'self' https://fonts.googleapis.com https://fonts.gstatic.com"
+)
+
 _HSTS_VALUE = "max-age=63072000; includeSubDomains"
 
 
@@ -76,7 +88,11 @@ def install_security_headers(app: FastAPI) -> None:
         response.headers["X-Content-Type-Options"] = "nosniff"
         response.headers["Referrer-Policy"] = "strict-origin-when-cross-origin"
         response.headers["X-Frame-Options"] = "DENY"
-        response.headers["Content-Security-Policy"] = _CONTENT_SECURITY_POLICY
+        response.headers["Content-Security-Policy"] = (
+            _SERVICE_WORKER_CONTENT_SECURITY_POLICY
+            if request.url.path == _SERVICE_WORKER_PATH
+            else _CONTENT_SECURITY_POLICY
+        )
         if get_settings().is_production:
             response.headers["Strict-Transport-Security"] = _HSTS_VALUE
         return response

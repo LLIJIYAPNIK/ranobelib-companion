@@ -19,10 +19,12 @@
   <meta name="apple-mobile-web-app-title" content="Webnovells">
   {# PR 247 (Aurora Ink, "01 Foundations"): UI, both reader text faces and mono, same
      family/weight set as the Claude Design import. Only loaded here - the tokens in
-     app.css that name these families aren't wired to any markup until PR 248+. #}
-  <link rel="preconnect" href="https://fonts.googleapis.com">
+     app.css that name these families aren't wired to any markup until PR 248+.
+     PR 328: the stylesheet is a CORS request (crossorigin), so the service worker can
+     cache it for offline use - a no-cors one would be an opaque response. #}
+  <link rel="preconnect" href="https://fonts.googleapis.com" crossorigin>
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&family=Literata:ital,opsz,wght@0,7..72,400;0,7..72,500;1,7..72,400&family=Golos+Text:wght@400;500&family=JetBrains+Mono:wght@400;500&display=swap">
+  <link rel="stylesheet" crossorigin href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&family=Literata:ital,opsz,wght@0,7..72,400;0,7..72,500;1,7..72,400&family=Golos+Text:wght@400;500&family=JetBrains+Mono:wght@400;500&display=swap">
   <link rel="stylesheet" href="{{ static_url('css/app.css') }}">
   {% block head_extra %}{% endblock %}
 </head>
