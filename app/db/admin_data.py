@@ -10,10 +10,18 @@ Secret columns - password/token/code hashes, ``session_version`` and anything na
 them (``is_secret_column()``) - are never selected: the query puts NULL in their place,
 so their values don't leave the database at all and the page shows a mask instead. They
 can't be sorted or searched on either (searching would leak them one guess at a time).
+
+PR 326: every function runs its queries inside ``_read_only()`` - a READ ONLY transaction
+with ``statement_timeout`` at QUERY_TIMEOUT_MS, so nothing here can write even by
+mistake, and a slow COUNT/OFFSET on a big table is cancelled (QueryCanceled, which the
+routes turn into an error page) instead of tying up a pool connection. A cell's text is
+cut to CELL_LIMIT characters in SQL, so a huge value never leaves the database.
 """
 
 from __future__ import annotations
 
+from collections.abc import AsyncIterator
+from contextlib import asynccontextmanager
 from dataclasses import dataclass
 from typing import Any
 
@@ -21,6 +29,20 @@ from psycopg import AsyncConnection, sql
 
 PAGE_SIZE = 50
 MASK = "•••"
+QUERY_TIMEOUT_MS = 5000
+CELL_LIMIT = 1000
+
+
+@asynccontextmanager
+async def _read_only(conn: AsyncConnection) -> AsyncIterator[None]:
+    async with conn.transaction():
+        await conn.execute("SET TRANSACTION READ ONLY")
+        # SET LOCAL can't take a bound parameter; set_config(..., true) is the same thing.
+        await conn.execute(
+            "SELECT set_config('statement_timeout', %s, true)", (str(QUERY_TIMEOUT_MS),)
+        )
+        yield
+
 
 _SECRET_COLUMNS = {
     ("users", "password_hash"),
@@ -48,15 +70,17 @@ def is_secret_column(table: str, column: str) -> bool:
 async def table_columns(conn: AsyncConnection) -> dict[str, list[str]]:
     """Every base table in the public schema -> its columns in definition order. This is
     the whitelist: a table/column name from a request is only ever looked up in it."""
-    cursor = await conn.execute(
-        "SELECT c.table_name, c.column_name FROM information_schema.columns c "
-        "JOIN information_schema.tables t "
-        "ON t.table_schema = c.table_schema AND t.table_name = c.table_name "
-        "WHERE c.table_schema = 'public' AND t.table_type = 'BASE TABLE' "
-        "ORDER BY c.table_name, c.ordinal_position"
-    )
+    async with _read_only(conn):
+        cursor = await conn.execute(
+            "SELECT c.table_name, c.column_name FROM information_schema.columns c "
+            "JOIN information_schema.tables t "
+            "ON t.table_schema = c.table_schema AND t.table_name = c.table_name "
+            "WHERE c.table_schema = 'public' AND t.table_type = 'BASE TABLE' "
+            "ORDER BY c.table_name, c.ordinal_position"
+        )
+        rows = await cursor.fetchall()
     tables: dict[str, list[str]] = {}
-    for row in await cursor.fetchall():
+    for row in rows:
         tables.setdefault(row["table_name"], []).append(row["column_name"])
     return tables
 
@@ -70,12 +94,14 @@ class TableSummary:
 
 async def list_tables(conn: AsyncConnection) -> list[TableSummary]:
     summaries = []
-    for name, columns in (await table_columns(conn)).items():
-        cursor = await conn.execute(
-            sql.SQL("SELECT COUNT(*) AS n FROM {}").format(sql.Identifier(name))
-        )
-        row = await cursor.fetchone()
-        summaries.append(TableSummary(name=name, columns=len(columns), rows=row["n"]))
+    tables = await table_columns(conn)
+    async with _read_only(conn):
+        for name, columns in tables.items():
+            cursor = await conn.execute(
+                sql.SQL("SELECT COUNT(*) AS n FROM {}").format(sql.Identifier(name))
+            )
+            row = await cursor.fetchone()
+            summaries.append(TableSummary(name=name, columns=len(columns), rows=row["n"]))
     return summaries
 
 
@@ -96,6 +122,11 @@ _OVERVIEW_COUNTS = (
 
 
 async def overview(conn: AsyncConnection, recent: int = 5) -> Overview:
+    async with _read_only(conn):
+        return await _overview(conn, recent)
+
+
+async def _overview(conn: AsyncConnection, recent: int) -> Overview:
     counts = []
     for label, table in _OVERVIEW_COUNTS:
         cursor = await conn.execute(
@@ -149,15 +180,33 @@ async def browse_table(
     `columns`). `sort` falls back to "id" (or the first column) unless it's a visible
     column of this table; `query` is a case-insensitive substring match over the visible
     columns' text."""
+    async with _read_only(conn):
+        return await _browse(conn, table, columns, page, sort, descending, query)
+
+
+async def _browse(
+    conn: AsyncConnection,
+    table: str,
+    columns: list[str],
+    page: int,
+    sort: str | None,
+    descending: bool,
+    query: str,
+) -> TablePage:
     secret = {column for column in columns if is_secret_column(table, column)}
     visible = [column for column in columns if column not in secret]
     if sort not in visible:
         sort = "id" if "id" in visible else (visible[0] if visible else columns[0])
 
+    # Columns are qualified with the "t" alias: the output names below are the same as
+    # the real columns, and ORDER BY would otherwise pick the cut-down text output (so id
+    # 12 would sort before 9).
     select_list = sql.SQL(", ").join(
         sql.SQL("NULL AS {}").format(sql.Identifier(column))
         if column in secret
-        else sql.Identifier(column)
+        else sql.SQL("LEFT(CAST(t.{} AS TEXT), {}) AS {}").format(
+            sql.Identifier(column), sql.Literal(CELL_LIMIT), sql.Identifier(column)
+        )
         for column in columns
     )
     where = sql.SQL("")
@@ -165,23 +214,24 @@ async def browse_table(
     query = query.strip()
     if query and visible:
         where = sql.SQL(" WHERE ") + sql.SQL(" OR ").join(
-            sql.SQL("CAST({} AS TEXT) ILIKE %s").format(sql.Identifier(column))
+            sql.SQL("CAST(t.{} AS TEXT) ILIKE %s").format(sql.Identifier(column))
             for column in visible
         )
         pattern = "%" + query.replace("\\", "\\\\").replace("%", "\\%").replace("_", "\\_") + "%"
         params = [pattern] * len(visible)
 
     count_cursor = await conn.execute(
-        sql.SQL("SELECT COUNT(*) AS n FROM {}").format(sql.Identifier(table)) + where, params
+        sql.SQL("SELECT COUNT(*) AS n FROM {} AS t").format(sql.Identifier(table)) + where,
+        params,
     )
     total = (await count_cursor.fetchone())["n"]
     pages = max(1, -(-total // PAGE_SIZE))
     page = min(max(1, page), pages)
-    order = sql.SQL(" ORDER BY {} {} NULLS LAST").format(
+    order = sql.SQL(" ORDER BY t.{} {} NULLS LAST").format(
         sql.Identifier(sort), sql.SQL("DESC" if descending else "ASC")
     )
     cursor = await conn.execute(
-        sql.SQL("SELECT {} FROM {}").format(select_list, sql.Identifier(table))
+        sql.SQL("SELECT {} FROM {} AS t").format(select_list, sql.Identifier(table))
         + where
         + order
         + sql.SQL(" LIMIT %s OFFSET %s"),

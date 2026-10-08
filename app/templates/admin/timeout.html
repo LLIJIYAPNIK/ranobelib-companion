@@ -1,0 +1,12 @@
+{% extends "admin/_layout.html" %}
+{% block title %}Запрос остановлен{% endblock %}
+{% block content %}
+<main class="wn-admin__main" aria-labelledby="admin-timeout-title">
+  <h1 class="wn-admin__title" id="admin-timeout-title">Запрос остановлен</h1>
+  {# PR 326: statement_timeout in app/db/admin_data.py. #}
+  <p class="ui-notice ui-notice--error" role="alert">
+    Запрос к базе выполнялся дольше {{ seconds }} с и был остановлен, чтобы не нагружать сайт.
+    Попробуйте сузить поиск или открыть страницу поближе к началу.
+  </p>
+</main>
+{% endblock %}

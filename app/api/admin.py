@@ -14,6 +14,7 @@ from typing import Annotated
 from fastapi import APIRouter, Depends, FastAPI, Form, HTTPException, Query, Request
 from fastapi.responses import HTMLResponse, RedirectResponse, Response
 from psycopg import AsyncConnection
+from psycopg.errors import QueryCanceled
 
 from app.auth.admin import (
     LOGIN_PATH,
@@ -30,11 +31,22 @@ from app.auth.admin import (
     start_admin_session,
 )
 from app.config import get_settings
-from app.db.admin_data import MASK, browse_table, list_tables, overview, table_columns
+from app.db.admin_data import (
+    MASK,
+    QUERY_TIMEOUT_MS,
+    browse_table,
+    list_tables,
+    overview,
+    table_columns,
+)
 from app.db.connection import get_connection
 from app.templating import templates
 
-router = APIRouter(prefix="/admin", dependencies=[Depends(require_admin_enabled)])
+# PR 326: out of the public /openapi.json and /docs - listing the paths there would
+# announce the panel even with ADMIN_PASSWORD unset, when it must look like it isn't there.
+router = APIRouter(
+    prefix="/admin", dependencies=[Depends(require_admin_enabled)], include_in_schema=False
+)
 
 
 Admin = Annotated[None, Depends(require_admin)]
@@ -43,12 +55,20 @@ Connection = Annotated[AsyncConnection, Depends(get_connection)]
 
 @router.get("", response_model=None)
 async def admin_home(request: Request, _: Admin, conn: Connection) -> HTMLResponse:
-    return _page(request, "admin/index.html", "overview", overview=await overview(conn))
+    try:
+        data = await overview(conn)
+    except QueryCanceled:
+        return _timed_out(request, "overview")
+    return _page(request, "admin/index.html", "overview", overview=data)
 
 
 @router.get("/tables", response_model=None)
 async def admin_tables(request: Request, _: Admin, conn: Connection) -> HTMLResponse:
-    return _page(request, "admin/tables.html", "tables", tables=await list_tables(conn))
+    try:
+        tables = await list_tables(conn)
+    except QueryCanceled:
+        return _timed_out(request, "tables")
+    return _page(request, "admin/tables.html", "tables", tables=tables)
 
 
 @router.get("/tables/{name}", response_model=None)
@@ -65,10 +85,21 @@ async def admin_table(
     columns = (await table_columns(conn)).get(name)
     if columns is None:
         raise HTTPException(status_code=404)
-    data = await browse_table(
-        conn, name, columns, page=page, sort=sort, descending=order != "asc", query=q
-    )
+    try:
+        data = await browse_table(
+            conn, name, columns, page=page, sort=sort, descending=order != "asc", query=q
+        )
+    except QueryCanceled:
+        return _timed_out(request, "tables")
     return _page(request, "admin/table.html", "tables", data=data, mask=MASK)
+
+
+def _timed_out(request: Request, section: str) -> HTMLResponse:
+    """PR 326: a query that hit statement_timeout (app/db/admin_data.py) - a plain error
+    page instead of a 500, so the panel stays usable on a big table."""
+    response = _page(request, "admin/timeout.html", section, seconds=QUERY_TIMEOUT_MS // 1000)
+    response.status_code = 503
+    return response
 
 
 def _page(request: Request, template: str, section: str, **context: object) -> HTMLResponse:
