@@ -116,3 +116,10 @@ self.addEventListener("fetch", (event) => {
     );
   }
 });
+
+// A new version waits after installing (no skipWaiting on install): swapping workers
+// mid-chapter could change the page under the reader. sw-register.js offers the update
+// on a later page load and sends this once the visitor taps «Обновить».
+self.addEventListener("message", (event) => {
+  if (event.data?.type === "SKIP_WAITING") self.skipWaiting();
+});
