@@ -21258,3 +21258,22 @@ body.reader-hud-visible .reader-hud {
     padding-left: 16px;
   }
 }
+
+/* ==========================================================================
+   Offline page (PR 328) - what the service worker shows for a page that couldn't load
+   without a network. Standalone (no shell), so the error page's centring needs the
+   body itself to be the full-height flex column .main normally is.
+   ========================================================================== */
+.offline-page {
+  display: flex;
+  min-height: 100vh;
+  min-height: 100dvh;
+}
+
+.offline-page__actions {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: var(--s-12);
+  margin-top: var(--s-8);
+}

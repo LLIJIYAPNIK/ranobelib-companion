@@ -1,0 +1,31 @@
+<!doctype html>
+<html lang="ru">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="robots" content="noindex">
+  <meta name="theme-color" content="#0c0c12">
+  <title>Нет соединения — Webnovells</title>
+  <link rel="icon" type="image/png" sizes="32x32" href="{{ url_for('static', path='favicon/favicon-32x32.png') }}">
+  {# The same webfonts as base.html - offline they come from the worker's font cache. #}
+  <link rel="stylesheet" crossorigin href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&family=Literata:ital,opsz,wght@0,7..72,400;0,7..72,500;1,7..72,400&family=Golos+Text:wght@400;500&family=JetBrains+Mono:wght@400;500&display=swap">
+  <link rel="stylesheet" href="{{ static_url('css/app.css') }}">
+</head>
+{#
+  PR 328: what the service worker shows for a page that couldn't load without a
+  network. Precached once and served for any URL, so it stands alone - no base.html: its
+  sidebar would carry whoever was signed in when it was cached (or a guest's «Войти» for a
+  signed-in reader). The error page's look (PR 265). «Повторить» is href="" - the URL
+  the visitor was trying to open, since the worker answers under that URL.
+#}
+<body class="offline-page">
+  <main class="error-page">
+    <h1 class="error-page__detail">Нет соединения</h1>
+    <p class="error-page__hint">Эта страница откроется, когда интернет вернётся. Главы, скачанные для чтения без интернета, — в «Загрузках».</p>
+    <div class="offline-page__actions">
+      <a class="ui-btn ui-btn--primary" href="">Повторить</a>
+      <a class="ui-btn" href="/downloads">Загрузки</a>
+    </div>
+  </main>
+</body>
+</html>
