@@ -21011,3 +21011,55 @@ body.reader-hud-visible .reader-hud {
     overflow-wrap: break-word;
   }
 }
+
+/* ==========================================================================
+   Admin panel (PR 324) - its own minimal layout (app/templates/admin/), no site
+   navigation: the admin isn't a site user. PR 325 builds the overview/data browser
+   on the same wn-* tokens.
+   ========================================================================== */
+.wn-admin {
+  min-height: 100vh;
+  margin: 0;
+  background: var(--wn-canvas);
+  color: var(--wn-text);
+  font-family: var(--wn-font-ui);
+}
+
+.wn-admin__center {
+  display: grid;
+  place-items: center;
+  min-height: 100vh;
+  padding: var(--wn-space-3) 16px;
+}
+
+.wn-admin__card {
+  display: flex;
+  flex-direction: column;
+  gap: var(--wn-space-2);
+  width: min(400px, 100%);
+  padding: var(--wn-space-4);
+  border: 1px solid var(--wn-border);
+  border-radius: var(--wn-radius-xl);
+  background: var(--wn-surface);
+}
+
+.wn-admin__title {
+  margin: 0;
+  font: var(--wn-type-heading);
+}
+
+.wn-admin__hint {
+  margin: 0;
+  color: var(--wn-text-muted);
+  font: var(--wn-type-body);
+}
+
+.wn-admin__form {
+  display: flex;
+  flex-direction: column;
+  gap: var(--wn-space-2);
+}
+
+.wn-admin .ui-input {
+  font-size: 16px;
+}

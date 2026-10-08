@@ -8,6 +8,7 @@ from fastapi.staticfiles import StaticFiles
 
 from app.api import (
     activity,
+    admin,
     auth,
     chapters,
     downloads,
@@ -63,6 +64,8 @@ app = FastAPI(
 )
 install_security_headers(app)
 install_html_no_cache(app)
+# PR 324: after install_html_no_cache, so its no-store wins on /admin*.
+admin.install_admin_headers(app)
 app.add_middleware(
     RememberMeSessionMiddleware,
     secret_key=get_settings().session_secret_key,
@@ -88,6 +91,7 @@ app.mount(
     name="comment-attachments",
 )
 app.include_router(health.router)
+app.include_router(admin.router)
 app.include_router(activity.router)
 app.include_router(home.router)
 app.include_router(auth.router)

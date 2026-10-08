@@ -56,6 +56,8 @@ from ever sending the cookie back).
 | `EMAIL_USER` | no | (unset) | SMTP auth username, if the provider requires one. |
 | `EMAIL_PASSWORD` | no | (unset) | SMTP auth password/API key. |
 | `EMAIL_FROM` | no | `EMAIL_USER`, else `no-reply@webnovells.ru` | `From:` address on outgoing mail. |
+| `ADMIN_PASSWORD` | no | (unset = panel off) | Password for the `/admin` panel (PR 324) - its own login, not a user account, nothing stored in the database. Unset or empty switches the panel off: every `/admin*` URL answers 404 like any unknown page, in production too. Set a long random value (e.g. `openssl rand -base64 24`); login attempts are throttled per IP, but the password is the only factor. Never logged. |
+| `ADMIN_SESSION_TTL_SECONDS` | no | 2 hours | How long an admin login lasts before `/admin` asks for the password again. |
 
 Local development also reads these same variables, but every one of them falls back to a
 working default under the project directory except `DATABASE_URL` - see `README.md`'s
