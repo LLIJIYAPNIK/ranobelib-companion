@@ -10,7 +10,14 @@ from urllib.parse import quote
 
 import pytest
 from fastapi.testclient import TestClient
-from ranobelib import RateLimitError, chapter_size
+from ranobelib import (
+    AccessBlockedError,
+    AuthRequiredError,
+    ChapterNotFoundError,
+    MultipleTranslationsError,
+    RateLimitError,
+    chapter_size,
+)
 from ranobelib.models import Chapter, ChapterBranch, ChapterUser, Team, Volume
 
 from app.main import app
@@ -226,3 +233,66 @@ def test_rewrite_handles_the_sdks_unescaped_attachment_tags() -> None:
     assert rewrite_images(raw, lambda url: "/v?u=" + url) == (
         '<p><img loading="lazy" src="/v?u=https://ranobelib.me/a.png?x=1&amp;y=2" /></p>'
     )
+
+
+# --- SDK errors: the central mapping, always as JSON ---------------------------------
+
+_BRANCHES = [_branch(1, "Команда А"), _branch(2, None)]
+
+
+@pytest.mark.parametrize("accept", ["*/*", "application/json", "text/html,*/*"])
+def test_an_ambiguous_chapter_is_a_409_listing_the_translations(accept: str) -> None:
+    exc = MultipleTranslationsError(SLUG, volume="1", number="5", branches=_BRANCHES)
+    fake = _FakeClient(exc=exc)
+    with patch("app.services.client.RanobeLib", return_value=fake):
+        response = client.get(f"/offline/titles/{SLUG}/chapters/1/5", headers={"accept": accept})
+
+    assert response.status_code == 409
+    assert response.headers["content-type"] == "application/json"
+    body = response.json()
+    assert body["detail"] == "У главы несколько переводов, выберите один"
+    assert [branch["branch_id"] for branch in body["branches"]] == [1, 2]
+    # Nothing picked on the visitor's behalf: one call, without a branch.
+    assert fake.calls == [("get_chapter", 1, "5", None)]
+
+
+@pytest.mark.parametrize(
+    ("exc", "status", "detail"),
+    [
+        (ChapterNotFoundError(SLUG, volume="1", number="5"), 404, "Глава не найдена"),
+        (AuthRequiredError("paid"), 403, "Требуется авторизация — недоступно"),
+        (RateLimitError("slow"), 429, "ranobelib сейчас ограничивает запросы, попробуйте позже"),
+        (
+            AccessBlockedError("ddos-guard"),
+            503,
+            "Источник тайтлов временно блокирует наши запросы, попробуйте позже",
+        ),
+    ],
+)
+def test_chapter_errors_map_through_the_central_handler(
+    exc: Exception, status: int, detail: str
+) -> None:
+    with patch("app.services.client.RanobeLib", return_value=_FakeClient(exc=exc)):
+        response = client.get(
+            f"/offline/titles/{SLUG}/chapters/1/5", headers={"accept": "text/html,*/*"}
+        )
+
+    assert response.status_code == status
+    # The user-facing text only - never the exception's own (technical) message.
+    assert response.json() == {"detail": detail}
+
+
+def test_an_unknown_title_is_a_404_for_the_manifest() -> None:
+    response = client.get("/offline/titles/not-a-slug/manifest")
+
+    assert response.status_code == 404
+    assert response.json() == {"detail": "Тайтл не найден, проверьте ссылку"}
+
+
+def test_the_online_reader_still_shows_its_html_pages() -> None:
+    exc = MultipleTranslationsError(SLUG, volume="1", number="5", branches=_BRANCHES)
+    with patch("app.services.client.RanobeLib", return_value=_FakeClient(exc=exc)):
+        response = client.get(f"/titles/{SLUG}/chapters/1/5", headers={"accept": "text/html"})
+
+    assert response.status_code == 409
+    assert response.headers["content-type"].startswith("text/html")
