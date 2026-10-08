@@ -21,8 +21,13 @@ from ranobelib import (
 from ranobelib.models import Chapter, ChapterBranch, ChapterUser, Team, Volume
 
 from app.config import get_settings
+from app.db.activity import list_chapters_read_today
+from app.db.connection import connection
+from app.db.library import list_entries
 from app.main import app
 from app.services.offline import image_urls, rewrite_images
+from tests.auth_helpers import register
+from tests.db_reset import reset_app_database
 
 client = TestClient(app)
 
@@ -337,3 +342,113 @@ def test_a_chapter_is_one_sdk_call() -> None:
     # No table of contents, no prefetch of neighbours: the client asks chapter by chapter.
     assert fake.calls == [("get_chapter", 1, "5", 1)]
     assert fake.max_in_flight == 1
+
+
+# --- PR 331: the reader page as the device keeps it ----------------------------------
+
+
+def _page(fake: _FakeClient, test_client: TestClient = client) -> str:
+    with patch("app.services.client.RanobeLib", return_value=fake):
+        response = test_client.get(f"/offline/titles/{SLUG}/chapters/1/2/page")
+    assert response.status_code == 200, response.text
+    assert response.headers["content-type"].startswith("text/html")
+    assert response.headers["cache-control"] == "no-cache"
+    return response.text
+
+
+def _chapter_two() -> Chapter:
+    return _chapter_with_images().model_copy(update={"number": "2"})
+
+
+def test_page_is_the_reader_with_its_neighbours_in_sdk_order() -> None:
+    fake = _FakeClient(chapter=_chapter_two())
+    page = _page(fake)
+
+    assert 'class="reader-page reader-page--offline-copy"' in page
+    assert 'data-offline-copy="1"' in page
+    assert 'class="reader__title">Глава с картинками</h1>' in page
+    # Neighbours exactly as the online reader links them (SDK order: 1/1 ← 1/2 → 2/2.5).
+    assert f'href="/titles/{SLUG}/chapters/1/1"' in page
+    assert f'href="/titles/{SLUG}/chapters/2/2.5"' in page
+    # The same SDK calls as the online reader - and nothing else.
+    assert fake.calls == [("get_chapter", 1, "2", None), ("get_table_of_contents",)]
+
+
+def test_page_points_every_image_at_the_proxy() -> None:
+    page = _page(_FakeClient(chapter=_chapter_two()))
+
+    assert f'src="{html.escape(_view(_IMG_A))}"' in page
+    assert f'src="{html.escape(_view(_IMG_B))}"' in page
+    assert 'src="https://ranobelib.me' not in page
+    assert 'src="https://cover.cdnlibs.org' not in page
+
+
+def test_page_leaves_out_what_needs_the_network() -> None:
+    page = _page(_FakeClient(chapter=_chapter_two()))
+
+    assert "Реакции и комментарии появятся, когда будет сеть." in page
+    assert "paragraph-menu.js" not in page
+    assert "reaction-state.js" not in page
+    assert 'data-role="reader-more-trigger"' not in page  # chapter export
+    assert "/static/js/offline-store.js" in page
+    assert "/static/js/reader-offline.js" in page
+
+
+def test_page_passes_the_picked_translation_through() -> None:
+    fake = _FakeClient(chapter=_chapter_two())
+    with patch("app.services.client.RanobeLib", return_value=fake):
+        client.get(f"/offline/titles/{SLUG}/chapters/1/2/page", params={"branch_id": 7})
+
+    assert fake.calls[0] == ("get_chapter", 1, "2", 7)
+
+
+def test_page_for_an_ambiguous_chapter_is_the_json_409() -> None:
+    exc = MultipleTranslationsError(SLUG, volume="1", number="2", branches=_BRANCHES)
+    with patch("app.services.client.RanobeLib", return_value=_FakeClient(exc=exc)):
+        response = client.get(
+            f"/offline/titles/{SLUG}/chapters/1/2/page", headers={"accept": "text/html"}
+        )
+
+    assert response.status_code == 409
+    assert response.headers["content-type"] == "application/json"
+
+
+def test_the_online_reader_keeps_its_live_features() -> None:
+    with patch("app.services.client.RanobeLib", return_value=_FakeClient(chapter=_chapter_two())):
+        page = client.get(f"/titles/{SLUG}/chapters/1/2").text
+
+    assert "reader-page--offline-copy" not in page
+    assert "data-offline-copy" not in page
+    assert "paragraph-menu.js" in page
+    assert "Реакции и комментарии появятся" not in page
+    # Notes the last chapter opened, for the offline page's «Продолжить».
+    assert "/static/js/reader-offline.js" in page
+
+
+@pytest.fixture
+def signed_in(monkeypatch: pytest.MonkeyPatch) -> Iterator[TestClient]:
+    monkeypatch.setenv("SESSION_SECRET_KEY", "test-secret")
+    reset_app_database(monkeypatch)
+    get_settings.cache_clear()
+    with TestClient(app) as test_client:
+        register(test_client, "alice@example.com", nickname="alice")
+        yield test_client
+    get_settings.cache_clear()
+
+
+async def test_a_signed_in_copy_is_nobodys_page_and_records_nothing(
+    signed_in: TestClient,
+) -> None:
+    page = _page(_FakeClient(chapter=_chapter_two()), signed_in)
+
+    # Nothing personal in what the device keeps...
+    assert 'data-authenticated=""' in page
+    assert 'data-user-id=""' in page
+    assert "alice" not in page
+    assert "reading-progress-tick.js" not in page
+    assert "activity-heartbeat.js" not in page
+    # ...and downloading isn't reading: unlike the reader route, no library entry and no
+    # «read today» record.
+    async with connection() as conn:
+        assert await list_entries(conn, user_id=1) == []
+        assert await list_chapters_read_today(conn, user_id=1) == []
