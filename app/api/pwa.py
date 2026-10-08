@@ -1,5 +1,5 @@
 """GET /manifest.webmanifest (PR 327) - the Web App Manifest that makes the site
-installable.
+installable - and GET /service-worker.js (PR 328).
 
 Served by a route rather than from /static: it needs the right media type
 (``application/manifest+json``, which Python's mimetypes doesn't know everywhere), and its
@@ -10,16 +10,20 @@ updated icon reaches already-installed copies. Colors are the Webnovells canvas 
 
 from __future__ import annotations
 
+import hashlib
 import json
+from pathlib import Path
 
 from fastapi import APIRouter
 from fastapi.responses import Response
 
-from app.static_assets import asset_hash
+from app.static_assets import NO_CACHE, asset_hash
 
 router = APIRouter()
 
 THEME_COLOR = "#0c0c12"  # --wn-canvas in app.css
+
+SERVICE_WORKER_SOURCE = Path(__file__).parents[1] / "pwa" / "service-worker.js"
 
 
 def _icon(path: str) -> str:
@@ -69,3 +73,22 @@ async def web_app_manifest() -> Response:
         media_type="application/manifest+json",
         headers={"Cache-Control": "no-cache"},
     )
+
+
+def service_worker_config() -> dict[str, object]:
+    """What the route prepends to app/pwa/service-worker.js as ``self.SW_CONFIG``. The
+    version hashes everything the worker's behaviour depends on, its own source included,
+    so a change to any of it is a new worker the browser installs."""
+    source = SERVICE_WORKER_SOURCE.read_bytes()
+    version = hashlib.sha256(source).hexdigest()[:10]
+    return {"version": version}
+
+
+@router.get("/service-worker.js", include_in_schema=False)
+async def service_worker() -> Response:
+    """From the site root rather than /static, so its scope can be "/" (a worker only
+    controls pages under its own path). ``no-cache``: the browser checks it for updates
+    on every navigation anyway, but an HTTP-cached copy must never delay a new version."""
+    config = json.dumps(service_worker_config(), ensure_ascii=False)
+    body = f"self.SW_CONFIG = {config};\n" + SERVICE_WORKER_SOURCE.read_text(encoding="utf-8")
+    return Response(body, media_type="text/javascript", headers={"Cache-Control": NO_CACHE})

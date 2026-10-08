@@ -206,6 +206,9 @@
   <!-- PR 327: holds the browser's install prompt on every page (no mini-infobar); it's
        only offered from the reading settings page. -->
   <script src="{{ static_url('js/pwa-install.js') }}" defer></script>
+  <!-- PR 328: the service worker (offline shell, precached css/js) and its
+       «Доступна новая версия» prompt. -->
+  <script src="{{ static_url('js/sw-register.js') }}" defer></script>
   {% if not current_user %}
   <script src="{{ static_url('js/auth-modal.js') }}" defer></script>
   {% endif %}
