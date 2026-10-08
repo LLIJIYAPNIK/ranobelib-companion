@@ -115,7 +115,7 @@ def test_right_password_opens_the_panel(client: TestClient) -> None:
     assert response.headers["location"] == "/admin"
     home = client.get("/admin")
     assert home.status_code == 200
-    assert "Вход выполнен" in home.text
+    assert "Обзор" in home.text
     assert PASSWORD not in home.text
     assert client.get("/admin/login", follow_redirects=False).headers["location"] == "/admin"
 
