@@ -36,16 +36,24 @@ const IMAGE_CACHE_LIMIT = 100;
 const FONT_ORIGINS = ["https://fonts.googleapis.com", "https://fonts.gstatic.com"];
 const IMAGE_PATH = /\.(?:png|svg|ico|webp|jpe?g|gif)$/i;
 
+// What the visitor downloaded for reading without a network (PR 330/331): written only by
+// the page (offline-store.js), only ever read here.
+const OFFLINE_CACHE = "wn-offline";
+const CHAPTER_PATH = /^\/titles\/[^/]+\/chapters\/[^/]+\/[^/]+$/;
+const OFFLINE_IMAGE_PATH = "/images/view";
+
 // Which strategy a request gets. An allowlist: only the app's own static files and the
 // webfonts are ever stored. Page navigations are "page" - fetched, never stored (HTML
-// carries the signed-in user's sidebar). Everything else - any non-GET, /admin,
-// /activity, /notifications, /settings, JSON endpoints, avatars and other uploads,
-// covers hotlinked from ranobelib.me - is "network": the worker doesn't touch it.
+// carries the signed-in user's sidebar). Proxied chapter images are "offline-image": the
+// downloaded copy if there is one, never stored here. Everything else - any non-GET,
+// /admin, /activity, /notifications, /settings, JSON endpoints, avatars and other
+// uploads, covers hotlinked from ranobelib.me - is "network": the worker doesn't touch it.
 function routeFor(method, url, mode) {
   if (method !== "GET") return "network";
   const { origin, pathname, searchParams } = new URL(url);
   if (origin !== self.location.origin) return FONT_ORIGINS.includes(origin) ? "font" : "network";
   if (mode === "navigate") return "page";
+  if (pathname === OFFLINE_IMAGE_PATH) return "offline-image";
   if (!pathname.startsWith("/static/")) return "network";
   if (IMAGE_PATH.test(pathname)) return "image";
   // A ?v= URL is immutable (PR 317); one without it is always revalidated - leave it so.
@@ -61,6 +69,20 @@ async function cacheFirst(request, cacheName) {
     await cache.put(request, response.clone());
   }
   return response;
+}
+
+// A downloaded chapter's page keeps the ?v= URLs of the day it was downloaded. Offline,
+// after a deploy, that exact version is gone from the precache - the current file under
+// the same path is much better than an unstyled page.
+async function staticFile(request) {
+  try {
+    return await cacheFirst(request, STATIC_CACHE);
+  } catch (error) {
+    const cache = await caches.open(STATIC_CACHE);
+    const current = await cache.match(request, { ignoreSearch: true });
+    if (current) return current;
+    throw error;
+  }
 }
 
 // The cached copy at once if there is one, refreshed in the background for next time.
@@ -86,17 +108,35 @@ async function trim(cache, limit) {
 }
 
 // Network-first, and never stored: a page is the signed-in user's own (sidebar, library,
-// notifications). With no network it's the precached «Нет соединения» page - at once
-// when the device already knows it's offline, rather than after a failed attempt.
+// notifications). With no network: a chapter downloaded for reading offline is its kept
+// page (PR 331); anything else is the precached «Нет соединения» page, which also lists
+// what is downloaded and says «Глава не скачана» for a chapter that isn't. At once when
+// the device already knows it's offline, rather than after a failed attempt.
 async function networkPage(request) {
   if (self.navigator.onLine !== false) {
     try {
       return await fetch(request);
     } catch {
-      // fall through to the offline page
+      // fall through to what's on the device
     }
   }
-  return (await caches.match(CONFIG.offline)) || Response.error();
+  return (await offlineCopy(request.url)) || (await caches.match(CONFIG.offline)) || Response.error();
+}
+
+// The downloaded copy of a chapter page, by path: the copy is of the translation picked
+// at download time, so ?branch_id= doesn't pick a different one.
+async function offlineCopy(url) {
+  const { pathname } = new URL(url);
+  if (!CHAPTER_PATH.test(pathname)) return null;
+  const cache = await caches.open(OFFLINE_CACHE);
+  return (await cache.match(pathname)) || null;
+}
+
+// A downloaded chapter's image from the device even online (no second trip to the
+// source); otherwise the proxy, as usual. Nothing new is stored.
+async function offlineImage(request) {
+  const cache = await caches.open(OFFLINE_CACHE);
+  return (await cache.match(request)) || fetch(request);
 }
 
 self.addEventListener("fetch", (event) => {
@@ -105,7 +145,9 @@ self.addEventListener("fetch", (event) => {
   if (route === "page") {
     event.respondWith(networkPage(request));
   } else if (route === "static") {
-    event.respondWith(cacheFirst(request, STATIC_CACHE));
+    event.respondWith(staticFile(request));
+  } else if (route === "offline-image") {
+    event.respondWith(offlineImage(request));
   } else if (route === "image") {
     event.respondWith(staleWhileRevalidate(event, IMAGE_CACHE, IMAGE_CACHE_LIMIT));
   } else if (route === "font") {
