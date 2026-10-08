@@ -21385,3 +21385,82 @@ body.reader-hud-visible .reader-hud {
     grid-template-columns: minmax(0, 1fr);
   }
 }
+
+/* «Скачано» on /downloads (PR 330): the downloads page's own section head, one row per
+   title - cover, name over «N глав · size · date» in mono, «Удалить». */
+.wn-offline-saved[hidden],
+.wn-offline-saved [hidden] {
+  display: none;
+}
+
+.wn-offline-saved__usage {
+  color: var(--text-3);
+  font-size: 13px;
+}
+
+.wn-offline-saved__list {
+  display: flex;
+  flex-direction: column;
+  gap: var(--s-8);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.wn-offline-saved__item {
+  display: flex;
+  align-items: center;
+  gap: var(--s-12);
+  min-width: 0;
+  padding: 10px 12px;
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  background: var(--surface-1);
+}
+
+.wn-offline-saved__cover {
+  display: grid;
+  flex: none;
+  place-items: center;
+  width: 40px;
+  height: 56px;
+  overflow: hidden;
+  border-radius: 8px;
+  background: var(--surface-2);
+}
+
+.wn-offline-saved__cover img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.wn-offline-saved__names {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+
+.wn-offline-saved__name {
+  overflow: hidden;
+  color: var(--text-1);
+  font: 700 15px/1.3 var(--font-ui);
+  text-decoration: none;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.wn-offline-saved__name:hover {
+  text-decoration: underline;
+}
+
+.wn-offline-saved__meta {
+  color: var(--text-3);
+  font-size: 12px;
+}
+
+.wn-offline-saved__delete {
+  flex: none;
+}
