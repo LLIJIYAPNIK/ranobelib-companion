@@ -85,10 +85,26 @@ async function trim(cache, limit) {
   await Promise.all(keys.slice(0, Math.max(0, keys.length - limit)).map((key) => cache.delete(key)));
 }
 
+// Network-first, and never stored: a page is the signed-in user's own (sidebar, library,
+// notifications). With no network it's the precached «Нет соединения» page - at once
+// when the device already knows it's offline, rather than after a failed attempt.
+async function networkPage(request) {
+  if (self.navigator.onLine !== false) {
+    try {
+      return await fetch(request);
+    } catch {
+      // fall through to the offline page
+    }
+  }
+  return (await caches.match(CONFIG.offline)) || Response.error();
+}
+
 self.addEventListener("fetch", (event) => {
   const { request } = event;
   const route = routeFor(request.method, request.url, request.mode);
-  if (route === "static") {
+  if (route === "page") {
+    event.respondWith(networkPage(request));
+  } else if (route === "static") {
     event.respondWith(cacheFirst(request, STATIC_CACHE));
   } else if (route === "image") {
     event.respondWith(staleWhileRevalidate(event, IMAGE_CACHE, IMAGE_CACHE_LIMIT));

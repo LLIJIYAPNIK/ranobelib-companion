@@ -1,5 +1,5 @@
 """GET /manifest.webmanifest (PR 327) - the Web App Manifest that makes the site
-installable - and GET /service-worker.js (PR 328).
+installable - and the service worker with its offline page (PR 328).
 
 Served by a route rather than from /static: it needs the right media type
 (``application/manifest+json``, which Python's mimetypes doesn't know everywhere), and its
@@ -14,16 +14,19 @@ import hashlib
 import json
 from pathlib import Path
 
-from fastapi import APIRouter
-from fastapi.responses import Response
+from fastapi import APIRouter, Request
+from fastapi.responses import HTMLResponse, Response
 
 from app.static_assets import NO_CACHE, STATIC_DIR, asset_hash
+from app.templating import templates
 
 router = APIRouter()
 
 THEME_COLOR = "#0c0c12"  # --wn-canvas in app.css
 
 SERVICE_WORKER_SOURCE = Path(__file__).parents[1] / "pwa" / "service-worker.js"
+OFFLINE_URL = "/offline"
+OFFLINE_TEMPLATE = Path(__file__).parents[1] / "templates" / "offline.html"
 
 
 def _static(path: str) -> str:
@@ -83,20 +86,21 @@ def service_worker_config() -> dict[str, object]:
     so a change to any of it is a new worker the browser installs."""
     precache = precache_urls()
     digest = hashlib.sha256(SERVICE_WORKER_SOURCE.read_bytes())
+    digest.update(OFFLINE_TEMPLATE.read_bytes())
     digest.update("\n".join(precache).encode())
-    return {"version": digest.hexdigest()[:10], "precache": precache}
+    return {"version": digest.hexdigest()[:10], "precache": precache, "offline": OFFLINE_URL}
 
 
 def precache_urls() -> list[str]:
-    """Every stylesheet and script under app/static, at the same ``?v=`` URL
-    static_url() gives the pages (PR 317) - so the precached copy is exactly what a page
-    asks for, and a changed file is a new URL (and a new worker version)."""
+    """The offline page, and every stylesheet and script under app/static at the same
+    ``?v=`` URL static_url() gives the pages (PR 317) - so the precached copy is exactly
+    what a page asks for, and a changed file is a new URL (and a new worker version)."""
     paths = sorted(
         file.relative_to(STATIC_DIR).as_posix()
         for pattern in ("css/*.css", "js/*.js")
         for file in STATIC_DIR.glob(pattern)
     )
-    return [_static(path) for path in paths]
+    return [OFFLINE_URL, *(_static(path) for path in paths)]
 
 
 @router.get("/service-worker.js", include_in_schema=False)
@@ -107,3 +111,10 @@ async def service_worker() -> Response:
     config = json.dumps(service_worker_config(), ensure_ascii=False)
     body = f"self.SW_CONFIG = {config};\n" + SERVICE_WORKER_SOURCE.read_text(encoding="utf-8")
     return Response(body, media_type="text/javascript", headers={"Cache-Control": NO_CACHE})
+
+
+@router.get(OFFLINE_URL, include_in_schema=False, response_class=HTMLResponse)
+async def offline_page(request: Request) -> HTMLResponse:
+    """«Нет соединения» - precached by the service worker, which serves it for a page
+    that couldn't load. The same for everyone (no user data), so caching it is safe."""
+    return templates.TemplateResponse(request, "offline.html")
