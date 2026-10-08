@@ -108,6 +108,9 @@
       slug: fragment.slug_url,
       name: title.name || existing?.name || fragment.slug_url,
       cover: title.cover || existing?.cover || null,
+      // PR 331: the title's chapter order from the manifest ([volume, number] in SDK
+      // order) - how the offline page lists what's downloaded without sorting numbers.
+      toc: title.toc || existing?.toc || null,
       savedAt: existing?.savedAt || now,
       updatedAt: now,
     });
@@ -217,6 +220,7 @@
     readerUrl,
     coverUrl,
     savedKeys,
+    chaptersOf,
     saveChapter,
     saveCover,
     listTitles,

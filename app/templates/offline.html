@@ -17,15 +17,37 @@
   sidebar would carry whoever was signed in when it was cached (or a guest's «Войти» for a
   signed-in reader). The error page's look (PR 265). «Повторить» is href="" - the URL
   the visitor was trying to open, since the worker answers under that URL.
+
+  PR 331: offline-page.js fills in what's on this device - «Продолжить» and the
+  downloaded chapters per title - and says «Глава не скачана» under a chapter's URL. Its
+  data is read from the device itself (offline-store.js), so the cached page still holds
+  nothing personal.
 #}
 <body class="offline-page">
   <main class="error-page">
-    <h1 class="error-page__detail">Нет соединения</h1>
-    <p class="error-page__hint">Эта страница откроется, когда интернет вернётся. Главы, скачанные для чтения без интернета, — в «Загрузках».</p>
+    <h1 class="error-page__detail" data-role="offline-heading">Нет соединения</h1>
+    <p class="error-page__hint" data-role="offline-hint">Эта страница откроется, когда интернет вернётся.</p>
     <div class="offline-page__actions">
       <a class="ui-btn ui-btn--primary" href="">Повторить</a>
-      <a class="ui-btn" href="/downloads">Загрузки</a>
     </div>
+    <section class="offline-shelf" data-role="offline-shelf" aria-labelledby="offline-shelf-title" hidden>
+      <h2 class="offline-shelf__title" id="offline-shelf-title">Можно читать без интернета</h2>
+      <ul class="offline-shelf__list" data-role="offline-shelf-list"></ul>
+    </section>
   </main>
+  <template data-role="offline-shelf-item">
+    <li class="offline-shelf__item">
+      <div class="offline-shelf__row">
+        <b class="offline-shelf__name" data-role="offline-shelf-name"></b>
+        <a class="ui-btn ui-btn--sm ui-btn--primary" data-role="offline-shelf-continue"></a>
+      </div>
+      <details class="offline-shelf__chapters">
+        <summary></summary>
+        <ol></ol>
+      </details>
+    </li>
+  </template>
+  <script src="{{ static_url('js/offline-store.js') }}" defer></script>
+  <script src="{{ static_url('js/offline-page.js') }}" defer></script>
 </body>
 </html>
