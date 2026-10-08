@@ -21559,3 +21559,18 @@ body.reader-hud-visible .reader-hud {
   color: var(--text-3);
   font-weight: 500;
 }
+
+/* A downloaded copy (PR 331): one quiet line under the chapter title about what needs
+   the network; no account block - the copy is nobody's page, so it would only ever show
+   a guest's «Войти» - and no Tap Focus «⋯», whose menu (reactions, comments) isn't
+   loaded in a copy. */
+.reader-offline-note {
+  margin: 0;
+  color: var(--r-muted);
+  font: 500 13px/1.45 var(--font-ui);
+}
+
+body.reader-page--offline-copy .sidebar__account,
+body.reader-page--offline-copy .reader-paragraph-more {
+  display: none;
+}

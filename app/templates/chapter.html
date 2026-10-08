@@ -67,6 +67,9 @@
   <div class="reader__head">
     <span class="reader__kicker">Том {{ chapter.volume }} · Глава {{ chapter.number }}</span>
     <h1 class="reader__title">{{ chapter.name or chapter_label }}</h1>
+    {% if offline_copy %}
+    <p class="reader-offline-note" data-role="reader-offline-note">Скачанная копия. Реакции и комментарии появятся, когда будет сеть.</p>
+    {% endif %}
   </div>
   {#
     Rendered as real HTML (bypassing Jinja's autoescape), not as escaped text.
@@ -255,8 +258,11 @@
 <script src="{{ static_url('js/reader-progress.js') }}" defer></script>
 <script src="{{ static_url('js/reader-hud.js') }}" defer></script>
 <script src="{{ static_url('js/image-lightbox.js') }}" defer></script>
+{# Reactions and comments are live data - a downloaded copy (PR 331) says so instead. #}
+{% if not offline_copy %}
 <script src="{{ static_url('js/reaction-state.js') }}" defer></script>
 <script src="{{ static_url('js/paragraph-menu.js') }}" defer></script>
+{% endif %}
 {# PR 331: notes the last chapter opened (the offline page's «Продолжить»); in a downloaded
    copy also marks the neighbours that aren't on the device. #}
 {% if offline_copy %}<script src="{{ static_url('js/offline-store.js') }}" defer></script>{% endif %}
