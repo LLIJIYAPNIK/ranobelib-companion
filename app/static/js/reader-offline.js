@@ -4,6 +4,8 @@
 // the service worker serves offline, data-offline-copy) it also marks the links to
 // neighbouring chapters that aren't on the device - HUD arrows, the bottom bar, the end
 // card - as «не скачана», so it's clear before tapping that they won't open offline.
+// PR 335: for a downloaded title it also notes when it was opened (offlineStore.touchTitle,
+// shown in «Офлайн» in the settings).
 (() => {
   const chapter = document.querySelector('[data-role="chapter"]');
   if (!chapter) return;
@@ -14,7 +16,10 @@
     // no storage: «Продолжить» falls back to the first downloaded chapter
   }
 
-  if (chapter.dataset.offlineCopy !== "1" || !window.offlineStore?.supported()) return;
+  if (!window.offlineStore?.supported()) return;
+  window.offlineStore.touchTitle(slugUrl).catch(() => {});
+
+  if (chapter.dataset.offlineCopy !== "1") return;
 
   const CHAPTER_PATH = /^\/titles\/([^/]+)\/chapters\/([^/]+)\/([^/]+)$/;
   const neighbours = [...document.querySelectorAll("a[href]")]

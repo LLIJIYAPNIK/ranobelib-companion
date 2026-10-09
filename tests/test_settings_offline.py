@@ -47,3 +47,14 @@ def test_the_summary_starts_hidden_and_the_store_loads_before_the_script() -> No
     assert html.index("js/offline-store.js") < html.index("js/offline-settings.js")
     # Auto-download stays under «Чтение» - the page points there.
     assert 'href="/settings/reading"' in html[html.index('data-role="offline-settings"') :]
+
+
+def test_titles_card_has_the_row_template_and_the_delete_sheet() -> None:
+    html = _page()
+
+    assert re.search(r'data-role="offline-settings-titles"[^>]*hidden', html)
+    row = html[html.index('data-role="offline-titles-row"') :]
+    for role in ("offline-titles-size", "offline-titles-opened", "offline-titles-delete"):
+        assert f'data-role="{role}"' in row
+    assert 'data-bottom-sheet-title="Удалить тайтл с устройства?"' in html
+    assert 'data-role="offline-titles-delete-confirm"' in html

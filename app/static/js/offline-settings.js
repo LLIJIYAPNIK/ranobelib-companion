@@ -1,7 +1,9 @@
 // PR 335: «Офлайн» in the settings (settings_offline.html) - what's downloaded for reading
 // without a network on this device and how much room it takes: the downloads' own size
 // (the IndexedDB index of offline-store.js) next to what the browser gives the site
-// (navigator.storage.estimate()). No server call: the copy belongs to the device.
+// (navigator.storage.estimate()), then every title - the biggest first - with its size,
+// chapters and when it was last opened, and «Удалить» (offlineStore.deleteTitle). No
+// server call: the copy belongs to the device.
 (() => {
   const page = document.querySelector('[data-role="offline-settings"]');
   if (!page) return;
@@ -20,6 +22,13 @@
   const pct = q("offline-summary-pct");
   const quota = q("offline-summary-quota");
   const warning = q("offline-summary-warning");
+  const titlesCard = q("offline-settings-titles");
+  const list = q("offline-titles-list");
+  const rowTemplate = q("offline-titles-row");
+  const confirmBox = page.querySelector("#offline-settings-delete");
+  const confirmText = q("offline-titles-delete-text");
+  const confirmButton = q("offline-titles-delete-confirm");
+  let pending = null; // the title «Удалить» was pressed for
 
   function formatBytes(bytes) {
     const units = ["Б", "КБ", "МБ", "ГБ"];
@@ -65,6 +74,56 @@
     }
   }
 
+  const date = (iso) => new Date(iso).toLocaleDateString("ru-RU", { day: "numeric", month: "long", year: "numeric" });
+
+  function renderTitles(titles) {
+    titlesCard.hidden = !titles.length;
+    const biggest = [...titles].sort((a, b) => b.bytes - a.bytes);
+    list.replaceChildren(
+      ...biggest.map((title) => {
+        const row = rowTemplate.content.firstElementChild.cloneNode(true);
+        const image = row.querySelector("img");
+        if (title.cover) image.src = title.cover;
+        else image.remove();
+        const link = row.querySelector(".wn-offline-saved__name");
+        link.href = `/titles/${encodeURIComponent(title.slug)}`;
+        link.textContent = title.name;
+        row.querySelector('[data-role="offline-titles-size"]').textContent =
+          `${formatBytes(title.bytes)} · ${title.chapters} ${chaptersWord(title.chapters)}`;
+        // No date for titles downloaded before PR 335 and after a logout (forgetOpened).
+        row.querySelector('[data-role="offline-titles-opened"]').textContent = title.openedAt
+          ? `Последний раз открывали ${date(title.openedAt)}`
+          : `Скачан ${date(title.savedAt)}`;
+        const remove = row.querySelector('[data-role="offline-titles-delete"]');
+        remove.setAttribute("aria-label", `Удалить с устройства: ${title.name}`);
+        remove.addEventListener("click", () => ask(title, remove));
+        return row;
+      }),
+    );
+  }
+
+  function ask(title, opener) {
+    pending = title;
+    confirmText.textContent =
+      `«${title.name}» — ${title.chapters} ${chaptersWord(title.chapters)}, ${formatBytes(title.bytes)} — ` +
+      "пропадёт с этого устройства. Онлайн тайтл останется доступен.";
+    window.bottomSheet.open({ title: confirmBox.dataset.bottomSheetTitle, content: confirmBox, opener });
+  }
+
+  confirmButton.addEventListener("click", async () => {
+    if (!pending) return;
+    const slug = pending.slug;
+    pending = null;
+    confirmButton.disabled = true;
+    try {
+      await store.deleteTitle(slug);
+    } finally {
+      confirmButton.disabled = false;
+      window.bottomSheet.close();
+      render();
+    }
+  });
+
   async function render() {
     let titles;
     try {
@@ -75,6 +134,7 @@
     }
     const storage = await store.storageState();
     renderSummary(titles, storage);
+    renderTitles(titles);
     summary.hidden = false;
   }
 

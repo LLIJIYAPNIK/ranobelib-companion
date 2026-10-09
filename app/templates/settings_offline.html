@@ -22,6 +22,30 @@
       <p class="ui-notice ui-notice--error" data-role="offline-summary-warning" role="status" hidden></p>
       <p class="reader-settings-row__hint">Автоскачивание следующих глав настраивается в разделе <a href="/settings/reading">«Чтение»</a>.</p>
     </section>
+
+    {# Per title, the biggest first: size, chapters, when it was last opened, «Удалить». #}
+    <section class="reader-settings-card" data-role="offline-settings-titles" hidden>
+      <h2 class="reader-settings-card__title">Скачанные тайтлы</h2>
+      <ul class="wn-offline-saved__list" data-role="offline-titles-list"></ul>
+      <template data-role="offline-titles-row">
+        <li class="wn-offline-saved__item">
+          <span class="wn-offline-saved__cover" aria-hidden="true"><img alt="" loading="lazy"></span>
+          <span class="wn-offline-saved__names">
+            <a class="wn-offline-saved__name"></a>
+            <span class="wn-offline-saved__meta wn-technical" data-role="offline-titles-size"></span>
+            <span class="wn-offline-saved__meta wn-technical" data-role="offline-titles-opened"></span>
+          </span>
+          <button type="button" class="ui-btn ui-btn--sm ui-btn--quiet wn-offline-saved__delete" data-role="offline-titles-delete">Удалить</button>
+        </li>
+      </template>
+      <div class="wn-sheet-confirm" id="offline-settings-delete" data-bottom-sheet-title="Удалить тайтл с устройства?" hidden>
+        <p class="wn-sheet-confirm__text" data-role="offline-titles-delete-text"></p>
+        <div class="wn-sheet-confirm__actions">
+          <button class="wn-sheet-confirm__cancel" type="button" data-bottom-sheet-close data-autofocus>Отмена</button>
+          <button class="wn-sheet-confirm__danger" type="button" data-role="offline-titles-delete-confirm">Удалить</button>
+        </div>
+      </div>
+    </section>
   </div>
 {% endblock %}
 {% block settings_scripts %}

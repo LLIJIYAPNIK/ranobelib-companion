@@ -485,3 +485,17 @@ def test_auto_download_runs_on_the_online_reader_not_in_a_copy() -> None:
         online = client.get(f"/titles/{SLUG}/chapters/1/2").text
     assert online.index("js/offline-store.js") < online.index("js/offline-queue.js")
     assert online.index("js/offline-queue.js") < online.index("js/offline-autodownload.js")
+
+
+def test_the_store_comes_before_the_reader_offline_script_on_every_chapter_page() -> None:
+    # PR 335: reader-offline.js notes when a downloaded title was opened - on the online
+    # reader (guests included, without base.html's copy) as well as in a downloaded copy.
+    page = _page(_FakeClient(chapter=_chapter_two()))
+    fake = _FakeClient(chapter=_chapter_two())
+    with patch("app.services.client.RanobeLib", return_value=fake):
+        online = client.get(f"/titles/{SLUG}/chapters/1/2").text
+
+    for text in (page, online):
+        body = text[text.index("</head>") :]
+        assert body.count("js/offline-store.js") == 1
+        assert body.index("js/offline-store.js") < body.index("js/reader-offline.js")

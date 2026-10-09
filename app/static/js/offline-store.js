@@ -196,6 +196,31 @@
     await finished(tx);
   }
 
+  // PR 335: a chapter of a downloaded title was opened (online or from the copy) - when,
+  // for «Офлайн» in the settings. A title that isn't downloaded is left alone.
+  async function touchTitle(slug, now = new Date()) {
+    const db = await openDb();
+    const tx = db.transaction("titles", "readwrite");
+    const titles = tx.objectStore("titles");
+    const title = await done(titles.get(slug));
+    if (title) titles.put({ ...title, openedAt: now.toISOString() });
+    await finished(tx);
+  }
+
+  // PR 335: when a title was opened says what someone reads - it goes with the account's
+  // other personal data (device-account.js), even when the downloads stay.
+  async function forgetOpened() {
+    const db = await openDb();
+    const tx = db.transaction("titles", "readwrite");
+    const titles = tx.objectStore("titles");
+    for (const title of await done(titles.getAll())) {
+      if (!("openedAt" in title)) continue;
+      const { openedAt, ...rest } = title;
+      titles.put(rest);
+    }
+    await finished(tx);
+  }
+
   // PR 333: «Очистить офлайн-данные» and logout without «Оставить скачанное» - every
   // downloaded chapter, image and cover, and the whole index.
   async function clearAll() {
@@ -260,6 +285,8 @@
     saveCover,
     listTitles,
     deleteTitle,
+    touchTitle,
+    forgetOpened,
     clearAll,
     estimate,
     storageState,
