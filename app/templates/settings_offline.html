@@ -29,9 +29,9 @@
     <section class="reader-settings-card" data-role="offline-settings-limit" hidden>
       <h2 class="reader-settings-card__title">Лимит для скачанного</h2>
       <div class="reader-settings-row">
-        <span class="reader-settings-row__label">Не больше</span>
-        <fieldset class="ui-segmented" aria-label="Лимит для скачанного">
-          {% for value, text in [("0", "Без лимита"), ("100", "100 МБ"), ("250", "250 МБ"), ("500", "500 МБ"), ("1000", "1 ГБ")] %}
+        <span class="reader-settings-row__label">Не больше, МБ</span>
+        <fieldset class="ui-segmented" aria-label="Лимит для скачанного, МБ">
+          {% for value, text in [("0", "Выкл"), ("100", "100"), ("250", "250"), ("500", "500"), ("1000", "1000")] %}
           <label class="ui-segmented__item">
             <input type="radio" name="offline-limit" value="{{ value }}" data-offline-setting="limitMb">
             <span>{{ text }}</span>
