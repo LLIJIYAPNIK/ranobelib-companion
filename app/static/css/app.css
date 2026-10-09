@@ -21502,6 +21502,16 @@ body.reader-hud-visible .reader-hud {
   border-radius: 3px;
 }
 
+/* «Удалить прочитанное» with what it freed beside it (under it on a phone). */
+.offline-settings__action {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--s-8) var(--s-12);
+  padding-top: var(--s-12);
+  border-top: 1px solid var(--divider);
+}
+
 /* PR 331: reading without a network. The offline page's shelf - what's on this device,
    «Продолжить» and the downloaded chapters per title (offline-page.js) - and, in a
    downloaded chapter, the neighbour links that won't open offline (reader-offline.js). */

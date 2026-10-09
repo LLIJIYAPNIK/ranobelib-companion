@@ -5,7 +5,8 @@
 // neighbouring chapters that aren't on the device - HUD arrows, the bottom bar, the end
 // card - as «не скачана», so it's clear before tapping that they won't open offline.
 // PR 335: for a downloaded title it also notes when it was opened (offlineStore.touchTitle,
-// shown in «Офлайн» in the settings).
+// shown in «Офлайн» in the settings) and, with the auto-cleanup on there (cleanBehind N),
+// removes the chapters more than N behind this one - never this one or the ones after it.
 (() => {
   const chapter = document.querySelector('[data-role="chapter"]');
   if (!chapter) return;
@@ -17,7 +18,10 @@
   }
 
   if (!window.offlineStore?.supported()) return;
-  window.offlineStore.touchTitle(slugUrl).catch(() => {});
+  const store = window.offlineStore;
+  store.touchTitle(slugUrl).catch(() => {});
+  const { cleanBehind } = store.settings();
+  if (cleanBehind > 0) store.deleteRead(slugUrl, cleanBehind, { volume, number }).catch(() => {});
 
   if (chapter.dataset.offlineCopy !== "1") return;
 

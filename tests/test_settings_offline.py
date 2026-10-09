@@ -3,6 +3,7 @@ it takes. The page is rendered empty and filled on the device (offline-settings.
 these tests cover the route, the nav and the markup the script hooks into."""
 
 import re
+from pathlib import Path
 
 from fastapi.testclient import TestClient
 
@@ -10,6 +11,7 @@ from app.main import app
 from app.static_assets import asset_hash
 
 client = TestClient(app)
+_JS = Path(__file__).resolve().parent.parent / "app" / "static" / "js"
 
 
 def _page() -> str:
@@ -58,3 +60,18 @@ def test_titles_card_has_the_row_template_and_the_delete_sheet() -> None:
         assert f'data-role="{role}"' in row
     assert 'data-bottom-sheet-title="Удалить тайтл с устройства?"' in html
     assert 'data-role="offline-titles-delete-confirm"' in html
+
+
+def test_auto_cleanup_is_offered_off_by_default_with_a_one_off_cleanup() -> None:
+    html = _page()
+
+    assert re.search(r'data-role="offline-settings-clean"[^>]*hidden', html)
+    values = re.findall(
+        r'name="offline-clean-behind" value="(\d+)" data-offline-setting="cleanBehind"', html
+    )
+    assert values == ["0", "5", "10", "25"]
+    assert 'data-role="offline-clean-now"' in html
+    assert 'data-bottom-sheet-title="Удалить прочитанное?"' in html
+    # The store keeps the same choices, 0 (off) for anything else.
+    store = (_JS / "offline-store.js").read_text(encoding="utf-8")
+    assert "const CLEAN_CHOICES = [0, 5, 10, 25];" in store

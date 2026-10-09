@@ -2,8 +2,10 @@
 // without a network on this device and how much room it takes: the downloads' own size
 // (the IndexedDB index of offline-store.js) next to what the browser gives the site
 // (navigator.storage.estimate()), then every title - the biggest first - with its size,
-// chapters and when it was last opened, and «Удалить» (offlineStore.deleteTitle). No
-// server call: the copy belongs to the device.
+// chapters and when it was last opened, and «Удалить» (offlineStore.deleteTitle); the
+// auto-cleanup of read chapters (offlineStore.settings().cleanBehind - reader-offline.js
+// applies it) and «Удалить прочитанное» once, now. No server call: the copy belongs to
+// the device.
 (() => {
   const page = document.querySelector('[data-role="offline-settings"]');
   if (!page) return;
@@ -29,6 +31,13 @@
   const confirmText = q("offline-titles-delete-text");
   const confirmButton = q("offline-titles-delete-confirm");
   let pending = null; // the title «Удалить» was pressed for
+  const cleanCard = q("offline-settings-clean");
+  const cleanNow = q("offline-clean-now");
+  const cleanResult = q("offline-clean-result");
+  const cleanBox = page.querySelector("#offline-settings-clean");
+  const cleanText = q("offline-clean-text");
+  const cleanConfirm = q("offline-clean-confirm");
+  let current = []; // listTitles() as last rendered
 
   function formatBytes(bytes) {
     const units = ["Б", "КБ", "МБ", "ГБ"];
@@ -124,6 +133,58 @@
     }
   });
 
+  // --- read chapters -------------------------------------------------------------------
+  for (const input of page.querySelectorAll('[data-offline-setting="cleanBehind"]')) {
+    input.checked = Number(input.value) === store.settings().cleanBehind;
+    input.addEventListener("change", () => store.saveSettings({ cleanBehind: Number(input.value) }));
+  }
+
+  // What «Удалить прочитанное» would free: per title, the chapters on the device before
+  // the one opened last (nothing kept behind it).
+  async function readOnDevice() {
+    const found = [];
+    for (const title of current) {
+      const read = await store.readChapters(title.slug, 0);
+      if (read.length) {
+        found.push({ slug: title.slug, chapters: read.length, bytes: read.reduce((sum, c) => sum + (c.bytes || 0), 0) });
+      }
+    }
+    return found;
+  }
+
+  let toClean = [];
+  cleanNow.addEventListener("click", async () => {
+    cleanResult.textContent = "";
+    toClean = await readOnDevice();
+    if (!toClean.length) {
+      cleanResult.textContent = "Прочитанных глав на устройстве нет.";
+      return;
+    }
+    const chapters = toClean.reduce((sum, t) => sum + t.chapters, 0);
+    const bytes = toClean.reduce((sum, t) => sum + t.bytes, 0);
+    cleanText.textContent =
+      `${chapters} ${chaptersWord(chapters)} (≈ ${formatBytes(bytes)}) до тех, что вы открывали последними, ` +
+      "пропадут с этого устройства. Текущие и следующие главы останутся.";
+    window.bottomSheet.open({ title: cleanBox.dataset.bottomSheetTitle, content: cleanBox, opener: cleanNow });
+  });
+
+  cleanConfirm.addEventListener("click", async () => {
+    cleanConfirm.disabled = true;
+    let freed = { chapters: 0, bytes: 0 };
+    try {
+      for (const { slug } of toClean) {
+        const result = await store.deleteRead(slug, 0);
+        freed = { chapters: freed.chapters + result.chapters, bytes: freed.bytes + result.bytes };
+      }
+    } finally {
+      toClean = [];
+      cleanConfirm.disabled = false;
+      window.bottomSheet.close();
+      cleanResult.textContent = `Удалено ${freed.chapters} ${chaptersWord(freed.chapters)}, освобождено ≈ ${formatBytes(freed.bytes)}.`;
+      render();
+    }
+  });
+
   async function render() {
     let titles;
     try {
@@ -135,7 +196,9 @@
     const storage = await store.storageState();
     renderSummary(titles, storage);
     renderTitles(titles);
+    current = titles;
     summary.hidden = false;
+    cleanCard.hidden = false;
   }
 
   render();

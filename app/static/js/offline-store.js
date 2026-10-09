@@ -175,25 +175,101 @@
   // Removes a title's chapters, their images and its cover from the device. An image
   // another title's chapter still uses stays.
   async function deleteTitle(slug) {
+    await deleteChapters(slug, null);
+  }
+
+  // PR 335: removes some of a title's chapters (`keys`: volume--number; null - all of
+  // them) with their images - an image another chapter still uses stays. With no chapter
+  // left the title and its cover go too. Returns { chapters, bytes } freed.
+  async function deleteChapters(slug, keys) {
     const db = await openDb();
     const all = await done(db.transaction("chapters").objectStore("chapters").getAll());
-    const own = all.filter((chapter) => chapter.slug === slug);
-    const keep = new Set(all.filter((chapter) => chapter.slug !== slug).flatMap((c) => c.images || []));
+    const goes = (chapter) =>
+      chapter.slug === slug && (keys === null || keys.has(`${chapter.volume}--${chapter.number}`));
+    const gone = all.filter(goes);
+    const stays = all.filter((chapter) => !goes(chapter));
+    const keep = new Set(stays.flatMap((chapter) => chapter.images || []));
+    const lastOne = !stays.some((chapter) => chapter.slug === slug);
     const title = await done(db.transaction("titles").objectStore("titles").get(slug));
 
     const cache = await caches.open(CACHE_NAME);
-    for (const chapter of own) {
+    for (const chapter of gone) {
       await cache.delete(readerUrl(slug, chapter.volume, chapter.number));
       // PR 330 kept the JSON fragment here instead of the page.
       await cache.delete(chapterUrl(slug, chapter.volume, chapter.number));
       for (const image of chapter.images || []) if (!keep.has(image)) await cache.delete(image);
     }
-    if (title?.cover) await cache.delete(title.cover);
+    if (lastOne && title?.cover) await cache.delete(title.cover);
 
     const tx = db.transaction(["titles", "chapters"], "readwrite");
-    tx.objectStore("titles").delete(slug);
-    for (const chapter of own) tx.objectStore("chapters").delete([slug, chapter.volume, chapter.number]);
+    if (lastOne) tx.objectStore("titles").delete(slug);
+    for (const chapter of gone) tx.objectStore("chapters").delete([slug, chapter.volume, chapter.number]);
     await finished(tx);
+    return { chapters: gone.length, bytes: gone.reduce((sum, chapter) => sum + (chapter.bytes || 0), 0) };
+  }
+
+  // PR 335: the chapters read already - those more than `keep` chapters behind `current`
+  // in the title's order (`toc`: [volume, number] in SDK order, kept with the title).
+  // Never `current` itself or anything after it; nothing when `current` isn't in `toc`
+  // (no telling what's behind it).
+  function readKeys(toc, current, keep) {
+    const index = (toc || []).findIndex(([volume, number]) => volume === current.volume && number === current.number);
+    if (index < 0) return new Set();
+    return new Set(toc.slice(0, Math.max(0, index - keep)).map(([volume, number]) => `${volume}--${number}`));
+  }
+
+  // The chapter of `slug` opened last on this device (reader-offline.js) - the reader's
+  // «current» one - or null.
+  function lastOpened(slug) {
+    try {
+      const value = localStorage.getItem(`readerLastChapter:${slug}`);
+      if (!value) return null;
+      const [volume, number] = value.split("--");
+      return { volume, number };
+    } catch {
+      return null;
+    }
+  }
+
+  // PR 335: the chapters of `slug` on the device that are read - see readKeys().
+  // `current` defaults to the chapter opened last; none known - nothing is read.
+  async function readChapters(slug, keep = 0, current = lastOpened(slug)) {
+    if (!current) return [];
+    const db = await openDb();
+    const title = await done(db.transaction("titles").objectStore("titles").get(slug));
+    const keys = readKeys(title?.toc, current, keep);
+    return (await chaptersOf(slug)).filter((chapter) => keys.has(`${chapter.volume}--${chapter.number}`));
+  }
+
+  // PR 335: frees what's read of a title. Returns { chapters, bytes } freed.
+  async function deleteRead(slug, keep = 0, current = lastOpened(slug)) {
+    const read = await readChapters(slug, keep, current);
+    if (!read.length) return { chapters: 0, bytes: 0 };
+    return deleteChapters(slug, new Set(read.map((chapter) => `${chapter.volume}--${chapter.number}`)));
+  }
+
+  // PR 335: the device's offline settings («Офлайн» in the settings) - not personal, they
+  // stay through a logout. cleanBehind: chapters kept behind the one being read before the
+  // older ones are removed (0 - off).
+  const SETTINGS_KEY = "offlineSettings";
+  const CLEAN_CHOICES = [0, 5, 10, 25];
+  function settings() {
+    let stored = {};
+    try {
+      stored = JSON.parse(localStorage.getItem(SETTINGS_KEY) || "{}") || {};
+    } catch {
+      // no storage, or garbage in it: the defaults
+    }
+    const pick = (value, choices) => (choices.includes(Number(value)) ? Number(value) : 0);
+    return { cleanBehind: pick(stored.cleanBehind, CLEAN_CHOICES) };
+  }
+
+  function saveSettings(changes) {
+    try {
+      localStorage.setItem(SETTINGS_KEY, JSON.stringify({ ...settings(), ...changes }));
+    } catch {
+      // no storage: the defaults again next time
+    }
   }
 
   // PR 335: a chapter of a downloaded title was opened (online or from the copy) - when,
@@ -285,6 +361,14 @@
     saveCover,
     listTitles,
     deleteTitle,
+    deleteChapters,
+    readKeys,
+    lastOpened,
+    readChapters,
+    deleteRead,
+    CLEAN_CHOICES,
+    settings,
+    saveSettings,
     touchTitle,
     forgetOpened,
     clearAll,
