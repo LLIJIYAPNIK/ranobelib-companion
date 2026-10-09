@@ -63,8 +63,10 @@ def manifest() -> dict[str, object]:
         "theme_color": THEME_COLOR,
         "background_color": THEME_COLOR,
         "icons": icons,
+        # PR 336: the manifest is the same for everyone, so «Продолжить чтение» is a
+        # route that decides per visitor where it leads (app/api/home.py).
         "shortcuts": [
-            {"name": "Библиотека", "url": "/library", "icons": shortcut_icon},
+            {"name": "Продолжить чтение", "url": "/continue", "icons": shortcut_icon},
             {"name": "Каталог", "url": "/catalog", "icons": shortcut_icon},
             {"name": "Загрузки", "url": "/downloads", "icons": shortcut_icon},
         ],
