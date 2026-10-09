@@ -59,6 +59,7 @@ async function scenario({
   variant = null,
   toc = CHAPTERS.slice(0, 6).map((c) => [c.volume, c.number]),
   nearlyFull = false,
+  limitAfter = null, // PR 335: the limit is reached once this many chapters came down
   fail = {},
   cooldownUntil,
   now = 1_000_000,
@@ -77,6 +78,7 @@ async function scenario({
       inSet ? [{ slug: SLUG, name: "Повелитель тайн", cover: null, toc, translationVariant: variant }] : [],
     storageState: async () => ({ percent: nearlyFull ? 86 : 10, nearlyFull }),
     savedKeys: async () => new Set(savedSet),
+    limitState: async () => (limitAfter === null ? null : { reached: downloads.length >= limitAfter }),
   };
   const Queue = class extends window.OfflineQueue {};
   Queue.downloadChapter = async (title, item) => {
@@ -129,6 +131,9 @@ const results = {
   cooldownOver: await scenario({ cooldownUntil: 999_000 }),
   nearlyFull: await scenario({ nearlyFull: true }),
   otherFailure: await scenario({ fail: { 6: 404 } }),
+  limitReached: await scenario({ limitAfter: 0 }),
+  limitMidway: await scenario({ limitAfter: 1 }),
+  limitFar: await scenario({ limitAfter: 100 }),
 };
 results.statuses = (() => {
   const { window } = sandbox();
