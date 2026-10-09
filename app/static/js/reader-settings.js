@@ -13,7 +13,8 @@
 // Keys read by other scripts, not by CSS: tapToRead / readerMode, paragraphStyle,
 // paragraphAnimation, revealTempo (tap-to-read.js), showParagraphSocial
 // (paragraph-menu.js), readingSpeedWpm (reading-speed-test.js), autoDownloadNext and
-// autoDownloadAnyNetwork (offline-autodownload.js, PR 334).
+// autoDownloadAnyNetwork (offline-autodownload.js, PR 334), keepScreenOn
+// (reader-wake-lock.js, PR 338).
 //
 // PR 255 adds four keys:
 // - theme: Aurora Dark (default), AMOLED, Sepia, Light, System - data-reader-theme on
@@ -60,9 +61,11 @@
     // off), and whether that may use any network where the browser can't tell Wi-Fi.
     autoDownloadNext: "0",
     autoDownloadAnyNetwork: false,
+    // PR 338: hold a screen Wake Lock while reading - off by default (battery).
+    keepScreenOn: false,
   };
   // Not how the text looks - kept by «Сбросить настройки».
-  const KEPT_ON_RESET = ["readingSpeedWpm", "autoDownloadNext", "autoDownloadAnyNetwork"];
+  const KEPT_ON_RESET = ["readingSpeedWpm", "autoDownloadNext", "autoDownloadAnyNetwork", "keepScreenOn"];
 
   const root = document.documentElement;
 
@@ -216,8 +219,8 @@
       button.dataset.settingBound = "1";
       button.addEventListener("click", () => {
         const previousMode = settings.readerMode;
-        // The measured reading speed and auto-download aren't display preferences -
-        // they survive a reset.
+        // The measured reading speed, auto-download and keeping the screen on aren't
+        // display preferences - they survive a reset.
         const kept = Object.fromEntries(
           KEPT_ON_RESET.filter((name) => settings[name] !== undefined).map((name) => [name, settings[name]])
         );

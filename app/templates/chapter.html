@@ -216,6 +216,11 @@
       <span class="reader-aa__label">Реакции и комментарии у абзацев</span>
       <input type="checkbox" role="switch" data-setting="showParagraphSocial">
     </label>
+    {# PR 338: reader-wake-lock.js #}
+    <label class="reader-aa__row reader-aa__row--switch ui-switch">
+      <span class="reader-aa__label">Не гасить экран</span>
+      <input type="checkbox" role="switch" data-setting="keepScreenOn">
+    </label>
   </div>
   <div class="reader-aa__foot">
     <a class="reader-aa__more" href="/settings/reading">Дополнительно ›</a>
@@ -259,6 +264,7 @@
 <script src="{{ static_url('js/reading-progress-tick.js') }}" defer></script>
 {% endif %}
 <script src="{{ static_url('js/reader-settings.js') }}" defer></script>
+<script src="{{ static_url('js/reader-wake-lock.js') }}" defer></script>
 <script src="{{ static_url('js/tap-to-read.js') }}" defer></script>
 <script src="{{ static_url('js/reader-progress.js') }}" defer></script>
 <script src="{{ static_url('js/reader-hud.js') }}" defer></script>

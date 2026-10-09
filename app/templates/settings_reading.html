@@ -61,6 +61,13 @@
         <span>Реакции и комментарии под абзацами</span>
         <input type="checkbox" role="switch" data-setting="showParagraphSocial">
       </label>
+      {# PR 338: reader-wake-lock.js; the second hint shows where the browser can't. #}
+      <label class="reader-settings-row reader-settings-row--switch ui-switch">
+        <span>Не гасить экран при чтении</span>
+        <input type="checkbox" role="switch" data-setting="keepScreenOn" aria-describedby="keep-screen-on-hint">
+      </label>
+      <p class="reader-settings-row__hint" id="keep-screen-on-hint">Пока открыта глава и вкладка на экране. Расходует больше заряда.</p>
+      <p class="reader-settings-row__hint" data-role="keep-screen-on-unsupported" hidden>Этот браузер не умеет держать экран включённым — он будет гаснуть как обычно.</p>
       <details class="reader-settings-more">
         <summary class="reader-settings-more__summary">Дополнительно · стиль, анимация, темп, размер комментариев</summary>
         <div class="reader-settings-more__body">
@@ -195,6 +202,7 @@
 {% endblock %}
 {% block settings_scripts %}
 <script src="{{ static_url('js/reader-settings.js') }}" defer></script>
+<script src="{{ static_url('js/reader-wake-lock.js') }}" defer></script>
 <script src="{{ static_url('js/custom-dropdown.js') }}" defer></script>
 <script src="{{ static_url('js/ui-range.js') }}" defer></script>
 <script src="{{ static_url('js/reading-speed-test.js') }}" defer></script>
