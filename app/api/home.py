@@ -4,9 +4,10 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 from typing import Annotated
+from urllib.parse import quote
 
 from fastapi import APIRouter, Depends, Request
-from fastapi.responses import HTMLResponse, Response
+from fastapi.responses import HTMLResponse, RedirectResponse, Response
 from ranobelib import RanobeLibError
 
 from app.api.activity import ActivitySummary, build_activity_summary
@@ -17,7 +18,7 @@ from app.db.comments import RecentComment, list_recent_comments_by_user
 from app.db.connection import connection
 from app.db.downloads import DownloadHistoryEntry, list_download_history
 from app.db.friendships import FriendUser, list_friends
-from app.db.library import get_entry
+from app.db.library import get_entry, list_entries
 from app.db.users import User, get_user_by_id
 from app.reading_progress import reading_progress_percent
 from app.recent_titles import forget, read_recent
@@ -101,6 +102,29 @@ async def _home_dashboard(user: User | None) -> HomeDashboard | None:
             summary=await build_activity_summary(user, conn),
             recent_downloads=await list_download_history(conn, user.id, limit=3),
         )
+
+
+@router.get("/continue", include_in_schema=False)
+async def continue_reading(
+    user: Annotated[User | None, Depends(get_current_user)],
+) -> RedirectResponse:
+    """PR 336: «Продолжить чтение» - the app icon's shortcut (manifest.webmanifest). The
+    manifest is the same for everyone, so the personal part is here: a 302 to the chapter
+    the home page's hero continues (the most recently read library entry, PR 306); for a
+    guest or a library with nothing read yet, to the catalog. ``no-store``: where it
+    leads changes with every chapter read, so no stored copy may ever answer it. Offline
+    the service worker answers it from what's downloaded (app/pwa/service-worker.js)."""
+    target = "/catalog"
+    if user is not None:
+        async with connection() as conn:
+            entries = await list_entries(conn, user.id)
+        entry = next((e for e in entries if e.last_read_volume is not None), None)
+        if entry is not None:
+            target = (
+                f"/titles/{quote(entry.slug_url)}/chapters/"
+                f"{quote(entry.last_read_volume)}/{quote(entry.last_read_number or '')}"
+            )
+    return RedirectResponse(target, status_code=302, headers={"Cache-Control": "no-store"})
 
 
 @router.post("/recent/{slug_url}/forget", response_model=None)
