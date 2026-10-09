@@ -2,6 +2,8 @@
 // for reading without a network, with its chapter count and size, and «Удалить», which
 // frees the space (offlineStore.deleteTitle: the chapters, their images, the cover).
 // Read from the IndexedDB index only, no server call. Hidden when there's nothing.
+// PR 333: how full the browser's storage for this site is (a warning past 80%), and
+// «Очистить офлайн-данные» - every download at once (offlineStore.clearAll).
 (() => {
   const section = document.querySelector('[data-role="offline-saved"]');
   if (!section || !window.offlineStore?.supported()) return;
@@ -14,6 +16,12 @@
   const confirmBox = section.querySelector("#offline-delete-confirm");
   const confirmText = section.querySelector('[data-role="offline-delete-text"]');
   const confirmButton = section.querySelector('[data-role="offline-delete-confirm"]');
+  const quotaWarning = section.querySelector('[data-role="offline-saved-quota-warning"]');
+  const clearAllButton = section.querySelector('[data-role="offline-clear-all"]');
+  const clearBox = section.querySelector("#offline-clear-confirm");
+  const clearText = section.querySelector('[data-role="offline-clear-text"]');
+  const clearConfirm = section.querySelector('[data-role="offline-clear-confirm"]');
+  let current = [];
 
   let pending = null; // the title «Удалить» was pressed for
 
@@ -45,16 +53,22 @@
       section.hidden = true;
       return;
     }
+    current = titles;
     section.hidden = !titles.length;
     if (!titles.length) return;
 
     count.textContent = String(titles.length);
     const total = titles.reduce((sum, title) => sum + title.bytes, 0);
-    const estimate = await store.estimate();
-    const free =
-      estimate && estimate.quota != null ? Math.max(0, estimate.quota - (estimate.usage || 0)) : null;
+    const storage = await store.storageState();
     usage.textContent =
-      `Занято ≈ ${formatBytes(total)}` + (free != null ? ` · свободно ≈ ${formatBytes(free)}` : "");
+      `Занято ≈ ${formatBytes(total)}` +
+      (storage ? ` · свободно ≈ ${formatBytes(storage.free)} · место браузера занято на ${storage.percent}%` : "");
+    quotaWarning.hidden = !storage?.nearlyFull;
+    if (storage?.nearlyFull) {
+      quotaWarning.textContent =
+        `Место почти закончилось: браузер отдал сайту ≈ ${formatBytes(storage.quota)}, занято ${storage.percent}%. ` +
+        "Новые главы могут не скачаться — удалите ненужное.";
+    }
 
     list.replaceChildren(
       ...titles.map((title) => {
@@ -93,6 +107,24 @@
       await store.deleteTitle(slug);
     } finally {
       confirmButton.disabled = false;
+      window.bottomSheet.close();
+      render();
+    }
+  });
+
+  clearAllButton.addEventListener("click", () => {
+    const chapters = current.reduce((sum, title) => sum + title.chapters, 0);
+    const bytes = current.reduce((sum, title) => sum + title.bytes, 0);
+    clearText.textContent = `${chapters} ${chaptersWord(chapters)}, ≈ ${formatBytes(bytes)}`;
+    window.bottomSheet.open({ title: clearBox.dataset.bottomSheetTitle, content: clearBox, opener: clearAllButton });
+  });
+
+  clearConfirm.addEventListener("click", async () => {
+    clearConfirm.disabled = true;
+    try {
+      await store.clearAll();
+    } finally {
+      clearConfirm.disabled = false;
       window.bottomSheet.close();
       render();
     }

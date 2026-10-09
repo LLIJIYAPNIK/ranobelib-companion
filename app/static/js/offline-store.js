@@ -204,6 +204,24 @@
     await finished(tx);
   }
 
+  // PR 333: how full the storage the browser gives this site is - everything it keeps
+  // here (downloads, the app's own files), as navigator.storage.estimate() sees it.
+  // `nearlyFull` past NEARLY_FULL: downloads may start failing soon. null when unknown.
+  const NEARLY_FULL = 0.8;
+  async function storageState() {
+    const estimated = await estimate();
+    if (!estimated || !estimated.quota) return null;
+    const usage = estimated.usage || 0;
+    const ratio = Math.min(1, usage / estimated.quota);
+    return {
+      usage,
+      quota: estimated.quota,
+      free: Math.max(0, estimated.quota - usage),
+      percent: Math.round(ratio * 100),
+      nearlyFull: ratio > NEARLY_FULL,
+    };
+  }
+
   async function estimate() {
     try {
       return (await navigator.storage?.estimate?.()) || null;
@@ -241,6 +259,7 @@
     deleteTitle,
     clearAll,
     estimate,
+    storageState,
     persist,
   };
 })();

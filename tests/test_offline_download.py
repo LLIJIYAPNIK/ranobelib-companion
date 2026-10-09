@@ -314,3 +314,13 @@ def test_signed_in_downloads_page_has_one_saved_section(reader: TestClient) -> N
 
     assert html.count('data-role="offline-saved"') == 1
     assert 'data-bottom-sheet-title="Удалить скачанное?"' in html
+
+
+def test_saved_section_has_the_storage_warning_and_clear_all() -> None:
+    # PR 333: a warning past 80% of the browser's share, and every download at once.
+    html = TestClient(app).get("/downloads").text
+
+    assert re.search(r'data-role="offline-saved-quota-warning"[^>]*hidden', html)
+    assert 'data-role="offline-clear-all"' in html
+    assert "Очистить офлайн-данные" in html
+    assert 'data-bottom-sheet-title="Очистить офлайн-данные?"' in html

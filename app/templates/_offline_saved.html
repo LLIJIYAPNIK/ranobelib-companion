@@ -8,6 +8,8 @@
     <div><h2 class="downloads-section__title" id="offline-saved-title">Скачано для чтения без интернета</h2><span data-role="offline-saved-count"></span></div>
     <span class="wn-offline-saved__usage wn-technical" data-role="offline-saved-usage"></span>
   </div>
+  {# PR 333: past 80% of what the browser gives the site, downloads may start failing. #}
+  <p class="ui-notice ui-notice--error wn-offline-saved__warning" data-role="offline-saved-quota-warning" role="status" hidden></p>
   <ul class="wn-offline-saved__list" data-role="offline-saved-list"></ul>
   <template data-role="offline-saved-row">
     <li class="wn-offline-saved__item">
@@ -19,6 +21,16 @@
       <button type="button" class="ui-btn ui-btn--sm ui-btn--quiet wn-offline-saved__delete" data-role="offline-saved-delete">Удалить</button>
     </li>
   </template>
+  <div class="wn-offline-saved__footer">
+    <button type="button" class="ui-btn ui-btn--sm ui-btn--quiet" data-role="offline-clear-all">Очистить офлайн-данные</button>
+  </div>
+  <div class="wn-sheet-confirm" id="offline-clear-confirm" data-bottom-sheet-title="Очистить офлайн-данные?" hidden>
+    <p class="wn-sheet-confirm__text">Все скачанные главы, их картинки и обложки пропадут с этого устройства — <span data-role="offline-clear-text"></span>. Онлайн всё останется доступно.</p>
+    <div class="wn-sheet-confirm__actions">
+      <button class="wn-sheet-confirm__cancel" type="button" data-bottom-sheet-close data-autofocus>Отмена</button>
+      <button class="wn-sheet-confirm__danger" type="button" data-role="offline-clear-confirm">Очистить</button>
+    </div>
+  </div>
   <div class="wn-sheet-confirm" id="offline-delete-confirm" data-bottom-sheet-title="Удалить скачанное?" hidden>
     <p class="wn-sheet-confirm__text" data-role="offline-delete-text"></p>
     <div class="wn-sheet-confirm__actions">

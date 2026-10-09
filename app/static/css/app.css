@@ -21465,6 +21465,18 @@ body.reader-hud-visible .reader-hud {
   flex: none;
 }
 
+/* PR 333: the storage warning above the list, «Очистить офлайн-данные» under it. */
+.wn-offline-saved__warning {
+  margin-bottom: var(--s-12);
+  text-wrap: pretty;
+}
+
+.wn-offline-saved__footer {
+  display: flex;
+  justify-content: flex-end;
+  margin-top: var(--s-12);
+}
+
 /* PR 331: reading without a network. The offline page's shelf - what's on this device,
    «Продолжить» and the downloaded chapters per title (offline-page.js) - and, in a
    downloaded chapter, the neighbour links that won't open offline (reader-offline.js). */

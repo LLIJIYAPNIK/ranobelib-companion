@@ -101,6 +101,7 @@
     let chapters = [];
     let saved = new Set();
     let free = null;
+    let storage = null; // PR 333: offlineStore.storageState()
     let queue = null;
 
     q("offline-ios-hint").hidden = !(ios && !standalone());
@@ -153,6 +154,12 @@
       space.hidden = !(need && free != null && need > free);
       if (!space.hidden) {
         space.textContent = `Места может не хватить: нужно ≈ ${formatBytes(need)}, свободно ≈ ${formatBytes(free)}.`;
+      } else if (missing.length && storage?.nearlyFull) {
+        // PR 333: enough for this selection, but the browser's share is almost used up.
+        space.hidden = false;
+        space.textContent =
+          `Место браузера для сайта занято на ${storage.percent}% — новые главы могут не скачаться. ` +
+          "Освободить его можно в «Скачано» на странице загрузок.";
       }
 
       if (active()) {
@@ -192,8 +199,8 @@
 
     async function load() {
       saved = await store.savedKeys(slug);
-      const estimate = await store.estimate();
-      free = estimate && estimate.quota != null ? Math.max(0, estimate.quota - (estimate.usage || 0)) : null;
+      storage = await store.storageState();
+      free = storage ? storage.free : null;
       if (manifest) {
         refresh();
         return;
