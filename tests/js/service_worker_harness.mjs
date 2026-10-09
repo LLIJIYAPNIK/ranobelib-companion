@@ -42,7 +42,58 @@ class FakeCache {
   }
 }
 
-function boot({ online = true, onLine = true, caches: existing = [], respond } = {}) {
+// PR 336: the device's download index (offline-store.js) as far as the worker reads it -
+// open without a version, the "titles" store's getAll(). `titles` null: nothing was ever
+// downloaded, so there's no database - and an aborted upgrade must not leave one.
+function fakeIndexedDB(titles) {
+  const state = { exists: titles !== null, created: false, open: 0 };
+  const later = (fn) => setImmediate(fn);
+  return {
+    state,
+    open(name) {
+      const request = { result: undefined, transaction: undefined };
+      later(() => {
+        if (name !== "wn-offline") throw new Error(`unexpected database ${name}`);
+        const db = {
+          close: () => void state.open--,
+          transaction: (store) => {
+            if (store !== "titles") throw new Error(`unexpected store ${store}`);
+            return {
+              objectStore: () => ({
+                getAll: () => {
+                  const all = {};
+                  later(() => {
+                    all.result = structuredClone(titles);
+                    all.onsuccess?.();
+                  });
+                  return all;
+                },
+              }),
+            };
+          },
+        };
+        request.result = db;
+        state.open++;
+        if (!state.exists) {
+          let aborted = false;
+          request.transaction = { abort: () => (aborted = true) };
+          request.onupgradeneeded?.({ oldVersion: 0 });
+          if (aborted) {
+            state.open--;
+            request.error = new Error("AbortError");
+            request.onerror?.();
+            return;
+          }
+          state.exists = state.created = true;
+        }
+        request.onsuccess?.();
+      });
+      return request;
+    },
+  };
+}
+
+function boot({ online = true, onLine = true, caches: existing = [], respond, titles } = {}) {
   const listeners = {};
   const fetched = [];
   const calls = { skipWaiting: 0, claim: 0, imported: [] };
@@ -73,7 +124,9 @@ function boot({ online = true, onLine = true, caches: existing = [], respond } =
       return undefined;
     },
   };
+  const indexedDB = titles === undefined ? undefined : fakeIndexedDB(titles);
   const sandbox = {
+    indexedDB,
     URL,
     URLSearchParams,
     Request,
@@ -81,6 +134,7 @@ function boot({ online = true, onLine = true, caches: existing = [], respond } =
     Promise,
     Math,
     TypeError,
+    encodeURIComponent,
     caches,
     fetch: fetchFn,
     location: new URL(ORIGIN),
@@ -111,7 +165,7 @@ function boot({ online = true, onLine = true, caches: existing = [], respond } =
     return response;
   }
 
-  return { context, store, fetched, calls, dispatch };
+  return { context, store, fetched, calls, dispatch, indexedDB };
 }
 
 // new Request() can't be built with mode "navigate"; give the worker a plain object
@@ -401,6 +455,73 @@ async function page(sw, url) {
       Object.keys(await contents(online.store.get("wn-offline"))).length,
       Object.keys(await contents(offline.store.get("wn-offline"))).length,
     ],
+  };
+}
+
+// PR 336: «Продолжить чтение» (/continue). Online it's the server's redirect; without a
+// network, a redirect to the chapter opened last on this device whose copy is still
+// here, else the offline page.
+{
+  const precache = `wn-static-${config.version}`;
+  const opened = (slug, at, volume, number) => ({
+    slug,
+    name: slug,
+    openedAt: at,
+    openedChapter: { volume, number },
+  });
+  const TITLES = [
+    opened("1--older", "2026-10-01T10:00:00.000Z", "1", "3"),
+    opened("2--newest", "2026-10-05T10:00:00.000Z", "2", "17.5"),
+    opened("3--copy-gone", "2026-10-07T10:00:00.000Z", "1", "9"),
+    { slug: "4--never-opened", name: "x" },
+    // Opened before PR 336: a date, but no chapter to open.
+    { slug: "5--date-only", name: "x", openedAt: "2026-10-08T10:00:00.000Z" },
+  ];
+  const make = async (options, copies) => {
+    const sw = boot({ ...options, caches: ["wn-offline", precache] });
+    const offline = await sw.store.get("wn-offline");
+    for (const path of copies) await offline.put(path, new Response(`copy:${path}`));
+    await (await sw.store.get(precache)).put("/offline", new Response("offline-page"));
+    return sw;
+  };
+  const go = async (sw, url = "/continue") => {
+    const before = sw.fetched.length;
+    const response = await sw.dispatch("fetch", { request: navigation(url) });
+    return {
+      status: response.status,
+      location: response.headers.get("location"),
+      body: response.status === 200 ? await response.text() : null,
+      fetched: sw.fetched.slice(before),
+    };
+  };
+  const COPIES = ["/titles/1--older/chapters/1/3", "/titles/2--newest/chapters/2/17.5"];
+  const offline = await make({ online: false, titles: TITLES }, COPIES);
+  const deviceOffline = await make({ onLine: false, titles: TITLES }, COPIES);
+  const onlyOlder = await make({ online: false, titles: TITLES }, [COPIES[0]]);
+  const noneOpened = await make({ online: false, titles: TITLES.slice(3) }, COPIES);
+  const noDatabase = await make({ online: false, titles: null }, []);
+  const noIndexedDB = await make({ online: false }, []);
+  const online = await make(
+    {
+      titles: TITLES,
+      respond: (url) =>
+        url.endsWith("/continue")
+          ? Response.redirect(`${ORIGIN}/titles/9--server/chapters/1/1`, 302)
+          : new Response(`net:${url}`),
+    },
+    COPIES,
+  );
+  results.continueReading = {
+    online: await go(online),
+    offline: await go(offline),
+    deviceOffline: await go(deviceOffline),
+    copyGone: await go(onlyOlder),
+    noneOpened: await go(noneOpened),
+    noDatabase: { ...(await go(noDatabase)), created: noDatabase.indexedDB.state.created },
+    noIndexedDB: await go(noIndexedDB),
+    // Only /continue: another page without a network is still the offline page.
+    otherPage: await go(offline, "/library"),
+    connectionsLeftOpen: offline.indexedDB.state.open + noneOpened.indexedDB.state.open,
   };
 }
 
