@@ -33,6 +33,7 @@ from app.db.downloads import (
 from app.db.users import User
 from app.jobs.models import DownloadJob
 from app.jobs.store import list_active_jobs_for_user
+from app.queued_events import EVENT_ID_PATTERN, MAX_EVENT_AGE_MS, occurred_at
 from app.services.client import open_client
 from app.templating import templates
 from app.timezones import day_start_utc, local_today, user_timezone
@@ -282,8 +283,15 @@ async def heartbeat(
     conn: Annotated[AsyncConnection, Depends(get_connection)],
     slug_url: Annotated[str, Form()],
     seconds: Annotated[int, Form(gt=0, le=_MAX_HEARTBEAT_SECONDS)],
+    event_id: Annotated[
+        str | None, Form(min_length=8, max_length=64, pattern=EVENT_ID_PATTERN)
+    ] = None,
+    age_ms: Annotated[int | None, Form(ge=0, le=MAX_EVENT_AGE_MS)] = None,
 ) -> Response:
-    await record_heartbeat(conn, user.id, slug_url, seconds)
+    """PR 332: a tick read offline arrives later from the device's queue (sync-queue.js)
+    with its `event_id` - a resend of the same one is ignored - and `age_ms`, so its
+    seconds land on the day they were read."""
+    await record_heartbeat(conn, user.id, slug_url, seconds, event_id, occurred_at(age_ms))
     return Response(status_code=204)
 
 

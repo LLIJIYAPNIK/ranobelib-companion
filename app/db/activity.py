@@ -53,12 +53,21 @@ async def record_chapter_read(
 
 
 async def record_heartbeat(
-    conn: AsyncConnection, user_id: int, slug_url: str, seconds: int
+    conn: AsyncConnection,
+    user_id: int,
+    slug_url: str,
+    seconds: int,
+    event_id: str | None = None,
+    created_at: str | None = None,
 ) -> None:
+    """PR 332: `event_id` - the device queue's id for this tick - makes a resend a no-op
+    (the second copy of a request whose answer was lost), so seconds aren't counted
+    twice; `created_at` - when it was read, for a tick that waited offline."""
     await conn.execute(
-        "INSERT INTO activity_events (user_id, kind, slug_url, seconds, created_at) "
-        "VALUES (%s, 'heartbeat', %s, %s, %s)",
-        (user_id, slug_url, seconds, datetime.now(UTC).isoformat()),
+        "INSERT INTO activity_events (user_id, kind, slug_url, seconds, created_at, event_id) "
+        "VALUES (%s, 'heartbeat', %s, %s, %s, %s) "
+        "ON CONFLICT (user_id, event_id) DO NOTHING",
+        (user_id, slug_url, seconds, created_at or datetime.now(UTC).isoformat(), event_id),
     )
 
 
