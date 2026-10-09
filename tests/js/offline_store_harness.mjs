@@ -267,6 +267,21 @@ const results = {};
   results.opened = { opened, forgotten, titles: (await store.listTitles()).length };
 }
 
+// PR 336: which chapter was opened, for /continue offline - kept with the date, replaced
+// by the next one, forgotten with it.
+{
+  const { store, caches } = sandbox();
+  await seed(store, caches);
+  const chapterOf = async () =>
+    Object.fromEntries((await store.listTitles()).map((t) => [t.slug, t.openedChapter ?? null]));
+  await store.touchTitle(SLUG, new Date("2026-10-01T10:00:00Z"), { volume: 1, number: "4" });
+  const first = await chapterOf();
+  await store.touchTitle(SLUG, new Date("2026-10-02T10:00:00Z"), { volume: "1", number: "5" });
+  const second = await chapterOf();
+  await store.forgetOpened();
+  results.openedChapter = { first, second, forgotten: await chapterOf() };
+}
+
 // The offline settings: defaults, choices only, merged saves.
 {
   const { store, localStorage } = sandbox();

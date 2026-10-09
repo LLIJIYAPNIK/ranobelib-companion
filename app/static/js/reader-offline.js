@@ -7,6 +7,8 @@
 // PR 335: for a downloaded title it also notes when it was opened (offlineStore.touchTitle,
 // shown in «Офлайн» in the settings) and, with the auto-cleanup on there (cleanBehind N),
 // removes the chapters more than N behind this one - never this one or the ones after it.
+// PR 336: touchTitle keeps this chapter too - «Продолжить чтение» (/continue) opens it
+// when there's no network.
 (() => {
   const chapter = document.querySelector('[data-role="chapter"]');
   if (!chapter) return;
@@ -19,7 +21,7 @@
 
   if (!window.offlineStore?.supported()) return;
   const store = window.offlineStore;
-  store.touchTitle(slugUrl).catch(() => {});
+  store.touchTitle(slugUrl, new Date(), { volume, number }).catch(() => {});
   const { cleanBehind } = store.settings();
   if (cleanBehind > 0) store.deleteRead(slugUrl, cleanBehind, { volume, number }).catch(() => {});
 

@@ -73,7 +73,13 @@ def test_apple_touch_icon_is_opaque() -> None:
 
 def test_shortcuts_point_at_real_pages(manifest: dict) -> None:
     shortcuts = {s["name"]: s["url"] for s in manifest["shortcuts"]}
-    assert shortcuts == {"Библиотека": "/library", "Каталог": "/catalog", "Загрузки": "/downloads"}
+    # PR 336: «Продолжить чтение» first - /continue picks the chapter per visitor.
+    assert shortcuts == {
+        "Продолжить чтение": "/continue",
+        "Каталог": "/catalog",
+        "Загрузки": "/downloads",
+    }
+    assert next(iter(shortcuts)) == "Продолжить чтение"
     for url in shortcuts.values():
         assert client.get(url, follow_redirects=False).status_code != 404, url
 

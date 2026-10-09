@@ -444,3 +444,45 @@ def test_another_sync_tag_is_not_ours(worker: dict[str, Any]) -> None:
 
     assert other["fetched"] == []
     assert other["left"] == ["event-0001", "event-0002"]
+
+
+# --- PR 336: «Продолжить чтение» without a network ------------------------------------
+
+
+def test_online_continue_is_the_servers_redirect(worker: dict[str, Any]) -> None:
+    online = worker["continueReading"]["online"]
+
+    assert online["status"] == 302
+    assert online["location"] == "https://app.test/titles/9--server/chapters/1/1"
+    assert online["fetched"] == ["https://app.test/continue"]
+
+
+def test_offline_continue_opens_the_chapter_read_last_on_the_device(
+    worker: dict[str, Any],
+) -> None:
+    results = worker["continueReading"]
+    newest = "https://app.test/titles/2--newest/chapters/2/17.5"
+
+    # 3--copy-gone was opened later, but its copy isn't here any more; 5--date-only
+    # has no chapter to open (opened before PR 336).
+    assert results["offline"]["status"] == 302
+    assert results["offline"]["location"] == newest
+    # The device already says it's offline: no network attempt first.
+    assert results["deviceOffline"]["location"] == newest
+    assert results["deviceOffline"]["fetched"] == []
+    # The newest one's copy deleted too: the next one that's still here.
+    assert results["copyGone"]["location"] == "https://app.test/titles/1--older/chapters/1/3"
+    assert results["connectionsLeftOpen"] == 0
+
+
+def test_offline_continue_with_nothing_to_continue_is_the_offline_page(
+    worker: dict[str, Any],
+) -> None:
+    results = worker["continueReading"]
+
+    for case in ("noneOpened", "noDatabase", "noIndexedDB"):
+        assert results[case]["status"] == 200, case
+        assert results[case]["body"] == "offline-page", case
+    # Looking didn't create an empty download index on a device that has none.
+    assert results["noDatabase"]["created"] is False
+    assert results["otherPage"]["body"] == "offline-page"

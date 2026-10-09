@@ -142,3 +142,12 @@ def test_offline_settings_default_off_and_take_only_the_choices() -> None:
     assert settings["saved"] == {"cleanBehind": 10, "limitMb": 250}
     assert settings["coerced"] == {"cleanBehind": 0, "limitMb": 500}
     assert settings["garbage"] == {"cleanBehind": 0, "limitMb": 0}
+
+
+def test_the_chapter_opened_is_kept_with_the_date_and_forgotten_with_it() -> None:
+    """PR 336: where /continue leads without a network."""
+    opened = _results()["openedChapter"]
+
+    assert opened["first"] == {SLUG: {"volume": "1", "number": "4"}, OTHER: None}
+    assert opened["second"] == {SLUG: {"volume": "1", "number": "5"}, OTHER: None}
+    assert opened["forgotten"] == {SLUG: None, OTHER: None}
