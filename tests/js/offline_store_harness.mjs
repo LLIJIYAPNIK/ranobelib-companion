@@ -100,6 +100,8 @@ function fakeCaches() {
       };
     },
     delete: async (name) => caches.delete(name),
+    // PR 339: the preference entry is looked up in this one cache only.
+    match: async (url, { cacheName } = {}) => caches.get(cacheName)?.get(url),
   };
 }
 
@@ -293,6 +295,63 @@ const results = {};
   const coerced = store.settings();
   localStorage.setItem("offlineSettings", "{not json");
   results.settings = { defaults, saved, coerced, garbage: store.settings() };
+}
+
+// PR 339: downloading another chapter keeps when the title was opened and which chapter
+// (it used to replace the whole title record).
+{
+  const { store, caches } = sandbox();
+  await seed(store, caches);
+  await store.touchTitle(SLUG, new Date("2026-10-01T10:00:00Z"), { volume: "1", number: "4" });
+  await store.saveChapter(
+    { name: "Повелитель тайн", cover: "/images/view?url=cover", toc: TOC },
+    { slug_url: SLUG, volume: "1", number: "11", name: "Глава 11", branch_id: null },
+    "p",
+    [],
+  );
+  const title = (await store.listTitles()).find((t) => t.slug === SLUG);
+  results.saveKeepsOpened = {
+    openedAt: title.openedAt ?? null,
+    openedChapter: title.openedChapter ?? null,
+    chapters: title.chapters,
+  };
+}
+
+// PR 339: after «Обновить копию», the old copy's images no chapter uses any more.
+{
+  const { store, caches } = sandbox();
+  await seed(store, caches);
+  await store.dropUnusedImages(["/img/gone", "/img/shared", "/img/3"]);
+  // /img/gone isn't in any chapter: dropped; /img/shared (chapters 2, 9) and /img/3 stay.
+  await (await caches.open("wn-offline")).put("/img/gone", new Response("g"));
+  const before = cached(caches).includes("/img/gone");
+  await store.dropUnusedImages(["/img/gone", "/img/shared", "/img/3"]);
+  results.dropUnused = { before, after: cached(caches) };
+}
+
+// PR 339: «Сразу открывать скачанные главы из офлайн-копии» handed to the service
+// worker - an entry only while it's off.
+{
+  const { store, localStorage, caches } = sandbox();
+  const entry = async () => {
+    const response = await caches.entries.get("wn-offline")?.get(store.PREFERENCES_URL);
+    return response ? JSON.parse(await response.clone().text()) : null;
+  };
+  const steps = {};
+  steps.defaultOn = store.openFromCopy();
+  await store.syncPreferences();
+  steps.nothingWritten = caches.entries.has("wn-offline");
+  localStorage.setItem("readerSettings", JSON.stringify({ openDownloadedFromCopy: false }));
+  steps.readOff = store.openFromCopy();
+  await store.syncPreferences();
+  steps.off = await entry();
+  await store.syncPreferences(false); // already there: left as is
+  steps.offAgain = await entry();
+  await store.syncPreferences(true);
+  steps.onAgain = await entry();
+  localStorage.setItem("readerSettings", "{broken");
+  steps.garbage = store.openFromCopy();
+  results.preferences = steps;
 }
 
 process.stdout.write(JSON.stringify(results));

@@ -96,7 +96,7 @@ function fakeIndexedDB(titles) {
 function boot({ online = true, onLine = true, caches: existing = [], respond, titles } = {}) {
   const listeners = {};
   const fetched = [];
-  const calls = { skipWaiting: 0, claim: 0, imported: [] };
+  const calls = { skipWaiting: 0, claim: 0, imported: [], timeouts: [] };
   const fetchFn = async (input) => {
     const url = absolute(input);
     fetched.push(url);
@@ -116,7 +116,8 @@ function boot({ online = true, onLine = true, caches: existing = [], respond, ti
     async delete(name) {
       return store.delete(name);
     },
-    async match(input) {
+    async match(input, options = {}) {
+      if (options.cacheName) return store.get(options.cacheName)?.match(input);
       for (const cache of store.values()) {
         const hit = await cache.match(input);
         if (hit) return hit;
@@ -135,6 +136,13 @@ function boot({ online = true, onLine = true, caches: existing = [], respond, ti
     Math,
     TypeError,
     encodeURIComponent,
+    // PR 339: the wait before a slow page gives way to the copy - recorded, and over at
+    // once (after anything already answered), so "slow" is a network answering a bit later.
+    setTimeout: (fn, ms) => {
+      calls.timeouts.push(ms);
+      return setTimeout(fn, 0);
+    },
+    clearTimeout,
     caches,
     fetch: fetchFn,
     location: new URL(ORIGIN),
@@ -522,6 +530,55 @@ async function page(sw, url) {
     // Only /continue: another page without a network is still the offline page.
     otherPage: await go(offline, "/library"),
     connectionsLeftOpen: offline.indexedDB.state.open + noneOpened.indexedDB.state.open,
+  };
+}
+
+// PR 339: a downloaded chapter online - the network first; the copy if it's slow or
+// answers with a server error, unless «Сразу открывать скачанные главы…» is off.
+{
+  const precache = `wn-static-${config.version}`;
+  const COPY = "/titles/6712--test-novel/chapters/1/3";
+  const make = async ({ respond, prefer, online = true }) => {
+    const sw = boot({ online, respond, caches: ["wn-offline", precache] });
+    const offline = await sw.store.get("wn-offline");
+    await offline.put(COPY, new Response("copy:1/3"));
+    if (prefer !== undefined) {
+      await offline.put(
+        "/offline/preferences",
+        new Response(JSON.stringify({ openDownloadedFromCopy: prefer })),
+      );
+    }
+    await (await sw.store.get(precache)).put("/offline", new Response("offline-page"));
+    return sw;
+  };
+  const open = async (sw, url = COPY) => {
+    const before = sw.fetched.length;
+    const response = await sw.dispatch("fetch", { request: navigation(url) });
+    return {
+      status: response.status,
+      body: await response.text(),
+      fetched: sw.fetched.slice(before).length,
+      timeouts: [...sw.calls.timeouts],
+    };
+  };
+  const fast = (url) => new Response(`net:${new URL(url).pathname}`);
+  // Answers, but only after the (compressed) wait for the copy is over.
+  const late = (url) => new Promise((resolve) => setTimeout(() => resolve(fast(url)), 30));
+  const status = (code) => () => new Response("error", { status: code });
+  const scenario = async (options, url) => open(await make(options), url);
+  results.openFromCopy = {
+    fast: await scenario({ respond: fast }),
+    slow: await scenario({ respond: late }),
+    serverError: await scenario({ respond: status(503) }),
+    rateLimited: await scenario({ respond: status(429) }),
+    notFound: await scenario({ respond: status(404) }),
+    slowOff: await scenario({ respond: late, prefer: false }),
+    serverErrorOff: await scenario({ respond: status(503), prefer: false }),
+    slowExplicitlyOn: await scenario({ respond: late, prefer: true }),
+    // Not downloaded: always the network, however long it takes - no timer at all.
+    notDownloaded: await scenario({ respond: fast }, "/titles/6712--test-novel/chapters/1/4"),
+    // Offline with the setting off: the copy, as before PR 339.
+    offlineOff: await scenario({ online: false, prefer: false }),
   };
 }
 

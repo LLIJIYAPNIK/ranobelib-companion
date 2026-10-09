@@ -135,6 +135,38 @@ def test_the_last_opened_date_is_for_downloaded_titles_and_can_be_forgotten() ->
     assert opened["titles"] == 2  # forgetting a date keeps the downloads
 
 
+def test_downloading_more_keeps_when_and_where_the_title_was_opened() -> None:
+    """PR 339's fix: saveChapter() used to replace the title record, dropping the
+    last-opened date (PR 335) and chapter (PR 336) - auto-download did it on every open."""
+    kept = _results()["saveKeepsOpened"]
+
+    assert kept == {
+        "openedAt": "2026-10-01T10:00:00.000Z",
+        "openedChapter": {"volume": "1", "number": "4"},
+        "chapters": 11,
+    }
+
+
+def test_a_refreshed_copy_drops_only_images_nothing_uses() -> None:
+    dropped = _results()["dropUnused"]
+
+    assert dropped["before"] is True
+    assert "/img/gone" not in dropped["after"]
+    assert {"/img/shared", "/img/3"} <= set(dropped["after"])
+
+
+def test_the_open_from_copy_setting_reaches_the_cache_only_while_off() -> None:
+    steps = _results()["preferences"]
+
+    assert steps["defaultOn"] is True
+    assert steps["nothingWritten"] is False  # on, nothing downloaded: no cache made for it
+    assert steps["readOff"] is False
+    assert steps["off"] == {"openDownloadedFromCopy": False}
+    assert steps["offAgain"] == {"openDownloadedFromCopy": False}
+    assert steps["onAgain"] is None
+    assert steps["garbage"] is True
+
+
 def test_offline_settings_default_off_and_take_only_the_choices() -> None:
     settings = _results()["settings"]
 
