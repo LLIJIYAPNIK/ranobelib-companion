@@ -115,6 +115,12 @@
       return true;
     }
 
+    // PR 333: forget everything queued - on logout or when another account signs in on
+    // this device, so one account's reading is never sent as another's.
+    clear() {
+      return this.store.clear();
+    }
+
     _post(event) {
       const age = Math.max(0, this.now() - event.at);
       return this.fetch(event.url, {
@@ -154,6 +160,7 @@
     };
     return {
       put: (event) => transaction("readwrite", (store) => void store.put(event)),
+      clear: () => transaction("readwrite", (store) => void store.clear()),
       all: async () => {
         let request;
         await transaction("readonly", (store) => {
@@ -177,6 +184,7 @@
     put: () => Promise.reject(new Error("no IndexedDB")),
     all: async () => [],
     remove: async () => {},
+    clear: async () => {},
   };
 
   const inPage = typeof window !== "undefined";
@@ -203,5 +211,9 @@
   document.addEventListener("visibilitychange", () => {
     if (!document.hidden) queue.flush();
   });
-  queue.flush();
+  // Not before device-account.js (PR 333) has checked whose queue this is: if another
+  // account was signed in here, what it left is cleared first, never sent as this one.
+  document.addEventListener("DOMContentLoaded", () => {
+    Promise.resolve(window.deviceAccount?.ready).then(() => queue.flush());
+  });
 })();

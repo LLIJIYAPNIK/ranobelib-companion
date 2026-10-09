@@ -29,7 +29,14 @@
   {# PR 332: the queue of reading progress/activity waiting for the network - on every
      signed-in page, so it's sent wherever the visitor is when the network comes back. In
      <head>: ahead of the page's own scripts that put things in it. #}
-  {% if current_user %}<script src="{{ static_url('js/sync-queue.js') }}" defer></script>{% endif %}
+  {% if current_user %}
+  <script src="{{ static_url('js/sync-queue.js') }}" defer></script>
+  {# PR 333: whose data this device holds - clears one account's queue, reading positions
+     and (unless kept) downloads before another's page uses them; asks at logout. After
+     the queue and the downloads index, which it clears. #}
+  <script src="{{ static_url('js/offline-store.js') }}" defer></script>
+  <script src="{{ static_url('js/device-account.js') }}" data-user-id="{{ current_user.id }}" defer></script>
+  {% endif %}
   {% block head_extra %}{% endblock %}
 </head>
 <body class="{% block body_class %}{% endblock %}">
@@ -176,6 +183,15 @@
   </div>
   {% if current_user %}
   <div class="download-ready" data-role="download-ready" hidden></div>
+  {# PR 333: logout with downloads on the device - device-account.js opens this in the
+     bottom sheet. Either button logs out; closing the sheet doesn't. #}
+  <div class="wn-sheet-confirm" id="logout-offline-choice" data-bottom-sheet-title="Выйти из аккаунта" hidden>
+    <p class="wn-sheet-confirm__text">На устройстве скачано для чтения без интернета тайтлов: <span data-role="logout-offline-count"></span>. Оставить их на устройстве? Очередь синхронизации и позиции чтения удаляются в любом случае.</p>
+    <div class="wn-sheet-confirm__actions">
+      <button class="wn-sheet-confirm__cancel" type="button" data-logout-keep="1" data-autofocus>Оставить скачанное</button>
+      <button class="wn-sheet-confirm__danger" type="button" data-logout-keep="0">Удалить скачанное</button>
+    </div>
+  </div>
   {% endif %}
   {# PR 279: the one bottom sheet (bottom-sheet.js) - outside .app-shell, which goes
      inert while it's open. Empty until something hands it a content element. #}

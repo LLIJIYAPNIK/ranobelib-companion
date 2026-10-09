@@ -13,6 +13,9 @@
 // survives worker updates. Nothing here talks to ranobelib.me: chapters come through this
 // site's own endpoints, one at a time (offline-queue.js).
 (() => {
+  // PR 333: base.html also loads this on every signed-in page (logout asks what to do
+  // with the downloads) - a page that loads it itself as well gets the same one.
+  if (window.offlineStore) return;
   const DB_NAME = "wn-offline";
   const CACHE_NAME = "wn-offline";
 
@@ -190,6 +193,17 @@
     await finished(tx);
   }
 
+  // PR 333: «Очистить офлайн-данные» and logout without «Оставить скачанное» - every
+  // downloaded chapter, image and cover, and the whole index.
+  async function clearAll() {
+    await caches.delete(CACHE_NAME);
+    const db = await openDb();
+    const tx = db.transaction(["titles", "chapters"], "readwrite");
+    tx.objectStore("titles").clear();
+    tx.objectStore("chapters").clear();
+    await finished(tx);
+  }
+
   async function estimate() {
     try {
       return (await navigator.storage?.estimate?.()) || null;
@@ -225,6 +239,7 @@
     saveCover,
     listTitles,
     deleteTitle,
+    clearAll,
     estimate,
     persist,
   };

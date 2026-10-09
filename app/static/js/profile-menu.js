@@ -99,6 +99,11 @@
 
   trigger.addEventListener("click", () => (isOpen() ? close() : open()));
   window.addEventListener("sidebar:statechange", closeOnLayoutChange);
+  // PR 333: device-account.js asks before logging out, in the bottom sheet - the desktop
+  // popover steps aside for it. (In the phone's sheet the menu is swapped out anyway.)
+  window.addEventListener("profile-menu:close", () => {
+    if (isOpen() && !inSheet) close();
+  });
 
   // The sheet closes itself (backdrop, «Закрыть», drag, Escape) - a click on its head
   // must not count as a click outside.
