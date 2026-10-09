@@ -333,11 +333,14 @@ def test_reading_settings_offer_auto_download_off_by_default(reader: TestClient)
     html = reader.get("/settings/reading").text
 
     assert 'data-role="offline-auto-settings"' in html
-    values = re.findall(r'name="set-auto-download" value="(\d+)" data-setting="autoDownloadNext"', html)
+    values = re.findall(
+        r'name="set-auto-download" value="(\d+)" data-setting="autoDownloadNext"', html
+    )
     assert values == ["0", "3", "5", "10"]
     assert re.search(r'data-role="offline-auto-any-network"[^>]*hidden', html)
     assert 'data-setting="autoDownloadAnyNetwork"' in html
-    assert f"/static/js/offline-autodownload.js?v={asset_hash('js/offline-autodownload.js')}" in html
+    script = "js/offline-autodownload.js"
+    assert f"/static/{script}?v={asset_hash(script)}" in html
     defaults = (_JS / "reader-settings.js").read_text(encoding="utf-8")
     assert 'autoDownloadNext: "0"' in defaults
     assert '"autoDownloadNext", "autoDownloadAnyNetwork"' in defaults  # kept by «Сбросить»
