@@ -21480,7 +21480,9 @@ body.reader-hud-visible .reader-hud {
 
 .wn-offline-saved__footer {
   display: flex;
+  flex-wrap: wrap;
   justify-content: flex-end;
+  gap: var(--s-8);
   margin-top: var(--s-12);
 }
 
@@ -21500,6 +21502,23 @@ body.reader-hud-visible .reader-hud {
 .offline-settings__meter .ui-progress__bar {
   height: 6px;
   border-radius: 3px;
+}
+
+/* The limit is reached: what happened, then the way out. */
+.offline-settings__reached {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: var(--s-8);
+}
+
+.offline-settings__reached p {
+  margin: 0;
+  text-wrap: pretty;
+}
+
+.offline-settings__reached p:empty {
+  display: none;
 }
 
 /* «Удалить прочитанное» with what it freed beside it (under it on a phone). */

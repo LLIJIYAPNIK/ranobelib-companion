@@ -11,6 +11,8 @@
 //   "rate-limit" (429), "blocked" (503) - the source is pushing back: stop asking, offer
 //     «Продолжить» rather than retrying on our own;
 //   "quota" - the device is out of space (QuotaExceededError);
+//   "limit" - the downloads reached the limit set in «Офлайн» (PR 335, OfflineLimitError -
+//     thrown by a `download` that checks it, auto-download's);
 //   "offline" - the network went away (fetch itself failed).
 // Any other failure (404, 403 paid chapter, a translation that needs choosing, ...) is
 // that chapter's alone: it's listed in `failed` and the queue moves on; «Повторить»
@@ -29,6 +31,7 @@
 
   function pauseReasonFor(error) {
     if (error?.name === "QuotaExceededError") return "quota";
+    if (error?.name === "OfflineLimitError") return "limit";
     if (error?.name === "HttpError") return PAUSING_STATUS[error.status] || null;
     if (error?.name === "TypeError") return "offline"; // fetch() rejecting: no network
     return null;

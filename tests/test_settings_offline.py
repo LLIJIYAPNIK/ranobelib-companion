@@ -75,3 +75,22 @@ def test_auto_cleanup_is_offered_off_by_default_with_a_one_off_cleanup() -> None
     # The store keeps the same choices, 0 (off) for anything else.
     store = (_JS / "offline-store.js").read_text(encoding="utf-8")
     assert "const CLEAN_CHOICES = [0, 5, 10, 25];" in store
+
+
+def test_the_limit_is_offered_off_by_default_and_reached_offers_a_cleanup() -> None:
+    html = _page()
+
+    assert re.search(r'data-role="offline-settings-limit"[^>]*hidden', html)
+    values = re.findall(r'name="offline-limit" value="(\d+)" data-offline-setting="limitMb"', html)
+    assert values == ["0", "100", "250", "500", "1000"]
+    assert re.search(r'data-role="offline-limit-reached"[^>]*hidden', html)
+    assert 'data-role="offline-limit-clean"' in html
+    store = (_JS / "offline-store.js").read_text(encoding="utf-8")
+    assert "const LIMIT_CHOICES = [0, 100, 250, 500, 1000];" in store
+
+
+def test_downloads_page_points_at_the_offline_settings() -> None:
+    html = client.get("/downloads").text
+
+    saved = html[html.index('data-role="offline-saved"') :]
+    assert 'href="/settings/offline"' in saved

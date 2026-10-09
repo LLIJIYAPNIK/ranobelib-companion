@@ -250,9 +250,10 @@
 
   // PR 335: the device's offline settings («Офлайн» in the settings) - not personal, they
   // stay through a logout. cleanBehind: chapters kept behind the one being read before the
-  // older ones are removed (0 - off).
+  // older ones are removed (0 - off); limitMb: the most downloads may take (0 - no limit).
   const SETTINGS_KEY = "offlineSettings";
   const CLEAN_CHOICES = [0, 5, 10, 25];
+  const LIMIT_CHOICES = [0, 100, 250, 500, 1000];
   function settings() {
     let stored = {};
     try {
@@ -261,7 +262,20 @@
       // no storage, or garbage in it: the defaults
     }
     const pick = (value, choices) => (choices.includes(Number(value)) ? Number(value) : 0);
-    return { cleanBehind: pick(stored.cleanBehind, CLEAN_CHOICES) };
+    return { cleanBehind: pick(stored.cleanBehind, CLEAN_CHOICES), limitMb: pick(stored.limitMb, LIMIT_CHOICES) };
+  }
+
+  // PR 335: how much of the limit (settings().limitMb) the downloads take - their own
+  // bytes in the index, not estimate(): the limit is the app's, not the browser's. Past
+  // it auto-download stops (offline-autodownload.js); null when there's no limit.
+  async function limitState() {
+    const { limitMb } = settings();
+    if (!limitMb) return null;
+    const db = await openDb();
+    const chapters = await done(db.transaction("chapters").objectStore("chapters").getAll());
+    const used = chapters.reduce((sum, chapter) => sum + (chapter.bytes || 0), 0);
+    const limit = limitMb * 1024 * 1024;
+    return { used, limit, percent: Math.min(100, Math.round((used / limit) * 100)), reached: used >= limit };
   }
 
   function saveSettings(changes) {
@@ -367,6 +381,8 @@
     readChapters,
     deleteRead,
     CLEAN_CHOICES,
+    LIMIT_CHOICES,
+    limitState,
     settings,
     saveSettings,
     touchTitle,

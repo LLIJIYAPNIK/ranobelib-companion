@@ -23,6 +23,35 @@
       <p class="reader-settings-row__hint">Автоскачивание следующих глав настраивается в разделе <a href="/settings/reading">«Чтение»</a>.</p>
     </section>
 
+    {# The most downloads may take (the index's own bytes). Reached: auto-download stops,
+       and the card offers to free room. Manual downloads aren't blocked - the visitor
+       asked for those chapters explicitly. #}
+    <section class="reader-settings-card" data-role="offline-settings-limit" hidden>
+      <h2 class="reader-settings-card__title">Лимит для скачанного</h2>
+      <div class="reader-settings-row">
+        <span class="reader-settings-row__label">Не больше</span>
+        <fieldset class="ui-segmented" aria-label="Лимит для скачанного">
+          {% for value, text in [("0", "Без лимита"), ("100", "100 МБ"), ("250", "250 МБ"), ("500", "500 МБ"), ("1000", "1 ГБ")] %}
+          <label class="ui-segmented__item">
+            <input type="radio" name="offline-limit" value="{{ value }}" data-offline-setting="limitMb">
+            <span>{{ text }}</span>
+          </label>
+          {% endfor %}
+        </fieldset>
+        <span class="reader-settings-row__hint">Когда скачанное дойдёт до лимита, автоскачивание следующих глав остановится. Главы, которые вы скачиваете сами, лимит не останавливает.</span>
+      </div>
+      <div class="ui-progress offline-settings__meter" data-role="offline-limit-meter" hidden>
+        <span class="ui-progress__bar"><span class="ui-progress__fill" data-role="offline-limit-fill"></span></span>
+        <span class="ui-progress__pct" data-role="offline-limit-pct"></span>
+      </div>
+      <p class="reader-settings-row__hint" data-role="offline-limit-usage" hidden></p>
+      <div class="ui-notice ui-notice--error offline-settings__reached" data-role="offline-limit-reached" role="status" hidden>
+        <p>Лимит достигнут — автоскачивание остановлено. Освободите место: удалите прочитанные главы или ненужные тайтлы ниже, или увеличьте лимит.</p>
+        <button type="button" class="ui-btn ui-btn--sm" data-role="offline-limit-clean">Удалить прочитанное</button>
+        <p data-role="offline-limit-clean-result" role="status"></p>
+      </div>
+    </section>
+
     {# Auto-cleanup of what's read: off by default; «Удалить прочитанное» does it once. #}
     <section class="reader-settings-card" data-role="offline-settings-clean" hidden>
       <h2 class="reader-settings-card__title">Прочитанные главы</h2>

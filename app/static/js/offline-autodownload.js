@@ -12,8 +12,10 @@
 // The same queue as the manager (offline-queue.js): strictly one chapter at a time, and
 // one tab at a time (Web Locks, where available). A 429/503 stops it and holds off the
 // next attempts for a while (COOLDOWN_MS) - no retrying on our own; a nearly full storage
-// (PR 333's 80%) doesn't start it, running out of space stops it. Starts a few seconds
-// after the chapter opens and only when the browser is idle; nothing on the page changes.
+// (PR 333's 80%) doesn't start it, running out of space stops it. PR 335: the limit set in
+// «Офлайн» (offlineStore.limitState) doesn't start it either, and reached before a chapter
+// it stops there. Starts a few seconds after the chapter opens and only when the browser
+// is idle; nothing on the page changes.
 //
 // Chapters with several translations take the «Вариант N» the visitor chose in the
 // manager (offlineStore title.translationVariant); without one they're skipped - the site
@@ -111,6 +113,8 @@
     if (!title) return { skipped: "not-downloaded" };
     const storage = await store.storageState();
     if (storage?.nearlyFull) return { skipped: "storage" };
+    const overLimit = async () => (await store.limitState?.())?.reached === true;
+    if (await overLimit()) return { skipped: "limit" };
 
     const saved = await store.savedKeys(current.slug);
     // The order kept with the title (PR 331) answers "is anything missing?" without a
@@ -143,7 +147,14 @@
       toc: chapters.map((c) => [c.volume, c.number]),
     };
     const queue = new OfflineQueue(items, {
-      download: (item, signal) => OfflineQueue.downloadChapter(titleRecord, item, signal),
+      download: async (item, signal) => {
+        if (await overLimit()) {
+          const error = new Error("The offline storage limit is reached");
+          error.name = "OfflineLimitError";
+          throw error;
+        }
+        return OfflineQueue.downloadChapter(titleRecord, item, signal);
+      },
       onChange: (q) => {
         if (q.state === "paused") {
           coolDown(q.pauseReason, now());

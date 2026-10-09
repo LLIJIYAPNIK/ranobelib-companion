@@ -102,6 +102,7 @@
     let saved = new Set();
     let free = null;
     let storage = null; // PR 333: offlineStore.storageState()
+    let limit = null; // PR 335: offlineStore.limitState()
     let queue = null;
 
     q("offline-ios-hint").hidden = !(ios && !standalone());
@@ -160,6 +161,12 @@
         space.textContent =
           `Место браузера для сайта занято на ${storage.percent}% — новые главы могут не скачаться. ` +
           "Освободить его можно в «Скачано» на странице загрузок.";
+      } else if (missing.length && limit?.reached) {
+        // PR 335: the visitor's own download isn't held back - but they should know.
+        space.hidden = false;
+        space.textContent =
+          `Скачанное уже дошло до лимита (${formatBytes(limit.limit)}) — автоскачивание остановлено. ` +
+          "Освободить место или изменить лимит можно в «Настройки → Офлайн».";
       }
 
       if (active()) {
@@ -200,6 +207,7 @@
     async function load() {
       saved = await store.savedKeys(slug);
       storage = await store.storageState();
+      limit = await store.limitState();
       free = storage ? storage.free : null;
       if (manifest) {
         refresh();

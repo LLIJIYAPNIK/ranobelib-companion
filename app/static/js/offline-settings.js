@@ -4,8 +4,9 @@
 // (navigator.storage.estimate()), then every title - the biggest first - with its size,
 // chapters and when it was last opened, and «Удалить» (offlineStore.deleteTitle); the
 // auto-cleanup of read chapters (offlineStore.settings().cleanBehind - reader-offline.js
-// applies it) and «Удалить прочитанное» once, now. No server call: the copy belongs to
-// the device.
+// applies it) and «Удалить прочитанное» once, now; the limit for downloads
+// (settings().limitMb) - reached, auto-download stops and the card offers to free room.
+// No server call: the copy belongs to the device.
 (() => {
   const page = document.querySelector('[data-role="offline-settings"]');
   if (!page) return;
@@ -38,6 +39,12 @@
   const cleanText = q("offline-clean-text");
   const cleanConfirm = q("offline-clean-confirm");
   let current = []; // listTitles() as last rendered
+  const limitCard = q("offline-settings-limit");
+  const limitMeter = q("offline-limit-meter");
+  const limitFill = q("offline-limit-fill");
+  const limitPct = q("offline-limit-pct");
+  const limitUsage = q("offline-limit-usage");
+  const limitReached = q("offline-limit-reached");
 
   function formatBytes(bytes) {
     const units = ["Б", "КБ", "МБ", "ГБ"];
@@ -134,9 +141,13 @@
   });
 
   // --- read chapters -------------------------------------------------------------------
-  for (const input of page.querySelectorAll('[data-offline-setting="cleanBehind"]')) {
-    input.checked = Number(input.value) === store.settings().cleanBehind;
-    input.addEventListener("change", () => store.saveSettings({ cleanBehind: Number(input.value) }));
+  for (const input of page.querySelectorAll("[data-offline-setting]")) {
+    const key = input.dataset.offlineSetting;
+    input.checked = Number(input.value) === store.settings()[key];
+    input.addEventListener("change", () => {
+      store.saveSettings({ [key]: Number(input.value) });
+      if (key === "limitMb") renderLimit();
+    });
   }
 
   // What «Удалить прочитанное» would free: per title, the chapters on the device before
@@ -153,11 +164,12 @@
   }
 
   let toClean = [];
-  cleanNow.addEventListener("click", async () => {
-    cleanResult.textContent = "";
+  // `result`: where to say there was nothing to remove - next to the button pressed.
+  async function offerCleanup(opener, result) {
+    cleanResult.textContent = result.textContent = "";
     toClean = await readOnDevice();
     if (!toClean.length) {
-      cleanResult.textContent = "Прочитанных глав на устройстве нет.";
+      result.textContent = "Прочитанных глав на устройстве нет — удалите ненужные тайтлы ниже.";
       return;
     }
     const chapters = toClean.reduce((sum, t) => sum + t.chapters, 0);
@@ -165,8 +177,9 @@
     cleanText.textContent =
       `${chapters} ${chaptersWord(chapters)} (≈ ${formatBytes(bytes)}) до тех, что вы открывали последними, ` +
       "пропадут с этого устройства. Текущие и следующие главы останутся.";
-    window.bottomSheet.open({ title: cleanBox.dataset.bottomSheetTitle, content: cleanBox, opener: cleanNow });
-  });
+    window.bottomSheet.open({ title: cleanBox.dataset.bottomSheetTitle, content: cleanBox, opener });
+  }
+  cleanNow.addEventListener("click", () => offerCleanup(cleanNow, cleanResult));
 
   cleanConfirm.addEventListener("click", async () => {
     cleanConfirm.disabled = true;
@@ -185,6 +198,21 @@
     }
   });
 
+  // --- the limit -----------------------------------------------------------------------
+  async function renderLimit() {
+    const state = await store.limitState();
+    limitMeter.hidden = limitUsage.hidden = !state;
+    limitReached.hidden = !state?.reached;
+    if (!state) return;
+    limitFill.style.width = `${state.percent}%`;
+    limitPct.textContent = `${state.percent}%`;
+    limitUsage.textContent = `Скачано ≈ ${formatBytes(state.used)} из ${formatBytes(state.limit)}.`;
+  }
+
+  // The way out of a reached limit - the same as the button in «Прочитанные главы».
+  const limitClean = q("offline-limit-clean");
+  limitClean.addEventListener("click", () => offerCleanup(limitClean, q("offline-limit-clean-result")));
+
   async function render() {
     let titles;
     try {
@@ -197,7 +225,9 @@
     renderSummary(titles, storage);
     renderTitles(titles);
     current = titles;
+    await renderLimit();
     summary.hidden = false;
+    limitCard.hidden = false;
     cleanCard.hidden = false;
   }
 
