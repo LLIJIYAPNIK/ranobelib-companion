@@ -150,6 +150,16 @@ def test_manifest_carries_the_sdk_size_estimate(fake: _FakeClient) -> None:
     assert body["estimated_bytes_per_chapter"] == 1_000_000
 
 
+def test_without_size_the_manifest_is_only_the_table_of_contents(fake: _FakeClient) -> None:
+    # PR 334: auto-download needs the order and the translations, not the sampled size.
+    body = client.get(f"/offline/titles/{SLUG}/manifest", params={"size": "false"}).json()
+
+    assert fake.calls == [("get_table_of_contents",)]
+    assert body["chapter_count"] == 3
+    assert body["estimated_bytes"] is None
+    assert body["estimated_bytes_per_chapter"] is None
+
+
 def test_a_failed_estimate_leaves_the_list_intact() -> None:
     fake = _FakeClient(estimate=RateLimitError("slow down"))
     with patch("app.services.client.RanobeLib", return_value=fake):

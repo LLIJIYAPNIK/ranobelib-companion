@@ -31,18 +31,24 @@ router = APIRouter(prefix="/offline/titles/{slug_url}")
 
 
 @router.get("/manifest")
-async def offline_manifest(slug_url: str) -> JSONResponse:
+async def offline_manifest(slug_url: str, size: bool = Query(default=True)) -> JSONResponse:
     """The table of contents - every chapter with its translations, so the manager can
     show the list and ask about ambiguous ones up front - plus the SDK's sampled size
-    estimate for the space check before a download starts."""
+    estimate for the space check before a download starts.
+
+    PR 334: ``size=false`` leaves the estimate out - auto-download (offline-autodownload.js)
+    only needs the chapter order and translations, not the extra sampled chapters."""
     async with open_client(slug_url) as lib:
         volumes = await lib.get_table_of_contents()
-        try:
-            estimated_bytes: int | None = await lib.estimate_title_size()
-        except RanobeLibError:
-            # Same as the title page's size label (app/api/titles.py): a sampled chapter
-            # failing (rate limit, needs auth, ...) leaves the estimate out, not the list.
-            estimated_bytes = None
+        estimated_bytes: int | None = None
+        if size:
+            try:
+                estimated_bytes = await lib.estimate_title_size()
+            except RanobeLibError:
+                # Same as the title page's size label (app/api/titles.py): a sampled
+                # chapter failing (rate limit, needs auth, ...) leaves the estimate out,
+                # not the list.
+                estimated_bytes = None
     chapter_count = sum(len(volume.chapters) for volume in volumes)
     return JSONResponse(
         {
