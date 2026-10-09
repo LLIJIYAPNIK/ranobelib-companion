@@ -195,6 +195,54 @@ async def record_progress(
     )
 
 
+async def record_position_tick(
+    conn: AsyncConnection,
+    user_id: int,
+    slug_url: str,
+    volume: str,
+    number: str,
+    paragraph: int,
+    paragraph_total: int,
+    read_at: str,
+) -> None:
+    """The paragraph position from POST /reading-progress/tick, read at `read_at`. Online
+    that's just now, and the newest tick simply wins - a step back in Tap Focus is a real
+    position (PR 288). Since PR 332 a tick can also arrive late, from the device's queue
+    after reading offline, and then it mustn't undo reading the server has learned about
+    meanwhile:
+
+    - a tick read after the stored position (`last_read_at`) wins, as online;
+    - an older one wins only by PR 287's «кто дальше, тот и победил»: same chapter as the
+      stored one and further into it. An old tick of another chapter never takes the
+      reader back to a chapter they've moved on from (which chapter comes "after" is the
+      SDK's order, not ours to work out - only time is compared here).
+
+    Same no-op as record_progress() for a title outside the library."""
+    await conn.execute(
+        "UPDATE library_entries "
+        "SET last_read_volume = %s, last_read_number = %s, "
+        "last_read_at = GREATEST(last_read_at, %s), "
+        "last_read_paragraph = %s, last_read_paragraph_total = %s "
+        "WHERE user_id = %s AND slug_url = %s AND ("
+        "last_read_at IS NULL OR last_read_at <= %s "
+        "OR (last_read_volume = %s AND last_read_number = %s "
+        "AND COALESCE(last_read_paragraph, 0) < %s))",
+        (
+            volume,
+            number,
+            read_at,
+            paragraph,
+            paragraph_total,
+            user_id,
+            slug_url,
+            read_at,
+            volume,
+            number,
+            paragraph,
+        ),
+    )
+
+
 def _row_to_entry(row: dict[str, Any]) -> LibraryEntry:
     return LibraryEntry(
         id=row["id"],

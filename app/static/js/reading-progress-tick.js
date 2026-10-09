@@ -10,7 +10,13 @@
 // is one or two requests, not one per tap. A pending position is flushed when the page
 // is hidden or left, so the last few paragraphs before switching devices aren't lost.
 //
-// Loaded for logged-in readers only (chapter.html) - a guest has nothing to sync.
+// PR 332: sent through the device's queue (sync-queue.js), so a position reached offline
+// - in a downloaded chapter, or with the network gone mid-chapter - reaches the server
+// once it's back. Queued ticks of this chapter collapse into the latest (`key`).
+//
+// Loaded for logged-in readers (chapter.html) - a guest has nothing to sync - and in a
+// downloaded copy (PR 331), which doesn't know who will read it: whoever is signed in on
+// the device when the queue is sent; nobody - the server redirects and it's dropped.
 (() => {
   const THROTTLE_MS = 5000;
 
@@ -33,18 +39,17 @@
     if (!position || position.revealed === lastSent) return;
     lastSent = position.revealed;
     lastSentAt = Date.now();
-    fetch("/reading-progress/tick", {
-      method: "POST",
-      headers: { "Content-Type": "application/x-www-form-urlencoded" },
-      body: new URLSearchParams({
+    window.syncQueue?.send(
+      "/reading-progress/tick",
+      {
         slug_url: slugUrl,
         volume,
         number,
         paragraph: String(position.revealed),
         paragraph_total: String(position.total),
-      }),
-      keepalive: true,
-    }).catch(() => {});
+      },
+      { key: `tick:${slugUrl}:${volume}:${number}` }
+    );
   }
 
   function flush() {

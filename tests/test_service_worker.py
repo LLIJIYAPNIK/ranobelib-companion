@@ -395,3 +395,42 @@ def test_offline_an_old_stylesheet_version_falls_back_to_the_current_one(
 @needs_node
 def test_the_worker_never_writes_the_devices_offline_copy(worker: dict[str, Any]) -> None:
     assert worker["offlineReading"]["offlineCacheAfter"] == [2, 2]
+
+
+# --- Background Sync (PR 332) --------------------------------------------------------
+
+
+def test_the_worker_imports_the_pages_own_queue(worker: dict[str, Any]) -> None:
+    # One implementation of the queue: the same versioned file the pages load, and it's in
+    # the precache, so a change to it is a new worker version.
+    url = "/static/js/sync-queue.js?v=" + asset_hash("js/sync-queue.js")
+
+    assert worker["config"]["syncQueue"] == url
+    assert url in worker["config"]["precache"]
+    assert worker["backgroundSync"]["online"]["imported"] == [url]
+
+
+def test_background_sync_sends_the_queue_oldest_first(worker: dict[str, Any]) -> None:
+    online = worker["backgroundSync"]["online"]
+
+    assert online["rejected"] is False
+    assert online["fetched"] == ["https://app.test/activity/heartbeat"] * 2
+    assert online["left"] == []
+
+
+def test_background_sync_without_a_network_keeps_the_queue_and_asks_again(
+    worker: dict[str, Any],
+) -> None:
+    # A rejected waitUntil is how the worker tells the browser to retry later.
+    offline = worker["backgroundSync"]["offline"]
+
+    assert offline["rejected"] is True
+    assert offline["fetched"] == ["https://app.test/activity/heartbeat"]  # stops at the first
+    assert offline["left"] == ["event-0001", "event-0002"]
+
+
+def test_another_sync_tag_is_not_ours(worker: dict[str, Any]) -> None:
+    other = worker["backgroundSync"]["otherTag"]
+
+    assert other["fetched"] == []
+    assert other["left"] == ["event-0001", "event-0002"]

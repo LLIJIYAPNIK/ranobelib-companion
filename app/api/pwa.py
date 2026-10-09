@@ -88,7 +88,14 @@ def service_worker_config() -> dict[str, object]:
     digest = hashlib.sha256(SERVICE_WORKER_SOURCE.read_bytes())
     digest.update(OFFLINE_TEMPLATE.read_bytes())
     digest.update("\n".join(precache).encode())
-    return {"version": digest.hexdigest()[:10], "precache": precache, "offline": OFFLINE_URL}
+    return {
+        "version": digest.hexdigest()[:10],
+        "precache": precache,
+        "offline": OFFLINE_URL,
+        # PR 332: importScripts()'d by the worker - a ?v= URL, so a changed queue is a
+        # changed precache list and so a new worker version.
+        "syncQueue": _static("js/sync-queue.js"),
+    }
 
 
 def precache_urls() -> list[str]:

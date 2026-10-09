@@ -8,7 +8,7 @@ from fastapi.testclient import TestClient
 
 from app.config import get_settings
 from app.db.connection import connection
-from app.db.library import add_entry, get_entry
+from app.db.library import LibraryEntry, add_entry, get_entry
 from tests.auth_helpers import register
 from tests.db_reset import reset_app_database
 
@@ -95,5 +95,83 @@ def test_tick_rejects_an_impossible_position(
         "/reading-progress/tick",
         data={**_TICK, "paragraph": paragraph, "paragraph_total": paragraph_total},
     )
+
+    assert response.status_code == 422
+
+
+# PR 332: a tick read offline comes later from the device's queue (sync-queue.js), with
+# age_ms - how long ago it was read. «Кто дальше, тот и победил» (PR 287) for such a late
+# tick: it doesn't undo what the server has seen since, unless it got further.
+
+_AN_HOUR_AGO_MS = str(60 * 60 * 1000)
+
+
+async def _entry_after(client: TestClient, *ticks: dict[str, str]) -> LibraryEntry | None:
+    register(client, "alice@example.com")  # user id 1
+    async with connection() as conn:
+        await add_entry(conn, 1, "6712--test-novel")
+    for tick in ticks:
+        assert client.post("/reading-progress/tick", data=tick).status_code == 204
+    async with connection() as conn:
+        return await get_entry(conn, 1, "6712--test-novel")
+
+
+async def test_a_late_tick_of_an_earlier_chapter_doesnt_take_the_reader_back(
+    client: TestClient,
+) -> None:
+    entry = await _entry_after(
+        client,
+        {**_TICK, "number": "7", "paragraph": "10"},
+        {**_TICK, "age_ms": _AN_HOUR_AGO_MS},
+    )
+
+    assert (entry.last_read_number, entry.last_read_paragraph) == ("7", 10)
+
+
+async def test_a_late_tick_further_into_the_same_chapter_wins(client: TestClient) -> None:
+    entry = await _entry_after(
+        client,
+        {**_TICK, "paragraph": "20"},
+        {**_TICK, "paragraph": "60", "age_ms": _AN_HOUR_AGO_MS},
+    )
+
+    assert (entry.last_read_number, entry.last_read_paragraph) == ("5", 60)
+
+
+async def test_a_late_tick_less_far_into_the_same_chapter_loses(client: TestClient) -> None:
+    entry = await _entry_after(
+        client,
+        {**_TICK, "paragraph": "60"},
+        {**_TICK, "paragraph": "20", "age_ms": _AN_HOUR_AGO_MS},
+    )
+
+    assert entry.last_read_paragraph == 60
+
+
+async def test_a_late_tick_newer_than_the_stored_position_wins(client: TestClient) -> None:
+    # Read offline in chapter 7 an hour ago; the server's last word is from two hours ago.
+    entry = await _entry_after(
+        client,
+        {**_TICK, "age_ms": str(2 * 60 * 60 * 1000)},
+        {**_TICK, "number": "7", "paragraph": "3", "age_ms": _AN_HOUR_AGO_MS},
+    )
+
+    assert (entry.last_read_number, entry.last_read_paragraph) == ("7", 3)
+
+
+async def test_a_late_tick_doesnt_move_last_read_at_back(client: TestClient) -> None:
+    before = await _entry_after(client, {**_TICK, "paragraph": "20"})
+    client.post("/reading-progress/tick", data={**_TICK, "paragraph": "60", "age_ms": "60000"})
+
+    async with connection() as conn:
+        after = await get_entry(conn, 1, "6712--test-novel")
+    assert after.last_read_paragraph == 60
+    assert after.last_read_at == before.last_read_at
+
+
+def test_a_tick_older_than_the_queue_keeps_is_refused(client: TestClient) -> None:
+    register(client, "alice@example.com")
+
+    response = client.post("/reading-progress/tick", data={**_TICK, "age_ms": "2592000001"})
 
     assert response.status_code == 422

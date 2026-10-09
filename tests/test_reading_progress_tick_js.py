@@ -57,7 +57,8 @@ def test_the_request_carries_the_whole_position() -> None:
     assert request["volume"] == "1"
     assert request["number"] == "5"
     assert request["paragraph_total"] == "80"
-    assert request["keepalive"] is True
+    # PR 332: queued ticks of one chapter collapse into the latest.
+    assert request["key"] == "tick:6712--test-novel:1:5"
 
 
 def test_the_position_the_server_already_holds_is_not_resent() -> None:
