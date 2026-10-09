@@ -288,24 +288,31 @@
 
   // PR 335: a chapter of a downloaded title was opened (online or from the copy) - when,
   // for «Офлайн» in the settings. A title that isn't downloaded is left alone.
-  async function touchTitle(slug, now = new Date()) {
+  // PR 336: and which chapter ({ volume, number }) - where «Продолжить чтение» (/continue)
+  // leads without a network (the service worker reads it).
+  async function touchTitle(slug, now = new Date(), chapter = null) {
     const db = await openDb();
     const tx = db.transaction("titles", "readwrite");
     const titles = tx.objectStore("titles");
     const title = await done(titles.get(slug));
-    if (title) titles.put({ ...title, openedAt: now.toISOString() });
+    if (title) {
+      const opened = { ...title, openedAt: now.toISOString() };
+      if (chapter) opened.openedChapter = { volume: String(chapter.volume), number: String(chapter.number) };
+      titles.put(opened);
+    }
     await finished(tx);
   }
 
   // PR 335: when a title was opened says what someone reads - it goes with the account's
-  // other personal data (device-account.js), even when the downloads stay.
+  // other personal data (device-account.js), even when the downloads stay. So does which
+  // chapter (PR 336).
   async function forgetOpened() {
     const db = await openDb();
     const tx = db.transaction("titles", "readwrite");
     const titles = tx.objectStore("titles");
     for (const title of await done(titles.getAll())) {
-      if (!("openedAt" in title)) continue;
-      const { openedAt, ...rest } = title;
+      if (!("openedAt" in title) && !("openedChapter" in title)) continue;
+      const { openedAt, openedChapter, ...rest } = title;
       titles.put(rest);
     }
     await finished(tx);

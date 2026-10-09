@@ -43,6 +43,7 @@ const IMAGE_PATH = /\.(?:png|svg|ico|webp|jpe?g|gif)$/i;
 // What the visitor downloaded for reading without a network (PR 330/331): written only by
 // the page (offline-store.js), only ever read here.
 const OFFLINE_CACHE = "wn-offline";
+const OFFLINE_DB = "wn-offline"; // its index (PR 336 reads it for /continue)
 const CHAPTER_PATH = /^\/titles\/[^/]+\/chapters\/[^/]+\/[^/]+$/;
 const OFFLINE_IMAGE_PATH = "/images/view";
 
@@ -122,9 +123,10 @@ async function trim(cache, limit) {
 
 // Network-first, and never stored: a page is the signed-in user's own (sidebar, library,
 // notifications). With no network: a chapter downloaded for reading offline is its kept
-// page (PR 331); anything else is the precached «Нет соединения» page, which also lists
-// what is downloaded and says «Глава не скачана» for a chapter that isn't. At once when
-// the device already knows it's offline, rather than after a failed attempt.
+// page (PR 331), and /continue the last of those read here (PR 336); anything else is the
+// precached «Нет соединения» page, which also lists what is downloaded and says «Глава не
+// скачана» for a chapter that isn't. At once when the device already knows it's
+// offline, rather than after a failed attempt.
 async function networkPage(request) {
   if (self.navigator.onLine !== false) {
     try {
@@ -133,7 +135,12 @@ async function networkPage(request) {
       // fall through to what's on the device
     }
   }
-  return (await offlineCopy(request.url)) || (await caches.match(CONFIG.offline)) || Response.error();
+  return (
+    (await offlineCopy(request.url)) ||
+    (await continueOffline(request.url)) ||
+    (await caches.match(CONFIG.offline)) ||
+    Response.error()
+  );
 }
 
 // The downloaded copy of a chapter page, by path: the copy is of the translation picked
@@ -143,6 +150,60 @@ async function offlineCopy(url) {
   if (!CHAPTER_PATH.test(pathname)) return null;
   const cache = await caches.open(OFFLINE_CACHE);
   return (await cache.match(pathname)) || null;
+}
+
+// PR 336: «Продолжить чтение» (/continue, the app icon's shortcut) is the server's
+// redirect to the account's last chapter. Without a network: the chapter opened last on
+// this device among the downloaded ones (offline-store.js keeps which, in its IndexedDB
+// index) whose copy is still here - otherwise the offline page, as for any page.
+const CONTINUE_PATH = "/continue";
+
+async function continueOffline(url) {
+  if (new URL(url).pathname !== CONTINUE_PATH) return null;
+  const opened = (await downloadedTitles())
+    .filter((title) => title.openedAt && title.openedChapter)
+    .sort((a, b) => (a.openedAt < b.openedAt ? 1 : a.openedAt > b.openedAt ? -1 : 0));
+  const cache = await caches.open(OFFLINE_CACHE);
+  for (const { slug, openedChapter } of opened) {
+    const path = ["titles", slug, "chapters", openedChapter.volume, openedChapter.number]
+      .map(encodeURIComponent)
+      .join("/");
+    if (await cache.match(`/${path}`)) {
+      return Response.redirect(new URL(`/${path}`, self.location.origin).href, 302);
+    }
+  }
+  return null;
+}
+
+// The titles in the device's download index (offline-store.js) - read only, and never
+// created: on a device that has downloaded nothing the open is aborted rather than
+// leaving an empty database the page's own upgrade would then skip.
+function downloadedTitles() {
+  return new Promise((resolve) => {
+    let request;
+    try {
+      request = self.indexedDB.open(OFFLINE_DB);
+    } catch {
+      resolve([]);
+      return;
+    }
+    request.onupgradeneeded = () => request.transaction.abort();
+    request.onerror = () => resolve([]);
+    request.onsuccess = () => {
+      const db = request.result;
+      const finish = (titles) => {
+        db.close(); // an open connection would block the page's next schema upgrade
+        resolve(titles);
+      };
+      try {
+        const all = db.transaction("titles").objectStore("titles").getAll();
+        all.onsuccess = () => finish(all.result || []);
+        all.onerror = () => finish([]);
+      } catch {
+        finish([]);
+      }
+    };
+  });
 }
 
 // A downloaded chapter's image from the device even online (no second trip to the
