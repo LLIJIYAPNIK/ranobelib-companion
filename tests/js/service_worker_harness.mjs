@@ -313,6 +313,31 @@ async function page(sw, url) {
   };
 }
 
+// PR 333: whatever the route, a response the server marked as someone's own
+// (Cache-Control: private / no-store) is passed through and never stored.
+{
+  const marked = { "private.css": "private, no-cache", "nostore.png": "no-store" };
+  const sw = boot({
+    respond: (url) => {
+      const name = Object.keys(marked).find((key) => url.includes(key));
+      const headers = name ? { "Cache-Control": marked[name] } : {};
+      return new Response(`body:${url}`, { status: 200, headers });
+    },
+  });
+  const urls = [
+    "/static/css/private.css?v=0000000001",
+    "/static/img/nostore.png",
+    "/static/img/public.png",
+    "https://fonts.googleapis.com/css2?family=private.css",
+  ];
+  const bodies = [];
+  for (const url of urls) {
+    const response = await sw.dispatch("fetch", { request: new Request(absolute(url)) });
+    bodies.push(response ? await response.text() : null);
+  }
+  results.privateResponses = { bodies, caches: await cacheSnapshot(sw.store) };
+}
+
 // PR 331: reading without a network. The device's "wn-offline" cache holds a downloaded
 // chapter's page under the reader URL and its proxied images; the worker reads it, never
 // writes it.

@@ -171,7 +171,7 @@ def _locked_page(request: Request, wait: float) -> HTMLResponse:
 
 def install_admin_headers(app: FastAPI) -> None:
     """``Cache-Control: no-store`` and ``X-Robots-Tag: noindex`` on every /admin* response
-    while the panel is enabled. Registered after install_html_no_cache() so this runs
+    while the panel is enabled. Registered after install_cache_policy() so this runs
     last on the way out and its Cache-Control wins. Without ADMIN_PASSWORD nothing is
     added - the 404 must look like any other unknown URL's."""
 

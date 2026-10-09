@@ -7,7 +7,7 @@ Neither app.css nor the page scripts used to carry a version in their URL or an 
 whose ``v`` matches the file's current hash is cached for a year as immutable, everything
 else from /static (no ``v``, or a stale one from an old page) is ``no-cache`` - always
 revalidated, via the ETag StaticFiles already sends. HTML gets ``no-cache`` too
-(``install_html_no_cache``), so a fresh page always points at fresh assets.
+(``install_cache_policy``), so a fresh page always points at fresh assets.
 
 Hashes are computed lazily, once per file in production; in dev the cache is keyed on
 mtime, so an edited file gets a new URL without a restart.
@@ -31,6 +31,7 @@ from app.config import get_settings
 STATIC_DIR = Path(__file__).parent / "static"
 IMMUTABLE = "public, max-age=31536000, immutable"
 NO_CACHE = "no-cache"
+PRIVATE_NO_CACHE = "private, no-cache"
 
 _HASH_LENGTH = 10
 # path -> (mtime_ns, hash)
@@ -68,17 +69,31 @@ class VersionedStaticFiles(StaticFiles):
         return response
 
 
-def install_html_no_cache(app: FastAPI) -> None:
-    """``Cache-Control: no-cache`` on every HTML response that didn't set its own."""
+def install_cache_policy(app: FastAPI) -> None:
+    """The default ``Cache-Control`` for responses that don't set their own (PR 317), and
+    since PR 333 the privacy half of it:
+
+    - HTML is ``no-cache`` - a fresh page always points at fresh assets;
+    - anything answered to a browser with a session (a signed-in account, a pending email
+      confirmation) is ``private, no-cache`` - a page or JSON with someone's data must never
+      be stored by a shared cache. (``Vary: Cookie`` comes from Starlette's
+      SessionMiddleware itself, on every response that read the session - which the
+      app-wide get_current_user() dependency does.)
+
+    A route's own ``Cache-Control`` wins: it's set where the response is deliberately the
+    same for everyone (the offline copies and manifest rendered as nobody's, the worker,
+    the image proxy). /static keeps its own rules above.
+    The service worker never stores pages or JSON at all (app/pwa/service-worker.js)."""
 
     @app.middleware("http")
-    async def _html_no_cache(
+    async def _cache_policy(
         request: Request, call_next: Callable[[Request], Awaitable[Response]]
     ) -> Response:
         response = await call_next(request)
-        if (
-            response.headers.get("content-type", "").startswith("text/html")
-            and "cache-control" not in response.headers
-        ):
+        if request.url.path.startswith("/static/") or "cache-control" in response.headers:
+            return response
+        if request.scope.get("session"):
+            response.headers["Cache-Control"] = PRIVATE_NO_CACHE
+        elif response.headers.get("content-type", "").startswith("text/html"):
             response.headers["Cache-Control"] = NO_CACHE
         return response

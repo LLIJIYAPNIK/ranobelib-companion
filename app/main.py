@@ -34,7 +34,7 @@ from app.db import connection as db_connection
 from app.db.migrate import run_migrations
 from app.exceptions import register_exception_handlers
 from app.security_headers import install_security_headers
-from app.static_assets import STATIC_DIR, VersionedStaticFiles, install_html_no_cache
+from app.static_assets import STATIC_DIR, VersionedStaticFiles, install_cache_policy
 
 if sys.platform == "win32":
     # psycopg's async mode refuses to run on Windows' default ProactorEventLoop (see
@@ -65,8 +65,8 @@ app = FastAPI(
     dependencies=[Depends(get_current_user)],
 )
 install_security_headers(app)
-install_html_no_cache(app)
-# PR 324: after install_html_no_cache, so its no-store wins on /admin*.
+install_cache_policy(app)
+# PR 324: after install_cache_policy, so its no-store wins on /admin*.
 admin.install_admin_headers(app)
 app.add_middleware(
     RememberMeSessionMiddleware,
