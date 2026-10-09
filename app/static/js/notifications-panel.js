@@ -99,7 +99,9 @@
 
   // PR 311: the badge and the panel header's «N новых» - also re-applied whenever
   // notifications-actions.js reports a fresh count after a mark-read/delete.
+  // PR 337: and the app icon's badge (app-badge.js), the same number.
   function applyUnreadCount(count) {
+    window.appBadge?.update(count);
     if (badge) {
       badge.hidden = count === 0;
       if (count > 0) badge.textContent = count > 9 ? "9+" : String(count);
