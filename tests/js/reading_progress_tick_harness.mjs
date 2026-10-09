@@ -1,6 +1,7 @@
 // Runs app/static/js/reading-progress-tick.js in a node:vm sandbox with a fake DOM,
-// a fake clock and a recording fetch, then prints each scenario's requests as JSON for
-// tests/test_reading_progress_tick_js.py to assert on.
+// a fake clock and a recording window.syncQueue (PR 332 - the script hands its requests
+// to the device's queue, sync-queue.js, rather than fetching itself), then prints each
+// scenario's requests as JSON for tests/test_reading_progress_tick_js.py to assert on.
 import { readFileSync } from "node:fs";
 import vm from "node:vm";
 
@@ -20,7 +21,14 @@ function run(savedParagraph, steps) {
     querySelector: (selector) => (selector === '[data-role="chapter"]' ? article : null),
     addEventListener: (name, fn) => (listeners[name] ||= []).push(fn),
   };
-  const window = { addEventListener: (name, fn) => (listeners[name] ||= []).push(fn) };
+  const window = {
+    addEventListener: (name, fn) => (listeners[name] ||= []).push(fn),
+    syncQueue: {
+      send: (url, fields, options = {}) => {
+        requests.push({ url, at: now - 1_000_000, key: options.key ?? null, ...fields });
+      },
+    },
+  };
   const fire = (name, event = {}) => (listeners[name] || []).forEach((fn) => fn(event));
 
   function advance(to) {
@@ -48,11 +56,6 @@ function run(savedParagraph, steps) {
     },
     clearTimeout: (id) => {
       timers = timers.filter((t) => t.id !== id);
-    },
-    fetch: (url, init) => {
-      const body = Object.fromEntries(new URLSearchParams(init.body));
-      requests.push({ url, at: now - 1_000_000, keepalive: init.keepalive === true, ...body });
-      return Promise.resolve();
     },
   };
   vm.runInNewContext(source, sandbox);

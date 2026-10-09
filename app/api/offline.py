@@ -123,9 +123,10 @@ async def offline_chapter_page(
     end card and its neighbours in SDK order), with three differences:
 
     - nobody's page: rendered as for a guest - no account in the sidebar, no saved
-      paragraph, no progress/activity scripts - so a stored copy never carries personal
-      data (PR 328/333) and opening it here records nothing (unlike the reader route,
-      which adds to the library and logs the read);
+      paragraph - so a stored copy never carries personal data (PR 328/333), and opening
+      it records nothing by itself (unlike the reader route, which adds to the library and
+      logs the read). Its progress/activity scripts (PR 332) only queue on the device what
+      is read in it; the queue goes to the server later, as whoever is signed in then;
     - images on the same-origin proxy, stored beside the page (PR 329/330);
     - no comments, reactions or chapter export - they need the network
       (``offline_copy`` in the template)."""

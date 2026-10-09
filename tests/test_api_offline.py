@@ -445,10 +445,20 @@ async def test_a_signed_in_copy_is_nobodys_page_and_records_nothing(
     assert 'data-authenticated=""' in page
     assert 'data-user-id=""' in page
     assert "alice" not in page
-    assert "reading-progress-tick.js" not in page
-    assert "activity-heartbeat.js" not in page
+    assert "data-saved-paragraph" not in page
     # ...and downloading isn't reading: unlike the reader route, no library entry and no
     # «read today» record.
     async with connection() as conn:
         assert await list_entries(conn, user_id=1) == []
         assert await list_chapters_read_today(conn, user_id=1) == []
+
+
+def test_a_copy_queues_what_is_read_in_it(signed_in: TestClient) -> None:
+    # PR 332: reading offline is what the queue is for - the copy carries the progress and
+    # activity scripts and the queue itself (base.html only adds it for a signed-in page).
+    page = _page(_FakeClient(chapter=_chapter_two()), signed_in)
+
+    assert "/static/js/sync-queue.js" in page
+    assert "/static/js/reading-progress-tick.js" in page
+    assert "/static/js/activity-heartbeat.js" in page
+    assert page.index("/static/js/sync-queue.js") < page.index("/static/js/activity-heartbeat.js")

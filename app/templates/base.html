@@ -26,6 +26,10 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link rel="stylesheet" crossorigin href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&family=Literata:ital,opsz,wght@0,7..72,400;0,7..72,500;1,7..72,400&family=Golos+Text:wght@400;500&family=JetBrains+Mono:wght@400;500&display=swap">
   <link rel="stylesheet" href="{{ static_url('css/app.css') }}">
+  {# PR 332: the queue of reading progress/activity waiting for the network - on every
+     signed-in page, so it's sent wherever the visitor is when the network comes back. In
+     <head>: ahead of the page's own scripts that put things in it. #}
+  {% if current_user %}<script src="{{ static_url('js/sync-queue.js') }}" defer></script>{% endif %}
   {% block head_extra %}{% endblock %}
 </head>
 <body class="{% block body_class %}{% endblock %}">

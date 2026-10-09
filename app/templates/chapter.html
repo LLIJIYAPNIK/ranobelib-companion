@@ -1,6 +1,9 @@
 {% extends "base.html" %}
 {% block title %}Глава {{ chapter.number }} — RanobeLib Companion{% endblock %}
 {% block head_extra %}
+{# A downloaded copy (PR 331) is rendered as for a guest, so base.html leaves the queue out
+   - but reading it offline is exactly what the queue is for (PR 332). #}
+{% if offline_copy %}<script src="{{ static_url('js/sync-queue.js') }}" defer></script>{% endif %}
 <script src="{{ static_url('js/scroll-restoration.js') }}"></script>
 <script src="{{ static_url('js/reader-theme-early.js') }}"></script>
 {% endblock %}
@@ -248,7 +251,9 @@
   </div>
 </div>
 
-{% if current_user %}
+{# PR 332: a downloaded copy reports too - for whoever is signed in on the device when its
+   queue is sent (it holds no account itself, see app/api/offline.py). #}
+{% if current_user or offline_copy %}
 <script src="{{ static_url('js/activity-heartbeat.js') }}" defer></script>
 {# Before tap-to-read.js/reader-progress.js - listening by the time they announce a position. #}
 <script src="{{ static_url('js/reading-progress-tick.js') }}" defer></script>
