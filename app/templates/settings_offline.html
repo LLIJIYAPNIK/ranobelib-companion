@@ -1,0 +1,30 @@
+{% extends "settings_layout.html" %}
+{% block title %}Офлайн — RanobeLib Companion{% endblock %}
+{% block settings_content %}
+{#
+  PR 335: what's downloaded for reading without a network on this device and how much
+  room it takes. Rendered empty - offline-settings.js fills it from the IndexedDB index
+  (offline-store.js) and navigator.storage.estimate(), never from the server, so it's the
+  same for guests. Without IndexedDB/Cache Storage only the «unsupported» notice shows.
+#}
+  <div class="reader-settings-page offline-settings" data-role="offline-settings">
+    <p class="ui-notice offline-settings__unsupported" data-role="offline-settings-unsupported" hidden>Этот браузер не умеет хранить главы для чтения без интернета.</p>
+
+    <section class="reader-settings-card" data-role="offline-settings-summary" hidden>
+      <h2 class="reader-settings-card__title">Место на устройстве</h2>
+      <p class="offline-settings__total" data-role="offline-summary-total"></p>
+      <div class="ui-progress offline-settings__meter" data-role="offline-summary-meter" hidden>
+        <span class="ui-progress__bar"><span class="ui-progress__fill" data-role="offline-summary-fill"></span></span>
+        <span class="ui-progress__pct" data-role="offline-summary-pct"></span>
+      </div>
+      <p class="reader-settings-row__hint" data-role="offline-summary-quota"></p>
+      {# PR 333's threshold: past 80% of the browser's share downloads may start failing. #}
+      <p class="ui-notice ui-notice--error" data-role="offline-summary-warning" role="status" hidden></p>
+      <p class="reader-settings-row__hint">Автоскачивание следующих глав настраивается в разделе <a href="/settings/reading">«Чтение»</a>.</p>
+    </section>
+  </div>
+{% endblock %}
+{% block settings_scripts %}
+<script src="{{ static_url('js/offline-store.js') }}" defer></script>
+<script src="{{ static_url('js/offline-settings.js') }}" defer></script>
+{% endblock %}

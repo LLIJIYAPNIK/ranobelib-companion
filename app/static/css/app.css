@@ -21484,6 +21484,24 @@ body.reader-hud-visible .reader-hud {
   margin-top: var(--s-12);
 }
 
+/* PR 335: «Офлайн» in the settings - the reader-settings cards, filled by
+   offline-settings.js; .ui-progress and the cards set a display that would beat [hidden]. */
+.offline-settings [hidden] {
+  display: none;
+}
+
+.offline-settings__total {
+  margin: 0;
+  color: var(--text-1);
+  font: 700 15px/1.4 var(--font-ui);
+  text-wrap: pretty;
+}
+
+.offline-settings__meter .ui-progress__bar {
+  height: 6px;
+  border-radius: 3px;
+}
+
 /* PR 331: reading without a network. The offline page's shelf - what's on this device,
    «Продолжить» and the downloaded chapters per title (offline-page.js) - and, in a
    downloaded chapter, the neighbour links that won't open offline (reader-offline.js). */
