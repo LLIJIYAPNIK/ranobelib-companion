@@ -4,7 +4,8 @@
 //     sent later it would be credited to whoever is signed in by then;
 //   - reading positions (tapToReadProgress:*, readerLastChapter:*) - the reader merges
 //     them with the server's (PR 287), so the next account would adopt them as its own;
-//   - downloadReadyDismissed (sessionStorage) - which of this account's exports were seen.
+//   - downloadReadyDismissed (sessionStorage) - which of this account's exports were seen;
+//   - when each downloaded title was last opened (PR 335, offlineStore.forgetOpened).
 // Downloaded chapters (offline-store.js) are public content, but which titles they are
 // says what someone reads: they stay only by an explicit «Оставить скачанное».
 //
@@ -47,6 +48,11 @@
       await window.syncQueue?.clear();
     } catch {
       // the queue's IndexedDB is unavailable - so is anything queued in it
+    }
+    try {
+      await window.offlineStore?.forgetOpened?.();
+    } catch {
+      // the downloads index is unavailable - so is any date in it
     }
   }
 

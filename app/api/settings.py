@@ -49,6 +49,18 @@ async def settings_reading_page(request: Request) -> HTMLResponse:
     )
 
 
+@router.get("/settings/offline")
+async def settings_offline_page(request: Request) -> HTMLResponse:
+    """PR 335: what's downloaded on this device and how much room it takes. Nothing comes
+    from the server - offline-settings.js reads the device's own index and
+    navigator.storage.estimate() - so guests get it too: the copy belongs to the device."""
+    return templates.TemplateResponse(
+        request,
+        "settings_offline.html",
+        {"active_nav": "settings", "active_settings_section": "offline"},
+    )
+
+
 def _account_context(user: User, **extra: object) -> dict[str, object]:
     """Shared base for every settings_account.html render below - the "Приватность" form
     (PR 124) needs the show_* flags on every one of them, not just its own POST

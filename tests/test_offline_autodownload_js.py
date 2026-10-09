@@ -136,6 +136,22 @@ def test_a_nearly_full_storage_doesnt_start_it() -> None:
     assert nearly_full["fetched"] == []
 
 
+def test_the_offline_limit_doesnt_start_it_and_stops_it_where_its_reached() -> None:
+    # PR 335: the limit set in «Офлайн» - checked before every chapter, no cooldown (it's
+    # a local check: freeing room lets the next chapter page go on).
+    reached = _scenarios()["limitReached"]
+    assert reached["result"] == {"skipped": "limit"}
+    assert reached["fetched"] == []
+
+    midway = _scenarios()["limitMidway"]
+    assert _numbers("limitMidway") == ["6"]
+    assert midway["result"]["pauseReason"] == "limit"
+    assert midway["result"]["state"] == "cancelled"
+    assert midway["cooldownUntil"] is None
+
+    assert _numbers("limitFar") == ["6", "7"]
+
+
 def test_another_failure_skips_that_chapter_only() -> None:
     assert _numbers("otherFailure") == ["6", "7"]
     assert _scenarios()["otherFailure"]["result"]["downloaded"] == 1

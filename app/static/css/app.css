@@ -21480,8 +21480,55 @@ body.reader-hud-visible .reader-hud {
 
 .wn-offline-saved__footer {
   display: flex;
+  flex-wrap: wrap;
   justify-content: flex-end;
+  gap: var(--s-8);
   margin-top: var(--s-12);
+}
+
+/* PR 335: «Офлайн» in the settings - the reader-settings cards, filled by
+   offline-settings.js; .ui-progress and the cards set a display that would beat [hidden]. */
+.offline-settings [hidden] {
+  display: none;
+}
+
+.offline-settings__total {
+  margin: 0;
+  color: var(--text-1);
+  font: 700 15px/1.4 var(--font-ui);
+  text-wrap: pretty;
+}
+
+.offline-settings__meter .ui-progress__bar {
+  height: 6px;
+  border-radius: 3px;
+}
+
+/* The limit is reached: what happened, then the way out. */
+.offline-settings__reached {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: var(--s-8);
+}
+
+.offline-settings__reached p {
+  margin: 0;
+  text-wrap: pretty;
+}
+
+.offline-settings__reached p:empty {
+  display: none;
+}
+
+/* «Удалить прочитанное» with what it freed beside it (under it on a phone). */
+.offline-settings__action {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--s-8) var(--s-12);
+  padding-top: var(--s-12);
+  border-top: 1px solid var(--divider);
 }
 
 /* PR 331: reading without a network. The offline page's shelf - what's on this device,

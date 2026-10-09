@@ -1,0 +1,111 @@
+{% extends "settings_layout.html" %}
+{% block title %}Офлайн — RanobeLib Companion{% endblock %}
+{% block settings_content %}
+{#
+  PR 335: what's downloaded for reading without a network on this device and how much
+  room it takes. Rendered empty - offline-settings.js fills it from the IndexedDB index
+  (offline-store.js) and navigator.storage.estimate(), never from the server, so it's the
+  same for guests. Without IndexedDB/Cache Storage only the «unsupported» notice shows.
+#}
+  <div class="reader-settings-page offline-settings" data-role="offline-settings">
+    <p class="ui-notice offline-settings__unsupported" data-role="offline-settings-unsupported" hidden>Этот браузер не умеет хранить главы для чтения без интернета.</p>
+
+    <section class="reader-settings-card" data-role="offline-settings-summary" hidden>
+      <h2 class="reader-settings-card__title">Место на устройстве</h2>
+      <p class="offline-settings__total" data-role="offline-summary-total"></p>
+      <div class="ui-progress offline-settings__meter" data-role="offline-summary-meter" hidden>
+        <span class="ui-progress__bar"><span class="ui-progress__fill" data-role="offline-summary-fill"></span></span>
+        <span class="ui-progress__pct" data-role="offline-summary-pct"></span>
+      </div>
+      <p class="reader-settings-row__hint" data-role="offline-summary-quota"></p>
+      {# PR 333's threshold: past 80% of the browser's share downloads may start failing. #}
+      <p class="ui-notice ui-notice--error" data-role="offline-summary-warning" role="status" hidden></p>
+      <p class="reader-settings-row__hint">Автоскачивание следующих глав настраивается в разделе <a href="/settings/reading">«Чтение»</a>.</p>
+    </section>
+
+    {# The most downloads may take (the index's own bytes). Reached: auto-download stops,
+       and the card offers to free room. Manual downloads aren't blocked - the visitor
+       asked for those chapters explicitly. #}
+    <section class="reader-settings-card" data-role="offline-settings-limit" hidden>
+      <h2 class="reader-settings-card__title">Лимит для скачанного</h2>
+      <div class="reader-settings-row">
+        <span class="reader-settings-row__label">Не больше, МБ</span>
+        <fieldset class="ui-segmented" aria-label="Лимит для скачанного, МБ">
+          {% for value, text in [("0", "Выкл"), ("100", "100"), ("250", "250"), ("500", "500"), ("1000", "1000")] %}
+          <label class="ui-segmented__item">
+            <input type="radio" name="offline-limit" value="{{ value }}" data-offline-setting="limitMb">
+            <span>{{ text }}</span>
+          </label>
+          {% endfor %}
+        </fieldset>
+        <span class="reader-settings-row__hint">Когда скачанное дойдёт до лимита, автоскачивание следующих глав остановится. Главы, которые вы скачиваете сами, лимит не останавливает.</span>
+      </div>
+      <div class="ui-progress offline-settings__meter" data-role="offline-limit-meter" hidden>
+        <span class="ui-progress__bar"><span class="ui-progress__fill" data-role="offline-limit-fill"></span></span>
+        <span class="ui-progress__pct" data-role="offline-limit-pct"></span>
+      </div>
+      <p class="reader-settings-row__hint" data-role="offline-limit-usage" hidden></p>
+      <div class="ui-notice ui-notice--error offline-settings__reached" data-role="offline-limit-reached" role="status" hidden>
+        <p>Лимит достигнут — автоскачивание остановлено. Освободите место: удалите прочитанные главы или ненужные тайтлы ниже, или увеличьте лимит.</p>
+        <button type="button" class="ui-btn ui-btn--sm" data-role="offline-limit-clean">Удалить прочитанное</button>
+        <p data-role="offline-limit-clean-result" role="status"></p>
+      </div>
+    </section>
+
+    {# Auto-cleanup of what's read: off by default; «Удалить прочитанное» does it once. #}
+    <section class="reader-settings-card" data-role="offline-settings-clean" hidden>
+      <h2 class="reader-settings-card__title">Прочитанные главы</h2>
+      <div class="reader-settings-row">
+        <span class="reader-settings-row__label">Автоочистка: сколько глав оставлять позади текущей</span>
+        <fieldset class="ui-segmented" aria-label="Автоочистка: сколько глав оставлять позади текущей">
+          {% for value, text in [("0", "Выкл"), ("5", "5"), ("10", "10"), ("25", "25")] %}
+          <label class="ui-segmented__item">
+            <input type="radio" name="offline-clean-behind" value="{{ value }}" data-offline-setting="cleanBehind">
+            <span>{{ text }}</span>
+          </label>
+          {% endfor %}
+        </fieldset>
+        <span class="reader-settings-row__hint">Когда открываете главу скачанного тайтла, с устройства удаляются более ранние главы — кроме указанного числа последних перед ней. Текущая и следующие главы не удаляются никогда.</span>
+      </div>
+      <div class="offline-settings__action">
+        <button type="button" class="ui-btn ui-btn--sm ui-btn--quiet" data-role="offline-clean-now">Удалить прочитанное</button>
+        <span class="reader-settings-row__hint" data-role="offline-clean-result" role="status"></span>
+      </div>
+      <div class="wn-sheet-confirm" id="offline-settings-clean" data-bottom-sheet-title="Удалить прочитанное?" hidden>
+        <p class="wn-sheet-confirm__text" data-role="offline-clean-text"></p>
+        <div class="wn-sheet-confirm__actions">
+          <button class="wn-sheet-confirm__cancel" type="button" data-bottom-sheet-close data-autofocus>Отмена</button>
+          <button class="wn-sheet-confirm__danger" type="button" data-role="offline-clean-confirm">Удалить</button>
+        </div>
+      </div>
+    </section>
+
+    {# Per title, the biggest first: size, chapters, when it was last opened, «Удалить». #}
+    <section class="reader-settings-card" data-role="offline-settings-titles" hidden>
+      <h2 class="reader-settings-card__title">Скачанные тайтлы</h2>
+      <ul class="wn-offline-saved__list" data-role="offline-titles-list"></ul>
+      <template data-role="offline-titles-row">
+        <li class="wn-offline-saved__item">
+          <span class="wn-offline-saved__cover" aria-hidden="true"><img alt="" loading="lazy"></span>
+          <span class="wn-offline-saved__names">
+            <a class="wn-offline-saved__name"></a>
+            <span class="wn-offline-saved__meta wn-technical" data-role="offline-titles-size"></span>
+            <span class="wn-offline-saved__meta wn-technical" data-role="offline-titles-opened"></span>
+          </span>
+          <button type="button" class="ui-btn ui-btn--sm ui-btn--quiet wn-offline-saved__delete" data-role="offline-titles-delete">Удалить</button>
+        </li>
+      </template>
+      <div class="wn-sheet-confirm" id="offline-settings-delete" data-bottom-sheet-title="Удалить тайтл с устройства?" hidden>
+        <p class="wn-sheet-confirm__text" data-role="offline-titles-delete-text"></p>
+        <div class="wn-sheet-confirm__actions">
+          <button class="wn-sheet-confirm__cancel" type="button" data-bottom-sheet-close data-autofocus>Отмена</button>
+          <button class="wn-sheet-confirm__danger" type="button" data-role="offline-titles-delete-confirm">Удалить</button>
+        </div>
+      </div>
+    </section>
+  </div>
+{% endblock %}
+{% block settings_scripts %}
+<script src="{{ static_url('js/offline-store.js') }}" defer></script>
+<script src="{{ static_url('js/offline-settings.js') }}" defer></script>
+{% endblock %}
