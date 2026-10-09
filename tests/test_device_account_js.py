@@ -73,7 +73,7 @@ def test_another_account_never_inherits_the_previous_ones_data() -> None:
     # them (sync-queue.js waits for `ready`). Nobody chose to keep the downloads.
     switched = _scenarios()["switched"]
 
-    assert switched["log"] == ["clearQueue", "clearDownloads"]
+    assert switched["log"] == ["clearBadge", "clearQueue", "clearDownloads"]
     assert _personal_left(switched) == set()
     assert switched["local"]["wnDeviceAccount"] == "9"
     assert switched["session"] == {"swUpdateLater": "1"}
@@ -90,7 +90,7 @@ def test_logout_sends_what_is_queued_then_clears_and_logs_out() -> None:
     logout = _scenarios()["logoutNothingDownloaded"]
 
     assert logout["prevented"] is True  # held back until the device is cleared
-    assert logout["log"] == ["flush", "clearQueue", "clearDownloads", "submit"]
+    assert logout["log"] == ["flush", "clearBadge", "clearQueue", "clearDownloads", "submit"]
     assert logout["opened"] == []  # nothing downloaded - nothing to ask
     assert _personal_left(logout) == set()
     assert "wnDeviceAccount" not in logout["local"]
@@ -105,14 +105,15 @@ def test_logout_with_downloads_asks_and_keep_leaves_them() -> None:
     assert asked["count"] == "2"
     assert asked["log"] == []  # nothing happens until a choice
     after = scenario["after"]
-    assert after["log"] == ["flush", "clearQueue", "submit"]
+    # PR 337: the unread count on the app icon goes even when the downloads stay.
+    assert after["log"] == ["flush", "clearBadge", "clearQueue", "submit"]
     assert _personal_left(after) == set()
 
 
 def test_logout_with_delete_clears_the_downloads_too() -> None:
     delete = _scenarios()["logoutDelete"]
 
-    assert delete["log"] == ["flush", "clearQueue", "clearDownloads", "submit"]
+    assert delete["log"] == ["flush", "clearBadge", "clearQueue", "clearDownloads", "submit"]
 
 
 def test_a_queue_that_cant_be_sent_doesnt_hold_up_logout() -> None:

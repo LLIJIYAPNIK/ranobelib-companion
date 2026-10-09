@@ -91,6 +91,8 @@ function load({ userId = "9", recorded, titles = [], flushHangs = false, withFor
       listTitles: async () => titles,
       clearAll: async () => void log.push("clearDownloads"),
     },
+    // PR 337: the app icon's badge (app-badge.js).
+    appBadge: { clear: () => void log.push("clearBadge") },
     bottomSheet: { open: (options) => opened.push(options.title) },
     dispatchEvent: (event) => opened.push(`event:${event.type}`),
   };
