@@ -150,6 +150,16 @@ def test_manifest_carries_the_sdk_size_estimate(fake: _FakeClient) -> None:
     assert body["estimated_bytes_per_chapter"] == 1_000_000
 
 
+def test_without_size_the_manifest_is_only_the_table_of_contents(fake: _FakeClient) -> None:
+    # PR 334: auto-download needs the order and the translations, not the sampled size.
+    body = client.get(f"/offline/titles/{SLUG}/manifest", params={"size": "false"}).json()
+
+    assert fake.calls == [("get_table_of_contents",)]
+    assert body["chapter_count"] == 3
+    assert body["estimated_bytes"] is None
+    assert body["estimated_bytes_per_chapter"] is None
+
+
 def test_a_failed_estimate_leaves_the_list_intact() -> None:
     fake = _FakeClient(estimate=RateLimitError("slow down"))
     with patch("app.services.client.RanobeLib", return_value=fake):
@@ -462,3 +472,16 @@ def test_a_copy_queues_what_is_read_in_it(signed_in: TestClient) -> None:
     assert "/static/js/reading-progress-tick.js" in page
     assert "/static/js/activity-heartbeat.js" in page
     assert page.index("/static/js/sync-queue.js") < page.index("/static/js/activity-heartbeat.js")
+
+
+def test_auto_download_runs_on_the_online_reader_not_in_a_copy() -> None:
+    # PR 334: the online reader keeps the next chapters on the device (when enabled); a
+    # downloaded copy is read offline - nothing to download there.
+    page = _page(_FakeClient(chapter=_chapter_two()))
+    assert "offline-autodownload.js" not in page
+
+    fake = _FakeClient(chapter=_chapter_two())
+    with patch("app.services.client.RanobeLib", return_value=fake):
+        online = client.get(f"/titles/{SLUG}/chapters/1/2").text
+    assert online.index("js/offline-store.js") < online.index("js/offline-queue.js")
+    assert online.index("js/offline-queue.js") < online.index("js/offline-autodownload.js")

@@ -308,6 +308,8 @@
         name: root.dataset.titleName,
         cover: await store.saveCover(root.dataset.coverUrl),
         toc: chapters.map((chapter) => [chapter.volume, chapter.number]),
+        // PR 334: remembered for auto-download - only when the visitor was asked.
+        translationVariant: translation.hidden ? undefined : variant,
       };
       queue = new window.OfflineQueue(items, {
         download: (item, signal) => window.OfflineQueue.downloadChapter(title, item, signal),

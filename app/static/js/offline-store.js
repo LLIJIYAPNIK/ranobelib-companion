@@ -114,6 +114,9 @@
       // PR 331: the title's chapter order from the manifest ([volume, number] in SDK
       // order) - how the offline page lists what's downloaded without sorting numbers.
       toc: title.toc || existing?.toc || null,
+      // PR 334: the «Вариант N» picked for chapters with several translations, for
+      // auto-download to follow (never picked for the visitor - null: none asked yet).
+      translationVariant: title.translationVariant ?? existing?.translationVariant ?? null,
       savedAt: existing?.savedAt || now,
       updatedAt: now,
     });
