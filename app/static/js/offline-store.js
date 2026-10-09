@@ -108,6 +108,9 @@
     const now = new Date().toISOString();
     const existing = await done(titles.get(fragment.slug_url));
     titles.put({
+      // What else the title keeps - when it was last opened and which chapter (PR 335/
+      // 336, touchTitle) - stays: downloading the next chapters doesn't open the title.
+      ...existing,
       slug: fragment.slug_url,
       name: title.name || existing?.name || fragment.slug_url,
       cover: title.cover || existing?.cover || null,
