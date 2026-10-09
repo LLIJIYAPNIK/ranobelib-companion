@@ -18,7 +18,7 @@ from ranobelib import (
     RateLimitError,
     chapter_size,
 )
-from ranobelib.models import Chapter, ChapterBranch, ChapterUser, Team, Volume
+from ranobelib.models import Chapter, ChapterBranch, ChapterUser, Footnote, Team, Volume
 
 from app.config import get_settings
 from app.db.activity import list_chapters_read_today
@@ -499,3 +499,70 @@ def test_the_store_comes_before_the_reader_offline_script_on_every_chapter_page(
         body = text[text.index("</head>") :]
         assert body.count("js/offline-store.js") == 1
         assert body.index("js/offline-store.js") < body.index("js/reader-offline.js")
+
+
+# --- PR 339: is a copy still what's on the site? -------------------------------------
+
+
+def _version(chapter: Chapter, **params: object) -> tuple[_FakeClient, dict]:
+    fake = _FakeClient(chapter=chapter)
+    with patch("app.services.client.RanobeLib", return_value=fake):
+        response = client.get(f"/offline/titles/{SLUG}/chapters/1/2/version", params=params)
+    assert response.status_code == 200, response.text
+    assert response.headers["cache-control"] == "no-cache"
+    return fake, response.json()
+
+
+def test_the_copy_carries_the_version_the_site_reports_for_it() -> None:
+    page = _page(_FakeClient(chapter=_chapter_two()))
+    fake, body = _version(_chapter_two())
+
+    assert f'data-content-version="{body["version"]}"' in page
+    assert len(body["version"]) == 16
+    assert fake.calls == [("get_chapter", 1, "2", None)]  # one SDK call, no table of contents
+
+
+def test_the_version_changes_with_the_text_or_a_footnote_only() -> None:
+    _, same = _version(_chapter_two().model_copy(update={"name": "Другое название"}))
+    _, text = _version(_chapter_two().model_copy(update={"content": "<p>Исправлено</p>"}))
+    with_note = _chapter_two().model_copy(update={"footnotes": [Footnote(content="<p>1</p>")]})
+    _, footnote = _version(with_note)
+    _, original = _version(_chapter_two())
+
+    assert same == original  # what the copy shows of the text didn't change
+    assert text != original
+    assert footnote != original
+
+
+def test_the_version_follows_the_picked_translation() -> None:
+    fake, _ = _version(_chapter_two(), branch_id=7)
+
+    assert fake.calls == [("get_chapter", 1, "2", 7)]
+
+
+def test_the_version_maps_errors_through_the_central_handler() -> None:
+    with patch(
+        "app.services.client.RanobeLib", return_value=_FakeClient(exc=RateLimitError("slow"))
+    ):
+        response = client.get(f"/offline/titles/{SLUG}/chapters/1/2/version")
+
+    assert response.status_code == 429
+
+
+def test_the_copy_checks_itself_and_can_download_itself_again() -> None:
+    page = _page(_FakeClient(chapter=_chapter_two()))
+    online = _online_page()
+
+    assert 'data-role="reader-copy-updated"' in page
+    assert page.index("js/offline-queue.js") < page.index("js/reader-copy-check.js")
+    assert page.index("js/offline-store.js") < page.index("js/reader-copy-check.js")
+    # The online reader is the site itself - nothing to compare.
+    assert "reader-copy-check.js" not in online
+    assert 'data-role="reader-copy-updated"' not in online
+    assert "data-content-version" not in online
+
+
+def _online_page() -> str:
+    fake = _FakeClient(chapter=_chapter_two())
+    with patch("app.services.client.RanobeLib", return_value=fake):
+        return client.get(f"/titles/{SLUG}/chapters/1/2").text

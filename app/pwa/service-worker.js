@@ -127,10 +127,21 @@ async function trim(cache, limit) {
 // precached «Нет соединения» page, which also lists what is downloaded and says «Глава не
 // скачана» for a chapter that isn't. At once when the device already knows it's
 // offline, rather than after a failed attempt.
+//
+// PR 339: a downloaded chapter, with «Сразу открывать скачанные главы из офлайн-копии» on
+// (the default), doesn't wait on a bad connection either: the network still goes first -
+// online, the reader is the full page, with comments, reactions and the account - but if
+// it hasn't answered in COPY_AFTER_MS, or answers with a server error, the copy is shown
+// instead. (The request isn't cancelled: the server still notes the chapter as opened.)
+// The copy then checks itself against the site in the background (reader-copy-check.js).
+const COPY_AFTER_MS = 2500;
+
 async function networkPage(request) {
   if (self.navigator.onLine !== false) {
+    const network = fetch(request);
+    const copy = await quickCopy(request.url);
     try {
-      return await fetch(request);
+      return copy ? await networkOrCopy(network, copy) : await network;
     } catch {
       // fall through to what's on the device
     }
@@ -150,6 +161,41 @@ async function offlineCopy(url) {
   if (!CHAPTER_PATH.test(pathname)) return null;
   const cache = await caches.open(OFFLINE_CACHE);
   return (await cache.match(pathname)) || null;
+}
+
+// PR 339: the copy a slow network may give way to - only for a downloaded chapter, and
+// only with the setting on. offline-store.js keeps an entry here while it's off.
+const PREFERENCES_URL = "/offline/preferences";
+
+async function quickCopy(url) {
+  const copy = await offlineCopy(url);
+  if (!copy) return null;
+  const preferences = await caches.match(PREFERENCES_URL, { cacheName: OFFLINE_CACHE });
+  if (preferences) {
+    try {
+      if ((await preferences.json()).openDownloadedFromCopy === false) return null;
+    } catch {
+      // unreadable: the default
+    }
+  }
+  return copy;
+}
+
+function networkOrCopy(network, copy) {
+  return new Promise((resolve) => {
+    const timer = setTimeout(() => resolve(copy), COPY_AFTER_MS);
+    network.then(
+      (response) => {
+        clearTimeout(timer);
+        // 5xx (ranobelib.me blocking us, the server down) and 429: the copy is better.
+        resolve(response.status >= 500 || response.status === 429 ? copy : response);
+      },
+      () => {
+        clearTimeout(timer);
+        resolve(copy);
+      },
+    );
+  });
 }
 
 // PR 336: «Продолжить чтение» (/continue, the app icon's shortcut) is the server's

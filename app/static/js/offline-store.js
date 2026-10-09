@@ -108,6 +108,9 @@
     const now = new Date().toISOString();
     const existing = await done(titles.get(fragment.slug_url));
     titles.put({
+      // What else the title keeps - when it was last opened and which chapter (PR 335/
+      // 336, touchTitle) - stays: downloading the next chapters doesn't open the title.
+      ...existing,
       slug: fragment.slug_url,
       name: title.name || existing?.name || fragment.slug_url,
       cover: title.cover || existing?.cover || null,
@@ -286,6 +289,16 @@
     }
   }
 
+  // PR 339: after a chapter is downloaded again («Обновить копию»), the images its old
+  // copy had and no chapter uses any more.
+  async function dropUnusedImages(urls) {
+    const db = await openDb();
+    const all = await done(db.transaction("chapters").objectStore("chapters").getAll());
+    const used = new Set(all.flatMap((chapter) => chapter.images || []));
+    const cache = await caches.open(CACHE_NAME);
+    for (const url of urls) if (!used.has(url)) await cache.delete(url);
+  }
+
   // PR 335: a chapter of a downloaded title was opened (online or from the copy) - when,
   // for «Офлайн» in the settings. A title that isn't downloaded is left alone.
   // PR 336: and which chapter ({ volume, number }) - where «Продолжить чтение» (/continue)
@@ -355,6 +368,36 @@
     }
   }
 
+  // PR 339: «Сразу открывать скачанные главы из офлайн-копии» (readerSettings
+  // .openDownloadedFromCopy, /settings/reading, on by default). The service worker decides
+  // how to open a chapter before any page script runs and can't read localStorage, so the
+  // setting is handed to it here, as a small entry in this cache: present only while the
+  // setting is off - no entry (nothing downloaded yet, or cleared with the downloads)
+  // reads as the default. A device setting, not personal: it's never cleared at logout.
+  const PREFERENCES_URL = "/offline/preferences";
+
+  function openFromCopy() {
+    try {
+      return JSON.parse(localStorage.getItem("readerSettings") || "{}")?.openDownloadedFromCopy !== false;
+    } catch {
+      return true;
+    }
+  }
+
+  async function syncPreferences(on = openFromCopy()) {
+    const kept = await caches.match(PREFERENCES_URL, { cacheName: CACHE_NAME });
+    if (on) {
+      if (kept) await (await caches.open(CACHE_NAME)).delete(PREFERENCES_URL);
+      return;
+    }
+    if (kept) return;
+    const body = JSON.stringify({ openDownloadedFromCopy: false });
+    await (await caches.open(CACHE_NAME)).put(
+      PREFERENCES_URL,
+      new Response(body, { headers: { "Content-Type": "application/json" } }),
+    );
+  }
+
   // Asked once, at the first download: without it the browser may evict the copy under
   // storage pressure. Resolves to whether storage is (now) persistent.
   async function persist() {
@@ -398,5 +441,24 @@
     estimate,
     storageState,
     persist,
+    dropUnusedImages,
+    PREFERENCES_URL,
+    openFromCopy,
+    syncPreferences,
   };
+
+  // Every page that loads the store passes the setting on: now (it may have changed on a
+  // page without the store, or been lost with the downloads), when it's switched here,
+  // and when another tab switches it.
+  if (supported() && typeof document !== "undefined") {
+    const sync = (on) => syncPreferences(on).catch(() => {});
+    sync();
+    document.addEventListener("reader-settings:change", (event) => {
+      const settings = event.detail?.settings;
+      if (settings) sync(settings.openDownloadedFromCopy !== false);
+    });
+    window.addEventListener("storage", (event) => {
+      if (event.key === "readerSettings") sync();
+    });
+  }
 })();

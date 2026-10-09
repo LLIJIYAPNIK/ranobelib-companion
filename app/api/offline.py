@@ -14,13 +14,14 @@ A chapter with several translations is never resolved here: ``get_chapter()`` wi
 
 from __future__ import annotations
 
+import hashlib
 from typing import Any
 from urllib.parse import quote
 
 from fastapi import APIRouter, Query, Request
 from fastapi.responses import HTMLResponse, JSONResponse
 from ranobelib import RanobeLibError, chapter_size
-from ranobelib.models import Volume
+from ranobelib.models import Chapter, Volume
 
 from app.api.chapters import load_reader_chapter, reader_context
 from app.services.client import open_client
@@ -135,9 +136,14 @@ async def offline_chapter_page(
       is read in it; the queue goes to the server later, as whoever is signed in then;
     - images on the same-origin proxy, stored beside the page (PR 329/330);
     - no comments, reactions or chapter export - they need the network
-      (``offline_copy`` in the template)."""
+      (``offline_copy`` in the template).
+
+    PR 339: it carries its content's version (``content_version``) - opened while online
+    (the network was too slow), the page compares it with ``.../version`` to say «Глава
+    обновлена»."""
     async with open_client(slug_url) as lib:
         chapter, volumes, title = await load_reader_chapter(lib, volume, number, branch_id)
+    version = content_version(chapter)
     chapter = chapter.model_copy(
         update={
             "content": rewrite_images(chapter.content or "", _proxied),
@@ -157,9 +163,35 @@ async def offline_chapter_page(
             "saved_paragraph": None,
             "saved_paragraph_total": None,
             "offline_copy": True,
+            "content_version": version,
         },
         headers={"Cache-Control": "no-cache"},
     )
+
+
+@router.get("/chapters/{volume}/{number}/version")
+async def offline_chapter_version(
+    slug_url: str, volume: int, number: str, branch_id: int | None = Query(default=None)
+) -> JSONResponse:
+    """PR 339: the current version of a chapter's content - what a downloaded copy shown
+    while online compares its own with, to offer «Обновить копию». One SDK call, like
+    opening the chapter online (the same SDK cache and rate limit)."""
+    async with open_client(slug_url) as lib:
+        chapter = await lib.get_chapter(volume, number, branch_id=branch_id)
+    return JSONResponse(
+        {"version": content_version(chapter)}, headers={"Cache-Control": "no-cache"}
+    )
+
+
+def content_version(chapter: Chapter) -> str:
+    """A short fingerprint of what the device keeps of a chapter - its text and
+    footnotes as the SDK returns them, before the images are pointed at the proxy. The
+    SDK has no "updated at" for a chapter; this changes exactly when what a copy would
+    show does. Not about the page around it: a deploy doesn't make every copy "updated"."""
+    digest = hashlib.sha256((chapter.content or "").encode())
+    for footnote in chapter.footnotes:
+        digest.update(b"\x00" + footnote.content.encode())
+    return digest.hexdigest()[:16]
 
 
 def _proxied(url: str) -> str:

@@ -14,7 +14,8 @@
 // paragraphAnimation, revealTempo (tap-to-read.js), showParagraphSocial
 // (paragraph-menu.js), readingSpeedWpm (reading-speed-test.js), autoDownloadNext and
 // autoDownloadAnyNetwork (offline-autodownload.js, PR 334), keepScreenOn
-// (reader-wake-lock.js, PR 338).
+// (reader-wake-lock.js, PR 338), openDownloadedFromCopy (offline-store.js hands it to the
+// service worker, PR 339).
 //
 // PR 255 adds four keys:
 // - theme: Aurora Dark (default), AMOLED, Sepia, Light, System - data-reader-theme on
@@ -63,9 +64,18 @@
     autoDownloadAnyNetwork: false,
     // PR 338: hold a screen Wake Lock while reading - off by default (battery).
     keepScreenOn: false,
+    // PR 339: a downloaded chapter whose page the network is slow to give opens from the
+    // copy on the device (app/pwa/service-worker.js) - on by default.
+    openDownloadedFromCopy: true,
   };
   // Not how the text looks - kept by «Сбросить настройки».
-  const KEPT_ON_RESET = ["readingSpeedWpm", "autoDownloadNext", "autoDownloadAnyNetwork", "keepScreenOn"];
+  const KEPT_ON_RESET = [
+    "readingSpeedWpm",
+    "autoDownloadNext",
+    "autoDownloadAnyNetwork",
+    "keepScreenOn",
+    "openDownloadedFromCopy",
+  ];
 
   const root = document.documentElement;
 

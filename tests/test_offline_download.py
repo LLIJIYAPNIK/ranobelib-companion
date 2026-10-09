@@ -343,4 +343,21 @@ def test_reading_settings_offer_auto_download_off_by_default(reader: TestClient)
     assert f"/static/{script}?v={asset_hash(script)}" in html
     defaults = (_JS / "reader-settings.js").read_text(encoding="utf-8")
     assert 'autoDownloadNext: "0"' in defaults
-    assert '"autoDownloadNext", "autoDownloadAnyNetwork"' in defaults  # kept by «Сбросить»
+    kept = defaults.split("const KEPT_ON_RESET = [")[1].split("]")[0]  # kept by «Сбросить»
+    assert '"autoDownloadNext"' in kept
+    assert '"autoDownloadAnyNetwork"' in kept
+
+
+def test_reading_settings_offer_open_from_copy_on_by_default(reader: TestClient) -> None:
+    """PR 339: «Сразу открывать скачанные главы из офлайн-копии» - on by default, kept
+    by «Сбросить», and the page loads the store that hands it to the service worker
+    (for a guest too)."""
+    for test_client in (reader, TestClient(app)):
+        html = test_client.get("/settings/reading").text
+        assert 'data-setting="openDownloadedFromCopy"' in html
+        assert "Сразу открывать скачанные главы из офлайн-копии" in html
+        assert html.index("js/reader-settings.js") < html.rindex("js/offline-store.js")
+    defaults = (_JS / "reader-settings.js").read_text(encoding="utf-8")
+    assert "openDownloadedFromCopy: true," in defaults
+    kept = defaults.split("const KEPT_ON_RESET = [")[1].split("]")[0]
+    assert '"openDownloadedFromCopy"' in kept

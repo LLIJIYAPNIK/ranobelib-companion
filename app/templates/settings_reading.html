@@ -185,6 +185,12 @@
         <span>Докачивать на любой сети, в том числе мобильной</span>
         <input type="checkbox" role="switch" data-setting="autoDownloadAnyNetwork">
       </label>
+      {# PR 339: the service worker reads it (offline-store.js passes it on). #}
+      <label class="reader-settings-row reader-settings-row--switch ui-switch">
+        <span>Сразу открывать скачанные главы из офлайн-копии</span>
+        <input type="checkbox" role="switch" data-setting="openDownloadedFromCopy" aria-describedby="open-from-copy-hint">
+      </label>
+      <p class="reader-settings-row__hint" id="open-from-copy-hint">Если сеть не ответила за пару секунд, скачанная глава откроется с устройства — без ожидания и белого экрана. Выключено — копия открывается, только когда сети нет совсем.</p>
     </section>
 
     {# PR 327: install as an app (pwa-install.js shows this only when there's something
@@ -203,6 +209,9 @@
 {% block settings_scripts %}
 <script src="{{ static_url('js/reader-settings.js') }}" defer></script>
 <script src="{{ static_url('js/reader-wake-lock.js') }}" defer></script>
+{# PR 339: passes «Сразу открывать скачанные главы…» on to the service worker - guests
+   too (base.html loads it only for a signed-in page). #}
+<script src="{{ static_url('js/offline-store.js') }}" defer></script>
 <script src="{{ static_url('js/custom-dropdown.js') }}" defer></script>
 <script src="{{ static_url('js/ui-range.js') }}" defer></script>
 <script src="{{ static_url('js/reading-speed-test.js') }}" defer></script>

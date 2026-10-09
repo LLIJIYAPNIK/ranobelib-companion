@@ -486,3 +486,48 @@ def test_offline_continue_with_nothing_to_continue_is_the_offline_page(
     # Looking didn't create an empty download index on a device that has none.
     assert results["noDatabase"]["created"] is False
     assert results["otherPage"]["body"] == "offline-page"
+
+
+# --- PR 339: «Сразу открывать скачанные главы из офлайн-копии» ------------------------
+
+COPY_BODY = "copy:1/3"
+NETWORK_BODY = "net:/titles/6712--test-novel/chapters/1/3"
+
+
+def test_online_a_downloaded_chapter_is_still_the_network_when_it_answers(
+    worker: dict[str, Any],
+) -> None:
+    fast = worker["openFromCopy"]["fast"]
+
+    assert fast["body"] == NETWORK_BODY  # the full page: comments, reactions, the account
+    assert fast["timeouts"] == [2500]
+
+
+@pytest.mark.parametrize("case", ["slow", "serverError", "rateLimited", "slowExplicitlyOn"])
+def test_a_slow_or_failing_network_gives_way_to_the_copy(
+    worker: dict[str, Any], case: str
+) -> None:
+    result = worker["openFromCopy"][case]
+
+    assert (result["status"], result["body"]) == (200, COPY_BODY)
+    assert result["fetched"] == 1  # the network was asked first
+
+
+def test_a_chapter_gone_from_the_site_is_the_sites_answer(worker: dict[str, Any]) -> None:
+    assert worker["openFromCopy"]["notFound"]["status"] == 404
+
+
+def test_with_the_setting_off_the_copy_is_only_for_no_network(worker: dict[str, Any]) -> None:
+    results = worker["openFromCopy"]
+
+    assert results["slowOff"]["body"] == NETWORK_BODY
+    assert results["slowOff"]["timeouts"] == []  # nothing raced
+    assert results["serverErrorOff"]["status"] == 503
+    assert results["offlineOff"]["body"] == COPY_BODY
+
+
+def test_a_chapter_that_isnt_downloaded_never_waits_on_a_timer(worker: dict[str, Any]) -> None:
+    not_downloaded = worker["openFromCopy"]["notDownloaded"]
+
+    assert not_downloaded["body"] == "net:/titles/6712--test-novel/chapters/1/4"
+    assert not_downloaded["timeouts"] == []
