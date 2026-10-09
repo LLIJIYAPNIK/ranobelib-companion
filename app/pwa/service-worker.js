@@ -6,6 +6,10 @@
 
 const CONFIG = self.SW_CONFIG;
 
+// PR 332: the queue of reading progress/activity read without a network - the same file
+// the pages use (one implementation, one IndexedDB), here for Background Sync below.
+importScripts(CONFIG.syncQueue);
+
 // Everything this worker stores is in caches named "wn-…". The precache is per version:
 // an activated worker drops the older "wn-static-…" ones and touches no cache it
 // didn't create (later PRs keep downloaded chapters in caches of their own).
@@ -157,6 +161,19 @@ self.addEventListener("fetch", (event) => {
       fontFile ? cacheFirst(request, FONT_CACHE) : staleWhileRevalidate(event, FONT_CACHE),
     );
   }
+});
+
+// PR 332: where the browser has Background Sync, it wakes the worker once the network is
+// back - even with no tab of the site open - to send what was read offline. Never the
+// only way: pages send the queue themselves too (sync-queue.js). A rejection tells the
+// browser to try again later.
+self.addEventListener("sync", (event) => {
+  if (event.tag !== self.syncQueue.SYNC_TAG) return;
+  event.waitUntil(
+    self.syncQueue.flush().then((empty) => {
+      if (!empty) throw new Error("still queued");
+    }),
+  );
 });
 
 // A new version waits after installing (no skipWaiting on install): swapping workers

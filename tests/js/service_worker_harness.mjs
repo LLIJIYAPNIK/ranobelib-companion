@@ -5,6 +5,8 @@ import { readFileSync } from "node:fs";
 import vm from "node:vm";
 
 const source = readFileSync(process.argv[2], "utf8");
+// PR 332: what the worker importScripts() - the real queue, whatever ?v= it asks for.
+const SYNC_QUEUE = readFileSync(new URL("../../app/static/js/sync-queue.js", import.meta.url), "utf8");
 const ORIGIN = "https://app.test";
 const absolute = (input) => new URL(typeof input === "string" ? input : input.url, ORIGIN).href;
 
@@ -43,7 +45,7 @@ class FakeCache {
 function boot({ online = true, onLine = true, caches: existing = [], respond } = {}) {
   const listeners = {};
   const fetched = [];
-  const calls = { skipWaiting: 0, claim: 0 };
+  const calls = { skipWaiting: 0, claim: 0, imported: [] };
   const fetchFn = async (input) => {
     const url = absolute(input);
     fetched.push(url);
@@ -73,6 +75,7 @@ function boot({ online = true, onLine = true, caches: existing = [], respond } =
   };
   const sandbox = {
     URL,
+    URLSearchParams,
     Request,
     Response,
     Promise,
@@ -85,6 +88,10 @@ function boot({ online = true, onLine = true, caches: existing = [], respond } =
     clients: { claim: async () => void calls.claim++ },
     skipWaiting: async () => void calls.skipWaiting++,
     addEventListener: (name, fn) => (listeners[name] ||= []).push(fn),
+    importScripts: (url) => {
+      calls.imported.push(url);
+      vm.runInContext(SYNC_QUEUE, context);
+    },
   };
   sandbox.self = sandbox;
   const context = vm.createContext(sandbox);
@@ -369,6 +376,46 @@ async function page(sw, url) {
       Object.keys(await contents(online.store.get("wn-offline"))).length,
       Object.keys(await contents(offline.store.get("wn-offline"))).length,
     ],
+  };
+}
+
+// PR 332: Background Sync - the worker sends what pages queued while offline.
+{
+  const queued = (overrides = {}) => ({
+    id: "event-0001",
+    nonce: "event-0001",
+    url: "/activity/heartbeat",
+    fields: { slug_url: "6712--test-novel", seconds: "30", event_id: "event-0001" },
+    at: 0,
+    ...overrides,
+  });
+  const memoryStore = (events) => {
+    const map = new Map(events.map((event) => [event.id, event]));
+    return {
+      map,
+      put: async (event) => void map.set(event.id, event),
+      all: async () => [...map.values()],
+      remove: async (event) => {
+        if (map.get(event.id)?.nonce === event.nonce) map.delete(event.id);
+      },
+    };
+  };
+  const sync = async (options, tag = "wn-sync") => {
+    const sw = boot(options);
+    const store = memoryStore([queued(), queued({ id: "event-0002", nonce: "event-0002", at: 5 })]);
+    sw.context.syncQueue.store = store;
+    let rejected = false;
+    try {
+      await sw.dispatch("sync", { tag });
+    } catch {
+      rejected = true;
+    }
+    return { rejected, fetched: sw.fetched, left: [...store.map.keys()], imported: sw.calls.imported };
+  };
+  results.backgroundSync = {
+    online: await sync({ respond: () => new Response(null, { status: 204 }) }),
+    offline: await sync({ online: false }),
+    otherTag: await sync({}, "something-else"),
   };
 }
 
