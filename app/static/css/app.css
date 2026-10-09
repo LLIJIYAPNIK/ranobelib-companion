@@ -15508,6 +15508,13 @@ body.reader-hud-visible .reader-hud {
   border-top: 1px solid var(--divider);
 }
 
+/* PR 334: the «Без интернета» card shows its network line and the «any network»
+   question only when auto-download is on - .ui-switch/.reader-settings-row set a
+   display that would otherwise beat [hidden]. */
+[data-role="offline-auto-settings"] [hidden] {
+  display: none;
+}
+
 .reader-settings-row .ui-select {
   align-self: flex-start;
 }

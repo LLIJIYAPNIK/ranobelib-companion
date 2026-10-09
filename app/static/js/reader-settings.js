@@ -12,7 +12,8 @@
 //
 // Keys read by other scripts, not by CSS: tapToRead / readerMode, paragraphStyle,
 // paragraphAnimation, revealTempo (tap-to-read.js), showParagraphSocial
-// (paragraph-menu.js), readingSpeedWpm (reading-speed-test.js).
+// (paragraph-menu.js), readingSpeedWpm (reading-speed-test.js), autoDownloadNext and
+// autoDownloadAnyNetwork (offline-autodownload.js, PR 334).
 //
 // PR 255 adds four keys:
 // - theme: Aurora Dark (default), AMOLED, Sepia, Light, System - data-reader-theme on
@@ -55,7 +56,13 @@
     // PR 166: independent of fontSize - a bigger reading font shouldn't force bigger
     // comments and vice versa.
     commentFontSize: "14",
+    // PR 334: how many next chapters of a downloaded title to keep on the device ("0" -
+    // off), and whether that may use any network where the browser can't tell Wi-Fi.
+    autoDownloadNext: "0",
+    autoDownloadAnyNetwork: false,
   };
+  // Not how the text looks - kept by «Сбросить настройки».
+  const KEPT_ON_RESET = ["readingSpeedWpm", "autoDownloadNext", "autoDownloadAnyNetwork"];
 
   const root = document.documentElement;
 
@@ -209,13 +216,12 @@
       button.dataset.settingBound = "1";
       button.addEventListener("click", () => {
         const previousMode = settings.readerMode;
-        // The measured reading speed isn't a display preference - it survives a reset.
-        settings = {
-          ...DEFAULTS,
-          readingSpeedWpm: settings.readingSpeedWpm,
-          settingsVersion: SETTINGS_VERSION,
-        };
-        if (settings.readingSpeedWpm === undefined) delete settings.readingSpeedWpm;
+        // The measured reading speed and auto-download aren't display preferences -
+        // they survive a reset.
+        const kept = Object.fromEntries(
+          KEPT_ON_RESET.filter((name) => settings[name] !== undefined).map((name) => [name, settings[name]])
+        );
+        settings = { ...DEFAULTS, ...kept, settingsVersion: SETTINGS_VERSION };
         save(settings);
         apply(settings);
         sync();

@@ -324,3 +324,20 @@ def test_saved_section_has_the_storage_warning_and_clear_all() -> None:
     assert 'data-role="offline-clear-all"' in html
     assert "Очистить офлайн-данные" in html
     assert 'data-bottom-sheet-title="Очистить офлайн-данные?"' in html
+
+
+# --- PR 334: auto-download of the next chapters --------------------------------------
+
+
+def test_reading_settings_offer_auto_download_off_by_default(reader: TestClient) -> None:
+    html = reader.get("/settings/reading").text
+
+    assert 'data-role="offline-auto-settings"' in html
+    values = re.findall(r'name="set-auto-download" value="(\d+)" data-setting="autoDownloadNext"', html)
+    assert values == ["0", "3", "5", "10"]
+    assert re.search(r'data-role="offline-auto-any-network"[^>]*hidden', html)
+    assert 'data-setting="autoDownloadAnyNetwork"' in html
+    assert f"/static/js/offline-autodownload.js?v={asset_hash('js/offline-autodownload.js')}" in html
+    defaults = (_JS / "reader-settings.js").read_text(encoding="utf-8")
+    assert 'autoDownloadNext: "0"' in defaults
+    assert '"autoDownloadNext", "autoDownloadAnyNetwork"' in defaults  # kept by «Сбросить»

@@ -272,4 +272,10 @@
    copy also marks the neighbours that aren't on the device. #}
 {% if offline_copy %}<script src="{{ static_url('js/offline-store.js') }}" defer></script>{% endif %}
 <script src="{{ static_url('js/reader-offline.js') }}" defer></script>
+{# PR 334: keeps the next chapters of a downloaded title on the device (off by default). #}
+{% if not offline_copy %}
+<script src="{{ static_url('js/offline-store.js') }}" defer></script>
+<script src="{{ static_url('js/offline-queue.js') }}" defer></script>
+<script src="{{ static_url('js/offline-autodownload.js') }}" defer></script>
+{% endif %}
 {% endblock %}

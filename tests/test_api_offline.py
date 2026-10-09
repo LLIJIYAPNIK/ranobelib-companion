@@ -472,3 +472,16 @@ def test_a_copy_queues_what_is_read_in_it(signed_in: TestClient) -> None:
     assert "/static/js/reading-progress-tick.js" in page
     assert "/static/js/activity-heartbeat.js" in page
     assert page.index("/static/js/sync-queue.js") < page.index("/static/js/activity-heartbeat.js")
+
+
+def test_auto_download_runs_on_the_online_reader_not_in_a_copy() -> None:
+    # PR 334: the online reader keeps the next chapters on the device (when enabled); a
+    # downloaded copy is read offline - nothing to download there.
+    page = _page(_FakeClient(chapter=_chapter_two()))
+    assert "offline-autodownload.js" not in page
+
+    fake = _FakeClient(chapter=_chapter_two())
+    with patch("app.services.client.RanobeLib", return_value=fake):
+        online = client.get(f"/titles/{SLUG}/chapters/1/2").text
+    assert online.index("js/offline-store.js") < online.index("js/offline-queue.js")
+    assert online.index("js/offline-queue.js") < online.index("js/offline-autodownload.js")

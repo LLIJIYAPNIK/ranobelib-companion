@@ -9,6 +9,7 @@
   same controls (_reader_controls.html) and the same stored object.
 #}
 {% from "_reader_controls.html" import segmented, themes, LINE_HEIGHTS, MARGINS, MODES, PRESETS %}
+{% set AUTO_DOWNLOAD = [("0", "Выкл"), ("3", "3"), ("5", "5"), ("10", "10")] %}
   <div class="reader-settings-page" data-role="reader-settings">
     <section class="reader-settings-card">
       <h2 class="reader-settings-card__title">Текст</h2>
@@ -162,6 +163,23 @@
       </p>
     </div>
 
+    {# PR 334: auto-download of the next chapters for titles downloaded for reading
+       offline. offline-autodownload.js says what the network allows right now and shows
+       the «any network» question only where the browser can't tell Wi-Fi apart. #}
+    <section class="reader-settings-card" data-role="offline-auto-settings">
+      <h2 class="reader-settings-card__title">Без интернета</h2>
+      <div class="reader-settings-row">
+        <span class="reader-settings-row__label">Докачивать следующие главы</span>
+        {{ segmented("autoDownloadNext", "set-auto-download", AUTO_DOWNLOAD, "Докачивать следующие главы") }}
+        <span class="reader-settings-row__hint">Для тайтлов, скачанных для чтения без интернета: пока вы читаете, на устройство по одной докачиваются следующие главы — только по Wi-Fi.</span>
+        <span class="reader-settings-row__hint" data-role="offline-auto-network" role="status" hidden></span>
+      </div>
+      <label class="reader-settings-row reader-settings-row--switch ui-switch" data-role="offline-auto-any-network" hidden>
+        <span>Докачивать на любой сети, в том числе мобильной</span>
+        <input type="checkbox" role="switch" data-setting="autoDownloadAnyNetwork">
+      </label>
+    </section>
+
     {# PR 327: install as an app (pwa-install.js shows this only when there's something
        to offer - a held browser prompt, the iOS hint, or "already installed"). #}
     <section class="reader-settings-card reader-settings-card--speed" data-role="pwa-install" hidden>
@@ -180,4 +198,5 @@
 <script src="{{ static_url('js/custom-dropdown.js') }}" defer></script>
 <script src="{{ static_url('js/ui-range.js') }}" defer></script>
 <script src="{{ static_url('js/reading-speed-test.js') }}" defer></script>
+<script src="{{ static_url('js/offline-autodownload.js') }}" defer></script>
 {% endblock %}
