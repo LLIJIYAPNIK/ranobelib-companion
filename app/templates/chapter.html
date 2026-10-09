@@ -72,6 +72,12 @@
     <h1 class="reader__title">{{ chapter.name or chapter_label }}</h1>
     {% if offline_copy %}
     <p class="reader-offline-note" data-role="reader-offline-note">Скачанная копия. Реакции и комментарии появятся, когда будет сеть.</p>
+    {# PR 339: shown by reader-copy-check.js when the copy, opened while online, is older
+       than the chapter on the site. #}
+    <div class="reader-copy-updated" data-role="reader-copy-updated" role="status" hidden>
+      <span class="reader-copy-updated__text" data-role="reader-copy-updated-text">Глава обновлена на сайте.</span>
+      <button type="button" class="ui-btn ui-btn--quiet ui-btn--sm" data-role="reader-copy-refresh">Обновить копию</button>
+    </div>
     {% endif %}
   </div>
   {#
@@ -89,6 +95,9 @@
     data-user-id="{{ current_user.id if current_user else '' }}"
     {%- if offline_copy %}
     data-offline-copy="1"
+    {%- if content_version %}
+    data-content-version="{{ content_version }}"
+    {%- endif %}
     {%- endif %}
     {%- if saved_paragraph %}
     data-saved-paragraph="{{ saved_paragraph }}"
@@ -279,9 +288,12 @@
    on every chapter page - reader-offline.js notes when a downloaded title was opened. #}
 <script src="{{ static_url('js/offline-store.js') }}" defer></script>
 <script src="{{ static_url('js/reader-offline.js') }}" defer></script>
-{# PR 334: keeps the next chapters of a downloaded title on the device (off by default). #}
-{% if not offline_copy %}
+{# PR 334: keeps the next chapters of a downloaded title on the device (off by default).
+   PR 339: a copy has the queue too - «Обновить копию» downloads the chapter again. #}
 <script src="{{ static_url('js/offline-queue.js') }}" defer></script>
+{% if offline_copy %}
+<script src="{{ static_url('js/reader-copy-check.js') }}" defer></script>
+{% else %}
 <script src="{{ static_url('js/offline-autodownload.js') }}" defer></script>
 {% endif %}
 {% endblock %}

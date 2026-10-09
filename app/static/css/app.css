@@ -21636,6 +21636,29 @@ body.reader-hud-visible .reader-hud {
   font: 500 13px/1.45 var(--font-ui);
 }
 
+/* PR 339: the copy was opened while online and the chapter on the site has changed -
+   one quiet line with «Обновить копию», in the reader's own colours. */
+.reader-copy-updated {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px 12px;
+  margin-top: 10px;
+  padding: 10px 12px;
+  border-radius: 12px;
+  background: var(--r-surface);
+  color: var(--r-text);
+  font: 500 13px/1.45 var(--font-ui);
+}
+
+.reader-copy-updated[hidden] {
+  display: none;
+}
+
+.reader-copy-updated__text {
+  flex: 1 1 180px;
+}
+
 body.reader-page--offline-copy .sidebar__account,
 body.reader-page--offline-copy .reader-paragraph-more {
   display: none;

@@ -289,6 +289,16 @@
     }
   }
 
+  // PR 339: after a chapter is downloaded again («Обновить копию»), the images its old
+  // copy had and no chapter uses any more.
+  async function dropUnusedImages(urls) {
+    const db = await openDb();
+    const all = await done(db.transaction("chapters").objectStore("chapters").getAll());
+    const used = new Set(all.flatMap((chapter) => chapter.images || []));
+    const cache = await caches.open(CACHE_NAME);
+    for (const url of urls) if (!used.has(url)) await cache.delete(url);
+  }
+
   // PR 335: a chapter of a downloaded title was opened (online or from the copy) - when,
   // for «Офлайн» in the settings. A title that isn't downloaded is left alone.
   // PR 336: and which chapter ({ volume, number }) - where «Продолжить чтение» (/continue)
@@ -431,6 +441,7 @@
     estimate,
     storageState,
     persist,
+    dropUnusedImages,
     PREFERENCES_URL,
     openFromCopy,
     syncPreferences,
