@@ -64,11 +64,20 @@ function routeFor(method, url, mode) {
   return searchParams.has("v") ? "static" : "network";
 }
 
+// PR 333: on top of the allowlist above, a second lock - whatever the route, a response
+// the server marked as someone's own (Cache-Control: private / no-store, see
+// app/static_assets.py) is never written to a cache here.
+function storable(response) {
+  if (!response.ok) return false;
+  const cacheControl = (response.headers.get("Cache-Control") || "").toLowerCase();
+  return !/\b(?:private|no-store)\b/.test(cacheControl);
+}
+
 async function cacheFirst(request, cacheName) {
   const cached = await caches.match(request);
   if (cached) return cached;
   const response = await fetch(request);
-  if (response.ok) {
+  if (storable(response)) {
     const cache = await caches.open(cacheName);
     await cache.put(request, response.clone());
   }
@@ -94,7 +103,7 @@ async function staleWhileRevalidate(event, cacheName, limit) {
   const cache = await caches.open(cacheName);
   const cached = await cache.match(event.request);
   const refresh = fetch(event.request).then(async (response) => {
-    if (response.ok) {
+    if (storable(response)) {
       await cache.put(event.request, response.clone());
       if (limit) await trim(cache, limit);
     }

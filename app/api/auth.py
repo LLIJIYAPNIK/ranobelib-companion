@@ -398,7 +398,13 @@ async def login(
 @router.post("/logout")
 async def logout(request: Request) -> Response:
     request.session.clear()
-    return RedirectResponse(url="/", status_code=303)
+    response = RedirectResponse(url="/", status_code=303)
+    # PR 333: the browser's HTTP cache may still hold this account's pages (back/forward
+    # included) - dropped, so the next person on the device can't page back into them.
+    # Only "cache": "storage" would also take the downloads the visitor chose to keep
+    # (device-account.js clears the personal part of storage itself).
+    response.headers["Clear-Site-Data"] = '"cache"'
+    return response
 
 
 # --- PR 225: "Забыли пароль?" ------------------------------------------------------------

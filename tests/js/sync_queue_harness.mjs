@@ -42,6 +42,7 @@ function fakeIndexedDB(data) {
       get: (key) => request(() => copy(data.get(key))),
       getAll: () => request(() => [...data.values()].map(copy)),
       delete: (key) => request(() => void data.delete(key)),
+      clear: () => request(() => void data.clear()),
     });
     maybeComplete();
     return tx;
@@ -68,7 +69,7 @@ const status = (code) => ({ ok: code >= 200 && code < 300, status: code, type: "
 
 // A page with the queue loaded. `respond(url, fields)` answers each request: a response
 // object, or "down" - fetch() rejects, as with no network.
-async function page({ onLine = true, indexedDB = true, stored = new Map() } = {}) {
+async function page({ onLine = true, indexedDB = true, stored = new Map(), deviceAccount } = {}) {
   const listeners = {};
   const on = (name, fn) => (listeners[name] ||= []).push(fn);
   const clock = { now: 1_000_000 };
@@ -101,6 +102,8 @@ async function page({ onLine = true, indexedDB = true, stored = new Map() } = {}
     },
   };
   if (indexedDB) window.indexedDB = fakeIndexedDB(stored);
+  // PR 333: device-account.js's check, which the first send waits for.
+  if (deviceAccount) window.deviceAccount = deviceAccount;
   const document = { hidden: false, addEventListener: on };
   vm.runInNewContext(source, {
     window,
@@ -116,6 +119,7 @@ async function page({ onLine = true, indexedDB = true, stored = new Map() } = {}
     Set,
   });
   const fire = (name) => (listeners[name] || []).forEach((fn) => fn({}));
+  fire("DOMContentLoaded");
   await settle();
   return {
     queue: window.syncQueue,
@@ -240,6 +244,31 @@ const results = {};
   ]);
   const p = await page({ stored });
   results.onLoad = { requests: p.requests, left: p.left() };
+}
+
+// PR 333: another account signed in here - device-account.js clears what the previous
+// one left (its `ready`), and only then may the queue send anything.
+{
+  const stored = new Map([
+    [
+      "uuid-other",
+      {
+        id: "uuid-other",
+        nonce: "uuid-other",
+        url: "/activity/heartbeat",
+        fields: { ...heartbeat, event_id: "uuid-other" },
+        at: 900_000,
+      },
+    ],
+  ]);
+  let clear;
+  const ready = new Promise((resolve) => (clear = resolve));
+  const p = await page({ stored, deviceAccount: { ready } });
+  const beforeReady = p.requests.length;
+  await p.queue.clear();
+  clear();
+  await settle();
+  results.accountSwitch = { beforeReady, requests: p.requests.length, left: p.left().length };
 }
 
 // A newer tick of the chapter arriving while the older one is on its way stays queued

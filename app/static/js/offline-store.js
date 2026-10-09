@@ -13,6 +13,9 @@
 // survives worker updates. Nothing here talks to ranobelib.me: chapters come through this
 // site's own endpoints, one at a time (offline-queue.js).
 (() => {
+  // PR 333: base.html also loads this on every signed-in page (logout asks what to do
+  // with the downloads) - a page that loads it itself as well gets the same one.
+  if (window.offlineStore) return;
   const DB_NAME = "wn-offline";
   const CACHE_NAME = "wn-offline";
 
@@ -190,6 +193,35 @@
     await finished(tx);
   }
 
+  // PR 333: «Очистить офлайн-данные» and logout without «Оставить скачанное» - every
+  // downloaded chapter, image and cover, and the whole index.
+  async function clearAll() {
+    await caches.delete(CACHE_NAME);
+    const db = await openDb();
+    const tx = db.transaction(["titles", "chapters"], "readwrite");
+    tx.objectStore("titles").clear();
+    tx.objectStore("chapters").clear();
+    await finished(tx);
+  }
+
+  // PR 333: how full the storage the browser gives this site is - everything it keeps
+  // here (downloads, the app's own files), as navigator.storage.estimate() sees it.
+  // `nearlyFull` past NEARLY_FULL: downloads may start failing soon. null when unknown.
+  const NEARLY_FULL = 0.8;
+  async function storageState() {
+    const estimated = await estimate();
+    if (!estimated || !estimated.quota) return null;
+    const usage = estimated.usage || 0;
+    const ratio = Math.min(1, usage / estimated.quota);
+    return {
+      usage,
+      quota: estimated.quota,
+      free: Math.max(0, estimated.quota - usage),
+      percent: Math.round(ratio * 100),
+      nearlyFull: ratio > NEARLY_FULL,
+    };
+  }
+
   async function estimate() {
     try {
       return (await navigator.storage?.estimate?.()) || null;
@@ -225,7 +257,9 @@
     saveCover,
     listTitles,
     deleteTitle,
+    clearAll,
     estimate,
+    storageState,
     persist,
   };
 })();

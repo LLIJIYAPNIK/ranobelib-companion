@@ -109,6 +109,12 @@ def test_what_an_earlier_page_left_goes_out_when_the_next_one_loads() -> None:
     assert on_load["left"] == []
 
 
+def test_nothing_is_sent_before_the_account_check_and_a_cleared_queue_sends_nothing() -> None:
+    # PR 333: another account's leftovers are cleared by device-account.js first - they
+    # must never go out under this page's session.
+    assert _scenarios()["accountSwitch"] == {"beforeReady": 0, "requests": 0, "left": 0}
+
+
 def test_an_answer_for_an_older_tick_doesnt_remove_a_newer_one() -> None:
     assert _scenarios()["newerKept"]["left"] == ["20"]
 

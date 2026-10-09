@@ -288,6 +288,16 @@ def test_a_failed_font_response_is_not_cached(worker: dict[str, Any]) -> None:
     assert fonts["refetchedFontFile"] == 0
 
 
+def test_a_response_marked_private_is_never_stored(worker: dict[str, Any]) -> None:
+    # PR 333: a second lock behind the allowlist - Cache-Control: private / no-store
+    # (someone's own data, app/static_assets.py) is answered but not kept, on any route.
+    scenario = worker["privateResponses"]
+
+    assert all(body and body.startswith("body:") for body in scenario["bodies"])
+    stored = [url for urls in scenario["caches"].values() for url in urls]
+    assert stored == ["https://app.test/static/img/public.png"]
+
+
 # --- the update prompt (sw-register.js) ----------------------------------------------
 
 
