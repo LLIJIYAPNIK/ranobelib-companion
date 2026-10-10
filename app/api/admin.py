@@ -1,4 +1,5 @@
-"""/admin: the panel's login/logout (PR 324), overview and read-only data browser (PR 325).
+"""/admin: the panel's login/logout (PR 324), overview and read-only data browser (PR 325),
+the shared sidebar/top-bar shell (PR 341).
 
 Every route sits behind ``require_admin_enabled`` (404 without ADMIN_PASSWORD), every page
 but the login form behind ``require_admin`` (app/auth/admin.py). The data pages only read
@@ -9,7 +10,10 @@ from __future__ import annotations
 
 import math
 from collections.abc import Awaitable, Callable
+from dataclasses import dataclass
+from datetime import datetime
 from typing import Annotated
+from zoneinfo import ZoneInfo
 
 from fastapi import APIRouter, Depends, FastAPI, Form, HTTPException, Query, Request
 from fastapi.responses import HTMLResponse, RedirectResponse, Response
@@ -51,6 +55,31 @@ router = APIRouter(
 
 Admin = Annotated[None, Depends(require_admin)]
 Connection = Annotated[AsyncConnection, Depends(get_connection)]
+
+
+@dataclass(frozen=True)
+class NavItem:
+    """One sidebar entry (PR 341). ``href`` is None for a screen whose PR hasn't landed
+    yet - shown, but not a link, so the sidebar already has its final shape."""
+
+    section: str
+    label: str
+    icon: str
+    href: str | None
+    group: str = ""
+
+
+# The sidebar's screens and groups (RanobeLib Admin.dc.html, cut down to what wave 40
+# builds - see ROADMAP.md, PR 341). Each later PR fills in its href.
+ADMIN_NAV: tuple[NavItem, ...] = (
+    NavItem("overview", "Обзор", "dashboard", "/admin"),
+    NavItem("analytics", "Аналитика", "chart", None, "Контент"),
+    NavItem("users", "Пользователи", "users", None, "Сообщество"),
+    NavItem("comments", "Комментарии", "comments", None, "Сообщество"),
+    NavItem("tables", "Данные БД", "database", "/admin/tables", "Данные"),
+    NavItem("system", "Система", "server", None, "Платформа"),
+    NavItem("audit", "Журнал", "history", None, "Платформа"),
+)
 
 
 @router.get("", response_model=None)
@@ -102,11 +131,51 @@ def _timed_out(request: Request, section: str) -> HTMLResponse:
     return response
 
 
+_WEEKDAYS = (
+    "Понедельник", "Вторник", "Среда", "Четверг", "Пятница", "Суббота", "Воскресенье"
+)  # fmt: skip
+_MONTHS_GENITIVE = (
+    "января", "февраля", "марта", "апреля", "мая", "июня",
+    "июля", "августа", "сентября", "октября", "ноября", "декабря",
+)  # fmt: skip
+
+
+@dataclass(frozen=True)
+class ServerTime:
+    """The top bar's "now" (PR 341): the server's clock in ADMIN_TIMEZONE, as of render."""
+
+    iso: str
+    date: str
+    time: str
+    timezone: str
+
+
+def _server_now() -> datetime:
+    return datetime.now(ZoneInfo(get_settings().admin_timezone))
+
+
+def server_time() -> ServerTime:
+    now = _server_now()
+    day = f"{_WEEKDAYS[now.weekday()]}, {now.day} {_MONTHS_GENITIVE[now.month - 1]} {now.year}"
+    return ServerTime(
+        iso=now.isoformat(timespec="minutes"),
+        date=day,
+        time=f"{now:%H:%M}",
+        timezone=get_settings().admin_timezone,
+    )
+
+
 def _page(request: Request, template: str, section: str, **context: object) -> HTMLResponse:
     return templates.TemplateResponse(
         request,
         template,
-        {"csrf_token": csrf_token(request), "admin_section": section, **context},
+        {
+            "csrf_token": csrf_token(request),
+            "admin_section": section,
+            "admin_nav": ADMIN_NAV,
+            "server_time": server_time(),
+            **context,
+        },
     )
 
 

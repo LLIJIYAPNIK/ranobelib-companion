@@ -1,9 +1,8 @@
 {% extends "admin/_layout.html" %}
 {% block title %}Обзор{% endblock %}
+{% block heading %}Обзор{% endblock %}
 {% block content %}
-<main class="wn-admin__main" aria-labelledby="admin-overview-title">
-  <h1 class="wn-admin__title" id="admin-overview-title">Обзор</h1>
-
+<main class="wn-admin__main" aria-labelledby="admin-page-title">
   <ul class="wn-admin__stats">
     {% for label, count in overview.counts %}
     <li class="wn-admin__stat"><span class="wn-admin__stat-value">{{ count }}</span><span class="wn-admin__stat-label">{{ label }}</span></li>

@@ -21079,58 +21079,338 @@ body.reader-hud-visible .reader-hud {
   font-size: 16px;
 }
 
-/* PR 325: the panel's header, overview and read-only table browser - desktop first; on a
-   phone the header wraps and wide tables scroll sideways inside their own box. */
-.wn-admin__bar {
+/* PR 341: the panel's shell (RanobeLib Admin.dc.html) - a sidebar with grouped screens
+   beside a frame of top bar + page. Structure here; colors below. */
+.wn-admin-sprite {
+  position: absolute;
+  width: 0;
+  height: 0;
+  overflow: hidden;
+}
+
+.wn-admin-icon {
+  flex: none;
+  width: 17px;
+  height: 17px;
+}
+
+.wn-admin-shell {
   display: flex;
-  flex-wrap: wrap;
+  min-height: 100vh;
+}
+
+.wn-admin-side {
+  position: sticky;
+  top: 0;
+  display: flex;
+  flex: none;
+  flex-direction: column;
+  width: 248px;
+  height: 100vh;
+}
+
+.wn-admin-side__brand {
+  display: flex;
+  flex: none;
   align-items: center;
-  gap: var(--wn-space-2) var(--wn-space-3);
-  padding: 12px 24px;
-  border-bottom: 1px solid var(--wn-border);
-  background: var(--wn-surface);
+  gap: 11px;
+  height: 64px;
+  padding: 0 19px;
 }
 
-.wn-admin__brand {
-  font: var(--wn-weight-bold) 16px/1 var(--wn-font-ui);
+.wn-admin-side__logo {
+  display: grid;
+  flex: none;
+  place-items: center;
+  width: 34px;
+  height: 34px;
 }
 
-.wn-admin__nav {
+.wn-admin-side__brand-text {
   display: flex;
-  gap: 4px;
+  flex-direction: column;
+  gap: 1px;
+  min-width: 0;
 }
 
-.wn-admin__nav a {
-  padding: 8px 12px;
-  border-radius: var(--wn-radius-md);
-  color: var(--wn-text-secondary);
-  font: var(--wn-weight-semi-bold) 14px/1 var(--wn-font-ui);
+.wn-admin-side__nav {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  gap: 2px;
+  padding: 6px 12px 12px;
+  overflow: auto;
+}
+
+.wn-admin-side__group {
+  margin: 0;
+  padding: 14px 10px 6px;
+}
+
+.wn-admin-side__item {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 11px;
+  height: 38px;
+  padding: 0 11px;
   text-decoration: none;
 }
 
-.wn-admin__nav a[aria-current="page"] {
-  background: var(--wn-surface-raised);
+.wn-admin-side__label {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.wn-admin-side__account {
+  display: flex;
+  flex: none;
+  align-items: center;
+  gap: 10px;
+  padding: 12px 20px;
+}
+
+.wn-admin-side__avatar {
+  display: grid;
+  flex: none;
+  place-items: center;
+  width: 32px;
+  height: 32px;
+}
+
+.wn-admin-side__role {
+  flex: 1;
+  min-width: 0;
+}
+
+.wn-admin-side__logout {
+  margin: 0;
+}
+
+.wn-admin-side__logout-btn {
+  display: grid;
+  place-items: center;
+  width: 34px;
+  height: 34px;
+  padding: 0;
+  cursor: pointer;
+}
+
+.wn-admin-frame {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.wn-admin-top {
+  position: sticky;
+  top: 0;
+  z-index: 20;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  height: 64px;
+  padding: 0 28px;
+}
+
+.wn-admin-top__title {
+  min-width: 0;
+  margin: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.wn-admin-top__search {
+  flex: 1;
+  max-width: 460px;
+}
+
+/* Until PR 353 fills it, the slot mustn't take the title's room. */
+.wn-admin-top__search:empty {
+  display: none;
+}
+
+.wn-admin-top__time {
+  display: flex;
+  flex: none;
+  align-items: baseline;
+  gap: 6px;
+  margin: 0 0 0 auto;
+  white-space: nowrap;
+}
+
+.wn-admin-top__site {
+  display: flex;
+  flex: none;
+  align-items: center;
+  gap: 6px;
+  height: 38px;
+  padding: 0 12px;
+  text-decoration: none;
+}
+
+/* The shell's colors and type - the mockup's oklch neutrals and violet mapped onto the
+   site's wn-* tokens (its accent is the site's #7A52F4, not a new color). */
+.wn-admin-side {
+  border-right: 1px solid var(--wn-border);
+  background: var(--wn-surface);
+}
+
+.wn-admin-side__logo {
+  border-radius: var(--wn-radius-sm);
+  background: var(--wn-primary);
+  color: #fff;
+  font: var(--wn-weight-extra-bold) 19px/1 var(--wn-font-ui);
+}
+
+.wn-admin-side__brand-name {
+  font: var(--wn-weight-extra-bold) 16px/20px var(--wn-font-ui);
+}
+
+.wn-admin-side__brand-sub,
+.wn-admin-side__group {
+  color: var(--wn-text-muted);
+  font: var(--wn-weight-semi-bold) 10px/14px var(--wn-font-ui);
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+}
+
+.wn-admin-side__item {
+  border-radius: 10px;
+  color: var(--wn-text-secondary);
+  font: var(--wn-weight-medium) 14px/1 var(--wn-font-ui);
+}
+
+.wn-admin-side__item .wn-admin-icon {
+  color: var(--wn-text-muted);
+}
+
+a.wn-admin-side__item:hover {
+  background: var(--wn-surface-hover);
   color: var(--wn-text);
 }
 
-.wn-admin__nav a:focus-visible,
+.wn-admin-side__item[aria-current="page"] {
+  background: color-mix(in srgb, var(--wn-primary) 14%, transparent);
+  color: var(--wn-text);
+  font-weight: var(--wn-weight-semi-bold);
+}
+
+.wn-admin-side__item[aria-current="page"] .wn-admin-icon {
+  color: var(--wn-primary-hover);
+}
+
+.wn-admin-side__item[aria-current="page"]::before {
+  position: absolute;
+  top: 9px;
+  bottom: 9px;
+  left: -12px;
+  width: 3px;
+  border-radius: 0 3px 3px 0;
+  background: var(--wn-primary);
+  content: "";
+}
+
+.wn-admin-side__item[aria-disabled="true"] {
+  color: var(--wn-disabled-text);
+  cursor: default;
+}
+
+.wn-admin-side__item[aria-disabled="true"] .wn-admin-icon {
+  color: var(--wn-disabled-text);
+}
+
+.wn-admin-side__soon {
+  flex: none;
+  padding: 3px 6px;
+  border-radius: 6px;
+  background: var(--wn-disabled);
+  color: var(--wn-text-muted);
+  font: var(--wn-weight-semi-bold) 10px/1 var(--wn-font-ui);
+}
+
+.wn-admin-side__account {
+  border-top: 1px solid var(--wn-border);
+}
+
+.wn-admin-side__avatar {
+  border-radius: 50%;
+  background: var(--wn-surface-raised);
+  color: var(--wn-text-secondary);
+  font: var(--wn-weight-bold) 13px/1 var(--wn-font-ui);
+}
+
+.wn-admin-side__role {
+  font: var(--wn-weight-semi-bold) 13px/18px var(--wn-font-ui);
+}
+
+.wn-admin-side__logout-btn {
+  border: 0;
+  border-radius: var(--wn-radius-sm);
+  background: transparent;
+  color: var(--wn-text-muted);
+}
+
+.wn-admin-side__logout-btn:hover {
+  background: var(--wn-surface-hover);
+  color: var(--wn-text);
+}
+
+.wn-admin-top {
+  border-bottom: 1px solid var(--wn-border);
+  background: var(--wn-canvas);
+}
+
+.wn-admin-top__title {
+  font: var(--wn-weight-extra-bold) 20px/28px var(--wn-font-ui);
+}
+
+.wn-admin-top__time {
+  color: var(--wn-text-secondary);
+  font: var(--wn-type-meta);
+  font-variant-numeric: tabular-nums;
+}
+
+.wn-admin-top__tz {
+  color: var(--wn-text-muted);
+  font: var(--wn-type-technical);
+  font-size: 11px;
+}
+
+.wn-admin-top__site {
+  border: 1px solid var(--wn-border);
+  border-radius: 11px;
+  color: var(--wn-text-secondary);
+  font: var(--wn-weight-semi-bold) 13px/1 var(--wn-font-ui);
+}
+
+.wn-admin-top__site:hover {
+  border-color: var(--wn-border-strong);
+  color: var(--wn-text);
+}
+
+.wn-admin-side__item:focus-visible,
+.wn-admin-side__logout-btn:focus-visible,
+.wn-admin-top__site:focus-visible,
 .wn-admin__table a:focus-visible,
 .wn-admin__crumbs a:focus-visible {
   outline: none;
   box-shadow: var(--wn-focus-ring);
 }
 
-.wn-admin__logout {
-  margin-left: auto;
-}
-
 .wn-admin__main {
   display: flex;
   flex-direction: column;
   gap: var(--wn-space-2);
-  max-width: 1400px;
+  width: 100%;
+  max-width: 1520px;
   margin: 0 auto;
-  padding: var(--wn-space-3) 24px var(--wn-space-4);
+  padding: 28px;
 }
 
 .wn-admin__subtitle {
@@ -21259,13 +21539,151 @@ body.reader-hud-visible .reader-hud {
   gap: 12px;
 }
 
-@media (max-width: 767px) {
-  .wn-admin__bar,
-  .wn-admin__main {
-    padding-right: 16px;
-    padding-left: 16px;
+/* PR 341: the shell's breakpoints, as in the mockup - the full sidebar from 1180px, an
+   icon rail below that, and at <=1024px a panel that slides out over the page behind a
+   scrim (admin-sidebar.js). The menu/close buttons and the scrim exist only there. */
+.wn-admin-top__menu,
+.wn-admin-side__close {
+  display: none;
+  flex: none;
+  place-items: center;
+  width: 38px;
+  height: 38px;
+  padding: 0;
+  border: 1px solid var(--wn-border);
+  border-radius: 10px;
+  background: var(--wn-surface);
+  color: var(--wn-text);
+  cursor: pointer;
+}
+
+.wn-admin-side__close {
+  margin-left: auto;
+}
+
+.wn-admin-top__menu:focus-visible,
+.wn-admin-side__close:focus-visible {
+  outline: none;
+  box-shadow: var(--wn-focus-ring);
+}
+
+.wn-admin-scrim {
+  position: fixed;
+  inset: 0;
+  z-index: 35;
+  background: var(--scrim);
+}
+
+.wn-admin-scrim[hidden] {
+  display: none;
+}
+
+@media (min-width: 1025px) and (max-width: 1179px) {
+  .wn-admin-side {
+    width: 72px;
+  }
+
+  .wn-admin-side__brand {
+    justify-content: center;
+    padding: 0;
+  }
+
+  .wn-admin-side__brand-text,
+  .wn-admin-side__label,
+  .wn-admin-side__soon,
+  .wn-admin-side__avatar,
+  .wn-admin-side__role {
+    display: none;
+  }
+
+  /* A group's name becomes a divider line, as in the mockup's rail. */
+  .wn-admin-side__group {
+    height: 1px;
+    margin: 8px 6px;
+    padding: 0;
+    overflow: hidden;
+    background: var(--wn-border);
+    color: transparent;
+  }
+
+  .wn-admin-side__item {
+    justify-content: center;
+    padding: 0;
+  }
+
+  .wn-admin-side__account {
+    justify-content: center;
+    padding: 12px 0;
   }
 }
+
+@media (max-width: 1024px) {
+  .wn-admin-side {
+    position: fixed;
+    top: 0;
+    bottom: 0;
+    left: 0;
+    z-index: 40;
+    width: min(280px, calc(100vw - 48px));
+    height: auto;
+    box-shadow: 24px 0 60px rgba(0, 0, 0, 0.5);
+    transform: translateX(-100%);
+    visibility: hidden;
+    transition:
+      transform 0.2s ease,
+      visibility 0s linear 0.2s;
+  }
+
+  .wn-admin-side[data-open] {
+    transform: none;
+    visibility: visible;
+    transition: transform 0.2s ease;
+  }
+
+  .wn-admin-top__menu,
+  .wn-admin-side__close {
+    display: grid;
+  }
+
+  .wn-admin--nav-open {
+    overflow: hidden;
+  }
+
+  .wn-admin-top {
+    padding: 0 16px;
+  }
+
+  .wn-admin__main {
+    padding: 20px 16px 32px;
+  }
+}
+
+@media (max-width: 767px) {
+  .wn-admin-top__site {
+    width: 38px;
+    padding: 0;
+    justify-content: center;
+  }
+
+  .wn-admin-top__site-text {
+    display: none;
+  }
+
+  /* On a phone only the time stays - the date and zone would squeeze the page title
+     out (both are still in the element's title). */
+  .wn-admin-top__date,
+  .wn-admin-top__tz {
+    display: none;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .wn-admin-side,
+  .wn-admin-side[data-open] {
+    transition: none;
+  }
+}
+
 
 /* ==========================================================================
    Offline page (PR 328) - what the service worker shows for a page that couldn't load
