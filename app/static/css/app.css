@@ -21241,6 +21241,137 @@ body.reader-hud-visible .reader-hud {
   text-decoration: none;
 }
 
+/* The shell's colors and type - the mockup's oklch neutrals and violet mapped onto the
+   site's wn-* tokens (its accent is the site's #7A52F4, not a new color). */
+.wn-admin-side {
+  border-right: 1px solid var(--wn-border);
+  background: var(--wn-surface);
+}
+
+.wn-admin-side__logo {
+  border-radius: var(--wn-radius-sm);
+  background: var(--wn-primary);
+  color: #fff;
+  font: var(--wn-weight-extra-bold) 19px/1 var(--wn-font-ui);
+}
+
+.wn-admin-side__brand-name {
+  font: var(--wn-weight-extra-bold) 16px/20px var(--wn-font-ui);
+}
+
+.wn-admin-side__brand-sub,
+.wn-admin-side__group {
+  color: var(--wn-text-muted);
+  font: var(--wn-weight-semi-bold) 10px/14px var(--wn-font-ui);
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+}
+
+.wn-admin-side__item {
+  border-radius: 10px;
+  color: var(--wn-text-secondary);
+  font: var(--wn-weight-medium) 14px/1 var(--wn-font-ui);
+}
+
+.wn-admin-side__item .wn-admin-icon {
+  color: var(--wn-text-muted);
+}
+
+a.wn-admin-side__item:hover {
+  background: var(--wn-surface-hover);
+  color: var(--wn-text);
+}
+
+.wn-admin-side__item[aria-current="page"] {
+  background: color-mix(in srgb, var(--wn-primary) 14%, transparent);
+  color: var(--wn-text);
+  font-weight: var(--wn-weight-semi-bold);
+}
+
+.wn-admin-side__item[aria-current="page"] .wn-admin-icon {
+  color: var(--wn-primary-hover);
+}
+
+.wn-admin-side__item[aria-current="page"]::before {
+  position: absolute;
+  top: 9px;
+  bottom: 9px;
+  left: -12px;
+  width: 3px;
+  border-radius: 0 3px 3px 0;
+  background: var(--wn-primary);
+  content: "";
+}
+
+.wn-admin-side__item[aria-disabled="true"] {
+  color: var(--wn-disabled-text);
+  cursor: default;
+}
+
+.wn-admin-side__item[aria-disabled="true"] .wn-admin-icon {
+  color: var(--wn-disabled-text);
+}
+
+.wn-admin-side__soon {
+  flex: none;
+  padding: 3px 6px;
+  border-radius: 6px;
+  background: var(--wn-disabled);
+  color: var(--wn-text-muted);
+  font: var(--wn-weight-semi-bold) 10px/1 var(--wn-font-ui);
+}
+
+.wn-admin-side__account {
+  border-top: 1px solid var(--wn-border);
+}
+
+.wn-admin-side__avatar {
+  border-radius: 50%;
+  background: var(--wn-surface-raised);
+  color: var(--wn-text-secondary);
+  font: var(--wn-weight-bold) 13px/1 var(--wn-font-ui);
+}
+
+.wn-admin-side__role {
+  font: var(--wn-weight-semi-bold) 13px/18px var(--wn-font-ui);
+}
+
+.wn-admin-side__logout-btn {
+  border: 0;
+  border-radius: var(--wn-radius-sm);
+  background: transparent;
+  color: var(--wn-text-muted);
+}
+
+.wn-admin-side__logout-btn:hover {
+  background: var(--wn-surface-hover);
+  color: var(--wn-text);
+}
+
+.wn-admin-top {
+  border-bottom: 1px solid var(--wn-border);
+  background: var(--wn-canvas);
+}
+
+.wn-admin-top__title {
+  font: var(--wn-weight-extra-bold) 20px/28px var(--wn-font-ui);
+}
+
+.wn-admin-top__site {
+  border: 1px solid var(--wn-border);
+  border-radius: 11px;
+  color: var(--wn-text-secondary);
+  font: var(--wn-weight-semi-bold) 13px/1 var(--wn-font-ui);
+}
+
+.wn-admin-top__site:hover {
+  border-color: var(--wn-border-strong);
+  color: var(--wn-text);
+}
+
+.wn-admin-side__item:focus-visible,
+.wn-admin-side__logout-btn:focus-visible,
+.wn-admin-top__site:focus-visible,
 .wn-admin__table a:focus-visible,
 .wn-admin__crumbs a:focus-visible {
   outline: none;
