@@ -254,3 +254,55 @@
   <button class="wn-admin-iconbtn" type="button" data-kit-toast-close aria-label="Закрыть уведомление">{{ icon("close") }}</button>
 </div>
 {%- endmacro %}
+
+{#- States for a panel or table with nothing to show yet. Each is centred in its panel;
+    the caller (where accepted) adds buttons below the text. -#}
+{% macro _state(kind, icon_name, title, text) -%}
+<div class="wn-admin-state wn-admin-state--{{ kind }}"{% if kind == "error" %} role="alert"{% endif %}>
+  <span class="wn-admin-state__mark">{{ icon(icon_name) }}</span>
+  <p class="wn-admin-state__title">{{ title }}</p>
+  {% if text %}<p class="wn-admin-state__text">{{ text }}</p>{% endif %}
+  {% if caller is defined %}<div class="wn-admin-state__actions">{{ caller() }}</div>{% endif %}
+</div>
+{%- endmacro %}
+
+{#- Loading: grey bars in the shape of ``rows`` x ``columns`` table rows. -#}
+{% macro skeleton(rows=5, columns=4, label="Загружаем данные…") -%}
+<div class="wn-admin-skeleton" role="status" aria-busy="true">
+  <p class="wn-admin-skeleton__label"><span class="wn-admin-spinner" aria-hidden="true"></span>{{ label }}</p>
+  {% for row in range(rows) %}
+  <div class="wn-admin-skeleton__row" aria-hidden="true">
+    {% for column in range(columns) %}
+    <span class="wn-admin-skeleton__cell"><span class="wn-admin-skeleton__bar" style="--w: {{ (70, 45, 85, 55, 62)[(row + column) % 5] }}%"></span></span>
+    {% endfor %}
+  </div>
+  {% endfor %}
+</div>
+{%- endmacro %}
+
+{#- Something failed: what, and «Повторить» - a link back to ``retry`` (this same page
+    by default). -#}
+{% macro error_state(title="Не удалось загрузить данные", text=none, retry=none) -%}
+{% set again = retry or (request.url.path ~ ("?" ~ request.url.query if request.url.query else "")) %}
+{% set extra = caller() if caller is defined else "" %}
+{% call _state("error", "cloud-off", title, text) %}
+<a class="wn-admin-btn wn-admin-btn--primary" href="{{ again }}">{{ icon("refresh") }}Повторить</a>{{ extra }}
+{% endcall %}
+{%- endmacro %}
+
+{#- Nothing here at all yet (not a filter's doing). -#}
+{% macro empty_state(title, text=none, icon_name="inbox") -%}
+{% if caller is defined %}
+{% set actions = caller() %}
+{% call _state("empty", icon_name, title, text) %}{{ actions }}{% endcall %}
+{% else %}
+{{ _state("empty", icon_name, title, text) }}
+{% endif %}
+{%- endmacro %}
+
+{#- The search/filters matched nothing: say so and offer to drop them. -#}
+{% macro no_results(count, reset) -%}
+{% call _state("none", "search-x", "Ничего не найдено", "Ни одна запись не подходит под поиск и фильтры (" ~ count ~ "). Попробуйте ослабить условия.") %}
+<a class="wn-admin-btn" href="{{ reset }}">Сбросить фильтры</a>
+{% endcall %}
+{%- endmacro %}
