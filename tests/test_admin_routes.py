@@ -19,6 +19,8 @@ EXPECTED_WITHOUT_ADMIN = {
     ("GET", "/admin"): 303,
     ("GET", "/admin/tables"): 303,
     ("GET", "/admin/tables/{name}"): 303,
+    ("GET", "/admin/_kit"): 303,
+    ("POST", "/admin/_kit/demo"): 403,
     ("GET", "/admin/login"): 200,
     ("POST", "/admin/login"): 403,
     ("POST", "/admin/logout"): 403,

@@ -1,0 +1,93 @@
+{% extends "admin/_layout.html" %}
+{% import "admin/_kit.html" as kit with context %}
+{% block title %}UI-кит{% endblock %}
+{% block heading %}UI-кит{% endblock %}
+{% block content %}
+{# PR 342: every piece of admin/_kit.html on made-up data (app/admin_kit_demo.py) - a
+   reference for the screens of wave 40. Development only (404 in production). #}
+<main class="wn-admin__main wn-admin-kit" aria-labelledby="admin-page-title">
+  <p class="wn-admin__hint">Витрина компонентов админки на выдуманных данных — только в режиме разработки, в production этой страницы нет.</p>
+
+  <section class="wn-admin-kit__section" aria-labelledby="kit-kpi">
+    <h2 class="wn-admin-kit__title" id="kit-kpi">KPI-карточки и бейджи</h2>
+    <div class="wn-admin-kpis">
+      {% for item in charts.kpis %}
+      {{ kit.kpi(item.label, item.value, item.icon, change=item.change, previous=item.previous, spark=item.spark) }}
+      {% endfor %}
+    </div>
+    <p class="wn-admin-kit__row">
+      {{ kit.badge("Активен", "success") }} {{ kit.badge("Ограничен", "warning") }} {{ kit.badge("Заблокирован", "danger") }}
+      {{ kit.badge("Не подтверждён") }} {{ kit.badge("Скрыт", "primary") }}
+    </p>
+  </section>
+
+  <section class="wn-admin-kit__section" aria-labelledby="kit-table">
+    <h2 class="wn-admin-kit__title" id="kit-table">Таблица, фильтры, колонки, пагинация</h2>
+    <div class="wn-admin-panel">
+      {% call kit.filter_bar("/admin/_kit", table.args, table.filters, placeholder="Никнейм или email") %}{{ kit.columns_menu("kit-users", table.columns) }}{% endcall %}
+      {% if table.rows %}
+      {% call(row, column) kit.table("kit-users", table.columns, table.rows, sort=table.sort, descending=table.descending, args=table.args, caption="Демо-пользователи") %}
+        {%- if column.key == "status" -%}{{ kit.badge(row.status_label, row.status_tone) }}
+        {%- elif column.key == "actions" -%}
+        <button class="wn-admin-btn wn-admin-btn--ghost" type="button" data-kit-open="kit-drawer">Изменить</button>
+        <button class="wn-admin-btn wn-admin-btn--ghost" type="button" data-kit-open="kit-confirm" aria-label="Удалить {{ row.nickname }}">{{ kit.icon("trash") }}</button>
+        {%- else -%}{{ kit.cell(row[column.key]) }}{%- endif -%}
+      {% endcall %}
+      {% elif table.filtered %}
+      {{ kit.no_results(filter_state(table.args, table.filters).count, filter_state(table.args, table.filters).reset) }}
+      {% else %}
+      {{ kit.empty_state("Записей нет") }}
+      {% endif %}
+      {{ kit.pager(table.page, table.pages, table.total, table.per_page, table.args) }}
+    </div>
+  </section>
+
+  <section class="wn-admin-kit__section" aria-labelledby="kit-dialogs">
+    <h2 class="wn-admin-kit__title" id="kit-dialogs">Drawer, диалоги, тост</h2>
+    <p class="wn-admin-kit__row">
+      <button class="wn-admin-btn" type="button" data-kit-open="kit-drawer">Открыть drawer</button>
+      <button class="wn-admin-btn wn-admin-btn--danger" type="button" data-kit-open="kit-confirm">Необратимое действие</button>
+      <button class="wn-admin-btn" type="button" data-kit-open="kit-simple">Простое подтверждение</button>
+    </p>
+    <p class="wn-admin__hint">Подтверждение отправляет форму на демо-роут: он ничего не меняет и показывает тост, у удаления — с «Отменить».</p>
+  </section>
+
+  <section class="wn-admin-kit__section" aria-labelledby="kit-states">
+    <h2 class="wn-admin-kit__title" id="kit-states">Состояния</h2>
+    <div class="wn-admin-kit__grid">
+      <div class="wn-admin-panel">{{ kit.skeleton(4, 4) }}</div>
+      <div class="wn-admin-panel">{{ kit.error_state(text="Запрос не уложился в отведённое время. Данные не потеряны — попробуйте ещё раз.") }}</div>
+      <div class="wn-admin-panel">{{ kit.empty_state("Комментариев пока нет", "Как только читатели что-нибудь напишут, они появятся здесь.") }}</div>
+      <div class="wn-admin-panel">{{ kit.no_results(2, "/admin/_kit") }}</div>
+    </div>
+  </section>
+
+  <section class="wn-admin-kit__section" aria-labelledby="kit-charts">
+    <h2 class="wn-admin-kit__title" id="kit-charts">Графики</h2>
+    {% call kit.card("Активные читатели", "30 дней · наведите на график, чтобы увидеть значения") %}{{ kit.line_chart(charts.line) }}{% endcall %}
+    <div class="wn-admin-kit__grid">
+      {% call kit.card("Новые и вернувшиеся", "Последние 14 дней") %}{{ kit.bar_chart(charts.bars) }}{% endcall %}
+      {% call kit.card("Когда читают", "По часам и дням недели", aside=("Пик: " ~ charts.heat.peak) if charts.heat.peak) %}{{ kit.heatmap(charts.heat) }}{% endcall %}
+    </div>
+  </section>
+</main>
+
+{% call kit.drawer("kit-drawer", "Пользователь", "Демо-форма: сохранение ничего не меняет") %}
+<form method="post" action="/admin/_kit/demo">
+  {{ kit.csrf() }}
+  <input type="hidden" name="action" value="save">
+  <div class="wn-admin-drawer__body">
+    {% call kit.field("Никнейм", "kit-nick", required=true) %}<input class="wn-admin-input" id="kit-nick" name="name" value="aster1" maxlength="100" required>{% endcall %}
+    {% call kit.field("Email", "kit-email", error="Такой email уже занят") %}<input class="wn-admin-input" id="kit-email" type="email" value="taken@example.com" aria-describedby="kit-email-error" aria-invalid="true">{% endcall %}
+    {% call kit.field("Заметка", "kit-note", hint="Видна только в админке") %}<textarea class="wn-admin-input" id="kit-note" rows="4"></textarea>{% endcall %}
+  </div>
+  {{ kit.drawer_foot() }}
+</form>
+{% endcall %}
+
+{% call kit.confirm("kit-confirm", "Удалить пользователя aster1?", "/admin/_kit/demo", confirm_label="Удалить навсегда", lead="Это демо: на самом деле ничего не удалится.", lines=["Аккаунт и вход будут удалены", "Библиотека и история чтения пропадут", "Комментарии останутся без автора"], irreversible=true, ack="Я понимаю, что удаление необратимо", fields={"action": "delete", "name": "aster1"}) %}
+<p class="wn-admin-note">Есть вариант мягче: заблокировать аккаунт — его можно разблокировать.</p>
+{% endcall %}
+
+{{ kit.confirm("kit-simple", "Сохранить изменения?", "/admin/_kit/demo", confirm_label="Сохранить", lead="Обычное подтверждение без «Я понимаю…».", fields={"action": "save", "name": "aster1"}, tone="primary") }}
+{% endblock %}

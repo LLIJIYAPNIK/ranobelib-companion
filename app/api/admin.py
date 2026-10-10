@@ -1,5 +1,5 @@
 """/admin: the panel's login/logout (PR 324), overview and read-only data browser (PR 325),
-the shared sidebar/top-bar shell (PR 341).
+the shared sidebar/top-bar shell (PR 341), the UI kit's dev-only showcase (PR 342).
 
 Every route sits behind ``require_admin_enabled`` (404 without ADMIN_PASSWORD), every page
 but the login form behind ``require_admin`` (app/auth/admin.py). The data pages only read
@@ -20,7 +20,8 @@ from fastapi.responses import HTMLResponse, RedirectResponse, Response
 from psycopg import AsyncConnection
 from psycopg.errors import QueryCanceled
 
-from app.admin_kit import pop_toast
+from app.admin_kit import Undo, pop_toast, push_toast
+from app.admin_kit_demo import charts_context, table_context
 from app.auth.admin import (
     LOGIN_PATH,
     check_csrf,
@@ -130,6 +131,53 @@ def _timed_out(request: Request, section: str) -> HTMLResponse:
     response = _page(request, "admin/timeout.html", section, seconds=QUERY_TIMEOUT_MS // 1000)
     response.status_code = 503
     return response
+
+
+def require_development() -> None:
+    """PR 342: the UI kit's showcase exists only outside production - there it's a 404
+    like any unknown URL, even for the logged-in admin."""
+    if get_settings().is_production:
+        raise HTTPException(status_code=404)
+
+
+@router.get("/_kit", response_model=None, dependencies=[Depends(require_development)])
+async def admin_kit_showcase(request: Request, _: Admin) -> HTMLResponse:
+    args = dict(request.query_params)
+    return _page(
+        request,
+        "admin/kit.html",
+        "kit",
+        table=table_context(args),
+        charts=charts_context(_server_now().date()),
+    )
+
+
+@router.post("/_kit/demo", response_model=None, dependencies=[Depends(require_development)])
+async def admin_kit_demo(
+    request: Request,
+    _: Admin,
+    csrf: Annotated[str, Form()] = "",
+    action: Annotated[str, Form()] = "",
+    confirm: Annotated[str, Form()] = "",
+    name: Annotated[str, Form(max_length=100)] = "",
+) -> Response:
+    """The showcase's dialogs post here so the toast flow can be tried end to end. It
+    changes nothing - the demo rows are a fixed list."""
+    check_csrf(request, csrf)
+    if action == "delete":
+        if confirm != "1":
+            push_toast(request, "Не удалено: нужно подтвердить «Я понимаю…»", tone="error")
+        else:
+            push_toast(
+                request,
+                f"Демо: «{name}» удалён (на самом деле ничего не изменилось)",
+                undo=Undo("/admin/_kit/demo", {"action": "undo", "name": name}),
+            )
+    elif action == "undo":
+        push_toast(request, f"Демо: удаление «{name}» отменено")
+    elif action == "save":
+        push_toast(request, f"Демо: «{name}» сохранён")
+    return RedirectResponse("/admin/_kit", status_code=303)
 
 
 _WEEKDAYS = (
