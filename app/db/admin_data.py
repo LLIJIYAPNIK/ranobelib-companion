@@ -53,18 +53,24 @@ _SECRET_COLUMNS = {
 }
 
 
-def is_secret_column(table: str, column: str) -> bool:
-    """The known secrets, plus any column named like one - so a future token/hash column
-    is hidden by default instead of shown until someone remembers to list it."""
-    name = column.lower()
+def looks_secret(name: str) -> bool:
+    """A column or key named like a secret - a hash, token, password or secret. Shared
+    with the action log's scrubbing of details (app/db/admin_audit.py, PR 343)."""
+    name = name.lower()
     return (
-        (table, column) in _SECRET_COLUMNS
-        or name.endswith("_hash")
+        name.endswith("_hash")
         or "token" in name
         or "secret" in name
         or "password" in name
+        or "csrf" in name
         or name == "session_version"
     )
+
+
+def is_secret_column(table: str, column: str) -> bool:
+    """The known secrets, plus any column named like one - so a future token/hash column
+    is hidden by default instead of shown until someone remembers to list it."""
+    return (table, column) in _SECRET_COLUMNS or looks_secret(column)
 
 
 async def table_columns(conn: AsyncConnection) -> dict[str, list[str]]:
