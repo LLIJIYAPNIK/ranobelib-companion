@@ -59,6 +59,7 @@ from ever sending the cookie back).
 | `ADMIN_PASSWORD` | no | (unset = panel off) | Password for the `/admin` panel (PR 324) - its own login, not a user account, nothing stored in the database. Unset or empty switches the panel off: every `/admin*` URL answers 404 like any unknown page, in production too. Set a long random value (e.g. `openssl rand -base64 24`); login attempts are throttled per IP, but the password is the only factor. Never logged. |
 | `ADMIN_SESSION_TTL_SECONDS` | no | 2 hours | How long an admin login lasts before `/admin` asks for the password again. |
 | `ADMIN_TIMEZONE` | no | `UTC` | IANA time zone (e.g. `Europe/Moscow`) the admin panel shows the server's date/time and groups its stats in. An unknown name falls back to UTC with a warning in the log. |
+| `ADMIN_AUDIT_RETENTION_DAYS` | no | `365` | How many days the admin action log keeps an entry; older entries are removed at startup and then once a day. Anything but a positive whole number falls back to 365 with a warning. |
 
 Local development also reads these same variables, but every one of them falls back to a
 working default under the project directory except `DATABASE_URL` - see `README.md`'s

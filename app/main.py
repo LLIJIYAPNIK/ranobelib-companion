@@ -1,4 +1,5 @@
 import asyncio
+import contextlib
 import sys
 from collections.abc import AsyncIterator
 from contextlib import asynccontextmanager
@@ -30,6 +31,7 @@ from app.api import (
 from app.auth.dependencies import get_current_user
 from app.auth.session_middleware import RememberMeSessionMiddleware
 from app.config import get_settings
+from app.db import admin_audit
 from app.db import connection as db_connection
 from app.db.migrate import run_migrations
 from app.exceptions import register_exception_handlers
@@ -51,7 +53,14 @@ async def lifespan(app: FastAPI) -> AsyncIterator[None]:
     await db_connection.open_pool()
     async with db_connection.connection() as conn:
         await run_migrations(conn)
+    # PR 343: the admin action log's retention - a cleanup now, then daily.
+    retention = asyncio.create_task(
+        admin_audit.retention_loop(get_settings().admin_audit_retention_days)
+    )
     yield
+    retention.cancel()
+    with contextlib.suppress(asyncio.CancelledError):
+        await retention
     await db_connection.close_pool()
 
 
