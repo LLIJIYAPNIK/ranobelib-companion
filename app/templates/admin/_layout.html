@@ -13,6 +13,7 @@
   <link rel="stylesheet" href="{{ static_url('css/app.css') }}">
   {% if admin_section %}
   <script src="{{ static_url('js/admin-sidebar.js') }}" defer></script>
+  <script src="{{ static_url('js/admin-kit.js') }}" defer></script>
   {% endif %}
 </head>
 {# The admin isn't a site user - none of base.html's navigation or account UI here. #}
@@ -90,6 +91,10 @@
       </header>
       {% block content %}{% endblock %}
     </div>
+  </div>
+  {# PR 342: the toast a POST left for this page (app/admin_kit.py push_toast). #}
+  <div class="wn-admin-toasts" role="status" aria-live="polite" data-kit-toasts>
+    {% if toast %}{% import "admin/_kit.html" as kit with context %}{{ kit.toast(toast) }}{% endif %}
   </div>
   {% else %}
   {% block login %}{% endblock %}

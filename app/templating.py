@@ -6,6 +6,7 @@ from fastapi.templating import Jinja2Templates
 from jinja2 import pass_context
 from starlette.requests import Request
 
+from app.admin_kit import admin_query, filter_state, page_range, page_window
 from app.auth.avatar import avatar_initials, avatar_url
 from app.static_assets import asset_hash
 
@@ -51,3 +52,8 @@ templates.env.globals["avatar_initials"] = avatar_initials
 templates.env.globals["avatar_url"] = avatar_url
 templates.env.globals["plural"] = plural
 templates.env.globals["static_url"] = static_url
+# PR 342: the admin UI kit's helpers (app/templates/admin/_kit.html).
+templates.env.globals["admin_query"] = admin_query
+templates.env.globals["filter_state"] = filter_state
+templates.env.globals["page_range"] = page_range
+templates.env.globals["page_window"] = page_window

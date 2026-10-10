@@ -1,0 +1,482 @@
+{#- PR 342: the admin panel's UI kit - the reusable pieces of RanobeLib Admin.dc.html as
+    Jinja macros, styled in app.css («Admin UI kit») and wired by js/admin-kit.js.
+    Import with context (the dialogs need csrf_token):
+      {% import "admin/_kit.html" as kit with context %}
+    The data shapes (Column, Filter, ...) live in app/admin_kit.py. Every control is a
+    real link or form - sorting, paging and filtering are GET requests the route
+    answers; the JS only adds what HTML can't (opening dialogs, hiding columns). -#}
+
+{% macro icon(name, class="") -%}
+<svg class="wn-admin-icon{{ ' ' ~ class if class }}" aria-hidden="true"><use href="#admin-icon-{{ name }}"></use></svg>
+{%- endmacro %}
+
+{#- A status pill. tone: neutral, primary, success, warning, danger. -#}
+{% macro badge(text, tone="neutral") -%}
+<span class="wn-admin-badge wn-admin-badge--{{ tone }}">{{ text }}</span>
+{%- endmacro %}
+
+{#- A table cell's value when the caller doesn't render it: None is a muted dash. -#}
+{% macro cell(value) -%}
+{% if value is none %}<span class="wn-admin-table__null">—</span>{% else %}{{ value }}{% endif %}
+{%- endmacro %}
+
+{#- The data table. columns: Column list; rows: dicts or objects; sort/descending: the
+    applied sort (a sortable header links to the other direction, page reset); args: the
+    page's current query, kept by every link. Call it to render cells yourself:
+      {% call(row, column) kit.table("users", columns, rows, ...) %}...{% endcall %}
+    A Column(kind="actions") is the row's buttons - right-aligned, never sortable. On a
+    phone each row becomes a card, every cell under its column's name. -#}
+{% macro table(id, columns, rows, sort=none, descending=true, args={}, caption=none) -%}
+<div class="wn-admin-table" id="{{ id }}" data-kit-table="{{ id }}">
+  <table class="wn-admin-table__table">
+    {% if caption %}<caption class="wn-admin-sr">{{ caption }}</caption>{% endif %}
+    <thead>
+      <tr>
+        {% for column in columns %}
+        {% set active = column.sortable and column.kind != "actions" and column.key == sort %}
+        <th class="wn-admin-table__th wn-admin-table__th--{{ column.kind }}" scope="col" data-col="{{ column.key }}"
+            {%- if active %} aria-sort="{{ 'descending' if descending else 'ascending' }}"{% endif %}
+            {%- if column.hidden %} hidden{% endif %}>
+          {%- if column.kind == "actions" -%}
+          <span class="wn-admin-sr">{{ column.label }}</span>
+          {%- elif column.sortable -%}
+          <a class="wn-admin-table__sort" href="{{ admin_query(args, sort=column.key, order='asc' if active and descending else 'desc', page=none) }}">{{ column.label }}{{ icon(('arrow-down' if descending else 'arrow-up') if active else 'arrow-up-down', 'wn-admin-table__sort-icon') }}</a>
+          {%- else -%}
+          {{ column.label }}
+          {%- endif -%}
+        </th>
+        {% endfor %}
+      </tr>
+    </thead>
+    <tbody>
+      {% for row in rows %}
+      <tr>
+        {% for column in columns %}
+        <td class="wn-admin-table__td wn-admin-table__td--{{ column.kind }}" data-col="{{ column.key }}" data-label="{{ column.label }}"{% if column.hidden %} hidden{% endif %}>
+          {%- if caller is defined %}{{ caller(row, column) }}{% else %}{{ cell(row[column.key]) }}{% endif -%}
+        </td>
+        {% endfor %}
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+{%- endmacro %}
+
+{#- «Колонки · N»: which of a table's columns to show. Remembered per browser
+    (js/admin-kit.js); hidden until the script runs, since without it the boxes do
+    nothing. A locked column stays on. -#}
+{% macro columns_menu(table_id, columns) -%}
+{% set listed = columns | rejectattr("kind", "equalto", "actions") | list %}
+<details class="wn-admin-colmenu" data-kit-columns="{{ table_id }}" hidden>
+  <summary class="wn-admin-btn wn-admin-btn--ghost">{{ icon("columns") }}Колонки · <span data-kit-columns-count>{{ listed | rejectattr("hidden") | list | length }}</span></summary>
+  <div class="wn-admin-colmenu__panel">
+    <p class="wn-admin-colmenu__title">Показывать колонки</p>
+    {% for column in listed %}
+    <label class="wn-admin-colmenu__item">
+      <input class="wn-admin-check" type="checkbox" value="{{ column.key }}"{% if not column.hidden %} checked{% endif %}{% if column.locked %} disabled data-locked{% endif %}>
+      <span>{{ column.label }}</span>{% if column.locked %}{{ icon("lock") }}{% endif %}
+    </label>
+    {% endfor %}
+    <div class="wn-admin-colmenu__foot">
+      <button class="wn-admin-btn wn-admin-btn--link" type="button" data-kit-columns-all>Показать все</button>
+      <button class="wn-admin-btn wn-admin-btn--link" type="button" data-kit-columns-done>Готово</button>
+    </div>
+  </div>
+</details>
+{%- endmacro %}
+
+{#- The search/filter bar over a table: a GET form (search box + one select per Filter),
+    then a chip per applied condition - each chip's link drops just that one - and
+    «Сбросить (N)». The sort survives filtering; the page number doesn't. Call it to add
+    controls at the row's end (the column menu):
+      {% call kit.filter_bar(...) %}{{ kit.columns_menu(...) }}{% endcall %} -#}
+{% macro filter_bar(action, args, filters=[], query_name="q", placeholder="Поиск", keep=("sort", "order")) -%}
+{% set state = filter_state(args, filters, query_name, keep) %}
+<form class="wn-admin-filters" method="get" action="{{ action }}" role="search" data-kit-filters>
+  <div class="wn-admin-filters__row">
+    <label class="wn-admin-filters__search">
+      {{ icon("search") }}<span class="wn-admin-sr">{{ placeholder }}</span>
+      <input class="wn-admin-input" type="search" name="{{ query_name }}" value="{{ args.get(query_name) or '' }}" maxlength="200" placeholder="{{ placeholder }}">
+    </label>
+    {% for item in filters %}
+    <label class="wn-admin-select{% if item.value %} wn-admin-select--active{% endif %}">{{ item.label }}:
+      <select name="{{ item.name }}">
+        <option value="">Все</option>
+        {% for value, label in item.options %}
+        <option value="{{ value }}"{% if value == item.value %} selected{% endif %}>{{ label }}</option>
+        {% endfor %}
+      </select>
+    </label>
+    {% endfor %}
+    {% for key in keep if args.get(key) %}
+    <input type="hidden" name="{{ key }}" value="{{ args.get(key) }}">
+    {% endfor %}
+    <button class="wn-admin-btn" type="submit">Найти</button>
+    {% if caller is defined %}<div class="wn-admin-filters__extra">{{ caller() }}</div>{% endif %}
+  </div>
+  {% if state.count %}
+  <div class="wn-admin-filters__chips" role="group" aria-label="Применённые фильтры">
+    {% for chip in state.chips %}
+    <a class="wn-admin-chip" href="{{ chip.remove }}" title="Убрать фильтр">{{ chip.label }}{{ icon("close") }}</a>
+    {% endfor %}
+    <a class="wn-admin-filters__reset" href="{{ state.reset }}">Сбросить ({{ state.count }})</a>
+  </div>
+  {% endif %}
+</form>
+{%- endmacro %}
+
+{#- «26–50 из 340» and the page links: first, last and the neighbours of the current one. -#}
+{% macro pager(page, pages, total, per_page, args={}) -%}
+<nav class="wn-admin-pager" aria-label="Страницы">
+  <span class="wn-admin-pager__info">{{ page_range(page, per_page, total) }}</span>
+  {% if pages > 1 %}
+  <div class="wn-admin-pager__pages">
+    {% if page > 1 %}
+    <a class="wn-admin-pager__step" href="{{ admin_query(args, page=page - 1 if page > 2 else none) }}" aria-label="Предыдущая страница">{{ icon("chevron-left") }}</a>
+    {% else %}
+    <span class="wn-admin-pager__step" aria-disabled="true">{{ icon("chevron-left") }}</span>
+    {% endif %}
+    {% for n in page_window(page, pages) %}
+    {% if n is none %}
+    <span class="wn-admin-pager__gap" aria-hidden="true">…</span>
+    {% else %}
+    <a class="wn-admin-pager__page" href="{{ admin_query(args, page=n if n > 1 else none) }}"{% if n == page %} aria-current="page"{% endif %} aria-label="Страница {{ n }}">{{ n }}</a>
+    {% endif %}
+    {% endfor %}
+    {% if page < pages %}
+    <a class="wn-admin-pager__step" href="{{ admin_query(args, page=page + 1) }}" aria-label="Следующая страница">{{ icon("chevron-right") }}</a>
+    {% else %}
+    <span class="wn-admin-pager__step" aria-disabled="true">{{ icon("chevron-right") }}</span>
+    {% endif %}
+  </div>
+  {% endif %}
+</nav>
+{%- endmacro %}
+
+{#- The CSRF field every POST in the panel needs (app/auth/admin.py). -#}
+{% macro csrf() -%}
+<input type="hidden" name="csrf" value="{{ csrf_token }}">
+{%- endmacro %}
+
+{#- A labelled form field for a drawer; the caller is the control, its id ``for_id``. -#}
+{% macro field(label, for_id, hint=none, error=none, required=false) -%}
+<div class="wn-admin-field{{ ' wn-admin-field--error' if error }}">
+  <label class="wn-admin-field__label" for="{{ for_id }}">{{ label }}{% if required %}<span class="wn-admin-field__req" aria-hidden="true">*</span>{% endif %}</label>
+  {{ caller() }}
+  {% if error %}<p class="wn-admin-field__error" id="{{ for_id }}-error">{{ icon("circle-alert") }}{{ error }}</p>{% endif %}
+  {% if hint %}<p class="wn-admin-field__hint">{{ hint }}</p>{% endif %}
+</div>
+{%- endmacro %}
+
+{#- The drawer from the right: a native modal <dialog> (focus stays inside, Escape and
+    a click outside close it) opened by any <button data-kit-open="ID">. The caller is
+    its content - usually a form of .wn-admin-drawer__body + kit.drawer_foot(). -#}
+{% macro drawer(id, title, subtitle=none) -%}
+<dialog class="wn-admin-drawer" id="{{ id }}" aria-labelledby="{{ id }}-title" data-kit-dialog>
+  <div class="wn-admin-drawer__head">
+    <div class="wn-admin-drawer__titles">
+      <h2 class="wn-admin-drawer__title" id="{{ id }}-title">{{ title }}</h2>
+      {% if subtitle %}<p class="wn-admin-drawer__sub">{{ subtitle }}</p>{% endif %}
+    </div>
+    <button class="wn-admin-iconbtn" type="button" data-kit-close aria-label="Закрыть">{{ icon("close") }}</button>
+  </div>
+  {{ caller() }}
+</dialog>
+{%- endmacro %}
+
+{#- A drawer form's footer: whether anything changed, «Отмена» and the submit. -#}
+{% macro drawer_foot(submit_label="Сохранить") -%}
+<div class="wn-admin-drawer__foot">
+  <span class="wn-admin-drawer__state" data-kit-dirty>Изменений нет</span>
+  <button class="wn-admin-btn wn-admin-btn--ghost" type="button" data-kit-close>Отмена</button>
+  <button class="wn-admin-btn wn-admin-btn--primary" type="submit">{{ submit_label }}</button>
+</div>
+{%- endmacro %}
+
+{#- The confirmation dialog: a POST form to ``action`` (CSRF and ``fields`` included),
+    opened by <button data-kit-open="ID">. ``lines`` spell out what will happen; the
+    caller may add a note (a softer alternative). For what can't be undone set
+    ``irreversible``: the submit stays off until «Я понимаю…» is ticked, and the box
+    posts ``confirm=1`` - the route should still check it. -#}
+{% macro confirm(id, title, action, confirm_label="Удалить", lead=none, lines=[], irreversible=false, ack="Я понимаю, что это действие необратимо", fields={}, tone="danger") -%}
+<dialog class="wn-admin-dialog" id="{{ id }}" aria-labelledby="{{ id }}-title"{% if lead %} aria-describedby="{{ id }}-lead"{% endif %} data-kit-dialog>
+  <form class="wn-admin-dialog__form" method="post" action="{{ action }}" data-kit-confirm>
+    {{ csrf() }}
+    {% for name, value in fields.items() %}
+    <input type="hidden" name="{{ name }}" value="{{ value }}">
+    {% endfor %}
+    <div class="wn-admin-dialog__head">
+      <span class="wn-admin-dialog__mark wn-admin-dialog__mark--{{ tone }}">{{ icon("triangle-alert" if tone == "danger" else "circle-alert") }}</span>
+      <div class="wn-admin-dialog__titles">
+        <h2 class="wn-admin-dialog__title" id="{{ id }}-title">{{ title }}</h2>
+        {% if lead %}<p class="wn-admin-dialog__lead" id="{{ id }}-lead">{{ lead }}</p>{% endif %}
+      </div>
+    </div>
+    {% if lines %}
+    <ul class="wn-admin-dialog__lines">
+      {% for line in lines %}
+      <li>{{ icon("circle-alert") }}<span>{{ line }}</span></li>
+      {% endfor %}
+    </ul>
+    {% endif %}
+    {% if caller is defined %}{{ caller() }}{% endif %}
+    {% if irreversible %}
+    <label class="wn-admin-dialog__ack">
+      <input class="wn-admin-check" type="checkbox" name="confirm" value="1" required data-kit-ack>
+      <span>{{ ack }}</span>
+    </label>
+    {% endif %}
+    <div class="wn-admin-dialog__actions">
+      <button class="wn-admin-btn wn-admin-btn--ghost" type="button" data-kit-close>Отмена</button>
+      <button class="wn-admin-btn wn-admin-btn--{{ 'danger' if tone == 'danger' else 'primary' }}" type="submit"{% if irreversible %} data-kit-ack-submit{% endif %}>{% if tone == "danger" %}{{ icon("trash") }}{% endif %}{{ confirm_label }}</button>
+    </div>
+  </form>
+</dialog>
+{%- endmacro %}
+
+{#- The toast a POST left behind (app/admin_kit.py push_toast): the message, «Отменить»
+    when the action can be reverted, a close button; it hides itself after a few
+    seconds unless the pointer or focus is on it. -#}
+{% macro toast(item) -%}
+<div class="wn-admin-toast wn-admin-toast--{{ item.tone }}" data-kit-toast>
+  {{ icon("circle-check" if item.tone == "success" else "circle-alert", "wn-admin-toast__icon") }}
+  <span class="wn-admin-toast__text">{{ item.message }}</span>
+  {% if item.undo %}
+  <form class="wn-admin-toast__undo" method="post" action="{{ item.undo.action }}">
+    {{ csrf() }}
+    {% for name, value in item.undo.fields.items() %}
+    <input type="hidden" name="{{ name }}" value="{{ value }}">
+    {% endfor %}
+    <button class="wn-admin-toast__undo-btn" type="submit">{{ icon("undo") }}Отменить</button>
+  </form>
+  {% endif %}
+  <button class="wn-admin-iconbtn" type="button" data-kit-toast-close aria-label="Закрыть уведомление">{{ icon("close") }}</button>
+</div>
+{%- endmacro %}
+
+{#- States for a panel or table with nothing to show yet. Each is centred in its panel;
+    the caller (where accepted) adds buttons below the text. -#}
+{% macro _state(kind, icon_name, title, text) -%}
+<div class="wn-admin-state wn-admin-state--{{ kind }}"{% if kind == "error" %} role="alert"{% endif %}>
+  <span class="wn-admin-state__mark">{{ icon(icon_name) }}</span>
+  <p class="wn-admin-state__title">{{ title }}</p>
+  {% if text %}<p class="wn-admin-state__text">{{ text }}</p>{% endif %}
+  {% if caller is defined %}<div class="wn-admin-state__actions">{{ caller() }}</div>{% endif %}
+</div>
+{%- endmacro %}
+
+{#- Loading: grey bars in the shape of ``rows`` x ``columns`` table rows. -#}
+{% macro skeleton(rows=5, columns=4, label="Загружаем данные…") -%}
+<div class="wn-admin-skeleton" role="status" aria-busy="true">
+  <p class="wn-admin-skeleton__label"><span class="wn-admin-spinner" aria-hidden="true"></span>{{ label }}</p>
+  {% for row in range(rows) %}
+  <div class="wn-admin-skeleton__row" aria-hidden="true">
+    {% for column in range(columns) %}
+    <span class="wn-admin-skeleton__cell"><span class="wn-admin-skeleton__bar" style="--w: {{ (70, 45, 85, 55, 62)[(row + column) % 5] }}%"></span></span>
+    {% endfor %}
+  </div>
+  {% endfor %}
+</div>
+{%- endmacro %}
+
+{#- Something failed: what, and «Повторить» - a link back to ``retry`` (this same page
+    by default). -#}
+{% macro error_state(title="Не удалось загрузить данные", text=none, retry=none) -%}
+{% set again = retry or (request.url.path ~ ("?" ~ request.url.query if request.url.query else "")) %}
+{% set extra = caller() if caller is defined else "" %}
+{% call _state("error", "cloud-off", title, text) %}
+<a class="wn-admin-btn wn-admin-btn--primary" href="{{ again }}">{{ icon("refresh") }}Повторить</a>{{ extra }}
+{% endcall %}
+{%- endmacro %}
+
+{#- Nothing here at all yet (not a filter's doing). -#}
+{% macro empty_state(title, text=none, icon_name="inbox") -%}
+{% if caller is defined %}
+{% set actions = caller() %}
+{% call _state("empty", icon_name, title, text) %}{{ actions }}{% endcall %}
+{% else %}
+{{ _state("empty", icon_name, title, text) }}
+{% endif %}
+{%- endmacro %}
+
+{#- The search/filters matched nothing: say so and offer to drop them. -#}
+{% macro no_results(count, reset) -%}
+{% call _state("none", "search-x", "Ничего не найдено", "Ни одна запись не подходит под поиск и фильтры (" ~ count ~ "). Попробуйте ослабить условия.") %}
+<a class="wn-admin-btn" href="{{ reset }}">Сбросить фильтры</a>
+{% endcall %}
+{%- endmacro %}
+
+{#- A titled panel - what the overview's blocks and charts sit in. ``aside`` is a short
+    note at the header's right («Пик: Пт, 21:00»). -#}
+{% macro card(title=none, subtitle=none, aside=none) -%}
+<section class="wn-admin-panel wn-admin-card">
+  {% if title %}
+  <header class="wn-admin-card__head">
+    <div class="wn-admin-card__titles">
+      <h2 class="wn-admin-card__title">{{ title }}</h2>
+      {% if subtitle %}<p class="wn-admin-card__sub">{{ subtitle }}</p>{% endif %}
+    </div>
+    {% if aside %}<p class="wn-admin-card__aside">{{ aside }}</p>{% endif %}
+  </header>
+  {% endif %}
+  {{ caller() }}
+</section>
+{%- endmacro %}
+
+{#- A KPI: label, value, the change against the previous period (app/admin_kit.py
+    delta()), what it was before, an optional sparkline. Lay several out in a
+    <div class="wn-admin-kpis">. -#}
+{% macro kpi(label, value, icon_name="chart", change=none, previous=none, spark=none) -%}
+<article class="wn-admin-panel wn-admin-kpi">
+  <p class="wn-admin-kpi__label">{{ icon(icon_name) }}<span>{{ label }}</span></p>
+  <p class="wn-admin-kpi__value">{{ value }}</p>
+  {% if change or previous or spark %}
+  <div class="wn-admin-kpi__foot">
+    <div class="wn-admin-kpi__meta">
+      {% if change %}<span class="wn-admin-delta wn-admin-delta--{{ change.tone }}">{{ icon(change.icon) }}{{ change.text }}</span>{% endif %}
+      {% if previous %}<span class="wn-admin-kpi__prev">{{ previous }}</span>{% endif %}
+    </div>
+    {% if spark %}
+    <svg class="wn-admin-spark" viewBox="0 0 96 34" preserveAspectRatio="none" aria-hidden="true" focusable="false">
+      <path class="wn-admin-spark__area" d="{{ spark.area }}"/>
+      <path class="wn-admin-spark__line" d="{{ spark.line }}"/>
+    </svg>
+    {% endif %}
+  </div>
+  {% endif %}
+</article>
+{%- endmacro %}
+
+{#- A chart's hover: a column per point that shows its values in a tooltip
+    (js/admin-kit.js), plus the same numbers as a table for screen readers. -#}
+{% macro _hover(chart) -%}
+<div class="wn-admin-chart__hits" aria-hidden="true">
+  {% for point in chart.points %}
+  <div class="wn-admin-chart__hit" data-kit-point style="--x: {{ point.x | round(3) }}%{% if point.y is not none %}; --y: {{ point.y | round(3) }}%{% endif %}">
+    <div class="wn-admin-chart__tipdata" hidden>
+      <p class="wn-admin-chart__tip-title">{{ point.label }}</p>
+      {% for name, value in point.rows %}
+      <p class="wn-admin-chart__tip-row"><span>{{ name }}</span><b>{{ value }}</b></p>
+      {% endfor %}
+    </div>
+  </div>
+  {% endfor %}
+</div>
+<div class="wn-admin-chart__cursor" data-kit-cursor hidden><span class="wn-admin-chart__dot" data-kit-dot></span></div>
+<div class="wn-admin-chart__tip" data-kit-tip hidden></div>
+{%- endmacro %}
+
+{% macro _data_table(chart) -%}
+{% if chart.points %}
+{# A table can't shrink below its content - the hiding goes on a wrapper. #}
+<div class="wn-admin-sr">
+<table>
+  <caption>{{ chart.name }}</caption>
+  <thead><tr><th scope="col">Период</th>{% for name, _ in chart.points[0].rows %}<th scope="col">{{ name }}</th>{% endfor %}</tr></thead>
+  <tbody>
+    {% for point in chart.points %}
+    <tr><th scope="row">{{ point.label }}</th>{% for _, value in point.rows %}<td>{{ value }}</td>{% endfor %}</tr>
+    {% endfor %}
+  </tbody>
+</table>
+</div>
+{% endif %}
+{%- endmacro %}
+
+{% macro _axes(chart) -%}
+<div class="wn-admin-chart__y" aria-hidden="true" style="height: {{ chart.height }}px">
+  {% for tick in chart.y_ticks %}<span style="top: {{ tick.position | round(3) }}%">{{ tick.text }}</span>{% endfor %}
+</div>
+{%- endmacro %}
+
+{#- One metric over time (app/admin_kit.py line_chart()); the previous period dashed on
+    the same scale. -#}
+{% macro line_chart(chart) -%}
+<figure class="wn-admin-chart wn-admin-chart--line" data-kit-chart>
+  <div class="wn-admin-chart__frame">
+    {{ _axes(chart) }}
+    <div class="wn-admin-chart__body">
+      <div class="wn-admin-chart__plot" style="height: {{ chart.height }}px">
+        <svg class="wn-admin-chart__svg" viewBox="0 0 1000 {{ chart.height }}" preserveAspectRatio="none" aria-hidden="true" focusable="false">
+          {% for y in chart.grid %}<line class="wn-admin-chart__grid{% if loop.first %} wn-admin-chart__grid--base{% endif %}" x1="0" x2="1000" y1="{{ y | round(1) }}" y2="{{ y | round(1) }}"/>{% endfor %}
+          {% if chart.area %}<path class="wn-admin-chart__area" d="{{ chart.area }}"/>{% endif %}
+          {% if chart.previous %}<path class="wn-admin-chart__line wn-admin-chart__line--previous" d="{{ chart.previous }}"/>{% endif %}
+          <path class="wn-admin-chart__line" d="{{ chart.line }}"/>
+        </svg>
+        {{ _hover(chart) }}
+      </div>
+      <div class="wn-admin-chart__x" aria-hidden="true">
+        {% for tick in chart.x_ticks %}<span style="left: {{ tick.position | round(3) }}%">{{ tick.text }}</span>{% endfor %}
+      </div>
+    </div>
+  </div>
+  {% if chart.previous %}
+  <figcaption class="wn-admin-chart__legend" aria-hidden="true">
+    <span class="wn-admin-chart__key"><span class="wn-admin-chart__swatch wn-admin-chart__swatch--line"></span>{{ chart.name }}</span>
+    <span class="wn-admin-chart__key"><span class="wn-admin-chart__swatch wn-admin-chart__swatch--previous"></span>{{ chart.previous_name }}</span>
+  </figcaption>
+  {% endif %}
+  {{ _data_table(chart) }}
+</figure>
+{%- endmacro %}
+
+{#- Columns per label (app/admin_kit.py bar_chart()); several series stack. -#}
+{% macro bar_chart(chart) -%}
+<figure class="wn-admin-chart wn-admin-chart--bars" data-kit-chart>
+  <div class="wn-admin-chart__frame">
+    {{ _axes(chart) }}
+    <div class="wn-admin-chart__body">
+      <div class="wn-admin-chart__plot" style="height: {{ chart.height }}px">
+        <svg class="wn-admin-chart__svg" viewBox="0 0 1000 {{ chart.height }}" preserveAspectRatio="none" aria-hidden="true" focusable="false">
+          {% for y in chart.grid %}<line class="wn-admin-chart__grid{% if loop.first %} wn-admin-chart__grid--base{% endif %}" x1="0" x2="1000" y1="{{ y | round(1) }}" y2="{{ y | round(1) }}"/>{% endfor %}
+          {% for rect in chart.rects %}<rect class="wn-admin-chart__bar wn-admin-chart__bar--{{ rect.tone }}" x="{{ rect.x | round(1) }}" y="{{ rect.y | round(1) }}" width="{{ rect.width | round(1) }}" height="{{ rect.height | round(1) }}"/>{% endfor %}
+        </svg>
+        {{ _hover(chart) }}
+      </div>
+      <div class="wn-admin-chart__x" aria-hidden="true">
+        {% for tick in chart.x_ticks %}<span style="left: {{ tick.position | round(3) }}%">{{ tick.text }}</span>{% endfor %}
+      </div>
+    </div>
+  </div>
+  {% if chart.series | length > 1 %}
+  <figcaption class="wn-admin-chart__legend" aria-hidden="true">
+    {% for item in chart.series %}
+    <span class="wn-admin-chart__key"><span class="wn-admin-chart__swatch wn-admin-chart__swatch--{{ item.tone }}"></span>{{ item.name }}</span>
+    {% endfor %}
+  </figcaption>
+  {% endif %}
+  {{ _data_table(chart) }}
+</figure>
+{%- endmacro %}
+
+{#- Cells shaded by value (app/admin_kit.py heatmap()): «Когда читают». -#}
+{% macro heatmap(chart) -%}
+<figure class="wn-admin-heat">
+  <div class="wn-admin-heat__grid" aria-hidden="true">
+    {% for row in chart.rows %}
+    <span class="wn-admin-heat__label">{{ row.label }}</span>
+    <div class="wn-admin-heat__row" style="--cols: {{ chart.columns }}">
+      {% for cell in row.cells %}<span class="wn-admin-heat__cell wn-admin-heat__cell--{{ cell.level }}" title="{{ cell.title }}"></span>{% endfor %}
+    </div>
+    {% endfor %}
+    <span></span>
+    <div class="wn-admin-heat__ticks">
+      {% for tick in chart.column_ticks %}<span style="left: {{ tick.position | round(3) }}%">{{ tick.text }}</span>{% endfor %}
+    </div>
+  </div>
+  <figcaption class="wn-admin-heat__legend" aria-hidden="true">
+    Меньше{% for level in range(1, 5) %}<span class="wn-admin-heat__cell wn-admin-heat__cell--{{ level }}"></span>{% endfor %}Больше
+  </figcaption>
+  <div class="wn-admin-sr">
+    <table>
+      <caption>{{ chart.name }}</caption>
+      <tbody>
+        {% for row in chart.rows %}
+        <tr>{% for cell in row.cells %}<td>{{ cell.title }}</td>{% endfor %}</tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</figure>
+{%- endmacro %}
