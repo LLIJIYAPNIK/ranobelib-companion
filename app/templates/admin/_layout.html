@@ -11,6 +11,9 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&display=swap">
   <link rel="stylesheet" href="{{ static_url('css/app.css') }}">
+  {% if admin_section %}
+  <script src="{{ static_url('js/admin-sidebar.js') }}" defer></script>
+  {% endif %}
 </head>
 {# The admin isn't a site user - none of base.html's navigation or account UI here. #}
 <body class="wn-admin">
@@ -26,6 +29,9 @@
           <span class="wn-admin-side__brand-name">Webnovells</span>
           <span class="wn-admin-side__brand-sub">Админ-панель</span>
         </span>
+        <button class="wn-admin-side__close" type="button" data-role="admin-nav-close" aria-label="Закрыть меню">
+          <svg class="wn-admin-icon" aria-hidden="true"><use href="#admin-icon-close"></use></svg>
+        </button>
       </div>
       <nav class="wn-admin-side__nav" aria-label="Разделы панели">
         {% set ns = namespace(group="") %}
@@ -61,13 +67,18 @@
         </form>
       </div>
     </aside>
+    <div class="wn-admin-scrim" data-role="admin-nav-scrim" hidden></div>
 
     <div class="wn-admin-frame">
       <header class="wn-admin-top">
+        {# <=1024px the sidebar slides out from here (admin-sidebar.js). #}
+        <button class="wn-admin-top__menu" type="button" data-role="admin-nav-open" aria-controls="admin-sidebar" aria-expanded="false" aria-label="Меню панели">
+          <svg class="wn-admin-icon" aria-hidden="true"><use href="#admin-icon-menu"></use></svg>
+        </button>
         <h1 class="wn-admin-top__title" id="admin-page-title">{% block heading %}{% endblock %}</h1>
         {# PR 353 puts the global search here. #}
         <div class="wn-admin-top__search" data-role="admin-search-slot"></div>
-        <a class="wn-admin-top__site" href="/" title="На сайт">
+        <a class="wn-admin-top__site" href="/" title="На сайт" aria-label="На сайт">
           <svg class="wn-admin-icon" aria-hidden="true"><use href="#admin-icon-external"></use></svg>
           <span class="wn-admin-top__site-text">На сайт</span>
         </a>

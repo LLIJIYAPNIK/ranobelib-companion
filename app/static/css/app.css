@@ -21514,6 +21514,144 @@ a.wn-admin-side__item:hover {
   gap: 12px;
 }
 
+/* PR 341: the shell's breakpoints, as in the mockup - the full sidebar from 1180px, an
+   icon rail below that, and at <=1024px a panel that slides out over the page behind a
+   scrim (admin-sidebar.js). The menu/close buttons and the scrim exist only there. */
+.wn-admin-top__menu,
+.wn-admin-side__close {
+  display: none;
+  flex: none;
+  place-items: center;
+  width: 38px;
+  height: 38px;
+  padding: 0;
+  border: 1px solid var(--wn-border);
+  border-radius: 10px;
+  background: var(--wn-surface);
+  color: var(--wn-text);
+  cursor: pointer;
+}
+
+.wn-admin-side__close {
+  margin-left: auto;
+}
+
+.wn-admin-top__menu:focus-visible,
+.wn-admin-side__close:focus-visible {
+  outline: none;
+  box-shadow: var(--wn-focus-ring);
+}
+
+.wn-admin-scrim {
+  position: fixed;
+  inset: 0;
+  z-index: 35;
+  background: var(--scrim);
+}
+
+.wn-admin-scrim[hidden] {
+  display: none;
+}
+
+@media (min-width: 1025px) and (max-width: 1179px) {
+  .wn-admin-side {
+    width: 72px;
+  }
+
+  .wn-admin-side__brand {
+    justify-content: center;
+    padding: 0;
+  }
+
+  .wn-admin-side__brand-text,
+  .wn-admin-side__label,
+  .wn-admin-side__soon,
+  .wn-admin-side__avatar,
+  .wn-admin-side__role {
+    display: none;
+  }
+
+  /* A group's name becomes a divider line, as in the mockup's rail. */
+  .wn-admin-side__group {
+    height: 1px;
+    margin: 8px 6px;
+    padding: 0;
+    overflow: hidden;
+    background: var(--wn-border);
+    color: transparent;
+  }
+
+  .wn-admin-side__item {
+    justify-content: center;
+    padding: 0;
+  }
+
+  .wn-admin-side__account {
+    justify-content: center;
+    padding: 12px 0;
+  }
+}
+
+@media (max-width: 1024px) {
+  .wn-admin-side {
+    position: fixed;
+    top: 0;
+    bottom: 0;
+    left: 0;
+    z-index: 40;
+    width: min(280px, calc(100vw - 48px));
+    height: auto;
+    box-shadow: 24px 0 60px rgba(0, 0, 0, 0.5);
+    transform: translateX(-100%);
+    visibility: hidden;
+    transition:
+      transform 0.2s ease,
+      visibility 0s linear 0.2s;
+  }
+
+  .wn-admin-side[data-open] {
+    transform: none;
+    visibility: visible;
+    transition: transform 0.2s ease;
+  }
+
+  .wn-admin-top__menu,
+  .wn-admin-side__close {
+    display: grid;
+  }
+
+  .wn-admin--nav-open {
+    overflow: hidden;
+  }
+
+  .wn-admin-top {
+    padding: 0 16px;
+  }
+
+  .wn-admin__main {
+    padding: 20px 16px 32px;
+  }
+}
+
+@media (max-width: 767px) {
+  .wn-admin-top__site {
+    width: 38px;
+    padding: 0;
+    justify-content: center;
+  }
+
+  .wn-admin-top__site-text {
+    display: none;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .wn-admin-side,
+  .wn-admin-side[data-open] {
+    transition: none;
+  }
+}
+
 
 /* ==========================================================================
    Offline page (PR 328) - what the service worker shows for a page that couldn't load
