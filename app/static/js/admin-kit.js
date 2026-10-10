@@ -181,4 +181,40 @@
       schedule();
     });
   }
+
+  // Chart hover: the column under the pointer shows its values in a tooltip, with a
+  // cursor line (and a line chart's dot) at that point. The same numbers are in a
+  // visually hidden table, so this is only for the eye.
+  document.querySelectorAll("[data-kit-chart]").forEach((chart) => {
+    const plot = chart.querySelector(".wn-admin-chart__plot");
+    const cursor = chart.querySelector("[data-kit-cursor]");
+    const dot = chart.querySelector("[data-kit-dot]");
+    const tip = chart.querySelector("[data-kit-tip]");
+    if (!plot || !cursor || !tip) return;
+
+    const show = (hit) => {
+      const style = hit.style;
+      const x = style.getPropertyValue("--x");
+      const y = style.getPropertyValue("--y");
+      cursor.style.left = x;
+      dot.hidden = !y;
+      if (y) dot.style.top = y;
+      tip.innerHTML = hit.querySelector(".wn-admin-chart__tipdata").innerHTML;
+      cursor.hidden = false;
+      tip.hidden = false;
+      // Keep the tooltip inside the plot: right of the point, or left of it near the end.
+      const left = (parseFloat(x) / 100) * plot.clientWidth;
+      const flip = left + tip.offsetWidth + 16 > plot.clientWidth;
+      tip.style.left = `${flip ? Math.max(0, left - tip.offsetWidth - 12) : left + 12}px`;
+    };
+    const hide = () => {
+      cursor.hidden = true;
+      tip.hidden = true;
+    };
+
+    plot.querySelectorAll("[data-kit-point]").forEach((hit) => {
+      hit.addEventListener("pointerenter", () => show(hit));
+    });
+    plot.addEventListener("pointerleave", hide);
+  });
 })();

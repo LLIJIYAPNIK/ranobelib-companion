@@ -306,3 +306,172 @@
 <a class="wn-admin-btn" href="{{ reset }}">Сбросить фильтры</a>
 {% endcall %}
 {%- endmacro %}
+
+{#- A titled panel - what the overview's blocks and charts sit in. ``aside`` is a short
+    note at the header's right («Пик: Пт, 21:00»). -#}
+{% macro card(title=none, subtitle=none, aside=none) -%}
+<section class="wn-admin-panel wn-admin-card">
+  {% if title %}
+  <header class="wn-admin-card__head">
+    <div class="wn-admin-card__titles">
+      <h2 class="wn-admin-card__title">{{ title }}</h2>
+      {% if subtitle %}<p class="wn-admin-card__sub">{{ subtitle }}</p>{% endif %}
+    </div>
+    {% if aside %}<p class="wn-admin-card__aside">{{ aside }}</p>{% endif %}
+  </header>
+  {% endif %}
+  {{ caller() }}
+</section>
+{%- endmacro %}
+
+{#- A KPI: label, value, the change against the previous period (app/admin_kit.py
+    delta()), what it was before, an optional sparkline. Lay several out in a
+    <div class="wn-admin-kpis">. -#}
+{% macro kpi(label, value, icon_name="chart", change=none, previous=none, spark=none) -%}
+<article class="wn-admin-panel wn-admin-kpi">
+  <p class="wn-admin-kpi__label">{{ icon(icon_name) }}<span>{{ label }}</span></p>
+  <p class="wn-admin-kpi__value">{{ value }}</p>
+  {% if change or previous or spark %}
+  <div class="wn-admin-kpi__foot">
+    <div class="wn-admin-kpi__meta">
+      {% if change %}<span class="wn-admin-delta wn-admin-delta--{{ change.tone }}">{{ icon(change.icon) }}{{ change.text }}</span>{% endif %}
+      {% if previous %}<span class="wn-admin-kpi__prev">{{ previous }}</span>{% endif %}
+    </div>
+    {% if spark %}
+    <svg class="wn-admin-spark" viewBox="0 0 96 34" preserveAspectRatio="none" aria-hidden="true" focusable="false">
+      <path class="wn-admin-spark__area" d="{{ spark.area }}"/>
+      <path class="wn-admin-spark__line" d="{{ spark.line }}"/>
+    </svg>
+    {% endif %}
+  </div>
+  {% endif %}
+</article>
+{%- endmacro %}
+
+{#- A chart's hover: a column per point that shows its values in a tooltip
+    (js/admin-kit.js), plus the same numbers as a table for screen readers. -#}
+{% macro _hover(chart) -%}
+<div class="wn-admin-chart__hits" aria-hidden="true">
+  {% for point in chart.points %}
+  <div class="wn-admin-chart__hit" data-kit-point style="--x: {{ point.x | round(3) }}%{% if point.y is not none %}; --y: {{ point.y | round(3) }}%{% endif %}">
+    <div class="wn-admin-chart__tipdata" hidden>
+      <p class="wn-admin-chart__tip-title">{{ point.label }}</p>
+      {% for name, value in point.rows %}
+      <p class="wn-admin-chart__tip-row"><span>{{ name }}</span><b>{{ value }}</b></p>
+      {% endfor %}
+    </div>
+  </div>
+  {% endfor %}
+</div>
+<div class="wn-admin-chart__cursor" data-kit-cursor hidden><span class="wn-admin-chart__dot" data-kit-dot></span></div>
+<div class="wn-admin-chart__tip" data-kit-tip hidden></div>
+{%- endmacro %}
+
+{% macro _data_table(chart) -%}
+{% if chart.points %}
+<table class="wn-admin-sr">
+  <caption>{{ chart.name }}</caption>
+  <thead><tr><th scope="col">Период</th>{% for name, _ in chart.points[0].rows %}<th scope="col">{{ name }}</th>{% endfor %}</tr></thead>
+  <tbody>
+    {% for point in chart.points %}
+    <tr><th scope="row">{{ point.label }}</th>{% for _, value in point.rows %}<td>{{ value }}</td>{% endfor %}</tr>
+    {% endfor %}
+  </tbody>
+</table>
+{% endif %}
+{%- endmacro %}
+
+{% macro _axes(chart) -%}
+<div class="wn-admin-chart__y" aria-hidden="true" style="height: {{ chart.height }}px">
+  {% for tick in chart.y_ticks %}<span style="top: {{ tick.position | round(3) }}%">{{ tick.text }}</span>{% endfor %}
+</div>
+{%- endmacro %}
+
+{#- One metric over time (app/admin_kit.py line_chart()); the previous period dashed on
+    the same scale. -#}
+{% macro line_chart(chart) -%}
+<figure class="wn-admin-chart wn-admin-chart--line" data-kit-chart>
+  <div class="wn-admin-chart__frame">
+    {{ _axes(chart) }}
+    <div class="wn-admin-chart__body">
+      <div class="wn-admin-chart__plot" style="height: {{ chart.height }}px">
+        <svg class="wn-admin-chart__svg" viewBox="0 0 1000 {{ chart.height }}" preserveAspectRatio="none" aria-hidden="true" focusable="false">
+          {% for y in chart.grid %}<line class="wn-admin-chart__grid{% if loop.first %} wn-admin-chart__grid--base{% endif %}" x1="0" x2="1000" y1="{{ y | round(1) }}" y2="{{ y | round(1) }}"/>{% endfor %}
+          {% if chart.area %}<path class="wn-admin-chart__area" d="{{ chart.area }}"/>{% endif %}
+          {% if chart.previous %}<path class="wn-admin-chart__line wn-admin-chart__line--previous" d="{{ chart.previous }}"/>{% endif %}
+          <path class="wn-admin-chart__line" d="{{ chart.line }}"/>
+        </svg>
+        {{ _hover(chart) }}
+      </div>
+      <div class="wn-admin-chart__x" aria-hidden="true">
+        {% for tick in chart.x_ticks %}<span style="left: {{ tick.position | round(3) }}%">{{ tick.text }}</span>{% endfor %}
+      </div>
+    </div>
+  </div>
+  {% if chart.previous %}
+  <figcaption class="wn-admin-chart__legend" aria-hidden="true">
+    <span class="wn-admin-chart__key"><span class="wn-admin-chart__swatch wn-admin-chart__swatch--line"></span>{{ chart.name }}</span>
+    <span class="wn-admin-chart__key"><span class="wn-admin-chart__swatch wn-admin-chart__swatch--previous"></span>{{ chart.previous_name }}</span>
+  </figcaption>
+  {% endif %}
+  {{ _data_table(chart) }}
+</figure>
+{%- endmacro %}
+
+{#- Columns per label (app/admin_kit.py bar_chart()); several series stack. -#}
+{% macro bar_chart(chart) -%}
+<figure class="wn-admin-chart wn-admin-chart--bars" data-kit-chart>
+  <div class="wn-admin-chart__frame">
+    {{ _axes(chart) }}
+    <div class="wn-admin-chart__body">
+      <div class="wn-admin-chart__plot" style="height: {{ chart.height }}px">
+        <svg class="wn-admin-chart__svg" viewBox="0 0 1000 {{ chart.height }}" preserveAspectRatio="none" aria-hidden="true" focusable="false">
+          {% for y in chart.grid %}<line class="wn-admin-chart__grid{% if loop.first %} wn-admin-chart__grid--base{% endif %}" x1="0" x2="1000" y1="{{ y | round(1) }}" y2="{{ y | round(1) }}"/>{% endfor %}
+          {% for rect in chart.rects %}<rect class="wn-admin-chart__bar wn-admin-chart__bar--{{ rect.tone }}" x="{{ rect.x | round(1) }}" y="{{ rect.y | round(1) }}" width="{{ rect.width | round(1) }}" height="{{ rect.height | round(1) }}"/>{% endfor %}
+        </svg>
+        {{ _hover(chart) }}
+      </div>
+      <div class="wn-admin-chart__x" aria-hidden="true">
+        {% for tick in chart.x_ticks %}<span style="left: {{ tick.position | round(3) }}%">{{ tick.text }}</span>{% endfor %}
+      </div>
+    </div>
+  </div>
+  {% if chart.series | length > 1 %}
+  <figcaption class="wn-admin-chart__legend" aria-hidden="true">
+    {% for item in chart.series %}
+    <span class="wn-admin-chart__key"><span class="wn-admin-chart__swatch wn-admin-chart__swatch--{{ item.tone }}"></span>{{ item.name }}</span>
+    {% endfor %}
+  </figcaption>
+  {% endif %}
+  {{ _data_table(chart) }}
+</figure>
+{%- endmacro %}
+
+{#- Cells shaded by value (app/admin_kit.py heatmap()): «Когда читают». -#}
+{% macro heatmap(chart) -%}
+<figure class="wn-admin-heat">
+  <div class="wn-admin-heat__grid" aria-hidden="true">
+    {% for row in chart.rows %}
+    <span class="wn-admin-heat__label">{{ row.label }}</span>
+    <div class="wn-admin-heat__row" style="--cols: {{ chart.columns }}">
+      {% for cell in row.cells %}<span class="wn-admin-heat__cell wn-admin-heat__cell--{{ cell.level }}" title="{{ cell.title }}"></span>{% endfor %}
+    </div>
+    {% endfor %}
+    <span></span>
+    <div class="wn-admin-heat__ticks">
+      {% for tick in chart.column_ticks %}<span style="left: {{ tick.position | round(3) }}%">{{ tick.text }}</span>{% endfor %}
+    </div>
+  </div>
+  <figcaption class="wn-admin-heat__legend" aria-hidden="true">
+    Меньше{% for level in range(1, 5) %}<span class="wn-admin-heat__cell wn-admin-heat__cell--{{ level }}"></span>{% endfor %}Больше
+  </figcaption>
+  <table class="wn-admin-sr">
+    <caption>{{ chart.name }}</caption>
+    <tbody>
+      {% for row in chart.rows %}
+      <tr>{% for cell in row.cells %}<td>{{ cell.title }}</td>{% endfor %}</tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</figure>
+{%- endmacro %}

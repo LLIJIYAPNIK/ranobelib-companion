@@ -22849,6 +22849,479 @@ html:has(dialog.wn-admin-dialog[open]) {
   }
 }
 
+/* --- cards, KPI, charts ------------------------------------------------------------- */
+.wn-admin-card {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  padding: 18px;
+}
+
+.wn-admin-card__head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.wn-admin-card__titles {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  min-width: 0;
+}
+
+.wn-admin-card__title {
+  margin: 0;
+  font: var(--wn-weight-bold) 17px/1.3 var(--wn-font-ui);
+}
+
+.wn-admin-card__sub {
+  margin: 0;
+  color: var(--wn-text-secondary);
+  font: var(--wn-weight-medium) 12.5px/1.4 var(--wn-font-ui);
+}
+
+.wn-admin-card__aside {
+  margin: 0;
+  color: var(--wn-primary-hover);
+  font: var(--wn-weight-semi-bold) 12px/1.4 var(--wn-font-ui);
+  white-space: nowrap;
+}
+
+.wn-admin-kpis {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(min(100%, 190px), 1fr));
+  gap: 12px;
+}
+
+.wn-admin-kpi {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 15px 16px;
+}
+
+.wn-admin-kpi__label {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  min-width: 0;
+  margin: 0;
+  color: var(--wn-text-secondary);
+  font: var(--wn-weight-medium) 12.5px/1.3 var(--wn-font-ui);
+}
+
+.wn-admin-kpi__label .wn-admin-icon {
+  width: 14px;
+  height: 14px;
+  color: var(--wn-primary-hover);
+}
+
+.wn-admin-kpi__label span {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.wn-admin-kpi__value {
+  margin: 0;
+  font: var(--wn-weight-extra-bold) 26px/1.1 var(--wn-font-ui);
+  font-variant-numeric: tabular-nums;
+  letter-spacing: -0.01em;
+  white-space: nowrap;
+}
+
+.wn-admin-kpi__foot {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.wn-admin-kpi__meta {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  gap: 4px;
+  min-width: 0;
+  overflow: hidden;
+}
+
+.wn-admin-kpi__prev {
+  overflow: hidden;
+  color: var(--wn-text-muted);
+  font: var(--wn-weight-medium) 11px/1.3 var(--wn-font-ui);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.wn-admin-delta {
+  --tone: var(--wn-text-secondary);
+  display: inline-flex;
+  align-self: flex-start;
+  align-items: center;
+  gap: 3px;
+  padding: 2px 7px;
+  border-radius: 7px;
+  background: color-mix(in srgb, var(--tone) 15%, transparent);
+  color: color-mix(in srgb, var(--tone) 70%, #fff);
+  font: var(--wn-weight-semi-bold) 11.5px/1.3 var(--wn-font-ui);
+  white-space: nowrap;
+}
+
+.wn-admin-delta--success {
+  --tone: var(--wn-admin-success);
+}
+
+.wn-admin-delta--danger {
+  --tone: var(--wn-danger);
+}
+
+.wn-admin-delta .wn-admin-icon {
+  width: 12px;
+  height: 12px;
+}
+
+.wn-admin-spark {
+  flex: none;
+  width: 64px;
+  height: 30px;
+  overflow: visible;
+}
+
+.wn-admin-spark__area {
+  fill: color-mix(in srgb, var(--wn-primary) 14%, transparent);
+}
+
+.wn-admin-spark__line {
+  fill: none;
+  stroke: var(--wn-primary-hover);
+  stroke-width: 1.5;
+  stroke-linecap: round;
+  vector-effect: non-scaling-stroke;
+}
+
+.wn-admin-chart {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  margin: 0;
+}
+
+.wn-admin-chart__frame {
+  display: flex;
+  gap: 10px;
+}
+
+.wn-admin-chart__y {
+  position: relative;
+  flex: none;
+  width: 40px;
+}
+
+.wn-admin-chart__y span,
+.wn-admin-chart__x span {
+  position: absolute;
+  color: var(--wn-text-muted);
+  font: var(--wn-weight-medium) 10.5px/1 var(--wn-font-ui);
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+.wn-admin-chart__y span {
+  right: 0;
+  transform: translateY(-50%);
+}
+
+.wn-admin-chart__body {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  gap: 8px;
+  min-width: 0;
+}
+
+.wn-admin-chart__plot {
+  position: relative;
+}
+
+.wn-admin-chart__svg {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  overflow: visible;
+}
+
+.wn-admin-chart__grid {
+  stroke: rgba(255, 255, 255, 0.05);
+  vector-effect: non-scaling-stroke;
+}
+
+.wn-admin-chart__grid--base {
+  stroke: rgba(255, 255, 255, 0.1);
+}
+
+.wn-admin-chart__area {
+  fill: color-mix(in srgb, var(--wn-primary) 16%, transparent);
+}
+
+.wn-admin-chart__line {
+  fill: none;
+  stroke: var(--wn-primary-hover);
+  stroke-width: 2.25;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  vector-effect: non-scaling-stroke;
+}
+
+.wn-admin-chart__line--previous {
+  stroke: var(--wn-text-muted);
+  stroke-width: 1.5;
+  stroke-dasharray: 4 5;
+  stroke-opacity: 0.7;
+}
+
+.wn-admin-chart__bar {
+  --tone: var(--wn-primary);
+  fill: color-mix(in srgb, var(--tone) 80%, transparent);
+}
+
+.wn-admin-chart__bar--success,
+.wn-admin-chart__swatch--success {
+  --tone: var(--wn-admin-success);
+}
+
+.wn-admin-chart__bar--warning,
+.wn-admin-chart__swatch--warning {
+  --tone: var(--wn-admin-warning);
+}
+
+.wn-admin-chart__bar--danger,
+.wn-admin-chart__swatch--danger {
+  --tone: var(--wn-danger);
+}
+
+.wn-admin-chart__bar--neutral,
+.wn-admin-chart__swatch--neutral {
+  --tone: var(--wn-text-muted);
+}
+
+.wn-admin-chart__x {
+  position: relative;
+  height: 14px;
+}
+
+.wn-admin-chart__x span {
+  transform: translateX(-50%);
+}
+
+/* A line runs edge to edge: its first and last labels sit inside the plot. */
+.wn-admin-chart--line .wn-admin-chart__x span:first-child {
+  transform: none;
+}
+
+.wn-admin-chart--line .wn-admin-chart__x span:last-child:not(:first-child) {
+  transform: translateX(-100%);
+}
+
+.wn-admin-chart__hits {
+  position: absolute;
+  inset: 0;
+  display: flex;
+}
+
+.wn-admin-chart__hit {
+  flex: 1;
+}
+
+.wn-admin-chart__cursor {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  width: 1px;
+  background: rgba(255, 255, 255, 0.22);
+  pointer-events: none;
+}
+
+.wn-admin-chart__cursor[hidden],
+.wn-admin-chart__tip[hidden],
+.wn-admin-chart__dot[hidden] {
+  display: none;
+}
+
+.wn-admin-chart__dot {
+  position: absolute;
+  left: 0;
+  width: 10px;
+  height: 10px;
+  margin: -5px 0 0 -5px;
+  border: 2px solid var(--wn-surface);
+  border-radius: 50%;
+  background: var(--wn-primary-hover);
+}
+
+.wn-admin-chart__tip {
+  position: absolute;
+  top: 6px;
+  z-index: 2;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  min-width: 170px;
+  padding: 10px 12px;
+  border: 1px solid var(--wn-border-strong);
+  border-radius: var(--wn-radius-md);
+  background: var(--wn-surface-hover);
+  box-shadow: 0 16px 40px -12px rgba(0, 0, 0, 0.7);
+  pointer-events: none;
+}
+
+.wn-admin-chart__tip-title {
+  margin: 0;
+  color: var(--wn-text-secondary);
+  font: var(--wn-weight-medium) 12px/1.3 var(--wn-font-ui);
+}
+
+.wn-admin-chart__tip-row {
+  display: flex;
+  justify-content: space-between;
+  gap: 14px;
+  margin: 0;
+  font: var(--wn-weight-medium) 13px/1.3 var(--wn-font-ui);
+}
+
+.wn-admin-chart__tip-row b {
+  font-weight: var(--wn-weight-semi-bold);
+  font-variant-numeric: tabular-nums;
+}
+
+.wn-admin-chart__legend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 16px;
+  padding-left: 50px;
+  color: var(--wn-text-muted);
+  font: var(--wn-weight-medium) 11.5px/1.3 var(--wn-font-ui);
+}
+
+.wn-admin-chart__key {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.wn-admin-chart__swatch {
+  --tone: var(--wn-primary);
+  width: 9px;
+  height: 9px;
+  border-radius: 2px;
+  background: var(--tone);
+}
+
+.wn-admin-chart__swatch--line {
+  width: 16px;
+  height: 2px;
+  background: var(--wn-primary-hover);
+}
+
+.wn-admin-chart__swatch--previous {
+  width: 16px;
+  height: 0;
+  border-top: 2px dashed var(--wn-text-muted);
+  border-radius: 0;
+  background: none;
+}
+
+.wn-admin-heat {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  margin: 0;
+}
+
+.wn-admin-heat__grid {
+  display: grid;
+  grid-template-columns: 22px minmax(0, 1fr);
+  align-items: center;
+  gap: 3px 6px;
+}
+
+.wn-admin-heat__label {
+  color: var(--wn-text-muted);
+  font: var(--wn-weight-medium) 10.5px/1 var(--wn-font-ui);
+}
+
+.wn-admin-heat__row {
+  display: grid;
+  grid-template-columns: repeat(var(--cols, 24), minmax(0, 1fr));
+  gap: 2px;
+}
+
+.wn-admin-heat__cell {
+  height: 14px;
+  border-radius: 3px;
+  background: color-mix(in srgb, var(--wn-primary) 6%, transparent);
+}
+
+.wn-admin-heat__cell--1 {
+  background: color-mix(in srgb, var(--wn-primary) 22%, transparent);
+}
+
+.wn-admin-heat__cell--2 {
+  background: color-mix(in srgb, var(--wn-primary) 45%, transparent);
+}
+
+.wn-admin-heat__cell--3 {
+  background: color-mix(in srgb, var(--wn-primary) 70%, transparent);
+}
+
+.wn-admin-heat__cell--4 {
+  background: var(--wn-primary);
+}
+
+.wn-admin-heat__ticks {
+  position: relative;
+  height: 14px;
+}
+
+.wn-admin-heat__ticks span {
+  position: absolute;
+  color: var(--wn-text-muted);
+  font: var(--wn-weight-medium) 10px/1 var(--wn-font-ui);
+  transform: translateX(-50%);
+}
+
+.wn-admin-heat__legend {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  color: var(--wn-text-muted);
+  font: var(--wn-weight-medium) 11px/1 var(--wn-font-ui);
+}
+
+.wn-admin-heat__legend .wn-admin-heat__cell {
+  width: 12px;
+  height: 10px;
+}
+
+@media (max-width: 767px) {
+  .wn-admin-chart__y {
+    width: 30px;
+  }
+
+  .wn-admin-chart__legend {
+    padding-left: 0;
+  }
+
+  .wn-admin-heat__cell {
+    height: 10px;
+    border-radius: 2px;
+  }
+}
+
 /* ==========================================================================
    Offline page (PR 328) - what the service worker shows for a page that couldn't load
    without a network. Standalone (no shell), so the error page's centring needs the
