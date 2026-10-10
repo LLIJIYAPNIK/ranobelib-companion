@@ -22297,6 +22297,440 @@ a.wn-admin-side__item:hover {
   }
 }
 
+/* --- drawer, confirmation dialog, toast (native <dialog>s) -------------------------- */
+html:has(dialog.wn-admin-drawer[open]),
+html:has(dialog.wn-admin-dialog[open]) {
+  overflow: hidden;
+}
+
+.wn-admin-drawer,
+.wn-admin-dialog {
+  padding: 0;
+  border: 1px solid var(--wn-border-strong);
+  background: var(--wn-surface-raised);
+  color: var(--wn-text);
+  font-family: var(--wn-font-ui);
+}
+
+.wn-admin-drawer::backdrop {
+  background: rgba(0, 0, 0, 0.55);
+}
+
+.wn-admin-dialog::backdrop {
+  background: rgba(0, 0, 0, 0.6);
+}
+
+.wn-admin-iconbtn {
+  display: grid;
+  flex: none;
+  place-items: center;
+  width: 34px;
+  height: 34px;
+  padding: 0;
+  border: 0;
+  border-radius: 9px;
+  background: rgba(255, 255, 255, 0.05);
+  color: var(--wn-text-secondary);
+  cursor: pointer;
+}
+
+.wn-admin-iconbtn:hover {
+  background: var(--wn-surface-hover);
+  color: var(--wn-text);
+}
+
+.wn-admin-iconbtn:focus-visible {
+  outline: none;
+  box-shadow: var(--wn-focus-ring);
+}
+
+.wn-admin-drawer[open] {
+  display: flex;
+  flex-direction: column;
+  width: min(520px, 100%);
+  max-width: 100%;
+  height: 100%;
+  max-height: 100%;
+  margin: 0 0 0 auto;
+  border-width: 0 0 0 1px;
+  box-shadow: -30px 0 80px -20px rgba(0, 0, 0, 0.7);
+  animation: wn-admin-drawer-in 0.2s ease;
+}
+
+@keyframes wn-admin-drawer-in {
+  from {
+    transform: translateX(40px);
+    opacity: 0;
+  }
+}
+
+.wn-admin-drawer__head {
+  display: flex;
+  flex: none;
+  align-items: flex-start;
+  gap: 12px;
+  padding: 20px 22px 16px;
+  border-bottom: 1px solid var(--wn-border);
+}
+
+.wn-admin-drawer__titles {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  gap: 4px;
+  min-width: 0;
+}
+
+.wn-admin-drawer__title {
+  margin: 0;
+  font: var(--wn-weight-bold) 20px/1.25 var(--wn-font-ui);
+}
+
+.wn-admin-drawer__sub {
+  margin: 0;
+  overflow: hidden;
+  color: var(--wn-text-secondary);
+  font: var(--wn-weight-medium) 12.5px/1.3 var(--wn-font-ui);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* A drawer's content: an optional form wrapping a scrolling body and a fixed footer. */
+.wn-admin-drawer > form {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  min-height: 0;
+  margin: 0;
+}
+
+.wn-admin-drawer__body {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  gap: 18px;
+  min-height: 0;
+  padding: 20px 22px;
+  overflow: auto;
+  overscroll-behavior: contain;
+}
+
+.wn-admin-drawer__foot {
+  display: flex;
+  flex: none;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px;
+  padding: 14px 22px;
+  border-top: 1px solid var(--wn-border);
+}
+
+.wn-admin-drawer__state {
+  flex: 1;
+  color: var(--wn-text-muted);
+  font: var(--wn-weight-medium) 12px/1.3 var(--wn-font-ui);
+}
+
+.wn-admin-drawer__state[data-dirty] {
+  color: var(--wn-admin-warning);
+}
+
+.wn-admin-field {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.wn-admin-field__label {
+  display: flex;
+  gap: 3px;
+  color: var(--wn-text-secondary);
+  font: var(--wn-weight-medium) 12.5px/1.3 var(--wn-font-ui);
+}
+
+.wn-admin-field__req {
+  color: var(--wn-primary-hover);
+}
+
+.wn-admin-field .wn-admin-input {
+  height: 38px;
+  padding: 0 12px;
+  font-size: 13.5px;
+}
+
+.wn-admin-field textarea.wn-admin-input {
+  height: auto;
+  padding: 10px 12px;
+  line-height: 1.5;
+  resize: vertical;
+}
+
+.wn-admin-field--error .wn-admin-input {
+  border-color: var(--wn-danger);
+}
+
+.wn-admin-field__error,
+.wn-admin-field__hint {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  margin: 0;
+  font: var(--wn-weight-medium) 12px/1.4 var(--wn-font-ui);
+}
+
+.wn-admin-field__error {
+  color: var(--wn-danger);
+}
+
+.wn-admin-field__error .wn-admin-icon {
+  width: 13px;
+  height: 13px;
+}
+
+.wn-admin-field__hint {
+  color: var(--wn-text-muted);
+  font-size: 11.5px;
+}
+
+.wn-admin-dialog[open] {
+  width: min(500px, calc(100% - 32px));
+  max-height: calc(100% - 32px);
+  border-radius: var(--wn-radius-lg);
+  box-shadow: 0 30px 80px -20px rgba(0, 0, 0, 0.8);
+  overflow: auto;
+}
+
+.wn-admin-dialog__form {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  margin: 0;
+  padding: 22px;
+}
+
+.wn-admin-dialog__head {
+  display: flex;
+  align-items: flex-start;
+  gap: 14px;
+}
+
+.wn-admin-dialog__mark {
+  --tone: var(--wn-primary);
+  display: grid;
+  flex: none;
+  place-items: center;
+  width: 42px;
+  height: 42px;
+  border-radius: var(--wn-radius-md);
+  background: color-mix(in srgb, var(--tone) 15%, transparent);
+  color: color-mix(in srgb, var(--tone) 70%, #fff);
+}
+
+.wn-admin-dialog__mark--danger {
+  --tone: var(--wn-danger);
+}
+
+.wn-admin-dialog__mark .wn-admin-icon {
+  width: 20px;
+  height: 20px;
+}
+
+.wn-admin-dialog__titles {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  min-width: 0;
+}
+
+.wn-admin-dialog__title {
+  margin: 0;
+  font: var(--wn-weight-bold) 18px/1.3 var(--wn-font-ui);
+}
+
+.wn-admin-dialog__lead {
+  margin: 0;
+  color: var(--wn-text-secondary);
+  font: var(--wn-weight-medium) 13px/1.5 var(--wn-font-ui);
+}
+
+.wn-admin-dialog__lines {
+  display: flex;
+  flex-direction: column;
+  gap: 9px;
+  margin: 0;
+  padding: 14px;
+  border: 1px solid var(--wn-border);
+  border-radius: var(--wn-radius-md);
+  background: var(--wn-canvas);
+  list-style: none;
+  font: var(--wn-weight-medium) 13px/1.45 var(--wn-font-ui);
+}
+
+.wn-admin-dialog__lines li {
+  display: flex;
+  gap: 10px;
+}
+
+.wn-admin-dialog__lines .wn-admin-icon {
+  width: 14px;
+  height: 14px;
+  margin-top: 2px;
+  color: var(--wn-danger);
+}
+
+.wn-admin-note {
+  display: flex;
+  gap: 10px;
+  margin: 0;
+  padding: 12px 14px;
+  border: 1px solid color-mix(in srgb, var(--wn-primary) 25%, transparent);
+  border-radius: var(--wn-radius-md);
+  background: color-mix(in srgb, var(--wn-primary) 8%, transparent);
+  color: var(--wn-text);
+  font: var(--wn-weight-medium) 12.5px/1.5 var(--wn-font-ui);
+}
+
+.wn-admin-dialog__ack {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font: var(--wn-weight-medium) 13px/1.4 var(--wn-font-ui);
+  cursor: pointer;
+}
+
+.wn-admin-dialog__ack .wn-admin-check {
+  width: 18px;
+  height: 18px;
+  accent-color: var(--wn-danger);
+}
+
+.wn-admin-dialog__actions {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 8px;
+}
+
+.wn-admin-dialog__actions .wn-admin-btn {
+  height: 38px;
+  padding: 0 14px;
+}
+
+.wn-admin-toasts {
+  position: fixed;
+  right: 24px;
+  bottom: 24px;
+  z-index: 90;
+  max-width: calc(100% - 24px);
+}
+
+.wn-admin-toast {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px 12px 12px 16px;
+  border: 1px solid var(--wn-border-strong);
+  border-radius: 13px;
+  background: var(--wn-surface-hover);
+  box-shadow: 0 24px 60px -16px rgba(0, 0, 0, 0.85);
+  animation: wn-admin-toast-in 0.2s ease;
+}
+
+.wn-admin-toast[data-leaving] {
+  animation: wn-admin-toast-out 0.18s ease forwards;
+}
+
+@keyframes wn-admin-toast-in {
+  from {
+    transform: translateY(12px);
+    opacity: 0;
+  }
+}
+
+@keyframes wn-admin-toast-out {
+  to {
+    transform: translateY(12px);
+    opacity: 0;
+  }
+}
+
+.wn-admin-toast__icon.wn-admin-icon {
+  width: 16px;
+  height: 16px;
+  color: var(--wn-admin-success);
+}
+
+.wn-admin-toast--error .wn-admin-toast__icon {
+  color: var(--wn-danger);
+}
+
+.wn-admin-toast__text {
+  max-width: 420px;
+  font: var(--wn-weight-medium) 13px/1.4 var(--wn-font-ui);
+}
+
+.wn-admin-toast__undo {
+  margin: 0;
+}
+
+.wn-admin-toast__undo-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  height: 30px;
+  padding: 0 11px;
+  border: 0;
+  border-radius: var(--wn-radius-sm);
+  background: color-mix(in srgb, var(--wn-primary) 22%, transparent);
+  color: var(--wn-text);
+  font: var(--wn-weight-semi-bold) 12.5px/1 var(--wn-font-ui);
+  white-space: nowrap;
+  cursor: pointer;
+}
+
+.wn-admin-toast__undo-btn:hover {
+  background: color-mix(in srgb, var(--wn-primary) 34%, transparent);
+}
+
+.wn-admin-toast__undo-btn:focus-visible {
+  outline: none;
+  box-shadow: var(--wn-focus-ring);
+}
+
+.wn-admin-toast .wn-admin-iconbtn {
+  width: 28px;
+  height: 28px;
+  background: transparent;
+}
+
+@media (max-width: 767px) {
+  .wn-admin-toasts {
+    right: 12px;
+    bottom: 12px;
+    left: 12px;
+    max-width: none;
+  }
+
+  .wn-admin-drawer__head,
+  .wn-admin-drawer__body,
+  .wn-admin-drawer__foot {
+    padding-right: 16px;
+    padding-left: 16px;
+  }
+
+  .wn-admin-dialog__form {
+    padding: 18px;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .wn-admin-drawer[open],
+  .wn-admin-toast,
+  .wn-admin-toast[data-leaving] {
+    animation: none;
+  }
+}
+
 /* ==========================================================================
    Offline page (PR 328) - what the service worker shows for a page that couldn't load
    without a network. Standalone (no shell), so the error page's centring needs the

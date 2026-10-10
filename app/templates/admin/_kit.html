@@ -153,3 +153,104 @@
   {% endif %}
 </nav>
 {%- endmacro %}
+
+{#- The CSRF field every POST in the panel needs (app/auth/admin.py). -#}
+{% macro csrf() -%}
+<input type="hidden" name="csrf" value="{{ csrf_token }}">
+{%- endmacro %}
+
+{#- A labelled form field for a drawer; the caller is the control, its id ``for_id``. -#}
+{% macro field(label, for_id, hint=none, error=none, required=false) -%}
+<div class="wn-admin-field{{ ' wn-admin-field--error' if error }}">
+  <label class="wn-admin-field__label" for="{{ for_id }}">{{ label }}{% if required %}<span class="wn-admin-field__req" aria-hidden="true">*</span>{% endif %}</label>
+  {{ caller() }}
+  {% if error %}<p class="wn-admin-field__error" id="{{ for_id }}-error">{{ icon("circle-alert") }}{{ error }}</p>{% endif %}
+  {% if hint %}<p class="wn-admin-field__hint">{{ hint }}</p>{% endif %}
+</div>
+{%- endmacro %}
+
+{#- The drawer from the right: a native modal <dialog> (focus stays inside, Escape and
+    a click outside close it) opened by any <button data-kit-open="ID">. The caller is
+    its content - usually a form of .wn-admin-drawer__body + kit.drawer_foot(). -#}
+{% macro drawer(id, title, subtitle=none) -%}
+<dialog class="wn-admin-drawer" id="{{ id }}" aria-labelledby="{{ id }}-title" data-kit-dialog>
+  <div class="wn-admin-drawer__head">
+    <div class="wn-admin-drawer__titles">
+      <h2 class="wn-admin-drawer__title" id="{{ id }}-title">{{ title }}</h2>
+      {% if subtitle %}<p class="wn-admin-drawer__sub">{{ subtitle }}</p>{% endif %}
+    </div>
+    <button class="wn-admin-iconbtn" type="button" data-kit-close aria-label="Закрыть">{{ icon("close") }}</button>
+  </div>
+  {{ caller() }}
+</dialog>
+{%- endmacro %}
+
+{#- A drawer form's footer: whether anything changed, «Отмена» and the submit. -#}
+{% macro drawer_foot(submit_label="Сохранить") -%}
+<div class="wn-admin-drawer__foot">
+  <span class="wn-admin-drawer__state" data-kit-dirty>Изменений нет</span>
+  <button class="wn-admin-btn wn-admin-btn--ghost" type="button" data-kit-close>Отмена</button>
+  <button class="wn-admin-btn wn-admin-btn--primary" type="submit">{{ submit_label }}</button>
+</div>
+{%- endmacro %}
+
+{#- The confirmation dialog: a POST form to ``action`` (CSRF and ``fields`` included),
+    opened by <button data-kit-open="ID">. ``lines`` spell out what will happen; the
+    caller may add a note (a softer alternative). For what can't be undone set
+    ``irreversible``: the submit stays off until «Я понимаю…» is ticked, and the box
+    posts ``confirm=1`` - the route should still check it. -#}
+{% macro confirm(id, title, action, confirm_label="Удалить", lead=none, lines=[], irreversible=false, ack="Я понимаю, что это действие необратимо", fields={}, tone="danger") -%}
+<dialog class="wn-admin-dialog" id="{{ id }}" aria-labelledby="{{ id }}-title"{% if lead %} aria-describedby="{{ id }}-lead"{% endif %} data-kit-dialog>
+  <form class="wn-admin-dialog__form" method="post" action="{{ action }}" data-kit-confirm>
+    {{ csrf() }}
+    {% for name, value in fields.items() %}
+    <input type="hidden" name="{{ name }}" value="{{ value }}">
+    {% endfor %}
+    <div class="wn-admin-dialog__head">
+      <span class="wn-admin-dialog__mark wn-admin-dialog__mark--{{ tone }}">{{ icon("triangle-alert" if tone == "danger" else "circle-alert") }}</span>
+      <div class="wn-admin-dialog__titles">
+        <h2 class="wn-admin-dialog__title" id="{{ id }}-title">{{ title }}</h2>
+        {% if lead %}<p class="wn-admin-dialog__lead" id="{{ id }}-lead">{{ lead }}</p>{% endif %}
+      </div>
+    </div>
+    {% if lines %}
+    <ul class="wn-admin-dialog__lines">
+      {% for line in lines %}
+      <li>{{ icon("circle-alert") }}<span>{{ line }}</span></li>
+      {% endfor %}
+    </ul>
+    {% endif %}
+    {% if caller is defined %}{{ caller() }}{% endif %}
+    {% if irreversible %}
+    <label class="wn-admin-dialog__ack">
+      <input class="wn-admin-check" type="checkbox" name="confirm" value="1" required data-kit-ack>
+      <span>{{ ack }}</span>
+    </label>
+    {% endif %}
+    <div class="wn-admin-dialog__actions">
+      <button class="wn-admin-btn wn-admin-btn--ghost" type="button" data-kit-close>Отмена</button>
+      <button class="wn-admin-btn wn-admin-btn--{{ 'danger' if tone == 'danger' else 'primary' }}" type="submit"{% if irreversible %} data-kit-ack-submit{% endif %}>{% if tone == "danger" %}{{ icon("trash") }}{% endif %}{{ confirm_label }}</button>
+    </div>
+  </form>
+</dialog>
+{%- endmacro %}
+
+{#- The toast a POST left behind (app/admin_kit.py push_toast): the message, «Отменить»
+    when the action can be reverted, a close button; it hides itself after a few
+    seconds unless the pointer or focus is on it. -#}
+{% macro toast(item) -%}
+<div class="wn-admin-toast wn-admin-toast--{{ item.tone }}" data-kit-toast>
+  {{ icon("circle-check" if item.tone == "success" else "circle-alert", "wn-admin-toast__icon") }}
+  <span class="wn-admin-toast__text">{{ item.message }}</span>
+  {% if item.undo %}
+  <form class="wn-admin-toast__undo" method="post" action="{{ item.undo.action }}">
+    {{ csrf() }}
+    {% for name, value in item.undo.fields.items() %}
+    <input type="hidden" name="{{ name }}" value="{{ value }}">
+    {% endfor %}
+    <button class="wn-admin-toast__undo-btn" type="submit">{{ icon("undo") }}Отменить</button>
+  </form>
+  {% endif %}
+  <button class="wn-admin-iconbtn" type="button" data-kit-toast-close aria-label="Закрыть уведомление">{{ icon("close") }}</button>
+</div>
+{%- endmacro %}

@@ -1,5 +1,6 @@
 """The admin panel's UI kit (PR 342): the plain data the macros in
-app/templates/admin/_kit.html render - table columns, filters, page windows.
+app/templates/admin/_kit.html render - table columns, filters, page windows - and the
+toast a POST leaves for the page it redirects to.
 
 Everything here is presentation: it shapes values a route already has. Sorting, filtering
 and paging the data itself stay with the route and app/db/.
@@ -10,6 +11,8 @@ from __future__ import annotations
 from collections.abc import Mapping
 from dataclasses import dataclass, field
 from urllib.parse import urlencode
+
+from starlette.requests import Request
 
 # --- tables -------------------------------------------------------------------------------
 
@@ -125,3 +128,50 @@ def filter_state(
             )
     reset = admin_query({key: args[key] for key in keep if key in args})
     return FilterState(chips=chips, reset=reset)
+
+
+# --- toasts -------------------------------------------------------------------------------
+
+TOAST_SESSION_KEY = "admin_toast"
+
+
+@dataclass(frozen=True)
+class Undo:
+    """The toast's «Отменить»: a POST to ``action`` (with the CSRF token and ``fields``)
+    that reverts what was just done."""
+
+    action: str
+    fields: dict[str, str] = field(default_factory=dict)
+
+
+@dataclass(frozen=True)
+class Toast:
+    message: str
+    tone: str = "success"  # or "error"
+    undo: Undo | None = None
+
+
+def push_toast(
+    request: Request, message: str, *, tone: str = "success", undo: Undo | None = None
+) -> None:
+    """Shows ``message`` as a toast on the next admin page rendered for this session -
+    the page a POST redirects to. One at a time; a newer one replaces it."""
+    request.session[TOAST_SESSION_KEY] = {
+        "message": message,
+        "tone": tone,
+        "undo": {"action": undo.action, "fields": dict(undo.fields)} if undo else None,
+    }
+
+
+def pop_toast(request: Request) -> Toast | None:
+    data = request.session.pop(TOAST_SESSION_KEY, None)
+    if not isinstance(data, dict) or not data.get("message"):
+        return None
+    undo = data.get("undo")
+    return Toast(
+        message=str(data["message"]),
+        tone="error" if data.get("tone") == "error" else "success",
+        undo=Undo(str(undo["action"]), dict(undo.get("fields") or {}))
+        if isinstance(undo, dict) and undo.get("action")
+        else None,
+    )

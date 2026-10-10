@@ -20,6 +20,7 @@ from fastapi.responses import HTMLResponse, RedirectResponse, Response
 from psycopg import AsyncConnection
 from psycopg.errors import QueryCanceled
 
+from app.admin_kit import pop_toast
 from app.auth.admin import (
     LOGIN_PATH,
     check_csrf,
@@ -174,6 +175,7 @@ def _page(request: Request, template: str, section: str, **context: object) -> H
             "admin_section": section,
             "admin_nav": ADMIN_NAV,
             "server_time": server_time(),
+            "toast": pop_toast(request),
             **context,
         },
     )

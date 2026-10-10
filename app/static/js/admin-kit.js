@@ -78,4 +78,107 @@
       select.addEventListener("change", () => form.requestSubmit());
     });
   });
+
+  // Drawers and confirmation dialogs: native modal <dialog>s, opened by
+  // [data-kit-open="id"]. Escape is the browser's; a click on the backdrop (the dialog
+  // element itself, outside its box) and [data-kit-close] close it too.
+  const reset = (dialog) => {
+    dialog.querySelectorAll("form").forEach((form) => form.reset());
+    dialog
+      .querySelectorAll("[data-kit-ack]")
+      .forEach((box) => box.dispatchEvent(new Event("change")));
+    dialog.querySelectorAll("[data-kit-dirty]").forEach((state) => {
+      state.textContent = "Изменений нет";
+      state.removeAttribute("data-dirty");
+    });
+  };
+
+  document.addEventListener("click", (event) => {
+    const opener = event.target.closest("[data-kit-open]");
+    if (opener) {
+      const dialog = document.getElementById(opener.dataset.kitOpen);
+      if (dialog && dialog.matches("[data-kit-dialog]") && !dialog.open) {
+        reset(dialog);
+        dialog.showModal();
+      }
+      return;
+    }
+    const closer = event.target.closest("[data-kit-close]");
+    if (closer) {
+      closer.closest("dialog")?.close();
+      return;
+    }
+    if (event.target.matches("dialog[data-kit-dialog][open]")) {
+      const box = event.target.getBoundingClientRect();
+      const inside =
+        event.clientX >= box.left &&
+        event.clientX <= box.right &&
+        event.clientY >= box.top &&
+        event.clientY <= box.bottom;
+      if (!inside) event.target.close();
+    }
+  });
+
+  // An irreversible action: its button stays off until «Я понимаю…» is ticked (the box
+  // is also `required`, so the form can't go without it even before this runs).
+  document.querySelectorAll("[data-kit-confirm]").forEach((form) => {
+    const ack = form.querySelector("[data-kit-ack]");
+    const submit = form.querySelector("[data-kit-ack-submit]");
+    if (!ack || !submit) return;
+    const sync = () => {
+      submit.disabled = !ack.checked;
+    };
+    ack.addEventListener("change", sync);
+    sync();
+  });
+
+  // A drawer form says when it has unsaved changes.
+  document.querySelectorAll("dialog[data-kit-dialog] [data-kit-dirty]").forEach((state) => {
+    const form = state.closest("form");
+    if (!form) return;
+    form.addEventListener("input", () => {
+      state.textContent = "Есть несохранённые изменения";
+      state.setAttribute("data-dirty", "");
+    });
+  });
+
+  // The toast: re-inserted into its live region so screen readers announce it, then
+  // hidden after a while - but not while the pointer or focus is on it.
+  const region = document.querySelector("[data-kit-toasts]");
+  const toast = region && region.querySelector("[data-kit-toast]");
+  if (toast) {
+    const reduced = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+    region.removeChild(toast);
+    let timer = 0;
+    let held = false;
+    const dismiss = () => {
+      clearTimeout(timer);
+      if (reduced) {
+        toast.remove();
+        return;
+      }
+      toast.setAttribute("data-leaving", "");
+      toast.addEventListener("animationend", () => toast.remove(), { once: true });
+    };
+    const schedule = () => {
+      clearTimeout(timer);
+      if (!held) timer = setTimeout(dismiss, 6500);
+    };
+    const hold = (on) => {
+      held = on;
+      if (on) clearTimeout(timer);
+      else schedule();
+    };
+    toast.addEventListener("pointerenter", () => hold(true));
+    toast.addEventListener("pointerleave", () => hold(toast.contains(document.activeElement)));
+    toast.addEventListener("focusin", () => hold(true));
+    toast.addEventListener("focusout", (event) => {
+      if (!toast.contains(event.relatedTarget)) hold(false);
+    });
+    toast.querySelector("[data-kit-toast-close]").addEventListener("click", dismiss);
+    requestAnimationFrame(() => {
+      region.appendChild(toast);
+      schedule();
+    });
+  }
 })();
