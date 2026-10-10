@@ -22257,6 +22257,7 @@ a.wn-admin-side__item:hover {
     padding: 0;
     border: 0;
     text-align: left;
+    align-items: flex-start;
     overflow-wrap: anywhere;
     white-space: normal;
   }
@@ -22281,11 +22282,16 @@ a.wn-admin-side__item:hover {
     content: none;
   }
 
-  .wn-admin-table__td--actions {
+  .wn-admin-table__td.wn-admin-table__td--actions {
     flex-direction: row;
     flex-wrap: wrap;
     grid-column: 1 / -1;
     gap: 6px;
+  }
+
+  .wn-admin-table__td--actions .wn-admin-btn {
+    min-width: 44px;
+    height: 44px;
   }
 
   .wn-admin-filters__search {

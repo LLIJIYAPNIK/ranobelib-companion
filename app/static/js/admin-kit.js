@@ -73,9 +73,15 @@
   });
 
   // A filter's select applies on change - the «Найти» button stays for the search box.
+  // Empty fields are left out of the URL (no "?q=&status=").
   document.querySelectorAll("[data-kit-filters]").forEach((form) => {
     form.querySelectorAll("select").forEach((select) => {
       select.addEventListener("change", () => form.requestSubmit());
+    });
+    form.addEventListener("formdata", (event) => {
+      for (const [name, value] of [...event.formData.entries()]) {
+        if (value === "") event.formData.delete(name);
+      }
     });
   });
 

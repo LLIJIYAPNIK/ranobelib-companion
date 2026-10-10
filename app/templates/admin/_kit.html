@@ -369,7 +369,9 @@
 
 {% macro _data_table(chart) -%}
 {% if chart.points %}
-<table class="wn-admin-sr">
+{# A table can't shrink below its content - the hiding goes on a wrapper. #}
+<div class="wn-admin-sr">
+<table>
   <caption>{{ chart.name }}</caption>
   <thead><tr><th scope="col">Период</th>{% for name, _ in chart.points[0].rows %}<th scope="col">{{ name }}</th>{% endfor %}</tr></thead>
   <tbody>
@@ -378,6 +380,7 @@
     {% endfor %}
   </tbody>
 </table>
+</div>
 {% endif %}
 {%- endmacro %}
 
@@ -465,13 +468,15 @@
   <figcaption class="wn-admin-heat__legend" aria-hidden="true">
     Меньше{% for level in range(1, 5) %}<span class="wn-admin-heat__cell wn-admin-heat__cell--{{ level }}"></span>{% endfor %}Больше
   </figcaption>
-  <table class="wn-admin-sr">
-    <caption>{{ chart.name }}</caption>
-    <tbody>
-      {% for row in chart.rows %}
-      <tr>{% for cell in row.cells %}<td>{{ cell.title }}</td>{% endfor %}</tr>
-      {% endfor %}
-    </tbody>
-  </table>
+  <div class="wn-admin-sr">
+    <table>
+      <caption>{{ chart.name }}</caption>
+      <tbody>
+        {% for row in chart.rows %}
+        <tr>{% for cell in row.cells %}<td>{{ cell.title }}</td>{% endfor %}</tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
 </figure>
 {%- endmacro %}
