@@ -8,6 +8,7 @@ but the login form behind ``require_admin`` (app/auth/admin.py). The data pages 
 
 from __future__ import annotations
 
+import logging
 import math
 from collections.abc import Awaitable, Callable
 from dataclasses import dataclass
@@ -15,16 +16,19 @@ from datetime import datetime
 from typing import Annotated
 from zoneinfo import ZoneInfo
 
+import psycopg
 from fastapi import APIRouter, Depends, FastAPI, Form, HTTPException, Query, Request
 from fastapi.responses import HTMLResponse, RedirectResponse, Response
 from psycopg import AsyncConnection
 from psycopg.errors import QueryCanceled
+from psycopg_pool import PoolTimeout
 
 from app.admin_kit import Undo, pop_toast, push_toast
 from app.admin_kit_demo import charts_context, table_context
 from app.auth.admin import (
     LOGIN_PATH,
     check_csrf,
+    client_ip,
     csrf_token,
     end_admin_session,
     is_admin,
@@ -37,6 +41,8 @@ from app.auth.admin import (
     start_admin_session,
 )
 from app.config import get_settings
+from app.db import admin_audit
+from app.db import connection as db_connection
 from app.db.admin_data import (
     MASK,
     QUERY_TIMEOUT_MS,
@@ -54,6 +60,8 @@ router = APIRouter(
     prefix="/admin", dependencies=[Depends(require_admin_enabled)], include_in_schema=False
 )
 
+
+logger = logging.getLogger(__name__)
 
 Admin = Annotated[None, Depends(require_admin)]
 Connection = Annotated[AsyncConnection, Depends(get_connection)]
@@ -243,26 +251,49 @@ async def admin_login(
     csrf: Annotated[str, Form()] = "",
 ) -> Response:
     check_csrf(request, csrf)
-    ip = request.client.host if request.client is not None else "unknown"
+    ip = client_ip(request)
     wait = login_locked_for(ip)
     if wait > 0:
+        # Not logged: while locked the password isn't even checked, and a flood of
+        # refused attempts would only fill the log.
         return _locked_page(request, wait)
     if not password_matches(password):
         record_failed_login(ip)
         wait = login_locked_for(ip)
+        details = {"locked_for_seconds": math.ceil(wait)} if wait > 0 else {}
+        await _audit_login_event(request, admin_audit.LOGIN_FAILED, details)
         if wait > 0:
             return _locked_page(request, wait)
         return _login_page(request, error="Неверный пароль", status_code=401)
     reset_failed_logins(ip)
     start_admin_session(request)
+    await _audit_login_event(request, admin_audit.LOGIN)
     return RedirectResponse("/admin", status_code=303)
 
 
 @router.post("/logout", response_model=None)
 async def admin_logout(request: Request, csrf: Annotated[str, Form()] = "") -> Response:
     check_csrf(request, csrf)
+    if is_admin(request):
+        await _audit_login_event(request, admin_audit.LOGOUT)
     end_admin_session(request)
     return RedirectResponse(LOGIN_PATH, status_code=303)
+
+
+async def _audit_login_event(
+    request: Request, action: str, details: dict[str, object] | None = None
+) -> None:
+    """PR 343: login, failed login and logout go to the action log. On its own
+    connection, not a route dependency, so the login form works even with the database
+    down - then the event is only in the server log. Never the password (it isn't
+    passed), only the IP."""
+    try:
+        async with db_connection.connection() as conn:
+            await admin_audit.record_admin_action(
+                conn, action, ip=client_ip(request), details=details
+            )
+    except (psycopg.Error, PoolTimeout):
+        logger.exception("Could not write the admin action log entry %r", action)
 
 
 def _login_page(

@@ -75,6 +75,10 @@ admin login lasts (seconds), independent of the site session's own lifetime.
 ``admin_timezone`` (PR 341) is the IANA zone the panel shows times and (wave 40) groups
 its stats by - the server's clock, not any user's. UTC by default; an unknown name is
 logged and falls back to UTC rather than stopping the app over a display setting.
+
+``admin_audit_retention_days`` (PR 343) is how long the admin action log keeps an entry
+(365 by default); older ones are removed at startup and then daily. Anything but a
+positive whole number is logged and falls back to the default.
 """
 
 from __future__ import annotations
@@ -102,6 +106,7 @@ _DEFAULT_EMAIL_VERIFICATION_TOKEN_TTL_SECONDS = 24 * 60 * 60  # 24 hours
 _DEFAULT_EMAIL_PORT = 587
 _DEFAULT_ADMIN_SESSION_TTL_SECONDS = 2 * 60 * 60  # 2 hours
 _DEFAULT_ADMIN_TIMEZONE = "UTC"
+_DEFAULT_ADMIN_AUDIT_RETENTION_DAYS = 365
 
 
 @dataclass(frozen=True)
@@ -126,6 +131,7 @@ class Settings:
     admin_password: str | None = None
     admin_session_ttl: float = _DEFAULT_ADMIN_SESSION_TTL_SECONDS
     admin_timezone: str = _DEFAULT_ADMIN_TIMEZONE
+    admin_audit_retention_days: int = _DEFAULT_ADMIN_AUDIT_RETENTION_DAYS
 
     @property
     def admin_enabled(self) -> bool:
@@ -140,6 +146,24 @@ def _admin_timezone() -> str:
         logger.warning("ADMIN_TIMEZONE=%r is not a known IANA zone - using UTC.", name)
         return _DEFAULT_ADMIN_TIMEZONE
     return name
+
+
+def _admin_audit_retention_days() -> int:
+    raw = os.environ.get("ADMIN_AUDIT_RETENTION_DAYS", "").strip()
+    if not raw:
+        return _DEFAULT_ADMIN_AUDIT_RETENTION_DAYS
+    try:
+        days = int(raw)
+    except ValueError:
+        days = 0
+    if days < 1:
+        logger.warning(
+            "ADMIN_AUDIT_RETENTION_DAYS=%r is not a positive number of days - using %d.",
+            raw,
+            _DEFAULT_ADMIN_AUDIT_RETENTION_DAYS,
+        )
+        return _DEFAULT_ADMIN_AUDIT_RETENTION_DAYS
+    return days
 
 
 @lru_cache
@@ -199,4 +223,5 @@ def get_settings() -> Settings:
             os.environ.get("ADMIN_SESSION_TTL_SECONDS", _DEFAULT_ADMIN_SESSION_TTL_SECONDS)
         ),
         admin_timezone=_admin_timezone(),
+        admin_audit_retention_days=_admin_audit_retention_days(),
     )

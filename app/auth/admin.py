@@ -107,6 +107,11 @@ _FORGET_AFTER = 24 * 60 * 60.0
 _failures: dict[str, tuple[int, float, float]] = {}
 
 
+def client_ip(request: Request) -> str:
+    """The address login throttling counts by - and the action log records (PR 343)."""
+    return request.client.host if request.client is not None else "unknown"
+
+
 def login_locked_for(ip: str) -> float:
     """Seconds this IP must still wait before its next login attempt (0 = go ahead)."""
     entry = _failures.get(ip)
