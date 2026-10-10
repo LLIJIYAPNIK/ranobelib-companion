@@ -1,0 +1,155 @@
+{#- PR 342: the admin panel's UI kit - the reusable pieces of RanobeLib Admin.dc.html as
+    Jinja macros, styled in app.css («Admin UI kit») and wired by js/admin-kit.js.
+    Import with context (the dialogs need csrf_token):
+      {% import "admin/_kit.html" as kit with context %}
+    The data shapes (Column, Filter, ...) live in app/admin_kit.py. Every control is a
+    real link or form - sorting, paging and filtering are GET requests the route
+    answers; the JS only adds what HTML can't (opening dialogs, hiding columns). -#}
+
+{% macro icon(name, class="") -%}
+<svg class="wn-admin-icon{{ ' ' ~ class if class }}" aria-hidden="true"><use href="#admin-icon-{{ name }}"></use></svg>
+{%- endmacro %}
+
+{#- A status pill. tone: neutral, primary, success, warning, danger. -#}
+{% macro badge(text, tone="neutral") -%}
+<span class="wn-admin-badge wn-admin-badge--{{ tone }}">{{ text }}</span>
+{%- endmacro %}
+
+{#- A table cell's value when the caller doesn't render it: None is a muted dash. -#}
+{% macro cell(value) -%}
+{% if value is none %}<span class="wn-admin-table__null">—</span>{% else %}{{ value }}{% endif %}
+{%- endmacro %}
+
+{#- The data table. columns: Column list; rows: dicts or objects; sort/descending: the
+    applied sort (a sortable header links to the other direction, page reset); args: the
+    page's current query, kept by every link. Call it to render cells yourself:
+      {% call(row, column) kit.table("users", columns, rows, ...) %}...{% endcall %}
+    A Column(kind="actions") is the row's buttons - right-aligned, never sortable. On a
+    phone each row becomes a card, every cell under its column's name. -#}
+{% macro table(id, columns, rows, sort=none, descending=true, args={}, caption=none) -%}
+<div class="wn-admin-table" id="{{ id }}" data-kit-table="{{ id }}">
+  <table class="wn-admin-table__table">
+    {% if caption %}<caption class="wn-admin-sr">{{ caption }}</caption>{% endif %}
+    <thead>
+      <tr>
+        {% for column in columns %}
+        {% set active = column.sortable and column.kind != "actions" and column.key == sort %}
+        <th class="wn-admin-table__th wn-admin-table__th--{{ column.kind }}" scope="col" data-col="{{ column.key }}"
+            {%- if active %} aria-sort="{{ 'descending' if descending else 'ascending' }}"{% endif %}
+            {%- if column.hidden %} hidden{% endif %}>
+          {%- if column.kind == "actions" -%}
+          <span class="wn-admin-sr">{{ column.label }}</span>
+          {%- elif column.sortable -%}
+          <a class="wn-admin-table__sort" href="{{ admin_query(args, sort=column.key, order='asc' if active and descending else 'desc', page=none) }}">{{ column.label }}{{ icon(('arrow-down' if descending else 'arrow-up') if active else 'arrow-up-down', 'wn-admin-table__sort-icon') }}</a>
+          {%- else -%}
+          {{ column.label }}
+          {%- endif -%}
+        </th>
+        {% endfor %}
+      </tr>
+    </thead>
+    <tbody>
+      {% for row in rows %}
+      <tr>
+        {% for column in columns %}
+        <td class="wn-admin-table__td wn-admin-table__td--{{ column.kind }}" data-col="{{ column.key }}" data-label="{{ column.label }}"{% if column.hidden %} hidden{% endif %}>
+          {%- if caller is defined %}{{ caller(row, column) }}{% else %}{{ cell(row[column.key]) }}{% endif -%}
+        </td>
+        {% endfor %}
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+{%- endmacro %}
+
+{#- «Колонки · N»: which of a table's columns to show. Remembered per browser
+    (js/admin-kit.js); hidden until the script runs, since without it the boxes do
+    nothing. A locked column stays on. -#}
+{% macro columns_menu(table_id, columns) -%}
+{% set listed = columns | rejectattr("kind", "equalto", "actions") | list %}
+<details class="wn-admin-colmenu" data-kit-columns="{{ table_id }}" hidden>
+  <summary class="wn-admin-btn wn-admin-btn--ghost">{{ icon("columns") }}Колонки · <span data-kit-columns-count>{{ listed | rejectattr("hidden") | list | length }}</span></summary>
+  <div class="wn-admin-colmenu__panel">
+    <p class="wn-admin-colmenu__title">Показывать колонки</p>
+    {% for column in listed %}
+    <label class="wn-admin-colmenu__item">
+      <input class="wn-admin-check" type="checkbox" value="{{ column.key }}"{% if not column.hidden %} checked{% endif %}{% if column.locked %} disabled data-locked{% endif %}>
+      <span>{{ column.label }}</span>{% if column.locked %}{{ icon("lock") }}{% endif %}
+    </label>
+    {% endfor %}
+    <div class="wn-admin-colmenu__foot">
+      <button class="wn-admin-btn wn-admin-btn--link" type="button" data-kit-columns-all>Показать все</button>
+      <button class="wn-admin-btn wn-admin-btn--link" type="button" data-kit-columns-done>Готово</button>
+    </div>
+  </div>
+</details>
+{%- endmacro %}
+
+{#- The search/filter bar over a table: a GET form (search box + one select per Filter),
+    then a chip per applied condition - each chip's link drops just that one - and
+    «Сбросить (N)». The sort survives filtering; the page number doesn't. Call it to add
+    controls at the row's end (the column menu):
+      {% call kit.filter_bar(...) %}{{ kit.columns_menu(...) }}{% endcall %} -#}
+{% macro filter_bar(action, args, filters=[], query_name="q", placeholder="Поиск", keep=("sort", "order")) -%}
+{% set state = filter_state(args, filters, query_name, keep) %}
+<form class="wn-admin-filters" method="get" action="{{ action }}" role="search" data-kit-filters>
+  <div class="wn-admin-filters__row">
+    <label class="wn-admin-filters__search">
+      {{ icon("search") }}<span class="wn-admin-sr">{{ placeholder }}</span>
+      <input class="wn-admin-input" type="search" name="{{ query_name }}" value="{{ args.get(query_name) or '' }}" maxlength="200" placeholder="{{ placeholder }}">
+    </label>
+    {% for item in filters %}
+    <label class="wn-admin-select{% if item.value %} wn-admin-select--active{% endif %}">{{ item.label }}:
+      <select name="{{ item.name }}">
+        <option value="">Все</option>
+        {% for value, label in item.options %}
+        <option value="{{ value }}"{% if value == item.value %} selected{% endif %}>{{ label }}</option>
+        {% endfor %}
+      </select>
+    </label>
+    {% endfor %}
+    {% for key in keep if args.get(key) %}
+    <input type="hidden" name="{{ key }}" value="{{ args.get(key) }}">
+    {% endfor %}
+    <button class="wn-admin-btn" type="submit">Найти</button>
+    {% if caller is defined %}<div class="wn-admin-filters__extra">{{ caller() }}</div>{% endif %}
+  </div>
+  {% if state.count %}
+  <div class="wn-admin-filters__chips" role="group" aria-label="Применённые фильтры">
+    {% for chip in state.chips %}
+    <a class="wn-admin-chip" href="{{ chip.remove }}" title="Убрать фильтр">{{ chip.label }}{{ icon("close") }}</a>
+    {% endfor %}
+    <a class="wn-admin-filters__reset" href="{{ state.reset }}">Сбросить ({{ state.count }})</a>
+  </div>
+  {% endif %}
+</form>
+{%- endmacro %}
+
+{#- «26–50 из 340» and the page links: first, last and the neighbours of the current one. -#}
+{% macro pager(page, pages, total, per_page, args={}) -%}
+<nav class="wn-admin-pager" aria-label="Страницы">
+  <span class="wn-admin-pager__info">{{ page_range(page, per_page, total) }}</span>
+  {% if pages > 1 %}
+  <div class="wn-admin-pager__pages">
+    {% if page > 1 %}
+    <a class="wn-admin-pager__step" href="{{ admin_query(args, page=page - 1 if page > 2 else none) }}" aria-label="Предыдущая страница">{{ icon("chevron-left") }}</a>
+    {% else %}
+    <span class="wn-admin-pager__step" aria-disabled="true">{{ icon("chevron-left") }}</span>
+    {% endif %}
+    {% for n in page_window(page, pages) %}
+    {% if n is none %}
+    <span class="wn-admin-pager__gap" aria-hidden="true">…</span>
+    {% else %}
+    <a class="wn-admin-pager__page" href="{{ admin_query(args, page=n if n > 1 else none) }}"{% if n == page %} aria-current="page"{% endif %} aria-label="Страница {{ n }}">{{ n }}</a>
+    {% endif %}
+    {% endfor %}
+    {% if page < pages %}
+    <a class="wn-admin-pager__step" href="{{ admin_query(args, page=page + 1) }}" aria-label="Следующая страница">{{ icon("chevron-right") }}</a>
+    {% else %}
+    <span class="wn-admin-pager__step" aria-disabled="true">{{ icon("chevron-right") }}</span>
+    {% endif %}
+  </div>
+  {% endif %}
+</nav>
+{%- endmacro %}
