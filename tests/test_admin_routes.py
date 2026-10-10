@@ -13,14 +13,15 @@ from tests.auth_helpers import register
 from tests.test_admin_auth import PASSWORD, Clock, _client
 
 # (method, path) -> status without an admin login (with the panel enabled). Only the
-# login form itself may answer 200; every POST is refused for the missing CSRF token
-# before anything else happens; every data page sends you to the login form.
+# login form itself may answer 200; login/logout are refused for the missing CSRF token
+# before anything else happens; every data page - and every POST that needs the admin
+# (PR 342 on) - sends you to the login form before its handler runs.
 EXPECTED_WITHOUT_ADMIN = {
     ("GET", "/admin"): 303,
     ("GET", "/admin/tables"): 303,
     ("GET", "/admin/tables/{name}"): 303,
     ("GET", "/admin/_kit"): 303,
-    ("POST", "/admin/_kit/demo"): 403,
+    ("POST", "/admin/_kit/demo"): 303,
     ("GET", "/admin/login"): 200,
     ("POST", "/admin/login"): 403,
     ("POST", "/admin/logout"): 403,
