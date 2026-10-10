@@ -79,7 +79,7 @@
         {# PR 353 puts the global search here. #}
         <div class="wn-admin-top__search" data-role="admin-search-slot"></div>
         {# The server's clock in ADMIN_TIMEZONE at render time - no client clock, no "МСК". #}
-        <p class="wn-admin-top__time">
+        <p class="wn-admin-top__time" title="{{ server_time.date }}, {{ server_time.time }} ({{ server_time.timezone }})">
           <time datetime="{{ server_time.iso }}"><span class="wn-admin-top__date">{{ server_time.date }} · </span>{{ server_time.time }}</time>
           <span class="wn-admin-top__tz">{{ server_time.timezone }}</span>
         </p>

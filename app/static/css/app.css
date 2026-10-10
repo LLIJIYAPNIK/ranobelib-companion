@@ -21230,6 +21230,11 @@ body.reader-hud-visible .reader-hud {
   max-width: 460px;
 }
 
+/* Until PR 353 fills it, the slot mustn't take the title's room. */
+.wn-admin-top__search:empty {
+  display: none;
+}
+
 .wn-admin-top__time {
   display: flex;
   flex: none;
@@ -21664,8 +21669,10 @@ a.wn-admin-side__item:hover {
     display: none;
   }
 
-  /* On a phone only the time stays - the date would squeeze the page title out. */
-  .wn-admin-top__date {
+  /* On a phone only the time stays - the date and zone would squeeze the page title
+     out (both are still in the element's title). */
+  .wn-admin-top__date,
+  .wn-admin-top__tz {
     display: none;
   }
 }
