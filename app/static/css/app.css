@@ -21230,13 +21230,21 @@ body.reader-hud-visible .reader-hud {
   max-width: 460px;
 }
 
+.wn-admin-top__time {
+  display: flex;
+  flex: none;
+  align-items: baseline;
+  gap: 6px;
+  margin: 0 0 0 auto;
+  white-space: nowrap;
+}
+
 .wn-admin-top__site {
   display: flex;
   flex: none;
   align-items: center;
   gap: 6px;
   height: 38px;
-  margin-left: auto;
   padding: 0 12px;
   text-decoration: none;
 }
@@ -21355,6 +21363,18 @@ a.wn-admin-side__item:hover {
 
 .wn-admin-top__title {
   font: var(--wn-weight-extra-bold) 20px/28px var(--wn-font-ui);
+}
+
+.wn-admin-top__time {
+  color: var(--wn-text-secondary);
+  font: var(--wn-type-meta);
+  font-variant-numeric: tabular-nums;
+}
+
+.wn-admin-top__tz {
+  color: var(--wn-text-muted);
+  font: var(--wn-type-technical);
+  font-size: 11px;
 }
 
 .wn-admin-top__site {
@@ -21641,6 +21661,11 @@ a.wn-admin-side__item:hover {
   }
 
   .wn-admin-top__site-text {
+    display: none;
+  }
+
+  /* On a phone only the time stays - the date would squeeze the page title out. */
+  .wn-admin-top__date {
     display: none;
   }
 }

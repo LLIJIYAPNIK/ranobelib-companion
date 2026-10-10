@@ -71,6 +71,10 @@ user account, nothing in the database. Unset or empty means the panel doesn't ex
 every /admin* route answers 404 exactly like an unknown URL, in production too (a
 forgotten variable turns the panel off, never on). ``admin_session_ttl`` is how long an
 admin login lasts (seconds), independent of the site session's own lifetime.
+
+``admin_timezone`` (PR 341) is the IANA zone the panel shows times and (wave 40) groups
+its stats by - the server's clock, not any user's. UTC by default; an unknown name is
+logged and falls back to UTC rather than stopping the app over a display setting.
 """
 
 from __future__ import annotations
@@ -81,6 +85,7 @@ import secrets
 from dataclasses import dataclass
 from functools import lru_cache
 from pathlib import Path
+from zoneinfo import available_timezones
 
 logger = logging.getLogger(__name__)
 
@@ -96,6 +101,7 @@ _DEFAULT_PASSWORD_RESET_TOKEN_TTL_SECONDS = 60 * 60  # 1 hour
 _DEFAULT_EMAIL_VERIFICATION_TOKEN_TTL_SECONDS = 24 * 60 * 60  # 24 hours
 _DEFAULT_EMAIL_PORT = 587
 _DEFAULT_ADMIN_SESSION_TTL_SECONDS = 2 * 60 * 60  # 2 hours
+_DEFAULT_ADMIN_TIMEZONE = "UTC"
 
 
 @dataclass(frozen=True)
@@ -119,10 +125,21 @@ class Settings:
     email_from: str | None
     admin_password: str | None = None
     admin_session_ttl: float = _DEFAULT_ADMIN_SESSION_TTL_SECONDS
+    admin_timezone: str = _DEFAULT_ADMIN_TIMEZONE
 
     @property
     def admin_enabled(self) -> bool:
         return bool(self.admin_password)
+
+
+def _admin_timezone() -> str:
+    name = os.environ.get("ADMIN_TIMEZONE", "").strip()
+    if not name:
+        return _DEFAULT_ADMIN_TIMEZONE
+    if name not in available_timezones():
+        logger.warning("ADMIN_TIMEZONE=%r is not a known IANA zone - using UTC.", name)
+        return _DEFAULT_ADMIN_TIMEZONE
+    return name
 
 
 @lru_cache
@@ -181,4 +198,5 @@ def get_settings() -> Settings:
         admin_session_ttl=float(
             os.environ.get("ADMIN_SESSION_TTL_SECONDS", _DEFAULT_ADMIN_SESSION_TTL_SECONDS)
         ),
+        admin_timezone=_admin_timezone(),
     )
