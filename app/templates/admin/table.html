@@ -1,9 +1,9 @@
 {% extends "admin/_layout.html" %}
 {% block title %}{{ data.table }}{% endblock %}
+{% block heading %}{{ data.table }}{% endblock %}
 {% block content %}
-<main class="wn-admin__main" aria-labelledby="admin-table-title">
-  <p class="wn-admin__crumbs"><a href="/admin/tables">Таблицы</a> /</p>
-  <h1 class="wn-admin__title" id="admin-table-title">{{ data.table }}</h1>
+<main class="wn-admin__main" aria-labelledby="admin-page-title">
+  <p class="wn-admin__crumbs"><a href="/admin/tables">Данные БД</a> / {{ data.table }}</p>
 
   <form class="wn-admin__search" method="get" action="/admin/tables/{{ data.table }}" role="search">
     <input type="hidden" name="sort" value="{{ data.sort }}">

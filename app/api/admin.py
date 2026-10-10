@@ -1,4 +1,5 @@
-"""/admin: the panel's login/logout (PR 324), overview and read-only data browser (PR 325).
+"""/admin: the panel's login/logout (PR 324), overview and read-only data browser (PR 325),
+the shared sidebar/top-bar shell (PR 341).
 
 Every route sits behind ``require_admin_enabled`` (404 without ADMIN_PASSWORD), every page
 but the login form behind ``require_admin`` (app/auth/admin.py). The data pages only read
@@ -9,6 +10,7 @@ from __future__ import annotations
 
 import math
 from collections.abc import Awaitable, Callable
+from dataclasses import dataclass
 from typing import Annotated
 
 from fastapi import APIRouter, Depends, FastAPI, Form, HTTPException, Query, Request
@@ -51,6 +53,31 @@ router = APIRouter(
 
 Admin = Annotated[None, Depends(require_admin)]
 Connection = Annotated[AsyncConnection, Depends(get_connection)]
+
+
+@dataclass(frozen=True)
+class NavItem:
+    """One sidebar entry (PR 341). ``href`` is None for a screen whose PR hasn't landed
+    yet - shown, but not a link, so the sidebar already has its final shape."""
+
+    section: str
+    label: str
+    icon: str
+    href: str | None
+    group: str = ""
+
+
+# The sidebar's screens and groups (RanobeLib Admin.dc.html, cut down to what wave 40
+# builds - see ROADMAP.md, PR 341). Each later PR fills in its href.
+ADMIN_NAV: tuple[NavItem, ...] = (
+    NavItem("overview", "Обзор", "dashboard", "/admin"),
+    NavItem("analytics", "Аналитика", "chart", None, "Контент"),
+    NavItem("users", "Пользователи", "users", None, "Сообщество"),
+    NavItem("comments", "Комментарии", "comments", None, "Сообщество"),
+    NavItem("tables", "Данные БД", "database", "/admin/tables", "Данные"),
+    NavItem("system", "Система", "server", None, "Платформа"),
+    NavItem("audit", "Журнал", "history", None, "Платформа"),
+)
 
 
 @router.get("", response_model=None)
@@ -106,7 +133,12 @@ def _page(request: Request, template: str, section: str, **context: object) -> H
     return templates.TemplateResponse(
         request,
         template,
-        {"csrf_token": csrf_token(request), "admin_section": section, **context},
+        {
+            "csrf_token": csrf_token(request),
+            "admin_section": section,
+            "admin_nav": ADMIN_NAV,
+            **context,
+        },
     )
 
 

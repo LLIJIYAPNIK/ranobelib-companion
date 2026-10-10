@@ -15,19 +15,69 @@
 {# The admin isn't a site user - none of base.html's navigation or account UI here. #}
 <body class="wn-admin">
   {% if admin_section %}
-  {# PR 325: the panel's own header (only once logged in - the login page has none). #}
-  <header class="wn-admin__bar">
-    <span class="wn-admin__brand">Админ-панель</span>
-    <nav class="wn-admin__nav" aria-label="Разделы панели">
-      <a href="/admin"{% if admin_section == "overview" %} aria-current="page"{% endif %}>Обзор</a>
-      <a href="/admin/tables"{% if admin_section == "tables" %} aria-current="page"{% endif %}>Таблицы</a>
-    </nav>
-    <form class="wn-admin__logout" method="post" action="/admin/logout">
-      <input type="hidden" name="csrf" value="{{ csrf_token }}">
-      <button class="ui-btn" type="submit">Выйти</button>
-    </form>
-  </header>
+  {# PR 341: the panel's shell (RanobeLib Admin.dc.html) - sidebar with grouped screens and
+     a top bar; only once logged in (the login page has none). #}
+  {% include "admin/_icons.html" %}
+  <div class="wn-admin-shell">
+    <aside class="wn-admin-side" id="admin-sidebar" data-role="admin-sidebar" aria-label="Админ-панель">
+      <div class="wn-admin-side__brand">
+        <span class="wn-admin-side__logo" aria-hidden="true">W</span>
+        <span class="wn-admin-side__brand-text">
+          <span class="wn-admin-side__brand-name">Webnovells</span>
+          <span class="wn-admin-side__brand-sub">Админ-панель</span>
+        </span>
+      </div>
+      <nav class="wn-admin-side__nav" aria-label="Разделы панели">
+        {% set ns = namespace(group="") %}
+        {% for item in admin_nav %}
+        {% if item.group and item.group != ns.group %}
+        <p class="wn-admin-side__group">{{ item.group }}</p>
+        {% set ns.group = item.group %}
+        {% endif %}
+        {% if item.href %}
+        <a class="wn-admin-side__item" href="{{ item.href }}" title="{{ item.label }}"{% if admin_section == item.section %} aria-current="page"{% endif %}>
+          <svg class="wn-admin-icon" aria-hidden="true"><use href="#admin-icon-{{ item.icon }}"></use></svg>
+          <span class="wn-admin-side__label">{{ item.label }}</span>
+        </a>
+        {% else %}
+        {# A screen from a later PR of wave 40 - in place, but not a link yet. #}
+        <span class="wn-admin-side__item" aria-disabled="true" title="{{ item.label }} — появится позже">
+          <svg class="wn-admin-icon" aria-hidden="true"><use href="#admin-icon-{{ item.icon }}"></use></svg>
+          <span class="wn-admin-side__label">{{ item.label }}</span>
+          <span class="wn-admin-side__soon">скоро</span>
+        </span>
+        {% endif %}
+        {% endfor %}
+      </nav>
+      {# No profile block: the admin is one password from .env, not an account. #}
+      <div class="wn-admin-side__account">
+        <span class="wn-admin-side__avatar" aria-hidden="true">А</span>
+        <span class="wn-admin-side__role">Администратор</span>
+        <form class="wn-admin-side__logout" method="post" action="/admin/logout">
+          <input type="hidden" name="csrf" value="{{ csrf_token }}">
+          <button class="wn-admin-side__logout-btn" type="submit" title="Выйти" aria-label="Выйти">
+            <svg class="wn-admin-icon" aria-hidden="true"><use href="#admin-icon-log-out"></use></svg>
+            <span class="wn-admin-side__logout-text">Выйти</span>
+          </button>
+        </form>
+      </div>
+    </aside>
+
+    <div class="wn-admin-frame">
+      <header class="wn-admin-top">
+        <h1 class="wn-admin-top__title" id="admin-page-title">{% block heading %}{% endblock %}</h1>
+        {# PR 353 puts the global search here. #}
+        <div class="wn-admin-top__search" data-role="admin-search-slot"></div>
+        <a class="wn-admin-top__site" href="/" title="На сайт">
+          <svg class="wn-admin-icon" aria-hidden="true"><use href="#admin-icon-external"></use></svg>
+          <span class="wn-admin-top__site-text">На сайт</span>
+        </a>
+      </header>
+      {% block content %}{% endblock %}
+    </div>
+  </div>
+  {% else %}
+  {% block login %}{% endblock %}
   {% endif %}
-  {% block content %}{% endblock %}
 </body>
 </html>

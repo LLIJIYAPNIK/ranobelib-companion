@@ -21079,58 +21079,182 @@ body.reader-hud-visible .reader-hud {
   font-size: 16px;
 }
 
-/* PR 325: the panel's header, overview and read-only table browser - desktop first; on a
-   phone the header wraps and wide tables scroll sideways inside their own box. */
-.wn-admin__bar {
+/* PR 341: the panel's shell (RanobeLib Admin.dc.html) - a sidebar with grouped screens
+   beside a frame of top bar + page. Structure here; colors below. */
+.wn-admin-sprite {
+  position: absolute;
+  width: 0;
+  height: 0;
+  overflow: hidden;
+}
+
+.wn-admin-icon {
+  flex: none;
+  width: 17px;
+  height: 17px;
+}
+
+.wn-admin-shell {
   display: flex;
-  flex-wrap: wrap;
+  min-height: 100vh;
+}
+
+.wn-admin-side {
+  position: sticky;
+  top: 0;
+  display: flex;
+  flex: none;
+  flex-direction: column;
+  width: 248px;
+  height: 100vh;
+}
+
+.wn-admin-side__brand {
+  display: flex;
+  flex: none;
   align-items: center;
-  gap: var(--wn-space-2) var(--wn-space-3);
-  padding: 12px 24px;
-  border-bottom: 1px solid var(--wn-border);
-  background: var(--wn-surface);
+  gap: 11px;
+  height: 64px;
+  padding: 0 19px;
 }
 
-.wn-admin__brand {
-  font: var(--wn-weight-bold) 16px/1 var(--wn-font-ui);
+.wn-admin-side__logo {
+  display: grid;
+  flex: none;
+  place-items: center;
+  width: 34px;
+  height: 34px;
 }
 
-.wn-admin__nav {
+.wn-admin-side__brand-text {
   display: flex;
-  gap: 4px;
+  flex-direction: column;
+  gap: 1px;
+  min-width: 0;
 }
 
-.wn-admin__nav a {
-  padding: 8px 12px;
-  border-radius: var(--wn-radius-md);
-  color: var(--wn-text-secondary);
-  font: var(--wn-weight-semi-bold) 14px/1 var(--wn-font-ui);
+.wn-admin-side__nav {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  gap: 2px;
+  padding: 6px 12px 12px;
+  overflow: auto;
+}
+
+.wn-admin-side__group {
+  margin: 0;
+  padding: 14px 10px 6px;
+}
+
+.wn-admin-side__item {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 11px;
+  height: 38px;
+  padding: 0 11px;
   text-decoration: none;
 }
 
-.wn-admin__nav a[aria-current="page"] {
-  background: var(--wn-surface-raised);
-  color: var(--wn-text);
+.wn-admin-side__label {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
-.wn-admin__nav a:focus-visible,
+.wn-admin-side__account {
+  display: flex;
+  flex: none;
+  align-items: center;
+  gap: 10px;
+  padding: 12px 20px;
+}
+
+.wn-admin-side__avatar {
+  display: grid;
+  flex: none;
+  place-items: center;
+  width: 32px;
+  height: 32px;
+}
+
+.wn-admin-side__role {
+  flex: 1;
+  min-width: 0;
+}
+
+.wn-admin-side__logout {
+  margin: 0;
+}
+
+.wn-admin-side__logout-btn {
+  display: grid;
+  place-items: center;
+  width: 34px;
+  height: 34px;
+  padding: 0;
+  cursor: pointer;
+}
+
+.wn-admin-frame {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.wn-admin-top {
+  position: sticky;
+  top: 0;
+  z-index: 20;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  height: 64px;
+  padding: 0 28px;
+}
+
+.wn-admin-top__title {
+  min-width: 0;
+  margin: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.wn-admin-top__search {
+  flex: 1;
+  max-width: 460px;
+}
+
+.wn-admin-top__site {
+  display: flex;
+  flex: none;
+  align-items: center;
+  gap: 6px;
+  height: 38px;
+  margin-left: auto;
+  padding: 0 12px;
+  text-decoration: none;
+}
+
 .wn-admin__table a:focus-visible,
 .wn-admin__crumbs a:focus-visible {
   outline: none;
   box-shadow: var(--wn-focus-ring);
 }
 
-.wn-admin__logout {
-  margin-left: auto;
-}
-
 .wn-admin__main {
   display: flex;
   flex-direction: column;
   gap: var(--wn-space-2);
-  max-width: 1400px;
+  width: 100%;
+  max-width: 1520px;
   margin: 0 auto;
-  padding: var(--wn-space-3) 24px var(--wn-space-4);
+  padding: 28px;
 }
 
 .wn-admin__subtitle {
@@ -21259,13 +21383,6 @@ body.reader-hud-visible .reader-hud {
   gap: 12px;
 }
 
-@media (max-width: 767px) {
-  .wn-admin__bar,
-  .wn-admin__main {
-    padding-right: 16px;
-    padding-left: 16px;
-  }
-}
 
 /* ==========================================================================
    Offline page (PR 328) - what the service worker shows for a page that couldn't load
