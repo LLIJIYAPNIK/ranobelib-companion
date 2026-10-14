@@ -90,9 +90,7 @@ def _where(
         last = "(a.last_active IS NOT NULL AND a.last_active >= %(start)s)"
         conditions.append(last if active else f"NOT {last}")
     if library is not None:
-        conditions.append(
-            "COALESCE(l.library, 0) > 0" if library else "COALESCE(l.library, 0) = 0"
-        )
+        conditions.append("COALESCE(l.library, 0) > 0" if library else "COALESCE(l.library, 0) = 0")
     return (f"WHERE {' AND '.join(conditions)} " if conditions else ""), params
 
 

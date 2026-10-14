@@ -45,10 +45,26 @@
     <div class="wn-admin-summary__item"><dt>{{ item.label }}</dt><dd>{{ item.value }}</dd></div>
     {% endfor %}
   </dl>
+  <section class="wn-admin-actions" aria-labelledby="admin-user-actions">
+    <h3 class="wn-admin-actions__title" id="admin-user-actions">Действия</h3>
+    <button class="wn-admin-btn" type="button" data-kit-open="admin-user-sessions">{{ kit.icon("log-out") }}Завершить все сессии</button>
+    {% if not summary.email_verified_at %}
+    <button class="wn-admin-btn" type="button" data-kit-open="admin-user-verify">{{ kit.icon("circle-check") }}Подтвердить email вручную</button>
+    {% endif %}
+    <button class="wn-admin-btn" type="button" data-kit-open="admin-user-reset">{{ kit.icon("lock") }}Отправить письмо сброса пароля</button>
+    <p class="wn-admin-field__hint">Каждое действие попадает в журнал. Удаления аккаунта здесь нет — на сайте такой функции нет.</p>
+  </section>
 </div>
 <div class="wn-admin-drawer__foot">
   <button class="wn-admin-btn wn-admin-btn--ghost" type="button" data-kit-close>Закрыть</button>
 </div>
 {% endcall %}
+
+{% set who = summary.nickname or summary.email %}
+{{ kit.confirm("admin-user-sessions", "Завершить все сессии «" ~ who ~ "»?", "/admin/users/" ~ summary.id ~ "/sessions", confirm_label="Завершить", lead="Пользователь выйдет на всех устройствах при следующем запросе.", lines=["Пароль не меняется — войти снова можно им же", "Отменить нельзя: вернуть старые входы не получится"], fields={"back": back}, tone="primary") }}
+{% if not summary.email_verified_at %}
+{{ kit.confirm("admin-user-verify", "Подтвердить email «" ~ summary.email ~ "»?", "/admin/users/" ~ summary.id ~ "/verify-email", confirm_label="Подтвердить", lead="Для тех, кому письмо с кодом так и не пришло.", lines=["Вы подтверждаете, что адрес принадлежит пользователю", "Вход станет доступен без кода из письма"], fields={"back": back}, tone="primary") }}
+{% endif %}
+{{ kit.confirm("admin-user-reset", "Отправить письмо сброса пароля?", "/admin/users/" ~ summary.id ~ "/password-reset", confirm_label="Отправить", lead="На " ~ summary.email ~ " уйдёт то же письмо, что по кнопке «Забыли пароль?».", lines=["Пароль меняет сам пользователь по ссылке", "Ссылку из письма вы не увидите — она только у пользователя"], fields={"back": back}, tone="primary") }}
 {% endif %}
 {% endblock %}

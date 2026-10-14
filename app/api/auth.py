@@ -419,6 +419,21 @@ async def show_password_reset_request(request: Request) -> HTMLResponse:
     return templates.TemplateResponse(request, "password_reset_request.html", {})
 
 
+async def send_password_reset_email(request: Request, conn: AsyncConnection, user: User) -> None:
+    """A new reset link for `user`, by email - the «Забыли пароль?» form's, and since
+    PR 348 the admin's «Отправить письмо сброса пароля» (the same letter either way)."""
+    raw_token = await create_token(conn, user.id, get_settings().password_reset_token_ttl)
+    reset_url = str(request.url_for("show_password_reset_confirm", token=raw_token))
+    ttl_hours = max(1, int(get_settings().password_reset_token_ttl // 3600))
+    await send_email(
+        user.email,
+        "Восстановление пароля — webnovells",
+        f"Чтобы задать новый пароль, перейдите по ссылке:\n{reset_url}\n\n"
+        f"Ссылка действует {ttl_hours} ч. Если вы не запрашивали восстановление "
+        "пароля, просто проигнорируйте это письмо.",
+    )
+
+
 @router.post("/password-reset", response_model=None)
 async def request_password_reset(
     request: Request,
@@ -437,16 +452,7 @@ async def request_password_reset(
     # against account enumeration already applied to POST /login's error message.
     user = await get_user_by_email(conn, email)
     if user is not None:
-        raw_token = await create_token(conn, user.id, get_settings().password_reset_token_ttl)
-        reset_url = str(request.url_for("show_password_reset_confirm", token=raw_token))
-        ttl_hours = max(1, int(get_settings().password_reset_token_ttl // 3600))
-        await send_email(
-            user.email,
-            "Восстановление пароля — webnovells",
-            f"Чтобы задать новый пароль, перейдите по ссылке:\n{reset_url}\n\n"
-            f"Ссылка действует {ttl_hours} ч. Если вы не запрашивали восстановление "
-            "пароля, просто проигнорируйте это письмо.",
-        )
+        await send_password_reset_email(request, conn, user)
 
     return templates.TemplateResponse(
         request,

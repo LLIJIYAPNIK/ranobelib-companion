@@ -66,11 +66,13 @@ from app.admin_overview import (
 from app.admin_users import (
     back_href,
     parse_flag,
+    safe_back,
     summary_items,
     user_columns,
     user_filters,
     user_rows,
 )
+from app.api.auth import send_password_reset_email
 from app.auth.admin import (
     LOGIN_PATH,
     check_csrf,
@@ -101,6 +103,11 @@ from app.db.admin_analytics import (
     reading_heatmap,
     title_totals,
 )
+from app.db.admin_audit import (
+    USER_CONFIRM_EMAIL,
+    USER_END_SESSIONS,
+    USER_SEND_PASSWORD_RESET,
+)
 from app.db.admin_data import (
     MASK,
     QUERY_TIMEOUT_MS,
@@ -125,6 +132,7 @@ from app.db.admin_users import PAGE_SIZE as USERS_PAGE_SIZE
 from app.db.admin_users import SORTS as USER_SORTS
 from app.db.admin_users import list_users, user_summary
 from app.db.connection import get_connection
+from app.db.users import User, end_all_sessions, get_user_by_id, mark_email_verified
 from app.services.titles import (
     TitleSummary,
     tables_of_contents,
@@ -461,6 +469,111 @@ async def admin_users(
         close_href=back_href(list_args),
         back=back_href(args),
     )
+
+
+# --- «Пользователи»: the three safe actions (PR 348) ---------------------------------------
+# Each is a POST from a confirmation dialog in the drawer: CSRF checked, the change made
+# with the site's own function, then recorded in the action log (PR 343) on the same
+# connection, and the list shown again with a toast. ``back`` only ever leads to the
+# users list (safe_back()).
+
+UserId = Annotated[int, Path(ge=1, le=2_147_483_647)]
+
+
+async def _target_user(conn: AsyncConnection, user_id: int) -> User:
+    user = await get_user_by_id(conn, user_id)
+    if user is None:
+        raise HTTPException(status_code=404)
+    return user
+
+
+def _label(user: User) -> str:
+    return user.nickname or user.email
+
+
+@router.post("/users/{user_id}/sessions", response_model=None)
+async def admin_user_end_sessions(
+    request: Request,
+    user_id: UserId,
+    _: Admin,
+    conn: Connection,
+    csrf: Annotated[str, Form()] = "",
+    back: Annotated[str, Form(max_length=2000)] = "",
+) -> Response:
+    """«Завершить все сессии»: every device the account is signed in on is signed out on
+    its next request - session_version + 1, as after a password reset."""
+    check_csrf(request, csrf)
+    user = await _target_user(conn, user_id)
+    await end_all_sessions(conn, user.id)
+    await admin_audit.record_change(
+        conn,
+        USER_END_SESSIONS,
+        ip=client_ip(request),
+        entity="user",
+        entity_id=user.id,
+        entity_label=_label(user),
+        extra={"effect": "все входы, выданные до этого момента, больше не действуют"},
+    )
+    push_toast(request, f"Все сессии «{_label(user)}» завершены")
+    return RedirectResponse(safe_back(back), status_code=303)
+
+
+@router.post("/users/{user_id}/verify-email", response_model=None)
+async def admin_user_verify_email(
+    request: Request,
+    user_id: UserId,
+    _: Admin,
+    conn: Connection,
+    csrf: Annotated[str, Form()] = "",
+    back: Annotated[str, Form(max_length=2000)] = "",
+) -> Response:
+    """«Подтвердить email вручную»: for someone whose letter never arrived. An address
+    that's already confirmed is left alone - nothing changes, nothing is logged."""
+    check_csrf(request, csrf)
+    user = await _target_user(conn, user_id)
+    if user.email_verified_at is not None:
+        push_toast(request, f"Email «{_label(user)}» уже подтверждён", tone="error")
+        return RedirectResponse(safe_back(back), status_code=303)
+    updated = await mark_email_verified(conn, user.id)
+    await admin_audit.record_change(
+        conn,
+        USER_CONFIRM_EMAIL,
+        ip=client_ip(request),
+        entity="user",
+        entity_id=user.id,
+        entity_label=_label(user),
+        before={"email_verified_at": None},
+        after={"email_verified_at": updated.email_verified_at},
+    )
+    push_toast(request, f"Email «{_label(user)}» подтверждён")
+    return RedirectResponse(safe_back(back), status_code=303)
+
+
+@router.post("/users/{user_id}/password-reset", response_model=None)
+async def admin_user_password_reset(
+    request: Request,
+    user_id: UserId,
+    _: Admin,
+    conn: Connection,
+    csrf: Annotated[str, Form()] = "",
+    back: Annotated[str, Form(max_length=2000)] = "",
+) -> Response:
+    """«Отправить письмо сброса пароля»: the same letter «Забыли пароль?» sends. The admin
+    never sees or sets the password, and the link isn't shown or logged."""
+    check_csrf(request, csrf)
+    user = await _target_user(conn, user_id)
+    await send_password_reset_email(request, conn, user)
+    await admin_audit.record_change(
+        conn,
+        USER_SEND_PASSWORD_RESET,
+        ip=client_ip(request),
+        entity="user",
+        entity_id=user.id,
+        entity_label=_label(user),
+        extra={"sent_to": user.email},
+    )
+    push_toast(request, f"Письмо для сброса пароля отправлено на {user.email}")
+    return RedirectResponse(safe_back(back), status_code=303)
 
 
 @router.get("/tables", response_model=None)
