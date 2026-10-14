@@ -22,10 +22,11 @@ time order for these, see app/timezones.py).
 
 from __future__ import annotations
 
+from collections.abc import Awaitable, Callable
 from dataclasses import dataclass, replace
 from datetime import UTC, date, datetime, time, timedelta
 from time import monotonic
-from typing import Literal
+from typing import Any, Literal
 from zoneinfo import ZoneInfo
 
 from psycopg import AsyncConnection
@@ -203,6 +204,7 @@ class PeriodStats:
     period: Period
     previous_period: Period
     metrics: dict[str, MetricSeries]
+    at: datetime  # when it was computed (UTC) - the overview's «данные на 14:32»
 
 
 async def period_stats(
@@ -211,6 +213,7 @@ async def period_stats(
     """Every metric for period `key` in zone `tz`, with the previous period's alongside.
     Runs read-only with the admin query timeout (PR 326): a too slow aggregate is
     cancelled with QueryCanceled rather than holding a pool connection."""
+    now = now or datetime.now(UTC)
     period = build_period(key, tz, now)
     previous = period.previous()
     async with _read_only(conn):
@@ -221,24 +224,147 @@ async def period_stats(
         previous_total=readers["previous"],
         current_total=readers["current"],
     )
-    return PeriodStats(period=period, previous_period=previous, metrics=metrics)
+    return PeriodStats(period=period, previous_period=previous, metrics=metrics, at=now)
 
 
-_cache: dict[tuple[str, str], tuple[float, PeriodStats]] = {}
+_cache: dict[tuple[str, ...], tuple[float, Any]] = {}
+
+
+async def cached[T](key: tuple[str, ...], compute: Callable[[], Awaitable[T]]) -> T:
+    """`compute()`'s result, reused for CACHE_SECONDS per `key` (what was computed and
+    for which period/zone)."""
+    hit = _cache.get(key)
+    if hit is not None and monotonic() - hit[0] < CACHE_SECONDS:
+        return hit[1]
+    value = await compute()
+    _cache[key] = (monotonic(), value)
+    return value
 
 
 async def cached_period_stats(conn: AsyncConnection, key: str, tz: str) -> PeriodStats:
     """period_stats() for now, reused for CACHE_SECONDS per (period, zone)."""
-    hit = _cache.get((key, tz))
-    if hit is not None and monotonic() - hit[0] < CACHE_SECONDS:
-        return hit[1]
-    stats = await period_stats(conn, key, tz)
-    _cache[(key, tz)] = (monotonic(), stats)
-    return stats
+    return await cached(("stats", key, tz), lambda: period_stats(conn, key, tz))
 
 
 def clear_cache() -> None:
     _cache.clear()
+
+
+# --- popular titles -----------------------------------------------------------------------
+
+TOP_TITLES = 6
+
+
+@dataclass(frozen=True)
+class TitleReaders:
+    """A title's unique readers (anyone who opened one of its chapters) in a period, the
+    chapters opened, and its readers in the previous period for the trend. Only the
+    slug_url - names and covers are SDK data, looked up by the caller."""
+
+    slug_url: str
+    readers: int
+    chapters: int
+    previous_readers: int
+
+    @property
+    def comparison(self) -> Comparison:
+        return compare(self.readers, self.previous_readers)
+
+
+async def top_titles(
+    conn: AsyncConnection,
+    key: str,
+    tz: str,
+    limit: int = TOP_TITLES,
+    now: datetime | None = None,
+) -> list[TitleReaders]:
+    """The titles with the most unique readers in period `key` (ties: more chapters
+    read, then slug_url, so the order is stable). Read-only with the admin timeout."""
+    period = build_period(key, tz, now)
+    previous = period.previous()
+    async with _read_only(conn):
+        cursor = await conn.execute(
+            "SELECT slug_url, "
+            "COUNT(DISTINCT user_id) FILTER (WHERE created_at >= %(split)s) AS readers, "
+            "COUNT(*) FILTER (WHERE created_at >= %(split)s) AS chapters, "
+            "COUNT(DISTINCT user_id) FILTER (WHERE created_at < %(split)s) AS previous_readers "
+            "FROM activity_events WHERE kind = 'chapter_read' "
+            "AND created_at >= %(start)s AND created_at < %(end)s "
+            "GROUP BY slug_url HAVING COUNT(*) FILTER (WHERE created_at >= %(split)s) > 0 "
+            "ORDER BY readers DESC, chapters DESC, slug_url LIMIT %(limit)s",
+            {
+                "split": period.start.isoformat(),
+                "start": previous.start.isoformat(),
+                "end": period.end.isoformat(),
+                "limit": limit,
+            },
+        )
+        rows = await cursor.fetchall()
+    return [
+        TitleReaders(
+            slug_url=row["slug_url"],
+            readers=row["readers"],
+            chapters=row["chapters"],
+            previous_readers=row["previous_readers"],
+        )
+        for row in rows
+    ]
+
+
+async def cached_top_titles(conn: AsyncConnection, key: str, tz: str) -> list[TitleReaders]:
+    return await cached(("top_titles", key, tz), lambda: top_titles(conn, key, tz))
+
+
+# --- «Требует внимания» -------------------------------------------------------------------
+
+
+@dataclass(frozen=True)
+class AttentionCounts:
+    """What the overview's computed warnings look at in the database, over fixed windows
+    rather than the selected period: downloads over the last 24 hours, and the accounts
+    registered over the last 7 days against the 7 before that, with how many of them
+    haven't confirmed their email."""
+
+    downloads_day: int
+    failed_downloads_day: int
+    registrations_week: int
+    unverified_week: int
+    unverified_previous_week: int
+
+
+async def attention_counts(conn: AsyncConnection, now: datetime | None = None) -> AttentionCounts:
+    now = now or datetime.now(UTC)
+    day_ago = (now - timedelta(days=1)).isoformat()
+    week_ago = (now - timedelta(days=7)).isoformat()
+    two_weeks_ago = (now - timedelta(days=14)).isoformat()
+    async with _read_only(conn):
+        cursor = await conn.execute(
+            "SELECT COUNT(*) AS total, COUNT(*) FILTER (WHERE status = 'error') AS failed "
+            "FROM download_history WHERE finished_at >= %s",
+            (day_ago,),
+        )
+        downloads = await cursor.fetchone()
+        cursor = await conn.execute(
+            "SELECT COUNT(*) FILTER (WHERE created_at >= %(week)s) AS registered, "
+            "COUNT(*) FILTER (WHERE created_at >= %(week)s AND email_verified_at IS NULL) "
+            "AS unverified, "
+            "COUNT(*) FILTER (WHERE created_at < %(week)s AND email_verified_at IS NULL) "
+            "AS unverified_before "
+            "FROM users WHERE created_at >= %(start)s",
+            {"week": week_ago, "start": two_weeks_ago},
+        )
+        users = await cursor.fetchone()
+    return AttentionCounts(
+        downloads_day=downloads["total"],
+        failed_downloads_day=downloads["failed"],
+        registrations_week=users["registered"],
+        unverified_week=users["unverified"],
+        unverified_previous_week=users["unverified_before"],
+    )
+
+
+async def cached_attention_counts(conn: AsyncConnection) -> AttentionCounts:
+    return await cached(("attention",), lambda: attention_counts(conn))
 
 
 async def _series(

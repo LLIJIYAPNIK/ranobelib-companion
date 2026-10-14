@@ -35,6 +35,22 @@ def _reset_rate_limits() -> Iterator[None]:
 
 
 @pytest.fixture(autouse=True)
+def _reset_admin_stats() -> Iterator[None]:
+    """PR 345: the admin overview's 60-second stats cache and the SDK outcome log are
+    process-wide too - one test's numbers mustn't show up on the next test's /admin.
+    Imported here rather than at the top, like the email patch below, so conftest.py
+    loading doesn't pull in the app."""
+    from app.db.admin_stats import clear_cache
+    from app.services.sdk_outcomes import clear
+
+    clear_cache()
+    clear()
+    yield
+    clear_cache()
+    clear()
+
+
+@pytest.fixture(autouse=True)
 def _capture_emails(monkeypatch: pytest.MonkeyPatch) -> Iterator[None]:
     """PR 246: records outgoing email instead of sending it, so tests can confirm a new
     account with the emailed code (see tests/auth_helpers.py). Patched by string, so

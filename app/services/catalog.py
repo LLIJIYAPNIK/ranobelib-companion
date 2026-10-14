@@ -1,7 +1,8 @@
 """The only place in this application allowed to construct ``Catalog(...)``."""
 
 import random
-from collections.abc import AsyncGenerator
+from collections.abc import AsyncGenerator, AsyncIterator
+from contextlib import asynccontextmanager
 from dataclasses import dataclass
 from typing import Literal
 
@@ -10,17 +11,25 @@ from ranobelib.catalog import MAX_PER_PAGE, MIN_PER_PAGE
 from ranobelib.models import Country, Genre, Label, Title
 
 from app.config import get_settings
+from app.services import sdk_outcomes
 
 
-def get_catalog() -> Catalog:
-    """Build a `Catalog` client for listing/searching the ranobelib.me catalog.
+@asynccontextmanager
+async def get_catalog() -> AsyncIterator[Catalog]:
+    """An open `Catalog` client for listing/searching the ranobelib.me catalog, as an
+    async context manager (``async with get_catalog() as catalog``).
 
     Shares the same `cache_dir`/`cache_ttl` as `get_client()` (app/services/client.py) -
     one common on-disk cache for the whole app, per CLAUDE.md, not a separate one for
-    catalog browsing.
+    catalog browsing. PR 345: how the session ended goes to app/services/sdk_outcomes.py
+    for the admin overview, same as `open_client()`'s.
     """
     settings = get_settings()
-    return Catalog(cache_dir=settings.cache_dir, cache_ttl=settings.cache_ttl)
+    async with (
+        sdk_outcomes.watch(),
+        Catalog(cache_dir=settings.cache_dir, cache_ttl=settings.cache_ttl) as catalog,
+    ):
+        yield catalog
 
 
 async def list_genres() -> list[Genre]:

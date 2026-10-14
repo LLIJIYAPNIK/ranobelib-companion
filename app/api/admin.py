@@ -16,6 +16,7 @@ from datetime import datetime
 from typing import Annotated
 from zoneinfo import ZoneInfo
 
+import httpx
 import psycopg
 from fastapi import APIRouter, Depends, FastAPI, Form, HTTPException, Query, Request
 from fastapi.responses import HTMLResponse, RedirectResponse, Response
@@ -25,6 +26,25 @@ from psycopg_pool import PoolTimeout
 
 from app.admin_kit import Undo, pop_toast, push_toast
 from app.admin_kit_demo import charts_context, table_context
+from app.admin_overview import (
+    DOWNLOAD_ERROR_COLUMNS,
+    METRIC_INFO,
+    PERIOD_LABELS,
+    RECENT_USER_COLUMNS,
+    activity_chart,
+    as_of,
+    attention_items,
+    chart_has_data,
+    compare_href,
+    download_error_rows,
+    kpis,
+    metric_tabs,
+    parse_compare,
+    parse_metric,
+    period_links,
+    popular_titles,
+    recent_user_rows,
+)
 from app.auth.admin import (
     LOGIN_PATH,
     check_csrf,
@@ -46,12 +66,23 @@ from app.db import connection as db_connection
 from app.db.admin_data import (
     MASK,
     QUERY_TIMEOUT_MS,
+    Overview,
     browse_table,
     list_tables,
     overview,
     table_columns,
 )
+from app.db.admin_stats import (
+    AttentionCounts,
+    PeriodStats,
+    TitleReaders,
+    cached_attention_counts,
+    cached_period_stats,
+    cached_top_titles,
+    parse_period,
+)
 from app.db.connection import get_connection
+from app.services.titles import TitleSummary, title_summaries
 from app.templating import templates
 
 # PR 326: out of the public /openapi.json and /docs - listing the paths there would
@@ -93,12 +124,89 @@ ADMIN_NAV: tuple[NavItem, ...] = (
 
 
 @router.get("", response_model=None)
-async def admin_home(request: Request, _: Admin, conn: Connection) -> HTMLResponse:
+async def admin_home(
+    request: Request,
+    _: Admin,
+    period: Annotated[str | None, Query(max_length=10)] = None,
+    metric: Annotated[str | None, Query(max_length=40)] = None,
+    compare: Annotated[str | None, Query(max_length=5)] = None,
+) -> HTMLResponse:
+    """«Обзор» (PR 345). Each block is loaded on its own: a query that hits the admin
+    timeout leaves an error state in its block and the rest of the page still shows.
+    The connection is taken here rather than as a route dependency, so with the database
+    down the page still opens and says so instead of failing as a whole."""
+    tz = get_settings().admin_timezone
+    key = parse_period(period)
+    failed: set[str] = set()
+    stats: PeriodStats | None = None
+    top: list[TitleReaders] | None = None
+    recent: Overview | None = None
+    counts: AttentionCounts | None = None
+    database_down = False
     try:
-        data = await overview(conn)
+        async with db_connection.connection() as conn:
+            stats = await _block(failed, "stats", lambda: cached_period_stats(conn, key, tz))
+            top = await _block(failed, "titles", lambda: cached_top_titles(conn, key, tz))
+            recent = await _block(failed, "recent", lambda: overview(conn))
+            counts = await _block(failed, "attention", lambda: cached_attention_counts(conn))
+    except (psycopg.OperationalError, PoolTimeout):
+        logger.exception("The admin overview could not reach the database")
+        database_down = True
+    titles = popular_titles(top, await _title_summaries(top)) if top is not None else []
+    # After the title lookups, so a failure reaching ranobelib.me just now counts too.
+    attention = attention_items(counts, database_down)
+    args = dict(request.query_params)
+    chart_metric = parse_metric(metric)
+    chart_compare = parse_compare(compare)
+    return _page(
+        request,
+        "admin/index.html",
+        "overview",
+        timezone=tz,
+        metric_tabs=metric_tabs(stats, args, chart_metric) if stats else [],
+        chart=activity_chart(stats, chart_metric, chart_compare) if stats else None,
+        chart_has_data=chart_has_data(stats, chart_metric, chart_compare) if stats else False,
+        chart_metric_label=METRIC_INFO[chart_metric].label,
+        compare=chart_compare,
+        compare_href=compare_href(args, chart_compare),
+        popular=titles,
+        attention=attention,
+        database_down=database_down,
+        failed=failed,
+        period_key=key,
+        period_label=PERIOD_LABELS[key],
+        periods=period_links(args, key),
+        as_of=as_of(stats, tz) if stats else None,
+        kpis=kpis(stats) if stats else [],
+        user_columns=RECENT_USER_COLUMNS,
+        recent_users=recent_user_rows(recent.recent_users, tz) if recent else [],
+        error_columns=DOWNLOAD_ERROR_COLUMNS,
+        download_errors=download_error_rows(recent.recent_download_errors, tz) if recent else [],
+    )
+
+
+async def _title_summaries(rows: list[TitleReaders]) -> dict[str, TitleSummary]:
+    """Names and covers for the popular titles, each looked up once per page through
+    app/services/ (the SDK's cache makes a repeat a local hit). title_summaries() already
+    skips a title the SDK can't resolve; a network failure reaching ranobelib.me isn't an
+    SDK error, so it's caught here - the list then shows slug_urls rather than failing
+    the whole overview."""
+    try:
+        return await title_summaries({row.slug_url for row in rows})
+    except httpx.HTTPError:
+        logger.warning("Could not reach ranobelib.me for the overview's title names")
+        return {}
+
+
+async def _block[T](failed: set[str], name: str, load: Callable[[], Awaitable[T]]) -> T | None:
+    """One overview block's data, or None (and `name` in `failed`) if its query hit the
+    admin timeout - the block then shows an error state with «Повторить»."""
+    try:
+        return await load()
     except QueryCanceled:
-        return _timed_out(request, "overview")
-    return _page(request, "admin/index.html", "overview", overview=data)
+        logger.warning("The admin overview's %r block timed out", name)
+        failed.add(name)
+        return None
 
 
 @router.get("/tables", response_model=None)

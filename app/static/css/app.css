@@ -23360,6 +23360,402 @@ html:has(dialog.wn-admin-dialog[open]) {
   gap: 16px;
 }
 
+/* --- «Обзор», /admin (PR 345) ------------------------------------------------------- */
+.wn-admin-ov__bar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px 16px;
+}
+
+.wn-admin-ov__asof {
+  margin: 0;
+  color: var(--wn-text-muted);
+  font: var(--wn-weight-medium) 12px/1.4 var(--wn-font-ui);
+  letter-spacing: 0.03em;
+}
+
+.wn-admin-ov__grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 540px), 1fr));
+  gap: var(--wn-space-2);
+}
+
+/* Six KPIs fit one row from ~1100px of content. */
+.wn-admin-ov .wn-admin-kpis {
+  grid-template-columns: repeat(auto-fill, minmax(min(100%, 160px), 1fr));
+}
+
+.wn-admin-ov .wn-admin-table__td--muted {
+  white-space: nowrap;
+}
+
+/* A download error on one line; the whole text is in its title. */
+.wn-admin-ov__clip {
+  display: block;
+  max-width: 220px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* Loading (js/admin-overview.js): after a switch is clicked, the current numbers dim
+   until the next page arrives, and the clicked switch spins. */
+.wn-admin-ov[data-loading] .wn-admin-kpis,
+.wn-admin-ov[data-loading] .wn-admin-card {
+  opacity: 0.55;
+  transition: opacity 0.2s ease 0.1s;
+}
+
+[data-overview-pending] {
+  position: relative;
+}
+
+[data-overview-pending]::after {
+  content: "";
+  position: absolute;
+  top: 50%;
+  right: 6px;
+  width: 10px;
+  height: 10px;
+  margin-top: -7px;
+  border: 2px solid rgba(255, 255, 255, 0.2);
+  border-top-color: currentColor;
+  border-radius: 50%;
+  animation: wn-admin-spin 0.8s linear infinite;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  [data-overview-pending]::after {
+    animation: none;
+  }
+
+  .wn-admin-ov[data-loading] .wn-admin-kpis,
+  .wn-admin-ov[data-loading] .wn-admin-card {
+    transition: none;
+  }
+}
+
+/* The period switch: links in a segmented strip, the current one filled. */
+.wn-admin-seg {
+  display: flex;
+  flex: none;
+  gap: 2px;
+  max-width: 100%;
+  padding: 3px;
+  overflow-x: auto;
+  border: 1px solid var(--wn-border);
+  border-radius: 12px;
+  background: var(--wn-surface);
+}
+
+.wn-admin-seg__item {
+  display: inline-flex;
+  flex: none;
+  align-items: center;
+  height: 32px;
+  padding: 0 13px;
+  border-radius: 9px;
+  color: var(--wn-text-secondary);
+  font: var(--wn-weight-medium) 13px/1 var(--wn-font-ui);
+  text-decoration: none;
+  white-space: nowrap;
+}
+
+.wn-admin-seg__item:hover {
+  background: var(--wn-surface-hover);
+  color: var(--wn-text);
+}
+
+.wn-admin-seg__item[aria-current] {
+  background: var(--wn-primary);
+  color: #fff;
+}
+
+.wn-admin-seg__item:focus-visible {
+  outline: none;
+  box-shadow: var(--wn-focus-ring);
+}
+
+/* «Сравнить с прошлым периодом»: a link drawn as a switch. */
+.wn-admin-toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: 9px;
+  min-height: 32px;
+  border-radius: var(--wn-radius-sm);
+  color: var(--wn-text-secondary);
+  font: var(--wn-weight-medium) 12.5px/1.3 var(--wn-font-ui);
+  text-decoration: none;
+}
+
+.wn-admin-toggle:hover {
+  color: var(--wn-text);
+}
+
+.wn-admin-toggle:focus-visible {
+  outline: none;
+  box-shadow: var(--wn-focus-ring);
+}
+
+.wn-admin-toggle__track {
+  position: relative;
+  flex: none;
+  width: 32px;
+  height: 18px;
+  border-radius: 9px;
+  background: rgba(255, 255, 255, 0.14);
+}
+
+.wn-admin-toggle__track::after {
+  content: "";
+  position: absolute;
+  top: 2px;
+  left: 2px;
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  background: var(--wn-text-secondary);
+}
+
+.wn-admin-toggle__track--on {
+  background: var(--wn-primary);
+}
+
+.wn-admin-toggle__track--on::after {
+  left: 16px;
+  background: #fff;
+}
+
+/* The chart's metric chips: one is drawn at a time. */
+.wn-admin-ov__metrics {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(min(100%, 136px), 1fr));
+  gap: 8px;
+}
+
+.wn-admin-ov__metric {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  min-width: 0;
+  padding: 10px 12px;
+  border: 1px solid var(--wn-border);
+  border-radius: 12px;
+  color: var(--wn-text);
+  text-decoration: none;
+}
+
+.wn-admin-ov__metric:hover {
+  background: var(--wn-surface-hover);
+}
+
+.wn-admin-ov__metric[aria-current] {
+  border-color: var(--wn-primary);
+  background: rgba(122, 82, 244, 0.12);
+}
+
+.wn-admin-ov__metric:focus-visible {
+  outline: none;
+  box-shadow: var(--wn-focus-ring);
+}
+
+.wn-admin-ov__metric-label {
+  overflow: hidden;
+  color: var(--wn-text-secondary);
+  font: var(--wn-weight-medium) 12.5px/1.3 var(--wn-font-ui);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.wn-admin-ov__metric-value {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 4px 8px;
+  font: var(--wn-weight-semi-bold) 17px/1.2 var(--wn-font-ui);
+  font-variant-numeric: tabular-nums;
+}
+
+/* «Популярные тайтлы»: rank, cover, name, readers with a bar, trend. */
+.wn-admin-popular {
+  display: flex;
+  flex-direction: column;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.wn-admin-popular__row {
+  display: grid;
+  grid-template-columns: 22px 30px minmax(0, 1fr) minmax(72px, 130px) 76px;
+  align-items: center;
+  gap: 12px;
+  padding: 9px 4px;
+  border-top: 1px solid var(--wn-border);
+}
+
+.wn-admin-popular__row:first-child {
+  border-top: 0;
+}
+
+.wn-admin-popular__rank {
+  color: var(--wn-primary-hover);
+  font: italic var(--wn-weight-semi-bold) 17px/1 var(--wn-font-ui);
+  text-align: center;
+}
+
+.wn-admin-popular__cover {
+  width: 30px;
+  height: 42px;
+  border-radius: 5px;
+  background: var(--wn-surface-raised);
+  object-fit: cover;
+  box-shadow: 0 4px 10px -4px rgba(0, 0, 0, 0.6);
+}
+
+.wn-admin-popular__cover--blank {
+  display: grid;
+  place-items: center;
+  color: var(--wn-text-secondary);
+  font: var(--wn-weight-semi-bold) 14px/1 var(--wn-font-ui);
+}
+
+.wn-admin-popular__title {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  min-width: 0;
+}
+
+.wn-admin-popular__name {
+  overflow: hidden;
+  color: var(--wn-text);
+  font: var(--wn-weight-medium) 13.5px/1.3 var(--wn-font-ui);
+  text-decoration: none;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.wn-admin-popular__name:hover {
+  text-decoration: underline;
+}
+
+.wn-admin-popular__name:focus-visible {
+  outline: none;
+  border-radius: 4px;
+  box-shadow: var(--wn-focus-ring);
+}
+
+.wn-admin-popular__meta {
+  overflow: hidden;
+  color: var(--wn-text-muted);
+  font: var(--wn-weight-medium) 11.5px/1.3 var(--wn-font-ui);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.wn-admin-popular__readers {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  min-width: 0;
+  font: var(--wn-weight-medium) 12.5px/1.2 var(--wn-font-ui);
+  font-variant-numeric: tabular-nums;
+}
+
+.wn-admin-popular__unit {
+  color: var(--wn-text-muted);
+}
+
+.wn-admin-popular__bar {
+  height: 4px;
+  border-radius: 2px;
+  background: rgba(255, 255, 255, 0.06);
+}
+
+.wn-admin-popular__bar span {
+  display: block;
+  height: 100%;
+  border-radius: 2px;
+  background: var(--wn-primary);
+}
+
+.wn-admin-popular__trend {
+  display: flex;
+  justify-content: flex-end;
+}
+
+/* «Требует внимания»: computed warnings, the most serious first. */
+.wn-admin-alerts {
+  display: flex;
+  flex-direction: column;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.wn-admin-alerts__item {
+  --tone: var(--wn-admin-warning);
+  display: flex;
+  gap: 11px;
+  padding: 10px 0;
+  border-top: 1px solid var(--wn-border);
+}
+
+.wn-admin-alerts__item:first-child {
+  border-top: 0;
+}
+
+.wn-admin-alerts__item--danger {
+  --tone: var(--wn-danger);
+}
+
+.wn-admin-alerts__mark {
+  display: grid;
+  flex: none;
+  place-items: center;
+  width: 30px;
+  height: 30px;
+  border-radius: 9px;
+  background: color-mix(in srgb, var(--tone) 15%, transparent);
+  color: color-mix(in srgb, var(--tone) 70%, #fff);
+}
+
+.wn-admin-alerts__mark .wn-admin-icon {
+  width: 15px;
+  height: 15px;
+}
+
+.wn-admin-alerts__body {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  min-width: 0;
+}
+
+.wn-admin-alerts__title {
+  font: var(--wn-weight-semi-bold) 13.5px/1.3 var(--wn-font-ui);
+}
+
+.wn-admin-alerts__text {
+  color: var(--wn-text-secondary);
+  font: var(--wn-weight-medium) 12.5px/1.45 var(--wn-font-ui);
+}
+
+@media (max-width: 560px) {
+  .wn-admin-popular__row {
+    grid-template-columns: 18px 30px minmax(0, 1fr) auto;
+    gap: 10px;
+  }
+
+  .wn-admin-popular__bar,
+  .wn-admin-popular__trend {
+    display: none;
+  }
+}
+
 /* ==========================================================================
    Offline page (PR 328) - what the service worker shows for a page that couldn't load
    without a network. Standalone (no shell), so the error page's centring needs the
