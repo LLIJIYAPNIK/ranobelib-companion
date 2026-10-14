@@ -23360,6 +23360,69 @@ html:has(dialog.wn-admin-dialog[open]) {
   gap: 16px;
 }
 
+/* --- «Обзор», /admin (PR 345) ------------------------------------------------------- */
+.wn-admin-ov__bar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px 16px;
+}
+
+.wn-admin-ov__asof {
+  margin: 0;
+  color: var(--wn-text-muted);
+  font: var(--wn-weight-medium) 12px/1.4 var(--wn-font-ui);
+  letter-spacing: 0.03em;
+}
+
+.wn-admin-ov__grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 540px), 1fr));
+  gap: var(--wn-space-2);
+}
+
+/* The period switch: links in a segmented strip, the current one filled. */
+.wn-admin-seg {
+  display: flex;
+  flex: none;
+  gap: 2px;
+  max-width: 100%;
+  padding: 3px;
+  overflow-x: auto;
+  border: 1px solid var(--wn-border);
+  border-radius: 12px;
+  background: var(--wn-surface);
+}
+
+.wn-admin-seg__item {
+  display: inline-flex;
+  flex: none;
+  align-items: center;
+  height: 32px;
+  padding: 0 13px;
+  border-radius: 9px;
+  color: var(--wn-text-secondary);
+  font: var(--wn-weight-medium) 13px/1 var(--wn-font-ui);
+  text-decoration: none;
+  white-space: nowrap;
+}
+
+.wn-admin-seg__item:hover {
+  background: var(--wn-surface-hover);
+  color: var(--wn-text);
+}
+
+.wn-admin-seg__item[aria-current] {
+  background: var(--wn-primary);
+  color: #fff;
+}
+
+.wn-admin-seg__item:focus-visible {
+  outline: none;
+  box-shadow: var(--wn-focus-ring);
+}
+
 /* ==========================================================================
    Offline page (PR 328) - what the service worker shows for a page that couldn't load
    without a network. Standalone (no shell), so the error page's centring needs the

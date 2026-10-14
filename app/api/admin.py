@@ -25,6 +25,16 @@ from psycopg_pool import PoolTimeout
 
 from app.admin_kit import Undo, pop_toast, push_toast
 from app.admin_kit_demo import charts_context, table_context
+from app.admin_overview import (
+    DOWNLOAD_ERROR_COLUMNS,
+    PERIOD_LABELS,
+    RECENT_USER_COLUMNS,
+    as_of,
+    download_error_rows,
+    kpis,
+    period_links,
+    recent_user_rows,
+)
 from app.auth.admin import (
     LOGIN_PATH,
     check_csrf,
@@ -46,11 +56,13 @@ from app.db import connection as db_connection
 from app.db.admin_data import (
     MASK,
     QUERY_TIMEOUT_MS,
+    Overview,
     browse_table,
     list_tables,
     overview,
     table_columns,
 )
+from app.db.admin_stats import PeriodStats, cached_period_stats, parse_period
 from app.db.connection import get_connection
 from app.templating import templates
 
@@ -93,12 +105,57 @@ ADMIN_NAV: tuple[NavItem, ...] = (
 
 
 @router.get("", response_model=None)
-async def admin_home(request: Request, _: Admin, conn: Connection) -> HTMLResponse:
+async def admin_home(
+    request: Request,
+    _: Admin,
+    period: Annotated[str | None, Query(max_length=10)] = None,
+) -> HTMLResponse:
+    """«Обзор» (PR 345). Each block is loaded on its own: a query that hits the admin
+    timeout leaves an error state in its block and the rest of the page still shows.
+    The connection is taken here rather than as a route dependency, so with the database
+    down the page still opens and says so instead of failing as a whole."""
+    tz = get_settings().admin_timezone
+    key = parse_period(period)
+    failed: set[str] = set()
+    stats: PeriodStats | None = None
+    recent: Overview | None = None
+    database_down = False
     try:
-        data = await overview(conn)
+        async with db_connection.connection() as conn:
+            stats = await _block(failed, "stats", lambda: cached_period_stats(conn, key, tz))
+            recent = await _block(failed, "recent", lambda: overview(conn))
+    except (psycopg.OperationalError, PoolTimeout):
+        logger.exception("The admin overview could not reach the database")
+        database_down = True
+    args = dict(request.query_params)
+    return _page(
+        request,
+        "admin/index.html",
+        "overview",
+        timezone=tz,
+        database_down=database_down,
+        failed=failed,
+        period_key=key,
+        period_label=PERIOD_LABELS[key],
+        periods=period_links(args, key),
+        as_of=as_of(stats, tz) if stats else None,
+        kpis=kpis(stats) if stats else [],
+        user_columns=RECENT_USER_COLUMNS,
+        recent_users=recent_user_rows(recent.recent_users, tz) if recent else [],
+        error_columns=DOWNLOAD_ERROR_COLUMNS,
+        download_errors=download_error_rows(recent.recent_download_errors, tz) if recent else [],
+    )
+
+
+async def _block[T](failed: set[str], name: str, load: Callable[[], Awaitable[T]]) -> T | None:
+    """One overview block's data, or None (and `name` in `failed`) if its query hit the
+    admin timeout - the block then shows an error state with «Повторить»."""
+    try:
+        return await load()
     except QueryCanceled:
-        return _timed_out(request, "overview")
-    return _page(request, "admin/index.html", "overview", overview=data)
+        logger.warning("The admin overview's %r block timed out", name)
+        failed.add(name)
+        return None
 
 
 @router.get("/tables", response_model=None)

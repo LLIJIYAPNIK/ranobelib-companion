@@ -1,61 +1,61 @@
 {% extends "admin/_layout.html" %}
+{% import "admin/_kit.html" as kit with context %}
 {% block title %}Обзор{% endblock %}
 {% block heading %}Обзор{% endblock %}
 {% block content %}
-<main class="wn-admin__main" aria-labelledby="admin-page-title">
-  <ul class="wn-admin__stats">
-    {% for label, count in overview.counts %}
-    <li class="wn-admin__stat"><span class="wn-admin__stat-value">{{ count }}</span><span class="wn-admin__stat-label">{{ label }}</span></li>
+{# PR 345: «Обзор» (RanobeLib Admin.dc.html) - KPIs for a period against the one before,
+   the latest registrations and download errors. Numbers: app/db/admin_stats.py, shaped
+   by app/admin_overview.py; each block shows its own error state if its query failed. #}
+<main class="wn-admin__main wn-admin-ov" aria-labelledby="admin-page-title" data-admin-overview>
+  <div class="wn-admin-ov__bar">
+    <p class="wn-admin-ov__asof">
+      {%- if as_of %}Данные на {{ as_of }} ({{ timezone }}) · обновляются раз в минуту{% endif -%}
+    </p>
+    <nav class="wn-admin-seg" aria-label="Период">
+      {% for item in periods %}
+      <a class="wn-admin-seg__item" href="{{ item.href }}"{% if item.current %} aria-current="page"{% endif %} data-overview-nav>{{ item.label }}</a>
+      {% endfor %}
+    </nav>
+  </div>
+
+  {% if database_down %}
+  <div class="wn-admin-panel">{{ kit.error_state("База данных недоступна", "Показатели появятся, как только соединение восстановится.") }}</div>
+  {% elif "stats" in failed %}
+  <div class="wn-admin-panel">{{ kit.error_state(text="Показатели не уложились в отведённое время. Попробуйте ещё раз или выберите период короче.") }}</div>
+  {% else %}
+  <section class="wn-admin-kpis" aria-label="Показатели за {{ period_label }}">
+    {% for item in kpis %}
+    {{ kit.kpi(item.label, item.value, item.icon, change=item.change, previous=item.previous, spark=item.spark) }}
     {% endfor %}
-  </ul>
-
-  <section class="wn-admin__section" aria-labelledby="admin-recent-users">
-    <h2 class="wn-admin__subtitle" id="admin-recent-users">Последние регистрации</h2>
-    {% if overview.recent_users %}
-    <div class="wn-admin__scroll">
-      <table class="wn-admin__table">
-        <thead><tr><th>id</th><th>email</th><th>Никнейм</th><th>Зарегистрирован</th><th>Email подтверждён</th></tr></thead>
-        <tbody>
-          {% for user in overview.recent_users %}
-          <tr>
-            <td>{{ user.id }}</td>
-            <td>{{ user.email }}</td>
-            <td>{{ user.nickname or "—" }}</td>
-            <td>{{ user.created_at }}</td>
-            <td>{{ "да" if user.email_verified_at else "нет" }}</td>
-          </tr>
-          {% endfor %}
-        </tbody>
-      </table>
-    </div>
-    {% else %}
-    <p class="wn-admin__hint">Пользователей пока нет.</p>
-    {% endif %}
   </section>
+  {% endif %}
 
-  <section class="wn-admin__section" aria-labelledby="admin-download-errors">
-    <h2 class="wn-admin__subtitle" id="admin-download-errors">Последние ошибки загрузок</h2>
-    {% if overview.recent_download_errors %}
-    <div class="wn-admin__scroll">
-      <table class="wn-admin__table">
-        <thead><tr><th>id</th><th>Пользователь</th><th>Тайтл</th><th>Формат</th><th>Ошибка</th><th>Когда</th></tr></thead>
-        <tbody>
-          {% for entry in overview.recent_download_errors %}
-          <tr>
-            <td>{{ entry.id }}</td>
-            <td>{{ entry.email }}</td>
-            <td>{{ entry.slug_url }}</td>
-            <td>{{ entry.fmt }}</td>
-            <td title="{{ entry.error or '' }}">{{ (entry.error or "—") | truncate(120) }}</td>
-            <td>{{ entry.finished_at }}</td>
-          </tr>
-          {% endfor %}
-        </tbody>
-      </table>
-    </div>
+  <div class="wn-admin-ov__grid">
+    {% call kit.card("Последние регистрации") %}
+    {% if database_down or "recent" in failed %}
+    {{ kit.error_state() }}
+    {% elif recent_users %}
+    {% call(row, column) kit.table("ov-users", user_columns, recent_users, caption="Последние регистрации") %}
+      {%- if column.key == "verified" -%}{{ kit.badge("подтверждён", "success") if row.verified else kit.badge("не подтверждён") }}
+      {%- else -%}{{ kit.cell(row[column.key]) }}{%- endif -%}
+    {% endcall %}
     {% else %}
-    <p class="wn-admin__hint">Ошибок загрузок нет.</p>
+    {{ kit.empty_state("Пользователей пока нет") }}
     {% endif %}
-  </section>
+    {% endcall %}
+
+    {% call kit.card("Ошибки загрузок") %}
+    {% if database_down or "recent" in failed %}
+    {{ kit.error_state() }}
+    {% elif download_errors %}
+    {% call(row, column) kit.table("ov-download-errors", error_columns, download_errors, caption="Последние ошибки загрузок") %}
+      {%- if column.key == "error" -%}<span title="{{ row.error or '' }}">{{ (row.error or "—") | truncate(120) }}</span>
+      {%- else -%}{{ kit.cell(row[column.key]) }}{%- endif -%}
+    {% endcall %}
+    {% else %}
+    {{ kit.empty_state("Ошибок загрузок нет", icon_name="circle-check") }}
+    {% endif %}
+    {% endcall %}
+  </div>
 </main>
 {% endblock %}

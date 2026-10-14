@@ -80,7 +80,6 @@ def client(tmp_path: Path, monkeypatch: pytest.MonkeyPatch, clock: Clock) -> Ite
 @pytest.mark.parametrize(
     ("path", "target"),
     [
-        ("/admin", "overview"),
         ("/admin/tables", "list_tables"),
         ("/admin/tables/users", "browse_table"),
     ],
@@ -101,6 +100,31 @@ def test_a_timeout_is_an_error_page_not_a_crash(
     assert response.status_code == 503
     assert "Запрос остановлен" in response.text
     assert "statement timeout" not in response.text  # no internals in the page
+
+
+@pytest.mark.parametrize("target", ["overview", "cached_period_stats"])
+def test_a_timeout_on_the_overview_fails_only_its_block(
+    client: TestClient, monkeypatch: pytest.MonkeyPatch, target: str
+) -> None:
+    """PR 345: the overview loads its blocks one by one - the one that timed out shows
+    an error state with «Повторить», the page itself still opens."""
+
+    async def cancelled(*args, **kwargs):
+        raise psycopg.errors.QueryCanceled("canceling statement due to statement timeout")
+
+    import app.api.admin as admin_api
+
+    monkeypatch.setattr(admin_api, target, cancelled)
+    _login(client)
+
+    response = client.get("/admin")
+
+    assert response.status_code == 200
+    assert "Повторить" in response.text
+    assert "statement timeout" not in response.text
+    # The other block is still there.
+    other = "Последние регистрации" if target == "cached_period_stats" else "wn-admin-kpi"
+    assert other in response.text
 
 
 async def test_long_cells_are_cut_in_the_query(client: TestClient) -> None:

@@ -77,13 +77,14 @@ def test_data_pages_need_the_admin_login(client: TestClient, path: str) -> None:
 # --- overview / list ---------------------------------------------------------------------
 
 
-async def test_overview_counts_and_recent_rows(client: TestClient) -> None:
+async def test_overview_kpis_and_recent_rows(client: TestClient) -> None:
     await _seed(client)
 
     html = _admin(client).get("/admin").text
 
     assert "Обзор" in html
-    assert re.search(r'stat-value">1</span><span class="wn-admin__stat-label">Пользователи', html)
+    # PR 345: the period's KPIs replaced the whole-table counts - alice registered now.
+    assert re.search(r"<span>Регистрации</span></p>\s*<p class=\"wn-admin-kpi__value\">1</p>", html)
     assert "alice@example.com" in html
     assert "ranobelib timed out" in html
     assert SECRET_HASH not in html

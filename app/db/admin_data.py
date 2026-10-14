@@ -113,18 +113,12 @@ async def list_tables(conn: AsyncConnection) -> list[TableSummary]:
 
 @dataclass(frozen=True)
 class Overview:
-    counts: list[tuple[str, int]]  # (label, rows)
+    """The overview's latest rows. PR 345 dropped the whole-table counts that were here:
+    the KPIs per period (app/db/admin_stats.py) replaced them, and «Данные БД» lists
+    every table's row count."""
+
     recent_users: list[dict[str, Any]]
     recent_download_errors: list[dict[str, Any]]
-
-
-_OVERVIEW_COUNTS = (
-    ("Пользователи", "users"),
-    ("Записи в библиотеках", "library_entries"),
-    ("Комментарии", "comments"),
-    ("Загрузки", "download_history"),
-    ("События активности", "activity_events"),
-)
 
 
 async def overview(conn: AsyncConnection, recent: int = 5) -> Overview:
@@ -133,12 +127,6 @@ async def overview(conn: AsyncConnection, recent: int = 5) -> Overview:
 
 
 async def _overview(conn: AsyncConnection, recent: int) -> Overview:
-    counts = []
-    for label, table in _OVERVIEW_COUNTS:
-        cursor = await conn.execute(
-            sql.SQL("SELECT COUNT(*) AS n FROM {}").format(sql.Identifier(table))
-        )
-        counts.append((label, (await cursor.fetchone())["n"]))
     cursor = await conn.execute(
         "SELECT id, email, nickname, created_at, email_verified_at FROM users "
         "ORDER BY id DESC LIMIT %s",
@@ -152,7 +140,6 @@ async def _overview(conn: AsyncConnection, recent: int) -> Overview:
         (recent,),
     )
     return Overview(
-        counts=counts,
         recent_users=recent_users,
         recent_download_errors=await cursor.fetchall(),
     )
