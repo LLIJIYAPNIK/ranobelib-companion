@@ -22,6 +22,7 @@ EXPECTED_WITHOUT_ADMIN = {
     ("GET", "/admin/analytics/behaviour"): 303,
     ("GET", "/admin/analytics/{slug_url}"): 303,
     ("GET", "/admin/tables"): 303,
+    ("GET", "/admin/users"): 303,
     ("GET", "/admin/tables/{name}"): 303,
     ("GET", "/admin/_kit"): 303,
     ("POST", "/admin/_kit/demo"): 303,

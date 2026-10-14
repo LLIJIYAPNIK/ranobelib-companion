@@ -63,6 +63,7 @@ from app.admin_overview import (
     popular_titles,
     recent_user_rows,
 )
+from app.admin_users import parse_flag, user_columns, user_filters, user_rows
 from app.auth.admin import (
     LOGIN_PATH,
     check_csrf,
@@ -112,6 +113,10 @@ from app.db.admin_stats import (
     cached_top_titles,
     parse_period,
 )
+from app.db.admin_users import DEFAULT_SORT as USER_DEFAULT_SORT
+from app.db.admin_users import PAGE_SIZE as USERS_PAGE_SIZE
+from app.db.admin_users import SORTS as USER_SORTS
+from app.db.admin_users import list_users
 from app.db.connection import get_connection
 from app.services.titles import (
     TitleSummary,
@@ -152,7 +157,7 @@ class NavItem:
 ADMIN_NAV: tuple[NavItem, ...] = (
     NavItem("overview", "Обзор", "dashboard", "/admin"),
     NavItem("analytics", "Аналитика", "chart", "/admin/analytics", "Контент"),
-    NavItem("users", "Пользователи", "users", None, "Сообщество"),
+    NavItem("users", "Пользователи", "users", "/admin/users", "Сообщество"),
     NavItem("comments", "Комментарии", "comments", None, "Сообщество"),
     NavItem("tables", "Данные БД", "database", "/admin/tables", "Данные"),
     NavItem("system", "Система", "server", None, "Платформа"),
@@ -384,6 +389,61 @@ async def admin_analytics_title(
         drop_min_readers=DROP_MIN_READERS,
         hints=hints(details.volumes, points) if details else [],
         chart_limit=RETENTION_CHART_LIMIT,
+    )
+
+
+@router.get("/users", response_model=None)
+async def admin_users(
+    request: Request,
+    _: Admin,
+    conn: Connection,
+    q: Annotated[str, Query(max_length=200)] = "",
+    verified: Annotated[str | None, Query(max_length=5)] = None,
+    active: Annotated[str | None, Query(max_length=5)] = None,
+    library: Annotated[str | None, Query(max_length=5)] = None,
+    period: Annotated[str | None, Query(max_length=10)] = None,
+    sort: Annotated[str | None, Query(max_length=20)] = None,
+    order: str = "desc",
+    page: Annotated[int, Query(ge=1, le=1_000_000)] = 1,
+) -> HTMLResponse:
+    """«Пользователи» (PR 348): accounts with search (email, nickname, id), filters and
+    sorting. Read-only; the actions are the POST routes below."""
+    tz = get_settings().admin_timezone
+    key = parse_period(period)
+    sort_key = sort if sort in USER_SORTS else USER_DEFAULT_SORT
+    descending = order != "asc"
+    try:
+        data = await list_users(
+            conn,
+            key=key,
+            tz=tz,
+            query=q,
+            verified=parse_flag(verified),
+            active=parse_flag(active),
+            library=parse_flag(library),
+            sort=sort_key,
+            descending=descending,
+            page=page,
+        )
+    except QueryCanceled:
+        return _timed_out(request, "users")
+    args = dict(request.query_params)
+    filters = user_filters(args, key)
+    return _page(
+        request,
+        "admin/users.html",
+        "users",
+        args=args,
+        period_label=PERIOD_LABELS[key],
+        periods=period_links(args, key),
+        columns=user_columns(key),
+        filters=filters,
+        filtered=bool(q.strip()) or any(item.value for item in filters),
+        rows=user_rows(data.rows, tz, args),
+        data=data,
+        per_page=USERS_PAGE_SIZE,
+        sort=sort_key,
+        descending=descending,
     )
 
 

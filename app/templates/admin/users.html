@@ -1,0 +1,35 @@
+{% extends "admin/_layout.html" %}
+{% import "admin/_kit.html" as kit with context %}
+{% block title %}Пользователи{% endblock %}
+{% block heading %}Пользователи{% endblock %}
+{% block content %}
+{# PR 348: the site's accounts on the UI kit - search, filters, sort, pages - and a
+   drawer with one account's summary and the three safe actions (app/admin_users.py). #}
+<main class="wn-admin__main wn-admin-ov" aria-labelledby="admin-page-title">
+  <div class="wn-admin-ov__bar">
+    <p class="wn-admin-ov__asof">Аккаунтов: {{ data.total }} · активность и чтение — за {{ period_label }}</p>
+    <nav class="wn-admin-seg" aria-label="Период">
+      {% for item in periods %}
+      <a class="wn-admin-seg__item" href="{{ item.href }}"{% if item.current %} aria-current="page"{% endif %}>{{ item.label }}</a>
+      {% endfor %}
+    </nav>
+  </div>
+
+  <section class="wn-admin-panel" aria-label="Пользователи">
+    {% call kit.filter_bar("/admin/users", args, filters, placeholder="Email, никнейм или id", keep=("sort", "order", "period")) %}{{ kit.columns_menu("admin-users", columns) }}{% endcall %}
+    {% if rows %}
+    {% call(row, column) kit.table("admin-users", columns, rows, sort=sort, descending=descending, args=args, caption="Пользователи") %}
+      {%- if column.key == "verified" -%}{{ kit.badge("да", "success") if row.verified else kit.badge("нет") }}
+      {%- elif column.key == "actions" -%}<a class="wn-admin-btn wn-admin-btn--ghost" href="{{ row.open_href }}">Открыть</a>
+      {%- else -%}{{ kit.cell(row[column.key]) }}{%- endif -%}
+    {% endcall %}
+    {% elif filtered %}
+    {% set state = filter_state(args, filters, "q", ("sort", "order", "period")) %}
+    {{ kit.no_results(state.count, state.reset) }}
+    {% else %}
+    {{ kit.empty_state("Пользователей пока нет", "Аккаунты появятся после первых регистраций на сайте.", icon_name="users") }}
+    {% endif %}
+    {{ kit.pager(data.page, data.pages, data.total, per_page, args) }}
+  </section>
+</main>
+{% endblock %}
