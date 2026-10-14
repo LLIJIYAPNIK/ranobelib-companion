@@ -2,6 +2,7 @@
 {% import "admin/_kit.html" as kit with context %}
 {% block title %}Обзор{% endblock %}
 {% block heading %}Обзор{% endblock %}
+{% block scripts %}<script src="{{ static_url('js/admin-overview.js') }}" defer></script>{% endblock %}
 {% block content %}
 {# PR 345: «Обзор» (RanobeLib Admin.dc.html) - KPIs for a period against the one before,
    the latest registrations and download errors. Numbers: app/db/admin_stats.py, shaped
@@ -49,7 +50,11 @@
       </a>
       {% endfor %}
     </nav>
+    {% if chart_has_data %}
     {{ kit.line_chart(chart) }}
+    {% else %}
+    {{ kit.empty_state("Нет данных за " ~ period_label, "«" ~ chart_metric_label ~ "» за этот и прошлый период — ноль. График появится вместе с первыми событиями.", icon_name="chart") }}
+    {% endif %}
   </section>
   {% endif %}
 
@@ -58,24 +63,24 @@
     {% if database_down or "titles" in failed %}
     {{ kit.error_state() }}
     {% elif popular %}
-    <ol class="wn-admin-top">
+    <ol class="wn-admin-popular">
       {% for item in popular %}
-      <li class="wn-admin-top__row">
-        <span class="wn-admin-top__rank" aria-hidden="true">{{ item.rank }}</span>
+      <li class="wn-admin-popular__row">
+        <span class="wn-admin-popular__rank" aria-hidden="true">{{ item.rank }}</span>
         {% if item.cover_url %}
-        <img class="wn-admin-top__cover" src="{{ item.cover_url }}" alt="" width="30" height="42" loading="lazy" referrerpolicy="no-referrer">
+        <img class="wn-admin-popular__cover" src="{{ item.cover_url }}" alt="" width="30" height="42" loading="lazy" referrerpolicy="no-referrer">
         {% else %}
-        <span class="wn-admin-top__cover wn-admin-top__cover--blank" aria-hidden="true">{{ item.name[:1] | upper }}</span>
+        <span class="wn-admin-popular__cover wn-admin-popular__cover--blank" aria-hidden="true">{{ item.name[:1] | upper }}</span>
         {% endif %}
-        <span class="wn-admin-top__title">
-          <a class="wn-admin-top__name" href="/titles/{{ item.slug_url }}">{{ item.name }}</a>
-          <span class="wn-admin-top__meta">Глав прочитано: {{ item.chapters }}</span>
+        <span class="wn-admin-popular__title">
+          <a class="wn-admin-popular__name" href="/titles/{{ item.slug_url }}">{{ item.name }}</a>
+          <span class="wn-admin-popular__meta">Глав прочитано: {{ item.chapters }}</span>
         </span>
-        <span class="wn-admin-top__readers">
-          <span><b>{{ item.readers }}</b> <span class="wn-admin-top__unit">чит.</span></span>
-          <span class="wn-admin-top__bar" aria-hidden="true"><span style="width: {{ item.share }}%"></span></span>
+        <span class="wn-admin-popular__readers">
+          <span><b>{{ item.readers }}</b> <span class="wn-admin-popular__unit">чит.</span></span>
+          <span class="wn-admin-popular__bar" aria-hidden="true"><span style="width: {{ item.share }}%"></span></span>
         </span>
-        <span class="wn-admin-top__trend">
+        <span class="wn-admin-popular__trend">
           {%- if item.trend %}<span class="wn-admin-delta wn-admin-delta--{{ item.trend.tone }}" title="К прошлому периоду">{{ kit.icon(item.trend.icon) }}{{ item.trend.text }}</span>{% endif -%}
         </span>
       </li>
@@ -127,7 +132,7 @@
     {{ kit.error_state() }}
     {% elif download_errors %}
     {% call(row, column) kit.table("ov-download-errors", error_columns, download_errors, caption="Последние ошибки загрузок") %}
-      {%- if column.key == "error" -%}<span title="{{ row.error or '' }}">{{ (row.error or "—") | truncate(120) }}</span>
+      {%- if column.key == "error" -%}<span class="wn-admin-ov__clip" title="{{ row.error or '' }}">{{ (row.error or "—") | truncate(120) }}</span>
       {%- else -%}{{ kit.cell(row[column.key]) }}{%- endif -%}
     {% endcall %}
     {% else %}

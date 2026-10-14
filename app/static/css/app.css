@@ -23382,6 +23382,61 @@ html:has(dialog.wn-admin-dialog[open]) {
   gap: var(--wn-space-2);
 }
 
+/* Six KPIs fit one row from ~1100px of content. */
+.wn-admin-ov .wn-admin-kpis {
+  grid-template-columns: repeat(auto-fill, minmax(min(100%, 160px), 1fr));
+}
+
+.wn-admin-ov .wn-admin-table__td--muted {
+  white-space: nowrap;
+}
+
+/* A download error on one line; the whole text is in its title. */
+.wn-admin-ov__clip {
+  display: block;
+  max-width: 220px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* Loading (js/admin-overview.js): after a switch is clicked, the current numbers dim
+   until the next page arrives, and the clicked switch spins. */
+.wn-admin-ov[data-loading] .wn-admin-kpis,
+.wn-admin-ov[data-loading] .wn-admin-card {
+  opacity: 0.55;
+  transition: opacity 0.2s ease 0.1s;
+}
+
+[data-overview-pending] {
+  position: relative;
+}
+
+[data-overview-pending]::after {
+  content: "";
+  position: absolute;
+  top: 50%;
+  right: 6px;
+  width: 10px;
+  height: 10px;
+  margin-top: -7px;
+  border: 2px solid rgba(255, 255, 255, 0.2);
+  border-top-color: currentColor;
+  border-radius: 50%;
+  animation: wn-admin-spin 0.8s linear infinite;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  [data-overview-pending]::after {
+    animation: none;
+  }
+
+  .wn-admin-ov[data-loading] .wn-admin-kpis,
+  .wn-admin-ov[data-loading] .wn-admin-card {
+    transition: none;
+  }
+}
+
 /* The period switch: links in a segmented strip, the current one filled. */
 .wn-admin-seg {
   display: flex;
@@ -23476,7 +23531,7 @@ html:has(dialog.wn-admin-dialog[open]) {
 /* The chart's metric chips: one is drawn at a time. */
 .wn-admin-ov__metrics {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(min(100%, 170px), 1fr));
+  grid-template-columns: repeat(auto-fill, minmax(min(100%, 136px), 1fr));
   gap: 8px;
 }
 
@@ -23524,7 +23579,7 @@ html:has(dialog.wn-admin-dialog[open]) {
 }
 
 /* «Популярные тайтлы»: rank, cover, name, readers with a bar, trend. */
-.wn-admin-top {
+.wn-admin-popular {
   display: flex;
   flex-direction: column;
   margin: 0;
@@ -23532,7 +23587,7 @@ html:has(dialog.wn-admin-dialog[open]) {
   list-style: none;
 }
 
-.wn-admin-top__row {
+.wn-admin-popular__row {
   display: grid;
   grid-template-columns: 22px 30px minmax(0, 1fr) minmax(72px, 130px) 76px;
   align-items: center;
@@ -23541,17 +23596,17 @@ html:has(dialog.wn-admin-dialog[open]) {
   border-top: 1px solid var(--wn-border);
 }
 
-.wn-admin-top__row:first-child {
+.wn-admin-popular__row:first-child {
   border-top: 0;
 }
 
-.wn-admin-top__rank {
+.wn-admin-popular__rank {
   color: var(--wn-primary-hover);
   font: italic var(--wn-weight-semi-bold) 17px/1 var(--wn-font-ui);
   text-align: center;
 }
 
-.wn-admin-top__cover {
+.wn-admin-popular__cover {
   width: 30px;
   height: 42px;
   border-radius: 5px;
@@ -23560,21 +23615,21 @@ html:has(dialog.wn-admin-dialog[open]) {
   box-shadow: 0 4px 10px -4px rgba(0, 0, 0, 0.6);
 }
 
-.wn-admin-top__cover--blank {
+.wn-admin-popular__cover--blank {
   display: grid;
   place-items: center;
   color: var(--wn-text-secondary);
   font: var(--wn-weight-semi-bold) 14px/1 var(--wn-font-ui);
 }
 
-.wn-admin-top__title {
+.wn-admin-popular__title {
   display: flex;
   flex-direction: column;
   gap: 3px;
   min-width: 0;
 }
 
-.wn-admin-top__name {
+.wn-admin-popular__name {
   overflow: hidden;
   color: var(--wn-text);
   font: var(--wn-weight-medium) 13.5px/1.3 var(--wn-font-ui);
@@ -23583,17 +23638,17 @@ html:has(dialog.wn-admin-dialog[open]) {
   white-space: nowrap;
 }
 
-.wn-admin-top__name:hover {
+.wn-admin-popular__name:hover {
   text-decoration: underline;
 }
 
-.wn-admin-top__name:focus-visible {
+.wn-admin-popular__name:focus-visible {
   outline: none;
   border-radius: 4px;
   box-shadow: var(--wn-focus-ring);
 }
 
-.wn-admin-top__meta {
+.wn-admin-popular__meta {
   overflow: hidden;
   color: var(--wn-text-muted);
   font: var(--wn-weight-medium) 11.5px/1.3 var(--wn-font-ui);
@@ -23601,7 +23656,7 @@ html:has(dialog.wn-admin-dialog[open]) {
   white-space: nowrap;
 }
 
-.wn-admin-top__readers {
+.wn-admin-popular__readers {
   display: flex;
   flex-direction: column;
   gap: 5px;
@@ -23610,24 +23665,24 @@ html:has(dialog.wn-admin-dialog[open]) {
   font-variant-numeric: tabular-nums;
 }
 
-.wn-admin-top__unit {
+.wn-admin-popular__unit {
   color: var(--wn-text-muted);
 }
 
-.wn-admin-top__bar {
+.wn-admin-popular__bar {
   height: 4px;
   border-radius: 2px;
   background: rgba(255, 255, 255, 0.06);
 }
 
-.wn-admin-top__bar span {
+.wn-admin-popular__bar span {
   display: block;
   height: 100%;
   border-radius: 2px;
   background: var(--wn-primary);
 }
 
-.wn-admin-top__trend {
+.wn-admin-popular__trend {
   display: flex;
   justify-content: flex-end;
 }
@@ -23690,13 +23745,13 @@ html:has(dialog.wn-admin-dialog[open]) {
 }
 
 @media (max-width: 560px) {
-  .wn-admin-top__row {
+  .wn-admin-popular__row {
     grid-template-columns: 18px 30px minmax(0, 1fr) auto;
     gap: 10px;
   }
 
-  .wn-admin-top__bar,
-  .wn-admin-top__trend {
+  .wn-admin-popular__bar,
+  .wn-admin-popular__trend {
     display: none;
   }
 }

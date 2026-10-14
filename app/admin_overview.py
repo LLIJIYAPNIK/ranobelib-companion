@@ -123,7 +123,6 @@ class Kpi:
 def kpis(stats: PeriodStats) -> list[Kpi]:
     """One card per metric: the period's total, its change against the previous period
     (no percentage from zero - app/admin_kit.py delta()) and the trend over the buckets."""
-    before = f"за прошлые {PERIOD_LABELS[stats.period.key]}"
     cards = []
     for key, series in stats.metrics.items():
         info = METRIC_INFO[key]
@@ -135,7 +134,7 @@ def kpis(stats: PeriodStats) -> list[Kpi]:
                 icon=info.icon,
                 value=format_metric(key, comparison.current),
                 change=delta(comparison.current, comparison.previous),
-                previous=f"{before}: {format_metric(key, comparison.previous)}",
+                previous=f"было {format_metric(key, comparison.previous)}",
                 spark=sparkline([float(v) for v in series.current]),
             )
         )
@@ -188,6 +187,12 @@ def metric_tabs(stats: PeriodStats, args: Mapping[str, object], current: str) ->
 
 def compare_href(args: Mapping[str, object], compare: bool) -> str:
     return admin_query(args, compare="0" if compare else None)
+
+
+def chart_has_data(stats: PeriodStats, metric: str, compare: bool) -> bool:
+    """Whether there's anything to draw - a flat line at zero says less than «нет данных»."""
+    series = stats.metrics[metric]
+    return any(series.current) or (compare and any(series.previous))
 
 
 def _with_unit(unit: str) -> Callable[[float], str]:
@@ -369,8 +374,8 @@ def as_of(stats: PeriodStats, tz: str) -> str:
 
 # --- recent rows (PR 325's tables, on the kit) --------------------------------------------
 
+# Half-width cards: only what tells the rows apart - the full rows are in «Данные БД».
 RECENT_USER_COLUMNS = (
-    Column("id", "id", "mono", sortable=False),
     Column("email", "Email", sortable=False),
     Column("nickname", "Никнейм", sortable=False),
     Column("created_at", "Зарегистрирован", "muted", sortable=False),
@@ -380,7 +385,6 @@ RECENT_USER_COLUMNS = (
 DOWNLOAD_ERROR_COLUMNS = (
     Column("email", "Пользователь", sortable=False),
     Column("slug_url", "Тайтл", "mono", sortable=False),
-    Column("fmt", "Формат", sortable=False),
     Column("error", "Ошибка", sortable=False),
     Column("finished_at", "Когда", "muted", sortable=False),
 )
@@ -404,7 +408,6 @@ def download_error_rows(rows: list[Mapping[str, object]], tz: str) -> list[dict[
         {
             "email": row["email"],
             "slug_url": row["slug_url"],
-            "fmt": row["fmt"],
             "error": row["error"],
             "finished_at": format_when(row["finished_at"], tz),  # type: ignore[arg-type]
         }

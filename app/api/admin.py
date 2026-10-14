@@ -28,11 +28,13 @@ from app.admin_kit import Undo, pop_toast, push_toast
 from app.admin_kit_demo import charts_context, table_context
 from app.admin_overview import (
     DOWNLOAD_ERROR_COLUMNS,
+    METRIC_INFO,
     PERIOD_LABELS,
     RECENT_USER_COLUMNS,
     activity_chart,
     as_of,
     attention_items,
+    chart_has_data,
     compare_href,
     download_error_rows,
     kpis,
@@ -163,6 +165,8 @@ async def admin_home(
         timezone=tz,
         metric_tabs=metric_tabs(stats, args, chart_metric) if stats else [],
         chart=activity_chart(stats, chart_metric, chart_compare) if stats else None,
+        chart_has_data=chart_has_data(stats, chart_metric, chart_compare) if stats else False,
+        chart_metric_label=METRIC_INFO[chart_metric].label,
         compare=chart_compare,
         compare_href=compare_href(args, chart_compare),
         popular=titles,
