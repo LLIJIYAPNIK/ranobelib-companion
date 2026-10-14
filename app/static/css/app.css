@@ -22063,6 +22063,10 @@ a.wn-admin-side__item:hover {
 
 /* --- data table -------------------------------------------------------------------- */
 .wn-admin-table {
+  /* relative: the containing block for absolutely positioned bits inside (the
+     visually hidden «Действия» header) - without it they escape the scroll and widen
+     the page when the table is wider than its panel (PR 348, 9 columns at 1100px). */
+  position: relative;
   overflow-x: auto;
 }
 
