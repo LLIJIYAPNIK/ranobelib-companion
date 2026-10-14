@@ -7,11 +7,13 @@ from app.config import get_settings
 from app.services.catalog import get_catalog, list_catalog_titles, list_countries, list_genres
 
 
-def test_get_catalog_constructs_catalog_with_configured_cache() -> None:
+async def test_get_catalog_constructs_catalog_with_configured_cache() -> None:
     settings = get_settings()
 
+    # PR 345: get_catalog() is an async context manager now - the client is built on entry.
     with patch("app.services.catalog.Catalog") as mock_catalog:
-        get_catalog()
+        async with get_catalog() as catalog:
+            assert catalog is mock_catalog.return_value.__aenter__.return_value
 
     mock_catalog.assert_called_once_with(cache_dir=settings.cache_dir, cache_ttl=settings.cache_ttl)
 

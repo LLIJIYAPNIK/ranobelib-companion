@@ -15,7 +15,6 @@ from fastapi.testclient import TestClient
 from ranobelib import AccessBlockedError, RateLimitError, TitleNotFoundError
 
 import app.api.admin as admin_api
-import app.db.admin_stats as admin_stats
 from app.admin_kit import format_number
 from app.admin_overview import (
     BLOCKED_PER_HOUR,
@@ -34,15 +33,6 @@ from app.services import sdk_outcomes
 from app.services.titles import TitleSummary
 from tests.db_reset import fresh_connection
 from tests.test_admin_auth import PASSWORD, Clock, _client, _login
-
-
-@pytest.fixture(autouse=True)
-def _fresh_state() -> Iterator[None]:
-    admin_stats.clear_cache()
-    sdk_outcomes.clear()
-    yield
-    admin_stats.clear_cache()
-    sdk_outcomes.clear()
 
 
 @pytest.fixture

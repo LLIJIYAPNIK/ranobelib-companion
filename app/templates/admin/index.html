@@ -107,9 +107,9 @@
     {% elif "attention" in failed %}
     {{ kit.error_state() }}
     {% else %}
-    {{ kit.empty_state("Всё в порядке", "Загрузки проходят, ranobelib.me отвечает, письма подтверждают.", icon_name="circle-check") }}
+    {{ kit.empty_state("Всё в порядке", "Загрузки проходят, источник тайтлов отвечает, письма подтверждают.", icon_name="circle-check") }}
     {% endif %}
-    <p class="wn-admin-note">Обращения к ranobelib.me считаются с последнего запуска сервера.</p>
+    <p class="wn-admin-note">Обращения к источнику тайтлов считаются с последнего запуска сервера.</p>
     {% endcall %}
   </div>
 
