@@ -22,10 +22,15 @@ time order for these, see app/timezones.py).
 
 from __future__ import annotations
 
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 from datetime import UTC, date, datetime, time, timedelta
+from time import monotonic
 from typing import Literal
 from zoneinfo import ZoneInfo
+
+from psycopg import AsyncConnection
+
+from app.db.admin_data import _read_only
 
 PERIODS = ("24h", "7d", "30d", "90d")
 DEFAULT_PERIOD = "7d"
@@ -105,3 +110,157 @@ def build_period(key: str, tz: str, now: datetime | None = None) -> Period:
 
 def _local_midnight(day: date, zone: ZoneInfo) -> datetime:
     return datetime.combine(day, time.min, tzinfo=zone).astimezone(UTC)
+
+
+# --- metric series -------------------------------------------------------------------------
+
+METRICS = (
+    "active_readers",
+    "chapters_read",
+    "reading_seconds",
+    "registrations",
+    "downloads",
+    "comments",
+)
+
+# How long cached_period_stats() reuses a result. Application data (not the SDK's cache):
+# the overview may lag this far behind, which is fine for a dashboard, and a reload storm
+# or several open tabs don't redo the 90-day aggregates every time.
+CACHE_SECONDS = 60
+
+
+@dataclass(frozen=True)
+class _MetricQuery:
+    table: str
+    column: str  # the UTC ISO-8601 TEXT timestamp a row is counted at
+    where: str
+    value: str
+
+
+# Constants only - nothing from a request ever reaches these strings.
+_QUERIES = {
+    # Anyone with any activity event: a chapter opened or a reading heartbeat. The kinds
+    # are spelled out so the (kind, created_at) index (migration 0028) is usable.
+    "active_readers": _MetricQuery(
+        "activity_events",
+        "created_at",
+        "kind IN ('chapter_read', 'heartbeat')",
+        "COUNT(DISTINCT user_id)",
+    ),
+    "chapters_read": _MetricQuery(
+        "activity_events", "created_at", "kind = 'chapter_read'", "COUNT(*)"
+    ),
+    # Seconds of active reading - the heartbeat ticks summed, as on the user's own
+    # activity page (app/db/activity.py).
+    "reading_seconds": _MetricQuery(
+        "activity_events", "created_at", "kind = 'heartbeat'", "COALESCE(SUM(seconds), 0)"
+    ),
+    "registrations": _MetricQuery("users", "created_at", "TRUE", "COUNT(*)"),
+    # Every finished download, successful or not.
+    "downloads": _MetricQuery("download_history", "finished_at", "TRUE", "COUNT(*)"),
+    # Every comment written, including ones deleted since.
+    "comments": _MetricQuery("comments", "created_at", "TRUE", "COUNT(*)"),
+}
+
+
+@dataclass(frozen=True)
+class MetricSeries:
+    """One metric over a period and the period before it. ``current``/``previous`` have
+    one value per bucket. The totals are for the whole period - for active readers that's
+    distinct readers over the period, not the sum of the buckets (one reader active on
+    three days is one reader for the week)."""
+
+    key: str
+    current: list[int]
+    previous: list[int]
+    current_total: int
+    previous_total: int
+
+
+@dataclass(frozen=True)
+class PeriodStats:
+    period: Period
+    previous_period: Period
+    metrics: dict[str, MetricSeries]
+
+
+async def period_stats(
+    conn: AsyncConnection, key: str, tz: str, now: datetime | None = None
+) -> PeriodStats:
+    """Every metric for period `key` in zone `tz`, with the previous period's alongside.
+    Runs read-only with the admin query timeout (PR 326): a too slow aggregate is
+    cancelled with QueryCanceled rather than holding a pool connection."""
+    period = build_period(key, tz, now)
+    previous = period.previous()
+    async with _read_only(conn):
+        metrics = {name: await _series(conn, name, previous, period) for name in METRICS}
+        readers = await _distinct_readers(conn, previous, period)
+    metrics["active_readers"] = replace(
+        metrics["active_readers"],
+        previous_total=readers["previous"],
+        current_total=readers["current"],
+    )
+    return PeriodStats(period=period, previous_period=previous, metrics=metrics)
+
+
+_cache: dict[tuple[str, str], tuple[float, PeriodStats]] = {}
+
+
+async def cached_period_stats(conn: AsyncConnection, key: str, tz: str) -> PeriodStats:
+    """period_stats() for now, reused for CACHE_SECONDS per (period, zone)."""
+    hit = _cache.get((key, tz))
+    if hit is not None and monotonic() - hit[0] < CACHE_SECONDS:
+        return hit[1]
+    stats = await period_stats(conn, key, tz)
+    _cache[(key, tz)] = (monotonic(), stats)
+    return stats
+
+
+def clear_cache() -> None:
+    _cache.clear()
+
+
+async def _series(
+    conn: AsyncConnection, name: str, previous: Period, period: Period
+) -> MetricSeries:
+    """One query over both periods: width_bucket() numbers the previous period's buckets
+    1..n and the current one's n+1..2n; a bucket with no rows is simply absent."""
+    query = _QUERIES[name]
+    thresholds = list(previous.starts + period.starts)
+    cursor = await conn.execute(
+        f"SELECT width_bucket({query.column}::timestamptz, %s::timestamptz[]) AS bucket, "
+        f"{query.value} AS value FROM {query.table} "
+        f"WHERE {query.where} AND {query.column} >= %s AND {query.column} < %s "
+        "GROUP BY bucket",
+        (thresholds, previous.start.isoformat(), period.end.isoformat()),
+    )
+    values = [0] * len(thresholds)
+    for row in await cursor.fetchall():
+        values[row["bucket"] - 1] = int(row["value"])
+    n = len(previous.starts)
+    return MetricSeries(
+        key=name,
+        current=values[n:],
+        previous=values[:n],
+        current_total=sum(values[n:]),
+        previous_total=sum(values[:n]),
+    )
+
+
+async def _distinct_readers(
+    conn: AsyncConnection, previous: Period, period: Period
+) -> dict[str, int]:
+    """Distinct active readers over each whole period (see MetricSeries)."""
+    cursor = await conn.execute(
+        "SELECT COUNT(DISTINCT user_id) FILTER (WHERE created_at < %(split)s) AS previous, "
+        "COUNT(DISTINCT user_id) FILTER (WHERE created_at >= %(split)s) AS current "
+        f"FROM activity_events WHERE {_QUERIES['active_readers'].where} "
+        "AND created_at >= %(start)s AND created_at < %(end)s",
+        {
+            "split": period.start.isoformat(),
+            "start": previous.start.isoformat(),
+            "end": period.end.isoformat(),
+        },
+    )
+    row = await cursor.fetchone()
+    return {"previous": row["previous"], "current": row["current"]}
