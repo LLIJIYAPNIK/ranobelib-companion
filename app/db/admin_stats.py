@@ -315,6 +315,58 @@ async def cached_top_titles(conn: AsyncConnection, key: str, tz: str) -> list[Ti
     return await cached(("top_titles", key, tz), lambda: top_titles(conn, key, tz))
 
 
+# --- «Требует внимания» -------------------------------------------------------------------
+
+
+@dataclass(frozen=True)
+class AttentionCounts:
+    """What the overview's computed warnings look at in the database, over fixed windows
+    rather than the selected period: downloads over the last 24 hours, and the accounts
+    registered over the last 7 days against the 7 before that, with how many of them
+    haven't confirmed their email."""
+
+    downloads_day: int
+    failed_downloads_day: int
+    registrations_week: int
+    unverified_week: int
+    unverified_previous_week: int
+
+
+async def attention_counts(conn: AsyncConnection, now: datetime | None = None) -> AttentionCounts:
+    now = now or datetime.now(UTC)
+    day_ago = (now - timedelta(days=1)).isoformat()
+    week_ago = (now - timedelta(days=7)).isoformat()
+    two_weeks_ago = (now - timedelta(days=14)).isoformat()
+    async with _read_only(conn):
+        cursor = await conn.execute(
+            "SELECT COUNT(*) AS total, COUNT(*) FILTER (WHERE status = 'error') AS failed "
+            "FROM download_history WHERE finished_at >= %s",
+            (day_ago,),
+        )
+        downloads = await cursor.fetchone()
+        cursor = await conn.execute(
+            "SELECT COUNT(*) FILTER (WHERE created_at >= %(week)s) AS registered, "
+            "COUNT(*) FILTER (WHERE created_at >= %(week)s AND email_verified_at IS NULL) "
+            "AS unverified, "
+            "COUNT(*) FILTER (WHERE created_at < %(week)s AND email_verified_at IS NULL) "
+            "AS unverified_before "
+            "FROM users WHERE created_at >= %(start)s",
+            {"week": week_ago, "start": two_weeks_ago},
+        )
+        users = await cursor.fetchone()
+    return AttentionCounts(
+        downloads_day=downloads["total"],
+        failed_downloads_day=downloads["failed"],
+        registrations_week=users["registered"],
+        unverified_week=users["unverified"],
+        unverified_previous_week=users["unverified_before"],
+    )
+
+
+async def cached_attention_counts(conn: AsyncConnection) -> AttentionCounts:
+    return await cached(("attention",), lambda: attention_counts(conn))
+
+
 async def _series(
     conn: AsyncConnection, name: str, previous: Period, period: Period
 ) -> MetricSeries:

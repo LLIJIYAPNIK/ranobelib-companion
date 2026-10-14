@@ -7,7 +7,7 @@ from __future__ import annotations
 
 from collections.abc import Callable, Mapping
 from dataclasses import dataclass
-from datetime import datetime
+from datetime import UTC, datetime, timedelta
 from zoneinfo import ZoneInfo
 
 from app.admin_kit import (
@@ -21,7 +21,14 @@ from app.admin_kit import (
     line_chart,
     sparkline,
 )
-from app.db.admin_stats import DEFAULT_PERIOD, PERIODS, PeriodStats, TitleReaders
+from app.db.admin_stats import (
+    DEFAULT_PERIOD,
+    PERIODS,
+    AttentionCounts,
+    PeriodStats,
+    TitleReaders,
+)
+from app.services import sdk_outcomes
 from app.services.titles import TitleSummary
 
 PERIOD_LABELS = {"24h": "24 часа", "7d": "7 дней", "30d": "30 дней", "90d": "90 дней"}
@@ -255,6 +262,103 @@ def popular_titles(
             )
         )
     return items
+
+
+# --- «Требует внимания» -------------------------------------------------------------------
+# Conditions computed on each view - no "taken / resolved" lifecycle (ROADMAP.md, wave 40):
+# a warning shows while its condition holds and disappears with it.
+
+RATE_LIMITED_PER_HOUR = 5
+BLOCKED_PER_HOUR = 3
+UNREACHABLE_WINDOW = timedelta(minutes=15)
+UNREACHABLE_MIN = 3
+FAILED_DOWNLOADS_MIN = 3
+FAILED_DOWNLOADS_SHARE = 0.25
+UNVERIFIED_MIN = 5
+UNVERIFIED_GROWTH = 1.5
+
+
+@dataclass(frozen=True)
+class AttentionItem:
+    tone: str  # "danger" or "warning"
+    title: str
+    text: str
+
+
+def attention_items(
+    counts: AttentionCounts | None,
+    database_down: bool,
+    now: datetime | None = None,
+) -> list[AttentionItem]:
+    """What needs a look right now, the most serious first. The ranobelib.me ones come
+    from this process's own SDK calls (app/services/sdk_outcomes.py) - counted since it
+    started, not a history."""
+    now = now or datetime.now(UTC)
+    danger: list[AttentionItem] = []
+    warning: list[AttentionItem] = []
+    if database_down:
+        danger.append(
+            AttentionItem(
+                "danger",
+                "База данных недоступна",
+                "Показатели и списки не загрузились, вход и чтение на сайте тоже не работают.",
+            )
+        )
+
+    recent = sdk_outcomes.counts_since(now - UNREACHABLE_WINDOW)
+    unreachable = recent[sdk_outcomes.UNREACHABLE]
+    if unreachable >= UNREACHABLE_MIN and unreachable * 2 >= recent.total():
+        danger.append(
+            AttentionItem(
+                "danger",
+                "ranobelib.me не отвечает",
+                f"За 15 минут {unreachable} из {recent.total()} обращений закончились "
+                "сетевой ошибкой — тайтлы и главы не открываются.",
+            )
+        )
+    hour = sdk_outcomes.counts_since(now - timedelta(hours=1))
+    if hour[sdk_outcomes.BLOCKED] >= BLOCKED_PER_HOUR:
+        danger.append(
+            AttentionItem(
+                "danger",
+                "ranobelib.me блокирует наши запросы",
+                f"Защита сайта отклонила {hour[sdk_outcomes.BLOCKED]} обращений за час "
+                "(AccessBlockedError) — читатели видят «временно блокирует наши запросы».",
+            )
+        )
+    if hour[sdk_outcomes.RATE_LIMITED] >= RATE_LIMITED_PER_HOUR:
+        warning.append(
+            AttentionItem(
+                "warning",
+                "ranobelib.me ограничивает запросы",
+                f"{hour[sdk_outcomes.RATE_LIMITED]} ответов «слишком много запросов» за час "
+                "(RateLimitError) — загрузки и главы открываются с ошибкой.",
+            )
+        )
+
+    if counts is not None:
+        failed, total = counts.failed_downloads_day, counts.downloads_day
+        if failed >= FAILED_DOWNLOADS_MIN and failed >= total * FAILED_DOWNLOADS_SHARE:
+            warning.append(
+                AttentionItem(
+                    "warning",
+                    "Много неудачных загрузок",
+                    f"За сутки {failed} из {total} загрузок закончились ошибкой — "
+                    "последние ниже, в «Ошибки загрузок».",
+                )
+            )
+        unverified, before = counts.unverified_week, counts.unverified_previous_week
+        if unverified >= UNVERIFIED_MIN and unverified > before * UNVERIFIED_GROWTH:
+            warning.append(
+                AttentionItem(
+                    "warning",
+                    "Растёт число неподтверждённых email",
+                    f"За 7 дней {unverified} из {counts.registrations_week} новых аккаунтов "
+                    f"не подтвердили email (неделей раньше — {before}). "
+                    "Стоит проверить, доходят ли письма.",
+                )
+            )
+    return danger + warning
 
 
 def as_of(stats: PeriodStats, tz: str) -> str:

@@ -32,6 +32,7 @@ from app.admin_overview import (
     RECENT_USER_COLUMNS,
     activity_chart,
     as_of,
+    attention_items,
     compare_href,
     download_error_rows,
     kpis,
@@ -70,8 +71,10 @@ from app.db.admin_data import (
     table_columns,
 )
 from app.db.admin_stats import (
+    AttentionCounts,
     PeriodStats,
     TitleReaders,
+    cached_attention_counts,
     cached_period_stats,
     cached_top_titles,
     parse_period,
@@ -136,16 +139,20 @@ async def admin_home(
     stats: PeriodStats | None = None
     top: list[TitleReaders] | None = None
     recent: Overview | None = None
+    counts: AttentionCounts | None = None
     database_down = False
     try:
         async with db_connection.connection() as conn:
             stats = await _block(failed, "stats", lambda: cached_period_stats(conn, key, tz))
             top = await _block(failed, "titles", lambda: cached_top_titles(conn, key, tz))
             recent = await _block(failed, "recent", lambda: overview(conn))
+            counts = await _block(failed, "attention", lambda: cached_attention_counts(conn))
     except (psycopg.OperationalError, PoolTimeout):
         logger.exception("The admin overview could not reach the database")
         database_down = True
     titles = popular_titles(top, await _title_summaries(top)) if top is not None else []
+    # After the title lookups, so a failure reaching ranobelib.me just now counts too.
+    attention = attention_items(counts, database_down)
     args = dict(request.query_params)
     chart_metric = parse_metric(metric)
     chart_compare = parse_compare(compare)
@@ -159,6 +166,7 @@ async def admin_home(
         compare=chart_compare,
         compare_href=compare_href(args, chart_compare),
         popular=titles,
+        attention=attention,
         database_down=database_down,
         failed=failed,
         period_key=key,

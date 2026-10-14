@@ -85,6 +85,27 @@
     {{ kit.empty_state("За " ~ period_label ~ " никто ничего не читал", "Тайтлы появятся, как только читатели откроют главы.", icon_name="book-open") }}
     {% endif %}
     {% endcall %}
+
+    {% call kit.card("Требует внимания", "Проверяется при каждом открытии страницы") %}
+    {% if attention %}
+    <ul class="wn-admin-alerts">
+      {% for item in attention %}
+      <li class="wn-admin-alerts__item wn-admin-alerts__item--{{ item.tone }}">
+        <span class="wn-admin-alerts__mark">{{ kit.icon("triangle-alert" if item.tone == "danger" else "circle-alert") }}</span>
+        <span class="wn-admin-alerts__body">
+          <span class="wn-admin-alerts__title">{{ item.title }}</span>
+          <span class="wn-admin-alerts__text">{{ item.text }}</span>
+        </span>
+      </li>
+      {% endfor %}
+    </ul>
+    {% elif "attention" in failed %}
+    {{ kit.error_state() }}
+    {% else %}
+    {{ kit.empty_state("Всё в порядке", "Загрузки проходят, ranobelib.me отвечает, письма подтверждают.", icon_name="circle-check") }}
+    {% endif %}
+    <p class="wn-admin-note">Обращения к ranobelib.me считаются с последнего запуска сервера.</p>
+    {% endcall %}
   </div>
 
   <div class="wn-admin-ov__grid">

@@ -23632,6 +23632,63 @@ html:has(dialog.wn-admin-dialog[open]) {
   justify-content: flex-end;
 }
 
+/* «Требует внимания»: computed warnings, the most serious first. */
+.wn-admin-alerts {
+  display: flex;
+  flex-direction: column;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.wn-admin-alerts__item {
+  --tone: var(--wn-admin-warning);
+  display: flex;
+  gap: 11px;
+  padding: 10px 0;
+  border-top: 1px solid var(--wn-border);
+}
+
+.wn-admin-alerts__item:first-child {
+  border-top: 0;
+}
+
+.wn-admin-alerts__item--danger {
+  --tone: var(--wn-danger);
+}
+
+.wn-admin-alerts__mark {
+  display: grid;
+  flex: none;
+  place-items: center;
+  width: 30px;
+  height: 30px;
+  border-radius: 9px;
+  background: color-mix(in srgb, var(--tone) 15%, transparent);
+  color: color-mix(in srgb, var(--tone) 70%, #fff);
+}
+
+.wn-admin-alerts__mark .wn-admin-icon {
+  width: 15px;
+  height: 15px;
+}
+
+.wn-admin-alerts__body {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  min-width: 0;
+}
+
+.wn-admin-alerts__title {
+  font: var(--wn-weight-semi-bold) 13.5px/1.3 var(--wn-font-ui);
+}
+
+.wn-admin-alerts__text {
+  color: var(--wn-text-secondary);
+  font: var(--wn-weight-medium) 12.5px/1.45 var(--wn-font-ui);
+}
+
 @media (max-width: 560px) {
   .wn-admin-top__row {
     grid-template-columns: 18px 30px minmax(0, 1fr) auto;

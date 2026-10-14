@@ -6,6 +6,7 @@ from contextlib import asynccontextmanager
 from ranobelib import RanobeLib, TitleNotFoundError
 
 from app.config import get_settings
+from app.services import sdk_outcomes
 
 
 def get_client(url: str) -> RanobeLib:
@@ -36,5 +37,6 @@ async def open_client(slug_url: str) -> AsyncIterator[RanobeLib]:
         client = get_client(slug_url)
     except ValueError as exc:
         raise TitleNotFoundError(slug_url) from exc
-    async with client as lib:
+    # PR 345: how the session ended goes to the admin overview (app/services/sdk_outcomes.py).
+    async with sdk_outcomes.watch(), client as lib:
         yield lib
