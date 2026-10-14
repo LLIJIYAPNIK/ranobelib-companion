@@ -18,12 +18,24 @@ from zoneinfo import ZoneInfo
 
 import httpx
 import psycopg
-from fastapi import APIRouter, Depends, FastAPI, Form, HTTPException, Query, Request
+from fastapi import APIRouter, Depends, FastAPI, Form, HTTPException, Path, Query, Request
 from fastapi.responses import HTMLResponse, RedirectResponse, Response
 from psycopg import AsyncConnection
 from psycopg.errors import QueryCanceled
 from psycopg_pool import PoolTimeout
 
+from app.admin_analytics import (
+    DROP_MIN_READERS,
+    FINISHED_TOP,
+    RETENTION_CHART_LIMIT,
+    TITLE_COLUMNS,
+    biggest_drops,
+    hints,
+    retention,
+    retention_chart,
+    title_kpis,
+    title_list_rows,
+)
 from app.admin_kit import Undo, pop_toast, push_toast
 from app.admin_kit_demo import charts_context, table_context
 from app.admin_overview import (
@@ -63,6 +75,15 @@ from app.auth.admin import (
 from app.config import get_settings
 from app.db import admin_audit
 from app.db import connection as db_connection
+from app.db.admin_analytics import (
+    DEFAULT_SORT,
+    SORTS,
+    TITLES_LIMIT,
+    cached_title_rows,
+    chapter_reach,
+    last_read_positions,
+    title_totals,
+)
 from app.db.admin_data import (
     MASK,
     QUERY_TIMEOUT_MS,
@@ -76,13 +97,19 @@ from app.db.admin_stats import (
     AttentionCounts,
     PeriodStats,
     TitleReaders,
+    cached,
     cached_attention_counts,
     cached_period_stats,
     cached_top_titles,
     parse_period,
 )
 from app.db.connection import get_connection
-from app.services.titles import TitleSummary, title_summaries
+from app.services.titles import (
+    TitleSummary,
+    tables_of_contents,
+    title_details,
+    title_summaries,
+)
 from app.templating import templates
 
 # PR 326: out of the public /openapi.json and /docs - listing the paths there would
@@ -114,7 +141,7 @@ class NavItem:
 # builds - see ROADMAP.md, PR 341). Each later PR fills in its href.
 ADMIN_NAV: tuple[NavItem, ...] = (
     NavItem("overview", "Обзор", "dashboard", "/admin"),
-    NavItem("analytics", "Аналитика", "chart", None, "Контент"),
+    NavItem("analytics", "Аналитика", "chart", "/admin/analytics", "Контент"),
     NavItem("users", "Пользователи", "users", None, "Сообщество"),
     NavItem("comments", "Комментарии", "comments", None, "Сообщество"),
     NavItem("tables", "Данные БД", "database", "/admin/tables", "Данные"),
@@ -152,7 +179,11 @@ async def admin_home(
     except (psycopg.OperationalError, PoolTimeout):
         logger.exception("The admin overview could not reach the database")
         database_down = True
-    titles = popular_titles(top, await _title_summaries(top)) if top is not None else []
+    titles = (
+        popular_titles(top, await _title_summaries([row.slug_url for row in top]))
+        if top is not None
+        else []
+    )
     # After the title lookups, so a failure reaching ranobelib.me just now counts too.
     attention = attention_items(counts, database_down)
     args = dict(request.query_params)
@@ -185,16 +216,16 @@ async def admin_home(
     )
 
 
-async def _title_summaries(rows: list[TitleReaders]) -> dict[str, TitleSummary]:
-    """Names and covers for the popular titles, each looked up once per page through
+async def _title_summaries(slugs: list[str]) -> dict[str, TitleSummary]:
+    """Names and covers for a page's titles, each looked up once per page through
     app/services/ (the SDK's cache makes a repeat a local hit). title_summaries() already
     skips a title the SDK can't resolve; a network failure reaching ranobelib.me isn't an
     SDK error, so it's caught here - the list then shows slug_urls rather than failing
-    the whole overview."""
+    the whole page."""
     try:
-        return await title_summaries({row.slug_url for row in rows})
+        return await title_summaries(set(slugs))
     except httpx.HTTPError:
-        logger.warning("Could not reach ranobelib.me for the overview's title names")
+        logger.warning("Could not reach ranobelib.me for the admin panel's title names")
         return {}
 
 
@@ -207,6 +238,104 @@ async def _block[T](failed: set[str], name: str, load: Callable[[], Awaitable[T]
         logger.warning("The admin overview's %r block timed out", name)
         failed.add(name)
         return None
+
+
+@router.get("/analytics", response_model=None)
+async def admin_analytics(
+    request: Request,
+    _: Admin,
+    conn: Connection,
+    period: Annotated[str | None, Query(max_length=10)] = None,
+    sort: Annotated[str | None, Query(max_length=20)] = None,
+    order: str = "desc",
+) -> HTMLResponse:
+    """«Аналитика» (PR 346): the most active titles of a period. Names and covers come
+    from the SDK through app/services/; «Дочитали» from the SDK's table of contents for
+    the first FINISHED_TOP rows only."""
+    tz = get_settings().admin_timezone
+    key = parse_period(period)
+    sort_key = sort if sort in SORTS else DEFAULT_SORT
+    descending = order != "asc"
+    try:
+        rows = await cached_title_rows(conn, key, tz, sort_key, descending)
+        top = [row.slug_url for row in rows[:FINISHED_TOP]]
+        positions = await last_read_positions(conn, top)
+    except QueryCanceled:
+        return _timed_out(request, "analytics")
+    summaries = await _title_summaries([row.slug_url for row in rows])
+    contents = await tables_of_contents(top)
+    args = dict(request.query_params)
+    return _page(
+        request,
+        "admin/analytics.html",
+        "analytics",
+        args=args,
+        period_label=PERIOD_LABELS[key],
+        periods=period_links(args, key),
+        columns=TITLE_COLUMNS,
+        rows=title_list_rows(rows, summaries, contents, positions),
+        sort=sort_key,
+        descending=descending,
+        limit=TITLES_LIMIT,
+        finished_top=FINISHED_TOP,
+    )
+
+
+@router.get("/analytics/{slug_url}", response_model=None)
+async def admin_analytics_title(
+    request: Request,
+    slug_url: Annotated[str, Path(max_length=200)],
+    _: Admin,
+    conn: Connection,
+    period: Annotated[str | None, Query(max_length=10)] = None,
+) -> HTMLResponse:
+    """A title's page (PR 346): its numbers for a period and, over all time, how many of
+    the first chapter's readers reached each next chapter - chapters in the SDK's order.
+    Without the SDK (title gone, ranobelib.me unreachable) the page still shows the
+    application's own numbers; a title neither knows is a 404."""
+    tz = get_settings().admin_timezone
+    key = parse_period(period)
+    details = await title_details(slug_url)
+    chapters = [c for volume in details.volumes for c in volume.chapters] if details else []
+    try:
+        totals = await cached(
+            ("title_totals", slug_url, key, tz),
+            lambda: title_totals(conn, slug_url, key, tz),
+        )
+        reach = (
+            await cached(
+                ("chapter_reach", slug_url),
+                lambda: chapter_reach(conn, slug_url, (chapters[0].volume, chapters[0].number)),
+            )
+            if chapters
+            else None
+        )
+    except QueryCanceled:
+        return _timed_out(request, "analytics")
+    if details is None and not any(
+        c.current or c.previous
+        for c in (totals.readers, totals.chapters, totals.seconds, totals.library_adds)
+    ):
+        raise HTTPException(status_code=404)
+    points = retention(details.volumes, reach.cohort, reach.reached) if details and reach else []
+    args = dict(request.query_params)
+    return _page(
+        request,
+        "admin/analytics_title.html",
+        "analytics",
+        slug_url=slug_url,
+        details=details,
+        period_label=PERIOD_LABELS[key],
+        periods=period_links(args, key),
+        kpis=title_kpis(totals),
+        cohort=reach.cohort if reach else 0,
+        points=points,
+        chart=retention_chart(points) if reach and reach.cohort else None,
+        drops=biggest_drops(points),
+        drop_min_readers=DROP_MIN_READERS,
+        hints=hints(details.volumes, points) if details else [],
+        chart_limit=RETENTION_CHART_LIMIT,
+    )
 
 
 @router.get("/tables", response_model=None)

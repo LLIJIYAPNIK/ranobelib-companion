@@ -383,12 +383,21 @@ def bar_chart(
     fmt: Format = format_number,
     height: int = 160,
     x_tick_count: int = 7,
+    y_max: float | None = None,
+    details: list[tuple[tuple[str, str], ...]] | None = None,
 ) -> BarChart:
-    """Columns per label; with several series they stack (новые + вернувшиеся)."""
+    """Columns per label; with several series they stack (новые + вернувшиеся).
+    ``y_max`` fixes the scale (0-100% for retention, PR 346) instead of a round step
+    above the data; ``details`` adds rows to each column's hover after its values."""
     top, bottom = 8.0, float(height)
     count = len(labels)
     totals = [sum(item.values[i] for item in series) for i in range(count)]
-    scale_top, steps, step_labels = _y_axis(max([*totals, 0]), fmt)
+    if y_max is not None:
+        scale_top = y_max
+        steps = [y_max * i / 4 for i in range(5)]
+        step_labels = [fmt(step) for step in steps]
+    else:
+        scale_top, steps, step_labels = _y_axis(max([*totals, 0]), fmt)
     slot = CHART_WIDTH / count if count else CHART_WIDTH
     width = slot * 0.68
 
@@ -415,6 +424,8 @@ def bar_chart(
         rows = tuple((item.name, fmt(item.values[i])) for item in series)
         if len(series) > 1:
             rows += (("Всего", fmt(totals[i])),)
+        if details is not None:
+            rows += details[i]
         points.append(ChartPoint((i + 0.5) * slot / CHART_WIDTH * 100, None, labels[i], rows))
 
     return BarChart(
