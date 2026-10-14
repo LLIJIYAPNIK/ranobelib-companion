@@ -7,6 +7,7 @@
    through the SDK). Numbers: app/db/admin_analytics.py, shaped by app/admin_analytics.py. #}
 <main class="wn-admin__main wn-admin-ov" aria-labelledby="admin-page-title">
   <div class="wn-admin-ov__bar">
+    {% include "admin/_analytics_tabs.html" %}
     <p class="wn-admin-ov__asof">Самые активные тайтлы за {{ period_label }} · не больше {{ limit }}</p>
     <nav class="wn-admin-seg" aria-label="Период">
       {% for item in periods %}

@@ -1,0 +1,6 @@
+{# PR 347: «Аналитика»'s two pages - the titles and the readers' behaviour. #}
+<nav class="wn-admin-seg wn-admin-seg--tabs" aria-label="Разделы аналитики">
+  {% for tab in tabs %}
+  <a class="wn-admin-seg__item" href="{{ tab.href }}"{% if tab.current %} aria-current="page"{% endif %}>{{ tab.label }}</a>
+  {% endfor %}
+</nav>

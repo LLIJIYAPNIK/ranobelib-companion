@@ -102,11 +102,17 @@ def build_period(key: str, tz: str, now: datetime | None = None) -> Period:
         end = hour_start + timedelta(hours=1)
         starts = tuple(end - timedelta(hours=24 - i) for i in range(24))
         return Period(key=key, granularity="hour", tz=tz, starts=starts, end=end)
-    days = _DAYS[key]
-    today = local_now.date()
+    return last_days(_DAYS[key], tz, now, key=key)
+
+
+def last_days(days: int, tz: str, now: datetime | None = None, key: str = "") -> Period:
+    """`days` local calendar days ending with today (so far) - the day periods, and
+    fixed windows such as «Новые и вернувшиеся» over 14 days (PR 347)."""
+    zone = ZoneInfo(tz)
+    today = (now or datetime.now(UTC)).astimezone(zone).date()
     starts = tuple(_local_midnight(today - timedelta(days=days - 1 - i), zone) for i in range(days))
     end = _local_midnight(today + timedelta(days=1), zone)
-    return Period(key=key, granularity="day", tz=tz, starts=starts, end=end)
+    return Period(key=key or f"{days}d", granularity="day", tz=tz, starts=starts, end=end)
 
 
 def _local_midnight(day: date, zone: ZoneInfo) -> datetime:

@@ -1,0 +1,46 @@
+{% extends "admin/_layout.html" %}
+{% import "admin/_kit.html" as kit with context %}
+{% block title %}Поведение читателей — Аналитика{% endblock %}
+{% block heading %}Аналитика{% endblock %}
+{% block content %}
+{# PR 347: when people read and who comes back - on the admin's clock (ADMIN_TIMEZONE).
+   No devices or reading funnel: that needs collecting new data (User-Agent, title-card
+   views), a privacy decision outside this wave. #}
+<main class="wn-admin__main wn-admin-ov" aria-labelledby="admin-page-title">
+  <div class="wn-admin-ov__bar">
+    {% include "admin/_analytics_tabs.html" %}
+    <nav class="wn-admin-seg" aria-label="Период">
+      {% for item in periods %}
+      <a class="wn-admin-seg__item" href="{{ item.href }}"{% if item.current %} aria-current="page"{% endif %}>{{ item.label }}</a>
+      {% endfor %}
+    </nav>
+  </div>
+
+  <div class="wn-admin-ov__grid">
+    {% set peak = ("Пик: " ~ times.chart.peak) if times.enough and times.chart.peak else none %}
+    {% call kit.card("Когда читают", "Прочитано глав по дням недели и часам за " ~ period_label ~ " · " ~ timezone, aside=peak) %}
+    {% if times.total == 0 %}
+    {{ kit.empty_state("За " ~ period_label ~ " ничего не читали", "Карта заполнится, как только читатели откроют главы.", icon_name="clock") }}
+    {% else %}
+    {{ kit.heatmap(times.chart) }}
+    {% if not times.enough %}
+    <p class="wn-admin-note">Пока мало данных: {{ times.total }} прочитанных глав, меньше {{ min_reads }}. Пик не называем — он может быть случайным.</p>
+    {% endif %}
+    {% endif %}
+    {% endcall %}
+
+    {% call kit.card("Новые и вернувшиеся", "Последние " ~ visitor_days ~ " дней · новый — зарегистрировался в тот же день · " ~ timezone) %}
+    {% if visitors.new + visitors.returning == 0 %}
+    {{ kit.empty_state("За " ~ visitor_days ~ " дней никто не читал", "Столбцы появятся вместе с первыми читателями.", icon_name="users") }}
+    {% else %}
+    <p class="wn-admin-an__shares">
+      <span>Новые — {{ visitors.new_share }}</span>
+      <span>Вернувшиеся — {{ visitors.returning_share }}</span>
+      <span>доля читатель-дней за {{ visitor_days }} дней</span>
+    </p>
+    {{ kit.bar_chart(visitors.chart) }}
+    {% endif %}
+    {% endcall %}
+  </div>
+</main>
+{% endblock %}
