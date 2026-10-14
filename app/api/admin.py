@@ -63,6 +63,16 @@ from app.admin_overview import (
     popular_titles,
     recent_user_rows,
 )
+from app.admin_users import (
+    back_href,
+    parse_flag,
+    safe_back,
+    summary_items,
+    user_columns,
+    user_filters,
+    user_rows,
+)
+from app.api.auth import send_password_reset_email
 from app.auth.admin import (
     LOGIN_PATH,
     check_csrf,
@@ -93,6 +103,11 @@ from app.db.admin_analytics import (
     reading_heatmap,
     title_totals,
 )
+from app.db.admin_audit import (
+    USER_CONFIRM_EMAIL,
+    USER_END_SESSIONS,
+    USER_SEND_PASSWORD_RESET,
+)
 from app.db.admin_data import (
     MASK,
     QUERY_TIMEOUT_MS,
@@ -112,7 +127,12 @@ from app.db.admin_stats import (
     cached_top_titles,
     parse_period,
 )
+from app.db.admin_users import DEFAULT_SORT as USER_DEFAULT_SORT
+from app.db.admin_users import PAGE_SIZE as USERS_PAGE_SIZE
+from app.db.admin_users import SORTS as USER_SORTS
+from app.db.admin_users import list_users, user_summary
 from app.db.connection import get_connection
+from app.db.users import User, end_all_sessions, get_user_by_id, mark_email_verified
 from app.services.titles import (
     TitleSummary,
     tables_of_contents,
@@ -152,7 +172,7 @@ class NavItem:
 ADMIN_NAV: tuple[NavItem, ...] = (
     NavItem("overview", "Обзор", "dashboard", "/admin"),
     NavItem("analytics", "Аналитика", "chart", "/admin/analytics", "Контент"),
-    NavItem("users", "Пользователи", "users", None, "Сообщество"),
+    NavItem("users", "Пользователи", "users", "/admin/users", "Сообщество"),
     NavItem("comments", "Комментарии", "comments", None, "Сообщество"),
     NavItem("tables", "Данные БД", "database", "/admin/tables", "Данные"),
     NavItem("system", "Система", "server", None, "Платформа"),
@@ -385,6 +405,175 @@ async def admin_analytics_title(
         hints=hints(details.volumes, points) if details else [],
         chart_limit=RETENTION_CHART_LIMIT,
     )
+
+
+@router.get("/users", response_model=None)
+async def admin_users(
+    request: Request,
+    _: Admin,
+    conn: Connection,
+    q: Annotated[str, Query(max_length=200)] = "",
+    verified: Annotated[str | None, Query(max_length=5)] = None,
+    active: Annotated[str | None, Query(max_length=5)] = None,
+    library: Annotated[str | None, Query(max_length=5)] = None,
+    period: Annotated[str | None, Query(max_length=10)] = None,
+    sort: Annotated[str | None, Query(max_length=20)] = None,
+    order: str = "desc",
+    page: Annotated[int, Query(ge=1, le=1_000_000)] = 1,
+    user: Annotated[int | None, Query(ge=1, le=2_147_483_647)] = None,
+) -> HTMLResponse:
+    """«Пользователи» (PR 348): accounts with search (email, nickname, id), filters and
+    sorting. Read-only; the actions are the POST routes below. ``user`` opens that
+    account's drawer over the list."""
+    tz = get_settings().admin_timezone
+    key = parse_period(period)
+    sort_key = sort if sort in USER_SORTS else USER_DEFAULT_SORT
+    descending = order != "asc"
+    try:
+        data = await list_users(
+            conn,
+            key=key,
+            tz=tz,
+            query=q,
+            verified=parse_flag(verified),
+            active=parse_flag(active),
+            library=parse_flag(library),
+            sort=sort_key,
+            descending=descending,
+            page=page,
+        )
+        summary = await user_summary(conn, user, key, tz) if user is not None else None
+    except QueryCanceled:
+        return _timed_out(request, "users")
+    args = dict(request.query_params)
+    filters = user_filters(args, key)
+    list_args = {name: value for name, value in args.items() if name != "user"}
+    return _page(
+        request,
+        "admin/users.html",
+        "users",
+        args=args,
+        period_label=PERIOD_LABELS[key],
+        periods=period_links(args, key),
+        columns=user_columns(key),
+        filters=filters,
+        filtered=bool(q.strip()) or any(item.value for item in filters),
+        rows=user_rows(data.rows, tz, args),
+        data=data,
+        per_page=USERS_PAGE_SIZE,
+        sort=sort_key,
+        descending=descending,
+        summary=summary,
+        summary_items=summary_items(summary, tz, key) if summary else [],
+        drawer_missing=user is not None and summary is None,
+        close_href=back_href(list_args),
+        back=back_href(args),
+    )
+
+
+# --- «Пользователи»: the three safe actions (PR 348) ---------------------------------------
+# Each is a POST from a confirmation dialog in the drawer: CSRF checked, the change made
+# with the site's own function, then recorded in the action log (PR 343) on the same
+# connection, and the list shown again with a toast. ``back`` only ever leads to the
+# users list (safe_back()).
+
+UserId = Annotated[int, Path(ge=1, le=2_147_483_647)]
+
+
+async def _target_user(conn: AsyncConnection, user_id: int) -> User:
+    user = await get_user_by_id(conn, user_id)
+    if user is None:
+        raise HTTPException(status_code=404)
+    return user
+
+
+def _label(user: User) -> str:
+    return user.nickname or user.email
+
+
+@router.post("/users/{user_id}/sessions", response_model=None)
+async def admin_user_end_sessions(
+    request: Request,
+    user_id: UserId,
+    _: Admin,
+    conn: Connection,
+    csrf: Annotated[str, Form()] = "",
+    back: Annotated[str, Form(max_length=2000)] = "",
+) -> Response:
+    """«Завершить все сессии»: every device the account is signed in on is signed out on
+    its next request - session_version + 1, as after a password reset."""
+    check_csrf(request, csrf)
+    user = await _target_user(conn, user_id)
+    await end_all_sessions(conn, user.id)
+    await admin_audit.record_change(
+        conn,
+        USER_END_SESSIONS,
+        ip=client_ip(request),
+        entity="user",
+        entity_id=user.id,
+        entity_label=_label(user),
+        extra={"effect": "все входы, выданные до этого момента, больше не действуют"},
+    )
+    push_toast(request, f"Все сессии «{_label(user)}» завершены")
+    return RedirectResponse(safe_back(back), status_code=303)
+
+
+@router.post("/users/{user_id}/verify-email", response_model=None)
+async def admin_user_verify_email(
+    request: Request,
+    user_id: UserId,
+    _: Admin,
+    conn: Connection,
+    csrf: Annotated[str, Form()] = "",
+    back: Annotated[str, Form(max_length=2000)] = "",
+) -> Response:
+    """«Подтвердить email вручную»: for someone whose letter never arrived. An address
+    that's already confirmed is left alone - nothing changes, nothing is logged."""
+    check_csrf(request, csrf)
+    user = await _target_user(conn, user_id)
+    if user.email_verified_at is not None:
+        push_toast(request, f"Email «{_label(user)}» уже подтверждён", tone="error")
+        return RedirectResponse(safe_back(back), status_code=303)
+    updated = await mark_email_verified(conn, user.id)
+    await admin_audit.record_change(
+        conn,
+        USER_CONFIRM_EMAIL,
+        ip=client_ip(request),
+        entity="user",
+        entity_id=user.id,
+        entity_label=_label(user),
+        before={"email_verified_at": None},
+        after={"email_verified_at": updated.email_verified_at},
+    )
+    push_toast(request, f"Email «{_label(user)}» подтверждён")
+    return RedirectResponse(safe_back(back), status_code=303)
+
+
+@router.post("/users/{user_id}/password-reset", response_model=None)
+async def admin_user_password_reset(
+    request: Request,
+    user_id: UserId,
+    _: Admin,
+    conn: Connection,
+    csrf: Annotated[str, Form()] = "",
+    back: Annotated[str, Form(max_length=2000)] = "",
+) -> Response:
+    """«Отправить письмо сброса пароля»: the same letter «Забыли пароль?» sends. The admin
+    never sees or sets the password, and the link isn't shown or logged."""
+    check_csrf(request, csrf)
+    user = await _target_user(conn, user_id)
+    await send_password_reset_email(request, conn, user)
+    await admin_audit.record_change(
+        conn,
+        USER_SEND_PASSWORD_RESET,
+        ip=client_ip(request),
+        entity="user",
+        entity_id=user.id,
+        entity_label=_label(user),
+        extra={"sent_to": user.email},
+    )
+    push_toast(request, f"Письмо для сброса пароля отправлено на {user.email}")
+    return RedirectResponse(safe_back(back), status_code=303)
 
 
 @router.get("/tables", response_model=None)

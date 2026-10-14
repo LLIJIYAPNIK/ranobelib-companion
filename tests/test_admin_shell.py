@@ -98,7 +98,7 @@ def test_screens_from_later_prs_are_shown_but_not_links(admin: TestClient) -> No
             assert f'title="{item.label} — появится позже"' in side
             assert 'aria-disabled="true"' in side
     hrefs = re.findall(r'href="(/admin[^"]*)"', side)
-    assert sorted(hrefs) == ["/admin", "/admin/analytics", "/admin/tables"]
+    assert sorted(hrefs) == ["/admin", "/admin/analytics", "/admin/tables", "/admin/users"]
 
 
 def test_the_account_block_is_just_the_admin_and_logout(admin: TestClient) -> None:

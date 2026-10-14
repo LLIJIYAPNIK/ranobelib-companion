@@ -35,6 +35,10 @@ ACTOR = "admin"
 LOGIN = "login"
 LOGIN_FAILED = "login_failed"
 LOGOUT = "logout"
+# PR 348: «Пользователи»'s actions.
+USER_END_SESSIONS = "user_end_sessions"
+USER_CONFIRM_EMAIL = "user_confirm_email"
+USER_SEND_PASSWORD_RESET = "user_send_password_reset"
 
 _dumps = partial(json.dumps, ensure_ascii=False, default=str)
 

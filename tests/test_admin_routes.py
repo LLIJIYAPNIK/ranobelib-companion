@@ -22,6 +22,10 @@ EXPECTED_WITHOUT_ADMIN = {
     ("GET", "/admin/analytics/behaviour"): 303,
     ("GET", "/admin/analytics/{slug_url}"): 303,
     ("GET", "/admin/tables"): 303,
+    ("GET", "/admin/users"): 303,
+    ("POST", "/admin/users/{user_id}/sessions"): 303,
+    ("POST", "/admin/users/{user_id}/verify-email"): 303,
+    ("POST", "/admin/users/{user_id}/password-reset"): 303,
     ("GET", "/admin/tables/{name}"): 303,
     ("GET", "/admin/_kit"): 303,
     ("POST", "/admin/_kit/demo"): 303,
@@ -60,7 +64,9 @@ def test_admin_routes_are_not_in_the_public_api_schema(client: TestClient) -> No
 
 
 def _url(path: str) -> str:
-    return path.replace("{name}", "users").replace("{slug_url}", "1--some-title")
+    for name, value in (("{name}", "users"), ("{slug_url}", "1--some-title"), ("{user_id}", "1")):
+        path = path.replace(name, value)
+    return path
 
 
 @pytest.fixture

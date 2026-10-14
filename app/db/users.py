@@ -155,6 +155,19 @@ async def update_user_password_from_reset(
     return user
 
 
+async def end_all_sessions(conn: AsyncConnection, user_id: int) -> User:
+    """PR 348, the admin's «Завершить все сессии»: bumps `session_version` exactly as a
+    password reset does (update_user_password_from_reset() above), so every session
+    issued before this moment stops being accepted (get_current_user() in
+    app/auth/dependencies.py) - the password itself stays as it was."""
+    await conn.execute(
+        "UPDATE users SET session_version = session_version + 1 WHERE id = %s", (user_id,)
+    )
+    user = await get_user_by_id(conn, user_id)
+    assert user is not None  # just updated
+    return user
+
+
 async def mark_email_verified(conn: AsyncConnection, user_id: int) -> User:
     """PR 246: stamps the account as verified. The COALESCE keeps the first confirmation
     time if a second one (e.g. a stale link opened later) lands after it."""
