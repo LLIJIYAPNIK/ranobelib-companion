@@ -2,7 +2,9 @@
 
 from dataclasses import dataclass
 
+import httpx
 from ranobelib import RanobeLibError
+from ranobelib.models import Volume
 
 from app.services.client import open_client
 
@@ -35,3 +37,18 @@ async def title_summaries(slugs: set[str]) -> dict[str, TitleSummary]:
             cover_url=title.cover.default or title.cover.md or title.cover.thumbnail,
         )
     return summaries
+
+
+async def tables_of_contents(slugs: list[str]) -> dict[str, list[Volume]]:
+    """Each title's chapters in the SDK's own order (`get_table_of_contents()`), for the
+    admin analytics' reading positions (PR 346). Like title_summaries(), a title the SDK
+    can't resolve is left out, and so is one ranobelib.me couldn't be reached for - the
+    caller shows "no data" for it rather than failing the page."""
+    contents: dict[str, list[Volume]] = {}
+    for slug_url in slugs:
+        try:
+            async with open_client(slug_url) as lib:
+                contents[slug_url] = await lib.get_table_of_contents()
+        except (RanobeLibError, httpx.TransportError):
+            continue
+    return contents

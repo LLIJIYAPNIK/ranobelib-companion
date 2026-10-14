@@ -23687,6 +23687,46 @@ html:has(dialog.wn-admin-dialog[open]) {
   justify-content: flex-end;
 }
 
+/* «Аналитика» (PR 346): a title cell - small cover and name, linking to its page. */
+.wn-admin-titlecell {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  max-width: 340px;
+  color: var(--wn-text);
+  text-decoration: none;
+}
+
+.wn-admin-titlecell:hover .wn-admin-titlecell__name {
+  text-decoration: underline;
+}
+
+.wn-admin-titlecell:focus-visible {
+  outline: none;
+  border-radius: 4px;
+  box-shadow: var(--wn-focus-ring);
+}
+
+.wn-admin-titlecell__cover {
+  flex: none;
+  width: 24px;
+  height: 34px;
+  border-radius: 4px;
+  background: var(--wn-surface-raised);
+  object-fit: cover;
+}
+
+.wn-admin-titlecell__name {
+  overflow: hidden;
+  font-weight: var(--wn-weight-semi-bold);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.wn-admin-an__foot {
+  padding: 12px 16px 14px;
+}
+
 /* «Требует внимания»: computed warnings, the most serious first. */
 .wn-admin-alerts {
   display: flex;

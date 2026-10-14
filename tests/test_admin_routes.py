@@ -18,6 +18,7 @@ from tests.test_admin_auth import PASSWORD, Clock, _client
 # (PR 342 on) - sends you to the login form before its handler runs.
 EXPECTED_WITHOUT_ADMIN = {
     ("GET", "/admin"): 303,
+    ("GET", "/admin/analytics"): 303,
     ("GET", "/admin/tables"): 303,
     ("GET", "/admin/tables/{name}"): 303,
     ("GET", "/admin/_kit"): 303,

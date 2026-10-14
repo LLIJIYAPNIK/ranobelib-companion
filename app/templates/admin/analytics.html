@@ -1,0 +1,39 @@
+{% extends "admin/_layout.html" %}
+{% import "admin/_kit.html" as kit with context %}
+{% block title %}Аналитика{% endblock %}
+{% block heading %}Аналитика{% endblock %}
+{% block content %}
+{# PR 346: what people read - not a CRUD table of titles (they're ranobelib.me's, read
+   through the SDK). Numbers: app/db/admin_analytics.py, shaped by app/admin_analytics.py. #}
+<main class="wn-admin__main wn-admin-ov" aria-labelledby="admin-page-title">
+  <div class="wn-admin-ov__bar">
+    <p class="wn-admin-ov__asof">Самые активные тайтлы за {{ period_label }} · не больше {{ limit }}</p>
+    <nav class="wn-admin-seg" aria-label="Период">
+      {% for item in periods %}
+      <a class="wn-admin-seg__item" href="{{ item.href }}"{% if item.current %} aria-current="page"{% endif %}>{{ item.label }}</a>
+      {% endfor %}
+    </nav>
+  </div>
+
+  <section class="wn-admin-panel" aria-label="Тайтлы">
+    {% if rows %}
+    {% call(row, column) kit.table("analytics-titles", columns, rows, sort=sort, descending=descending, args=args, caption="Тайтлы за " ~ period_label) %}
+      {%- if column.key == "title" -%}
+      <a class="wn-admin-titlecell" href="{{ row.href }}">
+        {%- if row.cover_url %}<img class="wn-admin-titlecell__cover" src="{{ row.cover_url }}" alt="" width="24" height="34" loading="lazy" referrerpolicy="no-referrer">
+        {%- else %}<span class="wn-admin-titlecell__cover" aria-hidden="true"></span>{% endif -%}
+        <span class="wn-admin-titlecell__name">{{ row.name }}</span>
+      </a>
+      {%- elif column.key == "trend" -%}
+      {%- if row.trend %}<span class="wn-admin-delta wn-admin-delta--{{ row.trend.tone }}">{{ kit.icon(row.trend.icon) }}{{ row.trend.text }}</span>{% endif -%}
+      {%- elif column.key == "finished" -%}
+      {%- if row.finished is none %}<span class="wn-admin-table__null" title="Считается только для первых {{ finished_top }} строк">—</span>{% else %}{{ row.finished }}{% endif -%}
+      {%- else -%}{{ row[column.key] }}{%- endif -%}
+    {% endcall %}
+    <p class="wn-admin-ov__asof wn-admin-an__foot">«Дочитали» — для первых {{ finished_top }} строк: доля записей в библиотеках с прогрессом 100% по оглавлению тайтла (последняя прочитанная глава — последняя в оглавлении).</p>
+    {% else %}
+    {{ kit.empty_state("За " ~ period_label ~ " ничего не читали", "Тайтлы появятся, как только читатели откроют главы или добавят что-нибудь в библиотеку.", icon_name="book-open") }}
+    {% endif %}
+  </section>
+</main>
+{% endblock %}
