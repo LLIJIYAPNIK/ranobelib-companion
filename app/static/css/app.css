@@ -23932,6 +23932,17 @@ html:has(dialog.wn-admin-dialog[open]) {
   white-space: normal;
 }
 
+/* PR 349: the drawer's block status. */
+.wn-admin-ban {
+  margin: 0;
+  color: var(--wn-text-secondary);
+  font: var(--wn-weight-medium) 13px/1.5 var(--wn-font-ui);
+}
+
+.wn-admin-ban--active {
+  color: var(--wn-text);
+}
+
 /* «Требует внимания»: computed warnings, the most serious first. */
 .wn-admin-alerts {
   display: flex;

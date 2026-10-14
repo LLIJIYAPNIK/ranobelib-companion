@@ -39,6 +39,9 @@ LOGOUT = "logout"
 USER_END_SESSIONS = "user_end_sessions"
 USER_CONFIRM_EMAIL = "user_confirm_email"
 USER_SEND_PASSWORD_RESET = "user_send_password_reset"
+# PR 349: blocking.
+USER_BAN = "user_ban"
+USER_UNBAN = "user_unban"
 
 _dumps = partial(json.dumps, ensure_ascii=False, default=str)
 

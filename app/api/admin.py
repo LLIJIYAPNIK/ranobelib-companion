@@ -64,7 +64,9 @@ from app.admin_overview import (
     recent_user_rows,
 )
 from app.admin_users import (
+    BAN_TERM_LABELS,
     back_href,
+    ban_state,
     parse_flag,
     safe_back,
     summary_items,
@@ -104,9 +106,11 @@ from app.db.admin_analytics import (
     title_totals,
 )
 from app.db.admin_audit import (
+    USER_BAN,
     USER_CONFIRM_EMAIL,
     USER_END_SESSIONS,
     USER_SEND_PASSWORD_RESET,
+    USER_UNBAN,
 )
 from app.db.admin_data import (
     MASK,
@@ -131,6 +135,8 @@ from app.db.admin_users import DEFAULT_SORT as USER_DEFAULT_SORT
 from app.db.admin_users import PAGE_SIZE as USERS_PAGE_SIZE
 from app.db.admin_users import SORTS as USER_SORTS
 from app.db.admin_users import list_users, user_summary
+from app.db.bans import BAN_TERMS, AlreadyBanned, active_ban, ban_history, ban_user, lift_ban
+from app.db.bans import REASON_LIMIT as BAN_REASON_LIMIT
 from app.db.connection import get_connection
 from app.db.users import User, end_all_sessions, get_user_by_id, mark_email_verified
 from app.services.titles import (
@@ -443,6 +449,11 @@ async def admin_users(
             page=page,
         )
         summary = await user_summary(conn, user, key, tz) if user is not None else None
+        bans = (
+            ban_state(await active_ban(conn, summary.id), await ban_history(conn, summary.id), tz)
+            if summary
+            else None
+        )
     except QueryCanceled:
         return _timed_out(request, "users")
     args = dict(request.query_params)
@@ -465,6 +476,9 @@ async def admin_users(
         descending=descending,
         summary=summary,
         summary_items=summary_items(summary, tz, key) if summary else [],
+        bans=bans,
+        ban_terms=BAN_TERM_LABELS,
+        reason_limit=BAN_REASON_LIMIT,
         drawer_missing=user is not None and summary is None,
         close_href=back_href(list_args),
         back=back_href(args),
@@ -573,6 +587,81 @@ async def admin_user_password_reset(
         extra={"sent_to": user.email},
     )
     push_toast(request, f"Письмо для сброса пароля отправлено на {user.email}")
+    return RedirectResponse(safe_back(back), status_code=303)
+
+
+# --- blocking (PR 349) ---------------------------------------------------------------------
+
+
+@router.post("/users/{user_id}/ban", response_model=None)
+async def admin_user_ban(
+    request: Request,
+    user_id: UserId,
+    _: Admin,
+    conn: Connection,
+    csrf: Annotated[str, Form()] = "",
+    term: Annotated[str, Form(max_length=10)] = "",
+    reason: Annotated[str, Form(max_length=2000)] = "",
+    back: Annotated[str, Form(max_length=2000)] = "",
+) -> Response:
+    """«Заблокировать»: for 1, 7 or 30 days or until lifted, with an optional reason the
+    person sees. Their open sessions turn into guest ones on the next request
+    (get_current_user()); the term runs out by itself."""
+    check_csrf(request, csrf)
+    user = await _target_user(conn, user_id)
+    if term not in BAN_TERMS:
+        push_toast(request, "Не заблокировано: выберите срок", tone="error")
+        return RedirectResponse(safe_back(back), status_code=303)
+    try:
+        ban = await ban_user(conn, user.id, term=term, reason=reason)
+    except AlreadyBanned:
+        push_toast(request, f"«{_label(user)}» уже заблокирован", tone="error")
+        return RedirectResponse(safe_back(back), status_code=303)
+    await admin_audit.record_change(
+        conn,
+        USER_BAN,
+        ip=client_ip(request),
+        entity="user",
+        entity_id=user.id,
+        entity_label=_label(user),
+        before={"banned": False},
+        after={"banned": True, "expires_at": ban.expires_at},
+        extra={"term": term, "reason": ban.reason, "ban_id": ban.id},
+    )
+    push_toast(request, f"«{_label(user)}» заблокирован")
+    return RedirectResponse(safe_back(back), status_code=303)
+
+
+@router.post("/users/{user_id}/unban", response_model=None)
+async def admin_user_unban(
+    request: Request,
+    user_id: UserId,
+    _: Admin,
+    conn: Connection,
+    csrf: Annotated[str, Form()] = "",
+    reason: Annotated[str, Form(max_length=2000)] = "",
+    back: Annotated[str, Form(max_length=2000)] = "",
+) -> Response:
+    """«Снять блокировку» now, with an optional note why. A block that already ran out
+    or was lifted changes nothing and isn't logged."""
+    check_csrf(request, csrf)
+    user = await _target_user(conn, user_id)
+    ban = await lift_ban(conn, user.id, reason=reason)
+    if ban is None:
+        push_toast(request, f"«{_label(user)}» не заблокирован", tone="error")
+        return RedirectResponse(safe_back(back), status_code=303)
+    await admin_audit.record_change(
+        conn,
+        USER_UNBAN,
+        ip=client_ip(request),
+        entity="user",
+        entity_id=user.id,
+        entity_label=_label(user),
+        before={"banned": True, "expires_at": ban.expires_at},
+        after={"banned": False},
+        extra={"reason": ban.lifted_reason, "ban_id": ban.id},
+    )
+    push_toast(request, f"Блокировка «{_label(user)}» снята")
     return RedirectResponse(safe_back(back), status_code=303)
 
 

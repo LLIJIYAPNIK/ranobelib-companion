@@ -12,6 +12,7 @@ from __future__ import annotations
 
 import math
 from dataclasses import dataclass
+from datetime import UTC, datetime
 
 from psycopg import AsyncConnection
 
@@ -43,6 +44,7 @@ class UserRow:
     last_active: str | None
     library: int
     seconds: int  # reading time in the selected period
+    banned: bool = False  # PR 349: a block in force right now
 
 
 @dataclass(frozen=True)
@@ -123,10 +125,17 @@ async def list_users(
         cursor = await conn.execute(
             "SELECT u.id, u.email, u.nickname, u.created_at, u.email_verified_at, "
             "a.last_active, COALESCE(l.library, 0) AS library, "
-            f"COALESCE(a.seconds, 0) AS seconds {_FROM}{where}"
+            "COALESCE(a.seconds, 0) AS seconds, EXISTS (SELECT 1 FROM user_bans b "
+            "WHERE b.user_id = u.id AND b.lifted_at IS NULL AND (b.expires_at IS NULL "
+            f"OR b.expires_at > %(now)s)) AS banned {_FROM}{where}"
             f"ORDER BY {order} {direction} NULLS LAST, u.id DESC "
             "LIMIT %(limit)s OFFSET %(offset)s",
-            {**params, "limit": PAGE_SIZE, "offset": (page - 1) * PAGE_SIZE},
+            {
+                **params,
+                "now": datetime.now(UTC).isoformat(),
+                "limit": PAGE_SIZE,
+                "offset": (page - 1) * PAGE_SIZE,
+            },
         )
         rows = await cursor.fetchall()
     return UserPage(
@@ -140,6 +149,7 @@ async def list_users(
                 last_active=row["last_active"],
                 library=row["library"],
                 seconds=int(row["seconds"]),
+                banned=row["banned"],
             )
             for row in rows
         ],

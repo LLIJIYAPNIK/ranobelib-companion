@@ -15,6 +15,7 @@ from urllib.parse import urlencode
 from app.admin_kit import Column, Filter, format_number
 from app.admin_overview import PERIOD_LABELS, format_duration, format_when
 from app.db.admin_users import UserRow, UserSummary
+from app.db.bans import Ban
 
 YES_NO = {"yes": True, "no": False}
 
@@ -71,6 +72,7 @@ class UserListRow:
     library: str
     time: str
     open_href: str
+    banned: bool = False
 
 
 def user_rows(rows: list[UserRow], tz: str, args: Mapping[str, object]) -> list[UserListRow]:
@@ -85,6 +87,7 @@ def user_rows(rows: list[UserRow], tz: str, args: Mapping[str, object]) -> list[
             library=format_number(row.library),
             time=format_duration(row.seconds) if row.seconds else "—",
             open_href=user_href(args, row.id),
+            banned=row.banned,
         )
         for row in rows
     ]
@@ -134,3 +137,31 @@ def summary_items(summary: UserSummary, tz: str, period_key: str) -> list[Summar
         SummaryItem("Загрузок", format_number(summary.downloads)),
         SummaryItem("Комментариев", format_number(summary.comments)),
     ]
+
+
+# --- blocking (PR 349) --------------------------------------------------------------------
+
+BAN_TERM_LABELS = (
+    ("1d", "1 день"),
+    ("7d", "7 дней"),
+    ("30d", "30 дней"),
+    ("forever", "Бессрочно"),
+)
+
+
+@dataclass(frozen=True)
+class BanState:
+    """The drawer's «Блокировка»: the block in force (if any) and how many there were."""
+
+    active: bool
+    until: str | None  # on the admin's clock, «бессрочно» for no end
+    reason: str | None
+    since: str | None
+    total: int
+
+
+def ban_state(active: Ban | None, history: list[Ban], tz: str) -> BanState:
+    if active is None:
+        return BanState(False, None, None, None, len(history))
+    until = "бессрочно" if active.expires_at is None else f"до {format_when(active.expires_at, tz)}"
+    return BanState(True, until, active.reason, format_when(active.created_at, tz), len(history))
