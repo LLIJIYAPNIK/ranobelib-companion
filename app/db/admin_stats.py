@@ -176,6 +176,27 @@ class MetricSeries:
     current_total: int
     previous_total: int
 
+    @property
+    def comparison(self) -> Comparison:
+        return compare(self.current_total, self.previous_total)
+
+
+@dataclass(frozen=True)
+class Comparison:
+    """A total against the previous period's. ``percent`` is None when the previous
+    period had nothing - growth from zero has no percentage, and the card shows that
+    rather than "+∞%" or a made-up 100%."""
+
+    current: int
+    previous: int
+    delta: int
+    percent: float | None
+
+
+def compare(current: int, previous: int) -> Comparison:
+    percent = (current - previous) / previous * 100 if previous else None
+    return Comparison(current=current, previous=previous, delta=current - previous, percent=percent)
+
 
 @dataclass(frozen=True)
 class PeriodStats:
