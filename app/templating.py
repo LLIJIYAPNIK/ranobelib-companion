@@ -41,7 +41,12 @@ def _inject_current_user(request: Request) -> dict:
     specifically so it runs for every request and caches its result there, since this
     context processor is a plain sync function and can't itself await the database call
     `get_current_user()` needs."""
-    return {"current_user": request.state.current_user}
+    return {
+        "current_user": request.state.current_user,
+        # PR 349: a blocked account's notice (app/auth/dependencies.py) - the strip in
+        # base.html. getattr: a page rendered before the dependency ran has none.
+        "ban_notice": getattr(request.state, "ban_notice", None),
+    }
 
 
 templates = Jinja2Templates(

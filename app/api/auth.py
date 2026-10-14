@@ -413,6 +413,19 @@ async def login(
     return RedirectResponse(url="/", status_code=303)
 
 
+@router.get("/account-blocked", response_model=None)
+async def account_blocked(request: Request) -> Response:
+    """PR 349: where a blocked account lands instead of /login (require_current_user())
+    - the term and the reason, and «Выйти». Without an active block there's nothing to
+    say here: back to the home page."""
+    ban = getattr(request.state, "active_ban", None)
+    if ban is None:
+        return RedirectResponse(url="/", status_code=303)
+    return templates.TemplateResponse(
+        request, "account_blocked.html", {"ban": ban}, status_code=403
+    )
+
+
 @router.post("/logout")
 async def logout(request: Request) -> Response:
     request.session.clear()

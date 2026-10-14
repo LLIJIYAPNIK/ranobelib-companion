@@ -10,6 +10,8 @@ from typing import Annotated
 
 from fastapi import Depends, HTTPException, Request
 
+from app.ban_notice import ban_message
+from app.db.bans import active_ban
 from app.db.connection import connection
 from app.db.users import User, get_user_by_id
 
@@ -39,19 +41,32 @@ async def get_current_user(request: Request) -> User | None:
     app-level dependency checks a connection out of the pool for every single anonymous
     request too, site-wide, for a lookup it was always going to skip anyway.
     """
+    request.state.active_ban = None
+    request.state.ban_notice = None
     user_id = request.session.get("user_id")
     if user_id is None:
         request.state.current_user = None
         return None
     async with connection() as conn:
         user = await get_user_by_id(conn, user_id)
-    if user is not None and user.session_version != request.session.get("session_version"):
+        if user is not None and user.session_version != request.session.get("session_version"):
+            user = None
+        # PR 349: a blocked account is a guest for as long as the block lasts - checked
+        # on every request, so a block takes effect on the next click and a term that ran
+        # out lets the same session back in. The session itself is kept; the block is
+        # left on request.state for the notice (the strip in base.html, /account-blocked).
+        ban = await active_ban(conn, user.id) if user is not None else None
+    if ban is not None and user is not None:
+        request.state.active_ban = ban
+        request.state.ban_notice = ban_message(ban, user.timezone)
         user = None
     request.state.current_user = user
     return user
 
 
-def require_current_user(user: Annotated[User | None, Depends(get_current_user)]) -> User:
+def require_current_user(
+    request: Request, user: Annotated[User | None, Depends(get_current_user)]
+) -> User:
     """`Depends(require_current_user)` for routes that need a logged-in user - none yet
     in this PR (personal library is PR 14), but this is the primitive PR 14/17/18 attach
     to their routes.
@@ -62,5 +77,8 @@ def require_current_user(user: Annotated[User | None, Depends(get_current_user)]
     HTTPException's JSON body.
     """
     if user is None:
-        raise HTTPException(status_code=303, headers={"Location": "/login"})
+        # PR 349: a blocked account is told why, not just asked to log in again.
+        blocked = getattr(request.state, "active_ban", None) is not None
+        location = "/account-blocked" if blocked else "/login"
+        raise HTTPException(status_code=303, headers={"Location": location})
     return user

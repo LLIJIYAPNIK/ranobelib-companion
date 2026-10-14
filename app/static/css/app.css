@@ -19771,6 +19771,34 @@ body.reader-hud-visible .reader-hud {
   font: 500 15px/1.5 var(--font-ui);
 }
 
+/* PR 349: a blocked account - the notice page's two buttons, and the strip over every
+   page it browses as a guest. */
+.account-blocked__actions {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: var(--s-12);
+}
+
+.account-blocked__actions form {
+  margin: 0;
+}
+
+.ban-strip {
+  margin: 0;
+  padding: 10px var(--s-20);
+  border-bottom: 1px solid color-mix(in srgb, var(--danger) 35%, transparent);
+  background: color-mix(in srgb, var(--danger) 12%, transparent);
+  color: var(--danger-text);
+  font: 600 14px/1.45 var(--font-ui);
+}
+
+.ban-strip__link {
+  color: inherit;
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+
 @media (max-width: 767px) {
   .error-page {
     padding-bottom: var(--s-40);
