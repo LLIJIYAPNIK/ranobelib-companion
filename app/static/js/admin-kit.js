@@ -125,6 +125,25 @@
     }
   });
 
+  // PR 348: a drawer the page was asked to open (?user=…) arrives already [open] -
+  // reopen it as a modal (focus trap, backdrop), and once it's closed take the request
+  // out of the address bar so a reload doesn't bring it back.
+  document.querySelectorAll("dialog[data-kit-dialog][data-kit-autoopen][open]").forEach((dialog) => {
+    // Not close(): that fires "close", which would drop ?user= while it's still open.
+    dialog.removeAttribute("open");
+    dialog.showModal();
+  });
+  document.querySelectorAll("dialog[data-kit-dialog][data-kit-close-href]").forEach((dialog) => {
+    dialog.addEventListener("close", () => {
+      if (dialog.querySelector("dialog[open]")) return;
+      try {
+        window.history.replaceState(null, "", dialog.dataset.kitCloseHref);
+      } catch {
+        // an odd URL or a sandboxed frame - the drawer is closed either way
+      }
+    });
+  });
+
   // An irreversible action: its button stays off until «Я понимаю…» is ticked (the box
   // is also `required`, so the form can't go without it even before this runs).
   document.querySelectorAll("[data-kit-confirm]").forEach((form) => {

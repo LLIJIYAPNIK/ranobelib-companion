@@ -172,8 +172,12 @@
 {#- The drawer from the right: a native modal <dialog> (focus stays inside, Escape and
     a click outside close it) opened by any <button data-kit-open="ID">. The caller is
     its content - usually a form of .wn-admin-drawer__body + kit.drawer_foot(). -#}
-{% macro drawer(id, title, subtitle=none) -%}
-<dialog class="wn-admin-drawer" id="{{ id }}" aria-labelledby="{{ id }}-title" data-kit-dialog>
+{#- PR 348: ``open`` renders it already open (a drawer the URL asked for - visible without
+    JS too); the script makes it modal and, on close, puts ``close_href`` in the address
+    bar so a reload doesn't open it again. -#}
+{% macro drawer(id, title, subtitle=none, open=false, close_href=none) -%}
+<dialog class="wn-admin-drawer" id="{{ id }}" aria-labelledby="{{ id }}-title" data-kit-dialog
+  {%- if open %} open data-kit-autoopen{% endif %}{% if close_href %} data-kit-close-href="{{ close_href }}"{% endif %}>
   <div class="wn-admin-drawer__head">
     <div class="wn-admin-drawer__titles">
       <h2 class="wn-admin-drawer__title" id="{{ id }}-title">{{ title }}</h2>

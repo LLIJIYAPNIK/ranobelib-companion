@@ -31,5 +31,24 @@
     {% endif %}
     {{ kit.pager(data.page, data.pages, data.total, per_page, args) }}
   </section>
+  {% if drawer_missing %}
+  <p class="wn-admin-note" role="alert">Пользователь не найден — возможно, ссылка устарела.</p>
+  {% endif %}
 </main>
+
+{% if summary %}
+{% call kit.drawer("admin-user", summary.nickname or summary.email, summary.email if summary.nickname else "id " ~ summary.id, open=true, close_href=close_href) %}
+<div class="wn-admin-drawer__body">
+  <dl class="wn-admin-summary">
+    <div class="wn-admin-summary__item"><dt>id</dt><dd class="wn-admin-summary__mono">{{ summary.id }}</dd></div>
+    {% for item in summary_items %}
+    <div class="wn-admin-summary__item"><dt>{{ item.label }}</dt><dd>{{ item.value }}</dd></div>
+    {% endfor %}
+  </dl>
+</div>
+<div class="wn-admin-drawer__foot">
+  <button class="wn-admin-btn wn-admin-btn--ghost" type="button" data-kit-close>Закрыть</button>
+</div>
+{% endcall %}
+{% endif %}
 {% endblock %}

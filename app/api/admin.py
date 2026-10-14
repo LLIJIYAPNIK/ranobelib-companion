@@ -63,7 +63,14 @@ from app.admin_overview import (
     popular_titles,
     recent_user_rows,
 )
-from app.admin_users import parse_flag, user_columns, user_filters, user_rows
+from app.admin_users import (
+    back_href,
+    parse_flag,
+    summary_items,
+    user_columns,
+    user_filters,
+    user_rows,
+)
 from app.auth.admin import (
     LOGIN_PATH,
     check_csrf,
@@ -116,7 +123,7 @@ from app.db.admin_stats import (
 from app.db.admin_users import DEFAULT_SORT as USER_DEFAULT_SORT
 from app.db.admin_users import PAGE_SIZE as USERS_PAGE_SIZE
 from app.db.admin_users import SORTS as USER_SORTS
-from app.db.admin_users import list_users
+from app.db.admin_users import list_users, user_summary
 from app.db.connection import get_connection
 from app.services.titles import (
     TitleSummary,
@@ -405,9 +412,11 @@ async def admin_users(
     sort: Annotated[str | None, Query(max_length=20)] = None,
     order: str = "desc",
     page: Annotated[int, Query(ge=1, le=1_000_000)] = 1,
+    user: Annotated[int | None, Query(ge=1, le=2_147_483_647)] = None,
 ) -> HTMLResponse:
     """«Пользователи» (PR 348): accounts with search (email, nickname, id), filters and
-    sorting. Read-only; the actions are the POST routes below."""
+    sorting. Read-only; the actions are the POST routes below. ``user`` opens that
+    account's drawer over the list."""
     tz = get_settings().admin_timezone
     key = parse_period(period)
     sort_key = sort if sort in USER_SORTS else USER_DEFAULT_SORT
@@ -425,10 +434,12 @@ async def admin_users(
             descending=descending,
             page=page,
         )
+        summary = await user_summary(conn, user, key, tz) if user is not None else None
     except QueryCanceled:
         return _timed_out(request, "users")
     args = dict(request.query_params)
     filters = user_filters(args, key)
+    list_args = {name: value for name, value in args.items() if name != "user"}
     return _page(
         request,
         "admin/users.html",
@@ -444,6 +455,11 @@ async def admin_users(
         per_page=USERS_PAGE_SIZE,
         sort=sort_key,
         descending=descending,
+        summary=summary,
+        summary_items=summary_items(summary, tz, key) if summary else [],
+        drawer_missing=user is not None and summary is None,
+        close_href=back_href(list_args),
+        back=back_href(args),
     )
 
 
