@@ -96,12 +96,12 @@ async def test_require_current_user_passes_through_logged_in_user() -> None:
 
     user = User(id=1, email="alice@example.com", password_hash="h", created_at="now")
 
-    assert require_current_user(user) is user
+    assert require_current_user(_request_with_session({}), user) is user
 
 
 async def test_require_current_user_redirects_anonymous_to_login() -> None:
     with pytest.raises(HTTPException) as exc_info:
-        require_current_user(None)
+        require_current_user(_request_with_session({}), None)
 
     assert exc_info.value.status_code == 303
     assert exc_info.value.headers["Location"] == "/login"

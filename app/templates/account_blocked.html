@@ -1,0 +1,20 @@
+{% extends "base.html" %}
+{% block title %}Аккаунт заблокирован — RanobeLib Companion{% endblock %}
+{% block content %}
+{#
+  PR 349: what a blocked account sees instead of «войдите» - the error page's layout
+  (PR 265), the term on the person's own clock and the reason when the admin gave one
+  (ban_notice, app/ban_notice.py). Reading stays open to them as a guest.
+#}
+<main class="error-page">
+  <span class="error-page__status error-page__status--word">Блокировка</span>
+  <h1 class="error-page__detail">{{ ban_notice }}</h1>
+  <p class="error-page__hint">Пока блокировка действует, сайт открыт вам как гостю: читать можно, а библиотека, прогресс и комментарии недоступны.{% if not ban.permanent %} Когда срок закончится, вход вернётся сам.{% endif %}</p>
+  <div class="account-blocked__actions">
+    <a class="ui-btn" href="/">На главную</a>
+    <form method="post" action="/logout">
+      <button class="ui-btn ui-btn--quiet" type="submit">Выйти</button>
+    </form>
+  </div>
+</main>
+{% endblock %}

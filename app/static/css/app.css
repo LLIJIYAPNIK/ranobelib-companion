@@ -19771,6 +19771,42 @@ body.reader-hud-visible .reader-hud {
   font: 500 15px/1.5 var(--font-ui);
 }
 
+/* PR 349: a blocked account - the notice page's two buttons, and the strip over every
+   page it browses as a guest. */
+/* A word, not a three-digit code, in the status slot - sized so «Блокировка» fits a
+   320px phone. */
+.error-page__status--word {
+  max-width: 100%;
+  font-size: clamp(40px, 12vw, 72px);
+  overflow-wrap: anywhere;
+}
+
+.account-blocked__actions {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: var(--s-12);
+}
+
+.account-blocked__actions form {
+  margin: 0;
+}
+
+.ban-strip {
+  margin: 0;
+  padding: 10px var(--s-20);
+  border-bottom: 1px solid color-mix(in srgb, var(--danger) 35%, transparent);
+  background: color-mix(in srgb, var(--danger) 12%, transparent);
+  color: var(--danger-text);
+  font: 600 14px/1.45 var(--font-ui);
+}
+
+.ban-strip__link {
+  color: inherit;
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+
 @media (max-width: 767px) {
   .error-page {
     padding-bottom: var(--s-40);
@@ -23902,6 +23938,17 @@ html:has(dialog.wn-admin-dialog[open]) {
 .wn-admin-actions .wn-admin-btn {
   max-width: 100%;
   white-space: normal;
+}
+
+/* PR 349: the drawer's block status. */
+.wn-admin-ban {
+  margin: 0;
+  color: var(--wn-text-secondary);
+  font: var(--wn-weight-medium) 13px/1.5 var(--wn-font-ui);
+}
+
+.wn-admin-ban--active {
+  color: var(--wn-text);
 }
 
 /* «Требует внимания»: computed warnings, the most serious first. */

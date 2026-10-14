@@ -24,7 +24,9 @@ from app.auth.passwords import (
 )
 from app.auth.rate_limit import is_rate_limited
 from app.auth.session_middleware import REMEMBER_ME_KEY
+from app.ban_notice import ban_message
 from app.config import get_settings
+from app.db.bans import active_ban
 from app.db.connection import get_connection
 from app.db.email_verification import check_code as check_verification_code
 from app.db.email_verification import create_token as create_verification_token
@@ -378,6 +380,22 @@ async def login(
             status_code=400,
         )
 
+    ban = await active_ban(conn, user.id)
+    if ban is not None:
+        # PR 349: only reached with the right password - a wrong one still gets the
+        # neutral message above, so this doesn't tell anyone which accounts are blocked.
+        return templates.TemplateResponse(
+            request,
+            _auth_template(request, "login.html"),
+            {
+                "mode": "login",
+                "active_tab": "login",
+                "error": ban_message(ban, user.timezone),
+                "submitted_email": email,
+            },
+            status_code=403,
+        )
+
     if not user.is_email_verified:
         # PR 246: only reached with the right password, so this reveals nothing about
         # which emails are registered. No new email is sent automatically - the page
@@ -393,6 +411,19 @@ async def login(
         # app/auth/session_middleware.py, RememberMeSessionMiddleware.
         request.session[REMEMBER_ME_KEY] = True
     return RedirectResponse(url="/", status_code=303)
+
+
+@router.get("/account-blocked", response_model=None)
+async def account_blocked(request: Request) -> Response:
+    """PR 349: where a blocked account lands instead of /login (require_current_user())
+    - the term and the reason, and «Выйти». Without an active block there's nothing to
+    say here: back to the home page."""
+    ban = getattr(request.state, "active_ban", None)
+    if ban is None:
+        return RedirectResponse(url="/", status_code=303)
+    return templates.TemplateResponse(
+        request, "account_blocked.html", {"ban": ban}, status_code=403
+    )
 
 
 @router.post("/logout")

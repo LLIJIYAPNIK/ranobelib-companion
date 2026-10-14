@@ -182,6 +182,10 @@
       </div>
     </nav>
     <div class="main">
+      {% if ban_notice and request.url.path != "/account-blocked" %}
+      {# PR 349: a blocked account browses as a guest - this says why, on every page. #}
+      <p class="ban-strip" role="status">{{ ban_notice }} <a class="ban-strip__link" href="/account-blocked">Подробнее</a></p>
+      {% endif %}
       {% block content %}{% endblock %}
     </div>
   </div>
