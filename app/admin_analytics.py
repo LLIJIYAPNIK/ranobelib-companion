@@ -216,10 +216,18 @@ def format_percent(value: float) -> str:
     return f"{format_number(round(value, 1))}%"
 
 
+# A column per chapter stops being readable (and the page heavy) past this many - a long
+# title's chart shows its first chapters, where most readers are; the drops and hints
+# still look at every chapter.
+RETENTION_CHART_LIMIT = 300
+
+
 def retention_chart(points: list[RetentionPoint]) -> BarChart:
-    """«Удержание по главам»: a column per chapter, 0-100% of the first chapter's
-    readers; the hover adds the readers and the drop from the chapter before. Every
-    column's hover has the same rows, so the screen-reader table lines up."""
+    """«Удержание по главам»: a column per chapter (the first RETENTION_CHART_LIMIT),
+    0-100% of the first chapter's readers; the hover adds the readers and the drop from
+    the chapter before. Every column's hover has the same rows, so the screen-reader
+    table lines up."""
+    points = points[:RETENTION_CHART_LIMIT]
     return bar_chart(
         [BarSeries("Дошли", [point.reach for point in points])],
         [point.label for point in points],

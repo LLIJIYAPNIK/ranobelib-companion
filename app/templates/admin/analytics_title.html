@@ -46,7 +46,8 @@
   {% if details %}
   {% call kit.card("Удержание по главам", "Из тех, кто открыл первую главу, — сколько дошли до каждой следующей. За всё время, главы в порядке оглавления.") %}
   {% if chart %}
-  <p class="wn-admin-ov__asof">Первую главу открыли: {{ cohort }}</p>
+  <p class="wn-admin-ov__asof">Первую главу открыли: {{ cohort }}
+    {%- if points | length > chart_limit %} · на графике первые {{ chart_limit }} глав из {{ points | length }}, отток и подсказки — по всем{% endif %}</p>
   {{ kit.bar_chart(chart) }}
   {% else %}
   {{ kit.empty_state("Первую главу ещё никто не открывал", "Удержание считается от читателей первой главы — пока их нет, считать не от чего.", icon_name="book-open") }}

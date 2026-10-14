@@ -27,6 +27,7 @@ from psycopg_pool import PoolTimeout
 from app.admin_analytics import (
     DROP_MIN_READERS,
     FINISHED_TOP,
+    RETENTION_CHART_LIMIT,
     TITLE_COLUMNS,
     biggest_drops,
     hints,
@@ -333,6 +334,7 @@ async def admin_analytics_title(
         drops=biggest_drops(points),
         drop_min_readers=DROP_MIN_READERS,
         hints=hints(details.volumes, points) if details else [],
+        chart_limit=RETENTION_CHART_LIMIT,
     )
 
 
