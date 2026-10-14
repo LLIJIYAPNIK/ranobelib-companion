@@ -5,12 +5,22 @@ recent rows. Presentation only, like app/admin_kit.py: the numbers come from app
 
 from __future__ import annotations
 
-from collections.abc import Mapping
+from collections.abc import Callable, Mapping
 from dataclasses import dataclass
 from datetime import datetime
 from zoneinfo import ZoneInfo
 
-from app.admin_kit import Column, Delta, Sparkline, admin_query, delta, format_number, sparkline
+from app.admin_kit import (
+    Column,
+    Delta,
+    LineChart,
+    Sparkline,
+    admin_query,
+    delta,
+    format_number,
+    line_chart,
+    sparkline,
+)
 from app.db.admin_stats import DEFAULT_PERIOD, PERIODS, PeriodStats
 
 PERIOD_LABELS = {"24h": "24 часа", "7d": "7 дней", "30d": "30 дней", "90d": "90 дней"}
@@ -122,6 +132,87 @@ def kpis(stats: PeriodStats) -> list[Kpi]:
             )
         )
     return cards
+
+
+# --- the activity chart -------------------------------------------------------------------
+
+DEFAULT_METRIC = "active_readers"
+
+
+def parse_metric(raw: str | None) -> str:
+    return raw if raw in METRIC_INFO else DEFAULT_METRIC
+
+
+def parse_compare(raw: str | None) -> bool:
+    """The comparison is on unless the link turned it off (compare=0)."""
+    return raw != "0"
+
+
+@dataclass(frozen=True)
+class MetricTab:
+    key: str
+    label: str
+    value: str
+    change: Delta | None
+    href: str
+    current: bool
+
+
+def metric_tabs(stats: PeriodStats, args: Mapping[str, object], current: str) -> list[MetricTab]:
+    """The chips over the chart: each metric's total and change; picking one redraws the
+    chart with it. One metric per chart - six series on different scales on one axis
+    would mislead (ROADMAP.md, wave 40)."""
+    tabs = []
+    for key, series in stats.metrics.items():
+        comparison = series.comparison
+        tabs.append(
+            MetricTab(
+                key=key,
+                label=METRIC_INFO[key].label,
+                value=format_metric(key, comparison.current),
+                change=delta(comparison.current, comparison.previous),
+                href=admin_query(args, metric=None if key == DEFAULT_METRIC else key),
+                current=key == current,
+            )
+        )
+    return tabs
+
+
+def compare_href(args: Mapping[str, object], compare: bool) -> str:
+    return admin_query(args, compare="0" if compare else None)
+
+
+def _with_unit(unit: str) -> Callable[[float], str]:
+    return lambda value: f"{format_number(round(value, 1))} {unit}"
+
+
+def _bucket_label(moment: datetime, granularity: str) -> str:
+    if granularity == "hour":
+        return f"{moment:%H:%M}"
+    return f"{moment.day} {_MONTHS_SHORT[moment.month - 1]}"
+
+
+def activity_chart(stats: PeriodStats, metric: str, compare: bool) -> LineChart:
+    """«Активность чтения»: `metric` per hour (24h) or day, the previous period dashed
+    on the same scale when `compare`. Reading time is drawn in minutes or hours, so the
+    axis gets round steps."""
+    series = stats.metrics[metric]
+    current: list[float] = [float(v) for v in series.current]
+    previous: list[float] = [float(v) for v in series.previous]
+    fmt: Callable[[float], str] = format_number
+    if metric == "reading_seconds":
+        divisor, unit = (3600, "ч") if max([*current, *previous, 0]) >= 3 * 3600 else (60, "мин")
+        current = [v / divisor for v in current]
+        previous = [v / divisor for v in previous]
+        fmt = _with_unit(unit)
+    return line_chart(
+        current,
+        [_bucket_label(label, stats.period.granularity) for label in stats.period.labels],
+        name=METRIC_INFO[metric].label,
+        previous=previous if compare else None,
+        previous_name=f"Прошлые {PERIOD_LABELS[stats.period.key]}",
+        fmt=fmt,
+    )
 
 
 def as_of(stats: PeriodStats, tz: str) -> str:

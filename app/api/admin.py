@@ -29,9 +29,14 @@ from app.admin_overview import (
     DOWNLOAD_ERROR_COLUMNS,
     PERIOD_LABELS,
     RECENT_USER_COLUMNS,
+    activity_chart,
     as_of,
+    compare_href,
     download_error_rows,
     kpis,
+    metric_tabs,
+    parse_compare,
+    parse_metric,
     period_links,
     recent_user_rows,
 )
@@ -109,6 +114,8 @@ async def admin_home(
     request: Request,
     _: Admin,
     period: Annotated[str | None, Query(max_length=10)] = None,
+    metric: Annotated[str | None, Query(max_length=40)] = None,
+    compare: Annotated[str | None, Query(max_length=5)] = None,
 ) -> HTMLResponse:
     """«Обзор» (PR 345). Each block is loaded on its own: a query that hits the admin
     timeout leaves an error state in its block and the rest of the page still shows.
@@ -128,11 +135,17 @@ async def admin_home(
         logger.exception("The admin overview could not reach the database")
         database_down = True
     args = dict(request.query_params)
+    chart_metric = parse_metric(metric)
+    chart_compare = parse_compare(compare)
     return _page(
         request,
         "admin/index.html",
         "overview",
         timezone=tz,
+        metric_tabs=metric_tabs(stats, args, chart_metric) if stats else [],
+        chart=activity_chart(stats, chart_metric, chart_compare) if stats else None,
+        compare=chart_compare,
+        compare_href=compare_href(args, chart_compare),
         database_down=database_down,
         failed=failed,
         period_key=key,

@@ -28,6 +28,29 @@
     {{ kit.kpi(item.label, item.value, item.icon, change=item.change, previous=item.previous, spark=item.spark) }}
     {% endfor %}
   </section>
+
+  <section class="wn-admin-panel wn-admin-card" aria-labelledby="ov-activity-title">
+    <header class="wn-admin-card__head">
+      <div class="wn-admin-card__titles">
+        <h2 class="wn-admin-card__title" id="ov-activity-title">Активность чтения</h2>
+        <p class="wn-admin-card__sub">За {{ period_label }} · наведите на график, чтобы увидеть значения</p>
+      </div>
+      <a class="wn-admin-toggle" href="{{ compare_href }}" data-overview-nav>
+        <span class="wn-admin-toggle__track{% if compare %} wn-admin-toggle__track--on{% endif %}" aria-hidden="true"></span>
+        Сравнить с прошлым периодом<span class="wn-admin-sr">: {{ "включено" if compare else "выключено" }}</span>
+      </a>
+    </header>
+    <nav class="wn-admin-ov__metrics" aria-label="Метрика на графике">
+      {% for tab in metric_tabs %}
+      <a class="wn-admin-ov__metric" href="{{ tab.href }}"{% if tab.current %} aria-current="true"{% endif %} data-overview-nav>
+        <span class="wn-admin-ov__metric-label">{{ tab.label }}</span>
+        <span class="wn-admin-ov__metric-value">{{ tab.value }}
+          {%- if tab.change %} <span class="wn-admin-delta wn-admin-delta--{{ tab.change.tone }}">{{ tab.change.text }}</span>{% endif %}</span>
+      </a>
+      {% endfor %}
+    </nav>
+    {{ kit.line_chart(chart) }}
+  </section>
   {% endif %}
 
   <div class="wn-admin-ov__grid">
