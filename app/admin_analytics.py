@@ -7,8 +7,9 @@ from __future__ import annotations
 
 from collections.abc import Mapping
 from dataclasses import dataclass
+from datetime import datetime
 
-from ranobelib.models import Volume
+from ranobelib.models import Chapter, Volume
 
 from app.admin_kit import BarChart, BarSeries, Column, Delta, bar_chart, delta, format_number
 from app.admin_overview import format_duration
@@ -142,6 +143,73 @@ def biggest_drops(points: list[RetentionPoint]) -> list[RetentionPoint]:
         point for point in points if point.drop and point.previous_readers >= DROP_MIN_READERS
     ]
     return sorted(candidates, key=lambda point: (-point.drop, point.index))[:TOP_DROPS]
+
+
+# --- «Что стоит проверить» ----------------------------------------------------------------
+# Only what follows from the numbers and the SDK's dates - where readers stopped and where
+# releases paused. No guessed reasons: the admin opens the chapter and decides.
+
+SHARP_DROP = 30.0  # percent of the previous chapter's readers
+PAUSE_DAYS = 30
+HINTS_LIMIT = 6
+
+
+@dataclass(frozen=True)
+class Hint:
+    kind: str  # "drop" or "pause"
+    title: str
+    text: str
+
+
+def chapter_released(chapter: Chapter) -> datetime | None:
+    """When a chapter first appeared on ranobelib.me: its earliest translation's date
+    from the SDK. None when the table of contents has no translations for it."""
+    dates = [branch.created_at for branch in chapter.branches]
+    return min(dates) if dates else None
+
+
+def hints(volumes: list[Volume], points: list[RetentionPoint]) -> list[Hint]:
+    """Sharp drops (at least SHARP_DROP% of the previous chapter's readers, with enough
+    of them) and release pauses of PAUSE_DAYS or more, in chapter order."""
+    by_index = {point.index: point for point in points}
+    chapters = [chapter for volume in volumes for chapter in volume.chapters]
+    found: list[tuple[int, Hint]] = []
+    for index, chapter in enumerate(chapters):
+        point = by_index.get(index)
+        if (
+            point is not None
+            and point.drop is not None
+            and point.drop >= SHARP_DROP
+            and point.previous_readers >= DROP_MIN_READERS
+        ):
+            found.append(
+                (
+                    index,
+                    Hint(
+                        "drop",
+                        f"{point.label}: резкий обрыв",
+                        f"Из {point.previous_readers} читателей предыдущей главы эту открыли "
+                        f"{point.readers} (−{point.drop_text}). Стоит открыть главу и "
+                        "проверить, всё ли с ней в порядке.",
+                    ),
+                )
+            )
+        if index == 0:
+            continue
+        released, before = chapter_released(chapter), chapter_released(chapters[index - 1])
+        if released is None or before is None:
+            continue
+        days = (released - before).days
+        if days >= PAUSE_DAYS:
+            label = point.label if point else chapter_label(chapter.volume, chapter.number, False)
+            text = f"Глава вышла через {days} дн. после предыдущей."
+            if point is not None and point.previous_readers:
+                text += (
+                    f" Из {point.previous_readers} читателей предыдущей главы её открыли "
+                    f"{point.readers}."
+                )
+            found.append((index, Hint("pause", f"{label}: пауза в выпуске", text)))
+    return [hint for _, hint in sorted(found, key=lambda item: item[0])][:HINTS_LIMIT]
 
 
 def format_percent(value: float) -> str:

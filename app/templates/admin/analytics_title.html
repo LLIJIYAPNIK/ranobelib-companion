@@ -69,6 +69,24 @@
     {{ kit.empty_state("Оттока не видно", "Либо читатели доходят до следующих глав, либо их пока слишком мало, чтобы говорить об оттоке.", icon_name="circle-check") }}
     {% endif %}
     {% endcall %}
+
+    {% call kit.card("Что стоит проверить", "Только то, что видно по числам и датам глав: резкие обрывы и паузы в выпуске") %}
+    {% if hints %}
+    <ul class="wn-admin-alerts">
+      {% for hint in hints %}
+      <li class="wn-admin-alerts__item{% if hint.kind == 'drop' %} wn-admin-alerts__item--danger{% endif %}">
+        <span class="wn-admin-alerts__mark">{{ kit.icon("trending-down" if hint.kind == "drop" else "clock") }}</span>
+        <span class="wn-admin-alerts__body">
+          <span class="wn-admin-alerts__title">{{ hint.title }}</span>
+          <span class="wn-admin-alerts__text">{{ hint.text }}</span>
+        </span>
+      </li>
+      {% endfor %}
+    </ul>
+    {% else %}
+    {{ kit.empty_state("Проверять нечего", "Резких обрывов и долгих пауз между главами нет.", icon_name="circle-check") }}
+    {% endif %}
+    {% endcall %}
   </div>
   {% endif %}
 </main>

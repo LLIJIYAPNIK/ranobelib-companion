@@ -29,6 +29,7 @@ from app.admin_analytics import (
     FINISHED_TOP,
     TITLE_COLUMNS,
     biggest_drops,
+    hints,
     retention,
     retention_chart,
     title_kpis,
@@ -331,6 +332,7 @@ async def admin_analytics_title(
         chart=retention_chart(points) if reach and reach.cohort else None,
         drops=biggest_drops(points),
         drop_min_readers=DROP_MIN_READERS,
+        hints=hints(details.volumes, points) if details else [],
     )
 
 
