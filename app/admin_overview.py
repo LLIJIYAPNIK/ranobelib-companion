@@ -21,7 +21,8 @@ from app.admin_kit import (
     line_chart,
     sparkline,
 )
-from app.db.admin_stats import DEFAULT_PERIOD, PERIODS, PeriodStats
+from app.db.admin_stats import DEFAULT_PERIOD, PERIODS, PeriodStats, TitleReaders
+from app.services.titles import TitleSummary
 
 PERIOD_LABELS = {"24h": "24 часа", "7d": "7 дней", "30d": "30 дней", "90d": "90 дней"}
 
@@ -213,6 +214,47 @@ def activity_chart(stats: PeriodStats, metric: str, compare: bool) -> LineChart:
         previous_name=f"Прошлые {PERIOD_LABELS[stats.period.key]}",
         fmt=fmt,
     )
+
+
+# --- popular titles -----------------------------------------------------------------------
+
+
+@dataclass(frozen=True)
+class PopularTitle:
+    rank: int
+    slug_url: str
+    name: str
+    cover_url: str | None
+    readers: str
+    chapters: str
+    share: float  # readers against the top title's, 0-100 - the bar's width
+    trend: Delta | None
+
+
+def popular_titles(
+    rows: list[TitleReaders], summaries: Mapping[str, TitleSummary]
+) -> list[PopularTitle]:
+    """The top titles by unique readers with their names and covers. A title the SDK
+    couldn't resolve (gone from ranobelib.me, or ranobelib.me unreachable) keeps its
+    slug_url as the name and no cover - one bad title doesn't hide the list."""
+    top = max((row.readers for row in rows), default=0) or 1
+    items = []
+    for rank, row in enumerate(rows, start=1):
+        summary = summaries.get(row.slug_url)
+        comparison = row.comparison
+        items.append(
+            PopularTitle(
+                rank=rank,
+                slug_url=row.slug_url,
+                name=summary.name if summary else row.slug_url,
+                cover_url=summary.cover_url if summary else None,
+                readers=format_number(row.readers),
+                chapters=format_number(row.chapters),
+                share=round(row.readers / top * 100, 1),
+                trend=delta(comparison.current, comparison.previous),
+            )
+        )
+    return items
 
 
 def as_of(stats: PeriodStats, tz: str) -> str:

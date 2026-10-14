@@ -16,6 +16,7 @@ from datetime import datetime
 from typing import Annotated
 from zoneinfo import ZoneInfo
 
+import httpx
 import psycopg
 from fastapi import APIRouter, Depends, FastAPI, Form, HTTPException, Query, Request
 from fastapi.responses import HTMLResponse, RedirectResponse, Response
@@ -38,6 +39,7 @@ from app.admin_overview import (
     parse_compare,
     parse_metric,
     period_links,
+    popular_titles,
     recent_user_rows,
 )
 from app.auth.admin import (
@@ -67,8 +69,15 @@ from app.db.admin_data import (
     overview,
     table_columns,
 )
-from app.db.admin_stats import PeriodStats, cached_period_stats, parse_period
+from app.db.admin_stats import (
+    PeriodStats,
+    TitleReaders,
+    cached_period_stats,
+    cached_top_titles,
+    parse_period,
+)
 from app.db.connection import get_connection
+from app.services.titles import TitleSummary, title_summaries
 from app.templating import templates
 
 # PR 326: out of the public /openapi.json and /docs - listing the paths there would
@@ -125,15 +134,18 @@ async def admin_home(
     key = parse_period(period)
     failed: set[str] = set()
     stats: PeriodStats | None = None
+    top: list[TitleReaders] | None = None
     recent: Overview | None = None
     database_down = False
     try:
         async with db_connection.connection() as conn:
             stats = await _block(failed, "stats", lambda: cached_period_stats(conn, key, tz))
+            top = await _block(failed, "titles", lambda: cached_top_titles(conn, key, tz))
             recent = await _block(failed, "recent", lambda: overview(conn))
     except (psycopg.OperationalError, PoolTimeout):
         logger.exception("The admin overview could not reach the database")
         database_down = True
+    titles = popular_titles(top, await _title_summaries(top)) if top is not None else []
     args = dict(request.query_params)
     chart_metric = parse_metric(metric)
     chart_compare = parse_compare(compare)
@@ -146,6 +158,7 @@ async def admin_home(
         chart=activity_chart(stats, chart_metric, chart_compare) if stats else None,
         compare=chart_compare,
         compare_href=compare_href(args, chart_compare),
+        popular=titles,
         database_down=database_down,
         failed=failed,
         period_key=key,
@@ -158,6 +171,19 @@ async def admin_home(
         error_columns=DOWNLOAD_ERROR_COLUMNS,
         download_errors=download_error_rows(recent.recent_download_errors, tz) if recent else [],
     )
+
+
+async def _title_summaries(rows: list[TitleReaders]) -> dict[str, TitleSummary]:
+    """Names and covers for the popular titles, each looked up once per page through
+    app/services/ (the SDK's cache makes a repeat a local hit). title_summaries() already
+    skips a title the SDK can't resolve; a network failure reaching ranobelib.me isn't an
+    SDK error, so it's caught here - the list then shows slug_urls rather than failing
+    the whole overview."""
+    try:
+        return await title_summaries({row.slug_url for row in rows})
+    except httpx.HTTPError:
+        logger.warning("Could not reach ranobelib.me for the overview's title names")
+        return {}
 
 
 async def _block[T](failed: set[str], name: str, load: Callable[[], Awaitable[T]]) -> T | None:

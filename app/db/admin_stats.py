@@ -250,6 +250,71 @@ def clear_cache() -> None:
     _cache.clear()
 
 
+# --- popular titles -----------------------------------------------------------------------
+
+TOP_TITLES = 6
+
+
+@dataclass(frozen=True)
+class TitleReaders:
+    """A title's unique readers (anyone who opened one of its chapters) in a period, the
+    chapters opened, and its readers in the previous period for the trend. Only the
+    slug_url - names and covers are SDK data, looked up by the caller."""
+
+    slug_url: str
+    readers: int
+    chapters: int
+    previous_readers: int
+
+    @property
+    def comparison(self) -> Comparison:
+        return compare(self.readers, self.previous_readers)
+
+
+async def top_titles(
+    conn: AsyncConnection,
+    key: str,
+    tz: str,
+    limit: int = TOP_TITLES,
+    now: datetime | None = None,
+) -> list[TitleReaders]:
+    """The titles with the most unique readers in period `key` (ties: more chapters
+    read, then slug_url, so the order is stable). Read-only with the admin timeout."""
+    period = build_period(key, tz, now)
+    previous = period.previous()
+    async with _read_only(conn):
+        cursor = await conn.execute(
+            "SELECT slug_url, "
+            "COUNT(DISTINCT user_id) FILTER (WHERE created_at >= %(split)s) AS readers, "
+            "COUNT(*) FILTER (WHERE created_at >= %(split)s) AS chapters, "
+            "COUNT(DISTINCT user_id) FILTER (WHERE created_at < %(split)s) AS previous_readers "
+            "FROM activity_events WHERE kind = 'chapter_read' "
+            "AND created_at >= %(start)s AND created_at < %(end)s "
+            "GROUP BY slug_url HAVING COUNT(*) FILTER (WHERE created_at >= %(split)s) > 0 "
+            "ORDER BY readers DESC, chapters DESC, slug_url LIMIT %(limit)s",
+            {
+                "split": period.start.isoformat(),
+                "start": previous.start.isoformat(),
+                "end": period.end.isoformat(),
+                "limit": limit,
+            },
+        )
+        rows = await cursor.fetchall()
+    return [
+        TitleReaders(
+            slug_url=row["slug_url"],
+            readers=row["readers"],
+            chapters=row["chapters"],
+            previous_readers=row["previous_readers"],
+        )
+        for row in rows
+    ]
+
+
+async def cached_top_titles(conn: AsyncConnection, key: str, tz: str) -> list[TitleReaders]:
+    return await cached(("top_titles", key, tz), lambda: top_titles(conn, key, tz))
+
+
 async def _series(
     conn: AsyncConnection, name: str, previous: Period, period: Period
 ) -> MetricSeries:

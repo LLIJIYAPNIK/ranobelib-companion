@@ -54,6 +54,40 @@
   {% endif %}
 
   <div class="wn-admin-ov__grid">
+    {% call kit.card("Популярные тайтлы", "По уникальным читателям · за " ~ period_label) %}
+    {% if database_down or "titles" in failed %}
+    {{ kit.error_state() }}
+    {% elif popular %}
+    <ol class="wn-admin-top">
+      {% for item in popular %}
+      <li class="wn-admin-top__row">
+        <span class="wn-admin-top__rank" aria-hidden="true">{{ item.rank }}</span>
+        {% if item.cover_url %}
+        <img class="wn-admin-top__cover" src="{{ item.cover_url }}" alt="" width="30" height="42" loading="lazy" referrerpolicy="no-referrer">
+        {% else %}
+        <span class="wn-admin-top__cover wn-admin-top__cover--blank" aria-hidden="true">{{ item.name[:1] | upper }}</span>
+        {% endif %}
+        <span class="wn-admin-top__title">
+          <a class="wn-admin-top__name" href="/titles/{{ item.slug_url }}">{{ item.name }}</a>
+          <span class="wn-admin-top__meta">Глав прочитано: {{ item.chapters }}</span>
+        </span>
+        <span class="wn-admin-top__readers">
+          <span><b>{{ item.readers }}</b> <span class="wn-admin-top__unit">чит.</span></span>
+          <span class="wn-admin-top__bar" aria-hidden="true"><span style="width: {{ item.share }}%"></span></span>
+        </span>
+        <span class="wn-admin-top__trend">
+          {%- if item.trend %}<span class="wn-admin-delta wn-admin-delta--{{ item.trend.tone }}" title="К прошлому периоду">{{ kit.icon(item.trend.icon) }}{{ item.trend.text }}</span>{% endif -%}
+        </span>
+      </li>
+      {% endfor %}
+    </ol>
+    {% else %}
+    {{ kit.empty_state("За " ~ period_label ~ " никто ничего не читал", "Тайтлы появятся, как только читатели откроют главы.", icon_name="book-open") }}
+    {% endif %}
+    {% endcall %}
+  </div>
+
+  <div class="wn-admin-ov__grid">
     {% call kit.card("Последние регистрации") %}
     {% if database_down or "recent" in failed %}
     {{ kit.error_state() }}
