@@ -23727,6 +23727,114 @@ html:has(dialog.wn-admin-dialog[open]) {
   padding: 12px 16px 14px;
 }
 
+/* A title's page: cover, back link, name, status - then its numbers. */
+.wn-admin-an__head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  gap: 16px 20px;
+  padding: 20px;
+}
+
+.wn-admin-an__cover {
+  flex: none;
+  width: 96px;
+  height: 136px;
+  border-radius: 8px;
+  background: var(--wn-surface-raised);
+  object-fit: cover;
+  box-shadow: 0 16px 30px -12px rgba(0, 0, 0, 0.7);
+}
+
+.wn-admin-an__titles {
+  display: flex;
+  flex: 1 1 260px;
+  flex-direction: column;
+  gap: 8px;
+  min-width: 0;
+}
+
+.wn-admin-an__back {
+  display: inline-flex;
+  align-items: center;
+  align-self: flex-start;
+  gap: 4px;
+  color: var(--wn-primary-hover);
+  font: var(--wn-weight-medium) 12.5px/1.3 var(--wn-font-ui);
+  text-decoration: none;
+}
+
+.wn-admin-an__back .wn-admin-icon {
+  width: 13px;
+  height: 13px;
+}
+
+.wn-admin-an__back:focus-visible {
+  outline: none;
+  border-radius: 4px;
+  box-shadow: var(--wn-focus-ring);
+}
+
+.wn-admin-an__name {
+  margin: 0;
+  font: var(--wn-weight-extra-bold) 26px/1.15 var(--wn-font-ui);
+  overflow-wrap: anywhere;
+  text-wrap: balance;
+}
+
+.wn-admin-an__meta {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  margin: 0;
+  color: var(--wn-text-secondary);
+  font: var(--wn-weight-medium) 13px/1.4 var(--wn-font-ui);
+}
+
+/* «Главы с наибольшим оттоком». */
+.wn-admin-drops {
+  display: flex;
+  flex-direction: column;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.wn-admin-drops__row {
+  display: grid;
+  grid-template-columns: minmax(70px, auto) minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 12px;
+  padding: 9px 4px;
+  border-top: 1px solid var(--wn-border);
+}
+
+.wn-admin-drops__row:first-child {
+  border-top: 0;
+}
+
+.wn-admin-drops__label {
+  color: var(--wn-text-secondary);
+  font: var(--wn-weight-semi-bold) 12px/1.3 var(--wn-font-ui);
+  white-space: nowrap;
+}
+
+.wn-admin-drops__name {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+  overflow: hidden;
+  font: var(--wn-weight-medium) 13px/1.3 var(--wn-font-ui);
+  text-overflow: ellipsis;
+}
+
+.wn-admin-drops__meta {
+  color: var(--wn-text-muted);
+  font-size: 11.5px;
+}
+
 /* «Требует внимания»: computed warnings, the most serious first. */
 .wn-admin-alerts {
   display: flex;

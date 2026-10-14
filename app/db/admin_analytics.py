@@ -122,6 +122,97 @@ async def cached_title_rows(
     )
 
 
+@dataclass(frozen=True)
+class TitleTotals:
+    """One title's numbers for a period against the previous one."""
+
+    readers: Comparison
+    chapters: Comparison
+    seconds: Comparison
+    library_adds: Comparison
+
+
+async def title_totals(
+    conn: AsyncConnection, slug_url: str, key: str, tz: str, now: datetime | None = None
+) -> TitleTotals:
+    period = build_period(key, tz, now)
+    previous = period.previous()
+    params = {
+        "slug": slug_url,
+        "split": period.start.isoformat(),
+        "start": previous.start.isoformat(),
+        "end": period.end.isoformat(),
+    }
+    async with _read_only(conn):
+        cursor = await conn.execute(
+            "SELECT "
+            "COUNT(DISTINCT user_id) FILTER (WHERE kind = 'chapter_read' "
+            "  AND created_at >= %(split)s) AS readers, "
+            "COUNT(DISTINCT user_id) FILTER (WHERE kind = 'chapter_read' "
+            "  AND created_at < %(split)s) AS previous_readers, "
+            "COUNT(*) FILTER (WHERE kind = 'chapter_read' AND created_at >= %(split)s) "
+            "  AS chapters, "
+            "COUNT(*) FILTER (WHERE kind = 'chapter_read' AND created_at < %(split)s) "
+            "  AS previous_chapters, "
+            "COALESCE(SUM(seconds) FILTER (WHERE kind = 'heartbeat' "
+            "  AND created_at >= %(split)s), 0) AS seconds, "
+            "COALESCE(SUM(seconds) FILTER (WHERE kind = 'heartbeat' "
+            "  AND created_at < %(split)s), 0) AS previous_seconds "
+            "FROM activity_events WHERE slug_url = %(slug)s "
+            "AND kind IN ('chapter_read', 'heartbeat') "
+            "AND created_at >= %(start)s AND created_at < %(end)s",
+            params,
+        )
+        activity = await cursor.fetchone()
+        cursor = await conn.execute(
+            "SELECT COUNT(*) FILTER (WHERE added_at >= %(split)s) AS adds, "
+            "COUNT(*) FILTER (WHERE added_at < %(split)s) AS previous_adds "
+            "FROM library_entries WHERE slug_url = %(slug)s "
+            "AND added_at >= %(start)s AND added_at < %(end)s",
+            params,
+        )
+        library = await cursor.fetchone()
+    return TitleTotals(
+        readers=compare(activity["readers"], activity["previous_readers"]),
+        chapters=compare(activity["chapters"], activity["previous_chapters"]),
+        seconds=compare(int(activity["seconds"]), int(activity["previous_seconds"])),
+        library_adds=compare(library["adds"], library["previous_adds"]),
+    )
+
+
+@dataclass(frozen=True)
+class ChapterReach:
+    """Retention for one title, over all time: ``cohort`` is everyone who opened its first
+    chapter, ``reached`` how many of them opened each (volume, number) - only chapters
+    someone of the cohort opened are present."""
+
+    cohort: int
+    reached: dict[tuple[str, str], int]
+
+
+async def chapter_reach(
+    conn: AsyncConnection, slug_url: str, first: tuple[str, str]
+) -> ChapterReach:
+    """`first` is the first chapter of the SDK's table of contents - which chapter is
+    "first" is the SDK's call, never a sort of chapter numbers here."""
+    async with _read_only(conn):
+        cursor = await conn.execute(
+            "WITH cohort AS ("
+            "  SELECT DISTINCT user_id FROM activity_events"
+            "  WHERE slug_url = %(slug)s AND kind = 'chapter_read'"
+            "  AND volume = %(volume)s AND number = %(number)s"
+            ") "
+            "SELECT e.volume, e.number, COUNT(DISTINCT e.user_id) AS readers "
+            "FROM activity_events e JOIN cohort c ON c.user_id = e.user_id "
+            "WHERE e.slug_url = %(slug)s AND e.kind = 'chapter_read' "
+            "GROUP BY e.volume, e.number",
+            {"slug": slug_url, "volume": first[0], "number": first[1]},
+        )
+        rows = await cursor.fetchall()
+    reached = {(row["volume"], row["number"]): row["readers"] for row in rows}
+    return ChapterReach(cohort=reached.get(first, 0), reached=reached)
+
+
 async def last_read_positions(
     conn: AsyncConnection, slugs: list[str]
 ) -> dict[str, list[tuple[str, str]]]:

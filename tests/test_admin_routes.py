@@ -19,6 +19,7 @@ from tests.test_admin_auth import PASSWORD, Clock, _client
 EXPECTED_WITHOUT_ADMIN = {
     ("GET", "/admin"): 303,
     ("GET", "/admin/analytics"): 303,
+    ("GET", "/admin/analytics/{slug_url}"): 303,
     ("GET", "/admin/tables"): 303,
     ("GET", "/admin/tables/{name}"): 303,
     ("GET", "/admin/_kit"): 303,
@@ -58,7 +59,7 @@ def test_admin_routes_are_not_in_the_public_api_schema(client: TestClient) -> No
 
 
 def _url(path: str) -> str:
-    return path.replace("{name}", "users")
+    return path.replace("{name}", "users").replace("{slug_url}", "1--some-title")
 
 
 @pytest.fixture

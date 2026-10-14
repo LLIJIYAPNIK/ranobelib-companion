@@ -1,0 +1,75 @@
+{% extends "admin/_layout.html" %}
+{% import "admin/_kit.html" as kit with context %}
+{% set title_name = details.name if details else slug_url %}
+{% block title %}{{ title_name }} — Аналитика{% endblock %}
+{% block heading %}Аналитика{% endblock %}
+{% block content %}
+{# PR 346: one title - its numbers for a period and chapter-by-chapter retention over all
+   time, chapters in the SDK's table-of-contents order (app/admin_analytics.py). #}
+<main class="wn-admin__main wn-admin-ov" aria-labelledby="admin-page-title">
+  <section class="wn-admin-panel wn-admin-an__head" aria-labelledby="an-title-name">
+    {% if details and details.cover_url %}
+    <img class="wn-admin-an__cover" src="{{ details.cover_url }}" alt="" width="96" height="136" referrerpolicy="no-referrer">
+    {% else %}
+    <span class="wn-admin-an__cover" aria-hidden="true"></span>
+    {% endif %}
+    <div class="wn-admin-an__titles">
+      <a class="wn-admin-an__back" href="/admin/analytics">{{ kit.icon("chevron-left") }}Все тайтлы</a>
+      <h2 class="wn-admin-an__name" id="an-title-name">{{ title_name }}</h2>
+      <p class="wn-admin-an__meta">
+        {%- if details and details.status %}{{ kit.badge(details.status, "primary") }} {% endif -%}
+        {%- if details %}Глав в оглавлении: {{ points | length }}{% endif -%}
+      </p>
+    </div>
+    <a class="wn-admin-btn wn-admin-btn--ghost" href="/titles/{{ slug_url }}">{{ kit.icon("external") }}На сайте</a>
+  </section>
+
+  {% if not details %}
+  <p class="wn-admin-note">Оглавление недоступно: источник тайтлов не вернул данные об этом тайтле. Ниже — только числа из базы приложения, без удержания по главам.</p>
+  {% endif %}
+
+  <div class="wn-admin-ov__bar">
+    <p class="wn-admin-ov__asof">Показатели за {{ period_label }} к прошлому периоду той же длины</p>
+    <nav class="wn-admin-seg" aria-label="Период">
+      {% for item in periods %}
+      <a class="wn-admin-seg__item" href="{{ item.href }}"{% if item.current %} aria-current="page"{% endif %}>{{ item.label }}</a>
+      {% endfor %}
+    </nav>
+  </div>
+
+  <section class="wn-admin-kpis" aria-label="Показатели за {{ period_label }}">
+    {% for item in kpis %}
+    {{ kit.kpi(item.label, item.value, "chart", change=item.change, previous=item.previous) }}
+    {% endfor %}
+  </section>
+
+  {% if details %}
+  {% call kit.card("Удержание по главам", "Из тех, кто открыл первую главу, — сколько дошли до каждой следующей. За всё время, главы в порядке оглавления.") %}
+  {% if chart %}
+  <p class="wn-admin-ov__asof">Первую главу открыли: {{ cohort }}</p>
+  {{ kit.bar_chart(chart) }}
+  {% else %}
+  {{ kit.empty_state("Первую главу ещё никто не открывал", "Удержание считается от читателей первой главы — пока их нет, считать не от чего.", icon_name="book-open") }}
+  {% endif %}
+  {% endcall %}
+
+  <div class="wn-admin-ov__grid">
+    {% call kit.card("Главы с наибольшим оттоком", "Доля читателей предыдущей главы, не открывших эту; учитываются главы, до которых дошли хотя бы " ~ drop_min_readers ~ " читателя") %}
+    {% if drops %}
+    <ol class="wn-admin-drops">
+      {% for point in drops %}
+      <li class="wn-admin-drops__row">
+        <span class="wn-admin-drops__label">{{ point.label }}</span>
+        <span class="wn-admin-drops__name">{{ point.name or "Без названия" }}<span class="wn-admin-drops__meta">{{ point.readers }} из {{ point.previous_readers }} читателей предыдущей главы</span></span>
+        <span class="wn-admin-delta wn-admin-delta--danger">−{{ point.drop_text }}</span>
+      </li>
+      {% endfor %}
+    </ol>
+    {% else %}
+    {{ kit.empty_state("Оттока не видно", "Либо читатели доходят до следующих глав, либо их пока слишком мало, чтобы говорить об оттоке.", icon_name="circle-check") }}
+    {% endif %}
+    {% endcall %}
+  </div>
+  {% endif %}
+</main>
+{% endblock %}

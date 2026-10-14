@@ -39,6 +39,32 @@ async def title_summaries(slugs: set[str]) -> dict[str, TitleSummary]:
     return summaries
 
 
+@dataclass(frozen=True)
+class TitleDetails:
+    name: str
+    cover_url: str | None
+    status: str | None
+    volumes: list[Volume]
+
+
+async def title_details(slug_url: str) -> TitleDetails | None:
+    """Name, cover, status and chapters in the SDK's order, for the admin's title page
+    (PR 346). None when the SDK can't resolve the title or ranobelib.me can't be reached
+    - the page then shows what the application's own data has."""
+    try:
+        async with open_client(slug_url) as lib:
+            title = await lib.get_info()
+            volumes = await lib.get_table_of_contents()
+    except (RanobeLibError, httpx.TransportError):
+        return None
+    return TitleDetails(
+        name=title.rus_name or title.name,
+        cover_url=title.cover.default or title.cover.md or title.cover.thumbnail,
+        status=title.status.label if title.status else None,
+        volumes=volumes,
+    )
+
+
 async def tables_of_contents(slugs: list[str]) -> dict[str, list[Volume]]:
     """Each title's chapters in the SDK's own order (`get_table_of_contents()`), for the
     admin analytics' reading positions (PR 346). Like title_summaries(), a title the SDK

@@ -18,13 +18,22 @@ from zoneinfo import ZoneInfo
 
 import httpx
 import psycopg
-from fastapi import APIRouter, Depends, FastAPI, Form, HTTPException, Query, Request
+from fastapi import APIRouter, Depends, FastAPI, Form, HTTPException, Path, Query, Request
 from fastapi.responses import HTMLResponse, RedirectResponse, Response
 from psycopg import AsyncConnection
 from psycopg.errors import QueryCanceled
 from psycopg_pool import PoolTimeout
 
-from app.admin_analytics import FINISHED_TOP, TITLE_COLUMNS, title_list_rows
+from app.admin_analytics import (
+    DROP_MIN_READERS,
+    FINISHED_TOP,
+    TITLE_COLUMNS,
+    biggest_drops,
+    retention,
+    retention_chart,
+    title_kpis,
+    title_list_rows,
+)
 from app.admin_kit import Undo, pop_toast, push_toast
 from app.admin_kit_demo import charts_context, table_context
 from app.admin_overview import (
@@ -69,7 +78,9 @@ from app.db.admin_analytics import (
     SORTS,
     TITLES_LIMIT,
     cached_title_rows,
+    chapter_reach,
     last_read_positions,
+    title_totals,
 )
 from app.db.admin_data import (
     MASK,
@@ -84,13 +95,19 @@ from app.db.admin_stats import (
     AttentionCounts,
     PeriodStats,
     TitleReaders,
+    cached,
     cached_attention_counts,
     cached_period_stats,
     cached_top_titles,
     parse_period,
 )
 from app.db.connection import get_connection
-from app.services.titles import TitleSummary, tables_of_contents, title_summaries
+from app.services.titles import (
+    TitleSummary,
+    tables_of_contents,
+    title_details,
+    title_summaries,
+)
 from app.templating import templates
 
 # PR 326: out of the public /openapi.json and /docs - listing the paths there would
@@ -259,6 +276,61 @@ async def admin_analytics(
         descending=descending,
         limit=TITLES_LIMIT,
         finished_top=FINISHED_TOP,
+    )
+
+
+@router.get("/analytics/{slug_url}", response_model=None)
+async def admin_analytics_title(
+    request: Request,
+    slug_url: Annotated[str, Path(max_length=200)],
+    _: Admin,
+    conn: Connection,
+    period: Annotated[str | None, Query(max_length=10)] = None,
+) -> HTMLResponse:
+    """A title's page (PR 346): its numbers for a period and, over all time, how many of
+    the first chapter's readers reached each next chapter - chapters in the SDK's order.
+    Without the SDK (title gone, ranobelib.me unreachable) the page still shows the
+    application's own numbers; a title neither knows is a 404."""
+    tz = get_settings().admin_timezone
+    key = parse_period(period)
+    details = await title_details(slug_url)
+    chapters = [c for volume in details.volumes for c in volume.chapters] if details else []
+    try:
+        totals = await cached(
+            ("title_totals", slug_url, key, tz),
+            lambda: title_totals(conn, slug_url, key, tz),
+        )
+        reach = (
+            await cached(
+                ("chapter_reach", slug_url),
+                lambda: chapter_reach(conn, slug_url, (chapters[0].volume, chapters[0].number)),
+            )
+            if chapters
+            else None
+        )
+    except QueryCanceled:
+        return _timed_out(request, "analytics")
+    if details is None and not any(
+        c.current or c.previous
+        for c in (totals.readers, totals.chapters, totals.seconds, totals.library_adds)
+    ):
+        raise HTTPException(status_code=404)
+    points = retention(details.volumes, reach.cohort, reach.reached) if details and reach else []
+    args = dict(request.query_params)
+    return _page(
+        request,
+        "admin/analytics_title.html",
+        "analytics",
+        slug_url=slug_url,
+        details=details,
+        period_label=PERIOD_LABELS[key],
+        periods=period_links(args, key),
+        kpis=title_kpis(totals),
+        cohort=reach.cohort if reach else 0,
+        points=points,
+        chart=retention_chart(points) if reach and reach.cohort else None,
+        drops=biggest_drops(points),
+        drop_min_readers=DROP_MIN_READERS,
     )
 
 
