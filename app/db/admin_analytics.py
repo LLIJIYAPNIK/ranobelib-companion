@@ -16,7 +16,7 @@ from datetime import datetime
 from psycopg import AsyncConnection
 
 from app.db.admin_data import _read_only
-from app.db.admin_stats import Comparison, build_period, cached, compare
+from app.db.admin_stats import Comparison, build_period, cached, compare, last_days
 
 # The list shows the most active titles, not every title ever opened.
 TITLES_LIMIT = 50
@@ -211,6 +211,73 @@ async def chapter_reach(
         rows = await cursor.fetchall()
     reached = {(row["volume"], row["number"]): row["readers"] for row in rows}
     return ChapterReach(cohort=reached.get(first, 0), reached=reached)
+
+
+# --- «Поведение читателей» (PR 347) -------------------------------------------------------
+
+
+async def reading_heatmap(
+    conn: AsyncConnection, key: str, tz: str, now: datetime | None = None
+) -> list[list[int]]:
+    """Chapters opened in period `key` by local weekday (Monday first) and hour - a 7 x 24
+    grid, zero where nobody read. `tz` must be a zone Postgres knows too (the caller
+    checks: app/timezones.py is_valid_timezone())."""
+    period = build_period(key, tz, now)
+    async with _read_only(conn):
+        cursor = await conn.execute(
+            "SELECT EXTRACT(ISODOW FROM local) AS weekday, EXTRACT(HOUR FROM local) AS hour, "
+            "COUNT(*) AS n FROM ("
+            "  SELECT created_at::timestamptz AT TIME ZONE %(tz)s AS local FROM activity_events"
+            "  WHERE kind = 'chapter_read' AND created_at >= %(start)s AND created_at < %(end)s"
+            ") e GROUP BY weekday, hour",
+            {"tz": tz, "start": period.start.isoformat(), "end": period.end.isoformat()},
+        )
+        rows = await cursor.fetchall()
+    grid = [[0] * 24 for _ in range(7)]
+    for row in rows:
+        grid[int(row["weekday"]) - 1][int(row["hour"])] = row["n"]
+    return grid
+
+
+@dataclass(frozen=True)
+class DayVisitors:
+    """One local day's active users (any activity event): ``new`` registered that same
+    day, the rest came back."""
+
+    day: str  # YYYY-MM-DD on the admin's clock
+    new: int
+    returning: int
+
+
+NEW_AND_RETURNING_DAYS = 14
+
+
+async def new_and_returning(
+    conn: AsyncConnection, tz: str, days: int = NEW_AND_RETURNING_DAYS, now: datetime | None = None
+) -> list[DayVisitors]:
+    """Every one of the last `days` local days, oldest first. A user active on a day is
+    new if that day is the local day they registered, otherwise returning."""
+    period = last_days(days, tz, now)
+    async with _read_only(conn):
+        cursor = await conn.execute(
+            "SELECT day, COUNT(*) FILTER (WHERE day = registered) AS new, "
+            "COUNT(*) FILTER (WHERE day <> registered) AS returning FROM ("
+            "  SELECT DISTINCT e.user_id,"
+            "  to_char(e.created_at::timestamptz AT TIME ZONE %(tz)s, 'YYYY-MM-DD') AS day,"
+            "  to_char(u.created_at::timestamptz AT TIME ZONE %(tz)s, 'YYYY-MM-DD') AS registered"
+            "  FROM activity_events e JOIN users u ON u.id = e.user_id"
+            "  WHERE e.kind IN ('chapter_read', 'heartbeat')"
+            "  AND e.created_at >= %(start)s AND e.created_at < %(end)s"
+            ") active GROUP BY day",
+            {"tz": tz, "start": period.start.isoformat(), "end": period.end.isoformat()},
+        )
+        rows = {row["day"]: row for row in await cursor.fetchall()}
+    result = []
+    for label in period.labels:
+        day = label.date().isoformat()
+        row = rows.get(day)
+        result.append(DayVisitors(day, row["new"] if row else 0, row["returning"] if row else 0))
+    return result
 
 
 async def last_read_positions(

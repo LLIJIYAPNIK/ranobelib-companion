@@ -7,13 +7,24 @@ from __future__ import annotations
 
 from collections.abc import Mapping
 from dataclasses import dataclass
-from datetime import datetime
+from datetime import date, datetime
 
 from ranobelib.models import Chapter, Volume
 
-from app.admin_kit import BarChart, BarSeries, Column, Delta, bar_chart, delta, format_number
-from app.admin_overview import format_duration
-from app.db.admin_analytics import TitleRow, TitleTotals
+from app.admin_kit import (
+    BarChart,
+    BarSeries,
+    Column,
+    Delta,
+    Heatmap,
+    admin_query,
+    bar_chart,
+    delta,
+    format_number,
+    heatmap,
+)
+from app.admin_overview import PeriodLink, format_duration
+from app.db.admin_analytics import DayVisitors, TitleRow, TitleTotals
 from app.reading_progress import reading_progress_percent
 from app.services.titles import TitleSummary
 
@@ -301,3 +312,109 @@ def title_list_rows(
             )
         )
     return items
+
+
+# --- «Поведение читателей» (PR 347) -------------------------------------------------------
+
+# A weekday x hour grid needs whole weeks - no 24-hour period on this tab.
+BEHAVIOUR_PERIODS = ("7d", "30d", "90d")
+DEFAULT_BEHAVIOUR_PERIOD = "30d"
+WEEKDAYS = ("Пн", "Вт", "Ср", "Чт", "Пт", "Сб", "Вс")
+HOURS = tuple(f"{hour:02d}:00" for hour in range(24))
+# Below this many chapter reads the busiest cell is chance, not a pattern: the grid is
+# still drawn, but no peak is named and the page says the data is thin.
+HEATMAP_MIN_READS = 30
+
+_MONTHS_SHORT = (
+    "янв", "фев", "мар", "апр", "мая", "июн", "июл", "авг", "сен", "окт", "ноя", "дек"
+)  # fmt: skip
+
+
+@dataclass(frozen=True)
+class Tab:
+    label: str
+    href: str
+    current: bool
+
+
+def analytics_tabs(current: str) -> list[Tab]:
+    """«Тайтлы» and «Поведение читателей» - two pages of the one «Аналитика» screen."""
+    return [
+        Tab("Тайтлы", "/admin/analytics", current == "titles"),
+        Tab("Поведение читателей", "/admin/analytics/behaviour", current == "behaviour"),
+    ]
+
+
+def parse_behaviour_period(raw: str | None) -> str:
+    return raw if raw in BEHAVIOUR_PERIODS else DEFAULT_BEHAVIOUR_PERIOD
+
+
+@dataclass(frozen=True)
+class ReadingTimes:
+    chart: Heatmap
+    total: int
+    enough: bool  # HEATMAP_MIN_READS or more - only then is a peak named
+
+
+def reading_times(grid: list[list[int]]) -> ReadingTimes:
+    total = sum(map(sum, grid))
+    chart = heatmap(
+        [[float(v) for v in row] for row in grid],
+        list(WEEKDAYS),
+        list(HOURS),
+        name="Когда читают: прочитано глав по дням недели и часам",
+    )
+    return ReadingTimes(chart=chart, total=total, enough=total >= HEATMAP_MIN_READS)
+
+
+@dataclass(frozen=True)
+class NewAndReturning:
+    chart: BarChart
+    new: int
+    returning: int
+
+    @property
+    def new_share(self) -> str:
+        visits = self.new + self.returning
+        return f"{round(self.new / visits * 100)}%" if visits else "0%"
+
+    @property
+    def returning_share(self) -> str:
+        visits = self.new + self.returning
+        return f"{100 - round(self.new / visits * 100)}%" if visits else "0%"
+
+
+def new_and_returning_chart(days: list[DayVisitors]) -> NewAndReturning:
+    """Stacked columns per day; the shares are of reader-days (one reader on three days
+    counts three times), the same unit the columns show."""
+    labels = []
+    for item in days:
+        day = date.fromisoformat(item.day)
+        labels.append(f"{day.day} {_MONTHS_SHORT[day.month - 1]}")
+    chart = bar_chart(
+        [
+            BarSeries("Новые", [float(item.new) for item in days], "warning"),
+            BarSeries("Вернувшиеся", [float(item.returning) for item in days], "primary"),
+        ],
+        labels,
+        name="Новые и вернувшиеся читатели по дням",
+        height=150,
+    )
+    return NewAndReturning(
+        chart=chart,
+        new=sum(item.new for item in days),
+        returning=sum(item.returning for item in days),
+    )
+
+
+def behaviour_period_links(args: Mapping[str, object], current: str) -> list[PeriodLink]:
+    """7 д · 30 д · 90 д; 30 days (this tab's default) isn't spelled out in the URL."""
+    return [
+        PeriodLink(
+            key=key,
+            label=key.replace("d", " д"),
+            href=admin_query(args, period=None if key == DEFAULT_BEHAVIOUR_PERIOD else key),
+            current=key == current,
+        )
+        for key in BEHAVIOUR_PERIODS
+    ]

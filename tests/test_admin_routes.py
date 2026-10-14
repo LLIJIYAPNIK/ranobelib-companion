@@ -19,6 +19,7 @@ from tests.test_admin_auth import PASSWORD, Clock, _client
 EXPECTED_WITHOUT_ADMIN = {
     ("GET", "/admin"): 303,
     ("GET", "/admin/analytics"): 303,
+    ("GET", "/admin/analytics/behaviour"): 303,
     ("GET", "/admin/analytics/{slug_url}"): 303,
     ("GET", "/admin/tables"): 303,
     ("GET", "/admin/tables/{name}"): 303,

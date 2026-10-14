@@ -27,10 +27,16 @@ from psycopg_pool import PoolTimeout
 from app.admin_analytics import (
     DROP_MIN_READERS,
     FINISHED_TOP,
+    HEATMAP_MIN_READS,
     RETENTION_CHART_LIMIT,
     TITLE_COLUMNS,
+    analytics_tabs,
+    behaviour_period_links,
     biggest_drops,
     hints,
+    new_and_returning_chart,
+    parse_behaviour_period,
+    reading_times,
     retention,
     retention_chart,
     title_kpis,
@@ -77,11 +83,14 @@ from app.db import admin_audit
 from app.db import connection as db_connection
 from app.db.admin_analytics import (
     DEFAULT_SORT,
+    NEW_AND_RETURNING_DAYS,
     SORTS,
     TITLES_LIMIT,
     cached_title_rows,
     chapter_reach,
     last_read_positions,
+    new_and_returning,
+    reading_heatmap,
     title_totals,
 )
 from app.db.admin_data import (
@@ -111,6 +120,7 @@ from app.services.titles import (
     title_summaries,
 )
 from app.templating import templates
+from app.timezones import DEFAULT_TIMEZONE, is_valid_timezone
 
 # PR 326: out of the public /openapi.json and /docs - listing the paths there would
 # announce the panel even with ADMIN_PASSWORD unset, when it must look like it isn't there.
@@ -269,6 +279,7 @@ async def admin_analytics(
         request,
         "admin/analytics.html",
         "analytics",
+        tabs=analytics_tabs("titles"),
         args=args,
         period_label=PERIOD_LABELS[key],
         periods=period_links(args, key),
@@ -278,6 +289,44 @@ async def admin_analytics(
         descending=descending,
         limit=TITLES_LIMIT,
         finished_top=FINISHED_TOP,
+    )
+
+
+# Before /analytics/{slug_url} - a fixed path has to win over the title page's pattern.
+@router.get("/analytics/behaviour", response_model=None)
+async def admin_analytics_behaviour(
+    request: Request,
+    _: Admin,
+    conn: Connection,
+    period: Annotated[str | None, Query(max_length=10)] = None,
+) -> HTMLResponse:
+    """«Поведение читателей» (PR 347): when people read (weekday x hour) and new against
+    returning readers over 14 days, both on the admin's clock. The zone has to be one
+    Postgres knows as well (it groups by local time); one only Python knows falls back
+    to UTC, and the page says which zone it used."""
+    tz = get_settings().admin_timezone
+    if not await is_valid_timezone(conn, tz):
+        logger.warning("ADMIN_TIMEZONE=%r is unknown to Postgres - analytics use UTC", tz)
+        tz = DEFAULT_TIMEZONE
+    key = parse_behaviour_period(period)
+    try:
+        grid = await cached(("heatmap", key, tz), lambda: reading_heatmap(conn, key, tz))
+        days = await cached(("new_returning", tz), lambda: new_and_returning(conn, tz))
+    except QueryCanceled:
+        return _timed_out(request, "analytics")
+    args = dict(request.query_params)
+    return _page(
+        request,
+        "admin/analytics_behaviour.html",
+        "analytics",
+        tabs=analytics_tabs("behaviour"),
+        timezone=tz,
+        period_label=PERIOD_LABELS[key],
+        periods=behaviour_period_links(args, key),
+        times=reading_times(grid),
+        visitors=new_and_returning_chart(days),
+        visitor_days=NEW_AND_RETURNING_DAYS,
+        min_reads=HEATMAP_MIN_READS,
     )
 
 
