@@ -23220,11 +23220,12 @@ html:has(dialog.wn-admin-dialog[open]) {
 }
 
 .wn-admin-chart__swatch {
-  --tone: var(--wn-primary);
   width: 9px;
   height: 9px;
   border-radius: 2px;
-  background: var(--tone);
+  /* No --tone here: this rule comes after the --success/--warning/... modifiers and
+     would override them (PR 347 found «Новые» drawn violet in the legend). */
+  background: var(--tone, var(--wn-primary));
 }
 
 .wn-admin-chart__swatch--line {
