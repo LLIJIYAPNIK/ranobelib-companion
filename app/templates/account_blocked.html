@@ -7,7 +7,7 @@
   (ban_notice, app/ban_notice.py). Reading stays open to them as a guest.
 #}
 <main class="error-page">
-  <span class="error-page__status">Блокировка</span>
+  <span class="error-page__status error-page__status--word">Блокировка</span>
   <h1 class="error-page__detail">{{ ban_notice }}</h1>
   <p class="error-page__hint">Пока блокировка действует, сайт открыт вам как гостю: читать можно, а библиотека, прогресс и комментарии недоступны.{% if not ban.permanent %} Когда срок закончится, вход вернётся сам.{% endif %}</p>
   <div class="account-blocked__actions">

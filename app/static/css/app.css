@@ -19773,6 +19773,14 @@ body.reader-hud-visible .reader-hud {
 
 /* PR 349: a blocked account - the notice page's two buttons, and the strip over every
    page it browses as a guest. */
+/* A word, not a three-digit code, in the status slot - sized so «Блокировка» fits a
+   320px phone. */
+.error-page__status--word {
+  max-width: 100%;
+  font-size: clamp(40px, 12vw, 72px);
+  overflow-wrap: anywhere;
+}
+
 .account-blocked__actions {
   display: flex;
   flex-wrap: wrap;

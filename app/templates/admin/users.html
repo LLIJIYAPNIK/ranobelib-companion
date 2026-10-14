@@ -82,7 +82,7 @@
 {% call kit.field("Почему снимаете", "unban-reason", hint="Необязательно, только для журнала") %}<textarea class="wn-admin-input" id="unban-reason" name="reason" rows="2" maxlength="{{ reason_limit }}"></textarea>{% endcall %}
 {% endcall %}
 {% else %}
-{% call kit.confirm("admin-user-block", "Заблокировать «" ~ who ~ "»?", "/admin/users/" ~ summary.id ~ "/ban", confirm_label="Заблокировать", lead="Вход закроется, уже открытые сессии станут гостевыми со следующего запроса.", lines=["Пользователь увидит срок и причину, если вы её укажете", "Повторно зарегистрироваться на тот же email нельзя", "Профиль и комментарии останутся видны"], fields={"back": back}) %}
+{% call kit.confirm("admin-user-block", "Заблокировать «" ~ who ~ "»?", "/admin/users/" ~ summary.id ~ "/ban", confirm_label="Заблокировать", lead="Вход закроется, уже открытые сессии станут гостевыми со следующего запроса.", lines=["Пользователь увидит срок и причину, если вы её укажете", "Повторно зарегистрироваться на тот же email нельзя", "Профиль и комментарии останутся видны"], fields={"back": back}, confirm_icon="lock") %}
 {% call kit.field("Срок", "block-term", required=true) %}
 <select class="wn-admin-input" id="block-term" name="term" required>
   {% for value, label in ban_terms %}<option value="{{ value }}"{% if value == "7d" %} selected{% endif %}>{{ label }}</option>{% endfor %}

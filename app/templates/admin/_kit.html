@@ -203,7 +203,7 @@
     caller may add a note (a softer alternative). For what can't be undone set
     ``irreversible``: the submit stays off until «Я понимаю…» is ticked, and the box
     posts ``confirm=1`` - the route should still check it. -#}
-{% macro confirm(id, title, action, confirm_label="Удалить", lead=none, lines=[], irreversible=false, ack="Я понимаю, что это действие необратимо", fields={}, tone="danger") -%}
+{% macro confirm(id, title, action, confirm_label="Удалить", lead=none, lines=[], irreversible=false, ack="Я понимаю, что это действие необратимо", fields={}, tone="danger", confirm_icon="trash") -%}
 <dialog class="wn-admin-dialog" id="{{ id }}" aria-labelledby="{{ id }}-title"{% if lead %} aria-describedby="{{ id }}-lead"{% endif %} data-kit-dialog>
   <form class="wn-admin-dialog__form" method="post" action="{{ action }}" data-kit-confirm>
     {{ csrf() }}
@@ -233,7 +233,7 @@
     {% endif %}
     <div class="wn-admin-dialog__actions">
       <button class="wn-admin-btn wn-admin-btn--ghost" type="button" data-kit-close>Отмена</button>
-      <button class="wn-admin-btn wn-admin-btn--{{ 'danger' if tone == 'danger' else 'primary' }}" type="submit"{% if irreversible %} data-kit-ack-submit{% endif %}>{% if tone == "danger" %}{{ icon("trash") }}{% endif %}{{ confirm_label }}</button>
+      <button class="wn-admin-btn wn-admin-btn--{{ 'danger' if tone == 'danger' else 'primary' }}" type="submit"{% if irreversible %} data-kit-ack-submit{% endif %}>{% if tone == "danger" %}{{ icon(confirm_icon) }}{% endif %}{{ confirm_label }}</button>
     </div>
   </form>
 </dialog>
