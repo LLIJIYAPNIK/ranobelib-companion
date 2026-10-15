@@ -300,7 +300,8 @@ async def list_comments_for_paragraph(
         "FROM comments JOIN users ON users.id = comments.user_id "
         "WHERE comments.slug_url = %s AND comments.volume = %s AND comments.number = %s "
         "AND comments.branch_id = %s AND comments.paragraph_index = %s "
-        "ORDER BY comments.created_at ASC",
+        # Two comments in the same clock tick (it happens on Windows) keep posting order.
+        "ORDER BY comments.created_at ASC, comments.id ASC",
         (slug_url, volume, number, branch_id, paragraph_index),
     )
     rows = await cursor.fetchall()

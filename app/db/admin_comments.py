@@ -159,7 +159,7 @@ async def list_comments(
         page = min(max(page, 1), pages)
         cursor = await conn.execute(
             f"SELECT {_COLUMNS}, COALESCE(r.likes, 0) + COALESCE(r.dislikes, 0) AS reactions "
-            f"{_FROM}{where}ORDER BY {order} {direction} NULLS LAST, c.id DESC "
+            f"{_FROM}{where}ORDER BY {order} {direction} NULLS LAST, c.id {direction} "
             "LIMIT %(limit)s OFFSET %(offset)s",
             {**params, "limit": PAGE_SIZE, "offset": (page - 1) * PAGE_SIZE},
         )
