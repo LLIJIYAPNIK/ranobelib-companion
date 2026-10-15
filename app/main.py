@@ -26,6 +26,7 @@ from app.api import (
     profile,
     pwa,
     reading_progress,
+    reports,
     settings,
     titles,
 )
@@ -125,6 +126,7 @@ app.include_router(offline.router)
 app.include_router(profile.router)
 app.include_router(pwa.router)
 app.include_router(reading_progress.router)
+app.include_router(reports.router)
 app.include_router(settings.router)
 app.include_router(titles.router)
 register_exception_handlers(app)

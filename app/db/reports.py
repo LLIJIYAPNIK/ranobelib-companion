@@ -43,6 +43,29 @@ def _now(now: datetime | None) -> datetime:
     return now or datetime.now(UTC)
 
 
+@dataclass(frozen=True)
+class CommentTarget:
+    """What ``POST /reports`` needs to know about a reported comment."""
+
+    user_id: int
+    hidden: bool
+    deleted: bool
+
+
+async def comment_target(conn: AsyncConnection, comment_id: int) -> CommentTarget | None:
+    cursor = await conn.execute(
+        "SELECT user_id, hidden_at, is_deleted FROM comments WHERE id = %s", (comment_id,)
+    )
+    row = await cursor.fetchone()
+    if row is None:
+        return None
+    return CommentTarget(
+        user_id=row["user_id"],
+        hidden=row["hidden_at"] is not None,
+        deleted=bool(row["is_deleted"]),
+    )
+
+
 async def open_report(
     conn: AsyncConnection, reporter_user_id: int, target_type: str, target_id: int
 ) -> Report | None:
