@@ -21499,8 +21499,9 @@ a.wn-admin-side__item:hover {
   font: var(--wn-type-meta);
 }
 
-/* «Данные БД» (PR 352, on the UI kit): a masked secret, and a long value kept to a
-   readable width (the full text, up to CELL_LIMIT, is in its tooltip). */
+/* «Данные БД» (PR 352, on the UI kit): a masked secret, and a value kept on one line up
+   to a readable width - an email or timestamp mustn't break letter by letter; the table
+   scrolls sideways instead and the full text (up to CELL_LIMIT) is in the tooltip. */
 .wn-admin-table__masked {
   color: var(--wn-text-muted);
   letter-spacing: 0.1em;
@@ -21509,7 +21510,19 @@ a.wn-admin-side__item:hover {
 .wn-admin-db__cell {
   display: inline-block;
   max-width: 360px;
-  overflow-wrap: anywhere;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  vertical-align: bottom;
+  white-space: nowrap;
+}
+
+/* Below 768px the kit stacks each row as a card - there the value may wrap. */
+@media (max-width: 767px) {
+  .wn-admin-db__cell {
+    max-width: 100%;
+    white-space: normal;
+    overflow-wrap: anywhere;
+  }
 }
 
 /* PR 341: the shell's breakpoints, as in the mockup - the full sidebar from 1180px, an

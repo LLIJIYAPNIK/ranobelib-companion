@@ -23,7 +23,7 @@
       {%- elif column.key in user_links -%}<a class="wn-admin-cm__link" href="/admin/users?{{ {'user': value} | urlencode }}" title="Открыть пользователя">{{ value }}</a>
       {%- else -%}
       {%- set text = value | string -%}
-      <span class="wn-admin-db__cell"{% if text | length > preview %} title="{{ text }}"{% endif %}>{{ text | truncate(preview) }}</span>
+      <span class="wn-admin-db__cell"{% if text | length > 40 %} title="{{ text }}"{% endif %}>{{ text | truncate(preview) }}</span>
       {%- endif -%}
     {% endcall %}
     {% elif data.query %}
