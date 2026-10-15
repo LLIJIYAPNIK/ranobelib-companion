@@ -292,6 +292,12 @@ async def test_search_finds_accounts_comments_tables_and_screens(client: TestCli
     ]
     assert "download_history" in {hit["label"] for hit in tables}
     assert screens[0] == {"label": "Журнал", "href": "/admin/audit", "sub": "Платформа"}
+    # PR 358: «Модерация» is found by what it holds, not only by its name.
+    assert _hits(_search(client, "жалобы"), "screens")[0] == {
+        "label": "Модерация",
+        "href": "/admin/moderation",
+        "sub": "Сообщество",
+    }
     data = _search(client, "aster")
     assert data["all"] == "/admin/search?q=aster"
     assert _hits(data, "users") and data["groups"][0]["key"] == "users"
