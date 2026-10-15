@@ -29,6 +29,7 @@ EXPECTED_WITHOUT_ADMIN = {
     ("POST", "/admin/users/{user_id}/ban"): 303,
     ("POST", "/admin/users/{user_id}/unban"): 303,
     ("GET", "/admin/comments"): 303,
+    ("GET", "/admin/system"): 303,
     ("POST", "/admin/comments/{comment_id}/hide"): 303,
     ("POST", "/admin/comments/{comment_id}/show"): 303,
     ("POST", "/admin/comments/{comment_id}/delete"): 303,

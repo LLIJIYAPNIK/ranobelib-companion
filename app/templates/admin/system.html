@@ -1,0 +1,36 @@
+{% extends "admin/_layout.html" %}
+{% import "admin/_kit.html" as kit with context %}
+{% block title %}Система{% endblock %}
+{% block heading %}Система{% endblock %}
+{% block content %}
+{# PR 351: the service's real state (RanobeLib Admin.dc.html's «Система», cut down to
+   what one process without external monitoring can honestly say) - app/admin_system.py. #}
+<main class="wn-admin__main wn-admin-ov wn-admin-sys" aria-labelledby="admin-page-title">
+  <div class="wn-admin-ov__bar">
+    <p class="wn-admin-ov__asof">Проверено в {{ checked_at }} ({{ timezone }}) · всё считается с последнего запуска процесса и сбрасывается при деплое</p>
+  </div>
+
+  <div class="wn-admin-ov__grid">
+    {% call kit.card("Сервисы", "Проверяются при каждом открытии страницы") %}
+    <ul class="wn-admin-svc">
+      {% for item in services %}
+      <li class="wn-admin-svc__row">
+        <span class="wn-admin-svc__dot wn-admin-svc__dot--{{ item.tone }}" aria-hidden="true"></span>
+        <span class="wn-admin-svc__name">{{ item.name }}</span>
+        {{ kit.badge(item.status, item.tone) }}
+        <span class="wn-admin-svc__detail">{{ item.detail }}</span>
+      </li>
+      {% endfor %}
+    </ul>
+    {% endcall %}
+
+    {% call kit.card("Версии") %}
+    <dl class="wn-admin-summary">
+      {% for item in versions %}
+      <div class="wn-admin-summary__item"><dt>{{ item.label }}</dt><dd class="wn-admin-summary__mono">{{ item.value }}</dd></div>
+      {% endfor %}
+    </dl>
+    {% endcall %}
+  </div>
+</main>
+{% endblock %}

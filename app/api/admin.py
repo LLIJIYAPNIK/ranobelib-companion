@@ -76,6 +76,7 @@ from app.admin_overview import (
     popular_titles,
     recent_user_rows,
 )
+from app.admin_system import app_service, versions
 from app.admin_users import (
     BAN_TERM_LABELS,
     back_href,
@@ -169,6 +170,13 @@ from app.services.titles import (
     title_details,
     title_summaries,
 )
+from app.system_info import (
+    STARTED_AT,
+    app_version,
+    python_version,
+    sdk_version,
+    uptime_seconds,
+)
 from app.templating import templates
 from app.timezones import DEFAULT_TIMEZONE, is_valid_timezone
 
@@ -205,7 +213,7 @@ ADMIN_NAV: tuple[NavItem, ...] = (
     NavItem("users", "Пользователи", "users", "/admin/users", "Сообщество"),
     NavItem("comments", "Комментарии", "comments", "/admin/comments", "Сообщество"),
     NavItem("tables", "Данные БД", "database", "/admin/tables", "Данные"),
-    NavItem("system", "Система", "server", None, "Платформа"),
+    NavItem("system", "Система", "server", "/admin/system", "Платформа"),
     NavItem("audit", "Журнал", "history", None, "Платформа"),
 )
 
@@ -888,6 +896,23 @@ async def _target_comment(conn: AsyncConnection, comment_id: int) -> CommentRow:
     if detail is None:
         raise HTTPException(status_code=404)
     return detail.comment
+
+
+@router.get("/system", response_model=None)
+async def admin_system(request: Request, _: Admin) -> HTMLResponse:
+    """«Система» (PR 351): this process, its versions and the services it depends on -
+    measured on each visit, since the process started (no external monitoring)."""
+    tz = get_settings().admin_timezone
+    services = [app_service(STARTED_AT, uptime_seconds(), tz)]
+    return _page(
+        request,
+        "admin/system.html",
+        "system",
+        timezone=tz,
+        checked_at=f"{_server_now():%H:%M}",
+        services=services,
+        versions=versions(app_version(), sdk_version(), python_version()),
+    )
 
 
 @router.get("/tables", response_model=None)
