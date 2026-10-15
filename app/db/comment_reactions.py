@@ -35,8 +35,11 @@ async def toggle_comment_reaction(
     Raises ValueError if `comment_id` doesn't name an actual comment - there's no foreign
     key enforcement failure to rely on here either way (an explicit check keeps the error
     the same shape it'd need if the FK were ever dropped), the same defensive shape
-    create_comment() already uses for a stale/tampered `parent_comment_id`."""
-    cursor = await conn.execute("SELECT 1 FROM comments WHERE id = %s", (comment_id,))
+    create_comment() already uses for a stale/tampered `parent_comment_id`. PR 350: a
+    comment the admin hid counts as not found - nobody reacts to what they can't see."""
+    cursor = await conn.execute(
+        "SELECT 1 FROM comments WHERE id = %s AND hidden_at IS NULL", (comment_id,)
+    )
     comment = await cursor.fetchone()
     if comment is None:
         raise ValueError("Комментарий не найден")

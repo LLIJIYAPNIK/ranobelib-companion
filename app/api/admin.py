@@ -42,6 +42,19 @@ from app.admin_analytics import (
     title_kpis,
     title_list_rows,
 )
+from app.admin_comments import COLUMNS as COMMENT_COLUMNS
+from app.admin_comments import back_href as comments_back_href
+from app.admin_comments import (
+    comment_audit_details,
+    comment_filters,
+    comment_label,
+    comment_rows,
+    drawer_context,
+    parse_kind,
+    parse_status,
+    without_drawer,
+)
+from app.admin_comments import safe_back as comments_safe_back
 from app.admin_kit import Undo, pop_toast, push_toast
 from app.admin_kit_demo import charts_context, table_context
 from app.admin_overview import (
@@ -90,6 +103,7 @@ from app.auth.admin import (
     reset_failed_logins,
     start_admin_session,
 )
+from app.comment_attachment import remove_comment_attachment
 from app.config import get_settings
 from app.db import admin_audit
 from app.db import connection as db_connection
@@ -106,12 +120,20 @@ from app.db.admin_analytics import (
     title_totals,
 )
 from app.db.admin_audit import (
+    COMMENT_DELETE,
+    COMMENT_HIDE,
+    COMMENT_SHOW,
     USER_BAN,
     USER_CONFIRM_EMAIL,
     USER_END_SESSIONS,
     USER_SEND_PASSWORD_RESET,
     USER_UNBAN,
 )
+from app.db.admin_comments import DEFAULT_SORT as COMMENT_DEFAULT_SORT
+from app.db.admin_comments import DELETED as COMMENT_DELETED
+from app.db.admin_comments import PAGE_SIZE as COMMENTS_PAGE_SIZE
+from app.db.admin_comments import SORTS as COMMENT_SORTS
+from app.db.admin_comments import CommentRow, comment_detail, list_comments
 from app.db.admin_data import (
     MASK,
     QUERY_TIMEOUT_MS,
@@ -137,6 +159,7 @@ from app.db.admin_users import SORTS as USER_SORTS
 from app.db.admin_users import list_users, user_summary
 from app.db.bans import BAN_TERMS, AlreadyBanned, active_ban, ban_history, ban_user, lift_ban
 from app.db.bans import REASON_LIMIT as BAN_REASON_LIMIT
+from app.db.comments import hide_comment, purge_comment, show_comment
 from app.db.connection import get_connection
 from app.db.users import User, end_all_sessions, get_user_by_id, mark_email_verified
 from app.services.titles import (
@@ -179,7 +202,7 @@ ADMIN_NAV: tuple[NavItem, ...] = (
     NavItem("overview", "Обзор", "dashboard", "/admin"),
     NavItem("analytics", "Аналитика", "chart", "/admin/analytics", "Контент"),
     NavItem("users", "Пользователи", "users", "/admin/users", "Сообщество"),
-    NavItem("comments", "Комментарии", "comments", None, "Сообщество"),
+    NavItem("comments", "Комментарии", "comments", "/admin/comments", "Сообщество"),
     NavItem("tables", "Данные БД", "database", "/admin/tables", "Данные"),
     NavItem("system", "Система", "server", None, "Платформа"),
     NavItem("audit", "Журнал", "history", None, "Платформа"),
@@ -663,6 +686,201 @@ async def admin_user_unban(
     )
     push_toast(request, f"Блокировка «{_label(user)}» снята")
     return RedirectResponse(safe_back(back), status_code=303)
+
+
+@router.get("/comments", response_model=None)
+async def admin_comments(
+    request: Request,
+    _: Admin,
+    conn: Connection,
+    q: Annotated[str, Query(max_length=200)] = "",
+    status: Annotated[str | None, Query(max_length=10)] = None,
+    kind: Annotated[str | None, Query(max_length=10)] = None,
+    sort: Annotated[str | None, Query(max_length=20)] = None,
+    order: str = "desc",
+    page: Annotated[int, Query(ge=1, le=1_000_000)] = 1,
+    comment: Annotated[int | None, Query(ge=1, le=2_147_483_647)] = None,
+) -> HTMLResponse:
+    """«Комментарии» (PR 350): every comment with search (text, author, title, id),
+    filters and sorting. Read-only; hiding, showing and deleting are the POST routes
+    below. ``comment`` opens that comment's drawer over the list."""
+    tz = get_settings().admin_timezone
+    sort_key = sort if sort in COMMENT_SORTS else COMMENT_DEFAULT_SORT
+    descending = order != "asc"
+    try:
+        data = await list_comments(
+            conn,
+            query=q,
+            status=parse_status(status),
+            kind=parse_kind(kind),
+            sort=sort_key,
+            descending=descending,
+            page=page,
+        )
+        detail = await comment_detail(conn, comment) if comment is not None else None
+        bans = len(await ban_history(conn, detail.comment.user_id)) if detail else 0
+    except QueryCanceled:
+        return _timed_out(request, "comments")
+    slugs = [row.slug_url for row in data.rows]
+    if detail:
+        slugs.append(detail.comment.slug_url)
+    titles = await _title_summaries(slugs) if slugs else {}
+    args = dict(request.query_params)
+    filters = comment_filters(args)
+    list_args = {name: value for name, value in args.items() if name != "comment"}
+    return _page(
+        request,
+        "admin/comments.html",
+        "comments",
+        args=args,
+        columns=COMMENT_COLUMNS,
+        filters=filters,
+        filtered=bool(q.strip()) or any(item.value for item in filters),
+        rows=comment_rows(data.rows, titles, tz, args),
+        data=data,
+        per_page=COMMENTS_PAGE_SIZE,
+        sort=sort_key,
+        descending=descending,
+        drawer=drawer_context(detail, titles, tz, args, bans) if detail else None,
+        drawer_missing=comment is not None and detail is None,
+        close_href=comments_back_href(list_args),
+        back=comments_back_href(args),
+    )
+
+
+# --- «Комментарии»: hide, show, delete for good (PR 350) -----------------------------------
+# Same shape as the users' actions above: a CSRF-checked POST from the drawer, then the
+# list again with a toast. «Скрыть» is the soft one - no dialog, an «Отменить» in its
+# toast instead; «Удалить навсегда» sits behind a confirmation that offers hiding first.
+
+CommentId = Annotated[int, Path(ge=1, le=2_147_483_647)]
+
+
+@router.post("/comments/{comment_id}/hide", response_model=None)
+async def admin_comment_hide(
+    request: Request,
+    comment_id: CommentId,
+    _: Admin,
+    conn: Connection,
+    csrf: Annotated[str, Form()] = "",
+    back: Annotated[str, Form(max_length=2000)] = "",
+) -> Response:
+    """«Скрыть»: readers stop seeing it at once; its author still does, marked «скрыт
+    модератором». An already hidden or deleted comment is left alone."""
+    check_csrf(request, csrf)
+    target = comments_safe_back(back)
+    comment = await _target_comment(conn, comment_id)
+    hidden_at = await hide_comment(conn, comment_id)
+    if hidden_at is None:
+        push_toast(request, f"Комментарий #{comment_id} уже скрыт или удалён", tone="error")
+        return RedirectResponse(target, status_code=303)
+    await admin_audit.record_change(
+        conn,
+        COMMENT_HIDE,
+        ip=client_ip(request),
+        entity="comment",
+        entity_id=comment_id,
+        entity_label=comment_label(comment),
+        before={"hidden_at": None},
+        after={"hidden_at": hidden_at},
+        extra=comment_audit_details(comment),
+    )
+    # Back to the list with the drawer closed: the drawer is a modal dialog, and over the
+    # toast it would leave «Отменить» unreachable.
+    target = without_drawer(target)
+    push_toast(
+        request,
+        f"Комментарий #{comment_id} скрыт",
+        undo=Undo(f"/admin/comments/{comment_id}/show", {"back": target}),
+    )
+    return RedirectResponse(target, status_code=303)
+
+
+@router.post("/comments/{comment_id}/show", response_model=None)
+async def admin_comment_show(
+    request: Request,
+    comment_id: CommentId,
+    _: Admin,
+    conn: Connection,
+    csrf: Annotated[str, Form()] = "",
+    back: Annotated[str, Form(max_length=2000)] = "",
+) -> Response:
+    """«Показать» (and the «Отменить» of «Скрыть»): back in the thread for everyone."""
+    check_csrf(request, csrf)
+    target = comments_safe_back(back)
+    comment = await _target_comment(conn, comment_id)
+    hidden_at = await show_comment(conn, comment_id)
+    if hidden_at is None:
+        push_toast(request, f"Комментарий #{comment_id} не скрыт", tone="error")
+        return RedirectResponse(target, status_code=303)
+    await admin_audit.record_change(
+        conn,
+        COMMENT_SHOW,
+        ip=client_ip(request),
+        entity="comment",
+        entity_id=comment_id,
+        entity_label=comment_label(comment),
+        before={"hidden_at": hidden_at},
+        after={"hidden_at": None},
+        extra=comment_audit_details(comment),
+    )
+    push_toast(request, f"Комментарий #{comment_id} снова виден читателям")
+    return RedirectResponse(target, status_code=303)
+
+
+@router.post("/comments/{comment_id}/delete", response_model=None)
+async def admin_comment_delete(
+    request: Request,
+    comment_id: CommentId,
+    _: Admin,
+    conn: Connection,
+    csrf: Annotated[str, Form()] = "",
+    confirm: Annotated[str, Form()] = "",
+    back: Annotated[str, Form(max_length=2000)] = "",
+) -> Response:
+    """«Удалить навсегда»: the text, attachment, reactions and their notifications go for
+    good. With replies under it the row stays as «Комментарий удалён», so the thread
+    keeps its shape. Needs «Я понимаю…» ticked."""
+    check_csrf(request, csrf)
+    target = comments_safe_back(back)
+    detail = await comment_detail(conn, comment_id)
+    if detail is None:
+        raise HTTPException(status_code=404)
+    if confirm != "1":
+        push_toast(request, "Не удалено: нужно подтвердить «Я понимаю…»", tone="error")
+        return RedirectResponse(target, status_code=303)
+    if detail.comment.status == COMMENT_DELETED and detail.replies:
+        push_toast(request, f"Комментарий #{comment_id} уже удалён", tone="error")
+        return RedirectResponse(target, status_code=303)
+    purged = await purge_comment(conn, comment_id)
+    if purged is None:
+        raise HTTPException(status_code=404)
+    if purged.attachment_path:
+        remove_comment_attachment(purged.attachment_path)
+    await admin_audit.record_change(
+        conn,
+        COMMENT_DELETE,
+        ip=client_ip(request),
+        entity="comment",
+        entity_id=comment_id,
+        entity_label=comment_label(detail.comment),
+        before={"status": detail.comment.status},
+        after={"status": "removed" if purged.removed else "deleted_kept_for_replies"},
+        extra={
+            **comment_audit_details(detail.comment),
+            "replies": detail.replies,
+            "attachment_removed": bool(purged.attachment_path),
+        },
+    )
+    push_toast(request, f"Комментарий #{comment_id} удалён навсегда")
+    return RedirectResponse(without_drawer(target) if purged.removed else target, status_code=303)
+
+
+async def _target_comment(conn: AsyncConnection, comment_id: int) -> CommentRow:
+    detail = await comment_detail(conn, comment_id)
+    if detail is None:
+        raise HTTPException(status_code=404)
+    return detail.comment
 
 
 @router.get("/tables", response_model=None)

@@ -205,13 +205,22 @@ async def get_comment_counts(
     slug_url: str,
     volume: int,
     number: str,
+    current_user: Annotated[User | None, Depends(get_current_user)],
     conn: Annotated[AsyncConnection, Depends(get_connection)],
     branch_id: str = Query(default=""),
 ) -> JSONResponse:
     """Aggregated comment counts (replies included) for every paragraph in this chapter,
     one query for the whole page - what renders the "N комментариев ▾" toggle under a
-    paragraph before the visitor has expanded anything. Public, same as get_reactions."""
-    counts = await count_comments(conn, slug_url, str(volume), number, branch_id)
+    paragraph before the visitor has expanded anything. Public, same as get_reactions.
+    PR 350: a hidden comment counts only for its author."""
+    counts = await count_comments(
+        conn,
+        slug_url,
+        str(volume),
+        number,
+        branch_id,
+        current_user.id if current_user else None,
+    )
     return JSONResponse({"counts": {str(index): counts[index] for index in counts}})
 
 
@@ -374,11 +383,12 @@ async def _comments_response(
     paragraph_index: int,
     current_user: User | None = None,
 ) -> dict:
+    viewer_id = current_user.id if current_user is not None else None
     comments = await list_comments_for_paragraph(
-        conn, slug_url, volume, number, branch_id, paragraph_index
+        conn, slug_url, volume, number, branch_id, paragraph_index, viewer_id
     )
     count = await count_comments_for_paragraph(
-        conn, slug_url, volume, number, branch_id, paragraph_index
+        conn, slug_url, volume, number, branch_id, paragraph_index, viewer_id
     )
     reaction_counts = await count_comment_reactions_for_paragraph(
         conn, slug_url, volume, number, branch_id, paragraph_index
@@ -442,6 +452,9 @@ def _comment_to_dict(
         "created_at": comment.created_at,
         "updated_at": comment.updated_at,
         "is_deleted": comment.is_deleted,
+        # PR 350: hidden by the admin - the author still sees the body (with a «скрыт»
+        # mark), anyone else gets it blanked by list_comments_for_paragraph().
+        "is_hidden": comment.is_hidden,
         "parent_comment_id": comment.parent_comment_id,
         "attachment_url": comment.attachment_url,
         "attachment_kind": comment.attachment_kind,

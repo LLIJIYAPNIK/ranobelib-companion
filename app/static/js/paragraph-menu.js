@@ -905,6 +905,13 @@
     const el = document.createElement("article");
     el.className = "paragraph-comment";
     if (depth > 0) el.classList.add("paragraph-comment--reply");
+    // PR 350: hidden by the admin. Its author still gets the text, marked «скрыт
+    // модератором»; anyone else gets a placeholder (the server already blanked it). Either
+    // way nobody can react or reply to it - the server refuses that too.
+    const ownHidden = comment.is_hidden && currentUserId === comment.user_id;
+    const placeholder = comment.is_deleted || (comment.is_hidden && !ownHidden);
+    const inert = comment.is_deleted || comment.is_hidden;
+    if (ownHidden) el.classList.add("paragraph-comment--hidden");
     el.dataset.commentId = String(comment.id);
     el.tabIndex = -1;
 
@@ -930,12 +937,19 @@
     meta.append(author, time);
     // PR 172: «изменено» once edit_comment() has overwritten the body - never for a
     // deleted comment.
-    if (comment.updated_at && !comment.is_deleted) {
+    if (comment.updated_at && !placeholder) {
       const edited = document.createElement("span");
       edited.className = "paragraph-comment__edited";
       edited.textContent = "изменено";
       edited.title = fullTime(comment.updated_at);
       meta.append(edited);
+    }
+    if (ownHidden) {
+      const hidden = document.createElement("span");
+      hidden.className = "paragraph-comment__hidden";
+      hidden.textContent = "скрыт модератором";
+      hidden.title = "Комментарий видите только вы";
+      meta.append(hidden);
     }
     main.append(meta);
 
@@ -944,9 +958,11 @@
     // comment shows a fixed placeholder instead.
     const body = document.createElement("div");
     body.className = "paragraph-comment__body";
-    if (comment.is_deleted) {
+    if (placeholder) {
       body.classList.add("paragraph-comment__body--deleted");
-      body.textContent = "Комментарий удалён";
+      body.textContent = comment.is_deleted
+        ? "Комментарий удалён"
+        : "Комментарий скрыт модератором";
     } else {
       body.innerHTML = comment.body_html;
     }
@@ -979,7 +995,7 @@
 
     const actions = document.createElement("div");
     actions.className = "paragraph-comment__actions";
-    if (!comment.is_deleted) {
+    if (!inert) {
       actions.append(
         buildCommentReactions(comment, (message) => {
           actionError.textContent = message;
@@ -994,7 +1010,7 @@
     actionError.hidden = true;
 
     let replyForm = null;
-    if (isAuthenticated && !comment.is_deleted) {
+    if (isAuthenticated && !inert) {
       const replyToggle = actionButton("paragraph-comment__reply-toggle", "Ответить");
       replyToggle.setAttribute("aria-expanded", "false");
       const closeReply = () => {
@@ -1022,7 +1038,7 @@
         replyForm.focusComposer();
       });
       actions.append(replyToggle);
-    } else if (!isAuthenticated) {
+    } else if (!isAuthenticated && !comment.is_hidden) {
       const link = document.createElement("a");
       link.className = "paragraph-comment__action paragraph-comment__reply-toggle";
       link.href = "/login";

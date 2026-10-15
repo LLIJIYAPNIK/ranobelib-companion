@@ -20,6 +20,7 @@ to back into here without an explicit ask.
 
 from __future__ import annotations
 
+import logging
 import secrets
 
 from fastapi import UploadFile
@@ -27,6 +28,8 @@ from fastapi import UploadFile
 from app.config import get_settings
 from app.gif_video import GifConversionError, convert_gif_to_video
 from app.image_sniff import looks_like_jpeg, looks_like_png, looks_like_webp
+
+logger = logging.getLogger(__name__)
 
 # A photo runs smaller than a video - same "generous but bounded" reasoning as
 # app/auth/avatar.py's _MAX_AVATAR_SIZE_BYTES and app/gif_video.py's MAX_GIF_SIZE_BYTES,
@@ -95,3 +98,18 @@ def _save_raw(contents: bytes, extension: str, kind: str) -> tuple[str, str]:
     filename = f"{secrets.token_hex(16)}{extension}"
     (attachment_dir / filename).write_bytes(contents)
     return filename, kind
+
+
+def remove_comment_attachment(filename: str) -> None:
+    """PR 350: deletes a stored attachment's file - after «Удалить навсегда» in the admin
+    panel. Only a bare filename inside the attachment directory is touched; a missing
+    file or a failed unlink is logged, never raised - the comment is gone either way."""
+    attachment_dir = get_settings().comment_attachment_dir
+    path = attachment_dir / filename
+    if not filename or path.parent != attachment_dir or path.name != filename:
+        logger.warning("Refusing to remove an odd comment attachment path %r", filename)
+        return
+    try:
+        path.unlink(missing_ok=True)
+    except OSError:
+        logger.warning("Could not remove comment attachment %s", filename, exc_info=True)

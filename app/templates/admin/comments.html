@@ -1,0 +1,120 @@
+{% extends "admin/_layout.html" %}
+{% import "admin/_kit.html" as kit with context %}
+{% block title %}Комментарии{% endblock %}
+{% block heading %}Комментарии{% endblock %}
+{% block content %}
+{# PR 350: every comment on the UI kit - search, filters, sort, pages - and a drawer with
+   the comment in full, where it is, what it answers and who wrote it
+   (app/admin_comments.py). #}
+<main class="wn-admin__main wn-admin-ov" aria-labelledby="admin-page-title">
+  <div class="wn-admin-ov__bar">
+    <p class="wn-admin-ov__asof">Комментариев: {{ data.total }} · ответы считаются отдельно</p>
+  </div>
+
+  <section class="wn-admin-panel" aria-label="Комментарии">
+    {% call kit.filter_bar("/admin/comments", args, filters, placeholder="Текст, автор, тайтл или id") %}{{ kit.columns_menu("admin-comments", columns) }}{% endcall %}
+    {% if rows %}
+    {% call(row, column) kit.table("admin-comments", columns, rows, sort=sort, descending=descending, args=args, caption="Комментарии") %}
+      {%- if column.key == "text" -%}
+      <span class="wn-admin-cm__text{% if row.status == 'deleted' %} wn-admin-cm__text--gone{% endif %}">{{ row.text }}</span>
+      {%- if row.is_reply or row.has_attachment %}<span class="wn-admin-cm__tags">{% if row.is_reply %}{{ kit.badge("ответ") }}{% endif %}{% if row.has_attachment %}{{ kit.badge("вложение") }}{% endif %}</span>{% endif -%}
+      {%- elif column.key == "author" -%}<a class="wn-admin-cm__link" href="{{ row.author_href }}">{{ row.author }}</a>
+      {%- elif column.key == "where" -%}
+      <span class="wn-admin-cm__where"><span class="wn-admin-cm__title">{{ row.title }}</span><a class="wn-admin-cm__link wn-admin-cm__chapter" href="{{ row.chapter_href }}" target="_blank" rel="noopener">{{ row.chapter }}</a></span>
+      {%- elif column.key == "status" -%}{{ kit.badge(row.status_label, row.status_tone) }}
+      {%- elif column.key == "actions" -%}<a class="wn-admin-btn wn-admin-btn--ghost" href="{{ row.open_href }}">Открыть</a>
+      {%- else -%}{{ kit.cell(row[column.key]) }}{%- endif -%}
+    {% endcall %}
+    {% elif filtered %}
+    {% set state = filter_state(args, filters) %}
+    {{ kit.no_results(state.count, state.reset) }}
+    {% else %}
+    {{ kit.empty_state("Комментариев пока нет", "Как только читатели начнут обсуждать главы, комментарии появятся здесь.", icon_name="comments") }}
+    {% endif %}
+    {{ kit.pager(data.page, data.pages, data.total, per_page, args) }}
+  </section>
+  {% if drawer_missing %}
+  <p class="wn-admin-note" role="alert">Комментарий не найден — возможно, его уже удалили навсегда.</p>
+  {% endif %}
+</main>
+
+{% if drawer %}
+{# «Удалить навсегда» has nothing left to do on a deleted comment whose row stays for its replies. #}
+{% set can_purge = drawer.status != "deleted" or not drawer.replies %}
+{% call kit.drawer("admin-comment", "Комментарий #" ~ drawer.id, drawer.author ~ " · " ~ drawer.status_label, open=true, close_href=close_href) %}
+<div class="wn-admin-drawer__body">
+  <section class="wn-admin-cm__card" aria-label="Текст комментария">
+    <p class="wn-admin-cm__status">{{ kit.badge(drawer.status_label, drawer.status_tone) }}{% if drawer.status == "hidden" %} Читатели его не видят, автор — видит с пометкой «скрыт модератором».{% endif %}</p>
+    {% if drawer.status == "deleted" %}
+    <p class="wn-admin-cm__gone">Текст удалён{% if drawer.replies %} — ответы под ним остаются{% endif %}.</p>
+    {% else %}
+    <div class="wn-admin-cm__body">{{ drawer.body_html | safe }}</div>
+    {% if drawer.attachment %}<p class="wn-admin-field__hint">Вложение: {{ drawer.attachment }} — видно в главе.</p>{% endif %}
+    {% endif %}
+  </section>
+
+  <section class="wn-admin-actions" aria-labelledby="admin-comment-where">
+    <h3 class="wn-admin-actions__title" id="admin-comment-where">Где</h3>
+    <p class="wn-admin-cm__place"><span class="wn-admin-cm__title">{{ drawer.title }}</span> · <a class="wn-admin-cm__link" href="{{ drawer.chapter_href }}" target="_blank" rel="noopener">{{ drawer.chapter }}{{ kit.icon("external") }}</a> · абзац {{ drawer.paragraph }}</p>
+    {% if drawer.parent_text %}
+    <blockquote class="wn-admin-cm__parent">
+      <span class="wn-admin-cm__parent-label">В ответ на комментарий {{ drawer.parent_author }}</span>
+      <span class="wn-admin-cm__parent-text">{{ drawer.parent_text }}</span>
+      <a class="wn-admin-cm__link" href="{{ drawer.parent_href }}">Открыть его</a>
+    </blockquote>
+    {% endif %}
+    <dl class="wn-admin-summary">
+      {% for item in drawer.items %}
+      <div class="wn-admin-summary__item"><dt>{{ item.label }}</dt><dd>{{ item.value }}</dd></div>
+      {% endfor %}
+    </dl>
+  </section>
+
+  <section class="wn-admin-actions" aria-labelledby="admin-comment-author">
+    <h3 class="wn-admin-actions__title" id="admin-comment-author">Автор: <a class="wn-admin-cm__link" href="{{ drawer.author_href }}">{{ drawer.author }}</a></h3>
+    <dl class="wn-admin-summary">
+      {% for item in drawer.author_items %}
+      <div class="wn-admin-summary__item"><dt>{{ item.label }}</dt><dd>{{ item.value }}</dd></div>
+      {% endfor %}
+    </dl>
+  </section>
+
+  <section class="wn-admin-actions" aria-labelledby="admin-comment-actions">
+    <h3 class="wn-admin-actions__title" id="admin-comment-actions">Действия</h3>
+    {% if drawer.status == "published" %}
+    <form method="post" action="/admin/comments/{{ drawer.id }}/hide">
+      {{ kit.csrf() }}<input type="hidden" name="back" value="{{ back }}">
+      <button class="wn-admin-btn wn-admin-btn--primary" type="submit">{{ kit.icon("eye-off") }}Скрыть</button>
+    </form>
+    {% elif drawer.status == "hidden" %}
+    <form method="post" action="/admin/comments/{{ drawer.id }}/show">
+      {{ kit.csrf() }}<input type="hidden" name="back" value="{{ back }}">
+      <button class="wn-admin-btn" type="submit">{{ kit.icon("eye") }}Показать</button>
+    </form>
+    {% endif %}
+    {% if can_purge %}
+    <button class="wn-admin-btn wn-admin-btn--danger" type="button" data-kit-open="admin-comment-delete">{{ kit.icon("trash") }}Удалить навсегда</button>
+    {% endif %}
+    <p class="wn-admin-field__hint">{% if drawer.status == "published" %}Скрытие можно отменить в любой момент — его стоит выбрать первым. {% endif %}Каждое действие попадает в журнал.</p>
+  </section>
+</div>
+<div class="wn-admin-drawer__foot">
+  <button class="wn-admin-btn wn-admin-btn--ghost" type="button" data-kit-close>Закрыть</button>
+</div>
+{% endcall %}
+
+{% if can_purge %}
+{% set delete_lines = ["Ответы останутся, ветка получит пометку «Комментарий удалён»" if drawer.replies else "Комментарий исчезнет из главы целиком", "Лайки и уведомления о них удалятся вместе с ним"] %}
+{% if drawer.attachment %}{% set delete_lines = delete_lines + ["Файл вложения удалится с сервера"] %}{% endif %}
+{% call kit.confirm("admin-comment-delete", "Удалить комментарий #" ~ drawer.id ~ " навсегда?", "/admin/comments/" ~ drawer.id ~ "/delete", confirm_label="Удалить навсегда", lead="Удаление необратимо. Вот что произойдёт:", lines=delete_lines, irreversible=true, fields={"back": back}) %}
+{% if drawer.status == "published" %}
+<div class="wn-admin-cm__softer">
+  {{ kit.icon("eye-off") }}
+  <p>Есть вариант мягче: скрытый комментарий читатели не видят, а вернуть его можно в любой момент.</p>
+  <button class="wn-admin-btn" type="submit" formaction="/admin/comments/{{ drawer.id }}/hide" formnovalidate>Скрыть вместо удаления</button>
+</div>
+{% endif %}
+{% endcall %}
+{% endif %}
+{% endif %}
+{% endblock %}

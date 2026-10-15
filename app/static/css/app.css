@@ -3640,12 +3640,23 @@ html:has(dialog[open]) body {
 }
 
 .paragraph-comment__time,
-.paragraph-comment__edited {
+.paragraph-comment__edited,
+.paragraph-comment__hidden {
   color: var(--pc-muted);
 }
 
-.paragraph-comment__edited::before {
+.paragraph-comment__edited::before,
+.paragraph-comment__hidden::before {
   content: "· ";
+}
+
+/* PR 350: the author's own comment the admin hid - only they still see it. */
+.paragraph-comment__hidden {
+  font-weight: 600;
+}
+
+.paragraph-comment--hidden > .paragraph-comment__main > .paragraph-comment__body {
+  opacity: 0.65;
 }
 
 /* PR 148: body_html brings its own block structure (<p>/<br>/<ul>/<ol>). */
@@ -3669,7 +3680,7 @@ html:has(dialog[open]) body {
   margin-bottom: 0;
 }
 
-/* PR 172: «Комментарий удалён». */
+/* PR 172: «Комментарий удалён»; PR 350: «Комментарий скрыт модератором». */
 .paragraph-comment__body--deleted {
   color: var(--pc-muted);
   font-style: italic;
@@ -23949,6 +23960,167 @@ html:has(dialog.wn-admin-dialog[open]) {
 
 .wn-admin-ban--active {
   color: var(--wn-text);
+}
+
+/* «Комментарии» (PR 350): the list's text/where cells and the drawer's comment card. */
+.wn-admin-cm__text {
+  display: -webkit-box;
+  max-width: 360px;
+  min-width: 160px;
+  overflow: hidden;
+  overflow-wrap: anywhere;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+  line-clamp: 2;
+}
+
+.wn-admin-cm__text--gone,
+.wn-admin-cm__gone {
+  color: var(--wn-text-muted);
+  font-style: italic;
+}
+
+.wn-admin-cm__tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  margin-top: 4px;
+}
+
+.wn-admin-cm__where {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  max-width: 190px;
+}
+
+/* The drawer's summaries sit in a flex column that doesn't stretch its children - let
+   them take the full width, so they fall into two columns like the users drawer's. */
+.wn-admin-actions > .wn-admin-summary {
+  align-self: stretch;
+}
+
+.wn-admin-cm__title {
+  overflow: hidden;
+  font-weight: var(--wn-weight-semi-bold);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.wn-admin-cm__chapter {
+  font-size: 12px;
+}
+
+.wn-admin-cm__link {
+  color: var(--wn-text-secondary);
+  text-decoration: underline;
+  text-decoration-color: var(--wn-border-strong);
+  text-underline-offset: 3px;
+}
+
+.wn-admin-cm__link:hover {
+  color: var(--wn-text);
+  text-decoration-color: currentColor;
+}
+
+.wn-admin-cm__link:focus-visible {
+  outline: none;
+  border-radius: 4px;
+  box-shadow: var(--wn-focus-ring);
+}
+
+.wn-admin-cm__link .wn-admin-icon {
+  width: 13px;
+  height: 13px;
+  margin-left: 3px;
+  vertical-align: -1px;
+}
+
+.wn-admin-cm__card {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 14px;
+  border: 1px solid var(--wn-border);
+  border-radius: var(--wn-radius-md);
+  background: var(--wn-surface-raised);
+}
+
+.wn-admin-cm__status,
+.wn-admin-cm__place,
+.wn-admin-cm__gone {
+  margin: 0;
+  color: var(--wn-text-secondary);
+  font: var(--wn-weight-medium) 13px/1.5 var(--wn-font-ui);
+}
+
+.wn-admin-cm__place {
+  overflow-wrap: anywhere;
+}
+
+.wn-admin-cm__body {
+  overflow-wrap: anywhere;
+  font-size: 14px;
+  line-height: 1.55;
+}
+
+.wn-admin-cm__body p {
+  margin: 0 0 8px;
+}
+
+.wn-admin-cm__body > :last-child {
+  margin-bottom: 0;
+}
+
+.wn-admin-cm__parent {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 4px;
+  max-width: 100%;
+  margin: 0;
+  padding-left: 14px;
+  border-left: 2px solid var(--wn-border-strong);
+  font-size: 13px;
+}
+
+.wn-admin-cm__parent-label {
+  color: var(--wn-text-muted);
+  font-size: 11.5px;
+}
+
+.wn-admin-cm__parent-text {
+  max-width: 100%;
+  color: var(--wn-text-secondary);
+  overflow-wrap: anywhere;
+}
+
+/* The delete dialog's «Есть вариант мягче» - hiding, offered before the irreversible. */
+.wn-admin-cm__softer {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  gap: 8px 10px;
+  align-items: start;
+  padding: 12px 14px;
+  border: 1px solid color-mix(in srgb, var(--wn-primary) 30%, transparent);
+  border-radius: var(--wn-radius-md);
+  background: color-mix(in srgb, var(--wn-primary) 9%, transparent);
+  font: var(--wn-weight-medium) 12.5px/1.5 var(--wn-font-ui);
+}
+
+.wn-admin-cm__softer > .wn-admin-icon {
+  width: 16px;
+  height: 16px;
+  margin-top: 2px;
+}
+
+.wn-admin-cm__softer p {
+  margin: 0;
+}
+
+.wn-admin-cm__softer .wn-admin-btn {
+  grid-column: 2;
+  justify-self: start;
 }
 
 /* «Требует внимания»: computed warnings, the most serious first. */
