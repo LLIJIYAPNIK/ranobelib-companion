@@ -121,3 +121,46 @@ async def file_report(
     row = await cursor.fetchone()
     created = row.pop("created")
     return Report(**row), created
+
+
+# --- decisions in «Модерация» (PR 358) ----------------------------------------------------
+
+DISMISSED = "dismissed"
+ACTIONED = "actioned"
+
+
+async def resolve_reports(
+    conn: AsyncConnection,
+    target_type: str,
+    target_id: int,
+    *,
+    status: str,
+    resolution: str,
+    now: datetime | None = None,
+) -> list[int]:
+    """Closes every open report on the object - ``dismissed`` («Одобрить») or
+    ``actioned`` - with what was done. Returns their ids, which «Отменить» reopens."""
+    cursor = await conn.execute(
+        "UPDATE reports SET status = %s, resolution = %s, resolved_at = %s "
+        "WHERE target_type = %s AND target_id = %s AND status = 'open' RETURNING id",
+        (status, resolution, _now(now).isoformat(), target_type, target_id),
+    )
+    return sorted(row["id"] for row in await cursor.fetchall())
+
+
+async def reopen_reports(conn: AsyncConnection, report_ids: list[int]) -> list[int]:
+    """Undoes resolve_reports(): the reports are open again. One whose reporter has
+    since filed a new open report on the same object stays closed - that newer one is
+    already in the queue. Returns the ids reopened."""
+    if not report_ids:
+        return []
+    cursor = await conn.execute(
+        "UPDATE reports r SET status = 'open', resolution = NULL, resolved_at = NULL "
+        "WHERE r.id = ANY(%s) AND r.status <> 'open' AND NOT EXISTS ("
+        "  SELECT 1 FROM reports o WHERE o.status = 'open' "
+        "  AND o.reporter_user_id = r.reporter_user_id "
+        "  AND o.target_type = r.target_type AND o.target_id = r.target_id"
+        ") RETURNING r.id",
+        (list(report_ids),),
+    )
+    return sorted(row["id"] for row in await cursor.fetchall())

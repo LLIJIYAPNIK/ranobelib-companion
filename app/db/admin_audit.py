@@ -48,6 +48,18 @@ USER_UNBAN = "user_unban"
 COMMENT_HIDE = "comment_hide"
 COMMENT_SHOW = "comment_show"
 COMMENT_DELETE = "comment_delete"
+# PR 358: «Модерация»'s decisions on reports, and «Отменить» of one.
+REPORTS_DISMISS = "reports_dismiss"
+REPORTS_HIDE_COMMENT = "reports_hide_comment"
+REPORTS_CLEAR_PROFILE = "reports_clear_profile"
+REPORTS_BAN_AUTHOR = "reports_ban_author"
+REPORTS_UNDO = "reports_undo"
+MODERATION_DECISIONS = (
+    REPORTS_DISMISS,
+    REPORTS_HIDE_COMMENT,
+    REPORTS_CLEAR_PROFILE,
+    REPORTS_BAN_AUTHOR,
+)
 # PR 352: a CSV export from «Данные БД» - nothing changes, but data leaves the panel.
 DATA_EXPORT = "data_export"
 # PR 353: the same for the log's own CSV export.
@@ -120,6 +132,27 @@ async def list_entries(conn: AsyncConnection, limit: int = 100) -> list[AuditEnt
         (limit,),
     )
     return [AuditEntry(**row) for row in await cursor.fetchall()]
+
+
+async def get_entry(conn: AsyncConnection, entry_id: int) -> AuditEntry | None:
+    """PR 358: one entry - «Модерация»'s «Отменить» undoes a decision from what its
+    entry recorded, so nothing it restores passes through the browser."""
+    cursor = await conn.execute(
+        "SELECT id, at, actor, action, entity, entity_id, entity_label, ip, details "
+        "FROM admin_audit_log WHERE id = %s",
+        (entry_id,),
+    )
+    row = await cursor.fetchone()
+    return AuditEntry(**row) if row else None
+
+
+async def was_undone(conn: AsyncConnection, entry_id: int) -> bool:
+    """Whether a REPORTS_UNDO entry already points at this one."""
+    cursor = await conn.execute(
+        "SELECT 1 FROM admin_audit_log WHERE action = %s AND details->>'undoes' = %s LIMIT 1",
+        (REPORTS_UNDO, str(entry_id)),
+    )
+    return await cursor.fetchone() is not None
 
 
 # --- the log screen (PR 353) ------------------------------------------------------------

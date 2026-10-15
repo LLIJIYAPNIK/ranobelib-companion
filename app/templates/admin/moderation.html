@@ -1,0 +1,189 @@
+{% extends "admin/_layout.html" %}
+{% import "admin/_kit.html" as kit with context %}
+{% block title %}Модерация{% endblock %}
+{% block heading %}Модерация{% endblock %}
+{% block content %}
+{# PR 358: the queue of reported comments and profiles (RanobeLib Admin.dc.html,
+   «Модерация») - tabs by type, the list on the left, one object's card on the right
+   (app/admin_moderation.py). On a phone the list and the card take turns: a chosen
+   object shows the card with «Очередь» back. #}
+<main class="wn-admin__main wn-admin-ov wn-admin-mod{% if detail_asked %} wn-admin-mod--detail{% endif %}" aria-labelledby="admin-page-title">
+  <div class="wn-admin-ov__bar">
+    <p class="wn-admin-ov__asof">Очередь жалоб, отсортированная по их количеству. Каждое решение можно отменить.</p>
+    <nav class="wn-admin-seg wn-admin-seg--tabs" aria-label="Типы объектов">
+      {% for tab in tabs %}
+      <a class="wn-admin-seg__item" href="{{ tab.href }}"{% if tab.active %} aria-current="page"{% endif %}>{{ tab.label }}</a>
+      {% endfor %}
+    </nav>
+  </div>
+
+  {% if not rows %}
+  <section class="wn-admin-panel" aria-label="Очередь">
+    {{ kit.empty_state("Очередь пуста", "Все жалобы разобраны. Новые появятся здесь автоматически.", icon_name="shield-check") }}
+  </section>
+  {% else %}
+  <div class="wn-admin-mod__layout">
+    <section class="wn-admin-mod__queue" aria-label="Очередь жалоб">
+      <ol class="wn-admin-mod__list">
+        {% for row in rows %}
+        <li>
+          <a class="wn-admin-mod__item" href="{{ row.href }}"{% if row.active %} aria-current="true"{% endif %}>
+            <span class="wn-admin-mod__meta">
+              <span class="wn-admin-mod__kind">{{ row.kind }}</span>
+              <span class="wn-admin-mod__who">{{ row.author }} · {{ row.when }}</span>
+              <span class="wn-admin-mod__count{% if row.many %} wn-admin-mod__count--many{% endif %}" title="Жалоб: {{ row.reports }}">{{ kit.icon("flag") }}{{ row.reports }}</span>
+            </span>
+            <span class="wn-admin-mod__text">{{ row.text }}</span>
+            <span class="wn-admin-mod__reason">{{ row.reason }}</span>
+          </a>
+        </li>
+        {% endfor %}
+      </ol>
+      {% if data.total > rows | length %}
+      <p class="wn-admin-field__hint">Показаны первые {{ rows | length }} из {{ data.total }} — разберите их, и очередь подтянет следующие.</p>
+      {% endif %}
+    </section>
+    {% if card %}
+    <article class="wn-admin-panel wn-admin-mod__card" aria-labelledby="admin-mod-card-title">
+      <header class="wn-admin-mod__head">
+        <a class="wn-admin-btn wn-admin-btn--ghost wn-admin-mod__back" href="{{ back_href }}">{{ kit.icon("arrow-left") }}Очередь</a>
+        <h2 class="wn-admin-mod__kind" id="admin-mod-card-title">{{ card.kind }}</h2>
+        <span class="wn-admin-mod__where">{% if card.where_href %}<a class="wn-admin-cm__link" href="{{ card.where_href }}" target="_blank" rel="noopener">{{ card.where }}{{ kit.icon("external") }}</a>{% else %}{{ card.where }}{% endif %}{% if card.since %} · с {{ card.since }}{% endif %}</span>
+        <span class="wn-admin-mod__flags">{{ kit.icon("flag") }}{{ card.reports }} {{ plural(card.reports, "жалоба", "жалобы", "жалоб") }}</span>
+      </header>
+
+      <div class="wn-admin-mod__body">
+        {% if card.state == "gone" %}
+        <p class="wn-admin-cm__gone">{{ "Комментария больше нет — его удалили навсегда." if card.target_type == "comment" else "Аккаунта больше нет." }} Жалобы можно только закрыть.</p>
+        {% else %}
+        {% if card.target_type == "comment" %}
+        {% if card.paragraph_text is not none %}
+        <blockquote class="wn-admin-cm__parent wn-admin-cm__paragraph">
+          <span class="wn-admin-cm__parent-label">Абзац {{ card.paragraph }}</span>
+          <span class="wn-admin-cm__parent-text">{{ card.paragraph_text or "[иллюстрация без текста]" }}</span>
+        </blockquote>
+        {% endif %}
+        {% if card.parent_text %}
+        <blockquote class="wn-admin-cm__parent">
+          <span class="wn-admin-cm__parent-label">В ответ на комментарий {{ card.parent_author }}</span>
+          <span class="wn-admin-cm__parent-text">{{ card.parent_text }}</span>
+        </blockquote>
+        {% endif %}
+        {% endif %}
+        <div class="wn-admin-mod__object">
+          {% if card.avatar_url %}<img class="wn-admin-mod__avatar" src="{{ card.avatar_url }}" alt="Аватар {{ card.author }}">{% else %}<span class="wn-admin-mod__avatar" aria-hidden="true">{{ card.initial }}</span>{% endif %}
+          <div class="wn-admin-mod__content">
+            <a class="wn-admin-mod__author wn-admin-cm__link" href="{{ card.author_href }}">{{ card.author }}</a>
+            {% if card.target_type == "comment" %}
+            {% if card.state == "hidden" %}<p class="wn-admin-cm__status">{{ kit.badge("скрыт", "warning") }} Уже скрыт — читатели его не видят.</p>{% endif %}
+            {% if card.state == "deleted" %}
+            <p class="wn-admin-cm__gone">Автор удалил комментарий.</p>
+            {% else %}
+            <div class="wn-admin-mod__text-full wn-admin-cm__body">{{ card.body_html | safe }}</div>
+            {% if card.attachment %}<p class="wn-admin-field__hint">Вложение: {{ card.attachment }} — видно в главе.</p>{% endif %}
+            {% endif %}
+            {% else %}
+            <dl class="wn-admin-summary">
+              <div class="wn-admin-summary__item"><dt>Никнейм</dt><dd>{{ card.nickname or "не задан" }}</dd></div>
+              <div class="wn-admin-summary__item"><dt>Аватар</dt><dd>{{ "есть" if card.avatar_url else "нет" }}</dd></div>
+            </dl>
+            <p class="wn-admin-mod__text-full">{% if card.bio %}{{ card.bio }}{% else %}<span class="wn-admin-cm__gone">«О себе» не заполнено</span>{% endif %}</p>
+            {% endif %}
+          </div>
+        </div>
+        {% endif %}
+
+        <div class="wn-admin-mod__facts">
+          <section class="wn-admin-mod__box" aria-labelledby="admin-mod-reasons">
+            <h3 class="wn-admin-mod__box-title" id="admin-mod-reasons">Причины жалоб</h3>
+            {% for bar in card.reasons %}
+            <div class="wn-admin-mod__reason-row">
+              <span class="wn-admin-mod__reason-line"><span>{{ bar.label }}</span><b>{{ bar.count }}</b></span>
+              <span class="wn-admin-mod__bar" aria-hidden="true"><span class="wn-admin-mod__bar-fill" style="width: {{ bar.percent }}%"></span></span>
+            </div>
+            {% endfor %}
+          </section>
+          {% if card.history %}
+          <section class="wn-admin-mod__box" aria-labelledby="admin-mod-history">
+            <h3 class="wn-admin-mod__box-title" id="admin-mod-history">История автора</h3>
+            <dl class="wn-admin-mod__history">
+              {% for item in card.history %}
+              <div><dt>{{ item.label }}</dt><dd>{{ item.value }}</dd></div>
+              {% endfor %}
+            </dl>
+            {% if card.ban %}{{ kit.badge(card.ban, "danger") }}{% endif %}
+          </section>
+          {% endif %}
+        </div>
+
+        {% if card.notes %}
+        <section class="wn-admin-mod__box" aria-labelledby="admin-mod-notes">
+          <h3 class="wn-admin-mod__box-title" id="admin-mod-notes">Пояснения читателей</h3>
+          <ul class="wn-admin-mod__notes">
+            {% for note in card.notes %}
+            <li><p class="wn-admin-mod__note-text">{{ note.text }}</p><p class="wn-admin-field__hint">{{ note.reason }} · <a class="wn-admin-cm__link" href="{{ note.reporter_href }}">{{ note.reporter }}</a> · {{ note.when }}</p></li>
+            {% endfor %}
+          </ul>
+        </section>
+        {% endif %}
+      </div>
+      <footer class="wn-admin-mod__foot">
+        <button class="wn-admin-btn wn-admin-mod__approve" type="button" data-kit-open="admin-mod-dismiss">{{ kit.icon("check") }}Одобрить</button>
+        {% if card.state not in ("gone", "deleted") %}
+        {% if card.target_type == "comment" %}
+        <button class="wn-admin-btn" type="button" data-kit-open="admin-mod-hide">{{ kit.icon("eye-off") }}Скрыть</button>
+        {% elif card.bio or card.avatar_url %}
+        <button class="wn-admin-btn" type="button" data-kit-open="admin-mod-clear">{{ kit.icon("eye-off") }}Очистить профиль</button>
+        {% endif %}
+        {% endif %}
+        {% if card.author_id and not card.ban %}
+        <button class="wn-admin-btn wn-admin-btn--danger wn-admin-mod__ban" type="button" data-kit-open="admin-mod-ban">{{ kit.icon("ban") }}Заблокировать автора</button>
+        {% endif %}
+      </footer>
+    </article>
+    {% elif selected %}
+    <section class="wn-admin-panel wn-admin-mod__card" aria-label="Объект">
+      <div class="wn-admin-mod__body">
+        <a class="wn-admin-btn wn-admin-btn--ghost wn-admin-mod__back" href="{{ back_href }}">{{ kit.icon("arrow-left") }}Очередь</a>
+        <p class="wn-admin-cm__gone">Открытых жалоб на этот объект нет — возможно, решение по нему уже принято.</p>
+      </div>
+    </section>
+    {% endif %}
+  </div>
+  {% endif %}
+</main>
+
+{% if card %}
+{# PR 358: every decision goes through a dialog; each lands in the action log, and its
+   toast offers «Отменить». #}
+{% set action = "/admin/moderation/" ~ card.target_type ~ "/" ~ card.target_id %}
+{% set count = card.reports ~ " " ~ plural(card.reports, "жалоба", "жалобы", "жалоб") %}
+{{ kit.confirm("admin-mod-dismiss", "Одобрить и закрыть жалобы?", action ~ "/dismiss", confirm_label="Одобрить", lead="Контент остаётся как есть.", lines=[count ~ " закроются как отклонённые", "Читатели, которые жаловались, ничего не получат"], fields={"back": back_href}, tone="primary") }}
+{% if card.target_type == "comment" and card.state not in ("gone", "deleted") %}
+{% if card.state == "hidden" %}
+{{ kit.confirm("admin-mod-hide", "Закрыть жалобы как подтверждённые?", action ~ "/hide", confirm_label="Закрыть", lead="Комментарий уже скрыт — он таким и останется.", lines=[count ~ " закроются как подтверждённые"], fields={"back": back_href}, tone="primary") }}
+{% else %}
+{{ kit.confirm("admin-mod-hide", "Скрыть комментарий?", action ~ "/hide", confirm_label="Скрыть", lead="Читатели перестанут его видеть, автор — увидит с пометкой «скрыт модератором».", lines=[count ~ " закроются как подтверждённые", "Ответы под ним останутся на месте"], fields={"back": back_href}, tone="primary") }}
+{% endif %}
+{% endif %}
+{% if card.target_type == "profile" and card.state == "published" and (card.bio or card.avatar_url) %}
+{% call kit.confirm("admin-mod-clear", "Очистить профиль «" ~ card.author ~ "»?", action ~ "/hide", confirm_label="Очистить", lead="Отмеченное исчезнет из профиля; вернуть можно кнопкой «Отменить».", lines=[count ~ " закроются как подтверждённые", "Никнейм не меняется"], fields={"back": back_href}, tone="primary") %}
+<fieldset class="wn-admin-mod__clear">
+  <legend class="wn-admin-field__label">Что убрать</legend>
+  {% if card.bio %}<label class="wn-admin-mod__check"><input class="wn-admin-check" type="checkbox" name="bio" value="1" checked><span>«О себе»</span></label>{% endif %}
+  {% if card.avatar_url %}<label class="wn-admin-mod__check"><input class="wn-admin-check" type="checkbox" name="avatar" value="1" checked><span>Аватар</span></label>{% endif %}
+</fieldset>
+{% endcall %}
+{% endif %}
+{% if card.author_id and not card.ban %}
+{% call kit.confirm("admin-mod-ban", "Заблокировать «" ~ card.author ~ "»?", action ~ "/ban", confirm_label="Заблокировать", lead="Вход закроется, уже открытые сессии станут гостевыми со следующего запроса.", lines=[count ~ " закроются как подтверждённые", "Пользователь увидит срок и причину, если вы её укажете", (("Комментарий" if card.target_type == "comment" else "Профиль") ~ " остаётся как есть — скройте его отдельно, если нужно")], fields={"back": back_href}, confirm_icon="ban") %}
+{% call kit.field("Срок", "mod-ban-term", required=true) %}
+<select class="wn-admin-input" id="mod-ban-term" name="term" required>
+  {% for value, label in ban_terms %}<option value="{{ value }}"{% if value == "7d" %} selected{% endif %}>{{ label }}</option>{% endfor %}
+</select>
+{% endcall %}
+{% call kit.field("Причина", "mod-ban-reason", hint="Её увидит пользователь — при входе и на сайте") %}<textarea class="wn-admin-input" id="mod-ban-reason" name="reason" rows="3" maxlength="{{ reason_limit }}"></textarea>{% endcall %}
+{% endcall %}
+{% endif %}
+{% endif %}
+{% endblock %}

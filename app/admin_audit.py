@@ -35,11 +35,21 @@ ACTIONS: dict[str, tuple[str, str]] = {
     admin_audit.COMMENT_HIDE: ("Скрытие", "warning"),
     admin_audit.COMMENT_SHOW: ("Восстановление", "success"),
     admin_audit.COMMENT_DELETE: ("Удаление", "danger"),
+    admin_audit.REPORTS_DISMISS: ("Жалобы отклонены", "neutral"),
+    admin_audit.REPORTS_HIDE_COMMENT: ("Скрытие по жалобам", "warning"),
+    admin_audit.REPORTS_CLEAR_PROFILE: ("Очистка профиля", "warning"),
+    admin_audit.REPORTS_BAN_AUTHOR: ("Блокировка по жалобам", "danger"),
+    admin_audit.REPORTS_UNDO: ("Отмена решения", "primary"),
     admin_audit.DATA_EXPORT: ("Экспорт данных", "primary"),
     admin_audit.AUDIT_EXPORT: ("Экспорт журнала", "primary"),
 }
 
-ENTITIES = {"user": "Пользователь", "comment": "Комментарий", "table": "Таблица"}
+ENTITIES = {
+    "user": "Пользователь",
+    "comment": "Комментарий",
+    "profile": "Профиль",
+    "table": "Таблица",
+}
 
 ACTORS = {admin_audit.ACTOR: "Администратор"}
 
@@ -69,6 +79,13 @@ FIELDS = {
     "action": "действие",
     "actor": "кто",
     "locked_for_seconds": "вход закрыт, с",
+    "reports": "жалоб",
+    "report_ids": "жалобы №",
+    "reasons": "причины",
+    "bio": "о себе",
+    "avatar_path": "аватар",
+    "undoes": "отменяет запись №",
+    "reopened": "вернулось в очередь",
 }
 
 # Values the actions write that read better in words.

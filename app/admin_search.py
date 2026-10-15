@@ -26,6 +26,7 @@ SCREEN_WORDS = {
     "analytics": "аналитика тайтлы главы статистика analytics",
     "users": "пользователи аккаунты читатели блокировка users",
     "comments": "комментарии модерация скрыть comments",
+    "moderation": "модерация жалобы очередь пожаловаться reports moderation",
     "tables": "данные бд база таблицы database tables",
     "system": "система сервер версии диск кеш system",
     "audit": "журнал действий аудит история лог audit log",

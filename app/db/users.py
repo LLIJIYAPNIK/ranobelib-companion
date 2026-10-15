@@ -124,6 +124,49 @@ async def update_user_avatar(conn: AsyncConnection, user_id: int, avatar_path: s
     return user
 
 
+async def clear_profile(
+    conn: AsyncConnection, user_id: int, *, bio: bool, avatar: bool
+) -> dict[str, str] | None:
+    """PR 358: «Очистить профиль» in the admin's «Модерация» - empties «о себе» and/or
+    drops the avatar. The image file stays on disk, so «Отменить» can put it back.
+    Returns what was cleared (only fields that had a value), or None for no account."""
+    async with conn.transaction():
+        cursor = await conn.execute(
+            "SELECT bio, avatar_path FROM users WHERE id = %s FOR UPDATE", (user_id,)
+        )
+        row = await cursor.fetchone()
+        if row is None:
+            return None
+        cleared = {}
+        if bio and row["bio"]:
+            cleared["bio"] = row["bio"]
+        if avatar and row["avatar_path"]:
+            cleared["avatar_path"] = row["avatar_path"]
+        if cleared:
+            await conn.execute(
+                "UPDATE users SET bio = CASE WHEN %s THEN NULL ELSE bio END, "
+                "avatar_path = CASE WHEN %s THEN NULL ELSE avatar_path END WHERE id = %s",
+                ("bio" in cleared, "avatar_path" in cleared, user_id),
+            )
+    return cleared
+
+
+async def restore_profile(conn: AsyncConnection, user_id: int, values: dict[str, str]) -> list[str]:
+    """Undoes clear_profile(): puts back each field that is still empty - one the person
+    has filled in again since is theirs and stays. Returns the fields restored."""
+    restored = []
+    for column in ("bio", "avatar_path"):
+        if not values.get(column):
+            continue
+        cursor = await conn.execute(
+            f"UPDATE users SET {column} = %s WHERE id = %s AND {column} IS NULL",
+            (values[column], user_id),
+        )
+        if cursor.rowcount:
+            restored.append(column)
+    return restored
+
+
 async def update_user_password(conn: AsyncConnection, user_id: int, password_hash: str) -> User:
     """No uniqueness concerns here unlike `update_user_account` - `password_hash` isn't a
     unique column, so there's nothing to check before writing it. Callers (see
