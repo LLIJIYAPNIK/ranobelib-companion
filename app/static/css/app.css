@@ -23965,8 +23965,8 @@ html:has(dialog.wn-admin-dialog[open]) {
 /* «Комментарии» (PR 350): the list's text/where cells and the drawer's comment card. */
 .wn-admin-cm__text {
   display: -webkit-box;
-  max-width: 420px;
-  min-width: 180px;
+  max-width: 360px;
+  min-width: 160px;
   overflow: hidden;
   overflow-wrap: anywhere;
   -webkit-box-orient: vertical;
@@ -23991,7 +23991,13 @@ html:has(dialog.wn-admin-dialog[open]) {
   display: flex;
   flex-direction: column;
   gap: 2px;
-  max-width: 240px;
+  max-width: 190px;
+}
+
+/* The drawer's summaries sit in a flex column that doesn't stretch its children - let
+   them take the full width, so they fall into two columns like the users drawer's. */
+.wn-admin-actions > .wn-admin-summary {
+  align-self: stretch;
 }
 
 .wn-admin-cm__title {

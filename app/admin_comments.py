@@ -38,7 +38,7 @@ COLUMNS = (
     Column("author", "Автор", sortable=False),
     Column("where", "Тайтл / глава", sortable=False),
     Column("created_at", "Дата", "muted"),
-    Column("reactions", "Лайки / дизлайки", "num"),
+    Column("reactions", "Реакции", "num"),
     Column("status", "Статус", sortable=False),
     Column("actions", "Действия", "actions", sortable=False),
 )
@@ -135,7 +135,7 @@ def comment_rows(
             chapter=chapter_label(row),
             chapter_href=chapter_href(row),
             created_at=format_when(row.created_at, tz),
-            reactions=f"{format_number(row.likes)} / {format_number(row.dislikes)}",
+            reactions=f"+{format_number(row.likes)} −{format_number(row.dislikes)}",
             status=row.status,
             status_label=STATUS_LABELS[row.status],
             status_tone=STATUS_TONES[row.status],
