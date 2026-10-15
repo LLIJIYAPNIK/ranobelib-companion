@@ -25,9 +25,20 @@
     page's current query, kept by every link. Call it to render cells yourself:
       {% call(row, column) kit.table("users", columns, rows, ...) %}...{% endcall %}
     A Column(kind="actions") is the row's buttons - right-aligned, never sortable. On a
-    phone each row becomes a card, every cell under its column's name. -#}
+    phone each row becomes a card, every cell under its column's name, and the header
+    row - hidden there - gives way to a «Сортировка» bar with the same links (PR 354). -#}
 {% macro table(id, columns, rows, sort=none, descending=true, args={}, caption=none) -%}
-<div class="wn-admin-table" id="{{ id }}" data-kit-table="{{ id }}">
+{% set sortable = columns | selectattr("sortable") | rejectattr("kind", "equalto", "actions") | list %}
+{% if sortable and rows | length > 1 %}
+<nav class="wn-admin-table__sortbar" aria-label="Сортировка{{ ': ' ~ caption if caption }}">
+  <span class="wn-admin-table__sortbar-label" aria-hidden="true">Сортировка</span>
+  {% for column in sortable %}
+  {% set active = column.key == sort %}
+  <a class="wn-admin-table__sortbar-item" href="{{ admin_query(args, sort=column.key, order='asc' if active and descending else 'desc', page=none) }}"{% if active %} aria-current="true"{% endif %}>{{ column.label }}{% if active %}{{ icon('arrow-down' if descending else 'arrow-up') }}<span class="wn-admin-sr">{{ ', по убыванию' if descending else ', по возрастанию' }}</span>{% endif %}</a>
+  {% endfor %}
+</nav>
+{% endif %}
+<div class="wn-admin-table" id="{{ id }}" data-kit-table="{{ id }}"{% if caption %} data-kit-label="{{ caption }}"{% endif %}>
   <table class="wn-admin-table__table">
     {% if caption %}<caption class="wn-admin-sr">{{ caption }}</caption>{% endif %}
     <thead>

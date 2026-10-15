@@ -242,4 +242,31 @@
     });
     plot.addEventListener("pointerleave", hide);
   });
+
+  // PR 354: a table wider than its panel scrolls sideways - then the scroll box itself
+  // takes keyboard focus (arrow keys scroll it) and is named after the table, so a
+  // keyboard user can reach the columns off-screen. A table that fits stays out of the
+  // tab order. Re-checked whenever its size changes (a resize, columns hidden).
+  const scrollable = (wrap) => {
+    const scrolls = wrap.scrollWidth > wrap.clientWidth + 1;
+    if (scrolls) {
+      wrap.tabIndex = 0;
+      wrap.setAttribute("role", "region");
+      wrap.setAttribute("aria-label", wrap.dataset.kitLabel || "Таблица");
+    } else {
+      wrap.removeAttribute("tabindex");
+      wrap.removeAttribute("role");
+      wrap.removeAttribute("aria-label");
+    }
+  };
+  const tables = document.querySelectorAll("[data-kit-table]");
+  tables.forEach(scrollable);
+  if ("ResizeObserver" in window) {
+    const watcher = new ResizeObserver((entries) => entries.forEach((entry) => scrollable(entry.target.closest("[data-kit-table]"))));
+    tables.forEach((wrap) => {
+      watcher.observe(wrap);
+      const table = wrap.querySelector("table");
+      if (table) watcher.observe(table);
+    });
+  }
 })();
