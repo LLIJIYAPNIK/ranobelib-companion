@@ -1,0 +1,50 @@
+{% extends "admin/_layout.html" %}
+{% import "admin/_kit.html" as kit with context %}
+{% block title %}Модерация{% endblock %}
+{% block heading %}Модерация{% endblock %}
+{% block content %}
+{# PR 358: the queue of reported comments and profiles (RanobeLib Admin.dc.html,
+   «Модерация») - tabs by type, the list on the left, one object's card on the right
+   (app/admin_moderation.py). On a phone the list and the card take turns: a chosen
+   object shows the card with «Очередь» back. #}
+<main class="wn-admin__main wn-admin-ov wn-admin-mod{% if detail_asked %} wn-admin-mod--detail{% endif %}" aria-labelledby="admin-page-title">
+  <div class="wn-admin-ov__bar">
+    <p class="wn-admin-ov__asof">Очередь жалоб, отсортированная по их количеству. Каждое решение можно отменить.</p>
+    <nav class="wn-admin-seg wn-admin-seg--tabs" aria-label="Типы объектов">
+      {% for tab in tabs %}
+      <a class="wn-admin-seg__item" href="{{ tab.href }}"{% if tab.active %} aria-current="page"{% endif %}>{{ tab.label }}</a>
+      {% endfor %}
+    </nav>
+  </div>
+
+  {% if not rows %}
+  <section class="wn-admin-panel" aria-label="Очередь">
+    {{ kit.empty_state("Очередь пуста", "Все жалобы разобраны. Новые появятся здесь автоматически.", icon_name="shield-check") }}
+  </section>
+  {% else %}
+  <div class="wn-admin-mod__layout">
+    <section class="wn-admin-mod__queue" aria-label="Очередь жалоб">
+      <ol class="wn-admin-mod__list">
+        {% for row in rows %}
+        <li>
+          <a class="wn-admin-mod__item" href="{{ row.href }}"{% if row.active %} aria-current="true"{% endif %}>
+            <span class="wn-admin-mod__meta">
+              <span class="wn-admin-mod__kind">{{ row.kind }}</span>
+              <span class="wn-admin-mod__who">{{ row.author }} · {{ row.when }}</span>
+              <span class="wn-admin-mod__count{% if row.many %} wn-admin-mod__count--many{% endif %}" title="Жалоб: {{ row.reports }}">{{ kit.icon("flag") }}{{ row.reports }}</span>
+            </span>
+            <span class="wn-admin-mod__text">{{ row.text }}</span>
+            <span class="wn-admin-mod__reason">{{ row.reason }}</span>
+          </a>
+        </li>
+        {% endfor %}
+      </ol>
+      {% if data.total > rows | length %}
+      <p class="wn-admin-field__hint">Показаны первые {{ rows | length }} из {{ data.total }} — разберите их, и очередь подтянет следующие.</p>
+      {% endif %}
+    </section>
+    {# The card: PR 358, next commit. #}
+  </div>
+  {% endif %}
+</main>
+{% endblock %}

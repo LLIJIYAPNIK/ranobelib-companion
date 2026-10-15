@@ -62,6 +62,11 @@ from app.admin_comments import (
 from app.admin_comments import safe_back as comments_safe_back
 from app.admin_kit import Undo, pop_toast, push_toast
 from app.admin_kit_demo import charts_context, table_context
+from app.admin_moderation import item_key as moderation_item_key
+from app.admin_moderation import parse_item as parse_moderation_item
+from app.admin_moderation import parse_type as parse_moderation_type
+from app.admin_moderation import queue_rows
+from app.admin_moderation import tabs as moderation_tabs
 from app.admin_overview import (
     DOWNLOAD_ERROR_COLUMNS,
     METRIC_INFO,
@@ -196,6 +201,8 @@ from app.db.admin_data import (
     user_id_columns,
 )
 from app.db.admin_data import PAGE_SIZE as TABLE_PAGE_SIZE
+from app.db.admin_reports import QUEUE_LIMIT
+from app.db.admin_reports import queue as report_queue
 from app.db.admin_search import search_comments, search_users
 from app.db.admin_stats import (
     AttentionCounts,
@@ -286,6 +293,7 @@ ADMIN_NAV: tuple[NavItem, ...] = (
     NavItem("analytics", "Аналитика", "chart", "/admin/analytics", "Контент"),
     NavItem("users", "Пользователи", "users", "/admin/users", "Сообщество"),
     NavItem("comments", "Комментарии", "comments", "/admin/comments", "Сообщество"),
+    NavItem("moderation", "Модерация", "shield-alert", "/admin/moderation", "Сообщество"),
     NavItem("tables", "Данные БД", "database", "/admin/tables", "Данные"),
     NavItem("system", "Система", "server", "/admin/system", "Платформа"),
     NavItem("audit", "Журнал", "history", "/admin/audit", "Платформа"),
@@ -980,6 +988,46 @@ async def _target_comment(conn: AsyncConnection, comment_id: int) -> CommentRow:
     if detail is None:
         raise HTTPException(status_code=404)
     return detail.comment
+
+
+# --- «Модерация»: the queue of reports (PR 358) --------------------------------------------
+
+
+@router.get("/moderation", response_model=None)
+async def admin_moderation(
+    request: Request,
+    _: Admin,
+    conn: Connection,
+    kind: Annotated[str | None, Query(alias="type", max_length=10)] = None,
+    item: Annotated[str | None, Query(max_length=24)] = None,
+) -> HTMLResponse:
+    """«Модерация»: the objects readers reported (POST /reports, PR 356), the most
+    reported first, then the one waiting longest - tabs by type, the list on the left
+    and one object's card on the right (``item``, or the top of the queue)."""
+    tz = get_settings().admin_timezone
+    current = parse_moderation_type(kind)
+    asked = parse_moderation_item(item)
+    try:
+        data = await report_queue(conn, current)
+    except QueryCanceled:
+        return _timed_out(request, "moderation")
+    if asked:
+        selected = moderation_item_key(*asked)
+    elif data.items:
+        selected = moderation_item_key(data.items[0].target_type, data.items[0].target_id)
+    else:
+        selected = None
+    return _page(
+        request,
+        "admin/moderation.html",
+        "moderation",
+        tabs=moderation_tabs(data, current),
+        rows=queue_rows(data.items, current, selected, tz),
+        data=data,
+        selected=selected,
+        detail_asked=asked is not None,
+        queue_limit=QUEUE_LIMIT,
+    )
 
 
 # How many of the latest failed downloads «Система» lists.

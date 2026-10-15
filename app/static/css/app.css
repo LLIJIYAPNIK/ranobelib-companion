@@ -25518,3 +25518,125 @@ body.reader-page--offline-copy .reader-paragraph-more {
   border-radius: 12px;
   font-size: 16px;
 }
+
+/* PR 358: «Модерация» (admin/moderation.html, RanobeLib Admin.dc.html) - the queue on the
+   left, the chosen object's card on the right. A queue row: type, author and when, the
+   report count (red from 5), two lines of the text and the main reason. */
+.wn-admin-mod .wn-admin-ov__bar {
+  flex-wrap: wrap;
+  gap: 12px;
+}
+
+.wn-admin-mod .wn-admin-seg {
+  max-width: 100%;
+  overflow-x: auto;
+}
+
+.wn-admin-mod__layout {
+  display: grid;
+  grid-template-columns: minmax(300px, 380px) minmax(0, 1fr);
+  gap: 16px;
+  align-items: start;
+}
+
+.wn-admin-mod__queue {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  min-width: 0;
+}
+
+.wn-admin-mod__list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.wn-admin-mod__item {
+  display: flex;
+  flex-direction: column;
+  gap: 7px;
+  padding: 13px 14px;
+  border: 1px solid var(--wn-border);
+  border-radius: 13px;
+  color: var(--wn-text);
+  text-decoration: none;
+}
+
+.wn-admin-mod__item:hover {
+  border-color: var(--wn-border-strong);
+}
+
+.wn-admin-mod__item[aria-current] {
+  border-color: color-mix(in srgb, var(--wn-primary) 45%, transparent);
+  background: color-mix(in srgb, var(--wn-primary) 9%, transparent);
+}
+
+.wn-admin-mod__item:focus-visible {
+  outline: none;
+  box-shadow: var(--wn-focus-ring);
+}
+
+.wn-admin-mod__meta {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  color: var(--wn-text-muted);
+  font: var(--wn-weight-medium) 11.5px/1.3 var(--wn-font-ui);
+}
+
+.wn-admin-mod__kind {
+  flex: none;
+  padding: 2px 7px;
+  border-radius: 6px;
+  background: rgba(255, 255, 255, 0.07);
+  color: var(--wn-text-secondary);
+}
+
+.wn-admin-mod__who {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.wn-admin-mod__count {
+  display: inline-flex;
+  flex: none;
+  align-items: center;
+  gap: 4px;
+  padding: 2px 7px;
+  border-radius: 6px;
+  background: color-mix(in srgb, var(--wn-admin-warning) 16%, transparent);
+  color: var(--wn-admin-warning);
+  font-weight: var(--wn-weight-semi-bold);
+}
+
+.wn-admin-mod__count--many {
+  background: color-mix(in srgb, var(--wn-danger) 16%, transparent);
+  color: var(--wn-danger);
+}
+
+.wn-admin-mod__count .wn-admin-icon {
+  width: 11px;
+  height: 11px;
+}
+
+.wn-admin-mod__text {
+  display: -webkit-box;
+  overflow: hidden;
+  overflow-wrap: anywhere;
+  font: 13.5px/1.45 var(--wn-font-ui);
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+  line-clamp: 2;
+}
+
+.wn-admin-mod__reason {
+  color: var(--wn-danger);
+  font: var(--wn-weight-medium) 11.5px/1.3 var(--wn-font-ui);
+}
