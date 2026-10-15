@@ -400,6 +400,8 @@ async def admin_home(
         compare_href=compare_href(args, chart_compare),
         popular=titles,
         attention=attention,
+        waiting=waiting,
+        waiting_rows=queue_rows(waiting.items, None, None, tz) if waiting else [],
         database_down=database_down,
         failed=failed,
         period_key=key,

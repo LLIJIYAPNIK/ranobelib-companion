@@ -25983,3 +25983,55 @@ body.reader-page--offline-copy .reader-paragraph-more {
     box-shadow: 0 0 0 2px var(--wn-surface);
   }
 }
+
+/* PR 359: «Ждут модерации» on the overview - the mockup's rows: the text (a link to that
+   object in the queue), then what it is, whose, why and how many reports. */
+.wn-admin-ov-mod {
+  display: flex;
+  flex-direction: column;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.wn-admin-ov-mod__item {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: 10px 0;
+  border-top: 1px solid var(--wn-border);
+}
+
+.wn-admin-ov-mod__text {
+  display: -webkit-box;
+  overflow: hidden;
+  color: var(--wn-text);
+  font: italic var(--wn-weight-medium) 14px/1.45 var(--wn-font-ui);
+  overflow-wrap: anywhere;
+  text-decoration: none;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+  line-clamp: 2;
+}
+
+.wn-admin-ov-mod__text:hover {
+  text-decoration: underline;
+  text-decoration-color: var(--wn-border-strong);
+}
+
+.wn-admin-ov-mod__text:focus-visible {
+  outline: none;
+  border-radius: 4px;
+  box-shadow: var(--wn-focus-ring);
+}
+
+.wn-admin-ov-mod__meta {
+  color: var(--wn-text-muted);
+  font: var(--wn-weight-medium) 11.5px/1.4 var(--wn-font-ui);
+}
+
+@media (max-width: 1024px), (pointer: coarse) {
+  .wn-admin-ov-mod__text {
+    min-height: 44px;
+  }
+}
