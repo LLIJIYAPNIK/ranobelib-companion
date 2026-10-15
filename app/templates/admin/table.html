@@ -14,7 +14,7 @@
   </div>
 
   <section class="wn-admin-panel" aria-label="{{ data.table }}">
-    {{ kit.filter_bar("/admin/tables/" ~ data.table, args, placeholder="Поиск по видимым колонкам") }}
+    {% call kit.filter_bar("/admin/tables/" ~ data.table, args, placeholder="Поиск по видимым колонкам") %}{{ kit.columns_menu(table_id, columns) }}{% endcall %}
     {% if data.rows %}
     {% call(row, column) kit.table(table_id, columns, data.rows, sort=data.sort, descending=data.descending, args=args, caption=data.table) %}
       {%- set value = row[column.key] -%}

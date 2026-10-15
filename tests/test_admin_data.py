@@ -229,3 +229,15 @@ async def test_search_finds_rows_case_insensitively(client: TestClient) -> None:
 
     assert "Найдено строк: 1" in html
     assert "alice@example.com" in html
+
+
+async def test_each_table_has_its_own_columns_menu(client: TestClient) -> None:
+    await _seed(client)
+    _admin(client)
+
+    html = client.get("/admin/tables/users").text
+
+    assert 'data-kit-columns="db-users"' in html and 'data-kit-table="db-users"' in html
+    # The first column can't be hidden - a row always stays identifiable.
+    assert re.search(r'value="id" checked disabled data-locked', html)
+    assert 'value="email" checked>' in html
