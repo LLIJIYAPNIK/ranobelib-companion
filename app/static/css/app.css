@@ -24679,7 +24679,8 @@ summary.wn-admin-audit__row:focus-visible {
 
 .wn-admin-search__all {
   margin-top: 4px;
-  color: var(--wn-primary-hover);
+  /* PR 354: the primary violet itself is under 4.5:1 on the raised surface. */
+  color: color-mix(in srgb, var(--wn-primary) 55%, #fff);
   font: var(--wn-weight-semi-bold) 12.5px/1.3 var(--wn-font-ui);
 }
 
@@ -24826,6 +24827,11 @@ summary.wn-admin-audit__row:focus-visible {
    sort links is hidden and each row is a card. */
 .wn-admin-table__sortbar {
   display: none;
+}
+
+.wn-admin-table[tabindex]:focus-visible {
+  outline: none;
+  box-shadow: var(--wn-focus-ring);
 }
 
 @media (max-width: 767px) {
