@@ -59,6 +59,15 @@
         </a>
         {% else %}
         {{ ui_friend_request_actions(profile_user.id, friend_state, next_url="/profile/" ~ profile_user.id, sm=false) }}
+        {% if current_user %}
+        {# PR 357: «⋯» -> «Пожаловаться» (profile-more.js: a popover on desktop, the shared
+           bottom sheet on phones; then the report form from base.html). Shown by the
+           script - without it the menu can't open anyway. #}
+        <button class="ui-icon-btn wn-profile-more" type="button" data-role="profile-more" aria-haspopup="menu" aria-expanded="false" aria-controls="profile-more-menu" aria-label="Ещё" data-profile-name="{{ profile_user.nickname or 'Профиль' }}" hidden><svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><circle cx="5" cy="12" r="1.8"/><circle cx="12" cy="12" r="1.8"/><circle cx="19" cy="12" r="1.8"/></svg></button>
+        <div class="ui-menu wn-profile-more__menu" id="profile-more-menu" role="menu" aria-label="Действия с профилем" data-role="profile-more-menu" data-user-id="{{ profile_user.id }}" hidden>
+          <button class="ui-menu__item" type="button" role="menuitem" data-role="profile-report"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 21V4M5 4h11l-2 4 2 4H5"/></svg>Пожаловаться</button>
+        </div>
+        {% endif %}
         {% endif %}
       </div>
     </div>
@@ -192,4 +201,7 @@
 <script src="{{ static_url('js/image-lightbox.js') }}" defer></script>
 <script src="{{ static_url('js/ribbon.js') }}" defer></script>
 <script src="{{ static_url('js/reading-calendar-tooltip.js') }}" defer></script>
+{% if current_user and not is_own_profile %}
+<script src="{{ static_url('js/profile-more.js') }}" defer></script>
+{% endif %}
 {% endblock %}

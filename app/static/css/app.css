@@ -25483,3 +25483,38 @@ body.reader-page--offline-copy .reader-paragraph-more {
     width: 100%;
   }
 }
+
+/* PR 357: «⋯» beside the friend buttons on someone else's profile (profile-more.js) - a
+   44px square in the same outline as those buttons; its menu a .ui-menu popover placed
+   from the button, or rows in the shared bottom sheet on phones. */
+.wn-profile-more {
+  border: 1px solid var(--border-strong);
+  background: var(--surface-2);
+}
+
+.wn-profile-more[hidden],
+.wn-profile-more__menu[hidden] {
+  display: none;
+}
+
+.wn-profile-more__menu {
+  position: fixed;
+  z-index: 80;
+}
+
+.bottom-sheet .wn-profile-more__menu {
+  position: static;
+  min-width: 0;
+  margin: 0 -12px;
+  padding: 0;
+  border: 0;
+  background: none;
+  box-shadow: none;
+}
+
+.bottom-sheet .wn-profile-more__menu .ui-menu__item {
+  gap: 14px;
+  min-height: 52px;
+  border-radius: 12px;
+  font-size: 16px;
+}

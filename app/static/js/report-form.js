@@ -97,6 +97,7 @@
     if (reported.has(key)) {
       // Opened from a menu in the sheet (the profile's «⋯» on a phone): close that too.
       window.bottomSheet?.close();
+      if (opener?.isConnected) opener.focus();
       showToast(ALREADY);
       return;
     }
