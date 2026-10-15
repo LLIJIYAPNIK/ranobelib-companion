@@ -381,16 +381,19 @@ async def test_hiding_with_undo(client: TestClient) -> None:
     guest = _browser()
     _login(client)
     csrf = _csrf(client, "/admin/comments")
-    back = f"/admin/comments?comment={comment}"
+    back = f"/admin/comments?q=%D0%A0&comment={comment}"
 
     hidden = client.post(
         f"/admin/comments/{comment}/hide", data={"csrf": csrf, "back": back}, follow_redirects=False
     )
-    toast = client.get(back).text
+    toast = client.get(hidden.headers["location"]).text
     again = client.post(f"/admin/comments/{comment}/hide", data={"csrf": csrf})
 
-    assert hidden.status_code == 303 and hidden.headers["location"] == back
+    # The list again, the drawer closed - a modal drawer would cover the toast's «Отменить».
+    assert hidden.status_code == 303 and hidden.headers["location"] == "/admin/comments?q=%D0%A0"
+    assert 'id="admin-comment"' not in toast
     assert f'action="/admin/comments/{comment}/show"' in toast and "Отменить" in toast
+    assert 'name="back" value="/admin/comments?q=%D0%A0"' in toast
     assert "уже скрыт" in again.text
     assert _public_thread(guest)["comments"] == []
     [entry] = await _entries(admin_audit.COMMENT_HIDE)

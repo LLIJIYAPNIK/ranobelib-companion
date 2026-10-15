@@ -785,6 +785,9 @@ async def admin_comment_hide(
         after={"hidden_at": hidden_at},
         extra=comment_audit_details(comment),
     )
+    # Back to the list with the drawer closed: the drawer is a modal dialog, and over the
+    # toast it would leave «Отменить» unreachable.
+    target = without_drawer(target)
     push_toast(
         request,
         f"Комментарий #{comment_id} скрыт",
