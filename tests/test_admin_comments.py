@@ -318,6 +318,11 @@ def client(tmp_path: Path, monkeypatch: pytest.MonkeyPatch, clock: Clock) -> Ite
         return {SLUG: TitleSummary("Поднятие уровня в одиночку", None)} if SLUG in slugs else {}
 
     monkeypatch.setattr(admin_api, "title_summaries", summaries)
+
+    async def quote(slug_url: str, volume: str, number: str, branch_id: str, index: int):
+        return None if index == 6 else f"Текст абзаца {index + 1} главы {number}"
+
+    monkeypatch.setattr(admin_api, "paragraph_text", quote)
     (tmp_path / "attachments").mkdir()
     with _client(
         monkeypatch,
@@ -369,6 +374,10 @@ async def test_the_list_and_the_drawer(client: TestClient) -> None:
     assert f'href="/titles/{SLUG}/chapters/1/5"' in page
     assert "<strong>Сам</strong> отвечу" in drawer  # rendered like the site renders it
     assert "В ответ на комментарий aster" in drawer and "абзац 1" in drawer
+    assert "Текст абзаца 1 главы 5" in drawer  # the paragraph it was left on
+    _, unloadable = await _site_comment("alice@example.com", "Где-то", paragraph=6)
+    without = client.get("/admin/comments", params={"comment": unloadable}).text
+    assert "Текст абзаца сейчас недоступен" in without and "абзац 7" in without
     assert f'action="/admin/comments/{reply}/hide"' in drawer
     assert "Есть вариант мягче" in drawer and "Удалить навсегда" in drawer
     missing = client.get("/admin/comments", params={"comment": 999_999}).text

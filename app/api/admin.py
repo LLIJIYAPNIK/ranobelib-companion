@@ -162,6 +162,7 @@ from app.db.bans import REASON_LIMIT as BAN_REASON_LIMIT
 from app.db.comments import hide_comment, purge_comment, show_comment
 from app.db.connection import get_connection
 from app.db.users import User, end_all_sessions, get_user_by_id, mark_email_verified
+from app.services.paragraphs import paragraph_text
 from app.services.titles import (
     TitleSummary,
     tables_of_contents,
@@ -725,6 +726,12 @@ async def admin_comments(
     if detail:
         slugs.append(detail.comment.slug_url)
     titles = await _title_summaries(slugs) if slugs else {}
+    quote = None
+    if detail:
+        row = detail.comment
+        quote = await paragraph_text(
+            row.slug_url, row.volume, row.number, row.branch_id, row.paragraph_index
+        )
     args = dict(request.query_params)
     filters = comment_filters(args)
     list_args = {name: value for name, value in args.items() if name != "comment"}
@@ -741,7 +748,7 @@ async def admin_comments(
         per_page=COMMENTS_PAGE_SIZE,
         sort=sort_key,
         descending=descending,
-        drawer=drawer_context(detail, titles, tz, args, bans) if detail else None,
+        drawer=drawer_context(detail, titles, tz, args, bans, quote) if detail else None,
         drawer_missing=comment is not None and detail is None,
         close_href=comments_back_href(list_args),
         back=comments_back_href(args),

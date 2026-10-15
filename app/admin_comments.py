@@ -27,6 +27,8 @@ from app.markdown_render import render_comment_body
 from app.services.titles import TitleSummary
 
 EXCERPT_LENGTH = 120
+# The drawer's quote of the paragraph the comment is on.
+PARAGRAPH_QUOTE_LENGTH = 600
 
 STATUS_LABELS = {PUBLISHED: "опубликован", HIDDEN: "скрыт", DELETED: "удалён"}
 STATUS_TONES = {PUBLISHED: "success", HIDDEN: "warning", DELETED: "neutral"}
@@ -216,6 +218,9 @@ class DrawerContext:
     chapter: str
     chapter_href: str
     paragraph: int  # 1-based, as a person counts
+    # Its text (app/services/paragraphs.py), None when the chapter couldn't be loaded;
+    # "" for a paragraph that's only an illustration.
+    paragraph_text: str | None
     items: list[SummaryItem]
     parent_author: str | None
     parent_text: str | None
@@ -232,6 +237,7 @@ def drawer_context(
     tz: str,
     args: Mapping[str, object],
     bans: int,
+    paragraph_text: str | None = None,
 ) -> DrawerContext:
     row = detail.comment
     deleted = row.status == DELETED
@@ -258,6 +264,9 @@ def drawer_context(
         chapter=chapter_label(row),
         chapter_href=chapter_href(row),
         paragraph=row.paragraph_index + 1,
+        paragraph_text=_shorten(paragraph_text, PARAGRAPH_QUOTE_LENGTH)
+        if paragraph_text is not None
+        else None,
         items=items,
         parent_author=parent.author if parent else None,
         parent_text=excerpt(parent, 400) if parent else None,
@@ -272,3 +281,7 @@ def drawer_context(
         ],
         replies=detail.replies,
     )
+
+
+def _shorten(text: str, length: int) -> str:
+    return text if len(text) <= length else text[:length].rstrip() + "…"

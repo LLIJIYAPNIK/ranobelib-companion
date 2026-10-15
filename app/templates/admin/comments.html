@@ -56,6 +56,14 @@
   <section class="wn-admin-actions" aria-labelledby="admin-comment-where">
     <h3 class="wn-admin-actions__title" id="admin-comment-where">Где</h3>
     <p class="wn-admin-cm__place"><span class="wn-admin-cm__title">{{ drawer.title }}</span> · <a class="wn-admin-cm__link" href="{{ drawer.chapter_href }}" target="_blank" rel="noopener">{{ drawer.chapter }}{{ kit.icon("external") }}</a> · абзац {{ drawer.paragraph }}</p>
+    {% if drawer.paragraph_text is not none %}
+    <blockquote class="wn-admin-cm__parent wn-admin-cm__paragraph">
+      <span class="wn-admin-cm__parent-label">Абзац {{ drawer.paragraph }}</span>
+      <span class="wn-admin-cm__parent-text">{{ drawer.paragraph_text or "[иллюстрация без текста]" }}</span>
+    </blockquote>
+    {% else %}
+    <p class="wn-admin-field__hint">Текст абзаца сейчас недоступен — откройте главу по ссылке.</p>
+    {% endif %}
     {% if drawer.parent_text %}
     <blockquote class="wn-admin-cm__parent">
       <span class="wn-admin-cm__parent-label">В ответ на комментарий {{ drawer.parent_author }}</span>
