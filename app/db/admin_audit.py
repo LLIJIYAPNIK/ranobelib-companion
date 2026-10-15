@@ -42,6 +42,10 @@ USER_SEND_PASSWORD_RESET = "user_send_password_reset"
 # PR 349: blocking.
 USER_BAN = "user_ban"
 USER_UNBAN = "user_unban"
+# PR 350: «Комментарии».
+COMMENT_HIDE = "comment_hide"
+COMMENT_SHOW = "comment_show"
+COMMENT_DELETE = "comment_delete"
 
 _dumps = partial(json.dumps, ensure_ascii=False, default=str)
 

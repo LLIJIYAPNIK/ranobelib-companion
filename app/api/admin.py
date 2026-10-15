@@ -45,7 +45,9 @@ from app.admin_analytics import (
 from app.admin_comments import COLUMNS as COMMENT_COLUMNS
 from app.admin_comments import back_href as comments_back_href
 from app.admin_comments import (
+    comment_audit_details,
     comment_filters,
+    comment_label,
     comment_rows,
     drawer_context,
     parse_kind,
@@ -118,6 +120,9 @@ from app.db.admin_analytics import (
     title_totals,
 )
 from app.db.admin_audit import (
+    COMMENT_DELETE,
+    COMMENT_HIDE,
+    COMMENT_SHOW,
     USER_BAN,
     USER_CONFIRM_EMAIL,
     USER_END_SESSIONS,
@@ -128,7 +133,7 @@ from app.db.admin_comments import DEFAULT_SORT as COMMENT_DEFAULT_SORT
 from app.db.admin_comments import DELETED as COMMENT_DELETED
 from app.db.admin_comments import PAGE_SIZE as COMMENTS_PAGE_SIZE
 from app.db.admin_comments import SORTS as COMMENT_SORTS
-from app.db.admin_comments import comment_detail, list_comments
+from app.db.admin_comments import CommentRow, comment_detail, list_comments
 from app.db.admin_data import (
     MASK,
     QUERY_TIMEOUT_MS,
@@ -764,11 +769,22 @@ async def admin_comment_hide(
     модератором». An already hidden or deleted comment is left alone."""
     check_csrf(request, csrf)
     target = comments_safe_back(back)
+    comment = await _target_comment(conn, comment_id)
     hidden_at = await hide_comment(conn, comment_id)
     if hidden_at is None:
-        await _comment_or_404(conn, comment_id)
         push_toast(request, f"Комментарий #{comment_id} уже скрыт или удалён", tone="error")
         return RedirectResponse(target, status_code=303)
+    await admin_audit.record_change(
+        conn,
+        COMMENT_HIDE,
+        ip=client_ip(request),
+        entity="comment",
+        entity_id=comment_id,
+        entity_label=comment_label(comment),
+        before={"hidden_at": None},
+        after={"hidden_at": hidden_at},
+        extra=comment_audit_details(comment),
+    )
     push_toast(
         request,
         f"Комментарий #{comment_id} скрыт",
@@ -789,11 +805,22 @@ async def admin_comment_show(
     """«Показать» (and the «Отменить» of «Скрыть»): back in the thread for everyone."""
     check_csrf(request, csrf)
     target = comments_safe_back(back)
+    comment = await _target_comment(conn, comment_id)
     hidden_at = await show_comment(conn, comment_id)
     if hidden_at is None:
-        await _comment_or_404(conn, comment_id)
         push_toast(request, f"Комментарий #{comment_id} не скрыт", tone="error")
         return RedirectResponse(target, status_code=303)
+    await admin_audit.record_change(
+        conn,
+        COMMENT_SHOW,
+        ip=client_ip(request),
+        entity="comment",
+        entity_id=comment_id,
+        entity_label=comment_label(comment),
+        before={"hidden_at": hidden_at},
+        after={"hidden_at": None},
+        extra=comment_audit_details(comment),
+    )
     push_toast(request, f"Комментарий #{comment_id} снова виден читателям")
     return RedirectResponse(target, status_code=303)
 
@@ -827,13 +854,30 @@ async def admin_comment_delete(
         raise HTTPException(status_code=404)
     if purged.attachment_path:
         remove_comment_attachment(purged.attachment_path)
+    await admin_audit.record_change(
+        conn,
+        COMMENT_DELETE,
+        ip=client_ip(request),
+        entity="comment",
+        entity_id=comment_id,
+        entity_label=comment_label(detail.comment),
+        before={"status": detail.comment.status},
+        after={"status": "removed" if purged.removed else "deleted_kept_for_replies"},
+        extra={
+            **comment_audit_details(detail.comment),
+            "replies": detail.replies,
+            "attachment_removed": bool(purged.attachment_path),
+        },
+    )
     push_toast(request, f"Комментарий #{comment_id} удалён навсегда")
     return RedirectResponse(without_drawer(target) if purged.removed else target, status_code=303)
 
 
-async def _comment_or_404(conn: AsyncConnection, comment_id: int) -> None:
-    if await comment_detail(conn, comment_id) is None:
+async def _target_comment(conn: AsyncConnection, comment_id: int) -> CommentRow:
+    detail = await comment_detail(conn, comment_id)
+    if detail is None:
         raise HTTPException(status_code=404)
+    return detail.comment
 
 
 @router.get("/tables", response_model=None)

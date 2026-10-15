@@ -175,6 +175,26 @@ def without_drawer(back: str) -> str:
     return path + (f"?{'&'.join(pairs)}" if pairs else "")
 
 
+AUDIT_EXCERPT_LENGTH = 300
+
+
+def comment_label(row: CommentRow) -> str:
+    """The action log's name for a comment: «#42 · nick»."""
+    return f"#{row.id} · {row.author}"
+
+
+def comment_audit_details(row: CommentRow) -> dict[str, object]:
+    """What the action log keeps about the comment an action touched: whose it was,
+    where, and the start of its text - so a deleted comment's log entry still says
+    what was removed."""
+    return {
+        "author_id": row.user_id,
+        "author": row.author,
+        "where": f"{row.slug_url} · {chapter_label(row)} · абзац {row.paragraph_index + 1}",
+        "text": excerpt(row, AUDIT_EXCERPT_LENGTH),
+    }
+
+
 @dataclass(frozen=True)
 class SummaryItem:
     label: str
