@@ -25876,3 +25876,58 @@ body.reader-page--offline-copy .reader-paragraph-more {
   font: var(--wn-weight-medium) 14px/1.4 var(--wn-font-ui);
   cursor: pointer;
 }
+
+/* «Модерация» on a phone (the mockup's compact layout): one column, the list and the
+   card take turns - with an object chosen (?item=, .wn-admin-mod--detail) the card with
+   «Очередь» back, otherwise just the list. The decisions stack full width, 44px tall. */
+@media (max-width: 767px) {
+  .wn-admin-mod__layout {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .wn-admin-mod:not(.wn-admin-mod--detail) .wn-admin-mod__card,
+  .wn-admin-mod--detail .wn-admin-mod__queue {
+    display: none;
+  }
+
+  .wn-admin-mod__back {
+    display: inline-flex;
+  }
+
+  .wn-admin-mod__head,
+  .wn-admin-mod__body {
+    padding: 14px;
+  }
+
+  .wn-admin-mod__head .wn-admin-mod__back {
+    flex-basis: 100%;
+    justify-content: flex-start;
+    width: max-content;
+  }
+
+  .wn-admin-mod__body > .wn-admin-mod__back {
+    align-self: flex-start;
+  }
+
+  .wn-admin-mod__text-full {
+    font-size: 16px;
+  }
+
+  .wn-admin-mod__foot {
+    flex-direction: column;
+    align-items: stretch;
+    padding: 14px;
+  }
+
+  .wn-admin-mod__foot .wn-admin-btn {
+    justify-content: center;
+  }
+
+  .wn-admin-mod__ban {
+    margin-left: 0;
+  }
+
+  .wn-admin-mod__item {
+    min-height: 44px;
+  }
+}
