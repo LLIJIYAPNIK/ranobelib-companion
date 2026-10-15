@@ -12,11 +12,9 @@ only.
 from __future__ import annotations
 
 from dataclasses import dataclass
-from datetime import UTC, datetime
+from datetime import UTC, datetime, timedelta
 
 from psycopg import AsyncConnection
-
-TARGET_TYPES = ("comment", "profile")
 
 
 @dataclass(frozen=True)
@@ -77,6 +75,19 @@ async def open_report(
     )
     row = await cursor.fetchone()
     return Report(**row) if row else None
+
+
+async def reports_filed_last_day(
+    conn: AsyncConnection, reporter_user_id: int, now: datetime | None = None
+) -> int:
+    """How many reports the reader filed in the 24 hours before `now`, whatever became
+    of them - a dismissed report still counts toward the daily limit."""
+    since = (_now(now) - timedelta(days=1)).isoformat()
+    cursor = await conn.execute(
+        "SELECT COUNT(*) AS n FROM reports WHERE reporter_user_id = %s AND created_at > %s",
+        (reporter_user_id, since),
+    )
+    return (await cursor.fetchone())["n"]
 
 
 async def file_report(

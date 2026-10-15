@@ -17,9 +17,14 @@ from fastapi.responses import JSONResponse
 
 from app.auth.dependencies import get_current_user
 from app.db.connection import connection
-from app.db.reports import comment_target, file_report
+from app.db.reports import (
+    comment_target,
+    file_report,
+    open_report,
+    reports_filed_last_day,
+)
 from app.db.users import User, get_user_by_id
-from app.reports import DETAILS_LIMIT, REPORT_REASONS
+from app.reports import DAILY_LIMIT, DETAILS_LIMIT, REPORT_REASONS
 
 router = APIRouter(prefix="/reports")
 
@@ -35,7 +40,7 @@ async def post_report(
 ) -> JSONResponse:
     """201 for a new report; 200 when this reader's open report on the object already
     exists - its reason and details are replaced, and the form says «Вы уже отправили
-    жалобу» rather than counting a second one.
+    жалобу» rather than counting a second one. 429 past DAILY_LIMIT new reports a day.
 
     Not ``require_current_user``: that redirects to /login, and a fetch() from the form
     needs a status and a message instead."""
@@ -68,6 +73,16 @@ async def post_report(
             if await get_user_by_id(conn, target_id) is None:
                 raise HTTPException(status_code=404, detail="Пользователь не найден")
 
+        # The daily limit is for new reports: a reader may still change the reason of
+        # one already open. Counted in the database, so a restart doesn't reset it.
+        if (
+            await open_report(conn, user.id, target_type, target_id) is None
+            and await reports_filed_last_day(conn, user.id) >= DAILY_LIMIT
+        ):
+            raise HTTPException(
+                status_code=429,
+                detail="Слишком много жалоб за сутки - попробуйте завтра",
+            )
         _, created = await file_report(
             conn, user.id, target_type, target_id, reason=reason, details=details
         )
