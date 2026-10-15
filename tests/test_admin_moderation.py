@@ -643,6 +643,12 @@ async def test_undo_of_something_else_does_nothing(client: TestClient, entry: st
     assert "Отменять нечего" in client.get("/admin/moderation").text
 
 
+@pytest.mark.parametrize("action", ["dismiss", "hide", "ban"])
+async def test_an_unknown_target_type_is_a_404(client: TestClient, action: str) -> None:
+    # Titles can't be reported (their text is ranobelib.me's), so there's no such queue.
+    assert _post(client, f"/admin/moderation/title/1/{action}").status_code == 404
+
+
 # --- the phone layout ---------------------------------------------------------------------
 
 

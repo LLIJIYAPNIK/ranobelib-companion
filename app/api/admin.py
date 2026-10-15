@@ -15,7 +15,7 @@ import time
 from collections.abc import Awaitable, Callable
 from dataclasses import dataclass
 from datetime import datetime
-from typing import Annotated, Literal
+from typing import Annotated
 from urllib.parse import parse_qs, urlsplit
 from zoneinfo import ZoneInfo
 
@@ -1058,7 +1058,7 @@ async def admin_moderation(
 # closed, one entry in the action log - whose id the toast's «Отменить» sends back - and
 # the queue again, on the next object.
 
-TargetType = Annotated[Literal["comment", "profile"], Path()]
+TargetType = Annotated[str, Path(max_length=10)]
 TargetId = Annotated[int, Path(ge=1, le=2_147_483_647)]
 Back = Annotated[str, Form(max_length=2000)]
 
@@ -1075,6 +1075,8 @@ class ModerationTarget:
 async def _moderation_target(
     conn: AsyncConnection, target_type: str, target_id: int
 ) -> ModerationTarget:
+    if target_type not in ("comment", "profile"):
+        raise HTTPException(status_code=404)
     if target_type == "comment":
         detail = await comment_detail(conn, target_id)
         if detail is None:

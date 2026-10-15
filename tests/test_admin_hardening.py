@@ -108,7 +108,12 @@ def test_an_oversized_value_is_refused(admin: TestClient) -> None:
 
 
 def _url(path: str) -> str:
-    return path.replace("{user_id}", "1").replace("{comment_id}", "1")
+    return (
+        path.replace("{user_id}", "1")
+        .replace("{comment_id}", "1")
+        .replace("{target_type}", "comment")
+        .replace("{target_id}", "1")
+    )
 
 
 def test_every_post_refuses_a_missing_or_wrong_csrf_token(admin: TestClient) -> None:
