@@ -51,6 +51,15 @@ async def open_pool() -> None:
     await _get_pool().open()
 
 
+def pool_stats() -> tuple[int, int, int]:
+    """PR 351: (connections open in this process's pool, how many of them are idle, its
+    max_size) - for the admin panel's «Система». Zeros before the pool is opened."""
+    if _pool is None:
+        return 0, 0, 0
+    stats = _pool.get_stats()
+    return stats.get("pool_size", 0), stats.get("pool_available", 0), _pool.max_size
+
+
 async def close_pool() -> None:
     """Closes the pool and forgets it - called from app.main's lifespan at shutdown (and
     by tests/db_reset.py between tests, to reclaim connections a short-lived TestClient's

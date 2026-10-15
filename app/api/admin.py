@@ -76,7 +76,7 @@ from app.admin_overview import (
     popular_titles,
     recent_user_rows,
 )
-from app.admin_system import app_service, versions
+from app.admin_system import app_service, database_service, ranobelib_service, versions
 from app.admin_users import (
     BAN_TERM_LABELS,
     back_href,
@@ -154,6 +154,7 @@ from app.db.admin_stats import (
     cached_top_titles,
     parse_period,
 )
+from app.db.admin_system import DatabaseStatus, database_status
 from app.db.admin_users import DEFAULT_SORT as USER_DEFAULT_SORT
 from app.db.admin_users import PAGE_SIZE as USERS_PAGE_SIZE
 from app.db.admin_users import SORTS as USER_SORTS
@@ -164,6 +165,7 @@ from app.db.comments import hide_comment, purge_comment, show_comment
 from app.db.connection import get_connection
 from app.db.users import User, end_all_sessions, get_user_by_id, mark_email_verified
 from app.services.paragraphs import paragraph_text
+from app.services.probe import probe_ranobelib
 from app.services.titles import (
     TitleSummary,
     tables_of_contents,
@@ -901,9 +903,25 @@ async def _target_comment(conn: AsyncConnection, comment_id: int) -> CommentRow:
 @router.get("/system", response_model=None)
 async def admin_system(request: Request, _: Admin) -> HTMLResponse:
     """«Система» (PR 351): this process, its versions and the services it depends on -
-    measured on each visit, since the process started (no external monitoring)."""
+    measured on each visit, since the process started (no external monitoring). The
+    connection is taken here, not as a dependency, so with the database down the page
+    still opens and says so."""
     tz = get_settings().admin_timezone
-    services = [app_service(STARTED_AT, uptime_seconds(), tz)]
+    database: DatabaseStatus | None = None
+    timed_out = False
+    try:
+        async with db_connection.connection() as conn:
+            database = await database_status(conn)
+    except QueryCanceled:
+        logger.warning("The admin system page's database check timed out")
+        timed_out = True
+    except (psycopg.OperationalError, PoolTimeout):
+        logger.exception("The admin system page could not reach the database")
+    services = [
+        app_service(STARTED_AT, uptime_seconds(), tz),
+        database_service(database, db_connection.pool_stats(), timed_out),
+        ranobelib_service(await probe_ranobelib(), tz),
+    ]
     return _page(
         request,
         "admin/system.html",
