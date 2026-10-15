@@ -48,6 +48,18 @@ USER_UNBAN = "user_unban"
 COMMENT_HIDE = "comment_hide"
 COMMENT_SHOW = "comment_show"
 COMMENT_DELETE = "comment_delete"
+# PR 358: «Модерация»'s decisions on reports, and «Отменить» of one.
+REPORTS_DISMISS = "reports_dismiss"
+REPORTS_HIDE_COMMENT = "reports_hide_comment"
+REPORTS_CLEAR_PROFILE = "reports_clear_profile"
+REPORTS_BAN_AUTHOR = "reports_ban_author"
+REPORTS_UNDO = "reports_undo"
+MODERATION_DECISIONS = (
+    REPORTS_DISMISS,
+    REPORTS_HIDE_COMMENT,
+    REPORTS_CLEAR_PROFILE,
+    REPORTS_BAN_AUTHOR,
+)
 # PR 352: a CSV export from «Данные БД» - nothing changes, but data leaves the panel.
 DATA_EXPORT = "data_export"
 # PR 353: the same for the log's own CSV export.

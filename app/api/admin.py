@@ -15,7 +15,7 @@ import time
 from collections.abc import Awaitable, Callable
 from dataclasses import dataclass
 from datetime import datetime
-from typing import Annotated
+from typing import Annotated, Literal
 from zoneinfo import ZoneInfo
 
 import httpx
@@ -67,6 +67,7 @@ from app.admin_moderation import comment_card, moderation_href, profile_card, qu
 from app.admin_moderation import item_key as moderation_item_key
 from app.admin_moderation import parse_item as parse_moderation_item
 from app.admin_moderation import parse_type as parse_moderation_type
+from app.admin_moderation import safe_back as moderation_safe_back
 from app.admin_moderation import tabs as moderation_tabs
 from app.admin_moderation import with_history as moderation_with_history
 from app.admin_overview import (
@@ -178,6 +179,10 @@ from app.db.admin_audit import (
     COMMENT_HIDE,
     COMMENT_SHOW,
     DATA_EXPORT,
+    REPORTS_BAN_AUTHOR,
+    REPORTS_CLEAR_PROFILE,
+    REPORTS_DISMISS,
+    REPORTS_HIDE_COMMENT,
     USER_BAN,
     USER_CONFIRM_EMAIL,
     USER_END_SESSIONS,
@@ -225,7 +230,15 @@ from app.db.bans import BAN_TERMS, AlreadyBanned, active_ban, ban_history, ban_u
 from app.db.bans import REASON_LIMIT as BAN_REASON_LIMIT
 from app.db.comments import hide_comment, purge_comment, show_comment
 from app.db.connection import get_connection
-from app.db.users import User, end_all_sessions, get_user_by_id, mark_email_verified
+from app.db.reports import ACTIONED, DISMISSED, resolve_reports
+from app.db.users import (
+    User,
+    clear_profile,
+    end_all_sessions,
+    get_user_by_id,
+    mark_email_verified,
+    restore_profile,
+)
 from app.jobs.store import list_active_jobs
 from app.request_metrics import MAX_SAMPLES as REQUEST_SAMPLES
 from app.request_metrics import per_minute, summarize
@@ -1031,6 +1044,253 @@ async def admin_moderation(
         detail_asked=asked is not None,
         back_href=moderation_href(current),
         queue_limit=QUEUE_LIMIT,
+        ban_terms=BAN_TERM_LABELS,
+        reason_limit=BAN_REASON_LIMIT,
+    )
+
+
+# --- «Модерация»: the decisions (PR 358) ---------------------------------------------------
+# Each is a CSRF-checked POST from a confirmation dialog on the card: the change made with
+# the site's own function (PR 349's block, PR 350's hide), the object's open reports
+# closed, one entry in the action log - whose id the toast's «Отменить» sends back - and
+# the queue again, on the next object.
+
+TargetType = Annotated[Literal["comment", "profile"], Path()]
+TargetId = Annotated[int, Path(ge=1, le=2_147_483_647)]
+Back = Annotated[str, Form(max_length=2000)]
+
+
+@dataclass(frozen=True)
+class ModerationTarget:
+    label: str  # the action log's name for it
+    author_id: int | None  # None when the object is gone
+    author: str | None
+    comment: CommentRow | None = None
+    details: dict[str, object] | None = None  # what the log keeps about it
+
+
+async def _moderation_target(
+    conn: AsyncConnection, target_type: str, target_id: int
+) -> ModerationTarget:
+    if target_type == "comment":
+        detail = await comment_detail(conn, target_id)
+        if detail is None:
+            return ModerationTarget(f"#{target_id}", None, None)
+        row = detail.comment
+        return ModerationTarget(
+            comment_label(row), row.user_id, row.author, row, comment_audit_details(row)
+        )
+    user = await get_user_by_id(conn, target_id)
+    if user is None:
+        return ModerationTarget(f"#{target_id}", None, None)
+    return ModerationTarget(_label(user), user.id, _label(user))
+
+
+def _decided(request: Request, message: str, entry: int, back: str, item: str) -> RedirectResponse:
+    """The toast with «Отменить» (back to this object, its reports reopened) and the
+    queue - whose top is now the next object."""
+    push_toast(
+        request,
+        message,
+        undo=Undo("/admin/moderation/undo", {"entry": str(entry), "back": back, "item": item}),
+    )
+    return RedirectResponse(back, status_code=303)
+
+
+def _nothing_open(request: Request, back: str) -> RedirectResponse:
+    push_toast(request, "Жалоб на этот объект уже нет — решение принято раньше", tone="error")
+    return RedirectResponse(back, status_code=303)
+
+
+@router.post(
+    "/moderation/{target_type}/{target_id}/dismiss", response_model=None, dependencies=WRITES
+)
+async def admin_moderation_dismiss(
+    request: Request,
+    target_type: TargetType,
+    target_id: TargetId,
+    _: Admin,
+    conn: Connection,
+    csrf: Csrf = "",
+    back: Back = "",
+) -> Response:
+    """«Одобрить»: the object stays as it is; its reports close as dismissed."""
+    check_csrf(request, csrf)
+    target = moderation_safe_back(back)
+    found = await _moderation_target(conn, target_type, target_id)
+    ids = await resolve_reports(
+        conn, target_type, target_id, status=DISMISSED, resolution="dismissed"
+    )
+    if not ids:
+        return _nothing_open(request, target)
+    entry = await admin_audit.record_change(
+        conn,
+        REPORTS_DISMISS,
+        ip=client_ip(request),
+        entity=target_type,
+        entity_id=target_id,
+        entity_label=found.label,
+        before={"status": "open"},
+        after={"status": "dismissed"},
+        extra={"reports": len(ids), "report_ids": ids, **(found.details or {})},
+    )
+    return _decided(
+        request,
+        "Одобрено: жалобы закрыты, контент остаётся",
+        entry,
+        target,
+        moderation_item_key(target_type, target_id),
+    )
+
+
+@router.post("/moderation/{target_type}/{target_id}/hide", response_model=None, dependencies=WRITES)
+async def admin_moderation_hide(
+    request: Request,
+    target_type: TargetType,
+    target_id: TargetId,
+    _: Admin,
+    conn: Connection,
+    csrf: Csrf = "",
+    bio: Annotated[str, Form(max_length=5)] = "",
+    avatar: Annotated[str, Form(max_length=5)] = "",
+    back: Back = "",
+) -> Response:
+    """«Скрыть»: a comment is hidden from readers (PR 350 - its author still sees it,
+    marked); a profile has «о себе» and/or the avatar cleared (the ticked ones). The
+    reports close as actioned."""
+    check_csrf(request, csrf)
+    target = moderation_safe_back(back)
+    found = await _moderation_target(conn, target_type, target_id)
+    if found.author_id is None:
+        push_toast(request, "Объекта больше нет — жалобы можно только закрыть", tone="error")
+        return RedirectResponse(target, status_code=303)
+    if target_type == "comment":
+        if found.comment is not None and found.comment.status == COMMENT_DELETED:
+            push_toast(request, "Автор уже удалил комментарий — закройте жалобы", tone="error")
+            return RedirectResponse(target, status_code=303)
+        hidden_at = await hide_comment(conn, target_id)
+        ids = await resolve_reports(
+            conn, target_type, target_id, status=ACTIONED, resolution="comment_hidden"
+        )
+        if not ids:
+            if hidden_at is not None:
+                await show_comment(conn, target_id)
+            return _nothing_open(request, target)
+        entry = await admin_audit.record_change(
+            conn,
+            REPORTS_HIDE_COMMENT,
+            ip=client_ip(request),
+            entity="comment",
+            entity_id=target_id,
+            entity_label=found.label,
+            # No hidden_at «after» when it was hidden already: «Отменить» then leaves it so.
+            before={"hidden_at": None} if hidden_at else None,
+            after={"hidden_at": hidden_at} if hidden_at else None,
+            extra={"reports": len(ids), "report_ids": ids, **(found.details or {})},
+        )
+        message = (
+            "Комментарий скрыт от читателей"
+            if hidden_at
+            else "Комментарий уже был скрыт — жалобы закрыты"
+        )
+        return _decided(
+            request, message, entry, target, moderation_item_key(target_type, target_id)
+        )
+    if bio != "1" and avatar != "1":
+        push_toast(request, "Не очищено: отметьте «о себе» или аватар", tone="error")
+        return RedirectResponse(target, status_code=303)
+    cleared = await clear_profile(conn, target_id, bio=bio == "1", avatar=avatar == "1")
+    if not cleared:
+        push_toast(request, "Не очищено: в профиле нечего убирать", tone="error")
+        return RedirectResponse(target, status_code=303)
+    ids = await resolve_reports(
+        conn, target_type, target_id, status=ACTIONED, resolution="profile_cleared"
+    )
+    if not ids:
+        await restore_profile(conn, target_id, cleared)
+        return _nothing_open(request, target)
+    entry = await admin_audit.record_change(
+        conn,
+        REPORTS_CLEAR_PROFILE,
+        ip=client_ip(request),
+        entity="profile",
+        entity_id=target_id,
+        entity_label=found.label,
+        before=cleared,
+        after=dict.fromkeys(cleared),
+        extra={"reports": len(ids), "report_ids": ids},
+    )
+    what = " и ".join(
+        name for key, name in (("bio", "«о себе»"), ("avatar_path", "аватар")) if key in cleared
+    )
+    return _decided(
+        request,
+        f"Профиль «{found.label}»: {what} очищено",
+        entry,
+        target,
+        moderation_item_key(target_type, target_id),
+    )
+
+
+@router.post("/moderation/{target_type}/{target_id}/ban", response_model=None, dependencies=WRITES)
+async def admin_moderation_ban(
+    request: Request,
+    target_type: TargetType,
+    target_id: TargetId,
+    _: Admin,
+    conn: Connection,
+    csrf: Csrf = "",
+    term: Annotated[str, Form(max_length=10)] = "",
+    reason: Annotated[str, Form(max_length=2000)] = "",
+    back: Back = "",
+) -> Response:
+    """«Заблокировать автора» (PR 349's block: a term and an optional reason the person
+    sees). The object itself is left as it is; the reports close as actioned."""
+    check_csrf(request, csrf)
+    target = moderation_safe_back(back)
+    found = await _moderation_target(conn, target_type, target_id)
+    if found.author_id is None:
+        push_toast(request, "Объекта больше нет — жалобы можно только закрыть", tone="error")
+        return RedirectResponse(target, status_code=303)
+    if term not in BAN_TERMS:
+        push_toast(request, "Не заблокировано: выберите срок", tone="error")
+        return RedirectResponse(target, status_code=303)
+    try:
+        ban = await ban_user(conn, found.author_id, term=term, reason=reason)
+    except AlreadyBanned:
+        push_toast(request, f"«{found.author}» уже заблокирован", tone="error")
+        return RedirectResponse(target, status_code=303)
+    ids = await resolve_reports(
+        conn, target_type, target_id, status=ACTIONED, resolution="author_banned"
+    )
+    if not ids:
+        await lift_ban(conn, found.author_id)
+        return _nothing_open(request, target)
+    entry = await admin_audit.record_change(
+        conn,
+        REPORTS_BAN_AUTHOR,
+        ip=client_ip(request),
+        entity=target_type,
+        entity_id=target_id,
+        entity_label=found.label,
+        before={"banned": False},
+        after={"banned": True, "expires_at": ban.expires_at},
+        extra={
+            "author_id": found.author_id,
+            "author": found.author,
+            "term": term,
+            "reason": ban.reason,
+            "ban_id": ban.id,
+            "reports": len(ids),
+            "report_ids": ids,
+        },
+    )
+    return _decided(
+        request,
+        f"«{found.author}» заблокирован ({dict(BAN_TERM_LABELS)[term]})",
+        entry,
+        target,
+        moderation_item_key(target_type, target_id),
     )
 
 

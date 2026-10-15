@@ -127,6 +127,19 @@
         </section>
         {% endif %}
       </div>
+      <footer class="wn-admin-mod__foot">
+        <button class="wn-admin-btn wn-admin-mod__approve" type="button" data-kit-open="admin-mod-dismiss">{{ kit.icon("check") }}Одобрить</button>
+        {% if card.state not in ("gone", "deleted") %}
+        {% if card.target_type == "comment" %}
+        <button class="wn-admin-btn" type="button" data-kit-open="admin-mod-hide">{{ kit.icon("eye-off") }}Скрыть</button>
+        {% elif card.bio or card.avatar_url %}
+        <button class="wn-admin-btn" type="button" data-kit-open="admin-mod-clear">{{ kit.icon("eye-off") }}Очистить профиль</button>
+        {% endif %}
+        {% endif %}
+        {% if card.author_id and not card.ban %}
+        <button class="wn-admin-btn wn-admin-btn--danger wn-admin-mod__ban" type="button" data-kit-open="admin-mod-ban">{{ kit.icon("ban") }}Заблокировать автора</button>
+        {% endif %}
+      </footer>
     </article>
     {% elif selected %}
     <section class="wn-admin-panel wn-admin-mod__card" aria-label="Объект">
@@ -139,4 +152,38 @@
   </div>
   {% endif %}
 </main>
+
+{% if card %}
+{# PR 358: every decision goes through a dialog; each lands in the action log, and its
+   toast offers «Отменить». #}
+{% set action = "/admin/moderation/" ~ card.target_type ~ "/" ~ card.target_id %}
+{% set count = card.reports ~ " " ~ plural(card.reports, "жалоба", "жалобы", "жалоб") %}
+{{ kit.confirm("admin-mod-dismiss", "Одобрить и закрыть жалобы?", action ~ "/dismiss", confirm_label="Одобрить", lead="Контент остаётся как есть.", lines=[count ~ " закроются как отклонённые", "Читатели, которые жаловались, ничего не получат"], fields={"back": back_href}, tone="primary") }}
+{% if card.target_type == "comment" and card.state not in ("gone", "deleted") %}
+{% if card.state == "hidden" %}
+{{ kit.confirm("admin-mod-hide", "Закрыть жалобы как подтверждённые?", action ~ "/hide", confirm_label="Закрыть", lead="Комментарий уже скрыт — он таким и останется.", lines=[count ~ " закроются как подтверждённые"], fields={"back": back_href}, tone="primary") }}
+{% else %}
+{{ kit.confirm("admin-mod-hide", "Скрыть комментарий?", action ~ "/hide", confirm_label="Скрыть", lead="Читатели перестанут его видеть, автор — увидит с пометкой «скрыт модератором».", lines=[count ~ " закроются как подтверждённые", "Ответы под ним останутся на месте"], fields={"back": back_href}, tone="primary") }}
+{% endif %}
+{% endif %}
+{% if card.target_type == "profile" and card.state == "published" and (card.bio or card.avatar_url) %}
+{% call kit.confirm("admin-mod-clear", "Очистить профиль «" ~ card.author ~ "»?", action ~ "/hide", confirm_label="Очистить", lead="Отмеченное исчезнет из профиля; вернуть можно кнопкой «Отменить».", lines=[count ~ " закроются как подтверждённые", "Никнейм не меняется"], fields={"back": back_href}, tone="primary") %}
+<fieldset class="wn-admin-mod__clear">
+  <legend class="wn-admin-field__label">Что убрать</legend>
+  {% if card.bio %}<label class="wn-admin-mod__check"><input class="wn-admin-check" type="checkbox" name="bio" value="1" checked><span>«О себе»</span></label>{% endif %}
+  {% if card.avatar_url %}<label class="wn-admin-mod__check"><input class="wn-admin-check" type="checkbox" name="avatar" value="1" checked><span>Аватар</span></label>{% endif %}
+</fieldset>
+{% endcall %}
+{% endif %}
+{% if card.author_id and not card.ban %}
+{% call kit.confirm("admin-mod-ban", "Заблокировать «" ~ card.author ~ "»?", action ~ "/ban", confirm_label="Заблокировать", lead="Вход закроется, уже открытые сессии станут гостевыми со следующего запроса.", lines=[count ~ " закроются как подтверждённые", "Пользователь увидит срок и причину, если вы её укажете", (("Комментарий" if card.target_type == "comment" else "Профиль") ~ " остаётся как есть — скройте его отдельно, если нужно")], fields={"back": back_href}, confirm_icon="ban") %}
+{% call kit.field("Срок", "mod-ban-term", required=true) %}
+<select class="wn-admin-input" id="mod-ban-term" name="term" required>
+  {% for value, label in ban_terms %}<option value="{{ value }}"{% if value == "7d" %} selected{% endif %}>{{ label }}</option>{% endfor %}
+</select>
+{% endcall %}
+{% call kit.field("Причина", "mod-ban-reason", hint="Её увидит пользователь — при входе и на сайте") %}<textarea class="wn-admin-input" id="mod-ban-reason" name="reason" rows="3" maxlength="{{ reason_limit }}"></textarea>{% endcall %}
+{% endcall %}
+{% endif %}
+{% endif %}
 {% endblock %}

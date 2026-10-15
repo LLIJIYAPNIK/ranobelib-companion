@@ -25833,3 +25833,46 @@ body.reader-page--offline-copy .reader-paragraph-more {
   overflow-wrap: anywhere;
   white-space: pre-line;
 }
+
+/* The card's decisions: «Одобрить» (teal, as the mockup's green) and «Скрыть» on the
+   left, «Заблокировать автора» pushed to the right; the profile dialog's checkboxes. */
+.wn-admin-mod__foot {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  padding: 14px 18px;
+  border-top: 1px solid var(--wn-border);
+}
+
+.wn-admin-mod__approve {
+  border-color: transparent;
+  background: color-mix(in srgb, var(--wn-admin-success) 18%, transparent);
+  color: var(--wn-admin-success);
+}
+
+.wn-admin-mod__approve:hover {
+  background: color-mix(in srgb, var(--wn-admin-success) 26%, transparent);
+}
+
+.wn-admin-mod__ban {
+  margin-left: auto;
+}
+
+.wn-admin-mod__clear {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin: 0;
+  padding: 0;
+  border: 0;
+}
+
+.wn-admin-mod__check {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-height: 32px;
+  font: var(--wn-weight-medium) 14px/1.4 var(--wn-font-ui);
+  cursor: pointer;
+}
