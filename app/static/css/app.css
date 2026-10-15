@@ -23962,6 +23962,163 @@ html:has(dialog.wn-admin-dialog[open]) {
   color: var(--wn-text);
 }
 
+/* «Система» (PR 351): «Сервисы» - a dot, the name, a status badge and a detail line. */
+.wn-admin-svc {
+  display: flex;
+  flex-direction: column;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.wn-admin-svc__row {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  gap: 2px 10px;
+  align-items: center;
+  padding: 11px 0;
+  border-top: 1px solid var(--wn-border);
+}
+
+.wn-admin-svc__row:first-child {
+  border-top: 0;
+}
+
+.wn-admin-svc__dot {
+  --tone: var(--wn-text-muted);
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--tone);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--tone) 20%, transparent);
+}
+
+.wn-admin-svc__dot--success {
+  --tone: var(--wn-admin-success);
+}
+
+.wn-admin-svc__dot--warning {
+  --tone: var(--wn-admin-warning);
+}
+
+.wn-admin-svc__dot--danger {
+  --tone: var(--wn-danger);
+}
+
+.wn-admin-svc__name {
+  font: var(--wn-weight-semi-bold) 13.5px/1.35 var(--wn-font-ui);
+}
+
+.wn-admin-svc__detail {
+  grid-column: 2 / -1;
+  color: var(--wn-text-secondary);
+  font: var(--wn-weight-medium) 12.5px/1.45 var(--wn-font-ui);
+  overflow-wrap: anywhere;
+}
+
+/* «Хранилище»: the disk's used share, then one row per directory with a relative bar. */
+.wn-admin-disk {
+  --tone: var(--wn-admin-success);
+  height: 8px;
+  margin-bottom: 6px;
+  overflow: hidden;
+  border-radius: 999px;
+  background: var(--wn-surface-raised);
+}
+
+.wn-admin-disk--warning {
+  --tone: var(--wn-admin-warning);
+}
+
+.wn-admin-disk--danger {
+  --tone: var(--wn-danger);
+}
+
+.wn-admin-disk__used {
+  display: block;
+  height: 100%;
+  border-radius: inherit;
+  background: var(--tone);
+}
+
+.wn-admin-store {
+  display: flex;
+  flex-direction: column;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.wn-admin-store__row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 4px 12px;
+  padding: 11px 0;
+  border-top: 1px solid var(--wn-border);
+}
+
+.wn-admin-store__row:first-child {
+  border-top: 0;
+}
+
+.wn-admin-store__label {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+  font: var(--wn-weight-semi-bold) 13.5px/1.35 var(--wn-font-ui);
+}
+
+.wn-admin-store__path {
+  overflow: hidden;
+  color: var(--wn-text-muted);
+  font: var(--wn-type-technical);
+  font-size: 11.5px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.wn-admin-store__size {
+  font: var(--wn-weight-semi-bold) 13.5px/1.35 var(--wn-font-ui);
+  font-variant-numeric: tabular-nums;
+  text-align: right;
+  white-space: nowrap;
+}
+
+.wn-admin-store__files {
+  grid-column: 2;
+  grid-row: 2;
+  color: var(--wn-text-muted);
+  font-size: 12px;
+  text-align: right;
+  white-space: nowrap;
+}
+
+.wn-admin-store__bar {
+  grid-column: 1;
+  grid-row: 2;
+  align-self: center;
+  height: 4px;
+  overflow: hidden;
+  border-radius: 999px;
+  background: var(--wn-surface-raised);
+}
+
+.wn-admin-store__bar > span {
+  display: block;
+  height: 100%;
+  background: var(--wn-primary);
+}
+
+/* The cache note mixes text, a link and <code>: a block, not the kit hint's flex row
+   (which made each a column), and CACHE_TTL_SECONDS must wrap on a phone. */
+.wn-admin-sys .wn-admin-actions > .wn-admin-field__hint {
+  display: block;
+  align-self: stretch;
+  line-height: 1.5;
+  overflow-wrap: anywhere;
+}
+
 /* «Комментарии» (PR 350): the list's text/where cells and the drawer's comment card. */
 .wn-admin-cm__text {
   display: -webkit-box;

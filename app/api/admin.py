@@ -10,6 +10,7 @@ from __future__ import annotations
 
 import logging
 import math
+import time
 from collections.abc import Awaitable, Callable
 from dataclasses import dataclass
 from datetime import datetime
@@ -75,6 +76,19 @@ from app.admin_overview import (
     period_links,
     popular_titles,
     recent_user_rows,
+)
+from app.admin_system import (
+    JOB_COLUMNS,
+    SDK_CACHE_CLEAR_ISSUE,
+    app_service,
+    database_service,
+    disk_summary,
+    job_rows,
+    latency_chart,
+    ranobelib_service,
+    request_kpis,
+    storage_rows,
+    versions,
 )
 from app.admin_users import (
     BAN_TERM_LABELS,
@@ -153,6 +167,7 @@ from app.db.admin_stats import (
     cached_top_titles,
     parse_period,
 )
+from app.db.admin_system import DatabaseStatus, database_status
 from app.db.admin_users import DEFAULT_SORT as USER_DEFAULT_SORT
 from app.db.admin_users import PAGE_SIZE as USERS_PAGE_SIZE
 from app.db.admin_users import SORTS as USER_SORTS
@@ -162,12 +177,26 @@ from app.db.bans import REASON_LIMIT as BAN_REASON_LIMIT
 from app.db.comments import hide_comment, purge_comment, show_comment
 from app.db.connection import get_connection
 from app.db.users import User, end_all_sessions, get_user_by_id, mark_email_verified
+from app.jobs.store import list_active_jobs
+from app.request_metrics import MAX_SAMPLES as REQUEST_SAMPLES
+from app.request_metrics import per_minute, summarize
+from app.request_metrics import samples as request_samples
 from app.services.paragraphs import paragraph_text
+from app.services.probe import probe_ranobelib
 from app.services.titles import (
     TitleSummary,
     tables_of_contents,
     title_details,
     title_summaries,
+)
+from app.system_info import (
+    STARTED_AT,
+    app_version,
+    directory_usage,
+    disk_usage,
+    python_version,
+    sdk_version,
+    uptime_seconds,
 )
 from app.templating import templates
 from app.timezones import DEFAULT_TIMEZONE, is_valid_timezone
@@ -205,7 +234,7 @@ ADMIN_NAV: tuple[NavItem, ...] = (
     NavItem("users", "Пользователи", "users", "/admin/users", "Сообщество"),
     NavItem("comments", "Комментарии", "comments", "/admin/comments", "Сообщество"),
     NavItem("tables", "Данные БД", "database", "/admin/tables", "Данные"),
-    NavItem("system", "Система", "server", None, "Платформа"),
+    NavItem("system", "Система", "server", "/admin/system", "Платформа"),
     NavItem("audit", "Журнал", "history", None, "Платформа"),
 )
 
@@ -888,6 +917,67 @@ async def _target_comment(conn: AsyncConnection, comment_id: int) -> CommentRow:
     if detail is None:
         raise HTTPException(status_code=404)
     return detail.comment
+
+
+# How many of the latest failed downloads «Система» lists.
+DOWNLOAD_ERRORS_SHOWN = 10
+
+
+@router.get("/system", response_model=None)
+async def admin_system(request: Request, _: Admin) -> HTMLResponse:
+    """«Система» (PR 351): this process, its versions and the services it depends on -
+    measured on each visit, since the process started (no external monitoring). The
+    connection is taken here, not as a dependency, so with the database down the page
+    still opens and says so."""
+    tz = get_settings().admin_timezone
+    database: DatabaseStatus | None = None
+    recent: Overview | None = None
+    timed_out = False
+    try:
+        async with db_connection.connection() as conn:
+            database = await database_status(conn)
+            recent = await overview(conn, recent=DOWNLOAD_ERRORS_SHOWN)
+    except QueryCanceled:
+        logger.warning("The admin system page's database check timed out")
+        timed_out = True
+    except (psycopg.OperationalError, PoolTimeout):
+        logger.exception("The admin system page could not reach the database")
+    services = [
+        app_service(STARTED_AT, uptime_seconds(), tz),
+        database_service(database, db_connection.pool_stats(), timed_out),
+        ranobelib_service(await probe_ranobelib(), tz),
+    ]
+    window = request_samples()
+    requests = summarize(window)
+    settings = get_settings()
+    directories = [
+        ("Кеш SDK", settings.cache_dir),
+        ("Аватарки", settings.avatar_dir),
+        ("Вложения комментариев", settings.comment_attachment_dir),
+    ]
+    usages = [(label, path, await directory_usage(path)) for label, path in directories]
+    return _page(
+        request,
+        "admin/system.html",
+        "system",
+        timezone=tz,
+        checked_at=f"{_server_now():%H:%M}",
+        services=services,
+        versions=versions(app_version(), sdk_version(), python_version()),
+        requests=requests,
+        request_kpis=request_kpis(requests, tz),
+        latency=latency_chart(per_minute(window, time.time()), tz),
+        sample_limit=REQUEST_SAMPLES,
+        jobs=job_rows(list_active_jobs(), time.time()),
+        job_columns=JOB_COLUMNS,
+        database_down=recent is None,
+        download_errors=download_error_rows(recent.recent_download_errors, tz) if recent else [],
+        error_columns=DOWNLOAD_ERROR_COLUMNS,
+        errors_shown=DOWNLOAD_ERRORS_SHOWN,
+        storage=storage_rows(usages),
+        disk=disk_summary(disk_usage(settings.cache_dir)),
+        cache_clear_issue=SDK_CACHE_CLEAR_ISSUE,
+    )
 
 
 @router.get("/tables", response_model=None)

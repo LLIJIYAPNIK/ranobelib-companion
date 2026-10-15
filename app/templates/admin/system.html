@@ -1,0 +1,95 @@
+{% extends "admin/_layout.html" %}
+{% import "admin/_kit.html" as kit with context %}
+{% block title %}Система{% endblock %}
+{% block heading %}Система{% endblock %}
+{% block content %}
+{# PR 351: the service's real state (RanobeLib Admin.dc.html's «Система», cut down to
+   what one process without external monitoring can honestly say) - app/admin_system.py. #}
+<main class="wn-admin__main wn-admin-ov wn-admin-sys" aria-labelledby="admin-page-title">
+  <div class="wn-admin-ov__bar">
+    <p class="wn-admin-ov__asof">Проверено в {{ checked_at }} ({{ timezone }}) · всё считается с последнего запуска процесса и сбрасывается при деплое</p>
+  </div>
+
+  <section class="wn-admin-kpis" aria-label="Запросы с запуска процесса">
+    {% for item in request_kpis %}
+    {{ kit.kpi(item.label, item.value, item.icon, previous=item.note) }}
+    {% endfor %}
+  </section>
+
+  {% call kit.card("Задержка запросов", "p95 по минутам за последний час · минуты без запросов — на нуле", aside="последние " ~ sample_limit ~ " запросов, с запуска") %}
+  {% if requests.count %}
+  {{ kit.line_chart(latency) }}
+  {% else %}
+  {{ kit.empty_state("Запросов ещё не было", "Данные копятся с запуска процесса и сбрасываются при деплое.", icon_name="clock") }}
+  {% endif %}
+  {% endcall %}
+
+  <div class="wn-admin-ov__grid">
+    {% call kit.card("Сервисы", "Проверяются при каждом открытии страницы") %}
+    <ul class="wn-admin-svc">
+      {% for item in services %}
+      <li class="wn-admin-svc__row">
+        <span class="wn-admin-svc__dot wn-admin-svc__dot--{{ item.tone }}" aria-hidden="true"></span>
+        <span class="wn-admin-svc__name">{{ item.name }}</span>
+        {{ kit.badge(item.status, item.tone) }}
+        <span class="wn-admin-svc__detail">{{ item.detail }}</span>
+      </li>
+      {% endfor %}
+    </ul>
+    {% endcall %}
+
+    {% call kit.card("Версии") %}
+    <dl class="wn-admin-summary">
+      {% for item in versions %}
+      <div class="wn-admin-summary__item"><dt>{{ item.label }}</dt><dd class="wn-admin-summary__mono">{{ item.value }}</dd></div>
+      {% endfor %}
+    </dl>
+    {% endcall %}
+  </div>
+
+  <div class="wn-admin-ov__grid">
+    {% call kit.card("Загрузки сейчас", "Задачи этого процесса · без очередей и воркеров") %}
+    {% if jobs %}
+    {% call(row, column) kit.table("sys-jobs", job_columns, jobs, caption="Загрузки сейчас") %}{{ kit.cell(row[column.key]) }}{% endcall %}
+    {% else %}
+    {{ kit.empty_state("Сейчас ничего не скачивается", icon_name="download") }}
+    {% endif %}
+    {% endcall %}
+
+    {% call kit.card("Хранилище", "Размеры каталогов — раз в минуту", aside=("свободно " ~ disk.free ~ " из " ~ disk.total) if disk else none) %}
+    {% if disk %}
+    <div class="wn-admin-disk wn-admin-disk--{{ disk.tone }}" role="img" aria-label="Диск занят на {{ disk.used_share | round | int }}%">
+      <span class="wn-admin-disk__used" style="width: {{ '%.1f' | format(disk.used_share) }}%"></span>
+    </div>
+    {% endif %}
+    <ul class="wn-admin-store">
+      {% for item in storage %}
+      <li class="wn-admin-store__row">
+        <span class="wn-admin-store__label">{{ item.label }}<span class="wn-admin-store__path">{{ item.path }}</span></span>
+        <span class="wn-admin-store__size">{{ item.size }}</span>
+        <span class="wn-admin-store__files">файлов: {{ item.files }}</span>
+        <span class="wn-admin-store__bar" aria-hidden="true"><span style="width: {{ '%.1f' | format(item.share) }}%"></span></span>
+      </li>
+      {% endfor %}
+    </ul>
+    <div class="wn-admin-actions">
+      <button class="wn-admin-btn" type="button" disabled aria-describedby="sys-cache-note">{{ kit.icon("trash") }}Очистить кеш SDK</button>
+      <p class="wn-admin-field__hint" id="sys-cache-note">Пока недоступно: у SDK нет публичного способа очистить кеш, а удалять его файлы в обход SDK мы не будем. Ждём <a class="wn-admin-cm__link" href="{{ cache_clear_issue }}" target="_blank" rel="noopener">ranobelib-python-sdk#78</a>. Устаревшие записи и так обновляются сами по <code>CACHE_TTL_SECONDS</code>.</p>
+    </div>
+    {% endcall %}
+  </div>
+
+  {% call kit.card("Ошибки загрузок", "До " ~ errors_shown ~ " последних из истории загрузок") %}
+  {% if database_down %}
+  {{ kit.error_state("База данных недоступна", "История загрузок появится, как только соединение восстановится.") }}
+  {% elif download_errors %}
+  {% call(row, column) kit.table("sys-download-errors", error_columns, download_errors, caption="Последние ошибки загрузок") %}
+    {%- if column.key == "error" -%}<span class="wn-admin-ov__clip" title="{{ row.error or '' }}">{{ (row.error or "—") | truncate(120) }}</span>
+    {%- else -%}{{ kit.cell(row[column.key]) }}{%- endif -%}
+  {% endcall %}
+  {% else %}
+  {{ kit.empty_state("Ошибок загрузок нет", icon_name="circle-check") }}
+  {% endif %}
+  {% endcall %}
+</main>
+{% endblock %}

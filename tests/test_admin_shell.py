@@ -102,6 +102,7 @@ def test_screens_from_later_prs_are_shown_but_not_links(admin: TestClient) -> No
         "/admin",
         "/admin/analytics",
         "/admin/comments",
+        "/admin/system",
         "/admin/tables",
         "/admin/users",
     ]
