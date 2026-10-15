@@ -120,6 +120,7 @@ from app.admin_tables import (
 )
 from app.admin_users import (
     BAN_TERM_LABELS,
+    BanState,
     back_href,
     ban_state,
     parse_flag,
@@ -186,6 +187,7 @@ from app.db.admin_data import (
     MASK,
     QUERY_TIMEOUT_MS,
     Overview,
+    _read_only,
     browse_table,
     export_table,
     list_tables,
@@ -369,6 +371,17 @@ async def _title_summaries(slugs: list[str]) -> dict[str, TitleSummary]:
         return {}
 
 
+async def _read[T](conn: AsyncConnection, load: Callable[[], Awaitable[T]]) -> T:
+    """PR 355: a lookup borrowed from the site's own modules (bans, time zones) run like
+    every admin query - read-only, under the admin timeout."""
+    async with _read_only(conn):
+        return await load()
+
+
+async def _bans(conn: AsyncConnection, user_id: int, tz: str) -> BanState:
+    return ban_state(await active_ban(conn, user_id), await ban_history(conn, user_id), tz)
+
+
 async def _block[T](failed: set[str], name: str, load: Callable[[], Awaitable[T]]) -> T | None:
     """One overview block's data, or None (and `name` in `failed`) if its query hit the
     admin timeout - the block then shows an error state with «Повторить»."""
@@ -435,7 +448,7 @@ async def admin_analytics_behaviour(
     Postgres knows as well (it groups by local time); one only Python knows falls back
     to UTC, and the page says which zone it used."""
     tz = get_settings().admin_timezone
-    if not await is_valid_timezone(conn, tz):
+    if not await _read(conn, lambda: is_valid_timezone(conn, tz)):
         logger.warning("ADMIN_TIMEZONE=%r is unknown to Postgres - analytics use UTC", tz)
         tz = DEFAULT_TIMEZONE
     key = parse_behaviour_period(period)
@@ -553,11 +566,7 @@ async def admin_users(
             page=page,
         )
         summary = await user_summary(conn, user, key, tz) if user is not None else None
-        bans = (
-            ban_state(await active_ban(conn, summary.id), await ban_history(conn, summary.id), tz)
-            if summary
-            else None
-        )
+        bans = await _read(conn, lambda: _bans(conn, summary.id, tz)) if summary else None
     except QueryCanceled:
         return _timed_out(request, "users")
     args = dict(request.query_params)
@@ -799,7 +808,10 @@ async def admin_comments(
             page=page,
         )
         detail = await comment_detail(conn, comment) if comment is not None else None
-        bans = len(await ban_history(conn, detail.comment.user_id)) if detail else 0
+        history = (
+            await _read(conn, lambda: ban_history(conn, detail.comment.user_id)) if detail else []
+        )
+        bans = len(history)
     except QueryCanceled:
         return _timed_out(request, "comments")
     slugs = [row.slug_url for row in data.rows]
