@@ -21,6 +21,7 @@ from app.admin_kit import (
     line_chart,
     sparkline,
 )
+from app.db.admin_reports import Queue
 from app.db.admin_stats import (
     DEFAULT_PERIOD,
     PERIODS,
@@ -30,6 +31,7 @@ from app.db.admin_stats import (
 )
 from app.services import sdk_outcomes
 from app.services.titles import TitleSummary
+from app.templating import plural
 
 PERIOD_LABELS = {"24h": "24 часа", "7d": "7 дней", "30d": "30 дней", "90d": "90 дней"}
 
@@ -288,12 +290,17 @@ class AttentionItem:
     tone: str  # "danger" or "warning"
     title: str
     text: str
+    # PR 359: where to act on it, if there's a screen for that.
+    href: str | None = None
+    link: str | None = None
 
 
 def attention_items(
     counts: AttentionCounts | None,
     database_down: bool,
     now: datetime | None = None,
+    *,
+    waiting: Queue | None = None,
 ) -> list[AttentionItem]:
     """What needs a look right now, the most serious first. The ranobelib.me ones come
     from this process's own SDK calls (app/services/sdk_outcomes.py) - counted since it
@@ -363,6 +370,19 @@ def attention_items(
                     "Стоит проверить, доходят ли письма.",
                 )
             )
+    if waiting is not None and waiting.total:
+        # PR 359: any report waiting is worth a look - readers took the trouble to send it.
+        objects = plural(waiting.total, "объект", "объекта", "объектов")
+        reports = plural(waiting.reports, "жалоба", "жалобы", "жалоб")
+        warning.append(
+            AttentionItem(
+                "warning",
+                "Жалобы ждут модерации",
+                f"В очереди {waiting.total} {objects}, на них {waiting.reports} {reports}.",
+                href="/admin/moderation",
+                link="Открыть очередь",
+            )
+        )
     return danger + warning
 
 

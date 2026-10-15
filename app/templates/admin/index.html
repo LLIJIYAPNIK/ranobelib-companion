@@ -100,6 +100,7 @@
         <span class="wn-admin-alerts__body">
           <span class="wn-admin-alerts__title">{{ item.title }}</span>
           <span class="wn-admin-alerts__text">{{ item.text }}</span>
+          {% if item.href %}<a class="wn-admin-alerts__link" href="{{ item.href }}">{{ item.link }}</a>{% endif %}
         </span>
       </li>
       {% endfor %}

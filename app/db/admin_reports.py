@@ -48,6 +48,7 @@ class Queue:
     items: list[QueueItem]
     total: int  # objects waiting, all of them, not just the ones listed
     counts: dict[str, int]  # per target type
+    reports: int = 0  # open reports on all of them
 
 
 async def queue(
@@ -57,10 +58,12 @@ async def queue(
     params = {"type": target_type, "limit": limit}
     async with _read_only(conn):
         cursor = await conn.execute(
-            "SELECT target_type, COUNT(DISTINCT target_id) AS n FROM reports "
-            "WHERE status = 'open' GROUP BY target_type"
+            "SELECT target_type, COUNT(DISTINCT target_id) AS n, COUNT(*) AS reports "
+            "FROM reports WHERE status = 'open' GROUP BY target_type"
         )
-        counts = {row["target_type"]: row["n"] for row in await cursor.fetchall()}
+        per_type = await cursor.fetchall()
+        counts = {row["target_type"]: row["n"] for row in per_type}
+        reports = sum(row["reports"] for row in per_type)
         cursor = await conn.execute(
             "SELECT r.target_type, r.target_id, COUNT(*) AS reports, "
             "MIN(r.created_at) AS first_at, MAX(r.created_at) AS last_at, "
@@ -97,7 +100,19 @@ async def queue(
             )
         )
     total = sum(counts.values()) if target_type not in TARGET_TYPES else counts.get(target_type, 0)
-    return Queue(items=items, total=total, counts=counts)
+    return Queue(items=items, total=total, counts=counts, reports=reports)
+
+
+async def waiting_objects(conn: AsyncConnection) -> int:
+    """PR 359: how many objects have open reports - the sidebar's badge on «Модерация»,
+    asked on every admin page, so a single cheap count, read-only under the timeout."""
+    async with _read_only(conn):
+        cursor = await conn.execute(
+            "SELECT COUNT(*) AS n FROM ("
+            "  SELECT DISTINCT target_type, target_id FROM reports WHERE status = 'open'"
+            ") waiting"
+        )
+        return (await cursor.fetchone())["n"]
 
 
 async def _comments(conn: AsyncConnection, ids: list[int]) -> dict[int, dict]:
