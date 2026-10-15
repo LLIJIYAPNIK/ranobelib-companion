@@ -16,6 +16,7 @@ from collections.abc import Awaitable, Callable
 from dataclasses import dataclass
 from datetime import datetime
 from typing import Annotated, Literal
+from urllib.parse import parse_qs, urlsplit
 from zoneinfo import ZoneInfo
 
 import httpx
@@ -179,10 +180,12 @@ from app.db.admin_audit import (
     COMMENT_HIDE,
     COMMENT_SHOW,
     DATA_EXPORT,
+    MODERATION_DECISIONS,
     REPORTS_BAN_AUTHOR,
     REPORTS_CLEAR_PROFILE,
     REPORTS_DISMISS,
     REPORTS_HIDE_COMMENT,
+    REPORTS_UNDO,
     USER_BAN,
     USER_CONFIRM_EMAIL,
     USER_END_SESSIONS,
@@ -230,7 +233,7 @@ from app.db.bans import BAN_TERMS, AlreadyBanned, active_ban, ban_history, ban_u
 from app.db.bans import REASON_LIMIT as BAN_REASON_LIMIT
 from app.db.comments import hide_comment, purge_comment, show_comment
 from app.db.connection import get_connection
-from app.db.reports import ACTIONED, DISMISSED, resolve_reports
+from app.db.reports import ACTIONED, DISMISSED, reopen_reports, resolve_reports
 from app.db.users import (
     User,
     clear_profile,
@@ -1292,6 +1295,62 @@ async def admin_moderation_ban(
         target,
         moderation_item_key(target_type, target_id),
     )
+
+
+@router.post("/moderation/undo", response_model=None, dependencies=WRITES)
+async def admin_moderation_undo(
+    request: Request,
+    _: Admin,
+    conn: Connection,
+    csrf: Csrf = "",
+    entry: Annotated[int, Form(ge=1, le=9_223_372_036_854_775_807)] = 1,
+    item: Annotated[str, Form(max_length=24)] = "",
+    back: Back = "",
+) -> Response:
+    """The toast's «Отменить»: reverts the decision its action-log entry describes - a
+    hidden comment is shown again, a cleared profile gets back what is still empty in it,
+    the block that decision set is lifted - and its reports return to the queue. Done
+    once; what has changed since (the person filled «о себе» in again, the block ran out
+    or was lifted) is left alone."""
+    check_csrf(request, csrf)
+    target = moderation_safe_back(back)
+    decision = await admin_audit.get_entry(conn, entry)
+    if decision is None or decision.action not in MODERATION_DECISIONS:
+        push_toast(request, "Отменять нечего", tone="error")
+        return RedirectResponse(target, status_code=303)
+    if await admin_audit.was_undone(conn, entry):
+        push_toast(request, "Это решение уже отменено", tone="error")
+        return RedirectResponse(target, status_code=303)
+    details = decision.details
+    target_id = int(decision.entity_id or 0)
+    effect: dict[str, object] = {}
+    if decision.action == REPORTS_HIDE_COMMENT and details.get("after", {}).get("hidden_at"):
+        effect["shown"] = await show_comment(conn, target_id) is not None
+    elif decision.action == REPORTS_CLEAR_PROFILE:
+        effect["restored"] = await restore_profile(conn, target_id, details.get("before", {}))
+    elif decision.action == REPORTS_BAN_AUTHOR:
+        author_id = int(details.get("author_id") or 0)
+        ban = await active_ban(conn, author_id)
+        lifted = None
+        if ban is not None and ban.id == details.get("ban_id"):
+            lifted = await lift_ban(conn, author_id, reason="Отмена решения в «Модерации»")
+        effect["unbanned"] = lifted is not None
+    reopened = await reopen_reports(conn, [int(i) for i in details.get("report_ids", [])])
+    await admin_audit.record_change(
+        conn,
+        REPORTS_UNDO,
+        ip=client_ip(request),
+        entity=decision.entity or "",
+        entity_id=decision.entity_id,
+        entity_label=decision.entity_label,
+        extra={"undoes": decision.id, "action": decision.action, "reopened": reopened, **effect},
+    )
+    push_toast(request, "Решение отменено — жалобы вернулись в очередь")
+    asked = parse_moderation_item(item)
+    if asked:
+        kind = parse_moderation_type(parse_qs(urlsplit(target).query).get("type", [""])[0])
+        target = moderation_href(kind, moderation_item_key(*asked))
+    return RedirectResponse(target, status_code=303)
 
 
 async def _moderation_card(
