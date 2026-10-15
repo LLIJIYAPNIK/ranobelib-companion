@@ -1,5 +1,6 @@
 """/admin: the panel's login/logout (PR 324), overview and read-only data browser (PR 325),
-the shared sidebar/top-bar shell (PR 341), the UI kit's dev-only showcase (PR 342).
+the shared sidebar/top-bar shell (PR 341), the UI kit's dev-only showcase (PR 342), the
+action log screen (PR 353).
 
 Every route sits behind ``require_admin_enabled`` (404 without ADMIN_PASSWORD), every page
 but the login form behind ``require_admin`` (app/auth/admin.py). The data pages only read
@@ -43,6 +44,9 @@ from app.admin_analytics import (
     title_kpis,
     title_list_rows,
 )
+from app.admin_audit import audit_csv, audit_filters, audit_rows, parse_action
+from app.admin_audit import csv_filename as audit_csv_filename
+from app.admin_audit import csv_href as audit_csv_href
 from app.admin_comments import COLUMNS as COMMENT_COLUMNS
 from app.admin_comments import back_href as comments_back_href
 from app.admin_comments import (
@@ -144,6 +148,7 @@ from app.db.admin_analytics import (
     title_totals,
 )
 from app.db.admin_audit import (
+    AUDIT_EXPORT,
     COMMENT_DELETE,
     COMMENT_HIDE,
     COMMENT_SHOW,
@@ -250,7 +255,7 @@ ADMIN_NAV: tuple[NavItem, ...] = (
     NavItem("comments", "Комментарии", "comments", "/admin/comments", "Сообщество"),
     NavItem("tables", "Данные БД", "database", "/admin/tables", "Данные"),
     NavItem("system", "Система", "server", "/admin/system", "Платформа"),
-    NavItem("audit", "Журнал", "history", None, "Платформа"),
+    NavItem("audit", "Журнал", "history", "/admin/audit", "Платформа"),
 )
 
 
@@ -1091,6 +1096,90 @@ async def admin_table_csv(
         media_type="text/csv; charset=utf-8",
         headers={
             "Content-Disposition": f'attachment; filename="{csv_filename(name, _server_now())}"'
+        },
+    )
+
+
+@router.get("/audit", response_model=None)
+async def admin_audit_log(
+    request: Request,
+    _: Admin,
+    conn: Connection,
+    q: Annotated[str, Query(max_length=200)] = "",
+    action: Annotated[str | None, Query(max_length=40)] = None,
+    actor: Annotated[str | None, Query(max_length=40)] = None,
+    page: Annotated[int, Query(ge=1, le=1_000_000)] = 1,
+) -> HTMLResponse:
+    """«Журнал действий» (PR 353): the log PR 343 writes, newest first, with search by
+    object or IP and the «Действие» filter. Read-only - the log has no edit or delete,
+    here or anywhere."""
+    settings = get_settings()
+    tz = settings.admin_timezone
+    try:
+        names = await admin_audit.actors(conn)
+        data = await admin_audit.list_page(
+            conn, query=q, action=parse_action(action), actor=_known(actor, names), page=page
+        )
+    except QueryCanceled:
+        return _timed_out(request, "audit")
+    args = dict(request.query_params)
+    filters = audit_filters(args, names)
+    return _page(
+        request,
+        "admin/audit.html",
+        "audit",
+        args=args,
+        filters=filters,
+        filtered=bool(q.strip()) or any(item.value for item in filters),
+        rows=audit_rows(data.entries, tz, _server_now()),
+        data=data,
+        per_page=admin_audit.PAGE_SIZE,
+        retention_days=settings.admin_audit_retention_days,
+        csv_href=audit_csv_href(args),
+        export_limit=admin_audit.EXPORT_LIMIT,
+        timezone=tz,
+    )
+
+
+def _known(actor: str | None, names: list[str]) -> str | None:
+    return actor if actor in names else None
+
+
+@router.get("/audit/csv", response_model=None)
+async def admin_audit_csv(
+    request: Request,
+    _: Admin,
+    conn: Connection,
+    q: Annotated[str, Query(max_length=200)] = "",
+    action: Annotated[str | None, Query(max_length=40)] = None,
+    actor: Annotated[str | None, Query(max_length=40)] = None,
+) -> Response:
+    """The log's current selection (search and filters, every page up to EXPORT_LIMIT
+    entries) as CSV. The export itself goes into the log, like «Данные БД»'s."""
+    try:
+        names = await admin_audit.actors(conn)
+        export = await admin_audit.export_entries(
+            conn, query=q, action=parse_action(action), actor=_known(actor, names)
+        )
+    except QueryCanceled:
+        return _timed_out(request, "audit")
+    await admin_audit.record_admin_action(
+        conn,
+        AUDIT_EXPORT,
+        ip=client_ip(request),
+        details={
+            "rows": len(export.entries),
+            "matching": export.total,
+            "query": q.strip() or None,
+            "action": parse_action(action),
+            "actor": _known(actor, names),
+        },
+    )
+    return Response(
+        audit_csv(export.entries, get_settings().admin_timezone),
+        media_type="text/csv; charset=utf-8",
+        headers={
+            "Content-Disposition": f'attachment; filename="{audit_csv_filename(_server_now())}"'
         },
     )
 
