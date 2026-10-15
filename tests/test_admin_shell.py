@@ -15,7 +15,7 @@ from fastapi.routing import APIRoute
 from fastapi.testclient import TestClient
 
 import app.api.admin as admin_api
-from app.auth.admin import require_admin
+from app.auth.admin import require_admin, require_admin_fetch
 from app.config import get_settings
 from tests.test_admin_auth import PASSWORD, Clock, _client, _login
 from tests.test_admin_routes import _routes
@@ -23,7 +23,13 @@ from tests.test_admin_routes import _routes
 # The only outside hosts an admin page may reference - the site's own fonts, which CSP
 # allows for styles/fonts (app/security_headers.py). Never a script.
 ALLOWED_EXTERNAL_HOSTS = {"fonts.googleapis.com", "fonts.gstatic.com"}
-ADMIN_PAGES = ("/admin", "/admin/tables", "/admin/tables/users")
+ADMIN_PAGES = (
+    "/admin",
+    "/admin/tables",
+    "/admin/tables/users",
+    "/admin/audit",
+    "/admin/search?q=us",
+)
 
 
 @pytest.fixture
@@ -101,6 +107,7 @@ def test_screens_from_later_prs_are_shown_but_not_links(admin: TestClient) -> No
     assert sorted(hrefs) == [
         "/admin",
         "/admin/analytics",
+        "/admin/audit",
         "/admin/comments",
         "/admin/system",
         "/admin/tables",
@@ -260,7 +267,9 @@ def test_every_admin_route_but_the_login_form_requires_the_admin() -> None:
     ]
     assert routes
     for route in routes:
-        protected = require_admin in set(_dependency_calls(route.dependant))
+        calls = set(_dependency_calls(route.dependant))
+        # PR 353: what the panel's scripts fetch is closed with a 404 instead of a redirect.
+        protected = require_admin in calls or require_admin_fetch in calls
         if route.path == "/admin/login":
             assert not protected
         elif route.path == "/admin/logout":

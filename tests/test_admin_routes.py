@@ -35,6 +35,12 @@ EXPECTED_WITHOUT_ADMIN = {
     ("POST", "/admin/comments/{comment_id}/delete"): 303,
     ("GET", "/admin/tables/{name}"): 303,
     ("GET", "/admin/tables/{name}/csv"): 303,
+    ("GET", "/admin/audit"): 303,
+    ("GET", "/admin/audit/csv"): 303,
+    ("GET", "/admin/search"): 303,
+    # PR 353: what the search box fetches answers a plain 404 - nothing to redirect a
+    # script to, and to anyone but the admin the URL isn't there.
+    ("GET", "/admin/search/suggest"): 404,
     ("GET", "/admin/_kit"): 303,
     ("POST", "/admin/_kit/demo"): 303,
     ("GET", "/admin/login"): 200,
