@@ -177,15 +177,23 @@ async def browse_table(
         return await _browse(conn, table, columns, page, sort, descending, query)
 
 
-async def _browse(
-    conn: AsyncConnection,
-    table: str,
-    columns: list[str],
-    page: int,
-    sort: str | None,
-    descending: bool,
-    query: str,
-) -> TablePage:
+@dataclass(frozen=True)
+class _Selection:
+    """The parts of a SELECT over `table` that the page and the CSV export share: what's
+    masked, which column it's sorted by, the select list, the search filter."""
+
+    secret: set[str]
+    sort: str
+    select_list: sql.Composable
+    where: sql.Composable
+    params: list[Any]
+    order: sql.Composable
+    query: str
+
+
+def _selection(
+    table: str, columns: list[str], sort: str | None, descending: bool, query: str
+) -> _Selection:
     secret = {column for column in columns if is_secret_column(table, column)}
     visible = [column for column in columns if column not in secret]
     if sort not in visible:
@@ -202,7 +210,7 @@ async def _browse(
         )
         for column in columns
     )
-    where = sql.SQL("")
+    where: sql.Composable = sql.SQL("")
     params: list[Any] = []
     query = query.strip()
     if query and visible:
@@ -212,33 +220,95 @@ async def _browse(
         )
         pattern = "%" + query.replace("\\", "\\\\").replace("%", "\\%").replace("_", "\\_") + "%"
         params = [pattern] * len(visible)
+    order = sql.SQL(" ORDER BY t.{} {} NULLS LAST").format(
+        sql.Identifier(sort), sql.SQL("DESC" if descending else "ASC")
+    )
+    return _Selection(secret, sort, select_list, where, params, order, query)
 
+
+async def _browse(
+    conn: AsyncConnection,
+    table: str,
+    columns: list[str],
+    page: int,
+    sort: str | None,
+    descending: bool,
+    query: str,
+) -> TablePage:
+    chosen = _selection(table, columns, sort, descending, query)
     count_cursor = await conn.execute(
-        sql.SQL("SELECT COUNT(*) AS n FROM {} AS t").format(sql.Identifier(table)) + where,
-        params,
+        sql.SQL("SELECT COUNT(*) AS n FROM {} AS t").format(sql.Identifier(table)) + chosen.where,
+        chosen.params,
     )
     total = (await count_cursor.fetchone())["n"]
     pages = max(1, -(-total // PAGE_SIZE))
     page = min(max(1, page), pages)
-    order = sql.SQL(" ORDER BY t.{} {} NULLS LAST").format(
-        sql.Identifier(sort), sql.SQL("DESC" if descending else "ASC")
-    )
     cursor = await conn.execute(
-        sql.SQL("SELECT {} FROM {} AS t").format(select_list, sql.Identifier(table))
-        + where
-        + order
+        sql.SQL("SELECT {} FROM {} AS t").format(chosen.select_list, sql.Identifier(table))
+        + chosen.where
+        + chosen.order
         + sql.SQL(" LIMIT %s OFFSET %s"),
-        [*params, PAGE_SIZE, (page - 1) * PAGE_SIZE],
+        [*chosen.params, PAGE_SIZE, (page - 1) * PAGE_SIZE],
     )
     return TablePage(
         table=table,
         columns=columns,
-        secret=secret,
+        secret=chosen.secret,
         rows=await cursor.fetchall(),
         total=total,
         page=page,
         pages=pages,
-        sort=sort,
+        sort=chosen.sort,
         descending=descending,
-        query=query,
+        query=chosen.query,
     )
+
+
+# --- CSV export (PR 352) ------------------------------------------------------------------
+
+EXPORT_LIMIT = 10_000
+
+
+@dataclass(frozen=True)
+class TableExport:
+    columns: list[str]
+    secret: set[str]
+    rows: list[dict[str, Any]]
+    total: int  # rows matching the search; more than len(rows) when cut at EXPORT_LIMIT
+
+    @property
+    def truncated(self) -> bool:
+        return self.total > len(self.rows)
+
+
+async def export_table(
+    conn: AsyncConnection,
+    table: str,
+    columns: list[str],
+    *,
+    sort: str | None = None,
+    descending: bool = True,
+    query: str = "",
+    limit: int = EXPORT_LIMIT,
+) -> TableExport:
+    """The current selection of the browser - the same search and sort, every page of it
+    up to `limit` rows - for a CSV file. Built from the same select list as the page, so
+    a secret column comes back NULL here too (never its value), and each cell is cut at
+    CELL_LIMIT in SQL. Read-only with the admin timeout, like everything here."""
+    chosen = _selection(table, columns, sort, descending, query)
+    async with _read_only(conn):
+        count_cursor = await conn.execute(
+            sql.SQL("SELECT COUNT(*) AS n FROM {} AS t").format(sql.Identifier(table))
+            + chosen.where,
+            chosen.params,
+        )
+        total = (await count_cursor.fetchone())["n"]
+        cursor = await conn.execute(
+            sql.SQL("SELECT {} FROM {} AS t").format(chosen.select_list, sql.Identifier(table))
+            + chosen.where
+            + chosen.order
+            + sql.SQL(" LIMIT %s"),
+            [*chosen.params, limit],
+        )
+        rows = await cursor.fetchall()
+    return TableExport(columns=columns, secret=chosen.secret, rows=rows, total=total)

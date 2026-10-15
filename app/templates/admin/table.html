@@ -14,7 +14,7 @@
   </div>
 
   <section class="wn-admin-panel" aria-label="{{ data.table }}">
-    {% call kit.filter_bar("/admin/tables/" ~ data.table, args, placeholder="Поиск по видимым колонкам") %}{{ kit.columns_menu(table_id, columns) }}{% endcall %}
+    {% call kit.filter_bar("/admin/tables/" ~ data.table, args, placeholder="Поиск по видимым колонкам") %}{{ kit.columns_menu(table_id, columns) }}<a class="wn-admin-btn wn-admin-btn--ghost" href="{{ csv_href }}" title="Текущая выборка — поиск и сортировка, все страницы, до {{ export_limit }} строк; скрытые колонки замаскированы" download>{{ kit.icon("download") }}Экспорт CSV</a>{% endcall %}
     {% if data.rows %}
     {% call(row, column) kit.table(table_id, columns, data.rows, sort=data.sort, descending=data.descending, args=args, caption=data.table) %}
       {%- set value = row[column.key] -%}

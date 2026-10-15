@@ -94,6 +94,9 @@ from app.admin_tables import (
     CELL_PREVIEW,
     TABLE_LIST_COLUMNS,
     browse_columns,
+    csv_filename,
+    csv_href,
+    table_csv,
     table_id,
     table_list_rows,
 )
@@ -144,6 +147,7 @@ from app.db.admin_audit import (
     COMMENT_DELETE,
     COMMENT_HIDE,
     COMMENT_SHOW,
+    DATA_EXPORT,
     USER_BAN,
     USER_CONFIRM_EMAIL,
     USER_END_SESSIONS,
@@ -156,10 +160,12 @@ from app.db.admin_comments import PAGE_SIZE as COMMENTS_PAGE_SIZE
 from app.db.admin_comments import SORTS as COMMENT_SORTS
 from app.db.admin_comments import CommentRow, comment_detail, list_comments
 from app.db.admin_data import (
+    EXPORT_LIMIT,
     MASK,
     QUERY_TIMEOUT_MS,
     Overview,
     browse_table,
+    export_table,
     list_tables,
     overview,
     table_columns,
@@ -1034,6 +1040,55 @@ async def admin_table(
         table_id=table_id(name),
         per_page=TABLE_PAGE_SIZE,
         preview=CELL_PREVIEW,
+        csv_href=csv_href(name, request.query_params),
+        export_limit=EXPORT_LIMIT,
+    )
+
+
+@router.get("/tables/{name}/csv", response_model=None)
+async def admin_table_csv(
+    request: Request,
+    name: str,
+    _: Admin,
+    conn: Connection,
+    sort: str | None = None,
+    order: str = "desc",
+    q: Annotated[str, Query(max_length=200)] = "",
+) -> Response:
+    """PR 352: the browser's current selection (its search and sort, every page up to
+    EXPORT_LIMIT rows) as CSV - built from the same whitelist and select list as the page,
+    so secrets are masked here too. Recorded in the action log: nothing changes, but data
+    leaves the panel."""
+    columns = (await table_columns(conn)).get(name)
+    if columns is None:
+        raise HTTPException(status_code=404)
+    try:
+        export = await export_table(
+            conn, name, columns, sort=sort, descending=order != "asc", query=q
+        )
+    except QueryCanceled:
+        return _timed_out(request, "tables")
+    await admin_audit.record_admin_action(
+        conn,
+        DATA_EXPORT,
+        ip=client_ip(request),
+        entity="table",
+        entity_id=name,
+        entity_label=name,
+        details={
+            "rows": len(export.rows),
+            "matching": export.total,
+            "query": q.strip() or None,
+            "sort": sort,
+            "order": "asc" if order == "asc" else "desc",
+        },
+    )
+    return Response(
+        table_csv(export, MASK),
+        media_type="text/csv; charset=utf-8",
+        headers={
+            "Content-Disposition": f'attachment; filename="{csv_filename(name, _server_now())}"'
+        },
     )
 
 

@@ -46,6 +46,8 @@ USER_UNBAN = "user_unban"
 COMMENT_HIDE = "comment_hide"
 COMMENT_SHOW = "comment_show"
 COMMENT_DELETE = "comment_delete"
+# PR 352: a CSV export from «Данные БД» - nothing changes, but data leaves the panel.
+DATA_EXPORT = "data_export"
 
 _dumps = partial(json.dumps, ensure_ascii=False, default=str)
 
