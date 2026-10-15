@@ -22208,16 +22208,9 @@ a.wn-admin-side__item:hover {
   height: 15px;
 }
 
-/* On a phone a table row becomes a card: each cell under its column's name. */
+/* On a phone a table row becomes a card: each cell under its column's name (the header
+   row gives way to the «Сортировка» bar, PR 354). */
 @media (max-width: 767px) {
-  .wn-admin-table__table thead {
-    position: absolute;
-    width: 1px;
-    height: 1px;
-    overflow: hidden;
-    clip: rect(0 0 0 0);
-  }
-
   .wn-admin-table__table,
   .wn-admin-table__table tbody,
   .wn-admin-table__table tr {
@@ -24827,6 +24820,78 @@ summary.wn-admin-audit__row:focus-visible {
   color: var(--wn-text-muted);
   overflow-wrap: anywhere;
   font: var(--wn-weight-medium) 12px/1.35 var(--wn-font-ui);
+}
+
+/* PR 354: the table's «Сортировка» bar - only on a phone, where the header row with its
+   sort links is hidden and each row is a card. */
+.wn-admin-table__sortbar {
+  display: none;
+}
+
+@media (max-width: 767px) {
+  /* Hidden for real, not just clipped: its sort links mustn't take focus unseen. */
+  .wn-admin-table__table thead {
+    display: none;
+  }
+
+  /* One row that scrolls sideways - a list with seven sortable columns would otherwise
+     push the first card a screen down. */
+  .wn-admin-table__sortbar {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    padding: 10px 14px;
+    overflow-x: auto;
+    border-bottom: 1px solid var(--wn-border);
+    overscroll-behavior-x: contain;
+    scrollbar-width: none;
+  }
+
+  .wn-admin-table__sortbar::-webkit-scrollbar {
+    display: none;
+  }
+
+  .wn-admin-table__sortbar-label,
+  .wn-admin-table__sortbar-item {
+    flex: none;
+  }
+
+  .wn-admin-table__sortbar-label {
+    margin-right: 2px;
+    color: var(--wn-text-muted);
+    font: var(--wn-weight-semi-bold) 11px/1.3 var(--wn-font-ui);
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+  }
+
+  .wn-admin-table__sortbar-item {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    min-height: 44px;
+    padding: 0 12px;
+    border: 1px solid var(--wn-border);
+    border-radius: 999px;
+    color: var(--wn-text-secondary);
+    font: var(--wn-weight-medium) 13px/1 var(--wn-font-ui);
+    text-decoration: none;
+  }
+
+  .wn-admin-table__sortbar-item[aria-current] {
+    border-color: color-mix(in srgb, var(--wn-primary) 55%, transparent);
+    background: color-mix(in srgb, var(--wn-primary) 14%, transparent);
+    color: var(--wn-text);
+  }
+
+  .wn-admin-table__sortbar-item:focus-visible {
+    outline: none;
+    box-shadow: var(--wn-focus-ring);
+  }
+
+  .wn-admin-table__sortbar-item .wn-admin-icon {
+    width: 14px;
+    height: 14px;
+  }
 }
 
 /* ==========================================================================
