@@ -197,6 +197,84 @@ async def delete_comment(conn: AsyncConnection, comment_id: int, user_id: int) -
     return cursor.rowcount > 0
 
 
+# --- the admin panel's moderation (PR 350) --------------------------------------------------
+
+
+async def hide_comment(conn: AsyncConnection, comment_id: int) -> str | None:
+    """«Скрыть»: the comment stays, but only its author still sees it (see
+    list_comments_for_paragraph()). Returns the new hidden_at, or None when there's
+    nothing to hide - no such comment, already hidden, or deleted."""
+    hidden_at = datetime.now(UTC).isoformat()
+    cursor = await conn.execute(
+        "UPDATE comments SET hidden_at = %s "
+        "WHERE id = %s AND hidden_at IS NULL AND is_deleted = 0 RETURNING hidden_at",
+        (hidden_at, comment_id),
+    )
+    row = await cursor.fetchone()
+    return row["hidden_at"] if row else None
+
+
+async def show_comment(conn: AsyncConnection, comment_id: int) -> str | None:
+    """«Показать»: undoes hide_comment(). Returns the hidden_at it had, or None if it
+    wasn't hidden."""
+    async with conn.transaction():
+        cursor = await conn.execute(
+            "SELECT hidden_at FROM comments WHERE id = %s FOR UPDATE", (comment_id,)
+        )
+        row = await cursor.fetchone()
+        if row is None or row["hidden_at"] is None:
+            return None
+        await conn.execute("UPDATE comments SET hidden_at = NULL WHERE id = %s", (comment_id,))
+    return row["hidden_at"]
+
+
+@dataclass(frozen=True)
+class PurgedComment:
+    """What «Удалить навсегда» took away. ``removed`` is False when replies hung under the
+    comment: then its row stays as a «Комментарий удалён» placeholder, wiped the same way
+    delete_comment() wipes one, so other people's replies keep their thread."""
+
+    user_id: int
+    body: str
+    attachment_path: str | None
+    was_hidden: bool
+    removed: bool
+
+
+async def purge_comment(conn: AsyncConnection, comment_id: int) -> PurgedComment | None:
+    """«Удалить навсегда»: the text, the attachment reference, its reactions and the
+    notifications about them go. The row itself goes too, unless replies hang under it
+    (see PurgedComment). None if there's no such comment. Removing the attachment's file
+    is the caller's job, after this commits (app/comment_attachment.py)."""
+    async with conn.transaction():
+        cursor = await conn.execute(
+            "SELECT user_id, body, attachment_path, hidden_at, "
+            "EXISTS (SELECT 1 FROM comments r WHERE r.parent_comment_id = c.id) AS replied "
+            "FROM comments c WHERE id = %s FOR UPDATE",
+            (comment_id,),
+        )
+        row = await cursor.fetchone()
+        if row is None:
+            return None
+        await conn.execute("DELETE FROM comment_reactions WHERE comment_id = %s", (comment_id,))
+        await conn.execute("DELETE FROM notifications WHERE comment_id = %s", (comment_id,))
+        if row["replied"]:
+            await conn.execute(
+                "UPDATE comments SET is_deleted = 1, body = '', attachment_path = NULL, "
+                "attachment_kind = NULL, hidden_at = NULL, updated_at = %s WHERE id = %s",
+                (datetime.now(UTC).isoformat(), comment_id),
+            )
+        else:
+            await conn.execute("DELETE FROM comments WHERE id = %s", (comment_id,))
+    return PurgedComment(
+        user_id=row["user_id"],
+        body=row["body"],
+        attachment_path=row["attachment_path"],
+        was_hidden=row["hidden_at"] is not None,
+        removed=not row["replied"],
+    )
+
+
 async def list_comments_for_paragraph(
     conn: AsyncConnection,
     slug_url: str,

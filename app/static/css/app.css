@@ -24089,6 +24089,34 @@ html:has(dialog.wn-admin-dialog[open]) {
   overflow-wrap: anywhere;
 }
 
+/* The delete dialog's «Есть вариант мягче» - hiding, offered before the irreversible. */
+.wn-admin-cm__softer {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  gap: 8px 10px;
+  align-items: start;
+  padding: 12px 14px;
+  border: 1px solid color-mix(in srgb, var(--wn-primary) 30%, transparent);
+  border-radius: var(--wn-radius-md);
+  background: color-mix(in srgb, var(--wn-primary) 9%, transparent);
+  font: var(--wn-weight-medium) 12.5px/1.5 var(--wn-font-ui);
+}
+
+.wn-admin-cm__softer > .wn-admin-icon {
+  width: 16px;
+  height: 16px;
+  margin-top: 2px;
+}
+
+.wn-admin-cm__softer p {
+  margin: 0;
+}
+
+.wn-admin-cm__softer .wn-admin-btn {
+  grid-column: 2;
+  justify-self: start;
+}
+
 /* «Требует внимания»: computed warnings, the most serious first. */
 .wn-admin-alerts {
   display: flex;

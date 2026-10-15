@@ -162,11 +162,7 @@ def back_href(args: Mapping[str, object]) -> str:
 def safe_back(raw: str | None) -> str:
     """An action's «back» field may only lead to the comments list - never another page
     or site (no open redirect through the form)."""
-    if (
-        raw
-        and (raw == "/admin/comments" or raw.startswith("/admin/comments?"))
-        and "//" not in raw
-    ):
+    if raw and (raw == "/admin/comments" or raw.startswith("/admin/comments?")) and "//" not in raw:
         return raw
     return "/admin/comments"
 

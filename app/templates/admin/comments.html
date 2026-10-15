@@ -39,6 +39,8 @@
 </main>
 
 {% if drawer %}
+{# «Удалить навсегда» has nothing left to do on a deleted comment whose row stays for its replies. #}
+{% set can_purge = drawer.status != "deleted" or not drawer.replies %}
 {% call kit.drawer("admin-comment", "Комментарий #" ~ drawer.id, drawer.author ~ " · " ~ drawer.status_label, open=true, close_href=close_href) %}
 <div class="wn-admin-drawer__body">
   <section class="wn-admin-cm__card" aria-label="Текст комментария">
@@ -76,10 +78,43 @@
       {% endfor %}
     </dl>
   </section>
+
+  <section class="wn-admin-actions" aria-labelledby="admin-comment-actions">
+    <h3 class="wn-admin-actions__title" id="admin-comment-actions">Действия</h3>
+    {% if drawer.status == "published" %}
+    <form method="post" action="/admin/comments/{{ drawer.id }}/hide">
+      {{ kit.csrf() }}<input type="hidden" name="back" value="{{ back }}">
+      <button class="wn-admin-btn wn-admin-btn--primary" type="submit">{{ kit.icon("eye-off") }}Скрыть</button>
+    </form>
+    {% elif drawer.status == "hidden" %}
+    <form method="post" action="/admin/comments/{{ drawer.id }}/show">
+      {{ kit.csrf() }}<input type="hidden" name="back" value="{{ back }}">
+      <button class="wn-admin-btn" type="submit">{{ kit.icon("eye") }}Показать</button>
+    </form>
+    {% endif %}
+    {% if can_purge %}
+    <button class="wn-admin-btn wn-admin-btn--danger" type="button" data-kit-open="admin-comment-delete">{{ kit.icon("trash") }}Удалить навсегда</button>
+    {% endif %}
+    <p class="wn-admin-field__hint">{% if drawer.status == "published" %}Скрытие можно отменить в любой момент — его стоит выбрать первым. {% endif %}Каждое действие попадает в журнал.</p>
+  </section>
 </div>
 <div class="wn-admin-drawer__foot">
   <button class="wn-admin-btn wn-admin-btn--ghost" type="button" data-kit-close>Закрыть</button>
 </div>
 {% endcall %}
+
+{% if can_purge %}
+{% set delete_lines = ["Ответы останутся, ветка получит пометку «Комментарий удалён»" if drawer.replies else "Комментарий исчезнет из главы целиком", "Лайки и уведомления о них удалятся вместе с ним"] %}
+{% if drawer.attachment %}{% set delete_lines = delete_lines + ["Файл вложения удалится с сервера"] %}{% endif %}
+{% call kit.confirm("admin-comment-delete", "Удалить комментарий #" ~ drawer.id ~ " навсегда?", "/admin/comments/" ~ drawer.id ~ "/delete", confirm_label="Удалить навсегда", lead="Удаление необратимо. Вот что произойдёт:", lines=delete_lines, irreversible=true, fields={"back": back}) %}
+{% if drawer.status == "published" %}
+<div class="wn-admin-cm__softer">
+  {{ kit.icon("eye-off") }}
+  <p>Есть вариант мягче: скрытый комментарий читатели не видят, а вернуть его можно в любой момент.</p>
+  <button class="wn-admin-btn" type="submit" formaction="/admin/comments/{{ drawer.id }}/hide" formnovalidate>Скрыть вместо удаления</button>
+</div>
+{% endif %}
+{% endcall %}
+{% endif %}
 {% endif %}
 {% endblock %}
