@@ -1,22 +1,23 @@
 {% extends "admin/_layout.html" %}
+{% import "admin/_kit.html" as kit with context %}
 {% block title %}Данные БД{% endblock %}
 {% block heading %}Данные БД{% endblock %}
 {% block content %}
-<main class="wn-admin__main" aria-labelledby="admin-page-title">
-  <p class="wn-admin__hint">Только просмотр. Хеши паролей, токены и коды скрыты.</p>
-  <div class="wn-admin__scroll">
-    <table class="wn-admin__table">
-      <thead><tr><th>Таблица</th><th class="wn-admin__num">Строк</th><th class="wn-admin__num">Колонок</th></tr></thead>
-      <tbody>
-        {% for table in tables %}
-        <tr>
-          <td><a href="/admin/tables/{{ table.name }}">{{ table.name }}</a></td>
-          <td class="wn-admin__num">{{ table.rows }}</td>
-          <td class="wn-admin__num">{{ table.columns }}</td>
-        </tr>
-        {% endfor %}
-      </tbody>
-    </table>
+{# PR 325's table list, PR 352 on the UI kit: every base table of the schema - the
+   whitelist the browser picks from (app/db/admin_data.py). #}
+<main class="wn-admin__main wn-admin-ov" aria-labelledby="admin-page-title">
+  <div class="wn-admin-ov__bar">
+    <p class="wn-admin-ov__asof">Таблиц: {{ rows | length }} · только просмотр, хеши паролей, токены и коды скрыты</p>
   </div>
+  <section class="wn-admin-panel" aria-label="Таблицы">
+    {% if rows %}
+    {% call(row, column) kit.table("db-tables", columns, rows, caption="Таблицы базы данных") %}
+      {%- if column.key == "name" -%}<a class="wn-admin-cm__link" href="/admin/tables/{{ row.name }}">{{ row.name }}</a>
+      {%- else -%}{{ kit.cell(row[column.key]) }}{%- endif -%}
+    {% endcall %}
+    {% else %}
+    {{ kit.empty_state("Таблиц нет", "Миграции ещё не применены.", icon_name="database") }}
+    {% endif %}
+  </section>
 </main>
 {% endblock %}

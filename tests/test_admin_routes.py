@@ -34,6 +34,7 @@ EXPECTED_WITHOUT_ADMIN = {
     ("POST", "/admin/comments/{comment_id}/show"): 303,
     ("POST", "/admin/comments/{comment_id}/delete"): 303,
     ("GET", "/admin/tables/{name}"): 303,
+    ("GET", "/admin/tables/{name}/csv"): 303,
     ("GET", "/admin/_kit"): 303,
     ("POST", "/admin/_kit/demo"): 303,
     ("GET", "/admin/login"): 200,

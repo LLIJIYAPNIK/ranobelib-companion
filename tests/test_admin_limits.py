@@ -153,7 +153,9 @@ async def test_numeric_columns_still_sort_as_numbers(client: TestClient) -> None
     _login(client)
 
     html = client.get("/admin/tables/users", params={"sort": "id", "order": "desc"}).text
-    ids = [int(n) for n in re.findall(r"<tr>\s*<td>(\d+)</td>", html)]
+    # users.id links to the user drawer (PR 352) - an <a>, not a plain <span>.
+    cell = r'data-col="id" data-label="id"><(?:span|a)[^>]*>(\d+)<'
+    ids = [int(n) for n in re.findall(cell, html)]
 
     assert ids == sorted(ids, reverse=True)
     assert ids[0] >= 10  # 12 rows: "12" first, not "9" (a text sort)

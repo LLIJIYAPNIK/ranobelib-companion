@@ -125,7 +125,7 @@ async def test_secrets_cannot_be_searched_or_sorted_on(client: TestClient) -> No
     assert "Найдено строк: 0" in found
     assert sorted_.status_code == 200
     # fell back to id
-    assert re.search(r'aria-sort="descending">\s*<a href="\?sort=id&', sorted_.text)
+    assert 'data-col="id" aria-sort="descending"' in sorted_.text
     assert SECRET_HASH not in sorted_.text
 
 
@@ -229,3 +229,33 @@ async def test_search_finds_rows_case_insensitively(client: TestClient) -> None:
 
     assert "Найдено строк: 1" in html
     assert "alice@example.com" in html
+
+
+async def test_each_table_has_its_own_columns_menu(client: TestClient) -> None:
+    await _seed(client)
+    _admin(client)
+
+    html = client.get("/admin/tables/users").text
+
+    assert 'data-kit-columns="db-users"' in html and 'data-kit-table="db-users"' in html
+    # The first column can't be hidden - a row always stays identifiable.
+    assert re.search(r'value="id" checked disabled data-locked', html)
+    assert 'value="email" checked>' in html
+
+
+async def test_user_ids_link_to_the_users_drawer(client: TestClient) -> None:
+    user_id = await _seed(client)
+    async with connection() as conn:
+        await conn.execute(
+            "INSERT INTO activity_events (user_id, kind, slug_url, created_at) "
+            "VALUES (%s, 'chapter_read', 'slug-x', 'now')",
+            (user_id,),
+        )
+    _admin(client)
+
+    users = client.get("/admin/tables/users").text
+    events = client.get("/admin/tables/activity_events").text
+
+    link = f'href="/admin/users?user={user_id}"'
+    assert link in users and link in events
+    assert 'href="/admin/users?user=slug' not in events  # only real user-id columns
