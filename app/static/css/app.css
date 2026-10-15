@@ -24894,6 +24894,94 @@ summary.wn-admin-audit__row:focus-visible {
   }
 }
 
+/* PR 354: touch targets of at least 44 x 44 px wherever the panel is used by finger - on a
+   tablet or phone width, or any coarse pointer - for every control of the kit and the
+   shell. A mouse on a wide screen keeps the mockup's denser 32-38px controls. Text
+   links inside a sentence are left as they are; the ones that stand alone (table cells,
+   «Открыть …») get the full height. */
+@media (max-width: 1024px), (pointer: coarse) {
+  .wn-admin-btn,
+  .wn-admin-input,
+  .wn-admin-select,
+  .wn-admin-search__input,
+  .wn-admin-search__toggle,
+  .wn-admin-search__close,
+  .wn-admin-top__menu,
+  .wn-admin-side__close,
+  .wn-admin-top__site,
+  .wn-admin-side__logout-btn,
+  .wn-admin-iconbtn,
+  .wn-admin-toast .wn-admin-iconbtn {
+    min-width: 44px;
+    height: 44px;
+  }
+
+  .wn-admin-select select {
+    height: 42px;
+  }
+
+  .wn-admin-btn--link,
+  .wn-admin-side__item,
+  .wn-admin-seg__item,
+  .wn-admin-toggle,
+  .wn-admin-chip,
+  .wn-admin-filters__reset,
+  .wn-admin-colmenu__item,
+  .wn-admin-table__sort,
+  .wn-admin-search__option,
+  .wn-admin-search-page__hit {
+    min-height: 44px;
+  }
+
+  .wn-admin-btn--link {
+    height: auto;
+    padding: 0 4px;
+  }
+
+  .wn-admin-seg__item,
+  .wn-admin-chip,
+  .wn-admin-filters__reset {
+    height: auto;
+  }
+
+  .wn-admin-side__item {
+    height: auto;
+  }
+
+  .wn-admin-search__option,
+  .wn-admin-search-page__hit {
+    justify-content: center;
+  }
+
+  .wn-admin-pager__page,
+  .wn-admin-pager__step {
+    min-width: 44px;
+    height: 44px;
+  }
+
+  .wn-admin-table__td .wn-admin-cm__link,
+  .wn-admin-actions__title .wn-admin-cm__link,
+  .wn-admin-audit__open,
+  .wn-admin-search-page__more {
+    display: inline-flex;
+    align-items: center;
+    min-height: 44px;
+  }
+
+  /* Short labels («7д», «id», a user id «1») - wide enough to hit as well. */
+  .wn-admin-seg__item,
+  .wn-admin-table__sort,
+  .wn-admin-table__sortbar-item,
+  .wn-admin-table__td .wn-admin-cm__link {
+    min-width: 44px;
+  }
+
+  .wn-admin-seg__item,
+  .wn-admin-table__sortbar-item {
+    justify-content: center;
+  }
+}
+
 /* ==========================================================================
    Offline page (PR 328) - what the service worker shows for a page that couldn't load
    without a network. Standalone (no shell), so the error page's centring needs the
