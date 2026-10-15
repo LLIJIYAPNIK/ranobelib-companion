@@ -79,7 +79,7 @@
     {% endcall %}
   </div>
 
-  {% call kit.card("Ошибки загрузок", "Последние " ~ download_errors | length ~ " из истории загрузок") %}
+  {% call kit.card("Ошибки загрузок", "До " ~ errors_shown ~ " последних из истории загрузок") %}
   {% if database_down %}
   {{ kit.error_state("База данных недоступна", "История загрузок появится, как только соединение восстановится.") }}
   {% elif download_errors %}

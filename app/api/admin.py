@@ -973,6 +973,7 @@ async def admin_system(request: Request, _: Admin) -> HTMLResponse:
         database_down=recent is None,
         download_errors=download_error_rows(recent.recent_download_errors, tz) if recent else [],
         error_columns=DOWNLOAD_ERROR_COLUMNS,
+        errors_shown=DOWNLOAD_ERRORS_SHOWN,
         storage=storage_rows(usages),
         disk=disk_summary(disk_usage(settings.cache_dir)),
         cache_clear_issue=SDK_CACHE_CLEAR_ISSUE,

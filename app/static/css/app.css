@@ -24110,6 +24110,15 @@ html:has(dialog.wn-admin-dialog[open]) {
   background: var(--wn-primary);
 }
 
+/* The cache note mixes text, a link and <code>: a block, not the kit hint's flex row
+   (which made each a column), and CACHE_TTL_SECONDS must wrap on a phone. */
+.wn-admin-sys .wn-admin-actions > .wn-admin-field__hint {
+  display: block;
+  align-self: stretch;
+  line-height: 1.5;
+  overflow-wrap: anywhere;
+}
+
 /* «Комментарии» (PR 350): the list's text/where cells and the drawer's comment card. */
 .wn-admin-cm__text {
   display: -webkit-box;
