@@ -137,6 +137,8 @@ from app.auth.admin import (
     csrf_token,
     end_admin_session,
     is_admin,
+    limit_admin_exports,
+    limit_admin_writes,
     login_locked_for,
     password_matches,
     record_failed_login,
@@ -256,6 +258,11 @@ Order = Annotated[str, Query(max_length=20)]
 Csrf = Annotated[str, Form(max_length=128)]
 TableName = Annotated[str, Path(max_length=63)]
 SortKey = Annotated[str | None, Query(max_length=63)]
+
+# PR 355: every POST that changes data, and every CSV export, is rate-limited per IP on top
+# of the admin check (app/auth/admin.py).
+WRITES = [Depends(limit_admin_writes)]
+EXPORTS = [Depends(limit_admin_exports)]
 
 
 @dataclass(frozen=True)
@@ -602,7 +609,7 @@ def _label(user: User) -> str:
     return user.nickname or user.email
 
 
-@router.post("/users/{user_id}/sessions", response_model=None)
+@router.post("/users/{user_id}/sessions", response_model=None, dependencies=WRITES)
 async def admin_user_end_sessions(
     request: Request,
     user_id: UserId,
@@ -629,7 +636,7 @@ async def admin_user_end_sessions(
     return RedirectResponse(safe_back(back), status_code=303)
 
 
-@router.post("/users/{user_id}/verify-email", response_model=None)
+@router.post("/users/{user_id}/verify-email", response_model=None, dependencies=WRITES)
 async def admin_user_verify_email(
     request: Request,
     user_id: UserId,
@@ -660,7 +667,7 @@ async def admin_user_verify_email(
     return RedirectResponse(safe_back(back), status_code=303)
 
 
-@router.post("/users/{user_id}/password-reset", response_model=None)
+@router.post("/users/{user_id}/password-reset", response_model=None, dependencies=WRITES)
 async def admin_user_password_reset(
     request: Request,
     user_id: UserId,
@@ -690,7 +697,7 @@ async def admin_user_password_reset(
 # --- blocking (PR 349) ---------------------------------------------------------------------
 
 
-@router.post("/users/{user_id}/ban", response_model=None)
+@router.post("/users/{user_id}/ban", response_model=None, dependencies=WRITES)
 async def admin_user_ban(
     request: Request,
     user_id: UserId,
@@ -729,7 +736,7 @@ async def admin_user_ban(
     return RedirectResponse(safe_back(back), status_code=303)
 
 
-@router.post("/users/{user_id}/unban", response_model=None)
+@router.post("/users/{user_id}/unban", response_model=None, dependencies=WRITES)
 async def admin_user_unban(
     request: Request,
     user_id: UserId,
@@ -836,7 +843,7 @@ async def admin_comments(
 CommentId = Annotated[int, Path(ge=1, le=2_147_483_647)]
 
 
-@router.post("/comments/{comment_id}/hide", response_model=None)
+@router.post("/comments/{comment_id}/hide", response_model=None, dependencies=WRITES)
 async def admin_comment_hide(
     request: Request,
     comment_id: CommentId,
@@ -876,7 +883,7 @@ async def admin_comment_hide(
     return RedirectResponse(target, status_code=303)
 
 
-@router.post("/comments/{comment_id}/show", response_model=None)
+@router.post("/comments/{comment_id}/show", response_model=None, dependencies=WRITES)
 async def admin_comment_show(
     request: Request,
     comment_id: CommentId,
@@ -908,7 +915,7 @@ async def admin_comment_show(
     return RedirectResponse(target, status_code=303)
 
 
-@router.post("/comments/{comment_id}/delete", response_model=None)
+@router.post("/comments/{comment_id}/delete", response_model=None, dependencies=WRITES)
 async def admin_comment_delete(
     request: Request,
     comment_id: CommentId,
@@ -1077,7 +1084,7 @@ async def admin_table(
     )
 
 
-@router.get("/tables/{name}/csv", response_model=None)
+@router.get("/tables/{name}/csv", response_model=None, dependencies=EXPORTS)
 async def admin_table_csv(
     request: Request,
     name: TableName,
@@ -1169,7 +1176,7 @@ def _known(actor: str | None, names: list[str]) -> str | None:
     return actor if actor in names else None
 
 
-@router.get("/audit/csv", response_model=None)
+@router.get("/audit/csv", response_model=None, dependencies=EXPORTS)
 async def admin_audit_csv(
     request: Request,
     _: Admin,
