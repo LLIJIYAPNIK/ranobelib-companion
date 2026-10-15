@@ -200,6 +200,38 @@
       <button class="wn-sheet-confirm__danger" type="button" data-logout-keep="0">Удалить скачанное</button>
     </div>
   </div>
+  {# PR 357: «Пожаловаться» on a comment or a profile - report-form.js fills in the target
+     and opens this in the dialog below on desktop, in the shared bottom sheet on phones,
+     and posts it to POST /reports (PR 356). #}
+  <div class="wn-report" data-role="report-form" hidden>
+    <form class="wn-report__form" data-role="report-form-form" novalidate>
+      <input type="hidden" name="target_type" value="">
+      <input type="hidden" name="target_id" value="">
+      <fieldset class="wn-report__reasons">
+        <legend class="wn-report__legend">Причина</legend>
+        {% for value, label in report_reasons.items() %}
+        <label class="wn-report__reason"><input type="radio" name="reason" value="{{ value }}"{% if loop.first %} data-autofocus{% endif %}><span>{{ label }}</span></label>
+        {% endfor %}
+      </fieldset>
+      <div class="ui-field">
+        <label class="ui-field__label" for="report-details">Пояснение <span class="wn-report__optional">необязательно</span></label>
+        <textarea class="ui-input wn-report__details" id="report-details" name="details" rows="3" maxlength="{{ report_details_limit }}" aria-describedby="report-details-count"></textarea>
+        <p class="ui-field__hint wn-report__count" id="report-details-count" data-role="report-count">0 / {{ report_details_limit }}</p>
+      </div>
+      <p class="ui-field__error wn-report__error" data-role="report-error" role="alert" hidden></p>
+      <div class="wn-report__foot">
+        <button class="ui-btn ui-btn--quiet" type="button" data-role="report-cancel">Отмена</button>
+        <button class="ui-btn ui-btn--primary" type="submit" data-role="report-submit">Отправить</button>
+      </div>
+    </form>
+  </div>
+  <dialog class="ui-dialog wn-report-dialog" data-role="report-dialog" aria-labelledby="report-dialog-title">
+    <div class="ui-dialog__head">
+      <h2 class="ui-dialog__title" id="report-dialog-title" data-role="report-dialog-title"></h2>
+      <button class="ui-icon-btn" type="button" data-role="report-dialog-close" aria-label="Закрыть"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" aria-hidden="true"><path d="M18 6 6 18M6 6l12 12"/></svg></button>
+    </div>
+    <div class="ui-dialog__body" data-role="report-dialog-body"></div>
+  </dialog>
   {% endif %}
   {# PR 279: the one bottom sheet (bottom-sheet.js) - outside .app-shell, which goes
      inert while it's open. Empty until something hands it a content element. #}
@@ -248,6 +280,7 @@
   <script src="{{ static_url('js/profile-menu.js') }}" defer></script>
   <script src="{{ static_url('js/notifications-panel.js') }}" defer></script>
   <script src="{{ static_url('js/notifications-actions.js') }}" defer></script>
+  <script src="{{ static_url('js/report-form.js') }}" defer></script>
   {% if not current_user.timezone %}
   <script src="{{ static_url('js/timezone-sync.js') }}" defer></script>
   {% endif %}

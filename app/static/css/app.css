@@ -25384,3 +25384,137 @@ body.reader-page--offline-copy .sidebar__account,
 body.reader-page--offline-copy .reader-paragraph-more {
   display: none;
 }
+
+/* PR 357: the report form (base.html, report-form.js) - in a .ui-dialog on desktop, in
+   the shared bottom sheet on phones. Reasons are full-width radio rows, 44px tall; the
+   buttons stack full width on a phone, «Отправить» on top. */
+.wn-report-dialog {
+  width: min(480px, calc(100% - 32px));
+}
+
+.wn-report__form {
+  display: flex;
+  flex-direction: column;
+  gap: var(--s-16);
+}
+
+.wn-report__reasons {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  min-width: 0;
+  margin: 0;
+  padding: 0;
+  border: 0;
+}
+
+.wn-report__legend {
+  margin-bottom: 8px;
+  padding: 0;
+  color: var(--text-2);
+  font: 700 13px/1 var(--font-ui);
+}
+
+.wn-report__reason {
+  display: flex;
+  align-items: center;
+  gap: var(--s-12);
+  min-height: 44px;
+  padding: 0 14px;
+  border: 1px solid var(--border);
+  border-radius: var(--r-lg);
+  background: var(--surface-1);
+  color: var(--text-1);
+  font: 600 14px/1.3 var(--font-ui);
+  cursor: pointer;
+}
+
+.wn-report__reason input {
+  flex: none;
+  width: 18px;
+  height: 18px;
+  margin: 0;
+  accent-color: var(--primary);
+}
+
+.wn-report__reason input:focus-visible {
+  outline: none;
+}
+
+.wn-report__reason:has(input:checked) {
+  border-color: var(--primary);
+  background: var(--surface-3);
+}
+
+.wn-report__reason:has(input:focus-visible) {
+  box-shadow: 0 0 0 2px var(--focus);
+}
+
+.wn-report__optional {
+  color: var(--text-3);
+  font-weight: 500;
+}
+
+.wn-report__details {
+  height: auto;
+  min-height: 88px;
+  padding: 10px 14px;
+  line-height: 1.45;
+  resize: vertical;
+}
+
+.wn-report__count {
+  text-align: right;
+}
+
+.wn-report__foot {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 10px;
+}
+
+@media (max-width: 767px) {
+  .wn-report__foot {
+    flex-direction: column-reverse;
+  }
+
+  .wn-report__foot .ui-btn {
+    width: 100%;
+  }
+}
+
+/* PR 357: «⋯» beside the friend buttons on someone else's profile (profile-more.js) - a
+   44px square in the same outline as those buttons; its menu a .ui-menu popover placed
+   from the button, or rows in the shared bottom sheet on phones. */
+.wn-profile-more {
+  border: 1px solid var(--border-strong);
+  background: var(--surface-2);
+}
+
+.wn-profile-more[hidden],
+.wn-profile-more__menu[hidden] {
+  display: none;
+}
+
+.wn-profile-more__menu {
+  position: fixed;
+  z-index: 80;
+}
+
+.bottom-sheet .wn-profile-more__menu {
+  position: static;
+  min-width: 0;
+  margin: 0 -12px;
+  padding: 0;
+  border: 0;
+  background: none;
+  box-shadow: none;
+}
+
+.bottom-sheet .wn-profile-more__menu .ui-menu__item {
+  gap: 14px;
+  min-height: 52px;
+  border-radius: 12px;
+  font-size: 16px;
+}

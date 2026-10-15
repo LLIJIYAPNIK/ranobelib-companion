@@ -1098,6 +1098,17 @@
       actions.append(editToggle, deleteToggle);
     }
 
+    // PR 357: «Пожаловаться» on someone else's comment - report-form.js (base.html) picks
+    // up the data-report-* click and opens the form. Not on a deleted or hidden one: the
+    // server refuses those too.
+    if (isAuthenticated && currentUserId !== comment.user_id && !inert) {
+      const reportToggle = actionButton("paragraph-comment__report-toggle", "Пожаловаться");
+      reportToggle.dataset.reportTargetType = "comment";
+      reportToggle.dataset.reportTargetId = String(comment.id);
+      reportToggle.setAttribute("aria-haspopup", "dialog");
+      actions.append(reportToggle);
+    }
+
     // PR 152: folding a reply thread - the action-row button and a click on the thread's
     // guide line both flip the same state, kept across re-renders (collapsedCommentIds).
     let repliesDiv = null;

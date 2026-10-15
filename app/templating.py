@@ -8,6 +8,7 @@ from starlette.requests import Request
 
 from app.admin_kit import admin_query, filter_state, page_range, page_window
 from app.auth.avatar import avatar_initials, avatar_url
+from app.reports import DETAILS_LIMIT, REPORT_REASONS
 from app.static_assets import asset_hash
 
 
@@ -57,6 +58,9 @@ templates.env.globals["avatar_initials"] = avatar_initials
 templates.env.globals["avatar_url"] = avatar_url
 templates.env.globals["plural"] = plural
 templates.env.globals["static_url"] = static_url
+# PR 357: the report form in base.html lists the same reasons POST /reports accepts.
+templates.env.globals["report_reasons"] = REPORT_REASONS
+templates.env.globals["report_details_limit"] = DETAILS_LIMIT
 # PR 342: the admin UI kit's helpers (app/templates/admin/_kit.html).
 templates.env.globals["admin_query"] = admin_query
 templates.env.globals["filter_state"] = filter_state
