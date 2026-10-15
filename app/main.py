@@ -7,6 +7,7 @@ from contextlib import asynccontextmanager
 from fastapi import Depends, FastAPI
 from fastapi.staticfiles import StaticFiles
 
+from app.access_log import install_access_log_redaction
 from app.api import (
     activity,
     admin,
@@ -75,6 +76,8 @@ app = FastAPI(
     dependencies=[Depends(get_current_user)],
 )
 install_security_headers(app)
+# PR 355: no admin search text or emailed token in the access log.
+install_access_log_redaction()
 install_cache_policy(app)
 # PR 324: after install_cache_policy, so its no-store wins on /admin*.
 admin.install_admin_headers(app)
