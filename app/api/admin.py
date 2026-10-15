@@ -42,6 +42,15 @@ from app.admin_analytics import (
     title_kpis,
     title_list_rows,
 )
+from app.admin_comments import COLUMNS as COMMENT_COLUMNS
+from app.admin_comments import back_href as comments_back_href
+from app.admin_comments import (
+    comment_filters,
+    comment_rows,
+    drawer_context,
+    parse_kind,
+    parse_status,
+)
 from app.admin_kit import Undo, pop_toast, push_toast
 from app.admin_kit_demo import charts_context, table_context
 from app.admin_overview import (
@@ -112,6 +121,10 @@ from app.db.admin_audit import (
     USER_SEND_PASSWORD_RESET,
     USER_UNBAN,
 )
+from app.db.admin_comments import DEFAULT_SORT as COMMENT_DEFAULT_SORT
+from app.db.admin_comments import PAGE_SIZE as COMMENTS_PAGE_SIZE
+from app.db.admin_comments import SORTS as COMMENT_SORTS
+from app.db.admin_comments import comment_detail, list_comments
 from app.db.admin_data import (
     MASK,
     QUERY_TIMEOUT_MS,
@@ -179,7 +192,7 @@ ADMIN_NAV: tuple[NavItem, ...] = (
     NavItem("overview", "Обзор", "dashboard", "/admin"),
     NavItem("analytics", "Аналитика", "chart", "/admin/analytics", "Контент"),
     NavItem("users", "Пользователи", "users", "/admin/users", "Сообщество"),
-    NavItem("comments", "Комментарии", "comments", None, "Сообщество"),
+    NavItem("comments", "Комментарии", "comments", "/admin/comments", "Сообщество"),
     NavItem("tables", "Данные БД", "database", "/admin/tables", "Данные"),
     NavItem("system", "Система", "server", None, "Платформа"),
     NavItem("audit", "Журнал", "history", None, "Платформа"),
@@ -663,6 +676,66 @@ async def admin_user_unban(
     )
     push_toast(request, f"Блокировка «{_label(user)}» снята")
     return RedirectResponse(safe_back(back), status_code=303)
+
+
+@router.get("/comments", response_model=None)
+async def admin_comments(
+    request: Request,
+    _: Admin,
+    conn: Connection,
+    q: Annotated[str, Query(max_length=200)] = "",
+    status: Annotated[str | None, Query(max_length=10)] = None,
+    kind: Annotated[str | None, Query(max_length=10)] = None,
+    sort: Annotated[str | None, Query(max_length=20)] = None,
+    order: str = "desc",
+    page: Annotated[int, Query(ge=1, le=1_000_000)] = 1,
+    comment: Annotated[int | None, Query(ge=1, le=2_147_483_647)] = None,
+) -> HTMLResponse:
+    """«Комментарии» (PR 350): every comment with search (text, author, title, id),
+    filters and sorting. Read-only; hiding, showing and deleting are the POST routes
+    below. ``comment`` opens that comment's drawer over the list."""
+    tz = get_settings().admin_timezone
+    sort_key = sort if sort in COMMENT_SORTS else COMMENT_DEFAULT_SORT
+    descending = order != "asc"
+    try:
+        data = await list_comments(
+            conn,
+            query=q,
+            status=parse_status(status),
+            kind=parse_kind(kind),
+            sort=sort_key,
+            descending=descending,
+            page=page,
+        )
+        detail = await comment_detail(conn, comment) if comment is not None else None
+        bans = len(await ban_history(conn, detail.comment.user_id)) if detail else 0
+    except QueryCanceled:
+        return _timed_out(request, "comments")
+    slugs = [row.slug_url for row in data.rows]
+    if detail:
+        slugs.append(detail.comment.slug_url)
+    titles = await _title_summaries(slugs) if slugs else {}
+    args = dict(request.query_params)
+    filters = comment_filters(args)
+    list_args = {name: value for name, value in args.items() if name != "comment"}
+    return _page(
+        request,
+        "admin/comments.html",
+        "comments",
+        args=args,
+        columns=COMMENT_COLUMNS,
+        filters=filters,
+        filtered=bool(q.strip()) or any(item.value for item in filters),
+        rows=comment_rows(data.rows, titles, tz, args),
+        data=data,
+        per_page=COMMENTS_PAGE_SIZE,
+        sort=sort_key,
+        descending=descending,
+        drawer=drawer_context(detail, titles, tz, args, bans) if detail else None,
+        drawer_missing=comment is not None and detail is None,
+        close_href=comments_back_href(list_args),
+        back=comments_back_href(args),
+    )
 
 
 @router.get("/tables", response_model=None)
