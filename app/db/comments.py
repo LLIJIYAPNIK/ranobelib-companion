@@ -50,6 +50,10 @@ class Comment:
     # vanished comment. The client renders a "Комментарий удалён" placeholder instead of
     # this comment's own (now-empty) body/attachment.
     is_deleted: bool = False
+    # PR 350: hidden by the admin («Скрыть» in /admin/comments). Only its author still
+    # gets the body - for anyone else list_comments_for_paragraph() drops it, or blanks it
+    # into a «Комментарий скрыт» placeholder when other people's replies hang under it.
+    is_hidden: bool = False
     replies: list[Comment] = field(default_factory=list)
 
     @property
@@ -88,7 +92,8 @@ async def create_comment(
     if parent_comment_id is not None:
         cursor = await conn.execute(
             "SELECT 1 FROM comments WHERE id = %s AND slug_url = %s AND volume = %s "
-            "AND number = %s AND branch_id = %s AND paragraph_index = %s",
+            "AND number = %s AND branch_id = %s AND paragraph_index = %s "
+            "AND hidden_at IS NULL",
             (parent_comment_id, slug_url, volume, number, branch_id, paragraph_index),
         )
         parent = await cursor.fetchone()
@@ -199,14 +204,20 @@ async def list_comments_for_paragraph(
     number: str,
     branch_id: str,
     paragraph_index: int,
+    viewer_id: int | None = None,
 ) -> list[Comment]:
     """Root comments with their replies already nested inside (reddit-style), not a flat
     list - the client renders exactly this shape with indentation by depth, no tree of
-    its own to build."""
+    its own to build.
+
+    PR 350: a hidden comment reaches only its author (`viewer_id`) intact. For everyone
+    else it's left out, unless replies still visible to them hang under it - then it stays
+    as an empty placeholder (no body, no attachment) so the thread keeps its shape, the
+    same way a deleted comment does."""
     cursor = await conn.execute(
         "SELECT comments.id, comments.user_id, comments.body, comments.created_at, "
         "comments.parent_comment_id, comments.attachment_path, comments.attachment_kind, "
-        "comments.updated_at, comments.is_deleted, "
+        "comments.updated_at, comments.is_deleted, comments.hidden_at, "
         "users.nickname, users.email, users.avatar_path "
         "FROM comments JOIN users ON users.id = comments.user_id "
         "WHERE comments.slug_url = %s AND comments.volume = %s AND comments.number = %s "
@@ -216,23 +227,26 @@ async def list_comments_for_paragraph(
     )
     rows = await cursor.fetchall()
 
-    nodes: dict[int, Comment] = {
-        row["id"]: Comment(
+    nodes: dict[int, Comment] = {}
+    for row in rows:
+        hidden = row["hidden_at"] is not None
+        # Not the author's: nothing of a hidden comment's content leaves the database.
+        blank = hidden and row["user_id"] != viewer_id
+        nodes[row["id"]] = Comment(
             id=row["id"],
             user_id=row["user_id"],
             author=row["nickname"] or row["email"],
-            body=row["body"],
+            body="" if blank else row["body"],
             created_at=row["created_at"],
             parent_comment_id=row["parent_comment_id"],
             avatar_url=url_for(row["avatar_path"]),
             avatar_initials=initials_for(row["nickname"], row["email"]),
-            attachment_path=row["attachment_path"],
-            attachment_kind=row["attachment_kind"],
-            updated_at=row["updated_at"],
+            attachment_path=None if blank else row["attachment_path"],
+            attachment_kind=None if blank else row["attachment_kind"],
+            updated_at=None if blank else row["updated_at"],
             is_deleted=bool(row["is_deleted"]),
+            is_hidden=hidden,
         )
-        for row in rows
-    }
     roots: list[Comment] = []
     for row in rows:
         node = nodes[row["id"]]
@@ -245,7 +259,19 @@ async def list_comments_for_paragraph(
             nodes[parent_id].replies.append(node)
         else:
             roots.append(node)
-    return roots
+    return _without_hidden(roots, viewer_id)
+
+
+def _without_hidden(comments: list[Comment], viewer_id: int | None) -> list[Comment]:
+    """`comments` minus the hidden ones `viewer_id` may not see and that have nothing
+    visible under them - bottom-up, so a hidden reply chain disappears whole."""
+    kept = []
+    for comment in comments:
+        comment.replies[:] = _without_hidden(comment.replies, viewer_id)
+        if comment.is_hidden and comment.user_id != viewer_id and not comment.replies:
+            continue
+        kept.append(comment)
+    return kept
 
 
 async def count_comments_for_paragraph(
@@ -255,40 +281,53 @@ async def count_comments_for_paragraph(
     number: str,
     branch_id: str,
     paragraph_index: int,
+    viewer_id: int | None = None,
 ) -> int:
-    """Every comment under this paragraph, replies included - what "N комментариев" counts."""
+    """Every comment under this paragraph, replies included - what "N комментариев" counts.
+    PR 350: a hidden one counts only for its author (`viewer_id`)."""
     cursor = await conn.execute(
         "SELECT COUNT(*) AS n FROM comments "
         "WHERE slug_url = %s AND volume = %s AND number = %s AND branch_id = %s "
-        "AND paragraph_index = %s",
-        (slug_url, volume, number, branch_id, paragraph_index),
+        "AND paragraph_index = %s AND (hidden_at IS NULL OR user_id = %s)",
+        (slug_url, volume, number, branch_id, paragraph_index, viewer_id),
     )
     row = await cursor.fetchone()
     return row["n"]
 
 
 async def count_comments(
-    conn: AsyncConnection, slug_url: str, volume: str, number: str, branch_id: str
+    conn: AsyncConnection,
+    slug_url: str,
+    volume: str,
+    number: str,
+    branch_id: str,
+    viewer_id: int | None = None,
 ) -> dict[int, int]:
     """Aggregated comment counts per paragraph for the whole chapter in one query - same
     "one bulk fetch on load, not one per paragraph" reasoning as
-    app/db/reactions.py's count_reactions()."""
+    app/db/reactions.py's count_reactions(). PR 350: hidden comments count only for their
+    author (`viewer_id`)."""
     cursor = await conn.execute(
         "SELECT paragraph_index, COUNT(*) AS n FROM comments "
         "WHERE slug_url = %s AND volume = %s AND number = %s AND branch_id = %s "
+        "AND (hidden_at IS NULL OR user_id = %s) "
         "GROUP BY paragraph_index",
-        (slug_url, volume, number, branch_id),
+        (slug_url, volume, number, branch_id, viewer_id),
     )
     rows = await cursor.fetchall()
     return {row["paragraph_index"]: row["n"] for row in rows}
 
 
-async def count_comments_by_user(conn: AsyncConnection, user_id: int) -> int:
+async def count_comments_by_user(
+    conn: AsyncConnection, user_id: int, include_hidden: bool = False
+) -> int:
     """Every comment this user has ever posted, across every title/chapter/paragraph -
     PR 135's profile page counter, not scoped to any one paragraph the way the two
-    functions above are."""
+    functions above are. PR 350: the ones the admin hid count only when the owner looks
+    (`include_hidden`)."""
     cursor = await conn.execute(
-        "SELECT COUNT(*) AS n FROM comments WHERE user_id = %s", (user_id,)
+        "SELECT COUNT(*) AS n FROM comments WHERE user_id = %s AND (hidden_at IS NULL OR %s)",
+        (user_id, include_hidden),
     )
     row = await cursor.fetchone()
     return row["n"]
@@ -328,12 +367,13 @@ class RecentComment:
 async def list_recent_comments_by_user(
     conn: AsyncConnection, user_id: int, limit: int = 3
 ) -> list[RecentComment]:
-    """This user's own most recent comments, newest first, soft-deleted ones excluded -
-    PR 200's friend-activity feed, not scoped to any one paragraph/chapter the way
-    list_comments_for_paragraph() is."""
+    """This user's own most recent comments, newest first, soft-deleted and (PR 350)
+    hidden ones excluded - PR 200's friend-activity feed, not scoped to any one
+    paragraph/chapter the way list_comments_for_paragraph() is."""
     cursor = await conn.execute(
         "SELECT id, body, created_at, slug_url, volume, number, branch_id FROM comments "
-        "WHERE user_id = %s AND is_deleted = 0 ORDER BY created_at DESC LIMIT %s",
+        "WHERE user_id = %s AND is_deleted = 0 AND hidden_at IS NULL "
+        "ORDER BY created_at DESC LIMIT %s",
         (user_id, limit),
     )
     rows = await cursor.fetchall()

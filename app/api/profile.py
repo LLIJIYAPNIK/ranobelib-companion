@@ -165,7 +165,9 @@ async def _render_profile(
         friend_state = await get_friend_button_state(conn, viewer_id, profile_user.id)
 
     friend_preview = friends[:_FRIEND_PREVIEW_LIMIT]
-    comment_count = await count_comments_by_user(conn, profile_user.id)
+    comment_count = await count_comments_by_user(
+        conn, profile_user.id, include_hidden=is_own_profile
+    )
     # PR 322: the profile owner's own days, whoever is looking at them.
     reading_calendar = await _build_reading_calendar(
         profile_user.id, conn, user_timezone(profile_user.timezone)

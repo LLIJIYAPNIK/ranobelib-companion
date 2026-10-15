@@ -3640,12 +3640,23 @@ html:has(dialog[open]) body {
 }
 
 .paragraph-comment__time,
-.paragraph-comment__edited {
+.paragraph-comment__edited,
+.paragraph-comment__hidden {
   color: var(--pc-muted);
 }
 
-.paragraph-comment__edited::before {
+.paragraph-comment__edited::before,
+.paragraph-comment__hidden::before {
   content: "· ";
+}
+
+/* PR 350: the author's own comment the admin hid - only they still see it. */
+.paragraph-comment__hidden {
+  font-weight: 600;
+}
+
+.paragraph-comment--hidden > .paragraph-comment__main > .paragraph-comment__body {
+  opacity: 0.65;
 }
 
 /* PR 148: body_html brings its own block structure (<p>/<br>/<ul>/<ol>). */
@@ -3669,7 +3680,7 @@ html:has(dialog[open]) body {
   margin-bottom: 0;
 }
 
-/* PR 172: «Комментарий удалён». */
+/* PR 172: «Комментарий удалён»; PR 350: «Комментарий скрыт модератором». */
 .paragraph-comment__body--deleted {
   color: var(--pc-muted);
   font-style: italic;
