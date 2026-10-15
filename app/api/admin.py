@@ -78,11 +78,15 @@ from app.admin_overview import (
     recent_user_rows,
 )
 from app.admin_system import (
+    JOB_COLUMNS,
     app_service,
     database_service,
+    disk_summary,
+    job_rows,
     latency_chart,
     ranobelib_service,
     request_kpis,
+    storage_rows,
     versions,
 )
 from app.admin_users import (
@@ -172,6 +176,7 @@ from app.db.bans import REASON_LIMIT as BAN_REASON_LIMIT
 from app.db.comments import hide_comment, purge_comment, show_comment
 from app.db.connection import get_connection
 from app.db.users import User, end_all_sessions, get_user_by_id, mark_email_verified
+from app.jobs.store import list_active_jobs
 from app.request_metrics import MAX_SAMPLES as REQUEST_SAMPLES
 from app.request_metrics import per_minute, summarize
 from app.request_metrics import samples as request_samples
@@ -186,6 +191,8 @@ from app.services.titles import (
 from app.system_info import (
     STARTED_AT,
     app_version,
+    directory_usage,
+    disk_usage,
     python_version,
     sdk_version,
     uptime_seconds,
@@ -911,6 +918,10 @@ async def _target_comment(conn: AsyncConnection, comment_id: int) -> CommentRow:
     return detail.comment
 
 
+# How many of the latest failed downloads «Система» lists.
+DOWNLOAD_ERRORS_SHOWN = 10
+
+
 @router.get("/system", response_model=None)
 async def admin_system(request: Request, _: Admin) -> HTMLResponse:
     """«Система» (PR 351): this process, its versions and the services it depends on -
@@ -919,10 +930,12 @@ async def admin_system(request: Request, _: Admin) -> HTMLResponse:
     still opens and says so."""
     tz = get_settings().admin_timezone
     database: DatabaseStatus | None = None
+    recent: Overview | None = None
     timed_out = False
     try:
         async with db_connection.connection() as conn:
             database = await database_status(conn)
+            recent = await overview(conn, recent=DOWNLOAD_ERRORS_SHOWN)
     except QueryCanceled:
         logger.warning("The admin system page's database check timed out")
         timed_out = True
@@ -935,6 +948,13 @@ async def admin_system(request: Request, _: Admin) -> HTMLResponse:
     ]
     window = request_samples()
     requests = summarize(window)
+    settings = get_settings()
+    directories = [
+        ("Кеш SDK", settings.cache_dir),
+        ("Аватарки", settings.avatar_dir),
+        ("Вложения комментариев", settings.comment_attachment_dir),
+    ]
+    usages = [(label, path, await directory_usage(path)) for label, path in directories]
     return _page(
         request,
         "admin/system.html",
@@ -947,6 +967,13 @@ async def admin_system(request: Request, _: Admin) -> HTMLResponse:
         request_kpis=request_kpis(requests, tz),
         latency=latency_chart(per_minute(window, time.time()), tz),
         sample_limit=REQUEST_SAMPLES,
+        jobs=job_rows(list_active_jobs(), time.time()),
+        job_columns=JOB_COLUMNS,
+        database_down=recent is None,
+        download_errors=download_error_rows(recent.recent_download_errors, tz) if recent else [],
+        error_columns=DOWNLOAD_ERROR_COLUMNS,
+        storage=storage_rows(usages),
+        disk=disk_summary(disk_usage(settings.cache_dir)),
     )
 
 

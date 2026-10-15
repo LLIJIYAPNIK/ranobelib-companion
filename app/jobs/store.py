@@ -29,6 +29,12 @@ def get_job(job_id: str) -> DownloadJob | None:
     return _jobs.get(job_id)
 
 
+def list_active_jobs() -> list[DownloadJob]:
+    """Every job that hasn't reached a terminal state yet, anyone's - the admin panel's
+    «Система» (PR 351). Same criterion as list_active_jobs_for_user() below."""
+    return [job for job in _jobs.values() if job.status not in ("done", "error", "cancelled")]
+
+
 def list_active_jobs_for_user(user_id: int) -> list[DownloadJob]:
     """The "Текущие" section of "Загрузки" (app/api/downloads_section.py) - jobs that
     haven't reached a terminal state yet. Finished ones live in `download_history`

@@ -24016,6 +24016,100 @@ html:has(dialog.wn-admin-dialog[open]) {
   overflow-wrap: anywhere;
 }
 
+/* «Хранилище»: the disk's used share, then one row per directory with a relative bar. */
+.wn-admin-disk {
+  --tone: var(--wn-admin-success);
+  height: 8px;
+  margin-bottom: 6px;
+  overflow: hidden;
+  border-radius: 999px;
+  background: var(--wn-surface-raised);
+}
+
+.wn-admin-disk--warning {
+  --tone: var(--wn-admin-warning);
+}
+
+.wn-admin-disk--danger {
+  --tone: var(--wn-danger);
+}
+
+.wn-admin-disk__used {
+  display: block;
+  height: 100%;
+  border-radius: inherit;
+  background: var(--tone);
+}
+
+.wn-admin-store {
+  display: flex;
+  flex-direction: column;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.wn-admin-store__row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 4px 12px;
+  padding: 11px 0;
+  border-top: 1px solid var(--wn-border);
+}
+
+.wn-admin-store__row:first-child {
+  border-top: 0;
+}
+
+.wn-admin-store__label {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+  font: var(--wn-weight-semi-bold) 13.5px/1.35 var(--wn-font-ui);
+}
+
+.wn-admin-store__path {
+  overflow: hidden;
+  color: var(--wn-text-muted);
+  font: var(--wn-type-technical);
+  font-size: 11.5px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.wn-admin-store__size {
+  font: var(--wn-weight-semi-bold) 13.5px/1.35 var(--wn-font-ui);
+  font-variant-numeric: tabular-nums;
+  text-align: right;
+  white-space: nowrap;
+}
+
+.wn-admin-store__files {
+  grid-column: 2;
+  grid-row: 2;
+  color: var(--wn-text-muted);
+  font-size: 12px;
+  text-align: right;
+  white-space: nowrap;
+}
+
+.wn-admin-store__bar {
+  grid-column: 1;
+  grid-row: 2;
+  align-self: center;
+  height: 4px;
+  overflow: hidden;
+  border-radius: 999px;
+  background: var(--wn-surface-raised);
+}
+
+.wn-admin-store__bar > span {
+  display: block;
+  height: 100%;
+  background: var(--wn-primary);
+}
+
 /* «Комментарии» (PR 350): the list's text/where cells and the drawer's comment card. */
 .wn-admin-cm__text {
   display: -webkit-box;

@@ -10,14 +10,17 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 from datetime import datetime
+from pathlib import Path
 from zoneinfo import ZoneInfo
 
-from app.admin_kit import LineChart, format_number, line_chart
+from app.admin_kit import Column, LineChart, format_number, line_chart
 from app.admin_overview import format_when
 from app.db.admin_system import DatabaseStatus
+from app.jobs.models import DownloadJob
 from app.request_metrics import MinuteBucket, RequestStats
 from app.services import probe
 from app.services.probe import ProbeResult
+from app.system_info import DirUsage, DiskUsage
 
 OK = "ok"
 WARNING = "warning"
@@ -185,4 +188,94 @@ def latency_chart(buckets: list[MinuteBucket], tz: str) -> LineChart:
         name="p95",
         fmt=format_ms,
         height=200,
+    )
+
+
+# --- downloads and disk --------------------------------------------------------------------
+
+JOB_STATUS_LABELS = {
+    "queued": "в очереди",
+    "running": "скачивается",
+    "exporting": "собирается файл",
+    "needs_translation": "ждёт выбора перевода",
+}
+
+JOB_COLUMNS = (
+    Column("slug_url", "Тайтл", "mono", sortable=False),
+    Column("fmt", "Формат", sortable=False),
+    Column("status", "Состояние", sortable=False),
+    Column("progress", "Главы", "num", sortable=False),
+    Column("started", "Идёт", "muted", sortable=False),
+)
+
+
+def job_rows(jobs: list[DownloadJob], now: float) -> list[dict[str, str]]:
+    """Active downloads, longest-running first."""
+    ordered = sorted(jobs, key=lambda job: job.started_at or now)
+    return [
+        {
+            "slug_url": job.slug_url,
+            "fmt": job.fmt,
+            "status": JOB_STATUS_LABELS.get(job.status, job.status),
+            "progress": f"{job.completed} из {job.total}" if job.total else "—",
+            "started": format_uptime(now - job.started_at) if job.started_at else "ещё не начата",
+        }
+        for job in ordered
+    ]
+
+
+@dataclass(frozen=True)
+class StorageRow:
+    label: str
+    path: str
+    size: str
+    files: str
+    share: float  # of the largest directory, 0-100 - the bar's width
+
+
+def storage_rows(usages: list[tuple[str, Path, DirUsage]]) -> list[StorageRow]:
+    largest = max((usage.bytes for _, _, usage in usages), default=0) or 1
+    rows = []
+    for label, path, usage in usages:
+        if not usage.exists:
+            size, files = "нет каталога", "—"
+        else:
+            more = "≥ " if usage.truncated else ""
+            size = more + format_bytes(usage.bytes)
+            files = more + format_number(usage.files)
+        rows.append(StorageRow(label, str(path), size, files, usage.bytes / largest * 100))
+    return rows
+
+
+@dataclass(frozen=True)
+class DiskSummary:
+    free: str
+    total: str
+    used_share: float  # 0-100
+    state: str  # OK / WARNING / DOWN
+
+    @property
+    def tone(self) -> str:
+        return TONES[self.state]
+
+
+# Below these the disk turns amber, then red.
+LOW_DISK_SHARE = 0.10
+CRITICAL_DISK_SHARE = 0.03
+
+
+def disk_summary(usage: DiskUsage | None) -> DiskSummary | None:
+    if usage is None or usage.total <= 0:
+        return None
+    free_share = usage.free / usage.total
+    state = OK
+    if free_share < CRITICAL_DISK_SHARE:
+        state = DOWN
+    elif free_share < LOW_DISK_SHARE:
+        state = WARNING
+    return DiskSummary(
+        free=format_bytes(usage.free),
+        total=format_bytes(usage.total),
+        used_share=(usage.total - usage.free) / usage.total * 100,
+        state=state,
     )

@@ -46,5 +46,46 @@
     </dl>
     {% endcall %}
   </div>
+
+  <div class="wn-admin-ov__grid">
+    {% call kit.card("Загрузки сейчас", "Задачи этого процесса · без очередей и воркеров") %}
+    {% if jobs %}
+    {% call(row, column) kit.table("sys-jobs", job_columns, jobs, caption="Загрузки сейчас") %}{{ kit.cell(row[column.key]) }}{% endcall %}
+    {% else %}
+    {{ kit.empty_state("Сейчас ничего не скачивается", icon_name="download") }}
+    {% endif %}
+    {% endcall %}
+
+    {% call kit.card("Хранилище", "Размеры каталогов — раз в минуту", aside=("свободно " ~ disk.free ~ " из " ~ disk.total) if disk else none) %}
+    {% if disk %}
+    <div class="wn-admin-disk wn-admin-disk--{{ disk.tone }}" role="img" aria-label="Диск занят на {{ disk.used_share | round | int }}%">
+      <span class="wn-admin-disk__used" style="width: {{ '%.1f' | format(disk.used_share) }}%"></span>
+    </div>
+    {% endif %}
+    <ul class="wn-admin-store">
+      {% for item in storage %}
+      <li class="wn-admin-store__row">
+        <span class="wn-admin-store__label">{{ item.label }}<span class="wn-admin-store__path">{{ item.path }}</span></span>
+        <span class="wn-admin-store__size">{{ item.size }}</span>
+        <span class="wn-admin-store__files">файлов: {{ item.files }}</span>
+        <span class="wn-admin-store__bar" aria-hidden="true"><span style="width: {{ '%.1f' | format(item.share) }}%"></span></span>
+      </li>
+      {% endfor %}
+    </ul>
+    {% endcall %}
+  </div>
+
+  {% call kit.card("Ошибки загрузок", "Последние " ~ download_errors | length ~ " из истории загрузок") %}
+  {% if database_down %}
+  {{ kit.error_state("База данных недоступна", "История загрузок появится, как только соединение восстановится.") }}
+  {% elif download_errors %}
+  {% call(row, column) kit.table("sys-download-errors", error_columns, download_errors, caption="Последние ошибки загрузок") %}
+    {%- if column.key == "error" -%}<span class="wn-admin-ov__clip" title="{{ row.error or '' }}">{{ (row.error or "—") | truncate(120) }}</span>
+    {%- else -%}{{ kit.cell(row[column.key]) }}{%- endif -%}
+  {% endcall %}
+  {% else %}
+  {{ kit.empty_state("Ошибок загрузок нет", icon_name="circle-check") }}
+  {% endif %}
+  {% endcall %}
 </main>
 {% endblock %}
