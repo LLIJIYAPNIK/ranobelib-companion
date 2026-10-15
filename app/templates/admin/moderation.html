@@ -43,7 +43,99 @@
       <p class="wn-admin-field__hint">Показаны первые {{ rows | length }} из {{ data.total }} — разберите их, и очередь подтянет следующие.</p>
       {% endif %}
     </section>
-    {# The card: PR 358, next commit. #}
+    {% if card %}
+    <article class="wn-admin-panel wn-admin-mod__card" aria-labelledby="admin-mod-card-title">
+      <header class="wn-admin-mod__head">
+        <a class="wn-admin-btn wn-admin-btn--ghost wn-admin-mod__back" href="{{ back_href }}">{{ kit.icon("arrow-left") }}Очередь</a>
+        <h2 class="wn-admin-mod__kind" id="admin-mod-card-title">{{ card.kind }}</h2>
+        <span class="wn-admin-mod__where">{% if card.where_href %}<a class="wn-admin-cm__link" href="{{ card.where_href }}" target="_blank" rel="noopener">{{ card.where }}{{ kit.icon("external") }}</a>{% else %}{{ card.where }}{% endif %}{% if card.since %} · с {{ card.since }}{% endif %}</span>
+        <span class="wn-admin-mod__flags">{{ kit.icon("flag") }}{{ card.reports }} {{ plural(card.reports, "жалоба", "жалобы", "жалоб") }}</span>
+      </header>
+
+      <div class="wn-admin-mod__body">
+        {% if card.state == "gone" %}
+        <p class="wn-admin-cm__gone">{{ "Комментария больше нет — его удалили навсегда." if card.target_type == "comment" else "Аккаунта больше нет." }} Жалобы можно только закрыть.</p>
+        {% else %}
+        {% if card.target_type == "comment" %}
+        {% if card.paragraph_text is not none %}
+        <blockquote class="wn-admin-cm__parent wn-admin-cm__paragraph">
+          <span class="wn-admin-cm__parent-label">Абзац {{ card.paragraph }}</span>
+          <span class="wn-admin-cm__parent-text">{{ card.paragraph_text or "[иллюстрация без текста]" }}</span>
+        </blockquote>
+        {% endif %}
+        {% if card.parent_text %}
+        <blockquote class="wn-admin-cm__parent">
+          <span class="wn-admin-cm__parent-label">В ответ на комментарий {{ card.parent_author }}</span>
+          <span class="wn-admin-cm__parent-text">{{ card.parent_text }}</span>
+        </blockquote>
+        {% endif %}
+        {% endif %}
+        <div class="wn-admin-mod__object">
+          {% if card.avatar_url %}<img class="wn-admin-mod__avatar" src="{{ card.avatar_url }}" alt="Аватар {{ card.author }}">{% else %}<span class="wn-admin-mod__avatar" aria-hidden="true">{{ card.initial }}</span>{% endif %}
+          <div class="wn-admin-mod__content">
+            <a class="wn-admin-mod__author wn-admin-cm__link" href="{{ card.author_href }}">{{ card.author }}</a>
+            {% if card.target_type == "comment" %}
+            {% if card.state == "hidden" %}<p class="wn-admin-cm__status">{{ kit.badge("скрыт", "warning") }} Уже скрыт — читатели его не видят.</p>{% endif %}
+            {% if card.state == "deleted" %}
+            <p class="wn-admin-cm__gone">Автор удалил комментарий.</p>
+            {% else %}
+            <div class="wn-admin-mod__text-full wn-admin-cm__body">{{ card.body_html | safe }}</div>
+            {% if card.attachment %}<p class="wn-admin-field__hint">Вложение: {{ card.attachment }} — видно в главе.</p>{% endif %}
+            {% endif %}
+            {% else %}
+            <dl class="wn-admin-summary">
+              <div class="wn-admin-summary__item"><dt>Никнейм</dt><dd>{{ card.nickname or "не задан" }}</dd></div>
+              <div class="wn-admin-summary__item"><dt>Аватар</dt><dd>{{ "есть" if card.avatar_url else "нет" }}</dd></div>
+            </dl>
+            <p class="wn-admin-mod__text-full">{% if card.bio %}{{ card.bio }}{% else %}<span class="wn-admin-cm__gone">«О себе» не заполнено</span>{% endif %}</p>
+            {% endif %}
+          </div>
+        </div>
+        {% endif %}
+
+        <div class="wn-admin-mod__facts">
+          <section class="wn-admin-mod__box" aria-labelledby="admin-mod-reasons">
+            <h3 class="wn-admin-mod__box-title" id="admin-mod-reasons">Причины жалоб</h3>
+            {% for bar in card.reasons %}
+            <div class="wn-admin-mod__reason-row">
+              <span class="wn-admin-mod__reason-line"><span>{{ bar.label }}</span><b>{{ bar.count }}</b></span>
+              <span class="wn-admin-mod__bar" aria-hidden="true"><span class="wn-admin-mod__bar-fill" style="width: {{ bar.percent }}%"></span></span>
+            </div>
+            {% endfor %}
+          </section>
+          {% if card.history %}
+          <section class="wn-admin-mod__box" aria-labelledby="admin-mod-history">
+            <h3 class="wn-admin-mod__box-title" id="admin-mod-history">История автора</h3>
+            <dl class="wn-admin-mod__history">
+              {% for item in card.history %}
+              <div><dt>{{ item.label }}</dt><dd>{{ item.value }}</dd></div>
+              {% endfor %}
+            </dl>
+            {% if card.ban %}{{ kit.badge(card.ban, "danger") }}{% endif %}
+          </section>
+          {% endif %}
+        </div>
+
+        {% if card.notes %}
+        <section class="wn-admin-mod__box" aria-labelledby="admin-mod-notes">
+          <h3 class="wn-admin-mod__box-title" id="admin-mod-notes">Пояснения читателей</h3>
+          <ul class="wn-admin-mod__notes">
+            {% for note in card.notes %}
+            <li><p class="wn-admin-mod__note-text">{{ note.text }}</p><p class="wn-admin-field__hint">{{ note.reason }} · <a class="wn-admin-cm__link" href="{{ note.reporter_href }}">{{ note.reporter }}</a> · {{ note.when }}</p></li>
+            {% endfor %}
+          </ul>
+        </section>
+        {% endif %}
+      </div>
+    </article>
+    {% elif selected %}
+    <section class="wn-admin-panel wn-admin-mod__card" aria-label="Объект">
+      <div class="wn-admin-mod__body">
+        <a class="wn-admin-btn wn-admin-btn--ghost wn-admin-mod__back" href="{{ back_href }}">{{ kit.icon("arrow-left") }}Очередь</a>
+        <p class="wn-admin-cm__gone">Открытых жалоб на этот объект нет — возможно, решение по нему уже принято.</p>
+      </div>
+    </section>
+    {% endif %}
   </div>
   {% endif %}
 </main>

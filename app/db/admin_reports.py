@@ -121,3 +121,114 @@ async def _profiles(conn: AsyncConnection, ids: list[int]) -> dict[int, dict]:
         (ids,),
     )
     return {row["id"]: row for row in await cursor.fetchall()}
+
+
+# --- the card -----------------------------------------------------------------------------
+
+
+@dataclass(frozen=True)
+class ReasonCount:
+    reason: str
+    count: int
+
+
+@dataclass(frozen=True)
+class ReporterNote:
+    """One reporter's own explanation. The admin may see who wrote it; the reported
+    author never does."""
+
+    reason: str
+    details: str
+    created_at: str
+    reporter_id: int
+    reporter: str
+
+
+@dataclass(frozen=True)
+class ObjectReports:
+    count: int
+    first_at: str | None
+    reasons: list[ReasonCount]  # the most common first
+    notes: list[ReporterNote]  # newest first, at most DETAILS_SHOWN
+
+
+async def object_reports(conn: AsyncConnection, target_type: str, target_id: int) -> ObjectReports:
+    """The open reports on one object, summed up for the card."""
+    params = {"type": target_type, "id": target_id, "limit": DETAILS_SHOWN}
+    async with _read_only(conn):
+        cursor = await conn.execute(
+            "SELECT reason, COUNT(*) AS n, MIN(created_at) AS first_at FROM reports "
+            "WHERE target_type = %(type)s AND target_id = %(id)s AND status = 'open' "
+            "GROUP BY reason ORDER BY n DESC, reason",
+            params,
+        )
+        rows = await cursor.fetchall()
+        cursor = await conn.execute(
+            "SELECT r.reason, r.details, r.created_at, r.reporter_user_id AS reporter_id, "
+            "COALESCE(u.nickname, u.email) AS reporter FROM reports r "
+            "JOIN users u ON u.id = r.reporter_user_id "
+            "WHERE r.target_type = %(type)s AND r.target_id = %(id)s AND r.status = 'open' "
+            "AND COALESCE(r.details, '') <> '' ORDER BY r.created_at DESC, r.id DESC "
+            "LIMIT %(limit)s",
+            params,
+        )
+        notes = [ReporterNote(**row) for row in await cursor.fetchall()]
+    return ObjectReports(
+        count=sum(row["n"] for row in rows),
+        first_at=min((row["first_at"] for row in rows), default=None),
+        reasons=[ReasonCount(row["reason"], row["n"]) for row in rows],
+        notes=notes,
+    )
+
+
+@dataclass(frozen=True)
+class ReportedProfile:
+    id: int
+    email: str
+    nickname: str | None
+    bio: str | None
+    avatar_path: str | None
+    created_at: str
+
+
+async def reported_profile(conn: AsyncConnection, user_id: int) -> ReportedProfile | None:
+    async with _read_only(conn):
+        cursor = await conn.execute(
+            "SELECT id, email, nickname, bio, avatar_path, created_at FROM users WHERE id = %s",
+            (user_id,),
+        )
+        row = await cursor.fetchone()
+    return ReportedProfile(**row) if row else None
+
+
+@dataclass(frozen=True)
+class AuthorRecord:
+    """«История автора»: since when, how much they wrote, and how earlier reports on
+    their comments and profile ended. Bans come from app/db/bans.py."""
+
+    user_id: int
+    created_at: str
+    comments: int
+    hidden_comments: int
+    past_reports: int  # reports on them already decided
+    upheld_reports: int  # of those, the ones that ended in a hide, a cleanup or a ban
+
+
+async def author_record(conn: AsyncConnection, user_id: int) -> AuthorRecord | None:
+    async with _read_only(conn):
+        cursor = await conn.execute(
+            "SELECT u.created_at, "
+            "(SELECT COUNT(*) FROM comments WHERE user_id = u.id) AS comments, "
+            "(SELECT COUNT(*) FROM comments WHERE user_id = u.id "
+            "  AND hidden_at IS NOT NULL) AS hidden_comments, "
+            "COUNT(r.id) AS past_reports, "
+            "COUNT(r.id) FILTER (WHERE r.status = 'actioned') AS upheld_reports "
+            "FROM users u LEFT JOIN reports r ON r.status <> 'open' AND ("
+            "  (r.target_type = 'profile' AND r.target_id = u.id) OR "
+            "  (r.target_type = 'comment' AND r.target_id IN "
+            "    (SELECT id FROM comments WHERE user_id = u.id))) "
+            "WHERE u.id = %s GROUP BY u.id",
+            (user_id,),
+        )
+        row = await cursor.fetchone()
+    return AuthorRecord(user_id=user_id, **row) if row else None

@@ -9,12 +9,33 @@ top of the queue when none is asked for.
 from __future__ import annotations
 
 from collections.abc import Mapping
-from dataclasses import dataclass
+from dataclasses import dataclass, field, replace
 from urllib.parse import urlencode
 
+from app.admin_comments import (
+    ATTACHMENT_LABELS,
+    PARAGRAPH_QUOTE_LENGTH,
+    chapter_href,
+    chapter_label,
+)
+from app.admin_comments import excerpt as comment_excerpt
+from app.admin_kit import format_number
 from app.admin_overview import format_when
-from app.db.admin_reports import COMMENT, PROFILE, TARGET_TYPES, Queue, QueueItem
+from app.auth.avatar import url_for
+from app.db.admin_comments import DELETED, CommentDetail
+from app.db.admin_reports import (
+    COMMENT,
+    PROFILE,
+    TARGET_TYPES,
+    AuthorRecord,
+    ObjectReports,
+    Queue,
+    QueueItem,
+    ReportedProfile,
+)
+from app.markdown_render import render_comment_body
 from app.reports import reason_label
+from app.services.titles import TitleSummary
 
 KIND_LABELS = {COMMENT: "Комментарий", PROFILE: "Профиль"}
 TAB_LABELS = {COMMENT: "Комментарии", PROFILE: "Профили"}
@@ -133,3 +154,206 @@ def queue_rows(
 
 def page_args(args: Mapping[str, object]) -> dict[str, str]:
     return {key: str(value) for key, value in args.items() if key in ("type", "item") and value}
+
+
+# --- the card -----------------------------------------------------------------------------
+
+
+@dataclass(frozen=True)
+class ReasonBar:
+    label: str
+    count: int
+    percent: int
+
+
+@dataclass(frozen=True)
+class Note:
+    reason: str
+    text: str
+    when: str
+    reporter: str
+    reporter_href: str
+
+
+@dataclass(frozen=True)
+class HistoryItem:
+    label: str
+    value: str
+
+
+@dataclass(frozen=True)
+class Card:
+    """What the card shows about one object. ``state`` is ``published``, ``hidden``
+    (a comment hidden already), ``deleted`` (by its author) or ``gone`` (the comment or
+    account no longer exists) - the last two can only be dismissed."""
+
+    key: str
+    target_type: str
+    target_id: int
+    kind: str
+    reports: int
+    since: str
+    state: str
+    where: str
+    where_href: str | None
+    author: str | None
+    author_id: int | None
+    author_href: str | None
+    initial: str
+    # A comment: its text as readers see it, the paragraph it's on, what it answers.
+    body_html: str | None = None
+    attachment: str | None = None
+    paragraph: int | None = None
+    paragraph_text: str | None = None
+    parent_author: str | None = None
+    parent_text: str | None = None
+    # A profile: what can be cleared.
+    nickname: str | None = None
+    bio: str | None = None
+    avatar_url: str | None = None
+    reasons: list[ReasonBar] = field(default_factory=list)
+    notes: list[Note] = field(default_factory=list)
+    history: list[HistoryItem] = field(default_factory=list)
+    ban: str | None = None  # the active block, in words
+
+
+def reason_bars(reports: ObjectReports) -> list[ReasonBar]:
+    total = max(reports.count, 1)
+    return [
+        ReasonBar(reason_label(item.reason), item.count, round(item.count * 100 / total))
+        for item in reports.reasons
+    ]
+
+
+def notes(reports: ObjectReports, tz: str) -> list[Note]:
+    return [
+        Note(
+            reason=reason_label(note.reason),
+            text=note.details,
+            when=format_when(note.created_at, tz) or "",
+            reporter=note.reporter,
+            reporter_href=f"/admin/users?{urlencode({'user': note.reporter_id})}",
+        )
+        for note in reports.notes
+    ]
+
+
+def history(record: AuthorRecord | None, bans: int, tz: str) -> list[HistoryItem]:
+    if record is None:
+        return []
+    return [
+        HistoryItem("На сайте с", format_when(record.created_at, tz) or "—"),
+        HistoryItem("Комментариев", format_number(record.comments)),
+        HistoryItem("Из них скрыто", format_number(record.hidden_comments)),
+        HistoryItem(
+            "Прошлые жалобы",
+            f"{format_number(record.past_reports)} · подтверждено "
+            f"{format_number(record.upheld_reports)}",
+        ),
+        HistoryItem("Блокировок", format_number(bans)),
+    ]
+
+
+def _initial(name: str | None) -> str:
+    return (name or "?")[:1].upper()
+
+
+def comment_card(
+    detail: CommentDetail | None,
+    comment_id: int,
+    reports: ObjectReports,
+    titles: Mapping[str, TitleSummary],
+    paragraph: str | None,
+    tz: str,
+) -> Card:
+    base = {
+        "key": item_key(COMMENT, comment_id),
+        "target_type": COMMENT,
+        "target_id": comment_id,
+        "kind": KIND_LABELS[COMMENT],
+        "reports": reports.count,
+        "since": format_when(reports.first_at, tz) or "",
+        "reasons": reason_bars(reports),
+        "notes": notes(reports, tz),
+    }
+    if detail is None:
+        return Card(
+            **base,
+            state="gone",
+            where="Комментарий удалён навсегда",
+            where_href=None,
+            author=None,
+            author_id=None,
+            author_href=None,
+            initial="?",
+        )
+    row = detail.comment
+    summary = titles.get(row.slug_url)
+    title = summary.name if summary else row.slug_url
+    parent = detail.parent
+    return Card(
+        **base,
+        state=row.status,
+        where=f"{title} · {chapter_label(row)} · абзац {row.paragraph_index + 1}",
+        where_href=chapter_href(row),
+        author=row.author,
+        author_id=row.user_id,
+        author_href=f"/admin/users?{urlencode({'user': row.user_id})}",
+        initial=_initial(row.author),
+        body_html=None if row.status == DELETED else render_comment_body(row.body),
+        attachment=ATTACHMENT_LABELS.get(row.attachment_kind or "", "вложение")
+        if row.attachment_kind and row.status != DELETED
+        else None,
+        paragraph=row.paragraph_index + 1,
+        paragraph_text=excerpt(paragraph, PARAGRAPH_QUOTE_LENGTH)
+        if paragraph is not None
+        else None,
+        parent_author=parent.author if parent else None,
+        parent_text=comment_excerpt(parent, 400) if parent else None,
+    )
+
+
+def profile_card(
+    profile: ReportedProfile | None, user_id: int, reports: ObjectReports, tz: str
+) -> Card:
+    base = {
+        "key": item_key(PROFILE, user_id),
+        "target_type": PROFILE,
+        "target_id": user_id,
+        "kind": KIND_LABELS[PROFILE],
+        "reports": reports.count,
+        "since": format_when(reports.first_at, tz) or "",
+        "reasons": reason_bars(reports),
+        "notes": notes(reports, tz),
+    }
+    if profile is None:
+        return Card(
+            **base,
+            state="gone",
+            where="Аккаунт удалён",
+            where_href=None,
+            author=None,
+            author_id=None,
+            author_href=None,
+            initial="?",
+        )
+    name = profile.nickname or profile.email
+    return Card(
+        **base,
+        state="published",
+        where="Профиль пользователя",
+        where_href=f"/profile/{profile.id}",
+        author=name,
+        author_id=profile.id,
+        author_href=f"/admin/users?{urlencode({'user': profile.id})}",
+        initial=_initial(name),
+        nickname=profile.nickname,
+        bio=(profile.bio or "").strip() or None,
+        avatar_url=url_for(profile.avatar_path),
+    )
+
+
+def with_history(
+    card: Card, record: AuthorRecord | None, bans: int, ban: str | None, tz: str
+) -> Card:
+    return replace(card, history=history(record, bans, tz), ban=ban)

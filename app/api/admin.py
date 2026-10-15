@@ -62,11 +62,13 @@ from app.admin_comments import (
 from app.admin_comments import safe_back as comments_safe_back
 from app.admin_kit import Undo, pop_toast, push_toast
 from app.admin_kit_demo import charts_context, table_context
+from app.admin_moderation import Card as ModerationCard
+from app.admin_moderation import comment_card, moderation_href, profile_card, queue_rows
 from app.admin_moderation import item_key as moderation_item_key
 from app.admin_moderation import parse_item as parse_moderation_item
 from app.admin_moderation import parse_type as parse_moderation_type
-from app.admin_moderation import queue_rows
 from app.admin_moderation import tabs as moderation_tabs
+from app.admin_moderation import with_history as moderation_with_history
 from app.admin_overview import (
     DOWNLOAD_ERROR_COLUMNS,
     METRIC_INFO,
@@ -201,7 +203,7 @@ from app.db.admin_data import (
     user_id_columns,
 )
 from app.db.admin_data import PAGE_SIZE as TABLE_PAGE_SIZE
-from app.db.admin_reports import QUEUE_LIMIT
+from app.db.admin_reports import QUEUE_LIMIT, author_record, object_reports, reported_profile
 from app.db.admin_reports import queue as report_queue
 from app.db.admin_search import search_comments, search_users
 from app.db.admin_stats import (
@@ -1009,14 +1011,14 @@ async def admin_moderation(
     asked = parse_moderation_item(item)
     try:
         data = await report_queue(conn, current)
+        if asked is None and data.items:
+            asked_or_top = (data.items[0].target_type, data.items[0].target_id)
+        else:
+            asked_or_top = asked
+        card = await _moderation_card(conn, *asked_or_top, tz) if asked_or_top else None
     except QueryCanceled:
         return _timed_out(request, "moderation")
-    if asked:
-        selected = moderation_item_key(*asked)
-    elif data.items:
-        selected = moderation_item_key(data.items[0].target_type, data.items[0].target_id)
-    else:
-        selected = None
+    selected = moderation_item_key(*asked_or_top) if asked_or_top else None
     return _page(
         request,
         "admin/moderation.html",
@@ -1025,9 +1027,41 @@ async def admin_moderation(
         rows=queue_rows(data.items, current, selected, tz),
         data=data,
         selected=selected,
+        card=card,
         detail_asked=asked is not None,
+        back_href=moderation_href(current),
         queue_limit=QUEUE_LIMIT,
     )
+
+
+async def _moderation_card(
+    conn: AsyncConnection, target_type: str, target_id: int, tz: str
+) -> ModerationCard | None:
+    """One object's card, or None when nothing about it is open any more (already
+    decided, or a stale link)."""
+    reports = await object_reports(conn, target_type, target_id)
+    if not reports.count:
+        return None
+    if target_type == "comment":
+        detail = await comment_detail(conn, target_id)
+        quote = None
+        titles: dict[str, TitleSummary] = {}
+        if detail:
+            row = detail.comment
+            titles = await _title_summaries([row.slug_url])
+            quote = await paragraph_text(
+                row.slug_url, row.volume, row.number, row.branch_id, row.paragraph_index
+            )
+        card = comment_card(detail, target_id, reports, titles, quote, tz)
+    else:
+        profile = await reported_profile(conn, target_id)
+        card = profile_card(profile, target_id, reports, tz)
+    if card.author_id is None:
+        return card
+    record = await author_record(conn, card.author_id)
+    bans = await _read(conn, lambda: _bans(conn, card.author_id, tz))
+    ban = f"заблокирован {bans.until}" if bans.active else None
+    return moderation_with_history(card, record, bans.total, ban, tz)
 
 
 # How many of the latest failed downloads «Система» lists.
