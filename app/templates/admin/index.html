@@ -100,6 +100,7 @@
         <span class="wn-admin-alerts__body">
           <span class="wn-admin-alerts__title">{{ item.title }}</span>
           <span class="wn-admin-alerts__text">{{ item.text }}</span>
+          {% if item.href %}<a class="wn-admin-alerts__link" href="{{ item.href }}">{{ item.link }}</a>{% endif %}
         </span>
       </li>
       {% endfor %}
@@ -111,6 +112,34 @@
     {% endif %}
     <p class="wn-admin-note">Обращения к источнику тайтлов считаются с последнего запуска сервера.</p>
     {% endcall %}
+  </div>
+
+  {# PR 359: «Ждут модерации» (RanobeLib Admin.dc.html) - the most reported objects, as
+     the queue orders them, and the way into it. #}
+  <div class="wn-admin-ov__grid">
+    <section class="wn-admin-panel wn-admin-card" aria-labelledby="ov-moderation-title">
+      <header class="wn-admin-card__head">
+        <div class="wn-admin-card__titles">
+          <h2 class="wn-admin-card__title" id="ov-moderation-title">Ждут модерации</h2>
+          {% if waiting %}<p class="wn-admin-card__sub">{{ waiting.total }} {{ plural(waiting.total, "объект", "объекта", "объектов") }} в очереди</p>{% endif %}
+        </div>
+        <a class="wn-admin-btn wn-admin-btn--ghost" href="/admin/moderation">Открыть очередь</a>
+      </header>
+      {% if database_down or "moderation" in failed %}
+      {{ kit.error_state() }}
+      {% elif waiting_rows %}
+      <ul class="wn-admin-ov-mod">
+        {% for row in waiting_rows %}
+        <li class="wn-admin-ov-mod__item">
+          <a class="wn-admin-ov-mod__text" href="{{ row.href }}">{{ row.text }}</a>
+          <span class="wn-admin-ov-mod__meta">{{ row.kind }} · {{ row.author }} · {{ row.reason }} · {{ row.reports }} {{ plural(row.reports, "жалоба", "жалобы", "жалоб") }}</span>
+        </li>
+        {% endfor %}
+      </ul>
+      {% else %}
+      {{ kit.empty_state("Очередь пуста", "Жалоб на комментарии и профили сейчас нет.", icon_name="shield-check") }}
+      {% endif %}
+    </section>
   </div>
 
   <div class="wn-admin-ov__grid">

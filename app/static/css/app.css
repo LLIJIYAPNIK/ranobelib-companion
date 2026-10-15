@@ -25931,3 +25931,107 @@ body.reader-page--offline-copy .reader-paragraph-more {
     min-height: 44px;
   }
 }
+
+/* PR 359: a «Требует внимания» item that has a screen to act on - «Открыть очередь». */
+.wn-admin-alerts__link {
+  align-self: flex-start;
+  margin-top: 2px;
+  color: var(--wn-text);
+  font: var(--wn-weight-semi-bold) 12.5px/1.45 var(--wn-font-ui);
+  text-decoration: underline;
+  text-decoration-color: var(--wn-border-strong);
+  text-underline-offset: 3px;
+}
+
+.wn-admin-alerts__link:hover {
+  text-decoration-color: currentColor;
+}
+
+.wn-admin-alerts__link:focus-visible {
+  outline: none;
+  border-radius: 4px;
+  box-shadow: var(--wn-focus-ring);
+}
+
+/* PR 359: the sidebar's count on «Модерация» (RanobeLib Admin.dc.html's red badge) - a
+   pill beside the label; on the icon rail, where labels are hidden, a dot on the icon. */
+.wn-admin-side__badge {
+  display: grid;
+  flex: none;
+  place-items: center;
+  min-width: 20px;
+  height: 20px;
+  padding: 0 6px;
+  border-radius: 10px;
+  background: color-mix(in srgb, var(--wn-danger) 20%, transparent);
+  color: var(--wn-danger);
+  font: var(--wn-weight-semi-bold) 11px/1 var(--wn-font-ui);
+}
+
+@media (min-width: 1025px) and (max-width: 1179px) {
+  .wn-admin-side__badge {
+    position: absolute;
+    top: 6px;
+    right: 18px;
+    min-width: 0;
+    width: 8px;
+    height: 8px;
+    padding: 0;
+    overflow: hidden;
+    background: var(--wn-danger);
+    color: transparent;
+    box-shadow: 0 0 0 2px var(--wn-surface);
+  }
+}
+
+/* PR 359: «Ждут модерации» on the overview - the mockup's rows: the text (a link to that
+   object in the queue), then what it is, whose, why and how many reports. */
+.wn-admin-ov-mod {
+  display: flex;
+  flex-direction: column;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.wn-admin-ov-mod__item {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: 10px 0;
+  border-top: 1px solid var(--wn-border);
+}
+
+.wn-admin-ov-mod__text {
+  display: -webkit-box;
+  overflow: hidden;
+  color: var(--wn-text);
+  font: italic var(--wn-weight-medium) 14px/1.45 var(--wn-font-ui);
+  overflow-wrap: anywhere;
+  text-decoration: none;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+  line-clamp: 2;
+}
+
+.wn-admin-ov-mod__text:hover {
+  text-decoration: underline;
+  text-decoration-color: var(--wn-border-strong);
+}
+
+.wn-admin-ov-mod__text:focus-visible {
+  outline: none;
+  border-radius: 4px;
+  box-shadow: var(--wn-focus-ring);
+}
+
+.wn-admin-ov-mod__meta {
+  color: var(--wn-text-muted);
+  font: var(--wn-weight-medium) 11.5px/1.4 var(--wn-font-ui);
+}
+
+@media (max-width: 1024px), (pointer: coarse) {
+  .wn-admin-ov-mod__text {
+    min-height: 44px;
+  }
+}

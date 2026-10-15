@@ -211,7 +211,14 @@ from app.db.admin_data import (
     user_id_columns,
 )
 from app.db.admin_data import PAGE_SIZE as TABLE_PAGE_SIZE
-from app.db.admin_reports import QUEUE_LIMIT, author_record, object_reports, reported_profile
+from app.db.admin_reports import (
+    QUEUE_LIMIT,
+    author_record,
+    object_reports,
+    reported_profile,
+    waiting_objects,
+)
+from app.db.admin_reports import Queue as ReportQueue
 from app.db.admin_reports import queue as report_queue
 from app.db.admin_search import search_comments, search_users
 from app.db.admin_stats import (
@@ -275,7 +282,21 @@ router = APIRouter(
 
 logger = logging.getLogger(__name__)
 
-Admin = Annotated[None, Depends(require_admin)]
+
+async def _admin_page(request: Request, _: Annotated[None, Depends(require_admin)]) -> None:
+    """``require_admin`` plus, for a page (GET), what the sidebar's badges show - PR 359:
+    how many objects wait in «Модерация». Its own short read on a connection of its own,
+    so a database that's down or slow costs the badge, not the page."""
+    if request.method != "GET":
+        return
+    try:
+        async with db_connection.connection() as conn:
+            request.state.moderation_waiting = await waiting_objects(conn)
+    except (psycopg.Error, PoolTimeout):
+        logger.warning("Could not count the moderation queue for the sidebar")
+
+
+Admin = Annotated[None, Depends(_admin_page)]
 Connection = Annotated[AsyncConnection, Depends(get_connection)]
 
 # PR 355: every value a request can send the panel has a size limit - none reaches a query,
@@ -318,6 +339,10 @@ ADMIN_NAV: tuple[NavItem, ...] = (
 )
 
 
+# PR 359: «Ждут модерации» on the overview - the top of the queue.
+OVERVIEW_QUEUE_SHOWN = 3
+
+
 @router.get("", response_model=None)
 async def admin_home(
     request: Request,
@@ -337,6 +362,7 @@ async def admin_home(
     top: list[TitleReaders] | None = None
     recent: Overview | None = None
     counts: AttentionCounts | None = None
+    waiting: ReportQueue | None = None
     database_down = False
     try:
         async with db_connection.connection() as conn:
@@ -344,6 +370,10 @@ async def admin_home(
             top = await _block(failed, "titles", lambda: cached_top_titles(conn, key, tz))
             recent = await _block(failed, "recent", lambda: overview(conn))
             counts = await _block(failed, "attention", lambda: cached_attention_counts(conn))
+            # PR 359: live, not cached - a decision in «Модерация» shows here at once.
+            waiting = await _block(
+                failed, "moderation", lambda: report_queue(conn, limit=OVERVIEW_QUEUE_SHOWN)
+            )
     except (psycopg.OperationalError, PoolTimeout):
         logger.exception("The admin overview could not reach the database")
         database_down = True
@@ -353,7 +383,7 @@ async def admin_home(
         else []
     )
     # After the title lookups, so a failure reaching ranobelib.me just now counts too.
-    attention = attention_items(counts, database_down)
+    attention = attention_items(counts, database_down, waiting=waiting)
     args = dict(request.query_params)
     chart_metric = parse_metric(metric)
     chart_compare = parse_compare(compare)
@@ -370,6 +400,8 @@ async def admin_home(
         compare_href=compare_href(args, chart_compare),
         popular=titles,
         attention=attention,
+        waiting=waiting,
+        waiting_rows=queue_rows(waiting.items, None, None, tz) if waiting else [],
         database_down=database_down,
         failed=failed,
         period_key=key,
@@ -1791,6 +1823,7 @@ def _page(request: Request, template: str, section: str, **context: object) -> H
             "admin_nav": ADMIN_NAV,
             "server_time": server_time(),
             "toast": pop_toast(request),
+            "nav_badges": {"moderation": getattr(request.state, "moderation_waiting", 0)},
             **context,
         },
     )
