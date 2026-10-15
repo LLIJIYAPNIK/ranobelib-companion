@@ -211,7 +211,13 @@ from app.db.admin_data import (
     user_id_columns,
 )
 from app.db.admin_data import PAGE_SIZE as TABLE_PAGE_SIZE
-from app.db.admin_reports import QUEUE_LIMIT, author_record, object_reports, reported_profile
+from app.db.admin_reports import (
+    QUEUE_LIMIT,
+    author_record,
+    object_reports,
+    reported_profile,
+    waiting_objects,
+)
 from app.db.admin_reports import Queue as ReportQueue
 from app.db.admin_reports import queue as report_queue
 from app.db.admin_search import search_comments, search_users
@@ -276,7 +282,21 @@ router = APIRouter(
 
 logger = logging.getLogger(__name__)
 
-Admin = Annotated[None, Depends(require_admin)]
+
+async def _admin_page(request: Request, _: Annotated[None, Depends(require_admin)]) -> None:
+    """``require_admin`` plus, for a page (GET), what the sidebar's badges show - PR 359:
+    how many objects wait in «Модерация». Its own short read on a connection of its own,
+    so a database that's down or slow costs the badge, not the page."""
+    if request.method != "GET":
+        return
+    try:
+        async with db_connection.connection() as conn:
+            request.state.moderation_waiting = await waiting_objects(conn)
+    except (psycopg.Error, PoolTimeout):
+        logger.warning("Could not count the moderation queue for the sidebar")
+
+
+Admin = Annotated[None, Depends(_admin_page)]
 Connection = Annotated[AsyncConnection, Depends(get_connection)]
 
 # PR 355: every value a request can send the panel has a size limit - none reaches a query,
@@ -1801,6 +1821,7 @@ def _page(request: Request, template: str, section: str, **context: object) -> H
             "admin_nav": ADMIN_NAV,
             "server_time": server_time(),
             "toast": pop_toast(request),
+            "nav_badges": {"moderation": getattr(request.state, "moderation_waiting", 0)},
             **context,
         },
     )

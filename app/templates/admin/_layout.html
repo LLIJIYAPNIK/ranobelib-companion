@@ -44,9 +44,13 @@
         {% set ns.group = item.group %}
         {% endif %}
         {% if item.href %}
-        <a class="wn-admin-side__item" href="{{ item.href }}" title="{{ item.label }}"{% if admin_section == item.section %} aria-current="page"{% endif %}>
+        {# PR 359: a count waiting on that screen («Модерация»: objects with open reports) -
+           a number beside the label, a dot on the icon rail. #}
+        {% set badge = (nav_badges or {}).get(item.section) %}
+        <a class="wn-admin-side__item" href="{{ item.href }}" title="{{ item.label }}{% if badge %} · в очереди: {{ badge }}{% endif %}"{% if admin_section == item.section %} aria-current="page"{% endif %}>
           <svg class="wn-admin-icon" aria-hidden="true"><use href="#admin-icon-{{ item.icon }}"></use></svg>
           <span class="wn-admin-side__label">{{ item.label }}</span>
+          {% if badge %}<span class="wn-admin-side__badge"><span class="wn-admin-sr">в очереди: </span>{{ badge if badge < 100 else "99+" }}</span>{% endif %}
         </a>
         {% else %}
         {# A screen from a later PR of wave 40 - in place, but not a link yet. #}

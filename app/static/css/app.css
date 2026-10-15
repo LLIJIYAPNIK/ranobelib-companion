@@ -25952,3 +25952,34 @@ body.reader-page--offline-copy .reader-paragraph-more {
   border-radius: 4px;
   box-shadow: var(--wn-focus-ring);
 }
+
+/* PR 359: the sidebar's count on «Модерация» (RanobeLib Admin.dc.html's red badge) - a
+   pill beside the label; on the icon rail, where labels are hidden, a dot on the icon. */
+.wn-admin-side__badge {
+  display: grid;
+  flex: none;
+  place-items: center;
+  min-width: 20px;
+  height: 20px;
+  padding: 0 6px;
+  border-radius: 10px;
+  background: color-mix(in srgb, var(--wn-danger) 20%, transparent);
+  color: var(--wn-danger);
+  font: var(--wn-weight-semi-bold) 11px/1 var(--wn-font-ui);
+}
+
+@media (min-width: 1025px) and (max-width: 1179px) {
+  .wn-admin-side__badge {
+    position: absolute;
+    top: 6px;
+    right: 18px;
+    min-width: 0;
+    width: 8px;
+    height: 8px;
+    padding: 0;
+    overflow: hidden;
+    background: var(--wn-danger);
+    color: transparent;
+    box-shadow: 0 0 0 2px var(--wn-surface);
+  }
+}
