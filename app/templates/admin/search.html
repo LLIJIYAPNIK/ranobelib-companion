@@ -1,0 +1,34 @@
+{% extends "admin/_layout.html" %}
+{% import "admin/_kit.html" as kit with context %}
+{% block title %}Поиск{% endblock %}
+{% block heading %}Поиск{% endblock %}
+{% block content %}
+{# PR 353: the global search's full results (app/admin_search.py) - where the top bar's box
+   goes on Enter, and the whole search on a phone or without a script. #}
+<main class="wn-admin__main wn-admin-ov" aria-labelledby="admin-page-title">
+  <section class="wn-admin-panel" aria-label="Поиск по панели">
+    {{ kit.filter_bar("/admin/search", {"q": query}, placeholder="Пользователь, комментарий, таблица или экран", keep=()) }}
+    {% if not query %}
+    {{ kit.empty_state("Что найти?", "Пользователей — по email, нику или id, комментарии — по тексту или id, таблицы «Данных БД» и экраны панели. Тайтлы каталога здесь не ищутся.", icon_name="search") }}
+    {% elif not searchable %}
+    {{ kit.empty_state("Слишком коротко", "Введите хотя бы " ~ min_query ~ " символа — или id числом.", icon_name="search") }}
+    {% elif not groups %}
+    {{ kit.empty_state("Ничего не найдено", "По запросу «" ~ query ~ "» нет ни пользователей, ни комментариев, ни таблиц, ни экранов.", icon_name="search-x") }}
+    {% else %}
+    <div class="wn-admin-search-page">
+      {% for group in groups %}
+      <section class="wn-admin-search-page__group" aria-labelledby="admin-search-{{ group.key }}">
+        <h2 class="wn-admin-search-page__title" id="admin-search-{{ group.key }}">{{ group.label }} <span class="wn-admin-search-page__count">{{ group.hits | length }}</span></h2>
+        <ul class="wn-admin-search-page__list">
+          {% for hit in group.hits %}
+          <li><a class="wn-admin-search-page__hit" href="{{ hit.href }}"><span class="wn-admin-search-page__label">{{ hit.label }}</span>{% if hit.sub %}<span class="wn-admin-search-page__sub">{{ hit.sub }}</span>{% endif %}</a></li>
+          {% endfor %}
+        </ul>
+        {% if group.more %}<a class="wn-admin-cm__link wn-admin-search-page__more" href="{{ group.more }}">Искать в разделе «{{ group.label }}»</a>{% endif %}
+      </section>
+      {% endfor %}
+    </div>
+    {% endif %}
+  </section>
+</main>
+{% endblock %}

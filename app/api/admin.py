@@ -1,6 +1,6 @@
 """/admin: the panel's login/logout (PR 324), overview and read-only data browser (PR 325),
 the shared sidebar/top-bar shell (PR 341), the UI kit's dev-only showcase (PR 342), the
-action log screen (PR 353).
+action log screen and the global search (PR 353).
 
 Every route sits behind ``require_admin_enabled`` (404 without ADMIN_PASSWORD), every page
 but the login form behind ``require_admin`` (app/auth/admin.py). The data pages only read
@@ -21,7 +21,7 @@ from zoneinfo import ZoneInfo
 import httpx
 import psycopg
 from fastapi import APIRouter, Depends, FastAPI, Form, HTTPException, Path, Query, Request
-from fastapi.responses import HTMLResponse, RedirectResponse, Response
+from fastapi.responses import HTMLResponse, JSONResponse, RedirectResponse, Response
 from psycopg import AsyncConnection
 from psycopg.errors import QueryCanceled
 from psycopg_pool import PoolTimeout
@@ -81,6 +81,20 @@ from app.admin_overview import (
     popular_titles,
     recent_user_rows,
 )
+from app.admin_search import (
+    MIN_QUERY,
+    PAGE_LIMIT,
+    SUGGEST_LIMIT,
+    Group,
+    as_json,
+    comment_hits,
+    groups,
+    normalize,
+    screen_hits,
+    searchable,
+    table_hits,
+    user_hits,
+)
 from app.admin_system import (
     JOB_COLUMNS,
     SDK_CACHE_CLEAR_ISSUE,
@@ -128,6 +142,7 @@ from app.auth.admin import (
     record_failed_login,
     require_admin,
     require_admin_enabled,
+    require_admin_fetch,
     reset_failed_logins,
     start_admin_session,
 )
@@ -177,6 +192,7 @@ from app.db.admin_data import (
     user_id_columns,
 )
 from app.db.admin_data import PAGE_SIZE as TABLE_PAGE_SIZE
+from app.db.admin_search import search_comments, search_users
 from app.db.admin_stats import (
     AttentionCounts,
     PeriodStats,
@@ -1182,6 +1198,68 @@ async def admin_audit_csv(
             "Content-Disposition": f'attachment; filename="{audit_csv_filename(_server_now())}"'
         },
     )
+
+
+# --- the global search (PR 353) -------------------------------------------------------------
+
+
+async def _search(conn: AsyncConnection, query: str, limit: int) -> list[Group]:
+    """Everything the top bar's search finds for ``query``: the panel's screens, accounts
+    (email, nickname, id), comments (text, id) and «Данные БД»'s tables - never a hash or
+    token column, and nothing from the SDK's catalog."""
+    if not searchable(query):
+        return []
+    return groups(
+        query,
+        screens=screen_hits(query, ADMIN_NAV),
+        users=user_hits(await search_users(conn, query, limit)),
+        comments=comment_hits(await search_comments(conn, query, limit)),
+        tables=table_hits(query, await table_columns(conn)),
+        limit=limit,
+    )
+
+
+@router.get("/search", response_model=None)
+async def admin_search(
+    request: Request,
+    _: Admin,
+    conn: Connection,
+    q: Annotated[str, Query(max_length=200)] = "",
+) -> HTMLResponse:
+    """The full results - where the box goes on Enter, and what it is without a script."""
+    query = normalize(q)
+    try:
+        found = await _search(conn, query, PAGE_LIMIT)
+    except QueryCanceled:
+        return _timed_out(request, "search")
+    return _page(
+        request,
+        "admin/search.html",
+        "search",
+        query=query,
+        search_query=query,
+        searchable=searchable(query),
+        min_query=MIN_QUERY,
+        groups=found,
+    )
+
+
+@router.get(
+    "/search/suggest",
+    response_model=None,
+    dependencies=[Depends(require_admin_fetch)],
+)
+async def admin_search_suggest(
+    conn: Connection, q: Annotated[str, Query(max_length=200)] = ""
+) -> JSONResponse:
+    """The drop-down under the box (js/admin-search.js): a few hits per group. Without
+    the admin login it's a 404, like the panel's own URLs without ADMIN_PASSWORD."""
+    query = normalize(q)
+    try:
+        found = await _search(conn, query, SUGGEST_LIMIT)
+    except QueryCanceled:
+        return JSONResponse({"query": query, "error": "timeout", "groups": []}, status_code=503)
+    return JSONResponse(as_json(query, found))
 
 
 def _timed_out(request: Request, section: str) -> HTMLResponse:

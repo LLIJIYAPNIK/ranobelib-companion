@@ -14,6 +14,7 @@
   {% if admin_section %}
   <script src="{{ static_url('js/admin-sidebar.js') }}" defer></script>
   <script src="{{ static_url('js/admin-kit.js') }}" defer></script>
+  <script src="{{ static_url('js/admin-search.js') }}" defer></script>
   {% block scripts %}{% endblock %}
   {% endif %}
 </head>
@@ -78,8 +79,26 @@
           <svg class="wn-admin-icon" aria-hidden="true"><use href="#admin-icon-menu"></use></svg>
         </button>
         <h1 class="wn-admin-top__title" id="admin-page-title">{% block heading %}{% endblock %}</h1>
-        {# PR 353 puts the global search here. #}
-        <div class="wn-admin-top__search" data-role="admin-search-slot"></div>
+        {# PR 353: the global search (app/admin_search.py) - a plain GET form to the results
+           page; js/admin-search.js adds the drop-down and ⌘/Ctrl-K. On a phone only the
+           icon shows (a link to the same page) until it's opened. #}
+        <div class="wn-admin-top__search" data-role="admin-search-slot">
+          <form class="wn-admin-search" method="get" action="/admin/search" role="search" data-role="admin-search">
+            <label class="wn-admin-search__field">
+              <svg class="wn-admin-icon wn-admin-search__icon" aria-hidden="true"><use href="#admin-icon-search"></use></svg>
+              <span class="wn-admin-sr">Поиск по панели</span>
+              <input class="wn-admin-search__input" type="search" name="q" value="{{ search_query or '' }}" maxlength="200" placeholder="Пользователи, комментарии, таблицы…" autocomplete="off" spellcheck="false" role="combobox" aria-expanded="false" aria-autocomplete="list" aria-controls="admin-search-results" data-role="admin-search-input">
+              <kbd class="wn-admin-search__kbd" data-role="admin-search-kbd" aria-hidden="true" hidden>Ctrl K</kbd>
+            </label>
+            <button class="wn-admin-search__close" type="button" data-role="admin-search-close" aria-label="Закрыть поиск">
+              <svg class="wn-admin-icon" aria-hidden="true"><use href="#admin-icon-close"></use></svg>
+            </button>
+            <div class="wn-admin-search__results" id="admin-search-results" role="listbox" aria-label="Результаты поиска" data-role="admin-search-results" hidden></div>
+          </form>
+          <a class="wn-admin-search__toggle" href="/admin/search" data-role="admin-search-toggle" title="Поиск" aria-label="Поиск">
+            <svg class="wn-admin-icon" aria-hidden="true"><use href="#admin-icon-search"></use></svg>
+          </a>
+        </div>
         {# The server's clock in ADMIN_TIMEZONE at render time - no client clock, no "МСК". #}
         <p class="wn-admin-top__time" title="{{ server_time.date }}, {{ server_time.time }} ({{ server_time.timezone }})">
           <time datetime="{{ server_time.iso }}"><span class="wn-admin-top__date">{{ server_time.date }} · </span>{{ server_time.time }}</time>
