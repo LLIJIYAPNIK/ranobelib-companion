@@ -279,3 +279,10 @@ def disk_summary(usage: DiskUsage | None) -> DiskSummary | None:
         used_share=(usage.total - usage.free) / usage.total * 100,
         state=state,
     )
+
+
+# TODO(https://github.com/LLIJIYAPNIK/ranobelib-python-sdk/issues/78): «Очистить кеш SDK»
+# stays disabled until the SDK has a public way to clear its cache - its file layout is the
+# SDK's business, so the panel doesn't delete those files itself. Once it ships: a POST
+# behind a confirmation dialog, recorded in the action log, like the other admin actions.
+SDK_CACHE_CLEAR_ISSUE = "https://github.com/LLIJIYAPNIK/ranobelib-python-sdk/issues/78"

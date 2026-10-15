@@ -72,6 +72,10 @@
       </li>
       {% endfor %}
     </ul>
+    <div class="wn-admin-actions">
+      <button class="wn-admin-btn" type="button" disabled aria-describedby="sys-cache-note">{{ kit.icon("trash") }}Очистить кеш SDK</button>
+      <p class="wn-admin-field__hint" id="sys-cache-note">Пока недоступно: у SDK нет публичного способа очистить кеш, а удалять его файлы в обход SDK мы не будем. Ждём <a class="wn-admin-cm__link" href="{{ cache_clear_issue }}" target="_blank" rel="noopener">ranobelib-python-sdk#78</a>. Устаревшие записи и так обновляются сами по <code>CACHE_TTL_SECONDS</code>.</p>
+    </div>
     {% endcall %}
   </div>
 

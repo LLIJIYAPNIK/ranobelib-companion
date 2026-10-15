@@ -79,6 +79,7 @@ from app.admin_overview import (
 )
 from app.admin_system import (
     JOB_COLUMNS,
+    SDK_CACHE_CLEAR_ISSUE,
     app_service,
     database_service,
     disk_summary,
@@ -974,6 +975,7 @@ async def admin_system(request: Request, _: Admin) -> HTMLResponse:
         error_columns=DOWNLOAD_ERROR_COLUMNS,
         storage=storage_rows(usages),
         disk=disk_summary(disk_usage(settings.cache_dir)),
+        cache_clear_issue=SDK_CACHE_CLEAR_ISSUE,
     )
 
 
