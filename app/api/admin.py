@@ -120,6 +120,7 @@ from app.admin_tables import (
 )
 from app.admin_users import (
     BAN_TERM_LABELS,
+    BanState,
     back_href,
     ban_state,
     parse_flag,
@@ -137,6 +138,8 @@ from app.auth.admin import (
     csrf_token,
     end_admin_session,
     is_admin,
+    limit_admin_exports,
+    limit_admin_writes,
     login_locked_for,
     password_matches,
     record_failed_login,
@@ -184,6 +187,7 @@ from app.db.admin_data import (
     MASK,
     QUERY_TIMEOUT_MS,
     Overview,
+    _read_only,
     browse_table,
     export_table,
     list_tables,
@@ -248,6 +252,19 @@ logger = logging.getLogger(__name__)
 
 Admin = Annotated[None, Depends(require_admin)]
 Connection = Annotated[AsyncConnection, Depends(get_connection)]
+
+# PR 355: every value a request can send the panel has a size limit - none reaches a query,
+# a comparison or the log unbounded. A token is 43 characters, a Postgres name at most 63
+# bytes; a sort direction is "asc" or "desc", anything else is read as "desc" (not refused).
+Order = Annotated[str, Query(max_length=20)]
+Csrf = Annotated[str, Form(max_length=128)]
+TableName = Annotated[str, Path(max_length=63)]
+SortKey = Annotated[str | None, Query(max_length=63)]
+
+# PR 355: every POST that changes data, and every CSV export, is rate-limited per IP on top
+# of the admin check (app/auth/admin.py).
+WRITES = [Depends(limit_admin_writes)]
+EXPORTS = [Depends(limit_admin_exports)]
 
 
 @dataclass(frozen=True)
@@ -354,6 +371,17 @@ async def _title_summaries(slugs: list[str]) -> dict[str, TitleSummary]:
         return {}
 
 
+async def _read[T](conn: AsyncConnection, load: Callable[[], Awaitable[T]]) -> T:
+    """PR 355: a lookup borrowed from the site's own modules (bans, time zones) run like
+    every admin query - read-only, under the admin timeout."""
+    async with _read_only(conn):
+        return await load()
+
+
+async def _bans(conn: AsyncConnection, user_id: int, tz: str) -> BanState:
+    return ban_state(await active_ban(conn, user_id), await ban_history(conn, user_id), tz)
+
+
 async def _block[T](failed: set[str], name: str, load: Callable[[], Awaitable[T]]) -> T | None:
     """One overview block's data, or None (and `name` in `failed`) if its query hit the
     admin timeout - the block then shows an error state with «Повторить»."""
@@ -372,7 +400,7 @@ async def admin_analytics(
     conn: Connection,
     period: Annotated[str | None, Query(max_length=10)] = None,
     sort: Annotated[str | None, Query(max_length=20)] = None,
-    order: str = "desc",
+    order: Order = "desc",
 ) -> HTMLResponse:
     """«Аналитика» (PR 346): the most active titles of a period. Names and covers come
     from the SDK through app/services/; «Дочитали» from the SDK's table of contents for
@@ -420,7 +448,7 @@ async def admin_analytics_behaviour(
     Postgres knows as well (it groups by local time); one only Python knows falls back
     to UTC, and the page says which zone it used."""
     tz = get_settings().admin_timezone
-    if not await is_valid_timezone(conn, tz):
+    if not await _read(conn, lambda: is_valid_timezone(conn, tz)):
         logger.warning("ADMIN_TIMEZONE=%r is unknown to Postgres - analytics use UTC", tz)
         tz = DEFAULT_TIMEZONE
     key = parse_behaviour_period(period)
@@ -513,7 +541,7 @@ async def admin_users(
     library: Annotated[str | None, Query(max_length=5)] = None,
     period: Annotated[str | None, Query(max_length=10)] = None,
     sort: Annotated[str | None, Query(max_length=20)] = None,
-    order: str = "desc",
+    order: Order = "desc",
     page: Annotated[int, Query(ge=1, le=1_000_000)] = 1,
     user: Annotated[int | None, Query(ge=1, le=2_147_483_647)] = None,
 ) -> HTMLResponse:
@@ -538,11 +566,7 @@ async def admin_users(
             page=page,
         )
         summary = await user_summary(conn, user, key, tz) if user is not None else None
-        bans = (
-            ban_state(await active_ban(conn, summary.id), await ban_history(conn, summary.id), tz)
-            if summary
-            else None
-        )
+        bans = await _read(conn, lambda: _bans(conn, summary.id, tz)) if summary else None
     except QueryCanceled:
         return _timed_out(request, "users")
     args = dict(request.query_params)
@@ -594,13 +618,13 @@ def _label(user: User) -> str:
     return user.nickname or user.email
 
 
-@router.post("/users/{user_id}/sessions", response_model=None)
+@router.post("/users/{user_id}/sessions", response_model=None, dependencies=WRITES)
 async def admin_user_end_sessions(
     request: Request,
     user_id: UserId,
     _: Admin,
     conn: Connection,
-    csrf: Annotated[str, Form()] = "",
+    csrf: Csrf = "",
     back: Annotated[str, Form(max_length=2000)] = "",
 ) -> Response:
     """«Завершить все сессии»: every device the account is signed in on is signed out on
@@ -621,13 +645,13 @@ async def admin_user_end_sessions(
     return RedirectResponse(safe_back(back), status_code=303)
 
 
-@router.post("/users/{user_id}/verify-email", response_model=None)
+@router.post("/users/{user_id}/verify-email", response_model=None, dependencies=WRITES)
 async def admin_user_verify_email(
     request: Request,
     user_id: UserId,
     _: Admin,
     conn: Connection,
-    csrf: Annotated[str, Form()] = "",
+    csrf: Csrf = "",
     back: Annotated[str, Form(max_length=2000)] = "",
 ) -> Response:
     """«Подтвердить email вручную»: for someone whose letter never arrived. An address
@@ -652,13 +676,13 @@ async def admin_user_verify_email(
     return RedirectResponse(safe_back(back), status_code=303)
 
 
-@router.post("/users/{user_id}/password-reset", response_model=None)
+@router.post("/users/{user_id}/password-reset", response_model=None, dependencies=WRITES)
 async def admin_user_password_reset(
     request: Request,
     user_id: UserId,
     _: Admin,
     conn: Connection,
-    csrf: Annotated[str, Form()] = "",
+    csrf: Csrf = "",
     back: Annotated[str, Form(max_length=2000)] = "",
 ) -> Response:
     """«Отправить письмо сброса пароля»: the same letter «Забыли пароль?» sends. The admin
@@ -682,13 +706,13 @@ async def admin_user_password_reset(
 # --- blocking (PR 349) ---------------------------------------------------------------------
 
 
-@router.post("/users/{user_id}/ban", response_model=None)
+@router.post("/users/{user_id}/ban", response_model=None, dependencies=WRITES)
 async def admin_user_ban(
     request: Request,
     user_id: UserId,
     _: Admin,
     conn: Connection,
-    csrf: Annotated[str, Form()] = "",
+    csrf: Csrf = "",
     term: Annotated[str, Form(max_length=10)] = "",
     reason: Annotated[str, Form(max_length=2000)] = "",
     back: Annotated[str, Form(max_length=2000)] = "",
@@ -721,13 +745,13 @@ async def admin_user_ban(
     return RedirectResponse(safe_back(back), status_code=303)
 
 
-@router.post("/users/{user_id}/unban", response_model=None)
+@router.post("/users/{user_id}/unban", response_model=None, dependencies=WRITES)
 async def admin_user_unban(
     request: Request,
     user_id: UserId,
     _: Admin,
     conn: Connection,
-    csrf: Annotated[str, Form()] = "",
+    csrf: Csrf = "",
     reason: Annotated[str, Form(max_length=2000)] = "",
     back: Annotated[str, Form(max_length=2000)] = "",
 ) -> Response:
@@ -763,7 +787,7 @@ async def admin_comments(
     status: Annotated[str | None, Query(max_length=10)] = None,
     kind: Annotated[str | None, Query(max_length=10)] = None,
     sort: Annotated[str | None, Query(max_length=20)] = None,
-    order: str = "desc",
+    order: Order = "desc",
     page: Annotated[int, Query(ge=1, le=1_000_000)] = 1,
     comment: Annotated[int | None, Query(ge=1, le=2_147_483_647)] = None,
 ) -> HTMLResponse:
@@ -784,7 +808,10 @@ async def admin_comments(
             page=page,
         )
         detail = await comment_detail(conn, comment) if comment is not None else None
-        bans = len(await ban_history(conn, detail.comment.user_id)) if detail else 0
+        history = (
+            await _read(conn, lambda: ban_history(conn, detail.comment.user_id)) if detail else []
+        )
+        bans = len(history)
     except QueryCanceled:
         return _timed_out(request, "comments")
     slugs = [row.slug_url for row in data.rows]
@@ -828,13 +855,13 @@ async def admin_comments(
 CommentId = Annotated[int, Path(ge=1, le=2_147_483_647)]
 
 
-@router.post("/comments/{comment_id}/hide", response_model=None)
+@router.post("/comments/{comment_id}/hide", response_model=None, dependencies=WRITES)
 async def admin_comment_hide(
     request: Request,
     comment_id: CommentId,
     _: Admin,
     conn: Connection,
-    csrf: Annotated[str, Form()] = "",
+    csrf: Csrf = "",
     back: Annotated[str, Form(max_length=2000)] = "",
 ) -> Response:
     """«Скрыть»: readers stop seeing it at once; its author still does, marked «скрыт
@@ -868,13 +895,13 @@ async def admin_comment_hide(
     return RedirectResponse(target, status_code=303)
 
 
-@router.post("/comments/{comment_id}/show", response_model=None)
+@router.post("/comments/{comment_id}/show", response_model=None, dependencies=WRITES)
 async def admin_comment_show(
     request: Request,
     comment_id: CommentId,
     _: Admin,
     conn: Connection,
-    csrf: Annotated[str, Form()] = "",
+    csrf: Csrf = "",
     back: Annotated[str, Form(max_length=2000)] = "",
 ) -> Response:
     """«Показать» (and the «Отменить» of «Скрыть»): back in the thread for everyone."""
@@ -900,14 +927,14 @@ async def admin_comment_show(
     return RedirectResponse(target, status_code=303)
 
 
-@router.post("/comments/{comment_id}/delete", response_model=None)
+@router.post("/comments/{comment_id}/delete", response_model=None, dependencies=WRITES)
 async def admin_comment_delete(
     request: Request,
     comment_id: CommentId,
     _: Admin,
     conn: Connection,
-    csrf: Annotated[str, Form()] = "",
-    confirm: Annotated[str, Form()] = "",
+    csrf: Csrf = "",
+    confirm: Annotated[str, Form(max_length=5)] = "",
     back: Annotated[str, Form(max_length=2000)] = "",
 ) -> Response:
     """«Удалить навсегда»: the text, attachment, reactions and their notifications go for
@@ -1034,12 +1061,12 @@ async def admin_tables(request: Request, _: Admin, conn: Connection) -> HTMLResp
 @router.get("/tables/{name}", response_model=None)
 async def admin_table(
     request: Request,
-    name: str,
+    name: TableName,
     _: Admin,
     conn: Connection,
     page: Annotated[int, Query(ge=1, le=1_000_000)] = 1,
-    sort: str | None = None,
-    order: str = "desc",
+    sort: SortKey = None,
+    order: Order = "desc",
     q: Annotated[str, Query(max_length=200)] = "",
 ) -> HTMLResponse:
     columns = (await table_columns(conn)).get(name)
@@ -1069,14 +1096,14 @@ async def admin_table(
     )
 
 
-@router.get("/tables/{name}/csv", response_model=None)
+@router.get("/tables/{name}/csv", response_model=None, dependencies=EXPORTS)
 async def admin_table_csv(
     request: Request,
-    name: str,
+    name: TableName,
     _: Admin,
     conn: Connection,
-    sort: str | None = None,
-    order: str = "desc",
+    sort: SortKey = None,
+    order: Order = "desc",
     q: Annotated[str, Query(max_length=200)] = "",
 ) -> Response:
     """PR 352: the browser's current selection (its search and sort, every page up to
@@ -1161,7 +1188,7 @@ def _known(actor: str | None, names: list[str]) -> str | None:
     return actor if actor in names else None
 
 
-@router.get("/audit/csv", response_model=None)
+@router.get("/audit/csv", response_model=None, dependencies=EXPORTS)
 async def admin_audit_csv(
     request: Request,
     _: Admin,
@@ -1293,9 +1320,9 @@ async def admin_kit_showcase(request: Request, _: Admin) -> HTMLResponse:
 async def admin_kit_demo(
     request: Request,
     _: Admin,
-    csrf: Annotated[str, Form()] = "",
-    action: Annotated[str, Form()] = "",
-    confirm: Annotated[str, Form()] = "",
+    csrf: Csrf = "",
+    action: Annotated[str, Form(max_length=20)] = "",
+    confirm: Annotated[str, Form(max_length=5)] = "",
     name: Annotated[str, Form(max_length=100)] = "",
 ) -> Response:
     """The showcase's dialogs post here so the toast flow can be tried end to end. It
@@ -1376,8 +1403,8 @@ async def admin_login_form(request: Request) -> Response:
 @router.post("/login", response_model=None)
 async def admin_login(
     request: Request,
-    password: Annotated[str, Form()] = "",
-    csrf: Annotated[str, Form()] = "",
+    password: Annotated[str, Form(max_length=1024)] = "",
+    csrf: Csrf = "",
 ) -> Response:
     check_csrf(request, csrf)
     ip = client_ip(request)
@@ -1401,7 +1428,7 @@ async def admin_login(
 
 
 @router.post("/logout", response_model=None)
-async def admin_logout(request: Request, csrf: Annotated[str, Form()] = "") -> Response:
+async def admin_logout(request: Request, csrf: Csrf = "") -> Response:
     check_csrf(request, csrf)
     if is_admin(request):
         await _audit_login_event(request, admin_audit.LOGOUT)

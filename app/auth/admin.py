@@ -25,9 +25,11 @@ import hashlib
 import hmac
 import secrets
 import time
+from typing import Annotated
 
-from fastapi import HTTPException, Request
+from fastapi import Depends, HTTPException, Request
 
+from app.auth.rate_limit import is_rate_limited
 from app.config import get_settings
 
 ADMIN_SESSION_KEY = "admin"
@@ -90,6 +92,33 @@ def require_admin(request: Request) -> None:
     if not is_admin(request):
         request.session.pop(ADMIN_SESSION_KEY, None)
         raise HTTPException(status_code=303, headers={"Location": LOGIN_PATH})
+
+
+# PR 355: how many changes and exports one IP may make through the panel per minute. Far
+# above what a person clicking through the screens does; a script looping over the
+# actions (or a stolen session doing the same) hits the wall.
+ADMIN_WRITES_PER_MINUTE = 30
+ADMIN_EXPORTS_PER_MINUTE = 10
+
+
+def _limit(request: Request, kind: str, per_minute: int) -> None:
+    if is_rate_limited(f"admin-{kind}:{client_ip(request)}", max_attempts=per_minute):
+        raise HTTPException(
+            status_code=429,
+            detail="Слишком много действий подряд — подождите минуту",
+            headers={"Retry-After": "60"},
+        )
+
+
+def limit_admin_writes(request: Request, _: Annotated[None, Depends(require_admin)]) -> None:
+    """For every admin POST that changes data: the admin check first (so a stranger gets
+    the login form, not a 429), then ADMIN_WRITES_PER_MINUTE per IP."""
+    _limit(request, "write", ADMIN_WRITES_PER_MINUTE)
+
+
+def limit_admin_exports(request: Request, _: Annotated[None, Depends(require_admin)]) -> None:
+    """The CSV exports - each reads up to 10 000 rows - ADMIN_EXPORTS_PER_MINUTE per IP."""
+    _limit(request, "export", ADMIN_EXPORTS_PER_MINUTE)
 
 
 def require_admin_fetch(request: Request) -> None:
