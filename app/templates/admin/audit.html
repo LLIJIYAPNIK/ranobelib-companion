@@ -1,0 +1,71 @@
+{% extends "admin/_layout.html" %}
+{% import "admin/_kit.html" as kit with context %}
+{% block title %}Журнал действий{% endblock %}
+{% block heading %}Журнал действий{% endblock %}
+{% block content %}
+{# PR 353: the action log PR 343 writes (app/admin_audit.py) - one row per entry, the ones
+   with changes open into «− было / + стало» (a <details>, no script needed). #}
+<main class="wn-admin__main wn-admin-ov" aria-labelledby="admin-page-title">
+  <div class="wn-admin-ov__bar">
+    <p class="wn-admin-ov__asof">Кто, что и когда изменил. Записи хранятся {{ retention_days }} {{ plural(retention_days, "день", "дня", "дней") }} и не редактируются. Время — {{ timezone }}.</p>
+    <a class="wn-admin-btn" href="{{ csv_href }}" title="Текущая выборка — поиск и фильтры, все страницы, до {{ export_limit }} записей" download>{{ kit.icon("download") }}Экспорт CSV</a>
+  </div>
+
+  <section class="wn-admin-panel" aria-label="Журнал действий">
+    {% call kit.filter_bar("/admin/audit", args, filters, placeholder="Объект, id или IP", keep=()) %}<span class="wn-admin-audit__count">{{ data.total }} {{ plural(data.total, "событие", "события", "событий") }}</span>{% endcall %}
+    {% if rows %}
+    <ol class="wn-admin-audit" aria-label="События, сначала новые">
+      {% for row in rows %}
+      <li class="wn-admin-audit__item">
+        {% set line %}
+        <span class="wn-admin-audit__when"><time datetime="{{ row.iso }}" title="{{ row.when }}">{{ row.time }}</time><span class="wn-admin-audit__date">{{ row.date }}</span></span>
+        <span class="wn-admin-audit__actor"><span class="wn-admin-audit__avatar" aria-hidden="true">{{ row.actor_initial }}</span><span class="wn-admin-audit__actor-name">{{ row.actor }}</span></span>
+        <span class="wn-admin-audit__action">{{ kit.badge(row.action_label, row.action_tone) }}</span>
+        {# A login or logout has no object - the row just has nothing there. #}
+        <span class="wn-admin-audit__object">{% if row.entity %}<span class="wn-admin-audit__entity">{{ row.entity }}</span>{% endif %}{% if row.name %}<span class="wn-admin-audit__name">{{ row.name }}</span>{% endif %}</span>
+        <span class="wn-admin-audit__ip" title="IP">{{ row.ip }}</span>
+        <span class="wn-admin-audit__changes">{{ row.changes }}</span>
+        {% endset %}
+        {% if row.expandable %}
+        <details class="wn-admin-audit__entry">
+          <summary class="wn-admin-audit__row">{{ line }}{{ kit.icon("chevron-down", "wn-admin-audit__chevron") }}</summary>
+          <div class="wn-admin-audit__more">
+            {% if row.diff %}
+            <dl class="wn-admin-audit__diff" aria-label="Изменения">
+              {% for change in row.diff %}
+              <div class="wn-admin-audit__field">
+                <dt title="{{ change.field }}">{{ change.label }}</dt>
+                <dd>
+                  {% if change.before is not none %}<span class="wn-admin-audit__before"><span class="wn-admin-sr">было: </span>− {{ change.before }}</span>{% endif %}
+                  {% if change.after is not none %}<span class="wn-admin-audit__after"><span class="wn-admin-sr">стало: </span>+ {{ change.after }}</span>{% endif %}
+                </dd>
+              </div>
+              {% endfor %}
+            </dl>
+            {% endif %}
+            {% if row.details %}
+            <dl class="wn-admin-summary wn-admin-audit__details" aria-label="Подробности">
+              {% for item in row.details %}
+              <div class="wn-admin-summary__item"><dt title="{{ item.field }}">{{ item.label }}</dt><dd>{{ item.value }}</dd></div>
+              {% endfor %}
+            </dl>
+            {% endif %}
+            {% if row.href %}<a class="wn-admin-cm__link wn-admin-audit__open" href="{{ row.href }}">Открыть {{ row.entity | lower or "объект" }}</a>{% endif %}
+          </div>
+        </details>
+        {% else %}
+        <div class="wn-admin-audit__row">{{ line }}<span class="wn-admin-audit__chevron" aria-hidden="true"></span></div>
+        {% endif %}
+      </li>
+      {% endfor %}
+    </ol>
+    {% elif filtered %}
+    {% set state = filter_state(args, filters, keep=()) %}
+    {{ kit.no_results(state.count, state.reset) }}
+    {% else %}
+    {{ kit.empty_state("Журнал пока пуст", "Сюда попадают входы в панель и каждое действие, которое меняет данные.", icon_name="history") }}
+    {% endif %}
+    {{ kit.pager(data.page, data.pages, data.total, per_page, args) }}
+  </section>
+</main>
+{% endblock %}

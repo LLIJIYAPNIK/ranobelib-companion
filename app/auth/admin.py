@@ -92,6 +92,14 @@ def require_admin(request: Request) -> None:
         raise HTTPException(status_code=303, headers={"Location": LOGIN_PATH})
 
 
+def require_admin_fetch(request: Request) -> None:
+    """``require_admin`` for what the panel's scripts fetch (the global search's drop-down,
+    PR 353): no valid admin login -> a plain 404, not a redirect to a login page the
+    script couldn't show - and to anyone else the URL looks like it isn't there."""
+    if not is_admin(request):
+        raise HTTPException(status_code=404)
+
+
 # --- login throttling (per IP) ---------------------------------------------------------
 # In-memory, process-wide - same single-process MVP treatment as app/auth/rate_limit.py.
 # The first _FREE_FAILURES wrong passwords cost nothing; every one after that locks the IP

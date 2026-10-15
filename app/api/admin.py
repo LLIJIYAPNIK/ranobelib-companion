@@ -1,5 +1,6 @@
 """/admin: the panel's login/logout (PR 324), overview and read-only data browser (PR 325),
-the shared sidebar/top-bar shell (PR 341), the UI kit's dev-only showcase (PR 342).
+the shared sidebar/top-bar shell (PR 341), the UI kit's dev-only showcase (PR 342), the
+action log screen and the global search (PR 353).
 
 Every route sits behind ``require_admin_enabled`` (404 without ADMIN_PASSWORD), every page
 but the login form behind ``require_admin`` (app/auth/admin.py). The data pages only read
@@ -20,7 +21,7 @@ from zoneinfo import ZoneInfo
 import httpx
 import psycopg
 from fastapi import APIRouter, Depends, FastAPI, Form, HTTPException, Path, Query, Request
-from fastapi.responses import HTMLResponse, RedirectResponse, Response
+from fastapi.responses import HTMLResponse, JSONResponse, RedirectResponse, Response
 from psycopg import AsyncConnection
 from psycopg.errors import QueryCanceled
 from psycopg_pool import PoolTimeout
@@ -43,6 +44,9 @@ from app.admin_analytics import (
     title_kpis,
     title_list_rows,
 )
+from app.admin_audit import audit_csv, audit_filters, audit_rows, parse_action
+from app.admin_audit import csv_filename as audit_csv_filename
+from app.admin_audit import csv_href as audit_csv_href
 from app.admin_comments import COLUMNS as COMMENT_COLUMNS
 from app.admin_comments import back_href as comments_back_href
 from app.admin_comments import (
@@ -76,6 +80,20 @@ from app.admin_overview import (
     period_links,
     popular_titles,
     recent_user_rows,
+)
+from app.admin_search import (
+    MIN_QUERY,
+    PAGE_LIMIT,
+    SUGGEST_LIMIT,
+    Group,
+    as_json,
+    comment_hits,
+    groups,
+    normalize,
+    screen_hits,
+    searchable,
+    table_hits,
+    user_hits,
 )
 from app.admin_system import (
     JOB_COLUMNS,
@@ -124,6 +142,7 @@ from app.auth.admin import (
     record_failed_login,
     require_admin,
     require_admin_enabled,
+    require_admin_fetch,
     reset_failed_logins,
     start_admin_session,
 )
@@ -144,6 +163,7 @@ from app.db.admin_analytics import (
     title_totals,
 )
 from app.db.admin_audit import (
+    AUDIT_EXPORT,
     COMMENT_DELETE,
     COMMENT_HIDE,
     COMMENT_SHOW,
@@ -172,6 +192,7 @@ from app.db.admin_data import (
     user_id_columns,
 )
 from app.db.admin_data import PAGE_SIZE as TABLE_PAGE_SIZE
+from app.db.admin_search import search_comments, search_users
 from app.db.admin_stats import (
     AttentionCounts,
     PeriodStats,
@@ -250,7 +271,7 @@ ADMIN_NAV: tuple[NavItem, ...] = (
     NavItem("comments", "Комментарии", "comments", "/admin/comments", "Сообщество"),
     NavItem("tables", "Данные БД", "database", "/admin/tables", "Данные"),
     NavItem("system", "Система", "server", "/admin/system", "Платформа"),
-    NavItem("audit", "Журнал", "history", None, "Платформа"),
+    NavItem("audit", "Журнал", "history", "/admin/audit", "Платформа"),
 )
 
 
@@ -1093,6 +1114,152 @@ async def admin_table_csv(
             "Content-Disposition": f'attachment; filename="{csv_filename(name, _server_now())}"'
         },
     )
+
+
+@router.get("/audit", response_model=None)
+async def admin_audit_log(
+    request: Request,
+    _: Admin,
+    conn: Connection,
+    q: Annotated[str, Query(max_length=200)] = "",
+    action: Annotated[str | None, Query(max_length=40)] = None,
+    actor: Annotated[str | None, Query(max_length=40)] = None,
+    page: Annotated[int, Query(ge=1, le=1_000_000)] = 1,
+) -> HTMLResponse:
+    """«Журнал действий» (PR 353): the log PR 343 writes, newest first, with search by
+    object or IP and the «Действие» filter. Read-only - the log has no edit or delete,
+    here or anywhere."""
+    settings = get_settings()
+    tz = settings.admin_timezone
+    try:
+        names = await admin_audit.actors(conn)
+        data = await admin_audit.list_page(
+            conn, query=q, action=parse_action(action), actor=_known(actor, names), page=page
+        )
+    except QueryCanceled:
+        return _timed_out(request, "audit")
+    args = dict(request.query_params)
+    filters = audit_filters(args, names)
+    return _page(
+        request,
+        "admin/audit.html",
+        "audit",
+        args=args,
+        filters=filters,
+        filtered=bool(q.strip()) or any(item.value for item in filters),
+        rows=audit_rows(data.entries, tz, _server_now()),
+        data=data,
+        per_page=admin_audit.PAGE_SIZE,
+        retention_days=settings.admin_audit_retention_days,
+        csv_href=audit_csv_href(args),
+        export_limit=admin_audit.EXPORT_LIMIT,
+        timezone=tz,
+    )
+
+
+def _known(actor: str | None, names: list[str]) -> str | None:
+    return actor if actor in names else None
+
+
+@router.get("/audit/csv", response_model=None)
+async def admin_audit_csv(
+    request: Request,
+    _: Admin,
+    conn: Connection,
+    q: Annotated[str, Query(max_length=200)] = "",
+    action: Annotated[str | None, Query(max_length=40)] = None,
+    actor: Annotated[str | None, Query(max_length=40)] = None,
+) -> Response:
+    """The log's current selection (search and filters, every page up to EXPORT_LIMIT
+    entries) as CSV. The export itself goes into the log, like «Данные БД»'s."""
+    try:
+        names = await admin_audit.actors(conn)
+        export = await admin_audit.export_entries(
+            conn, query=q, action=parse_action(action), actor=_known(actor, names)
+        )
+    except QueryCanceled:
+        return _timed_out(request, "audit")
+    await admin_audit.record_admin_action(
+        conn,
+        AUDIT_EXPORT,
+        ip=client_ip(request),
+        details={
+            "rows": len(export.entries),
+            "matching": export.total,
+            "query": q.strip() or None,
+            "action": parse_action(action),
+            "actor": _known(actor, names),
+        },
+    )
+    return Response(
+        audit_csv(export.entries, get_settings().admin_timezone),
+        media_type="text/csv; charset=utf-8",
+        headers={
+            "Content-Disposition": f'attachment; filename="{audit_csv_filename(_server_now())}"'
+        },
+    )
+
+
+# --- the global search (PR 353) -------------------------------------------------------------
+
+
+async def _search(conn: AsyncConnection, query: str, limit: int) -> list[Group]:
+    """Everything the top bar's search finds for ``query``: the panel's screens, accounts
+    (email, nickname, id), comments (text, id) and «Данные БД»'s tables - never a hash or
+    token column, and nothing from the SDK's catalog."""
+    if not searchable(query):
+        return []
+    return groups(
+        query,
+        screens=screen_hits(query, ADMIN_NAV),
+        users=user_hits(await search_users(conn, query, limit)),
+        comments=comment_hits(await search_comments(conn, query, limit)),
+        tables=table_hits(query, await table_columns(conn)),
+        limit=limit,
+    )
+
+
+@router.get("/search", response_model=None)
+async def admin_search(
+    request: Request,
+    _: Admin,
+    conn: Connection,
+    q: Annotated[str, Query(max_length=200)] = "",
+) -> HTMLResponse:
+    """The full results - where the box goes on Enter, and what it is without a script."""
+    query = normalize(q)
+    try:
+        found = await _search(conn, query, PAGE_LIMIT)
+    except QueryCanceled:
+        return _timed_out(request, "search")
+    return _page(
+        request,
+        "admin/search.html",
+        "search",
+        query=query,
+        search_query=query,
+        searchable=searchable(query),
+        min_query=MIN_QUERY,
+        groups=found,
+    )
+
+
+@router.get(
+    "/search/suggest",
+    response_model=None,
+    dependencies=[Depends(require_admin_fetch)],
+)
+async def admin_search_suggest(
+    conn: Connection, q: Annotated[str, Query(max_length=200)] = ""
+) -> JSONResponse:
+    """The drop-down under the box (js/admin-search.js): a few hits per group. Without
+    the admin login it's a 404, like the panel's own URLs without ADMIN_PASSWORD."""
+    query = normalize(q)
+    try:
+        found = await _search(conn, query, SUGGEST_LIMIT)
+    except QueryCanceled:
+        return JSONResponse({"query": query, "error": "timeout", "groups": []}, status_code=503)
+    return JSONResponse(as_json(query, found))
 
 
 def _timed_out(request: Request, section: str) -> HTMLResponse:

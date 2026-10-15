@@ -1,9 +1,10 @@
 """The admin panel's action log, ``admin_audit_log`` (migrations/0027_admin_audit_log.sql,
 PR 343).
 
-Append-only: this module only ever inserts (and, for the retention cleanup, deletes what
-is past its date - ``ADMIN_AUDIT_RETENTION_DAYS``, at startup and daily). Admin routes
-that change data record what they did with ``record_change()``.
+Append-only: this module only ever inserts, reads (the log screen, PR 353) and, for the
+retention cleanup, deletes what is past its date - ``ADMIN_AUDIT_RETENTION_DAYS``, at
+startup and daily. Admin routes that change data record what they did with
+``record_change()``.
 
 Nothing secret reaches ``details`` - every key that looks like a password, token, hash or
 secret is replaced by MASK before the row is written, however deep it sits, using the
@@ -15,6 +16,7 @@ from __future__ import annotations
 import asyncio
 import json
 import logging
+import math
 from collections.abc import Mapping
 from dataclasses import dataclass
 from datetime import UTC, datetime, timedelta
@@ -25,7 +27,7 @@ from psycopg import AsyncConnection
 from psycopg.types.json import Jsonb
 
 from app.db import connection as db_connection
-from app.db.admin_data import MASK, looks_secret
+from app.db.admin_data import MASK, _read_only, looks_secret
 
 logger = logging.getLogger(__name__)
 
@@ -48,6 +50,8 @@ COMMENT_SHOW = "comment_show"
 COMMENT_DELETE = "comment_delete"
 # PR 352: a CSV export from «Данные БД» - nothing changes, but data leaves the panel.
 DATA_EXPORT = "data_export"
+# PR 353: the same for the log's own CSV export.
+AUDIT_EXPORT = "audit_export"
 
 _dumps = partial(json.dumps, ensure_ascii=False, default=str)
 
@@ -118,7 +122,104 @@ async def list_entries(conn: AsyncConnection, limit: int = 100) -> list[AuditEnt
     return [AuditEntry(**row) for row in await cursor.fetchall()]
 
 
-# --- changes made by admin actions (PR 348-351) ----------------------------------------
+# --- the log screen (PR 353) ------------------------------------------------------------
+
+PAGE_SIZE = 50
+EXPORT_LIMIT = 10_000
+
+_SELECT = "SELECT id, at, actor, action, entity, entity_id, entity_label, ip, details "
+
+
+@dataclass(frozen=True)
+class AuditPage:
+    entries: list[AuditEntry]
+    total: int
+    page: int
+    pages: int
+
+
+@dataclass(frozen=True)
+class AuditExport:
+    entries: list[AuditEntry]
+    total: int  # how many matched - more than len(entries) past EXPORT_LIMIT
+
+
+def _where(query: str, action: str | None, actor: str | None) -> tuple[str, dict[str, object]]:
+    """The screen's search - the object's name or id, or the IP (case-insensitive
+    substring; position() so nothing in the text acts as a wildcard) - and filters."""
+    conditions = []
+    params: dict[str, object] = {}
+    query = query.strip()
+    if query:
+        conditions.append(
+            "(position(%(q)s in lower(coalesce(entity_label, ''))) > 0 "
+            "OR position(%(q)s in lower(coalesce(entity_id, ''))) > 0 "
+            "OR position(%(q)s in lower(coalesce(ip, ''))) > 0)"
+        )
+        params["q"] = query.lower()
+    if action:
+        conditions.append("action = %(action)s")
+        params["action"] = action
+    if actor:
+        conditions.append("actor = %(actor)s")
+        params["actor"] = actor
+    return (f"WHERE {' AND '.join(conditions)} " if conditions else ""), params
+
+
+async def list_page(
+    conn: AsyncConnection,
+    *,
+    query: str = "",
+    action: str | None = None,
+    actor: str | None = None,
+    page: int = 1,
+) -> AuditPage:
+    """One page of the log, newest first. Read-only with the admin timeout, like every
+    other admin screen (app/db/admin_data.py)."""
+    where, params = _where(query, action, actor)
+    async with _read_only(conn):
+        cursor = await conn.execute(f"SELECT COUNT(*) AS n FROM admin_audit_log {where}", params)
+        total = (await cursor.fetchone())["n"]
+        pages = max(1, math.ceil(total / PAGE_SIZE))
+        page = min(max(page, 1), pages)
+        cursor = await conn.execute(
+            f"{_SELECT}FROM admin_audit_log {where}ORDER BY id DESC "
+            "LIMIT %(limit)s OFFSET %(offset)s",
+            {**params, "limit": PAGE_SIZE, "offset": (page - 1) * PAGE_SIZE},
+        )
+        rows = await cursor.fetchall()
+    return AuditPage([AuditEntry(**row) for row in rows], total, page, pages)
+
+
+async def export_entries(
+    conn: AsyncConnection,
+    *,
+    query: str = "",
+    action: str | None = None,
+    actor: str | None = None,
+) -> AuditExport:
+    """The screen's current selection, every page up to EXPORT_LIMIT entries."""
+    where, params = _where(query, action, actor)
+    async with _read_only(conn):
+        cursor = await conn.execute(f"SELECT COUNT(*) AS n FROM admin_audit_log {where}", params)
+        total = (await cursor.fetchone())["n"]
+        cursor = await conn.execute(
+            f"{_SELECT}FROM admin_audit_log {where}ORDER BY id DESC LIMIT %(limit)s",
+            {**params, "limit": EXPORT_LIMIT},
+        )
+        rows = await cursor.fetchall()
+    return AuditExport([AuditEntry(**row) for row in rows], total)
+
+
+async def actors(conn: AsyncConnection) -> list[str]:
+    """Who appears in the log - just «admin» while the panel has one password; the
+    screen's «Кто» filter shows up once there's more than one."""
+    async with _read_only(conn):
+        cursor = await conn.execute("SELECT DISTINCT actor FROM admin_audit_log ORDER BY actor")
+        return [row["actor"] for row in await cursor.fetchall()]
+
+
+# --- changes made by admin actions (PR 348-351)----------------------------------------
 
 
 def diff(

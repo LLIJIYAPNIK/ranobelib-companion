@@ -59,13 +59,18 @@ def table_id(name: str) -> str:
 _FORMULA_STARTS = ("=", "+", "-", "@", "\t", "\r")
 
 
+def spreadsheet_safe(text: str) -> str:
+    """``text`` as a spreadsheet will show it, never run it. Also used by the action log's
+    export (app/admin_audit.py, PR 353)."""
+    return "'" + text if text.startswith(_FORMULA_STARTS) else text
+
+
 def _csv_cell(value: object, masked: bool, mask: str) -> str:
     if masked:
         return mask
     if value is None:
         return ""
-    text = str(value)
-    return "'" + text if text.startswith(_FORMULA_STARTS) else text
+    return spreadsheet_safe(str(value))
 
 
 def table_csv(export: TableExport, mask: str) -> bytes:

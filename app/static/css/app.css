@@ -21277,11 +21277,6 @@ body.reader-hud-visible .reader-hud {
   max-width: 460px;
 }
 
-/* Until PR 353 fills it, the slot mustn't take the title's room. */
-.wn-admin-top__search:empty {
-  display: none;
-}
-
 .wn-admin-top__time {
   display: flex;
   flex: none;
@@ -24286,6 +24281,552 @@ html:has(dialog.wn-admin-dialog[open]) {
   .wn-admin-popular__trend {
     display: none;
   }
+}
+
+/* PR 353: «Журнал действий» (admin/audit.html) - the mockup's rows: time, who, the action's
+   badge, the object, IP, how many fields changed; an entry with changes opens (a plain
+   <details>) into «− было / + стало» per field and the rest of what was recorded. */
+.wn-admin-audit {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.wn-admin-audit__item {
+  border-bottom: 1px solid var(--wn-border);
+}
+
+.wn-admin-audit__row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px 12px;
+  padding: 12px 16px;
+}
+
+summary.wn-admin-audit__row {
+  list-style: none;
+  cursor: pointer;
+}
+
+summary.wn-admin-audit__row::-webkit-details-marker {
+  display: none;
+}
+
+summary.wn-admin-audit__row:hover {
+  background: rgba(255, 255, 255, 0.02);
+}
+
+summary.wn-admin-audit__row:focus-visible {
+  outline: none;
+  box-shadow: var(--wn-focus-ring);
+}
+
+.wn-admin-audit__when {
+  display: flex;
+  flex: none;
+  flex-direction: column;
+  width: 76px;
+}
+
+.wn-admin-audit__when time {
+  font: var(--wn-type-technical);
+  font-size: 12.5px;
+}
+
+.wn-admin-audit__date {
+  overflow: hidden;
+  color: var(--wn-text-muted);
+  font: var(--wn-weight-medium) 11px/1.4 var(--wn-font-ui);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.wn-admin-audit__actor {
+  display: flex;
+  flex: none;
+  align-items: center;
+  gap: 8px;
+  width: 150px;
+  min-width: 0;
+}
+
+.wn-admin-audit__avatar {
+  display: grid;
+  flex: none;
+  place-items: center;
+  width: 26px;
+  height: 26px;
+  border-radius: 50%;
+  background: color-mix(in srgb, var(--wn-primary) 35%, var(--wn-surface-raised));
+  font: var(--wn-weight-semi-bold) 11px/1 var(--wn-font-ui);
+}
+
+.wn-admin-audit__actor-name,
+.wn-admin-audit__name {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.wn-admin-audit__actor-name {
+  font: var(--wn-weight-medium) 13px/1.3 var(--wn-font-ui);
+}
+
+.wn-admin-audit__action {
+  flex: none;
+}
+
+.wn-admin-audit__object {
+  display: flex;
+  flex: 1 1 200px;
+  align-items: baseline;
+  gap: 6px;
+  min-width: 0;
+  font: var(--wn-weight-medium) 13px/1.4 var(--wn-font-ui);
+}
+
+.wn-admin-audit__entity {
+  flex: none;
+  color: var(--wn-text-muted);
+}
+
+.wn-admin-audit__name {
+  font-weight: var(--wn-weight-semi-bold);
+}
+
+.wn-admin-audit__ip {
+  flex: none;
+  color: var(--wn-text-muted);
+  font: var(--wn-type-technical);
+  font-size: 11.5px;
+}
+
+.wn-admin-audit__changes {
+  flex: none;
+  width: 96px;
+  color: var(--wn-text-secondary);
+  font: var(--wn-weight-medium) 12px/1.3 var(--wn-font-ui);
+  text-align: right;
+}
+
+.wn-admin-audit__chevron {
+  flex: none;
+  width: 15px;
+  height: 15px;
+  color: var(--wn-text-secondary);
+}
+
+.wn-admin-audit__entry[open] .wn-admin-audit__chevron {
+  transform: rotate(180deg);
+}
+
+.wn-admin-audit__more {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 12px;
+  margin: 0 16px 14px;
+}
+
+.wn-admin-audit__diff {
+  align-self: stretch;
+  margin: 0;
+  overflow: hidden;
+  border: 1px solid var(--wn-border);
+  border-radius: 10px;
+  font: var(--wn-type-technical);
+  font-size: 12px;
+}
+
+.wn-admin-audit__field {
+  display: grid;
+  grid-template-columns: minmax(90px, 180px) minmax(0, 1fr);
+}
+
+.wn-admin-audit__field + .wn-admin-audit__field {
+  border-top: 1px solid var(--wn-border);
+}
+
+.wn-admin-audit__field dt {
+  padding: 8px 12px;
+  font: var(--wn-weight-medium) 12px/1.4 var(--wn-font-ui);
+  background: rgba(255, 255, 255, 0.02);
+  color: var(--wn-text-secondary);
+  overflow-wrap: anywhere;
+}
+
+.wn-admin-audit__field dd {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  margin: 0;
+}
+
+.wn-admin-audit__before,
+.wn-admin-audit__after {
+  padding: 6px 12px;
+  overflow-wrap: anywhere;
+}
+
+.wn-admin-audit__before {
+  background: color-mix(in srgb, var(--wn-danger) 10%, transparent);
+  color: color-mix(in srgb, var(--wn-danger) 60%, #fff);
+}
+
+.wn-admin-audit__after {
+  background: color-mix(in srgb, var(--wn-teal) 10%, transparent);
+  color: color-mix(in srgb, var(--wn-teal) 60%, #fff);
+}
+
+.wn-admin-audit__details {
+  align-self: stretch;
+}
+
+.wn-admin-audit__open {
+  font: var(--wn-weight-semi-bold) 13px/1.3 var(--wn-font-ui);
+}
+
+.wn-admin-audit__count {
+  align-self: center;
+  color: var(--wn-text-secondary);
+  font: var(--wn-weight-medium) 12.5px/1 var(--wn-font-ui);
+  white-space: nowrap;
+}
+
+/* On a phone the row wraps: when, action and the chevron on top, the object under them. */
+@media (max-width: 767px) {
+  .wn-admin-audit__row {
+    padding: 12px;
+  }
+
+  .wn-admin-audit__actor {
+    width: auto;
+  }
+
+  .wn-admin-audit__object {
+    order: 5;
+    flex-basis: 100%;
+  }
+
+  .wn-admin-audit__changes {
+    width: auto;
+    margin-left: auto;
+  }
+
+  .wn-admin-audit__more {
+    margin: 0 12px 12px;
+  }
+
+  .wn-admin-audit__field {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .wn-admin-audit__chevron {
+    transition: transform 0.15s ease;
+  }
+}
+
+/* PR 353: the global search in the top bar (RanobeLib Admin.dc.html's box) and its
+   drop-down (js/admin-search.js); on a phone just the icon, which opens the box over the
+   top bar. Below it, the full results page (admin/search.html). */
+.wn-admin-top__search {
+  position: relative;
+  min-width: 0;
+}
+
+.wn-admin-search {
+  position: relative;
+  margin: 0;
+}
+
+.wn-admin-search__field {
+  position: relative;
+  display: flex;
+  align-items: center;
+}
+
+.wn-admin-search__icon {
+  position: absolute;
+  left: 12px;
+  width: 15px;
+  height: 15px;
+  color: var(--wn-text-muted);
+  pointer-events: none;
+}
+
+.wn-admin-search__input {
+  width: 100%;
+  height: 38px;
+  padding: 0 64px 0 36px;
+  border: 1px solid var(--wn-border);
+  border-radius: 11px;
+  background: var(--wn-surface);
+  color: var(--wn-text);
+  font: var(--wn-weight-medium) 13px/1 var(--wn-font-ui);
+}
+
+.wn-admin-search__input::-webkit-search-cancel-button {
+  display: none;
+}
+
+.wn-admin-search__input:focus {
+  border-color: color-mix(in srgb, var(--wn-primary) 60%, transparent);
+  outline: none;
+}
+
+.wn-admin-search__input:focus-visible,
+.wn-admin-search__toggle:focus-visible,
+.wn-admin-search__close:focus-visible {
+  outline: none;
+  box-shadow: var(--wn-focus-ring);
+}
+
+.wn-admin-search__kbd {
+  position: absolute;
+  right: 8px;
+  padding: 3px 6px;
+  border: 1px solid var(--wn-border);
+  border-radius: 6px;
+  color: var(--wn-text-muted);
+  font: var(--wn-weight-semi-bold) 11px/1 var(--wn-font-ui);
+  pointer-events: none;
+}
+
+.wn-admin-search__kbd[hidden] {
+  display: none;
+}
+
+.wn-admin-search__toggle,
+.wn-admin-search__close {
+  display: none;
+  flex: none;
+  place-items: center;
+  width: 38px;
+  height: 38px;
+  padding: 0;
+  border: 1px solid var(--wn-border);
+  border-radius: 11px;
+  background: var(--wn-surface);
+  color: var(--wn-text);
+  cursor: pointer;
+}
+
+.wn-admin-search__results {
+  position: absolute;
+  top: calc(100% + 6px);
+  right: 0;
+  left: 0;
+  z-index: 30;
+  max-height: min(70vh, 520px);
+  padding: 6px;
+  overflow-y: auto;
+  border: 1px solid var(--wn-border-strong);
+  border-radius: var(--wn-radius-md);
+  background: var(--wn-surface-raised);
+  box-shadow: 0 24px 48px -16px rgba(0, 0, 0, 0.7);
+}
+
+.wn-admin-search__results[hidden] {
+  display: none;
+}
+
+.wn-admin-search__group + .wn-admin-search__group {
+  margin-top: 4px;
+  padding-top: 4px;
+  border-top: 1px solid var(--wn-border);
+}
+
+.wn-admin-search__group-title {
+  margin: 0;
+  padding: 6px 10px 4px;
+  color: var(--wn-text-muted);
+  font: var(--wn-weight-semi-bold) 11px/1.3 var(--wn-font-ui);
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.wn-admin-search__option {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+  padding: 8px 10px;
+  border-radius: 8px;
+  color: var(--wn-text);
+  text-decoration: none;
+}
+
+.wn-admin-search__option:hover,
+.wn-admin-search__option[aria-selected="true"] {
+  background: var(--wn-surface-hover);
+}
+
+.wn-admin-search__option[aria-selected="true"] {
+  box-shadow: inset 2px 0 0 var(--wn-teal);
+}
+
+.wn-admin-search__label,
+.wn-admin-search__sub {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.wn-admin-search__label {
+  font: var(--wn-weight-semi-bold) 13px/1.35 var(--wn-font-ui);
+}
+
+.wn-admin-search__sub {
+  color: var(--wn-text-muted);
+  font: var(--wn-weight-medium) 12px/1.3 var(--wn-font-ui);
+}
+
+.wn-admin-search__all {
+  margin-top: 4px;
+  color: var(--wn-primary-hover);
+  font: var(--wn-weight-semi-bold) 12.5px/1.3 var(--wn-font-ui);
+}
+
+.wn-admin-search__empty {
+  margin: 0;
+  padding: 10px;
+  color: var(--wn-text-secondary);
+  font: var(--wn-weight-medium) 13px/1.4 var(--wn-font-ui);
+}
+
+@media (max-width: 767px) {
+  .wn-admin-top__search {
+    flex: none;
+    margin-left: auto;
+  }
+
+  .wn-admin-top__search ~ .wn-admin-top__time {
+    margin-left: 0;
+  }
+
+  .wn-admin-search {
+    display: none;
+  }
+
+  .wn-admin-search__toggle {
+    display: grid;
+  }
+
+  .wn-admin-search__kbd {
+    display: none;
+  }
+
+  /* Opened: the box takes the whole top bar until it's closed or left. */
+  .wn-admin-top__search[data-open] {
+    position: absolute;
+    inset: 0;
+    z-index: 25;
+    display: flex;
+    align-items: center;
+    max-width: none;
+    margin: 0;
+    padding: 0 16px;
+    background: var(--wn-canvas);
+  }
+
+  .wn-admin-top__search[data-open] .wn-admin-search {
+    display: flex;
+    flex: 1;
+    align-items: center;
+    gap: 8px;
+    min-width: 0;
+  }
+
+  .wn-admin-top__search[data-open] .wn-admin-search__field {
+    flex: 1;
+    min-width: 0;
+  }
+
+  .wn-admin-top__search[data-open] .wn-admin-search__input {
+    padding-right: 12px;
+  }
+
+  .wn-admin-top__search[data-open] .wn-admin-search__close {
+    display: grid;
+  }
+
+  .wn-admin-top__search[data-open] .wn-admin-search__toggle {
+    display: none;
+  }
+}
+
+.wn-admin-search-page {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(min(100%, 320px), 1fr));
+  gap: 16px;
+  padding: 16px;
+}
+
+.wn-admin-search-page__group {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 8px;
+  min-width: 0;
+}
+
+.wn-admin-search-page__title {
+  margin: 0;
+  font: var(--wn-weight-semi-bold) 14px/1.3 var(--wn-font-ui);
+}
+
+.wn-admin-search-page__count {
+  color: var(--wn-text-muted);
+  font-weight: var(--wn-weight-medium);
+}
+
+.wn-admin-search-page__list {
+  display: flex;
+  flex-direction: column;
+  align-self: stretch;
+  margin: 0;
+  padding: 0;
+  overflow: hidden;
+  border: 1px solid var(--wn-border);
+  border-radius: 10px;
+  list-style: none;
+}
+
+.wn-admin-search-page__list li + li {
+  border-top: 1px solid var(--wn-border);
+}
+
+.wn-admin-search-page__hit {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+  padding: 10px 12px;
+  color: var(--wn-text);
+  text-decoration: none;
+}
+
+.wn-admin-search-page__hit:hover {
+  background: var(--wn-surface-hover);
+}
+
+.wn-admin-search-page__hit:focus-visible {
+  outline: none;
+  box-shadow: var(--wn-focus-ring);
+}
+
+.wn-admin-search-page__label {
+  overflow-wrap: anywhere;
+  font: var(--wn-weight-semi-bold) 13.5px/1.35 var(--wn-font-ui);
+}
+
+.wn-admin-search-page__sub {
+  color: var(--wn-text-muted);
+  overflow-wrap: anywhere;
+  font: var(--wn-weight-medium) 12px/1.35 var(--wn-font-ui);
 }
 
 /* ==========================================================================
