@@ -10,10 +10,12 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 from datetime import datetime
+from zoneinfo import ZoneInfo
 
-from app.admin_kit import format_number
+from app.admin_kit import LineChart, format_number, line_chart
 from app.admin_overview import format_when
 from app.db.admin_system import DatabaseStatus
+from app.request_metrics import MinuteBucket, RequestStats
 from app.services import probe
 from app.services.probe import ProbeResult
 
@@ -140,4 +142,47 @@ def ranobelib_service(result: ProbeResult, tz: str) -> ServiceRow:
         state,
         status,
         f"{answer} · проверено {checked} · не чаще раза в минуту",
+    )
+
+
+# --- requests (since the process started) --------------------------------------------------
+
+
+@dataclass(frozen=True)
+class Kpi:
+    label: str
+    value: str
+    icon: str
+    note: str | None = None
+
+
+def _clock(timestamp: float, tz: str) -> str:
+    return f"{datetime.fromtimestamp(timestamp, ZoneInfo(tz)):%H:%M}"
+
+
+def request_kpis(stats: RequestStats, tz: str) -> list[Kpi]:
+    since = f"с {_clock(stats.since, tz)}" if stats.since is not None else "запросов ещё не было"
+    share = stats.error_share
+    return [
+        Kpi("Задержка p50", format_ms(stats.p50), "clock", since),
+        Kpi("Задержка p95", format_ms(stats.p95), "clock", since),
+        Kpi("Задержка p99", format_ms(stats.p99), "clock", since),
+        Kpi(
+            "Ответы 5xx",
+            "—" if share is None else f"{format_number(round(share * 100, 2))}%",
+            "triangle-alert",
+            f"{format_number(stats.errors)} из {format_number(stats.count)}",
+        ),
+    ]
+
+
+def latency_chart(buckets: list[MinuteBucket], tz: str) -> LineChart:
+    """p95 per minute over the last hour - one metric on the chart; a minute without
+    requests sits at zero (the subtitle says so)."""
+    return line_chart(
+        [bucket.p95 or 0.0 for bucket in buckets],
+        [_clock(bucket.start, tz) for bucket in buckets],
+        name="p95",
+        fmt=format_ms,
+        height=200,
     )

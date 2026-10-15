@@ -35,6 +35,7 @@ from app.db import admin_audit
 from app.db import connection as db_connection
 from app.db.migrate import run_migrations
 from app.exceptions import register_exception_handlers
+from app.request_metrics import install_request_metrics
 from app.security_headers import install_security_headers
 from app.static_assets import STATIC_DIR, VersionedStaticFiles, install_cache_policy
 
@@ -86,6 +87,8 @@ app.add_middleware(
     same_site="lax",
     https_only=get_settings().is_production,
 )
+# PR 351: last, so it's the outermost middleware and times the whole request.
+install_request_metrics(app)
 # PR 317: immutable for a matching ?v= hash (static_url()), no-cache otherwise.
 app.mount("/static", VersionedStaticFiles(directory=STATIC_DIR), name="static")
 # Uploaded avatars (PR 96) live outside app/static - user data, not an app asset, same

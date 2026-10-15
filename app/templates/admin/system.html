@@ -10,6 +10,20 @@
     <p class="wn-admin-ov__asof">Проверено в {{ checked_at }} ({{ timezone }}) · всё считается с последнего запуска процесса и сбрасывается при деплое</p>
   </div>
 
+  <section class="wn-admin-kpis" aria-label="Запросы с запуска процесса">
+    {% for item in request_kpis %}
+    {{ kit.kpi(item.label, item.value, item.icon, previous=item.note) }}
+    {% endfor %}
+  </section>
+
+  {% call kit.card("Задержка запросов", "p95 по минутам за последний час · минуты без запросов — на нуле", aside="последние " ~ sample_limit ~ " запросов, с запуска") %}
+  {% if requests.count %}
+  {{ kit.line_chart(latency) }}
+  {% else %}
+  {{ kit.empty_state("Запросов ещё не было", "Данные копятся с запуска процесса и сбрасываются при деплое.", icon_name="clock") }}
+  {% endif %}
+  {% endcall %}
+
   <div class="wn-admin-ov__grid">
     {% call kit.card("Сервисы", "Проверяются при каждом открытии страницы") %}
     <ul class="wn-admin-svc">

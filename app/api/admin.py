@@ -10,6 +10,7 @@ from __future__ import annotations
 
 import logging
 import math
+import time
 from collections.abc import Awaitable, Callable
 from dataclasses import dataclass
 from datetime import datetime
@@ -76,7 +77,14 @@ from app.admin_overview import (
     popular_titles,
     recent_user_rows,
 )
-from app.admin_system import app_service, database_service, ranobelib_service, versions
+from app.admin_system import (
+    app_service,
+    database_service,
+    latency_chart,
+    ranobelib_service,
+    request_kpis,
+    versions,
+)
 from app.admin_users import (
     BAN_TERM_LABELS,
     back_href,
@@ -164,6 +172,9 @@ from app.db.bans import REASON_LIMIT as BAN_REASON_LIMIT
 from app.db.comments import hide_comment, purge_comment, show_comment
 from app.db.connection import get_connection
 from app.db.users import User, end_all_sessions, get_user_by_id, mark_email_verified
+from app.request_metrics import MAX_SAMPLES as REQUEST_SAMPLES
+from app.request_metrics import per_minute, summarize
+from app.request_metrics import samples as request_samples
 from app.services.paragraphs import paragraph_text
 from app.services.probe import probe_ranobelib
 from app.services.titles import (
@@ -922,6 +933,8 @@ async def admin_system(request: Request, _: Admin) -> HTMLResponse:
         database_service(database, db_connection.pool_stats(), timed_out),
         ranobelib_service(await probe_ranobelib(), tz),
     ]
+    window = request_samples()
+    requests = summarize(window)
     return _page(
         request,
         "admin/system.html",
@@ -930,6 +943,10 @@ async def admin_system(request: Request, _: Admin) -> HTMLResponse:
         checked_at=f"{_server_now():%H:%M}",
         services=services,
         versions=versions(app_version(), sdk_version(), python_version()),
+        requests=requests,
+        request_kpis=request_kpis(requests, tz),
+        latency=latency_chart(per_minute(window, time.time()), tz),
+        sample_limit=REQUEST_SAMPLES,
     )
 
 
