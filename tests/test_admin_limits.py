@@ -153,7 +153,7 @@ async def test_numeric_columns_still_sort_as_numbers(client: TestClient) -> None
     _login(client)
 
     html = client.get("/admin/tables/users", params={"sort": "id", "order": "desc"}).text
-    ids = [int(n) for n in re.findall(r"<tr>\s*<td>(\d+)</td>", html)]
+    ids = [int(n) for n in re.findall(r'data-col="id" data-label="id"><span[^>]*>(\d+)<', html)]
 
     assert ids == sorted(ids, reverse=True)
     assert ids[0] >= 10  # 12 rows: "12" first, not "9" (a text sort)

@@ -21443,9 +21443,7 @@ a.wn-admin-side__item:hover {
 
 .wn-admin-side__item:focus-visible,
 .wn-admin-side__logout-btn:focus-visible,
-.wn-admin-top__site:focus-visible,
-.wn-admin__table a:focus-visible,
-.wn-admin__crumbs a:focus-visible {
+.wn-admin-top__site:focus-visible {
   outline: none;
   box-shadow: var(--wn-focus-ring);
 }
@@ -21501,89 +21499,17 @@ a.wn-admin-side__item:hover {
   font: var(--wn-type-meta);
 }
 
-.wn-admin__scroll {
-  max-width: 100%;
-  overflow-x: auto;
-  border: 1px solid var(--wn-border);
-  border-radius: var(--wn-radius-lg);
-  background: var(--wn-surface);
-}
-
-.wn-admin__table {
-  width: 100%;
-  border-collapse: collapse;
-  font: var(--wn-weight-medium) 13px/1.4 var(--wn-font-ui);
-}
-
-.wn-admin__table th,
-.wn-admin__table td {
-  padding: 8px 12px;
-  border-bottom: 1px solid var(--wn-border);
-  text-align: left;
-  vertical-align: top;
-  white-space: nowrap;
-}
-
-.wn-admin__table th {
-  position: sticky;
-  top: 0;
-  background: var(--wn-surface-raised);
-  color: var(--wn-text-secondary);
-  font-weight: var(--wn-weight-semi-bold);
-}
-
-.wn-admin__table tbody tr:last-child td {
-  border-bottom: 0;
-}
-
-.wn-admin__table a {
-  color: var(--wn-teal);
-  text-decoration: none;
-}
-
-.wn-admin__table th a {
-  color: inherit;
-}
-
-.wn-admin__num {
-  text-align: right;
-  font-variant-numeric: tabular-nums;
-}
-
-.wn-admin__table .wn-admin__num {
-  text-align: right;
-}
-
-.wn-admin__masked,
-.wn-admin__null {
+/* «Данные БД» (PR 352, on the UI kit): a masked secret, and a long value kept to a
+   readable width (the full text, up to CELL_LIMIT, is in its tooltip). */
+.wn-admin-table__masked {
   color: var(--wn-text-muted);
+  letter-spacing: 0.1em;
 }
 
-.wn-admin__crumbs {
-  margin: 0;
-  color: var(--wn-text-muted);
-  font: var(--wn-type-meta);
-}
-
-.wn-admin__crumbs a {
-  color: inherit;
-}
-
-.wn-admin__search {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 8px;
-}
-
-.wn-admin__search .ui-input {
-  flex: 1 1 260px;
-  min-width: 0;
-}
-
-.wn-admin__pager {
-  display: flex;
-  align-items: center;
-  gap: 12px;
+.wn-admin-db__cell {
+  display: inline-block;
+  max-width: 360px;
+  overflow-wrap: anywhere;
 }
 
 /* PR 341: the shell's breakpoints, as in the mockup - the full sidebar from 1180px, an

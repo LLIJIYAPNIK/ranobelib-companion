@@ -90,6 +90,13 @@ from app.admin_system import (
     storage_rows,
     versions,
 )
+from app.admin_tables import (
+    CELL_PREVIEW,
+    TABLE_LIST_COLUMNS,
+    browse_columns,
+    table_id,
+    table_list_rows,
+)
 from app.admin_users import (
     BAN_TERM_LABELS,
     back_href,
@@ -157,6 +164,7 @@ from app.db.admin_data import (
     overview,
     table_columns,
 )
+from app.db.admin_data import PAGE_SIZE as TABLE_PAGE_SIZE
 from app.db.admin_stats import (
     AttentionCounts,
     PeriodStats,
@@ -986,7 +994,13 @@ async def admin_tables(request: Request, _: Admin, conn: Connection) -> HTMLResp
         tables = await list_tables(conn)
     except QueryCanceled:
         return _timed_out(request, "tables")
-    return _page(request, "admin/tables.html", "tables", tables=tables)
+    return _page(
+        request,
+        "admin/tables.html",
+        "tables",
+        columns=TABLE_LIST_COLUMNS,
+        rows=table_list_rows(tables),
+    )
 
 
 @router.get("/tables/{name}", response_model=None)
@@ -1009,7 +1023,18 @@ async def admin_table(
         )
     except QueryCanceled:
         return _timed_out(request, "tables")
-    return _page(request, "admin/table.html", "tables", data=data, mask=MASK)
+    return _page(
+        request,
+        "admin/table.html",
+        "tables",
+        data=data,
+        mask=MASK,
+        args=dict(request.query_params),
+        columns=browse_columns(data),
+        table_id=table_id(name),
+        per_page=TABLE_PAGE_SIZE,
+        preview=CELL_PREVIEW,
+    )
 
 
 def _timed_out(request: Request, section: str) -> HTMLResponse:

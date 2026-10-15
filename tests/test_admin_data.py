@@ -125,7 +125,7 @@ async def test_secrets_cannot_be_searched_or_sorted_on(client: TestClient) -> No
     assert "Найдено строк: 0" in found
     assert sorted_.status_code == 200
     # fell back to id
-    assert re.search(r'aria-sort="descending">\s*<a href="\?sort=id&', sorted_.text)
+    assert 'data-col="id" aria-sort="descending"' in sorted_.text
     assert SECRET_HASH not in sorted_.text
 
 
