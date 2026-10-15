@@ -241,3 +241,21 @@ async def test_each_table_has_its_own_columns_menu(client: TestClient) -> None:
     # The first column can't be hidden - a row always stays identifiable.
     assert re.search(r'value="id" checked disabled data-locked', html)
     assert 'value="email" checked>' in html
+
+
+async def test_user_ids_link_to_the_users_drawer(client: TestClient) -> None:
+    user_id = await _seed(client)
+    async with connection() as conn:
+        await conn.execute(
+            "INSERT INTO activity_events (user_id, kind, slug_url, created_at) "
+            "VALUES (%s, 'chapter_read', 'slug-x', 'now')",
+            (user_id,),
+        )
+    _admin(client)
+
+    users = client.get("/admin/tables/users").text
+    events = client.get("/admin/tables/activity_events").text
+
+    link = f'href="/admin/users?user={user_id}"'
+    assert link in users and link in events
+    assert 'href="/admin/users?user=slug' not in events  # only real user-id columns

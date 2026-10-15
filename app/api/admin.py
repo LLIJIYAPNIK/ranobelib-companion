@@ -169,6 +169,7 @@ from app.db.admin_data import (
     list_tables,
     overview,
     table_columns,
+    user_id_columns,
 )
 from app.db.admin_data import PAGE_SIZE as TABLE_PAGE_SIZE
 from app.db.admin_stats import (
@@ -1027,6 +1028,7 @@ async def admin_table(
         data = await browse_table(
             conn, name, columns, page=page, sort=sort, descending=order != "asc", query=q
         )
+        links = (await user_id_columns(conn)).get(name, set())
     except QueryCanceled:
         return _timed_out(request, "tables")
     return _page(
@@ -1041,6 +1043,7 @@ async def admin_table(
         per_page=TABLE_PAGE_SIZE,
         preview=CELL_PREVIEW,
         csv_href=csv_href(name, request.query_params),
+        user_links=links - data.secret,
         export_limit=EXPORT_LIMIT,
     )
 

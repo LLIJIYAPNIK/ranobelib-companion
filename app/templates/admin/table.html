@@ -20,6 +20,7 @@
       {%- set value = row[column.key] -%}
       {%- if column.key in data.secret -%}<span class="wn-admin-table__masked" title="Скрытая колонка">{{ mask }}</span>
       {%- elif value is none -%}{{ kit.cell(none) }}
+      {%- elif column.key in user_links -%}<a class="wn-admin-cm__link" href="/admin/users?{{ {'user': value} | urlencode }}" title="Открыть пользователя">{{ value }}</a>
       {%- else -%}
       {%- set text = value | string -%}
       <span class="wn-admin-db__cell"{% if text | length > preview %} title="{{ text }}"{% endif %}>{{ text | truncate(preview) }}</span>

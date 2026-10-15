@@ -91,6 +91,28 @@ async def table_columns(conn: AsyncConnection) -> dict[str, list[str]]:
     return tables
 
 
+async def user_id_columns(conn: AsyncConnection) -> dict[str, set[str]]:
+    """PR 352: table -> its columns that hold a user's id - every foreign key to
+    ``users(id)`` in the public schema, plus ``users.id`` itself - read from the
+    database's own catalog, so a new table that references users links without a list to
+    keep up to date. «Данные БД» turns those cells into links to the user's drawer."""
+    async with _read_only(conn):
+        cursor = await conn.execute(
+            "SELECT cl.relname AS table_name, a.attname AS column_name "
+            "FROM pg_constraint c "
+            "JOIN pg_class cl ON cl.oid = c.conrelid "
+            "JOIN pg_namespace n ON n.oid = cl.relnamespace "
+            "JOIN pg_attribute a ON a.attrelid = c.conrelid AND a.attnum = ANY (c.conkey) "
+            "WHERE c.contype = 'f' AND n.nspname = 'public' "
+            "AND c.confrelid = 'public.users'::regclass"
+        )
+        rows = await cursor.fetchall()
+    links: dict[str, set[str]] = {"users": {"id"}}
+    for row in rows:
+        links.setdefault(row["table_name"], set()).add(row["column_name"])
+    return links
+
+
 @dataclass(frozen=True)
 class TableSummary:
     name: str
