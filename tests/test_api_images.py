@@ -107,6 +107,20 @@ def test_download_image_allows_cdnlibs_org_subdomain() -> None:
     assert response.status_code == 200
 
 
+def test_download_image_allows_imglib_info_subdomain() -> None:
+    # Issue 388: the API now returns covers on cover.imglib.info rather than
+    # cover.cdnlibs.org - without it in the allowlist every cover download would 400.
+    fake = _FakeHttpxClient(_FakeResponse(b"bytes"))
+    with patch("app.api.images.httpx.AsyncClient", return_value=fake):
+        response = client.get(
+            "/images/download",
+            params={"url": "https://cover.imglib.info/uploads/cover/x/cover/a.jpg"},
+        )
+
+    assert response.status_code == 200
+    assert fake.received_headers == {"Referer": "https://ranobelib.me/"}
+
+
 def test_download_image_rejects_lookalike_host() -> None:
     # "ranobelib.me.evil.com" ends with the right string but isn't actually a subdomain
     # of ranobelib.me - the endswith check must be anchored on a "." boundary.
