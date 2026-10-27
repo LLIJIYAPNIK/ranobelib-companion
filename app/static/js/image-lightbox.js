@@ -132,14 +132,14 @@
     applyTransform();
     // PR 143: routed through a same-origin proxy (GET /images/download, app/api/
     // images.py) rather than linking `src` directly - reader-content/cover images are
-    // hotlinked straight from ranobelib.me/cdnlibs.org, and the download attribute only
-    // works cross-origin if the target's own CORS headers happen to allow it, which is
-    // outside this app's control.
+    // hotlinked straight from ranobelib.me/cdnlibs.org/imglib.info, and the download
+    // attribute only works cross-origin if the target's own CORS headers happen to allow
+    // it, which is outside this app's control.
     //
     // PR 154: a comment attachment (app/comment_attachment.py) is the opposite case -
     // already same-origin (served from this app's own /comment-attachments/ route, not
     // hotlinked), so `download` already works on it directly, and images.py's proxy would
-    // actively reject it: `_is_allowed_image_url` only allows ranobelib.me/cdnlibs.org,
+    // actively reject it: `_is_allowed_image_url` only allows the site's own image hosts,
     // by design, to keep the endpoint from being usable as an open relay for arbitrary
     // URLs (see that file's own docstring).
     downloadEl.href = isSameOrigin(src)
