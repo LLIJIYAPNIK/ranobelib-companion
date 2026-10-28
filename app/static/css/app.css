@@ -508,6 +508,15 @@ a {
   /* Room fixed corner UI (toasts, cookie notice, back-to-top, export panel) leaves
      under itself for the Quiet Edge Bar - 0 on desktop, set in the mobile block below. */
   --shell-bottom: 0px;
+  /* Height of a fixed top bar sticky UI must clear - 0 with the rail, see data-nav="top". */
+  --shell-top: 0px;
+}
+
+/* Always reserve the scrollbar's width: without it every page that fits the screen (or a
+   dialog's overflow: hidden lock, or content that loads late) made the layout ~15px
+   wider and back again. */
+html {
+  scrollbar-gutter: stable;
 }
 
 body:has(.sidebar--expanded) {
