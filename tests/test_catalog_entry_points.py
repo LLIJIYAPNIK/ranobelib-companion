@@ -21,7 +21,8 @@ def _has_route(path: str, method: str) -> bool:
 
 
 def test_home_and_library_use_native_get_catalog_search() -> None:
-    for template in ("index.html", "library.html"):
+    # The home page's search form lives in its shared macros (home/_macros.html).
+    for template in ("home/_macros.html", "library.html"):
         source = _source(template)
         assert 'method="get" action="/catalog" role="search"' in source
         assert 'type="search"' in source

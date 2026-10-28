@@ -1,0 +1,37 @@
+{#
+  «Витрина» - the reader's library home: every book being read stands face out on one
+  shelf, the one brought forward larger and lit; beside the shelf, that book in depth
+  (`focus`, app/api/home.py - its description and the chapters ahead). Pointing at a
+  cover brings it forward and its details in (home-flow.js); clicking the cover in front
+  opens it. Without script the covers are plain links and the first book's details stay.
+#}
+{% from "home/_macros.html" import search_form, book_details, next_chapters %}
+{% set books = dashboard.reading %}
+
+<header class="hm-head hm-rise">
+  <h1 class="hm-title" id="home-title">Читаю</h1>
+  {{ search_form() }}
+</header>
+
+<section class="hl-flow{% if books | length == 1 %} hl-flow--solo{% endif %} hm-rise" style="--i: 1" aria-labelledby="continue-reading-title" data-role="home-reading-hero" data-slug-url="{{ books[0].entry.slug_url }}" data-flow>
+  {% if books[0].cover_url %}<img class="hl-art" src="{{ books[0].cover_url }}" alt="" aria-hidden="true" data-flow-art>{% endif %}
+
+  <div class="hl-flow__shelf" style="--count: {{ books | length }}" data-flow-shelf>
+    {% for item in books %}
+    <a class="hl-flow__book{% if loop.first %} is-active{% endif %}" href="/titles/{{ item.entry.slug_url }}" data-flow-book="{{ loop.index0 }}" data-cover="{{ item.cover_url or '' }}" aria-label="{{ item.name or item.entry.slug_url }}"{% if loop.first %} aria-current="true"{% endif %} style="--z: {{ 30 - loop.index0 }}">
+      <span class="hm-cover hl-flow__cover">{% if item.cover_url %}<img src="{{ item.cover_url }}" alt=""{% if not loop.first %} loading="lazy"{% endif %}>{% endif %}</span>
+    </a>
+    {% endfor %}
+  </div>
+
+  <div class="hl-flow__panels">
+    {% for item in books %}
+    {% set book = focus.get(item.entry.slug_url) %}
+    <article class="hl-flow__panel{% if loop.first %} is-active{% endif %}" data-flow-panel="{{ loop.index0 }}"{% if not loop.first %} hidden{% endif %}>
+      {{ book_details(item, book, title_id="continue-reading-title" if loop.first else "flow-book-" ~ loop.index0, summary_lines=4) }}
+      {{ next_chapters(book, "/titles/" ~ item.entry.slug_url, 4) }}
+    </article>
+    {% endfor %}
+  </div>
+</section>
+<script src="{{ static_url('js/home-flow.js') }}" defer></script>

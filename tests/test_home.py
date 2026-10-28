@@ -22,20 +22,20 @@ def test_home_renders_search_form() -> None:
     assert 'type="search"' in response.text
     assert 'name="query"' in response.text
     assert 'enterkeyhint="search"' in response.text
-    assert '<button class="wn-btn wn-btn--primary" type="submit">Найти</button>' in response.text
+    assert '<button class="hm-search__submit" type="submit">Найти</button>' in response.text
     # PR 210: the search field's autofocus is blurred back off on mobile, so its keyboard
     # doesn't pop the instant the page loads.
     assert "static/js/disable-mobile-autofocus.js" in response.text
 
 
 def test_home_shows_empty_state_when_no_recent_titles() -> None:
-    """PR 198: a first-time visitor (no recent_titles cookie at all) sees an explanation
-    of the page instead of a blank space under the search field."""
+    """PR 198: a first-time visitor (no recent_titles cookie at all) sees what the site
+    is instead of a blank space - and no «Недавно открытые» with nothing in it."""
     response = client.get("/")
 
     assert response.status_code == 200
-    assert 'data-role="home-empty"' in response.text
-    assert "RanobeLib" in response.text
+    assert 'class="hm-intro' in response.text
+    assert "Онлайн-чтение по главам" in response.text
     assert 'data-role="recent-titles"' not in response.text
 
 
@@ -47,8 +47,9 @@ def test_home_omits_empty_state_when_recent_titles_exist() -> None:
     response = test_client.get("/")
 
     assert response.status_code == 200
+    # A guest's recently opened titles show too, under the intro.
     assert 'data-role="recent-titles"' in response.text
-    assert 'data-role="home-empty"' not in response.text
+    assert 'data-role="recent-item"' in response.text
 
 
 def test_home_empty_state_links_to_catalog() -> None:
@@ -66,7 +67,7 @@ def test_home_shows_guest_banner_to_anonymous_visitor() -> None:
     response = client.get("/")
 
     assert response.status_code == 200
-    assert 'class="home-guest"' in response.text
+    assert 'id="home-account-title"' in response.text
     assert 'href="/register" data-role="auth-modal-trigger"' in response.text
 
 
@@ -77,10 +78,9 @@ def test_home_recent_card_keeps_forget_button() -> None:
 
     response = test_client.get("/")
 
-    assert 'class="ui-title-card"' in response.text
+    assert 'data-role="recent-item"' in response.text
     assert 'data-role="forget-recent-title"' in response.text
     assert 'data-slug-url="6712--test-novel"' in response.text
-    assert 'class="home__grid wn-home__recent-grid"' in response.text
     assert 'data-role="focus-open-title"' not in response.text
 
 
@@ -115,26 +115,25 @@ async def test_home_dashboard_reuses_existing_services_and_limits_reading(
         assert passed_conn is conn
         return summary
 
-    async def fake_downloads(
-        passed_conn: object, user_id: int, limit: int
-    ) -> list[home_api.DownloadHistoryEntry]:
-        assert (passed_conn, user_id, limit) == (conn, 42, 3)
-        return []
-
     monkeypatch.setattr(home_api, "connection", _ConnectionContext)
     monkeypatch.setattr(home_api, "library_items_for_user", fake_library_items)
     monkeypatch.setattr(home_api, "build_activity_summary", fake_summary)
-    monkeypatch.setattr(home_api, "list_download_history", fake_downloads)
 
-    dashboard = await home_api._home_dashboard(SimpleNamespace(id=42))  # type: ignore[arg-type]
+    dashboard = await home_api._home_dashboard(
+        SimpleNamespace(id=42, timezone=None)  # type: ignore[arg-type]
+    )
 
     assert dashboard is not None
-    assert [item["name"] for item in dashboard.reading] == ["Read 1", "Read 2", "Read 3"]
+    # Only titles with a reading position, in order (up to _READING_LIMIT).
+    assert [item["name"] for item in dashboard.reading] == [f"Read {d}" for d in range(1, 5)]
     assert dashboard.hero == dashboard.reading[0]
     assert dashboard.summary is summary
 
 
-def test_home_renders_signed_in_cinematic_dashboard(monkeypatch: pytest.MonkeyPatch) -> None:
+def _render_signed_in_home(
+    monkeypatch: pytest.MonkeyPatch, query: str = "", book: object = None
+) -> str:
+    """GET / as a reader with two books on the go, every data source stubbed."""
     from fastapi import Request
 
     from app.api import home as home_api
@@ -142,46 +141,23 @@ def test_home_renders_signed_in_cinematic_dashboard(monkeypatch: pytest.MonkeyPa
     from app.db.users import User
 
     user = User(42, "reader@example.com", "hash", "2026-10-01T07:00:00+00:00")
-    entry = SimpleNamespace(
-        slug_url="6712--test-novel",
-        last_read_at="2026-10-01T08:00:00+00:00",
-        last_read_volume="1",
-        last_read_number="92",
-    )
-    item = {
-        "entry": entry,
-        "name": "Старшая школа D×D",
-        "cover_url": "https://example.test/cover.jpg",
-        "progress_percent": 41,
-    }
+
+    def reading_item(slug: str, name: str, number: str, percent: int) -> dict[str, object]:
+        entry = SimpleNamespace(
+            slug_url=slug,
+            last_read_at="2026-10-01T08:00:00+00:00",
+            last_read_volume="1",
+            last_read_number=number,
+        )
+        return {"entry": entry, "name": name, "cover_url": None, "progress_percent": percent}
+
     summary = home_api.ActivitySummary([], 1, "8 мин", [], [])
-    download = home_api.DownloadHistoryEntry(
-        1,
-        42,
-        "6712--test-novel",
-        "epub",
-        "done",
-        92,
-        None,
-        "2026-10-01T08:30:00+00:00",
-        None,
-    )
-    dashboard = home_api.HomeDashboard([item], summary, [download])
-    friend_card = home_api.FriendActivityCard(
-        home_api.FriendUser(7, "Alice", None, "AL"),
-        None,
+    dashboard = home_api.HomeDashboard(
         [
-            home_api.RecentComment(
-                9,
-                "Отличная глава!",
-                "2026-10-01T08:10:00+00:00",
-                "6712--test-novel",
-                "1",
-                "5",
-                "",
-            )
+            reading_item("6712--test-novel", "Старшая школа D×D", "92", 41),
+            reading_item("7000--other-novel", "Другая новелла", "5", 12),
         ],
-        0,
+        summary,
     )
 
     async def override_current_user(request: Request) -> object:
@@ -192,38 +168,100 @@ def test_home_renders_signed_in_cinematic_dashboard(monkeypatch: pytest.MonkeyPa
         assert passed_user is user
         return dashboard
 
-    async def fake_recent(request: Request, passed_user: object) -> list[dict[str, object]]:
-        assert passed_user is user
-        return []
+    async def fake_book(item: object) -> object:
+        return book
 
-    async def fake_friend_activity(passed_user: object) -> list[home_api.FriendActivityCard]:
-        assert passed_user is user
-        return [friend_card]
+    async def no_recent(request: Request, passed_user: object) -> list[dict[str, object]]:
+        raise AssertionError("«Недавние» aren't looked up for a reader with a book on the go")
+
+    async def no_popular(limit: int = 12) -> list[Title]:
+        raise AssertionError("no popular shelf for a reader with a book on the go")
 
     app.dependency_overrides[get_current_user] = override_current_user
     monkeypatch.setattr(home_api, "_home_dashboard", fake_dashboard)
-    monkeypatch.setattr(home_api, "_recent_with_progress", fake_recent)
-    monkeypatch.setattr(home_api, "_friend_activity_cards", fake_friend_activity)
+    monkeypatch.setattr(home_api, "_book_focus", fake_book)
+    monkeypatch.setattr(home_api, "_recent_with_progress", no_recent)
+    monkeypatch.setattr(home_api, "popular_titles", no_popular)
     try:
-        response = client.get("/")
+        response = TestClient(app).get("/" + query)
     finally:
         app.dependency_overrides.pop(get_current_user, None)
-
     assert response.status_code == 200
-    assert 'data-role="home-reading-hero"' in response.text
-    assert 'class="wn-library-hero__backdrop"' in response.text
-    assert "Продолжить · Гл. 92" in response.text
-    assert 'href="/titles/6712--test-novel#title-panel-toc"' in response.text
-    assert 'aria-label="Прогресс чтения" aria-valuenow="41"' in response.text
-    assert 'id="today-title"' in response.text
-    assert 'class="wn-home-reading"' in response.text
-    assert 'href="/library">Вся библиотека</a>' in response.text
-    assert "Вся библиотека →" not in response.text
-    assert 'id="latest-downloads-title"' in response.text
-    assert 'href="/downloads">Все загрузки</a>' in response.text
-    assert "Все загрузки →" not in response.text
-    assert "Отличная глава!" in response.text
-    assert "/titles/6712--test-novel/chapters/1/5" in response.text
+    return response.text
+
+
+def test_home_is_the_readers_library_shelf(monkeypatch: pytest.MonkeyPatch) -> None:
+    text = _render_signed_in_home(monkeypatch)
+
+    assert 'class="hm hm--v hm--flow"' in text
+    assert 'data-role="home-reading-hero"' in text
+    # Every book on the shelf, the book on the go in front, each with its own details.
+    assert text.count("data-flow-book=") == 2
+    assert text.count("data-flow-panel=") == 2
+    assert 'class="hl-flow__book is-active"' in text
+    assert 'href="/titles/6712--test-novel/chapters/1/92"' in text
+    assert 'href="/titles/7000--other-novel/chapters/1/5"' in text
+    assert 'aria-label="Прочитано 41%"' in text
+    assert 'aria-label="Прочитано 12%"' in text
+    assert "js/home-flow.js" in text
+    # Nothing but the library.
+    for absent in ('id="friends-reading-title"', 'id="popular-title"', 'id="downloads-title"'):
+        assert absent not in text
+    assert "подряд" not in text
+
+
+def test_home_shows_each_books_description_and_chapters_ahead(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    from app.api import home as home_api
+
+    book = home_api.BookFocus(
+        summary="Описание книги.",
+        status="Онгоинг",
+        position=92,
+        total=120,
+        chapters=[
+            home_api.BookChapter("1", "92", "Банкет", True),
+            home_api.BookChapter("1", "93", "Письмо", False),
+        ],
+    )
+    text = _render_signed_in_home(monkeypatch, book=book)
+
+    # The same focus for both books in this stub: both panels carry it.
+    assert text.count("Описание книги.") == 2
+    assert "из 120" in text
+    assert 'href="/titles/6712--test-novel/chapters/1/93"' in text
+    assert 'href="/titles/7000--other-novel/chapters/1/93"' in text
+    assert 'aria-current="step"' in text
+    assert 'href="/titles/6712--test-novel#title-panel-toc"' in text
+
+
+async def test_book_focus_finds_the_current_chapter_in_sdk_order(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    from app.api import home as home_api
+    from app.services.titles import TitleDetails
+
+    volumes = [
+        Volume(
+            number="1",
+            chapters=[
+                Chapter(id=i, volume="1", number=str(i), name=f"Глава {i}") for i in range(1, 10)
+            ],
+        )
+    ]
+
+    async def fake_details(slug_url: str) -> TitleDetails:
+        return TitleDetails("Тайтл", None, "Онгоинг", volumes, "Описание")
+
+    monkeypatch.setattr(home_api, "title_details", fake_details)
+    item = {"entry": SimpleNamespace(slug_url="1--t", last_read_volume="1", last_read_number="3")}
+    focus = await home_api._book_focus(item)
+
+    assert focus is not None
+    assert (focus.position, focus.total, focus.summary) == (3, 9, "Описание")
+    assert [c.number for c in focus.chapters] == ["3", "4", "5", "6"]
+    assert focus.chapters[0].is_current
 
 
 def _set_recent_cookie(test_client: TestClient, slug_url: str, name: str) -> None:
@@ -306,7 +344,7 @@ def test_home_omits_progress_for_anonymous_visitor(db_client: TestClient) -> Non
 
     assert response.status_code == 200
     assert "Test Novel" in response.text
-    assert 'class="ui-progress"' not in response.text
+    assert "hm-cover__bar" not in response.text
 
 
 def test_home_omits_progress_when_title_not_in_library(db_client: TestClient) -> None:
@@ -320,7 +358,7 @@ def test_home_omits_progress_when_title_not_in_library(db_client: TestClient) ->
         response = db_client.get("/")
 
     assert response.status_code == 200
-    assert 'class="ui-progress"' not in response.text
+    assert "hm-cover__bar" not in response.text
 
 
 def test_home_omits_progress_when_never_read(db_client: TestClient) -> None:
@@ -335,7 +373,7 @@ def test_home_omits_progress_when_never_read(db_client: TestClient) -> None:
         response = db_client.get("/")
 
     assert response.status_code == 200
-    assert 'class="ui-progress"' not in response.text
+    assert "hm-cover__bar" not in response.text
 
 
 async def test_home_shows_progress_bar_for_logged_in_user_with_recorded_progress(
@@ -358,18 +396,16 @@ async def test_home_shows_progress_bar_for_logged_in_user_with_recorded_progress
         db_client.post("/library/6712--test-novel/add")
 
     async with connection() as conn:
-        await record_progress(
-            conn, user_id=1, slug_url="6712--test-novel", volume="1", number="3"
-        )
+        await record_progress(conn, user_id=1, slug_url="6712--test-novel", volume="1", number="3")
 
     with patch("app.services.client.RanobeLib", return_value=_FakeClient(title, volumes)):
         response = db_client.get("/")
 
     assert response.status_code == 200
-    assert 'class="ui-progress"' in response.text
+    assert 'aria-label="Прочитано 75%"' in response.text
     assert 'style="width: 75%"' in response.text  # 3 of 4 chapters
     # PR 250: the percent is also shown as text next to the bar.
-    assert '<span class="ui-progress__pct">75%</span>' in response.text
+    assert '<span class="hm-num">75%</span>' in response.text
 
 
 # --- PR 200: friend activity column ------------------------------------------------------
@@ -410,108 +446,32 @@ async def test_home_omits_friend_column_for_anonymous_visitor(db_client: TestCli
     response = db_client.get("/")
 
     assert response.status_code == 200
-    assert 'class="home__friends"' not in response.text
+    assert 'id="friends-reading-title"' not in response.text
 
 
-async def test_home_omits_friend_column_without_friends(db_client: TestClient) -> None:
-    _register(db_client)
-
-    response = db_client.get("/")
-
-    assert 'class="home__friends"' not in response.text
-
-
-async def test_home_shows_a_card_for_each_friend_with_no_activity(
-    db_client: TestClient,
-) -> None:
-    await _make_friends(db_client)  # session is Alice
-
-    _login_as_bob(db_client)
-    response = db_client.get("/")
-
-    assert 'class="home__friends"' in response.text
-    assert "alice@example.com" in response.text
-    assert "Пока нет активности" in response.text
-
-
-async def test_home_shows_what_a_friend_is_currently_reading(db_client: TestClient) -> None:
-    from app.db.connection import connection
-    from app.db.library import add_entry, record_progress
-
-    alice_id, _ = await _make_friends(db_client)  # session is Alice
-    async with connection() as conn:
-        await add_entry(conn, alice_id, "6712--test-novel")
-        await record_progress(conn, alice_id, "6712--test-novel", volume="1", number="3")
-
-    _login_as_bob(db_client)
-    title = _fake_title()
-    with patch("app.services.client.RanobeLib", return_value=_FakeClient(title)):
-        response = db_client.get("/")
-
-    assert "Читает" in response.text
-    assert "Test Novel" in response.text
-
-
-async def test_home_hides_a_friends_currently_reading_when_they_opted_out(
-    db_client: TestClient,
-) -> None:
-    from app.db.connection import connection
-    from app.db.library import add_entry, record_progress
-    from app.db.users import update_privacy_settings
-
-    alice_id, _ = await _make_friends(db_client)  # session is Alice
-    async with connection() as conn:
-        await add_entry(conn, alice_id, "6712--test-novel")
-        await record_progress(conn, alice_id, "6712--test-novel", volume="1", number="3")
-        await update_privacy_settings(
-            conn,
-            alice_id,
-            show_currently_reading=False,
-            show_library=True,
-            show_friends_activity_home=True,
-            show_friends=True,
-        )
-
-    _login_as_bob(db_client)
-    title = _fake_title()
-    with patch("app.services.client.RanobeLib", return_value=_FakeClient(title)):
-        response = db_client.get("/")
-
-    assert "Читает" not in response.text
-
-
-async def test_home_shows_a_friends_recent_comment(db_client: TestClient) -> None:
+async def test_home_does_not_show_what_friends_read(db_client: TestClient) -> None:
+    """The home page is the reader's library - a friend's book, comment or streak isn't
+    on it (that's for «Активность»)."""
+    from app.db.activity import record_chapter_read
     from app.db.comments import create_comment
     from app.db.connection import connection
+    from app.db.library import add_entry, record_progress
 
     alice_id, _ = await _make_friends(db_client)  # session is Alice
     async with connection() as conn:
-        await create_comment(
-            conn, alice_id, "6712--test-novel", "1", "5", "", 0, "Отличная глава!"
-        )
-
-    _login_as_bob(db_client)
-    response = db_client.get("/")
-
-    assert "Отличная глава!" in response.text
-    assert "/titles/6712--test-novel/chapters/1/5" in response.text
-
-
-async def test_home_shows_a_friends_reading_streak(db_client: TestClient) -> None:
-    from app.db.activity import record_chapter_read
-    from app.db.connection import connection
-
-    alice_id, _ = await _make_friends(db_client)  # session is Alice
-    async with connection() as conn:
+        await add_entry(conn, alice_id, "6712--test-novel")
+        await record_progress(conn, alice_id, "6712--test-novel", volume="1", number="5")
         await record_chapter_read(conn, alice_id, "6712--test-novel", "1", "5")
+        await create_comment(conn, alice_id, "6712--test-novel", "1", "5", "", 0, "Отличная глава!")
 
     _login_as_bob(db_client)
-    response = db_client.get("/")
+    title = _fake_title()
+    with patch("app.services.client.RanobeLib", return_value=_FakeClient(title)):
+        response = db_client.get("/")
 
-    assert "1 день подряд" in response.text
-
-
-# --- PR 202: show_friends_activity_home gates the column on the viewer's OWN home page ---
+    assert 'id="friends-reading-title"' not in response.text
+    assert "Отличная глава!" not in response.text
+    assert "подряд" not in response.text
 
 
 async def test_home_hides_the_friend_column_when_the_viewer_opted_out(
@@ -539,5 +499,5 @@ async def test_home_hides_the_friend_column_when_the_viewer_opted_out(
         )
     response = db_client.get("/")
 
-    assert 'class="home__friends"' not in response.text
+    assert 'id="friends-reading-title"' not in response.text
     assert "1 день подряд" not in response.text

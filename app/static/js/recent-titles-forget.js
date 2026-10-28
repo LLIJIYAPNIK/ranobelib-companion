@@ -17,7 +17,8 @@
     event.preventDefault();
     event.stopPropagation();
 
-    const card = button.closest(".ui-title-card");
+    // The home page's cards carry data-role="recent-item"; other pages keep the card.
+    const card = button.closest('[data-role="recent-item"], .ui-title-card');
     const slugUrl = button.dataset.slugUrl;
     if (!card || !slugUrl) return;
 
@@ -26,6 +27,8 @@
       const response = await fetch(`/recent/${slugUrl}/forget`, { method: "POST" });
       if (response.ok) {
         card.remove();
+        // No «Недавно открытые» at all once there's nothing left in it.
+        if (!grid.querySelector('[data-role="recent-item"]')) grid.remove();
       } else {
         button.disabled = false;
       }

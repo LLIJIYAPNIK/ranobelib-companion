@@ -59,3 +59,15 @@ def _capture_emails(monkeypatch: pytest.MonkeyPatch) -> Iterator[None]:
     monkeypatch.setattr("app.api.auth.send_email", record_email)
     yield
     sent_emails.clear()
+
+
+@pytest.fixture(autouse=True)
+def _no_live_popular_titles(monkeypatch: pytest.MonkeyPatch) -> None:
+    """The home page's «Популярное» shelf lists the catalog through the SDK
+    (app/services/catalog.popular_titles) - empty here, so no test reaches ranobelib.me
+    just by opening "/". Tests about the shelf patch it themselves."""
+
+    async def no_popular(limit: int = 12) -> list[object]:
+        return []
+
+    monkeypatch.setattr("app.api.home.popular_titles", no_popular)

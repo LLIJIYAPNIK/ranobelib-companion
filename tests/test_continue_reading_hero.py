@@ -43,13 +43,19 @@ def test_home_and_library_share_continue_toc_and_progress_contract() -> None:
 
 
 def test_routes_invoke_the_shared_macro_instead_of_copying_hero_markup() -> None:
-    home = (ROOT / "app/templates/index.html").read_text(encoding="utf-8")
+    home = "".join(
+        (ROOT / "app/templates/home" / name).read_text(encoding="utf-8")
+        for name in ("_macros.html", "_flow.html")
+    )
     library = (ROOT / "app/templates/library.html").read_text(encoding="utf-8")
 
-    assert 'continue_reading_hero(dashboard.hero, variant="home"' in home
     assert 'continue_reading_hero(continue_item, title_id="library-continue-title")' in library
-    assert "wn-library-hero__card" not in home
     assert "wn-library-hero__card" not in library
+    # The home page's continue card is its own (the dashboard's hero widget), but keeps
+    # the hook library-card-actions.js removes it by and the same continue/TOC links.
+    assert "wn-library-hero__card" not in home
+    assert 'data-role="home-reading-hero"' in home
+    assert '#title-panel-toc"' in home
 
 
 def test_home_action_menu_can_remove_its_hero() -> None:
