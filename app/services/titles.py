@@ -45,12 +45,14 @@ class TitleDetails:
     cover_url: str | None
     status: str | None
     volumes: list[Volume]
+    summary: str | None = None
 
 
 async def title_details(slug_url: str) -> TitleDetails | None:
-    """Name, cover, status and chapters in the SDK's order, for the admin's title page
-    (PR 346). None when the SDK can't resolve the title or ranobelib.me can't be reached
-    - the page then shows what the application's own data has."""
+    """Name, cover, status, description and chapters in the SDK's order, for the admin's
+    title page (PR 346) and the home page's book on the go. None when the SDK can't resolve
+    the title or ranobelib.me can't be reached - the page then shows what the
+    application's own data has."""
     try:
         async with open_client(slug_url) as lib:
             title = await lib.get_info()
@@ -62,6 +64,7 @@ async def title_details(slug_url: str) -> TitleDetails | None:
         cover_url=title.cover.default or title.cover.md or title.cover.thumbnail,
         status=title.status.label if title.status else None,
         volumes=volumes,
+        summary=title.summary,
     )
 
 

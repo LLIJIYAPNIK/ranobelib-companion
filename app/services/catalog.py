@@ -6,7 +6,8 @@ from contextlib import asynccontextmanager
 from dataclasses import dataclass
 from typing import Literal
 
-from ranobelib import Catalog, CatalogPage
+import httpx
+from ranobelib import Catalog, CatalogPage, RanobeLibError
 from ranobelib.catalog import MAX_PER_PAGE, MIN_PER_PAGE
 from ranobelib.models import Country, Genre, Label, Title
 
@@ -385,3 +386,17 @@ async def pick_random_title(
         if result.items:
             return result.items[0]
     return None
+
+
+async def popular_titles(limit: int = 12) -> list[Title]:
+    """The most viewed titles (the catalog's own «По просмотрам» sort), for the home
+    page's «Популярное» shelf - a guest's and a new reader's way in. ranobelib.me being
+    unreachable just means no shelf, not a failed home page."""
+    try:
+        async with get_catalog() as catalog:
+            page = await catalog.list_titles(
+                page=1, per_page=max(MIN_PER_PAGE, min(limit, MAX_PER_PAGE)), sort="views"
+            )
+    except (RanobeLibError, httpx.TransportError):
+        return []
+    return page.items[:limit]
