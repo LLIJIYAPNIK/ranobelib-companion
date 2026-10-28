@@ -1752,8 +1752,9 @@ html:has(dialog[open]) body {
     justify-items: normal;
     padding: 0 0 env(safe-area-inset-bottom, 0px);
     border-right: 0;
-    border-top: 1px solid #1e1c29;
-    background: rgba(14, 14, 21, 0.97);
+    border-top: 1px solid rgb(255 255 255 / 7%);
+    /* Opaque: a translucent bar let the page's text show through its labels. */
+    background: #0d0d14;
     overflow: visible;
     transition: none;
   }
@@ -1800,8 +1801,9 @@ html:has(dialog[open]) body {
     transition: background-color var(--dur-press) var(--ease);
   }
 
-  .sidebar__link:active::after {
-    background: rgba(245, 243, 255, 0.07);
+  .sidebar__link:active::after,
+  .sidebar__link--active::after {
+    background: rgb(255 255 255 / 7%);
   }
 
   .sidebar__link:focus-visible {
@@ -1821,17 +1823,10 @@ html:has(dialog[open]) body {
     color: var(--wn-teal);
   }
 
-  /* Active indicator: 40x3 teal on the bar's top edge. */
+  /* Active item: the same quiet pill as the desktop top bar (the ::after zone above), the
+     icon in teal - not a bar on the edge, which read as underlining the page above it. */
   .sidebar__link--active::before {
-    content: "";
-    position: absolute;
-    top: 0;
-    left: 50%;
-    width: 40px;
-    height: 3px;
-    margin-left: -20px;
-    border-radius: 0 0 3px 3px;
-    background: var(--wn-teal);
+    display: none;
   }
 
   .sidebar__link .sidebar__badge {
@@ -1872,10 +1867,8 @@ html:has(dialog[open]) body {
     padding: env(safe-area-inset-top, 0px) max(8px, calc((100% - 640px) / 2 + 8px)) 0
       max(12px, calc((100% - 640px) / 2 + 12px));
     border-top: 0;
-    border-bottom: 1px solid #1c1b26;
-    background: rgba(12, 12, 18, 0.94);
-    -webkit-backdrop-filter: blur(12px);
-    backdrop-filter: blur(12px);
+    border-bottom: 1px solid rgb(255 255 255 / 7%);
+    background: #0d0d14;
   }
 
   .sidebar__strip-brand {
@@ -1897,6 +1890,25 @@ html:has(dialog[open]) body {
     height: 7px;
     margin: 0 0 2px;
     background: var(--wn-teal);
+  }
+
+  /* Where the strip has no section title (the home page), the whole wordmark, as in the
+     desktop top bar. */
+  .sidebar__account:has(.sidebar__strip-title:empty) .sidebar__strip-brand {
+    gap: 1px;
+    padding-bottom: 12px;
+    font-size: 22px;
+    letter-spacing: -0.03em;
+  }
+
+  .sidebar__account:has(.sidebar__strip-title:empty) .sidebar__strip-brand .sidebar__brand-rest {
+    display: inline;
+  }
+
+  .sidebar__account:has(.sidebar__strip-title:empty) .sidebar__strip-brand .sidebar__brand-dot {
+    width: 6px;
+    height: 6px;
+    margin-left: 2px;
   }
 
   .sidebar__strip-title {
@@ -1932,20 +1944,21 @@ html:has(dialog[open]) body {
     font-size: 0;
   }
 
-  /* Avatar: a 44px hit area, 2px ring - teal on the user's own profile. */
+  /* Avatar: 36px in a 44px hit area, as in the desktop top bar; a teal ring only on
+     the user's own profile. */
   .sidebar__account-trigger {
-    padding: 2px;
-    border: 2px solid #2a2838;
-  }
-
-  .sidebar__account-trigger--current {
-    border-color: var(--wn-teal);
+    padding: 4px;
+    border: 0;
   }
 
   .sidebar__avatar {
     width: 100%;
     height: 100%;
     border: 0;
+  }
+
+  .sidebar__account-trigger--current .sidebar__avatar {
+    box-shadow: 0 0 0 2px var(--wn-teal);
   }
 
   /* 44px: the header's touch-target floor (Mobile handoff.md). */
