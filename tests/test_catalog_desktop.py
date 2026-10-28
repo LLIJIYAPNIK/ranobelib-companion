@@ -80,7 +80,7 @@ def test_desktop_shell_follows_the_design() -> None:
     results_title = _desktop_rule('.wn-catalog[data-mode="results"] .wn-catalog__title')
     assert "font-size: 36px;" in results_title
     toolbar = _desktop_rule(".wn-catalog .catalog-toolbar")
-    assert "top: 12px;" in toolbar
+    assert "top: calc(var(--shell-top) + 12px);" in toolbar
     assert "margin: -44px auto 0;" in toolbar
     assert "backdrop-filter: blur(18px) saturate(1.2);" in toolbar
     assert "--wn-catalog-ctl-h: 52px;" in _desktop_rule(".wn-catalog")

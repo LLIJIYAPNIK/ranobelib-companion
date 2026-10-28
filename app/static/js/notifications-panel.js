@@ -55,6 +55,14 @@
     // loadRecent() fills the list, which a top-anchored panel would push off-screen.
     const sidebarRect = sidebar.getBoundingClientRect();
     const triggerRect = trigger.getBoundingClientRect();
+    if (document.documentElement.dataset.nav === "top") {
+      // Top bar: drop down from the bell, right edges aligned.
+      panel.style.right = "";
+      panel.style.bottom = "";
+      panel.style.left = `${Math.max(GAP, triggerRect.right - panel.offsetWidth)}px`;
+      panel.style.top = `${triggerRect.bottom + GAP}px`;
+      return;
+    }
     panel.style.right = "";
     panel.style.top = "auto";
     panel.style.left = `${sidebarRect.right + GAP}px`;

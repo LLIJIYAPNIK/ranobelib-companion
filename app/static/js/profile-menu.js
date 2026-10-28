@@ -31,6 +31,13 @@
 
   function positionPopover() {
     const triggerRect = trigger.getBoundingClientRect();
+    if (document.documentElement.dataset.nav === "top") {
+      // Top bar: drop down from the avatar, right edges aligned.
+      panel.style.left = `${Math.max(GAP, triggerRect.right - panel.offsetWidth)}px`;
+      panel.style.top = `${triggerRect.bottom + GAP}px`;
+      panel.style.bottom = "auto";
+      return;
+    }
     const sidebarRect = sidebar ? sidebar.getBoundingClientRect() : triggerRect;
     panel.style.left = `${sidebarRect.right + GAP}px`;
     const bottom = window.innerHeight - triggerRect.bottom;

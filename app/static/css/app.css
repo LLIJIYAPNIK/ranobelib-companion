@@ -1132,6 +1132,114 @@ body:has(.sidebar--expanded) {
   font: 500 12px/1 var(--font-ui);
 }
 
+/* Experiment: the same <nav> as a top bar on desktop (html[data-nav="top"], set by
+   sidebar-expand-init.js from ?nav=top / ?nav=side). Three destinations don't need a
+   column of their own; the content gets the full width. Mobile keeps its own layout. */
+@media (min-width: 768px) {
+  html[data-nav="top"] {
+    --sidebar-width: 0px;
+    --shell-top: 64px;
+    scroll-padding-top: var(--shell-top);
+  }
+
+  html[data-nav="top"] .sidebar {
+    right: 0;
+    display: flex;
+    align-items: center;
+    gap: 28px;
+    width: auto;
+    height: var(--shell-top);
+    padding: 0 40px;
+    border-right: 0;
+    border-bottom: 1px solid var(--divider);
+    overflow: visible;
+  }
+
+  html[data-nav="top"] .sidebar__brand {
+    padding: 0;
+  }
+
+  html[data-nav="top"] .sidebar__brand-rest {
+    display: inline;
+  }
+
+  html[data-nav="top"] .sidebar__toggle,
+  html[data-nav="top"] .sidebar__sep,
+  html[data-nav="top"] .sidebar__link--active::before {
+    display: none;
+  }
+
+  html[data-nav="top"] .sidebar__nav {
+    flex-direction: row;
+    gap: 4px;
+    padding: 0;
+  }
+
+  html[data-nav="top"] .sidebar__link,
+  html[data-nav="top"] .sidebar__guest {
+    display: flex;
+    flex-direction: row;
+    gap: 9px;
+    width: auto;
+    height: 40px;
+    padding: 0 14px 0 12px;
+    color: var(--text-2);
+  }
+
+  html[data-nav="top"] .sidebar__link--active {
+    color: var(--text-1);
+  }
+
+  html[data-nav="top"] .sidebar .sidebar__label,
+  html[data-nav="top"] .sidebar .sidebar__guest-label {
+    position: static;
+    width: auto;
+    height: auto;
+    margin: 0;
+    overflow: visible;
+    clip: auto;
+    clip-path: none;
+  }
+
+  html[data-nav="top"] .sidebar .sidebar__bell .sidebar__label {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip-path: inset(50%);
+  }
+
+  html[data-nav="top"] .sidebar__account {
+    flex-direction: row;
+    align-items: center;
+    gap: 8px;
+    width: auto;
+    margin-left: auto;
+    padding: 0;
+    border-top: 0;
+  }
+
+  html[data-nav="top"] .sidebar__bell {
+    display: grid;
+    place-items: center;
+    width: 44px;
+    height: 44px;
+  }
+
+  html[data-nav="top"] .sidebar__account-trigger {
+    display: grid;
+    grid-template-columns: 1fr;
+    width: 44px;
+    height: 44px;
+    border-radius: 50%;
+  }
+
+  html[data-nav="top"] .main {
+    margin-left: 0;
+    padding-top: var(--shell-top);
+  }
+}
+
 /* Account hub: a popover beside the rail on desktop (profile-menu.js positions it, see
    PR 97 for why it's portaled to <body>), the content of the shared bottom sheet on
    mobile (--in-sheet, PR 279 - see .bottom-sheet below). */
@@ -7213,7 +7321,7 @@ a.ui-title-card:focus-visible .ui-title-card__cover {
 .catalog-page {
   --catalog-grid-min: 150px;
   --catalog-pad-x: var(--s-40);
-  --catalog-sticky-top: var(--s-12);
+  --catalog-sticky-top: calc(var(--shell-top) + var(--s-12));
   flex: 1;
   display: flex;
   flex-direction: column;
@@ -8073,7 +8181,7 @@ a.catalog-card__action {
 
 .catalog-filters {
   position: sticky;
-  top: var(--s-16);
+  top: calc(var(--shell-top) + var(--s-16));
   display: flex;
   flex-direction: column;
   flex: 0 0 292px;
@@ -8467,7 +8575,7 @@ a.catalog-card__action {
   /* Sticky glass panel, overlapping the header's bottom edge by 44px. */
   .wn-catalog .catalog-toolbar,
   .wn-library .wn-library-toolbar {
-    top: 12px;
+    top: calc(var(--shell-top) + 12px);
     align-items: center;
     gap: 10px;
     width: calc(min(100%, 1280px) - 40px);
@@ -19099,7 +19207,7 @@ body.reader-hud-visible .reader-hud {
 
 .settings-nav {
   position: sticky;
-  top: var(--s-16);
+  top: calc(var(--shell-top) + var(--s-16));
   display: flex;
   flex: 0 0 200px;
   flex-direction: column;
