@@ -1,166 +1,106 @@
 {% extends "base.html" %}
 {% block title %}RanobeLib Companion{% endblock %}
 {% block content %}
-{% from "_title_card.html" import ui_title_card %}
-{% from "_continue_reading_hero.html" import continue_reading_hero %}
-<main class="home wn-home">
-  <form class="home__open wn-home__open" method="get" action="/catalog" role="search" aria-label="Поиск по каталогу">
-    <label class="wn-home__open-field">
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="m16 16 4 4"/></svg>
-      <input
-        id="home-catalog-query"
-        class="wn-field__control wn-home__open-control"
-        type="search"
-        name="query"
-        placeholder="Найти тайтл по названию…"
-        aria-label="Название тайтла"
-        enterkeyhint="search"
-        required
-        autofocus
-      >
-    </label>
-    <button class="wn-btn wn-btn--primary" type="submit">Найти</button>
-  </form>
-  <script src="{{ static_url('js/disable-mobile-autofocus.js') }}"></script>
+{#
+  Home. A guest gets what the site is, a search and the popular titles; a reader with
+  nothing read yet, the first-run card and the same. A reader with a book on the go gets
+  their library as «Витрина» (home/_flow.html): every book being read on one shelf, the
+  one brought forward shown in depth.
+#}
+{% from "home/_macros.html" import search_form, cover_progress, shelf_card, recent_shelf %}
+
+<main class="hm{% if not current_user %} hm--guest{% endif %}{% if dashboard and dashboard.hero %} hm--v hm--flow{% endif %}">
+  {% set ambient = (dashboard.hero.cover_url if dashboard and dashboard.hero else none) or (popular[0].cover_url if popular else none) %}
+  {% if ambient %}<img class="hm-ambient" src="{{ ambient }}" alt="" aria-hidden="true">{% endif %}
 
   {% if not current_user %}
-  <section class="home-guest" aria-label="Аккаунт">
-    <div class="home-guest__copy">
-      <b class="home-guest__title">Читайте где угодно — продолжайте с того же места</b>
-      <span class="home-guest__text">Аккаунт сохранит библиотеку, прогресс, загрузки и активность.</span>
+  <section class="hm-intro hm-rise" aria-labelledby="home-title">
+    <div class="hm-intro__main">
+      <h1 class="hm-title hm-title--guest" id="home-title">Читайте и скачивайте ранобэ</h1>
+      <p class="hm-lead">Онлайн-чтение по главам и скачивание тайтла целиком в файл.</p>
+      {{ search_form("lg") }}
+      <a class="hm-link" href="/catalog">Открыть каталог</a>
     </div>
-    <div class="home-guest__actions">
-      <a class="wn-btn wn-btn--secondary" href="/login" data-role="auth-modal-trigger">Войти</a>
-      <a class="wn-btn wn-btn--primary" href="/register" data-role="auth-modal-trigger">Создать аккаунт</a>
-    </div>
-  </section>
-  {% else %}
-  <div class="wn-home__stage" data-role="continue-reading-root">
-    {% if dashboard.hero %}
-    {{ continue_reading_hero(dashboard.hero, variant="home", title_tag="h1", title_id="continue-reading-title") }}
-    {% else %}
-    <section class="wn-home-hero wn-home-hero--empty" data-role="home-reading-empty">
-      <span class="wn-home-hero__eyebrow">Ваша следующая история</span>
-      <h1 class="wn-home-hero__title">Начните читать — продолжение появится здесь</h1>
-      <p class="wn-home-hero__chapter">Найдите тайтл в каталоге и начните читать.</p>
-      <a class="wn-btn wn-btn--primary" href="/catalog">Открыть каталог</a>
-    </section>
-    {% endif %}
-
-    <aside class="wn-home__rail">
-      <section class="wn-home-today" aria-labelledby="today-title">
-        <div class="wn-home-section-head">
-          <h2 id="today-title">Сегодня</h2>
-          <a href="/activity">Активность</a>
-        </div>
-        {# PR 280: tiles on desktop, «metric → value» rows on mobile - each stat carries
-           both layouts' wording and the CSS shows one (the other is display: none, so
-           it's out of the accessibility tree too). #}
-        <div class="wn-home-today__stats">
-          <div><b>{{ dashboard.summary.chapters_read_today }}</b><span class="wn-home-today__tile-label">глав<br>прочитано</span><span class="wn-home-today__row-label">Глав прочитано</span></div>
-          <div><b>{{ dashboard.summary.active_time_label }}</b><span class="wn-home-today__tile-label">активного<br>чтения</span><span class="wn-home-today__row-label">Активное чтение</span></div>
-          <div><b>{{ dashboard.summary.downloads_today | length }}</b><span class="wn-home-today__tile-label">скачано<br>сегодня</span><span class="wn-home-today__row-label">Скачано</span></div>
-        </div>
-      </section>
-
-      {% if friend_activity %}
-      <section class="home__friends" aria-labelledby="friends-activity-title">
-        <div class="wn-home-section-head">
-          <h2 id="friends-activity-title">Активность друзей</h2>
-          <a href="/friends">Все</a>
-        </div>
-        {% for card in friend_activity %}
-        <article class="home-friend">
-          <a class="home-friend__who" href="/profile/{{ card.friend.id }}">
-            <span class="home-friend__avatar">
-              {% if card.friend.avatar_url %}<img class="avatar-img" src="{{ card.friend.avatar_url }}" alt="">{% else %}{{ card.friend.avatar_initials }}{% endif %}
-            </span>
-            <span class="wn-home-friend__copy">
-              <b class="home-friend__name">{{ card.friend.display_name }}</b>
-              {% if card.currently_reading %}<span>Читает · {{ card.currently_reading.name or card.currently_reading.entry.slug_url }}</span>{% elif card.streak_label %}<span>{{ card.streak_label }}</span>{% elif card.recent_comments %}<span>Недавний комментарий</span>{% else %}<span class="home-friend__none">Пока нет активности</span>{% endif %}
-            </span>
-          </a>
-          {% if card.recent_comments %}
-          <ul class="home-friend__comments wn-home-friend__comments">
-            {% for comment in card.recent_comments %}
-            <li><a href="{{ comment.url }}">{{ comment.body_excerpt }}</a></li>
-            {% endfor %}
-          </ul>
-          {% endif %}
-        </article>
-        {% endfor %}
-      </section>
-      {% endif %}
+    <aside class="hm-panel hm-account" aria-labelledby="home-account-title">
+      <h2 class="hm-h2" id="home-account-title">С аккаунтом</h2>
+      <ul class="hm-account__list">
+        <li><b>Библиотека и прогресс</b><span>Отметка на каждой главе и на абзаце, где вы остановились</span></li>
+        <li><b>Продолжение на любом устройстве</b><span>Начали на компьютере — продолжите с телефона</span></li>
+        <li><b>Скачивание целиком</b><span>Тайтл собирается в файл в фоне, можно закрыть вкладку</span></li>
+        <li><b>Друзья и комментарии</b><span>Что читают друзья, реакции и обсуждения абзацев</span></li>
+      </ul>
+      <div class="hm-account__actions">
+        <a class="wn-btn wn-btn--primary hm-btn" href="/register" data-role="auth-modal-trigger">Создать аккаунт</a>
+        <a class="wn-btn wn-btn--secondary hm-btn" href="/login" data-role="auth-modal-trigger">Войти</a>
+      </div>
     </aside>
-  </div>
-
-  {% if dashboard.reading %}
-  <section class="wn-home__section" aria-labelledby="reading-title">
-    <div class="wn-home-section-head wn-home-section-head--large">
-      <div><h2 id="reading-title">Читаю</h2><span>{{ dashboard.reading | length }} тайтла</span></div>
-      <a href="/library">Вся библиотека</a>
-    </div>
-    <div class="wn-home-reading">
-      {% for item in dashboard.reading %}
-      {% set entry = item.entry %}
-      {% set item_name = item.name or entry.slug_url %}
-      <a class="wn-home-reading-card" href="/titles/{{ entry.slug_url }}">
-        <span class="wn-home-reading-card__cover">{% if item.cover_url %}<img src="{{ item.cover_url }}" alt="" loading="lazy">{% endif %}</span>
-        <span class="wn-home-reading-card__body">
-          <b>{{ item_name }}</b>
-          <span>Том {{ entry.last_read_volume }}, глава {{ entry.last_read_number }}</span>
-          {% if item.progress_percent is not none %}
-          <span class="wn-home-reading-card__progress"><i><i style="width: {{ item.progress_percent }}%"></i></i><em>{{ item.progress_percent }}%</em></span>
-          {% endif %}
-        </span>
-      </a>
-      {% endfor %}
-    </div>
   </section>
-  {% endif %}
-  {% endif %}
-
-  <section class="home__section wn-home__section" aria-labelledby="recent-title">
-    <div class="wn-home-section-head wn-home-section-head--large">
-      <h2 id="recent-title">Недавние</h2>
+  {% if recent %}{{ recent_shelf(recent, 1) }}{% endif %}
+  {% else %}
+  {% if dashboard.hero %}
+  {% include "home/_flow.html" %}
+  {% else %}
+  <header class="hm-head hm-rise">
+    <h1 class="hm-title" id="home-title">Начните читать</h1>
+    {{ search_form() }}
+  </header>
+  <section class="hm-panel hm-first hm-rise" style="--i: 0" data-role="home-reading-empty" aria-labelledby="home-first-title">
+    <div class="hm-first__copy">
+      <h2 class="hm-h2" id="home-first-title">Здесь будет книга, которую вы читаете</h2>
+      <p>Откройте любую главу — тайтл попадёт в библиотеку, а прогресс сохранится сам. Отсюда вы вернётесь к нему в один клик.</p>
+      <a class="wn-btn wn-btn--primary hm-btn" href="/catalog">Открыть каталог</a>
     </div>
-    {% if recent %}
-    <div class="home__grid wn-home__recent-grid" data-role="recent-titles">
-      {% for item in recent %}
-      {% call ui_title_card(item.slug_url, item.name, item.cover_url, item.progress_percent) %}
-      <button type="button" class="ui-title-card__action ui-title-card__action--sm" data-role="forget-recent-title" data-slug-url="{{ item.slug_url }}" aria-label="Убрать «{{ item.name }}» из недавних" title="Убрать из недавних"><span class="ui-title-card__action-chip"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" aria-hidden="true"><path d="M6 6l12 12M18 6 6 18"/></svg></span></button>
-      {% endcall %}
-      {% endfor %}
+    {% if popular %}
+    {# The first popular titles as the card's own suggestions; the shelf below starts
+       after them. #}
+    <div class="hm-first__picks">
+      <span class="hm-meta">Например:</span>
+      <ul>
+        {% for item in popular[:4] %}
+        <li><a class="hm-cover" href="/titles/{{ item.slug_url }}" title="{{ item.name }}" aria-label="{{ item.name }}">{% if item.cover_url %}<img src="{{ item.cover_url }}" alt="" loading="lazy">{% endif %}</a></li>
+        {% endfor %}
+      </ul>
     </div>
-    {% else %}
-    <section class="home-empty-card wn-home-empty-card" data-role="home-empty">
-      <h2 class="home-empty-card__title">Здесь появятся недавно открытые тайтлы</h2>
-      <p class="home-empty-card__text">Найдите тайтл по названию в каталоге, чтобы начать.</p>
-      <p class="home-empty-card__note">Недавно открытые тайтлы сохранятся здесь.</p>
-      <a class="wn-btn wn-btn--secondary home-empty-card__cta" href="/catalog">Открыть каталог</a>
-    </section>
     {% endif %}
   </section>
+  {% if recent %}{{ recent_shelf(recent, 2) }}{% endif %}
+  {% endif %}
+  {% endif %}
 
-  {% if current_user and dashboard.recent_downloads %}
-  <section class="wn-home__section" aria-labelledby="latest-downloads-title">
-    <div class="wn-home-section-head wn-home-section-head--large">
-      <h2 id="latest-downloads-title">Последние загрузки</h2>
-      <a href="/downloads">Все загрузки</a>
+  {# Recommendations: titles like the one being read. TODO: the SDK has no
+     recommendations/similar-titles call yet (checked 0.14.1) - wire this to it once it
+     exists, see the issue in LLIJIYAPNIK/libsocial-sdk. #}
+  {% if recommended and dashboard and dashboard.hero %}
+  <section class="hm-block hm-shelf hm-rise" aria-labelledby="recommended-title">
+    <div class="hm-block__head">
+      <h2 class="hm-h2" id="recommended-title">Похоже на «{{ dashboard.hero.name or dashboard.hero.entry.slug_url }}»</h2>
+      <a class="hm-link" href="/catalog">Каталог</a>
     </div>
-    <div class="wn-home-downloads">
-      {% for item in dashboard.recent_downloads %}
-      <a href="/titles/{{ item.slug_url }}" class="wn-home-download">
-        <span class="wn-home-download__icon">{{ item.fmt | upper }}</span>
-        <span><b>{{ item.slug_url }}</b><small>{% if item.chapter_count is not none %}{{ item.chapter_count }} глав · {% endif %}{{ item.finished_at[:10] }}</small></span>
-        <em class="wn-home-download__status{% if item.status == 'error' %} wn-home-download__status--error{% endif %}">{{ "Готово" if item.status == "done" else "Ошибка" }}</em>
-      </a>
+    <div class="hm-shelf__row">
+      {% for item in recommended %}
+      {{ shelf_card(item.slug_url, item.name, item.cover_url) }}
+      {% endfor %}
+    </div>
+  </section>
+  {% endif %}
+
+  {# A guest's and a new reader's way in («Лента» shows popular titles its own way). #}
+  {% set popular_shelf = (popular[4:] if current_user else popular) if not (dashboard and dashboard.hero) else [] %}
+  {% if popular_shelf %}
+  <section class="hm-block hm-shelf hm-shelf--popular hm-rise" aria-labelledby="popular-title">
+    <div class="hm-block__head">
+      <h2 class="hm-h2" id="popular-title">{% if current_user %}С чего начать: популярное{% else %}Популярное в каталоге{% endif %}</h2>
+      <a class="hm-link" href="/catalog">Весь каталог</a>
+    </div>
+    <div class="hm-shelf__row">
+      {% for item in popular_shelf %}
+      {{ shelf_card(item.slug_url, item.name, item.cover_url) }}
       {% endfor %}
     </div>
   </section>
   {% endif %}
 </main>
+<script src="{{ static_url('js/disable-mobile-autofocus.js') }}"></script>
 <script src="{{ static_url('js/recent-titles-forget.js') }}" defer></script>
-<script src="{{ static_url('js/library-card-actions.js') }}" defer></script>
 <script src="{{ static_url('js/image-lightbox.js') }}" defer></script>
 {% endblock %}

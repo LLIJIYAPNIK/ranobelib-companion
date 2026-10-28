@@ -7,10 +7,22 @@
   if (!sidebar) return;
 
   sidebar.classList.add("sidebar--initializing");
+  // Experiment: ?nav=top / ?nav=side picks the desktop layout and is remembered. Its own
+  // try, so a failure here never costs the rail its restored state below.
+  let top = false;
+  try {
+    const asked = new URLSearchParams(location.search).get("nav");
+    if (asked === "top" || asked === "side") localStorage.setItem("navLayout", asked);
+    top = localStorage.getItem("navLayout") === "top";
+    if (top) document.documentElement.dataset.nav = "top";
+  } catch {
+    top = false;
+  }
+
   try {
     sidebar.classList.toggle(
       "sidebar--expanded",
-      localStorage.getItem("sidebarExpanded") === "1",
+      !top && localStorage.getItem("sidebarExpanded") === "1",
     );
   } catch {
     // Storage can be unavailable in hardened/private contexts; collapsed remains valid.

@@ -73,7 +73,10 @@
     let jobs;
     try {
       const response = await fetch("/downloads/status");
+      if (!response.ok) throw new Error(`status ${response.status}`);
       jobs = await response.json();
+      // An error body ({"detail": ...}) has no .length - it showed the badge as «0».
+      if (!Array.isArray(jobs)) throw new Error("unexpected body");
     } catch {
       setTimeout(poll, 2000);
       return;

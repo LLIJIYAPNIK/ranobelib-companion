@@ -15,26 +15,12 @@ def _rule(selector: str, *, indent: str = "") -> str:
 
 
 def test_shared_hero_progress_bar_is_not_collapsed() -> None:
-    progress = _rule(
-        ".wn-home .wn-continue-hero--home .wn-library-hero__progress", indent="  "
-    )
+    progress = _rule(".wn-home .wn-continue-hero--home .wn-library-hero__progress", indent="  ")
     assert "grid-column: 1 / -1;" in progress
     assert "align-items: center;" in progress
     assert "height: 6px;" in _rule(
         ".wn-home .wn-continue-hero--home .wn-library-hero__bar", indent="  "
     )
-
-
-def test_today_stats_carry_the_tile_and_the_row_wording() -> None:
-    template = (Path(__file__).parents[1] / "app/templates/index.html").read_text(encoding="utf-8")
-
-    for tile, row in (
-        ("глав<br>прочитано", "Глав прочитано"),
-        ("активного<br>чтения", "Активное чтение"),
-        ("скачано<br>сегодня", "Скачано"),
-    ):
-        assert f'<span class="wn-home-today__tile-label">{tile}</span>' in template
-        assert f'<span class="wn-home-today__row-label">{row}</span>' in template
 
 
 def test_today_shows_one_wording_per_layout() -> None:
@@ -65,8 +51,6 @@ def test_mobile_home_rows_wrap_instead_of_squeezing() -> None:
 def test_hero_title_is_capped_to_its_column_so_long_words_break() -> None:
     # Found by the five-width check: an unbroken word sized the start-aligned heading
     # past the column, so overflow-wrap never had a narrower box to break in.
-    title = _rule(
-        ".wn-home .wn-continue-hero--home .wn-library-hero__title", indent="  "
-    )
+    title = _rule(".wn-home .wn-continue-hero--home .wn-library-hero__title", indent="  ")
     assert "max-width: 100%;" in title
     assert "overflow-wrap: anywhere;" in title

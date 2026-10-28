@@ -1,0 +1,128 @@
+{# Shared pieces of the home page (index.html) and its library shelf (home/_flow.html). #}
+{% from "_continue_reading_hero.html" import chapter_label, chapter_short %}
+
+{% macro search_form(size="") -%}
+<form class="hm-search{% if size %} hm-search--{{ size }}{% endif %}" method="get" action="/catalog" role="search" aria-label="Поиск по каталогу">
+  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="m16 16 4 4"/></svg>
+  <input
+    id="home-catalog-query"
+    class="hm-search__control"
+    type="search"
+    name="query"
+    placeholder="Найти тайтл по названию"
+    aria-label="Название тайтла"
+    enterkeyhint="search"
+    required
+    {% if size == "lg" %}autofocus{% endif %}
+  >
+  <button class="hm-search__submit" type="submit">Найти</button>
+</form>
+{%- endmacro %}
+
+{# The reading progress on a cover: a teal line along its bottom edge, and the percent
+   as a small glass chip above it (`chip=false` for covers too small to carry one). #}
+{% macro cover_progress(percent, chip=true) -%}
+{% if percent is not none %}
+{% if chip %}<span class="hm-cover__pct hm-num">{{ percent }}%</span>{% endif %}
+<span class="hm-cover__bar" role="img" aria-label="Прочитано {{ percent }}%"><span style="width: {{ percent }}%"></span></span>
+{% endif %}
+{%- endmacro %}
+
+{# A shelf card («Популярное»): the cover, with progress when there is any, and two
+   lines of name. #}
+{% macro shelf_card(slug_url, name, cover_url=none, percent=none) -%}
+<div class="hm-card">
+  <div class="hm-cover hm-card__cover">
+    <a class="hm-card__link" href="/titles/{{ slug_url }}" aria-label="{{ name }}">
+      {% if cover_url %}<img src="{{ cover_url }}" alt="" loading="lazy">{% endif %}
+    </a>
+    {{ cover_progress(percent) }}
+  </div>
+  <a class="hm-card__name" href="/titles/{{ slug_url }}" title="{{ name }}" tabindex="-1" aria-hidden="true">{{ name }}</a>
+</div>
+{%- endmacro %}
+
+{# A «Недавно открытые» card: the cover with its progress, the name, how far in;
+   recent-titles-forget.js removes it by its data-role. #}
+{% macro recent_card(item) -%}
+<li class="hm-card hm-recent" data-role="recent-item">
+  <div class="hm-cover hm-card__cover">
+    <a class="hm-card__link" href="/titles/{{ item.slug_url }}" aria-label="{{ item.name }}">
+      {% if item.cover_url %}<img src="{{ item.cover_url }}" alt="" loading="lazy">{% endif %}
+    </a>
+    {{ cover_progress(item.progress_percent, chip=false) }}
+    <button type="button" class="hm-recent__forget" data-role="forget-recent-title" data-slug-url="{{ item.slug_url }}" aria-label="Убрать «{{ item.name }}» из недавних" title="Убрать из недавних"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" aria-hidden="true"><path d="M6 6l12 12M18 6 6 18"/></svg></button>
+  </div>
+  <a class="hm-card__name" href="/titles/{{ item.slug_url }}" title="{{ item.name }}" tabindex="-1" aria-hidden="true">{{ item.name }}</a>
+  <span class="hm-recent__where">{% if item.progress_percent is not none %}<span class="hm-row__pct hm-num">{{ item.progress_percent }}%</span> прочитано{% else %}Ещё не начинали{% endif %}</span>
+</li>
+{%- endmacro %}
+
+{% macro recent_shelf(recent, i) -%}
+  <section class="hm-block hm-shelf hm-rise" style="--i: {{ i }}" aria-labelledby="recent-title" data-role="recent-titles">
+    <div class="hm-block__head">
+      <h2 class="hm-h2" id="recent-title">Недавно открытые</h2>
+    </div>
+    <ul class="hm-shelf__row">
+      {% for item in recent %}{{ recent_card(item) }}{% endfor %}
+    </ul>
+  </section>
+{%- endmacro %}
+
+{# «Читать дальше» to the chapter the reader stopped at. #}
+{% macro go_button(entry, href, extra="") -%}
+<a class="hm-go{% if extra %} {{ extra }}{% endif %}" href="{{ href }}/chapters/{{ entry.last_read_volume }}/{{ entry.last_read_number }}">
+  <span class="hm-go__label">Читать дальше<small>{{ chapter_label(entry.last_read_number) }}</small></span>
+  <svg class="hm-go__arrow" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12h14M13 6l6 6-6 6"/></svg>
+</a>
+{%- endmacro %}
+
+{# A book's reading line: a bar at the true percentage and the figure beside it. #}
+{% macro progress_line(percent) -%}
+{% if percent is not none %}
+<div class="hl-progress">
+  <span class="hl-progress__bar" role="img" aria-label="Прочитано {{ percent }}%"><span style="width: {{ percent }}%"></span></span>
+  <span class="hm-num">{{ percent }}%</span>
+</div>
+{% endif %}
+{%- endmacro %}
+
+{# The book on the go, in depth: title, where the reader is, its description, progress
+   and the way back in. `book` is app/api/home.py's BookFocus (None offline). #}
+{% macro book_details(hero, book, title_id="continue-reading-title", summary_lines=3) -%}
+{% set entry = hero.entry %}
+{% set href = "/titles/" ~ entry.slug_url %}
+<div class="hl-details">
+  <h2 class="hl-details__title" id="{{ title_id }}"><a href="{{ href }}">{{ hero.name or entry.slug_url }}</a></h2>
+  <p class="hl-details__meta">{% if book and book.status %}{{ book.status }} · {% endif %}Том {{ entry.last_read_volume }} · {{ chapter_label(entry.last_read_number) }}{% if book and book.position %} из {{ book.total }}{% endif %}</p>
+  {% if book and book.summary %}<p class="hl-details__summary" style="--lines: {{ summary_lines }}">{{ book.summary }}</p>{% endif %}
+  {{ progress_line(hero.progress_percent) }}
+  <div class="hm-hero__actions">
+    {{ go_button(entry, href) }}
+    <a class="hm-link" href="{{ href }}">О тайтле</a>
+  </div>
+</div>
+{%- endmacro %}
+
+{# The chapters from the reader's own on, in the SDK's order; the current one marked. #}
+{% macro next_chapters(book, href, limit=6) -%}
+{% if book and book.chapters %}
+<nav class="hl-next" aria-label="Следующие главы">
+  <div class="hm-block__head">
+    <h3 class="hl-next__title">Дальше</h3>
+    <a class="hm-link" href="{{ href }}#title-panel-toc">Оглавление</a>
+  </div>
+  <ol class="hl-next__list">
+    {% for ch in book.chapters[:limit] %}
+    <li class="hl-next__item{% if ch.is_current %} hl-next__item--current{% endif %}" style="--n: {{ loop.index0 }}">
+      <a href="{{ href }}/chapters/{{ ch.volume }}/{{ ch.number }}"{% if ch.is_current %} aria-current="step"{% endif %}>
+        <span class="hl-next__num hm-num">{{ chapter_short(ch.number) }}</span>
+        <span class="hl-next__name">{{ ch.name or chapter_label(ch.number) }}</span>
+        {% if ch.is_current %}<span class="hl-next__here">Вы здесь</span>{% endif %}
+      </a>
+    </li>
+    {% endfor %}
+  </ol>
+</nav>
+{% endif %}
+{%- endmacro %}

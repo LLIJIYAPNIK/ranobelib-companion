@@ -508,6 +508,15 @@ a {
   /* Room fixed corner UI (toasts, cookie notice, back-to-top, export panel) leaves
      under itself for the Quiet Edge Bar - 0 on desktop, set in the mobile block below. */
   --shell-bottom: 0px;
+  /* Height of a fixed top bar sticky UI must clear - 0 with the rail, see data-nav="top". */
+  --shell-top: 0px;
+}
+
+/* Always reserve the scrollbar's width: without it every page that fits the screen (or a
+   dialog's overflow: hidden lock, or content that loads late) made the layout ~15px
+   wider and back again. */
+html {
+  scrollbar-gutter: stable;
 }
 
 body:has(.sidebar--expanded) {
@@ -1123,6 +1132,114 @@ body:has(.sidebar--expanded) {
   font: 500 12px/1 var(--font-ui);
 }
 
+/* Experiment: the same <nav> as a top bar on desktop (html[data-nav="top"], set by
+   sidebar-expand-init.js from ?nav=top / ?nav=side). Three destinations don't need a
+   column of their own; the content gets the full width. Mobile keeps its own layout. */
+@media (min-width: 768px) {
+  html[data-nav="top"] {
+    --sidebar-width: 0px;
+    --shell-top: 64px;
+    scroll-padding-top: var(--shell-top);
+  }
+
+  html[data-nav="top"] .sidebar {
+    right: 0;
+    display: flex;
+    align-items: center;
+    gap: 28px;
+    width: auto;
+    height: var(--shell-top);
+    padding: 0 40px;
+    border-right: 0;
+    border-bottom: 1px solid var(--divider);
+    overflow: visible;
+  }
+
+  html[data-nav="top"] .sidebar__brand {
+    padding: 0;
+  }
+
+  html[data-nav="top"] .sidebar__brand-rest {
+    display: inline;
+  }
+
+  html[data-nav="top"] .sidebar__toggle,
+  html[data-nav="top"] .sidebar__sep,
+  html[data-nav="top"] .sidebar__link--active::before {
+    display: none;
+  }
+
+  html[data-nav="top"] .sidebar__nav {
+    flex-direction: row;
+    gap: 4px;
+    padding: 0;
+  }
+
+  html[data-nav="top"] .sidebar__link,
+  html[data-nav="top"] .sidebar__guest {
+    display: flex;
+    flex-direction: row;
+    gap: 9px;
+    width: auto;
+    height: 40px;
+    padding: 0 14px 0 12px;
+    color: var(--text-2);
+  }
+
+  html[data-nav="top"] .sidebar__link--active {
+    color: var(--text-1);
+  }
+
+  html[data-nav="top"] .sidebar .sidebar__label,
+  html[data-nav="top"] .sidebar .sidebar__guest-label {
+    position: static;
+    width: auto;
+    height: auto;
+    margin: 0;
+    overflow: visible;
+    clip: auto;
+    clip-path: none;
+  }
+
+  html[data-nav="top"] .sidebar .sidebar__bell .sidebar__label {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip-path: inset(50%);
+  }
+
+  html[data-nav="top"] .sidebar__account {
+    flex-direction: row;
+    align-items: center;
+    gap: 8px;
+    width: auto;
+    margin-left: auto;
+    padding: 0;
+    border-top: 0;
+  }
+
+  html[data-nav="top"] .sidebar__bell {
+    display: grid;
+    place-items: center;
+    width: 44px;
+    height: 44px;
+  }
+
+  html[data-nav="top"] .sidebar__account-trigger {
+    display: grid;
+    grid-template-columns: 1fr;
+    width: 44px;
+    height: 44px;
+    border-radius: 50%;
+  }
+
+  html[data-nav="top"] .main {
+    margin-left: 0;
+    padding-top: var(--shell-top);
+  }
+}
+
 /* Account hub: a popover beside the rail on desktop (profile-menu.js positions it, see
    PR 97 for why it's portaled to <body>), the content of the shared bottom sheet on
    mobile (--in-sheet, PR 279 - see .bottom-sheet below). */
@@ -1635,8 +1752,9 @@ html:has(dialog[open]) body {
     justify-items: normal;
     padding: 0 0 env(safe-area-inset-bottom, 0px);
     border-right: 0;
-    border-top: 1px solid #1e1c29;
-    background: rgba(14, 14, 21, 0.97);
+    border-top: 1px solid rgb(255 255 255 / 7%);
+    /* Opaque: a translucent bar let the page's text show through its labels. */
+    background: #0d0d14;
     overflow: visible;
     transition: none;
   }
@@ -1683,8 +1801,9 @@ html:has(dialog[open]) body {
     transition: background-color var(--dur-press) var(--ease);
   }
 
-  .sidebar__link:active::after {
-    background: rgba(245, 243, 255, 0.07);
+  .sidebar__link:active::after,
+  .sidebar__link--active::after {
+    background: rgb(255 255 255 / 7%);
   }
 
   .sidebar__link:focus-visible {
@@ -1704,17 +1823,10 @@ html:has(dialog[open]) body {
     color: var(--wn-teal);
   }
 
-  /* Active indicator: 40x3 teal on the bar's top edge. */
+  /* Active item: the same quiet pill as the desktop top bar (the ::after zone above), the
+     icon in teal - not a bar on the edge, which read as underlining the page above it. */
   .sidebar__link--active::before {
-    content: "";
-    position: absolute;
-    top: 0;
-    left: 50%;
-    width: 40px;
-    height: 3px;
-    margin-left: -20px;
-    border-radius: 0 0 3px 3px;
-    background: var(--wn-teal);
+    display: none;
   }
 
   .sidebar__link .sidebar__badge {
@@ -1755,10 +1867,8 @@ html:has(dialog[open]) body {
     padding: env(safe-area-inset-top, 0px) max(8px, calc((100% - 640px) / 2 + 8px)) 0
       max(12px, calc((100% - 640px) / 2 + 12px));
     border-top: 0;
-    border-bottom: 1px solid #1c1b26;
-    background: rgba(12, 12, 18, 0.94);
-    -webkit-backdrop-filter: blur(12px);
-    backdrop-filter: blur(12px);
+    border-bottom: 1px solid rgb(255 255 255 / 7%);
+    background: #0d0d14;
   }
 
   .sidebar__strip-brand {
@@ -1780,6 +1890,25 @@ html:has(dialog[open]) body {
     height: 7px;
     margin: 0 0 2px;
     background: var(--wn-teal);
+  }
+
+  /* Where the strip has no section title (the home page), the whole wordmark, as in the
+     desktop top bar. */
+  .sidebar__account:has(.sidebar__strip-title:empty) .sidebar__strip-brand {
+    gap: 1px;
+    padding-bottom: 12px;
+    font-size: 22px;
+    letter-spacing: -0.03em;
+  }
+
+  .sidebar__account:has(.sidebar__strip-title:empty) .sidebar__strip-brand .sidebar__brand-rest {
+    display: inline;
+  }
+
+  .sidebar__account:has(.sidebar__strip-title:empty) .sidebar__strip-brand .sidebar__brand-dot {
+    width: 6px;
+    height: 6px;
+    margin-left: 2px;
   }
 
   .sidebar__strip-title {
@@ -1815,20 +1944,21 @@ html:has(dialog[open]) body {
     font-size: 0;
   }
 
-  /* Avatar: a 44px hit area, 2px ring - teal on the user's own profile. */
+  /* Avatar: 36px in a 44px hit area, as in the desktop top bar; a teal ring only on
+     the user's own profile. */
   .sidebar__account-trigger {
-    padding: 2px;
-    border: 2px solid #2a2838;
-  }
-
-  .sidebar__account-trigger--current {
-    border-color: var(--wn-teal);
+    padding: 4px;
+    border: 0;
   }
 
   .sidebar__avatar {
     width: 100%;
     height: 100%;
     border: 0;
+  }
+
+  .sidebar__account-trigger--current .sidebar__avatar {
+    box-shadow: 0 0 0 2px var(--wn-teal);
   }
 
   /* 44px: the header's touch-target floor (Mobile handoff.md). */
@@ -7204,7 +7334,7 @@ a.ui-title-card:focus-visible .ui-title-card__cover {
 .catalog-page {
   --catalog-grid-min: 150px;
   --catalog-pad-x: var(--s-40);
-  --catalog-sticky-top: var(--s-12);
+  --catalog-sticky-top: calc(var(--shell-top) + var(--s-12));
   flex: 1;
   display: flex;
   flex-direction: column;
@@ -8064,7 +8194,7 @@ a.catalog-card__action {
 
 .catalog-filters {
   position: sticky;
-  top: var(--s-16);
+  top: calc(var(--shell-top) + var(--s-16));
   display: flex;
   flex-direction: column;
   flex: 0 0 292px;
@@ -8458,7 +8588,7 @@ a.catalog-card__action {
   /* Sticky glass panel, overlapping the header's bottom edge by 44px. */
   .wn-catalog .catalog-toolbar,
   .wn-library .wn-library-toolbar {
-    top: 12px;
+    top: calc(var(--shell-top) + 12px);
     align-items: center;
     gap: 10px;
     width: calc(min(100%, 1280px) - 40px);
@@ -19090,7 +19220,7 @@ body.reader-hud-visible .reader-hud {
 
 .settings-nav {
   position: sticky;
-  top: var(--s-16);
+  top: calc(var(--shell-top) + var(--s-16));
   display: flex;
   flex: 0 0 200px;
   flex-direction: column;
@@ -26033,5 +26163,1639 @@ body.reader-page--offline-copy .reader-paragraph-more {
 @media (max-width: 1024px), (pointer: coarse) {
   .wn-admin-ov-mod__text {
     min-height: 44px;
+  }
+}
+
+/* ==========================================================================
+   Home redesign (.hm) - one question: where did I stop, what is next.
+   Only three things stay: the continue card (the rest of «Читаю» inside it), what
+   friends are reading now, «Недавно открытые» (plus «Популярное» for a guest or a new
+   reader). The colour comes from the books themselves: the continue card is set on its
+   own cover, the same cover glows faintly behind the top of the page (.hm-ambient), and
+   panels over it are light glass. Teal is the reading-progress hue; the continue button
+   is itself the progress bar. The page moves a little: the card's art drifts, covers
+   lift and tilt under the pointer, blocks rise in one after another on load - all of it
+   off under prefers-reduced-motion.
+   ========================================================================== */
+.hm {
+  /* The ambient glow below (.hm-ambient) is taller than a short page and breathes; it
+     must never make the page scroll - or the scrollbar would come and go with it. */
+  overflow-y: clip;
+  --hm-gap: 20px;
+  --hm-max: clamp(1240px, 66vw, 1680px);
+  --hm-radius: 24px;
+  --hm-glass: rgb(255 255 255 / 4%);
+  --hm-glass-raised: rgb(255 255 255 / 10%);
+  --hm-glass-edge: rgb(255 255 255 / 9%);
+  --hm-glass-blur: blur(20px) saturate(140%);
+  --hm-ease: cubic-bezier(0.22, 1, 0.36, 1);
+  position: relative;
+  isolation: isolate;
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 40px;
+  width: 100%;
+  min-width: 0;
+  padding: 36px max(40px, (100% - var(--hm-max)) / 2) 72px;
+  background: var(--wn-canvas);
+  color: var(--wn-text);
+  font-family: var(--wn-font-ui);
+}
+
+.hm-num {
+  font-variant-numeric: tabular-nums;
+}
+
+.hm-title {
+  margin: 0;
+  color: #fff;
+  font: 800 28px/1.15 var(--wn-font-ui);
+  letter-spacing: -0.02em;
+}
+
+.hm-h2 {
+  margin: 0;
+  color: var(--wn-text);
+  font: 800 20px/1.3 var(--wn-font-ui);
+  letter-spacing: -0.01em;
+}
+
+.hm-lead {
+  margin: 8px 0 0;
+  color: var(--wn-text-secondary);
+  font: 500 17px/1.5 var(--wn-font-ui);
+}
+
+.hm-meta {
+  color: var(--wn-text-muted);
+  font: 500 13px/1.4 var(--wn-font-ui);
+}
+
+.hm-link {
+  color: var(--wn-text-secondary);
+  font: 700 14px/1.4 var(--wn-font-ui);
+  text-decoration: underline;
+  text-decoration-color: var(--wn-border-strong);
+  text-underline-offset: 3px;
+  transition: color 0.15s ease, text-decoration-color 0.15s ease;
+}
+
+.hm-link:focus-visible {
+  outline: none;
+  border-radius: 4px;
+  box-shadow: var(--wn-focus-ring);
+}
+
+.hm-btn {
+  min-height: 44px;
+  padding: 0 20px;
+  box-shadow: none;
+}
+
+/* The current book's cover, blurred into a faint wash behind the top of the page and
+   under the glass sidebar. */
+.hm-ambient {
+  position: absolute;
+  top: -240px;
+  left: calc(-1 * var(--sidebar-width, 84px));
+  z-index: -1;
+  width: calc(100% + var(--sidebar-width, 84px));
+  height: 1000px;
+  object-fit: cover;
+  opacity: 0.34;
+  filter: blur(110px) saturate(1.5);
+  pointer-events: none;
+  /* Radial, and fully clear before the box edges: the mask clips the blur's spill at
+     the box, so a mask still opaque at an edge shows it as a hard line. */
+  -webkit-mask-image: radial-gradient(closest-side, #000 35%, transparent);
+  mask-image: radial-gradient(closest-side, #000 35%, transparent);
+  animation: hm-breathe 18s ease-in-out infinite alternate;
+}
+
+@keyframes hm-breathe {
+  from {
+    transform: translate3d(-2%, 0, 0) scale(1);
+  }
+
+  to {
+    transform: translate3d(2%, 3%, 0) scale(1.08);
+  }
+}
+
+/* Blocks rise in one after another on load. */
+.hm-rise {
+  animation: hm-rise 0.7s var(--hm-ease) both;
+  animation-delay: calc(var(--i, 0) * 70ms);
+}
+
+@keyframes hm-rise {
+  from {
+    opacity: 0;
+    transform: translateY(18px);
+  }
+}
+
+/* Glass: panels and the search over the page's glow. */
+.hm-panel,
+.hm-search {
+  border: 1px solid var(--hm-glass-edge);
+  background: var(--hm-glass);
+  -webkit-backdrop-filter: var(--hm-glass-blur);
+  backdrop-filter: var(--hm-glass-blur);
+}
+
+.hm-panel {
+  border-radius: var(--hm-radius);
+}
+
+/* --- Search: glass field, the submit inside its right end. --- */
+.hm-search {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: min(100%, 400px);
+  height: 46px;
+  padding: 0 5px 0 16px;
+  border-radius: 999px;
+  color: var(--wn-text-muted);
+  transition: background-color 0.15s ease, box-shadow 0.15s ease;
+}
+
+.hm-search > svg {
+  flex: none;
+  width: 18px;
+  height: 18px;
+}
+
+.hm-search__control {
+  flex: 1;
+  min-width: 0;
+  height: 100%;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: var(--wn-text);
+  font: 500 15px/1 var(--wn-font-ui);
+  outline: none;
+}
+
+.hm-search__control::placeholder {
+  color: var(--wn-text-muted);
+  opacity: 1;
+}
+
+.hm-search__control::-webkit-search-cancel-button {
+  display: none;
+}
+
+.hm-search__submit {
+  flex: none;
+  height: 36px;
+  padding: 0 16px;
+  border: 0;
+  border-radius: 999px;
+  background: var(--hm-glass-raised);
+  color: var(--wn-text);
+  font: 700 14px/1 var(--wn-font-ui);
+  cursor: pointer;
+  transition: background-color 0.15s ease, transform 0.1s ease;
+}
+
+.hm-search:focus-within {
+  box-shadow: 0 0 0 2px var(--wn-teal);
+}
+
+.hm-search__submit:focus-visible {
+  outline: none;
+  box-shadow: var(--wn-focus-ring);
+}
+
+.hm-search__submit:active {
+  transform: scale(0.96);
+}
+
+.hm-search--lg {
+  width: min(100%, 600px);
+  height: 58px;
+  padding: 0 7px 0 20px;
+}
+
+.hm-search--lg .hm-search__control {
+  font-size: 16px;
+}
+
+.hm-search--lg .hm-search__submit {
+  height: 44px;
+  padding: 0 22px;
+  background: var(--wn-primary);
+  color: #fff;
+}
+
+.hm-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px 32px;
+}
+
+.hm-block {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  min-width: 0;
+}
+
+.hm-block__head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 16px;
+}
+
+/* --- A cover, with the reading progress on it. --- */
+.hm-cover {
+  position: relative;
+  display: block;
+  flex: none;
+  aspect-ratio: 2 / 3;
+  overflow: hidden;
+  border-radius: 14px;
+  background: var(--wn-surface-raised);
+  box-shadow: inset 0 0 0 1px rgb(255 255 255 / 6%);
+}
+
+.hm-cover img {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  object-position: top;
+  transition: transform 0.5s var(--hm-ease);
+}
+
+.hm-cover__bar {
+  position: absolute;
+  right: 0;
+  bottom: 0;
+  left: 0;
+  height: 4px;
+  background: rgb(10 10 16 / 55%);
+}
+
+.hm-cover__bar > span {
+  display: block;
+  min-width: 3px;
+  height: 100%;
+  background: var(--wn-teal);
+}
+
+.hm-cover__pct {
+  position: absolute;
+  bottom: 12px;
+  left: 8px;
+  padding: 4px 8px;
+  border: 1px solid rgb(255 255 255 / 14%);
+  border-radius: 999px;
+  background: rgb(10 10 16 / 58%);
+  color: #fff;
+  font: 800 12px/1 var(--wn-font-ui);
+  -webkit-backdrop-filter: blur(10px);
+  backdrop-filter: blur(10px);
+}
+
+/* --- Continue card: cover | title and the continue button | the table of contents. --- */
+.hm-hero {
+  position: relative;
+  isolation: isolate;
+  display: grid;
+  grid-template-columns: clamp(150px, 12vw, 200px) minmax(0, 1fr);
+  align-items: center;
+  gap: 24px clamp(28px, 3vw, 56px);
+  min-height: 380px;
+  padding: clamp(28px, 2.6vw, 44px);
+  overflow: hidden;
+  border: 1px solid var(--hm-glass-edge);
+  border-radius: 28px;
+  background: #0e0e14;
+}
+
+/* The book's own art fills the card's right side, fading out towards the copy on the
+   left, and drifts slowly. */
+.hm-hero__art {
+  position: absolute;
+  top: 0;
+  right: 0;
+  z-index: -2;
+  width: 72%;
+  height: 100%;
+  object-fit: cover;
+  /* Covers print their title near the top: frame the scene below it, and soften it
+     just enough that lettering stops reading as text behind the heading. */
+  object-position: center 62%;
+  filter: blur(7px) saturate(1.3) brightness(0.82);
+  -webkit-mask-image: linear-gradient(90deg, transparent 0%, #000 55%);
+  mask-image: linear-gradient(90deg, transparent 0%, #000 55%);
+  transform-origin: 70% 60%;
+  animation: hm-drift 26s ease-in-out infinite alternate;
+}
+
+@keyframes hm-drift {
+  from {
+    transform: scale(1.02);
+  }
+
+  to {
+    transform: scale(1.12) translate3d(-2%, 1%, 0);
+  }
+}
+
+.hm-hero__scrim {
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  background:
+    linear-gradient(90deg, rgb(14 14 20 / 0%) 0%, rgb(14 14 20 / 45%) 40%, rgb(14 14 20 / 10%) 100%),
+    linear-gradient(0deg, rgb(14 14 20 / 70%) 0%, transparent 60%);
+}
+
+.hm-hero__cover {
+  border-radius: 16px;
+  box-shadow:
+    0 0 0 1px rgb(255 255 255 / 14%),
+    0 24px 48px -16px rgb(0 0 0 / 70%);
+  transform: perspective(900px) rotateY(0) translateY(0);
+  transition: transform 0.6s var(--hm-ease), box-shadow 0.6s var(--hm-ease);
+}
+
+.hm-hero__copy {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  min-width: 0;
+}
+
+.hm-hero__title {
+  margin: 0;
+  font: 800 clamp(30px, 2.5vw, 44px)/1.08 var(--wn-font-ui);
+  letter-spacing: -0.03em;
+  text-wrap: balance;
+}
+
+.hm-hero__title a {
+  color: #fff;
+  text-decoration: none;
+}
+
+.hm-hero__title a:focus-visible {
+  outline: none;
+  border-radius: 6px;
+  box-shadow: var(--wn-focus-ring);
+}
+
+.hm-hero__where {
+  margin: 12px 0 28px;
+  color: rgb(255 255 255 / 74%);
+  font: 600 16px/1.4 var(--wn-font-ui);
+}
+
+.hm-hero__actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 12px 20px;
+}
+
+/* Continue reading: the card's one solid thing - a light button with the chapter on
+   it and an arrow that steps forward on hover. */
+.hm-go {
+  display: inline-flex;
+  align-items: center;
+  gap: 18px;
+  min-height: 60px;
+  padding: 10px 22px 10px 26px;
+  border-radius: 16px;
+  background: #f4f2fa;
+  color: #14111f;
+  text-decoration: none;
+  transition: background-color 0.2s ease, transform 0.15s ease;
+}
+
+.hm-go__label {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  font: 800 17px/1.1 var(--wn-font-ui);
+}
+
+.hm-go__label small {
+  color: #5a566b;
+  font: 600 13px/1 var(--wn-font-ui);
+}
+
+.hm-go__arrow {
+  flex: none;
+  width: 22px;
+  height: 22px;
+  transition: transform 0.3s var(--hm-ease);
+}
+
+.hm-go:focus-visible {
+  outline: none;
+  box-shadow: var(--wn-focus-ring);
+}
+
+.hm-go:active {
+  transform: scale(0.98);
+}
+
+/* «Ещё читаете»: a compact row under the button. */
+.hm-hero__more {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  width: 100%;
+  margin-top: 32px;
+}
+
+.hm-hero__more-title {
+  color: rgb(255 255 255 / 60%);
+  font: 700 13px/1.3 var(--wn-font-ui);
+}
+
+.hm-hero__more ul {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin: 0 0 0 -8px;
+  padding: 0;
+  list-style: none;
+}
+
+.hm-hero__more li {
+  flex: 0 1 280px;
+  min-width: 0;
+}
+
+.hm-mini {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 8px;
+  border-radius: 14px;
+  color: inherit;
+  text-decoration: none;
+  transition: background-color 0.15s ease;
+}
+
+.hm-mini:focus-visible {
+  outline: none;
+  box-shadow: var(--wn-focus-ring);
+}
+
+.hm-mini__cover {
+  width: 40px;
+  border-radius: 7px;
+}
+
+.hm-mini__copy {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  min-width: 0;
+}
+
+.hm-mini__copy b {
+  overflow: hidden;
+  color: #fff;
+  font: 700 14px/1.3 var(--wn-font-ui);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.hm-mini__copy > span {
+  color: rgb(255 255 255 / 62%);
+  font: 600 12px/1.3 var(--wn-font-ui);
+}
+
+.hm-list__rows {
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.hm-row {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  min-width: 0;
+  border-radius: 12px;
+  transition: background-color 0.15s ease;
+}
+
+.hm-row__main {
+  display: flex;
+  flex: 1;
+  align-items: center;
+  gap: 12px;
+  min-width: 0;
+  padding: 6px 10px;
+  border-radius: 12px;
+  color: inherit;
+  text-decoration: none;
+}
+
+.hm-row__cover {
+  width: 30px;
+  border-radius: 6px;
+}
+
+.hm-row__cover .hm-cover__bar {
+  height: 3px;
+}
+
+.hm-row__copy {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+
+.hm-row__copy b {
+  overflow: hidden;
+  color: var(--wn-text);
+  font: 700 14px/1.3 var(--wn-font-ui);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.hm-row__copy > span {
+  overflow: hidden;
+  color: var(--wn-text-secondary);
+  font: 600 12px/1.3 var(--wn-font-ui);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.hm-row__pct {
+  color: var(--wn-teal);
+  font-weight: 800;
+}
+
+/* The friend's avatar at the row's end - its own link, to their profile. */
+.hm-row__avatar {
+  display: grid;
+  flex: none;
+  place-items: center;
+  width: 28px;
+  height: 28px;
+  margin-right: 8px;
+  overflow: hidden;
+  border-radius: 50%;
+  background: var(--hm-glass-raised);
+  color: #fff;
+  font: 800 12px/1 var(--wn-font-ui);
+  text-decoration: none;
+  transition: box-shadow 0.15s ease;
+}
+
+.hm-row__avatar img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.hm-row__forget {
+  display: grid;
+  flex: none;
+  place-items: center;
+  width: 30px;
+  height: 30px;
+  margin-right: 6px;
+  padding: 0;
+  border: 0;
+  border-radius: 50%;
+  background: transparent;
+  color: var(--wn-text-muted);
+  cursor: pointer;
+  transition: opacity 0.15s ease, background-color 0.15s ease, color 0.15s ease;
+}
+
+.hm-row__forget svg {
+  width: 14px;
+  height: 14px;
+}
+
+.hm-row__main:focus-visible,
+.hm-row__avatar:focus-visible,
+.hm-row__forget:focus-visible {
+  outline: none;
+  box-shadow: var(--wn-focus-ring);
+}
+
+.hm-list__more summary,
+.hm-list__more-link {
+  display: inline-flex;
+  align-self: flex-start;
+  margin: 4px 10px 2px;
+  color: var(--wn-text-secondary);
+  font: 700 13px/1.3 var(--wn-font-ui);
+  text-decoration: underline;
+  text-decoration-color: var(--wn-border-strong);
+  text-underline-offset: 3px;
+  cursor: pointer;
+  list-style: none;
+}
+
+.hm-list__more summary::-webkit-details-marker {
+  display: none;
+}
+
+.hm-list__more[open] summary {
+  display: none;
+}
+
+.hm-list__more summary:focus-visible,
+.hm-list__more-link:focus-visible {
+  outline: none;
+  border-radius: 4px;
+  box-shadow: var(--wn-focus-ring);
+}
+
+/* --- The library home for a reader with a book on the go («Витрина», home/_flow.html):
+   one screen - the page is the viewport's height under the top bar. --- */
+.hm--v {
+  /* A fixed height, not .hm's flex: 1 (which lets the content grow the page). */
+  flex: none;
+  gap: 20px;
+  height: calc(100dvh - var(--shell-top));
+  min-height: 600px;
+  padding-top: 24px;
+  padding-bottom: 28px;
+}
+
+.hm--v .hm-head {
+  flex: none;
+}
+
+/* The book's own cover, blurred into its card's backdrop. */
+.hl-art {
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  opacity: 0.42;
+  filter: blur(56px) saturate(1.3);
+  transform: scale(1.25);
+  animation: hm-breathe 22s ease-in-out infinite alternate;
+  pointer-events: none;
+}
+
+.hl-flow {
+  position: relative;
+  isolation: isolate;
+  min-height: 0;
+  overflow: hidden;
+  border: 1px solid var(--hm-glass-edge);
+  border-radius: 28px;
+  background: #0d0d13;
+}
+
+/* The book on the go, in depth (home/_macros.html's book_details). */
+.hl-details {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 12px;
+  min-width: 0;
+}
+
+.hl-details__title {
+  margin: 0;
+  font: 800 clamp(30px, 2.4vw, 48px)/1.08 var(--wn-font-ui);
+  letter-spacing: -0.03em;
+  text-wrap: balance;
+}
+
+.hl-details__title a {
+  color: #fff;
+  text-decoration: none;
+}
+
+.hl-details__meta {
+  margin: 0;
+  color: var(--wn-text-secondary);
+  font: 600 15px/1.4 var(--wn-font-ui);
+}
+
+.hl-details__summary {
+  display: -webkit-box;
+  max-width: 62ch;
+  margin: 0;
+  overflow: hidden;
+  color: rgb(255 255 255 / 78%);
+  font: 500 16px/1.6 var(--wn-font-ui);
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: var(--lines, 3);
+  line-clamp: var(--lines, 3);
+}
+
+.hl-details .hm-hero__actions {
+  margin-top: 6px;
+}
+
+.hl-progress {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  width: 100%;
+  max-width: 420px;
+  color: var(--wn-text-secondary);
+  font: 700 13px/1 var(--wn-font-ui);
+}
+
+.hl-progress__bar {
+  flex: 1;
+  height: 6px;
+  overflow: hidden;
+  border-radius: 3px;
+  background: rgb(255 255 255 / 12%);
+}
+
+.hl-progress__bar > span {
+  display: block;
+  height: 100%;
+  border-radius: inherit;
+  background: var(--wn-teal);
+  transform-origin: left;
+  animation: hm-bar 1s var(--hm-ease) 0.3s both;
+}
+
+@keyframes hm-bar {
+  from {
+    transform: scaleX(0);
+  }
+}
+
+/* The chapters ahead. */
+.hl-next {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  min-width: 0;
+  padding: 18px;
+  border-radius: 22px;
+  background: rgb(8 8 12 / 55%);
+}
+
+.hl-next__title {
+  margin: 0;
+  color: var(--wn-text);
+  font: 800 17px/1.2 var(--wn-font-ui);
+}
+
+.hl-next__list {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  margin: 0 -8px;
+  padding: 0;
+  list-style: none;
+}
+
+.hl-next__item {
+  animation: hm-rise 0.5s var(--hm-ease) both;
+  animation-delay: calc(240ms + var(--n, 0) * 60ms);
+}
+
+.hl-next__item a {
+  display: grid;
+  grid-template-columns: 52px minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 10px;
+  min-height: 42px;
+  padding: 6px 8px;
+  border-radius: 12px;
+  color: var(--wn-text-secondary);
+  font: 600 14px/1.3 var(--wn-font-ui);
+  text-decoration: none;
+  transition: background-color 0.15s ease, color 0.15s ease;
+}
+
+.hl-next__num {
+  color: var(--wn-text-muted);
+  font-size: 13px;
+}
+
+.hl-next__name {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.hl-next__item--current a {
+  background: rgb(255 255 255 / 9%);
+  color: #fff;
+}
+
+.hl-next__item--current .hl-next__num,
+.hl-next__here {
+  color: var(--wn-teal);
+}
+
+.hl-next__here {
+  font: 700 12px/1 var(--wn-font-ui);
+}
+
+/* «Витрина»: the covers stand on one shelf, the chosen one in front; its details
+   beside them. One soft curve for everything - a long, unhurried ease-out with no
+   overshoot, so a book settles into place rather than snapping to it. */
+.hl-flow {
+  --glide: cubic-bezier(0.25, 0.8, 0.25, 1);
+  display: grid;
+  flex: 1;
+  grid-template-columns: minmax(0, 1.15fr) minmax(340px, 0.85fr);
+  grid-template-rows: minmax(0, 1fr);
+  align-items: center;
+  gap: clamp(32px, 3.6vw, 64px);
+  padding: 32px 44px;
+}
+
+.hl-flow__shelf {
+  --front: clamp(240px, 40vh, 540px);
+  --back: calc(var(--front) * 0.72);
+  /* How much of each book behind shows: the free width shared out, between a spine and
+     a whole cover. */
+  --slice: clamp(26px, calc((100cqw - var(--front)) / max(1, var(--count) - 1)), calc(var(--back) + 14px));
+  position: relative;
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+  /* A fixed height - the front cover's (2:3) - so the shelf never moves while one book
+     shrinks and another grows; books grow up from one bottom line. */
+  box-sizing: content-box;
+  height: calc(var(--front) * 1.5);
+  padding: 24px 0;
+  container-type: inline-size;
+}
+
+.hl-flow__book {
+  position: relative;
+  z-index: var(--z, 1);
+  flex: none;
+  width: var(--back);
+  margin-left: calc(var(--slice) - var(--back));
+  border-radius: 12px;
+  filter: brightness(0.5) saturate(0.8);
+  transform-origin: 50% 100%;
+  transition:
+    width 0.8s var(--glide),
+    margin 0.8s var(--glide),
+    filter 0.7s var(--glide),
+    transform 0.8s var(--glide);
+}
+
+.hl-flow__book:first-child {
+  margin-left: 0;
+}
+
+.hl-flow__book.is-active {
+  z-index: 40;
+  width: var(--front);
+  filter: none;
+}
+
+.hl-flow--solo .hl-flow__shelf {
+  --front: clamp(260px, 42vh, 440px);
+}
+
+.hl-flow__cover {
+  width: 100%;
+  border-radius: 12px;
+  box-shadow: 0 24px 50px -20px rgb(0 0 0 / 85%);
+  transition: box-shadow 0.8s var(--glide);
+}
+
+.hl-flow__book.is-active .hl-flow__cover {
+  box-shadow: 0 40px 80px -28px rgb(0 0 0 / 90%);
+}
+
+/* The backdrop cross-fades from one cover to the next (two layers, home-flow.js). */
+.hl-flow .hl-art {
+  transition: opacity 0.9s ease;
+}
+
+.hl-flow .hl-art.is-hidden {
+  opacity: 0;
+}
+
+.hl-flow__panels {
+  min-width: 0;
+}
+
+.hl-flow__panel {
+  display: flex;
+  flex-direction: column;
+  gap: 22px;
+  animation: hm-rise 0.5s var(--hm-ease) both;
+}
+
+.hl-flow__panel[hidden] {
+  display: none;
+}
+
+/* With script: every panel in one cell; the chosen one shown, the rest faded out. The
+   text doesn't move - it only cross-fades, lightly. */
+.hl-flow[data-live] .hl-flow__panels {
+  display: grid;
+}
+
+.hl-flow[data-live] .hl-flow__panel {
+  grid-area: 1 / 1;
+  visibility: hidden;
+  opacity: 0;
+  pointer-events: none;
+  animation: none;
+  transition:
+    opacity 0.3s ease,
+    visibility 0s linear 0.3s;
+}
+
+.hl-flow[data-live] .hl-flow__panel.is-active {
+  visibility: visible;
+  opacity: 1;
+  pointer-events: auto;
+  transition-delay: 0s;
+}
+
+/* The chosen book widens in place; the rest narrow, dim and settle. */
+.hl-flow[data-live] .hl-flow__book:not(.is-active) {
+  transform: scale(0.96);
+}
+
+
+
+@media (hover: hover) {
+  .hl-next__item:not(.hl-next__item--current) a:hover {
+    background: rgb(255 255 255 / 6%);
+    color: #fff;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .hl-flow__book,
+  .hl-flow__cover,
+  .hl-flow .hl-art,
+  .hl-flow[data-live] .hl-flow__panel {
+    transition: none !important;
+    animation: none !important;
+  }
+
+  .hl-flow[data-live] .hl-flow__book {
+    transform: none !important;
+  }
+}
+
+/* Short laptop screens (1366x768, 1280x720): less of each book's text, so the panel
+   still fits beside the shelf. */
+@media (min-width: 1101px) and (max-height: 860px) {
+  .hl-flow .hl-details__title {
+    font-size: clamp(24px, 2vw, 34px);
+  }
+
+  .hl-flow .hl-details__summary {
+    -webkit-line-clamp: 2;
+    line-clamp: 2;
+  }
+
+  .hl-flow .hl-next__item:nth-child(n + 4) {
+    display: none;
+  }
+
+  .hl-flow__panel {
+    gap: 16px;
+  }
+}
+
+/* Narrower than a laptop the layouts stop being one screen and stack (the phone gets
+   its own pass later). */
+@media (max-width: 1100px) {
+  .hm--v {
+    flex: 1;
+    height: auto;
+    min-height: 0;
+  }
+
+  .hl-flow {
+    grid-template-columns: minmax(0, 1fr);
+    grid-template-rows: none;
+  }
+
+  .hl-flow__shelf {
+    height: 380px;
+  }
+}
+
+/* Phone: the shelf becomes a strip of covers swiped sideways. It snaps to a book; the
+   one in the middle is chosen (home-flow.js follows the scroll) - full size and lit, its
+   neighbours smaller and dim either side - and its details follow under the strip. */
+@media (max-width: 767px) {
+  .hm--v {
+    gap: 16px;
+  }
+
+  .hl-flow {
+    gap: 20px;
+    padding: 18px 0 20px;
+    border-radius: 24px;
+  }
+
+  .hl-flow__shelf,
+  .hl-flow--solo .hl-flow__shelf {
+    --m-w: min(56vw, 240px);
+    display: flex;
+    align-items: flex-end;
+    justify-content: flex-start;
+    gap: 14px;
+    height: auto;
+    /* Room under the covers for their shadows: a scrolling strip clips whatever leaves
+       it, and a shadow cut off there reads as a line across the card. */
+    padding: 6px calc(50% - var(--m-w) / 2) 34px;
+    margin-bottom: -24px;
+    overflow-x: auto;
+    overscroll-behavior-x: contain;
+    scroll-snap-type: x mandatory;
+    scrollbar-width: none;
+    container-type: normal;
+  }
+
+  .hl-flow__shelf::-webkit-scrollbar {
+    display: none;
+  }
+
+  .hl-flow .hl-flow__book,
+  .hl-flow .hl-flow__book.is-active,
+  .hl-flow[data-live] .hl-flow__book:not(.is-active) {
+    width: var(--m-w);
+    margin: 0;
+    scroll-snap-align: center;
+    filter: brightness(0.5) saturate(0.8);
+    transform: scale(0.84);
+    transition:
+      transform 0.5s var(--glide),
+      filter 0.5s var(--glide);
+  }
+
+  .hl-flow .hl-flow__book.is-active {
+    filter: none;
+    transform: none;
+  }
+
+  .hl-flow .hl-flow__cover,
+  .hl-flow .hl-flow__book.is-active .hl-flow__cover {
+    box-shadow: 0 14px 24px -14px rgb(0 0 0 / 85%);
+  }
+
+  .hl-flow__panels {
+    padding: 0 18px;
+  }
+
+  .hl-flow .hl-details__title {
+    font-size: 24px;
+  }
+
+  .hl-flow .hl-details__summary {
+    -webkit-line-clamp: 3;
+    line-clamp: 3;
+  }
+
+  .hl-flow .hm-hero__actions,
+  .hl-flow .hm-go {
+    width: 100%;
+  }
+
+  .hl-flow .hm-go {
+    justify-content: space-between;
+  }
+
+  .hl-next {
+    padding: 14px;
+  }
+}
+
+/* --- «Недавно открытые» (a guest's shelf): cover cards, each with its own "×". --- */
+.hm-shelf__row {
+  margin-bottom: 0;
+  list-style: none;
+}
+
+.hm-recent .hm-card__cover {
+  position: relative;
+}
+
+.hm-recent__forget {
+  position: absolute;
+  top: 8px;
+  right: 8px;
+  display: grid;
+  place-items: center;
+  width: 30px;
+  height: 30px;
+  padding: 0;
+  border: 0;
+  border-radius: 50%;
+  background: rgb(10 10 16 / 62%);
+  color: #fff;
+  cursor: pointer;
+  transition: opacity 0.15s ease, background-color 0.15s ease;
+}
+
+.hm-recent__forget svg {
+  width: 14px;
+  height: 14px;
+}
+
+.hm-recent__forget:focus-visible {
+  outline: none;
+  box-shadow: var(--wn-focus-ring);
+}
+
+.hm-recent__where {
+  margin-top: -4px;
+  color: var(--wn-text-secondary);
+  font: 600 12px/1.3 var(--wn-font-ui);
+}
+
+@media (hover: hover) {
+  /* Pointer devices: the "×" shows on the card it belongs to; touch keeps it visible. */
+  .hm-recent__forget {
+    opacity: 0;
+  }
+
+  .hm-recent:hover .hm-recent__forget,
+  .hm-recent:focus-within .hm-recent__forget {
+    opacity: 1;
+  }
+
+  .hm-recent__forget:hover {
+    background: rgb(10 10 16 / 85%);
+  }
+}
+
+/* --- «Популярное»: one row of covers, scrolls sideways when it overflows; a
+   3-column grid on a phone. --- */
+.hm-shelf__row {
+  display: grid;
+  grid-auto-columns: clamp(140px, 9.5vw, 200px);
+  grid-auto-flow: column;
+  gap: 22px;
+  margin: -6px -6px 0;
+  padding: 6px 6px 14px;
+  overflow-x: auto;
+  overscroll-behavior-x: contain;
+  scroll-snap-type: x proximity;
+  scrollbar-width: thin;
+}
+
+.hm-card {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  min-width: 0;
+  scroll-snap-align: start;
+}
+
+.hm-card__cover {
+  transition: transform 0.4s var(--hm-ease), box-shadow 0.4s var(--hm-ease);
+}
+
+.hm-card__link {
+  display: block;
+  width: 100%;
+  height: 100%;
+}
+
+.hm-card__link:focus-visible {
+  outline: none;
+  box-shadow: inset var(--wn-focus-ring);
+}
+
+.hm-card__name {
+  display: -webkit-box;
+  overflow: hidden;
+  color: var(--wn-text);
+  font: 700 14px/1.35 var(--wn-font-ui);
+  text-decoration: none;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+  line-clamp: 2;
+}
+
+/* --- First run: where the continue card will be, with popular covers to start from. --- */
+.hm-first {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 24px 40px;
+  padding: 36px;
+}
+
+.hm-first__copy {
+  display: flex;
+  flex: 1 1 320px;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 12px;
+}
+
+.hm-first .hm-h2 {
+  font-size: 24px;
+}
+
+.hm-first p {
+  max-width: 560px;
+  margin: 0 0 8px;
+  color: var(--wn-text-secondary);
+  font: 500 15px/1.55 var(--wn-font-ui);
+}
+
+.hm-first__picks {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  min-width: 0;
+}
+
+.hm-first__picks ul {
+  display: grid;
+  grid-template-columns: repeat(4, clamp(72px, 6vw, 112px));
+  gap: 12px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.hm-first__picks .hm-cover {
+  transition: transform 0.4s var(--hm-ease);
+}
+
+.hm-first__picks .hm-cover:focus-visible {
+  outline: none;
+  box-shadow: var(--wn-focus-ring);
+}
+
+/* --- Guest: what this is and how to start, the account's reasons beside it. --- */
+.hm-intro {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) clamp(380px, 30vw, 560px);
+  align-items: start;
+  gap: 48px;
+}
+
+.hm-intro__main {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 24px;
+  padding-top: 24px;
+}
+
+.hm-title--guest {
+  max-width: 640px;
+  font-size: 36px;
+  letter-spacing: -0.03em;
+}
+
+.hm-intro__main .hm-lead {
+  max-width: 560px;
+  margin: -12px 0 8px;
+}
+
+.hm-account {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+  padding: 28px;
+}
+
+.hm-account .wn-btn--secondary {
+  border-color: transparent;
+  background: var(--hm-glass-raised);
+}
+
+.hm-account__list {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.hm-account__list li {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.hm-account__list b {
+  color: var(--wn-text);
+  font: 700 15px/1.35 var(--wn-font-ui);
+}
+
+.hm-account__list span {
+  color: var(--wn-text-secondary);
+  font: 500 14px/1.45 var(--wn-font-ui);
+}
+
+.hm-account__actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin-top: 4px;
+}
+
+.hm-account__actions .hm-btn {
+  flex: 1 1 140px;
+}
+
+@media (hover: hover) {
+  .hm-link:hover {
+    color: var(--wn-text);
+    text-decoration-color: currentColor;
+  }
+
+  .hm-search:hover {
+    background: var(--hm-glass-raised);
+  }
+
+  .hm-search__submit:hover {
+    background: rgb(255 255 255 / 16%);
+  }
+
+  .hm-search--lg .hm-search__submit:hover {
+    background: var(--wn-primary-hover);
+  }
+
+  .hm-hero:hover .hm-hero__cover {
+    box-shadow:
+      0 0 0 1px rgb(255 255 255 / 18%),
+      0 34px 60px -18px rgb(0 0 0 / 80%);
+    transform: perspective(900px) rotateY(8deg) translateY(-6px);
+  }
+
+  .hm-go:hover {
+    background: #fff;
+  }
+
+  .hm-go:hover .hm-go__arrow {
+    transform: translateX(4px);
+  }
+
+  .hm-mini:hover {
+    background: rgb(255 255 255 / 8%);
+  }
+
+  .hm-card:hover .hm-card__cover,
+  .hm-first__picks .hm-cover:hover {
+    box-shadow:
+      inset 0 0 0 1px rgb(255 255 255 / 10%),
+      0 22px 40px -18px rgb(0 0 0 / 80%);
+    transform: translateY(-6px);
+  }
+
+  .hm-card:hover .hm-card__cover img {
+    transform: scale(1.05);
+  }
+
+  .hm-row:hover {
+    background: rgb(255 255 255 / 6%);
+  }
+
+  .hm-row:hover .hm-row__cover img {
+    transform: scale(1.08);
+  }
+
+  .hm-row__avatar:hover {
+    box-shadow: 0 0 0 2px rgb(255 255 255 / 30%);
+  }
+
+  /* Pointer devices: «убрать» shows on the row it belongs to; touch keeps it visible. */
+  .hm-row__forget {
+    opacity: 0;
+  }
+
+  .hm-row:hover .hm-row__forget,
+  .hm-row:focus-within .hm-row__forget {
+    opacity: 1;
+  }
+
+  .hm-row__forget:hover {
+    background: rgb(255 255 255 / 10%);
+    color: #fff;
+  }
+
+  .hm-account .wn-btn--secondary:hover {
+    background: rgb(255 255 255 / 15%);
+  }
+
+}
+
+@media (max-width: 1100px) {
+  .hm-intro {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .hm-intro__main {
+    padding-top: 0;
+  }
+}
+
+@media (max-width: 767px) {
+  .hm {
+    gap: 36px;
+    padding: 16px 16px 32px;
+  }
+
+  .hm-title {
+    font-size: 24px;
+  }
+
+  .hm-title--guest {
+    font-size: 28px;
+  }
+
+  .hm-h2 {
+    font-size: 18px;
+  }
+
+  .hm-search,
+  .hm-search--lg {
+    width: 100%;
+  }
+
+  .hm-hero {
+    grid-template-columns: 96px minmax(0, 1fr);
+    grid-template-rows: auto 1fr;
+    align-items: start;
+    gap: 20px 16px;
+    min-height: 0;
+    padding: 18px;
+    border-radius: 24px;
+  }
+
+  .hm-hero__cover {
+    grid-row: 1 / 3;
+    border-radius: 10px;
+  }
+
+  .hm-hero__title {
+    font-size: 22px;
+  }
+
+  .hm-hero__where {
+    align-self: start;
+    margin: 6px 0 0;
+    font-size: 14px;
+  }
+
+  /* The copy's actions and «Ещё читаете» span the card under the cover. */
+  .hm-hero__copy {
+    display: contents;
+  }
+
+  .hm-hero__title,
+  .hm-hero__where {
+    grid-column: 2;
+  }
+
+  .hm-hero__actions,
+  .hm-hero__more {
+    grid-column: 1 / -1;
+  }
+
+  .hm-hero__actions {
+    grid-row: 3;
+  }
+
+  .hm-hero__more {
+    grid-row: 5;
+    margin-top: 0;
+  }
+
+  .hm-go {
+    justify-content: space-between;
+    width: 100%;
+  }
+
+  .hm-first {
+    padding: 24px 20px;
+  }
+
+  .hm-first__picks {
+    width: 100%;
+  }
+
+  .hm-first__picks ul {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+  }
+
+  /* Phone: shelves are a 3-column grid, not a sideways scroller, two rows of it; the
+     rest is behind the shelf's own link. */
+  .hm-shelf__row {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    grid-auto-flow: row;
+    gap: 18px 10px;
+    margin: 0;
+    padding: 0;
+    overflow: visible;
+  }
+
+  .hm-shelf .hm-card:nth-child(n + 7) {
+    display: none;
+  }
+
+  .hm-card__name {
+    font-size: 13px;
+  }
+
+  .hm-account {
+    padding: 20px;
+  }
+
+  /* Phone guest: covers before the account pitch, so the first scroll shows titles. */
+  .hm-intro {
+    display: contents;
+  }
+
+  .hm--guest .hm-shelf--popular {
+    order: 1;
+  }
+
+  .hm--guest .hm-account {
+    order: 2;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .hm *,
+  .hm *::before,
+  .hm *::after {
+    animation: none !important;
+    transition: none !important;
+  }
+}
+
+/* ==========================================================================
+   Sidebar - light glass (desktop rail and its expanded state). The rail lets the page
+   show through: a translucent fill with a backdrop blur, a hairline edge instead of the
+   opaque --bg-nav and its divider. The active item is a glass pill with the teal icon;
+   the teal bar on its left edge goes. Phone (the Quiet Edge Bar / top strip) is
+   untouched.
+   ========================================================================== */
+@media (min-width: 768px) {
+  .app-shell .sidebar {
+    border-right: 1px solid rgb(255 255 255 / 6%);
+    background: rgb(14 14 22 / 62%);
+    -webkit-backdrop-filter: blur(24px) saturate(150%);
+    backdrop-filter: blur(24px) saturate(150%);
+  }
+
+  .app-shell .sidebar__sep,
+  .app-shell .sidebar__account {
+    border-color: rgb(255 255 255 / 7%);
+  }
+
+  .app-shell .sidebar__sep {
+    background: rgb(255 255 255 / 7%);
+  }
+
+  .app-shell .sidebar__link--active,
+  .app-shell .sidebar--expanded .sidebar__link--active {
+    background: rgb(255 255 255 / 7%);
+    box-shadow: inset 0 0 0 1px rgb(255 255 255 / 8%);
+  }
+
+  .app-shell .sidebar__link--active::before {
+    display: none;
+  }
+
+  .app-shell .sidebar__bell .sidebar__badge {
+    border-color: transparent;
+  }
+}
+
+@media (min-width: 768px) and (hover: hover) {
+  .app-shell .sidebar__link:not(.sidebar__link--active):hover,
+  .app-shell .sidebar__bell:hover,
+  .app-shell .sidebar__toggle:hover {
+    background: rgb(255 255 255 / 5%);
   }
 }

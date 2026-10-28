@@ -11,61 +11,62 @@ from fastapi.responses import HTMLResponse, RedirectResponse, Response
 from ranobelib import RanobeLibError
 
 from app.api.activity import ActivitySummary, build_activity_summary
-from app.api.library import currently_reading_for_users, library_items_for_user
+from app.api.library import library_items_for_user
 from app.auth.dependencies import get_current_user
-from app.db.activity import daily_reading_activity, reading_streak_days
-from app.db.comments import RecentComment, list_recent_comments_by_user
 from app.db.connection import connection
-from app.db.downloads import DownloadHistoryEntry, list_download_history
-from app.db.friendships import FriendUser, list_friends
 from app.db.library import get_entry, list_entries
-from app.db.users import User, get_user_by_id
+from app.db.users import User
 from app.reading_progress import reading_progress_percent
 from app.recent_titles import forget, read_recent
+from app.services.catalog import popular_titles
 from app.services.client import open_client
+from app.services.titles import title_details
 from app.templating import templates
-from app.timezones import user_timezone
 
 router = APIRouter()
 
-
-@dataclass(frozen=True)
-class FriendActivityCard:
-    """One friend's tile in PR 200's home-page "Активность друзей" column - what they're
-    currently reading (subject to their own show_currently_reading, PR 90/124), their most
-    recent comments, and their current reading streak."""
-
-    friend: FriendUser
-    currently_reading: dict[str, object] | None
-    recent_comments: list[RecentComment]
-    streak_days: int
-
-    @property
-    def streak_label(self) -> str | None:
-        if self.streak_days <= 0:
-            return None
-        return f"{self.streak_days} {_pluralize_days(self.streak_days)} подряд"
-
-    @property
-    def has_activity(self) -> bool:
-        return bool(self.currently_reading or self.recent_comments or self.streak_days > 0)
+_POPULAR_LIMIT = 12
+# Titles with reading progress the home page carries: the book on the go plus the rest
+# of «Читаю».
+_READING_LIMIT = 9
+# Each book on the shelf: chapters listed from the reader's own on.
+_NEXT_CHAPTERS = 4
 
 
 @dataclass(frozen=True)
 class HomeDashboard:
     """The signed-in dashboard sections introduced by PR 273.
 
-    All values come from the existing library, activity and download stores. The home
-    page only composes them; it doesn't create a second progress or activity model.
+    All values come from the existing library and activity stores. The home page only
+    composes them; it doesn't create a second progress or activity model.
     """
 
     reading: list[dict[str, object]]
     summary: ActivitySummary
-    recent_downloads: list[DownloadHistoryEntry]
 
     @property
     def hero(self) -> dict[str, object] | None:
         return self.reading[0] if self.reading else None
+
+
+@dataclass(frozen=True)
+class BookChapter:
+    volume: str
+    number: str
+    name: str | None
+    is_current: bool
+
+
+@dataclass(frozen=True)
+class BookFocus:
+    """A book on the shelf, from the SDK: its description, where the reader is in it, and
+    the chapters from the current one on, in the SDK's order."""
+
+    summary: str | None
+    status: str | None
+    position: int | None  # 1-based place of the current chapter, None if not found
+    total: int
+    chapters: list[BookChapter]
 
 
 @router.get("/")
@@ -74,15 +75,70 @@ async def home(
     user: Annotated[User | None, Depends(get_current_user)],
 ) -> HTMLResponse:
     dashboard = await _home_dashboard(user)
+    hero = dashboard.hero if dashboard else None
+    # «Популярное» is the way in for a guest and for a reader with nothing read yet.
+    popular = await popular_titles(_POPULAR_LIMIT) if hero is None else []
+    # «Витрина» shows any book on the shelf in depth once it's brought forward, so each
+    # gets its description and chapters ahead - one SDK lookup per book, in turn (no
+    # parallel requests past the SDK's own pacing), cached by the SDK after the first.
+    focus = {
+        item["entry"].slug_url: await _book_focus(item)  # type: ignore[attr-defined]
+        for item in (dashboard.reading if dashboard else [])
+    }
     return templates.TemplateResponse(
         request,
         "index.html",
         {
             "active_nav": "home",
+            "focus": focus,
             "dashboard": dashboard,
-            "recent": await _recent_with_progress(request, user),
-            "friend_activity": await _friend_activity_cards(user),
+            # The library home shows what's being read; «Недавние» are for the rest.
+            "recent": await _recent_with_progress(request, user) if hero is None else [],
+            "popular": [
+                {
+                    "slug_url": title.slug_url,
+                    "name": title.rus_name or title.name,
+                    "cover_url": title.cover.default or title.cover.md or title.cover.thumbnail,
+                }
+                for title in popular
+            ],
         },
+    )
+
+
+async def _book_focus(item: dict[str, object]) -> BookFocus | None:
+    """A book's description and the chapters from the reader's own on. The current
+    chapter is found by its volume and number as the SDK gives them, no parsing; None
+    when ranobelib.me can't be reached (the panel then does without)."""
+    entry = item["entry"]
+    details = await title_details(entry.slug_url)  # type: ignore[attr-defined]
+    if details is None:
+        return None
+    chapters = [chapter for volume in details.volumes for chapter in volume.chapters]
+    current = next(
+        (
+            index
+            for index, chapter in enumerate(chapters)
+            if chapter.volume == entry.last_read_volume  # type: ignore[attr-defined]
+            and chapter.number == entry.last_read_number  # type: ignore[attr-defined]
+        ),
+        None,
+    )
+    start = current or 0
+    return BookFocus(
+        summary=details.summary,
+        status=details.status,
+        position=current + 1 if current is not None else None,
+        total=len(chapters),
+        chapters=[
+            BookChapter(
+                volume=chapter.volume,
+                number=chapter.number,
+                name=chapter.name,
+                is_current=index == current,
+            )
+            for index, chapter in enumerate(chapters[start : start + _NEXT_CHAPTERS], start=start)
+        ],
     )
 
 
@@ -96,11 +152,10 @@ async def _home_dashboard(user: User | None) -> HomeDashboard | None:
             item
             for item in library_items
             if item["entry"].last_read_at is not None  # type: ignore[union-attr]
-        ][:3]
+        ][:_READING_LIMIT]
         return HomeDashboard(
             reading=reading,
             summary=await build_activity_summary(user, conn),
-            recent_downloads=await list_download_history(conn, user.id, limit=3),
         )
 
 
@@ -171,57 +226,3 @@ async def _recent_with_progress(
                     pass
             result.append(dict(item, progress_percent=progress_percent))
     return result
-
-
-async def _friend_activity_cards(user: User | None) -> list[FriendActivityCard]:
-    """PR 200's right-hand "Активность друзей" column - empty for an anonymous visitor (no
-    account, so no friends list), a user with no friends yet, or a user who's turned the
-    column off for themselves (PR 202's show_friends_activity_home - a personal preference
-    about this user's own home page, unlike the other four privacy flags this one has no
-    "someone else's view" to ignore it on), in which case index.html renders no column at
-    all rather than an empty shell."""
-    if user is None or not user.show_friends_activity_home:
-        return []
-    async with connection() as conn:
-        friends = await list_friends(conn, user.id)
-        if not friends:
-            return []
-        friend_ids = [entry.user.id for entry in friends]
-        currently_reading_by_user = await currently_reading_for_users(friend_ids, conn)
-        cards: list[FriendActivityCard] = []
-        for entry in friends:
-            friend_user = await get_user_by_id(conn, entry.user.id)
-            currently_reading = currently_reading_by_user.get(entry.user.id)
-            # PR 90/124's "Читает сейчас" privacy flag - what a friend has opted to hide
-            # from *other* visitors on their own profile stays hidden here too, for the
-            # same reason (see app/api/profile.py's own use of this flag).
-            if (
-                currently_reading is not None
-                and friend_user is not None
-                and not friend_user.show_currently_reading
-            ):
-                currently_reading = None
-            recent_comments = await list_recent_comments_by_user(conn, entry.user.id)
-            # PR 322: counted on the friend's own calendar.
-            friend_tz = user_timezone(friend_user.timezone if friend_user else None)
-            streak_days = reading_streak_days(
-                await daily_reading_activity(conn, entry.user.id, tz=friend_tz), friend_tz
-            )
-            cards.append(
-                FriendActivityCard(
-                    friend=entry.user,
-                    currently_reading=currently_reading,
-                    recent_comments=recent_comments,
-                    streak_days=streak_days,
-                )
-            )
-        return cards
-
-
-def _pluralize_days(n: int) -> str:
-    mod10, mod100 = n % 10, n % 100
-    if mod10 == 1 and mod100 != 11:
-        return "день"
-    if 2 <= mod10 <= 4 and not (12 <= mod100 <= 14):
-        return "дня"
-    return "дней"
