@@ -35,6 +35,9 @@ class BookFocus:
     position: int | None  # 1-based place of the current chapter, None if not found
     total: int
     chapters: list[BookChapter]
+    # The title's first chapter in the SDK's order - where «Начать читать» and
+    # «Перечитать» lead; None for a title with no chapters.
+    first: BookChapter | None = None
 
     @property
     def left(self) -> int | None:
@@ -80,4 +83,12 @@ async def book_focus(item: dict[str, object], limit: int = NEXT_CHAPTERS) -> Boo
             )
             for index, chapter in enumerate(chapters[start : start + limit], start=start)
         ],
+        first=BookChapter(
+            volume=chapters[0].volume,
+            number=chapters[0].number,
+            name=chapters[0].name,
+            is_current=current == 0,
+        )
+        if chapters
+        else None,
     )
