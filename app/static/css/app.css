@@ -27799,3 +27799,723 @@ body.reader-page--offline-copy .reader-paragraph-more {
     background: rgb(255 255 255 / 5%);
   }
 }
+
+/* ==========================================================================
+   «Полки» - the library page (library.html, library-shelves.js): the home page's
+   «Витрина» once per shelf - «Читаю», «Не начаты», «Дочитаны». It sits in the home's
+   own frame (.hm: the cover glow, the heading, the search) and uses its pieces (.hm-cover,
+   .hm-go, .hl-progress, .hl-art); only the shelves and the library's controls are here.
+   ========================================================================== */
+.hm--library {
+  --glide: cubic-bezier(0.25, 0.8, 0.25, 1);
+  gap: 28px;
+}
+
+.hm--library .hm-ambient {
+  transition: opacity 0.9s ease;
+}
+
+.hm--library .hm-ambient.is-hidden {
+  opacity: 0;
+}
+
+.lb-head__title {
+  display: flex;
+  align-items: baseline;
+  gap: 14px;
+}
+
+.lb-head__count {
+  color: var(--wn-text-muted);
+  font: 600 15px/1 var(--wn-font-ui);
+}
+
+/* The switch and the catalog search on one row; the search keeps the home's width. */
+.lb-head__side {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 12px;
+}
+
+.lb-head__side .hm-search {
+  width: 360px;
+}
+
+.lb-titles {
+  display: flex;
+  flex-direction: column;
+  gap: 28px;
+  min-width: 0;
+}
+
+/* --- The controls: which titles, a search inside the library, the sort. --- */
+.lb-tools {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 12px;
+}
+
+.lb-tools[hidden] {
+  display: none;
+}
+
+.lb-tabs {
+  display: flex;
+  padding: 4px;
+  border: 1px solid var(--hm-glass-edge);
+  border-radius: 999px;
+  background: var(--hm-glass);
+}
+
+.lb-tabs button {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 6px;
+  padding: 9px 16px;
+  border: 0;
+  border-radius: 999px;
+  background: none;
+  color: var(--wn-text-secondary);
+  font: 700 14px/1 var(--wn-font-ui);
+  cursor: pointer;
+  transition: color 0.15s ease, background-color 0.15s ease;
+}
+
+.lb-tabs button span {
+  color: var(--wn-text-muted);
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.lb-tabs button[aria-checked="true"] {
+  background: var(--hm-glass-raised);
+  color: #fff;
+}
+
+.lb-tabs button[aria-checked="true"] span {
+  color: var(--wn-text-secondary);
+}
+
+.lb-tabs button:focus-visible,
+.lb-sort__btn:focus-visible,
+.lb-round:focus-visible,
+.lb-book:focus-visible {
+  outline: none;
+  box-shadow: var(--wn-focus-ring);
+}
+
+.lb-find {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 260px;
+  height: 42px;
+  margin-left: auto;
+  padding: 0 14px;
+  border: 1px solid var(--hm-glass-edge);
+  border-radius: 999px;
+  background: var(--hm-glass);
+  color: var(--wn-text-muted);
+}
+
+.lb-find svg {
+  flex: none;
+  width: 16px;
+  height: 16px;
+}
+
+.lb-find input {
+  flex: 1;
+  min-width: 0;
+  border: 0;
+  background: none;
+  color: var(--wn-text);
+  font: 500 14px/1 var(--wn-font-ui);
+  outline: none;
+}
+
+.lb-find input::placeholder {
+  color: var(--wn-text-muted);
+}
+
+.lb-find:focus-within {
+  box-shadow: 0 0 0 2px var(--wn-teal);
+}
+
+/* The sort: a pill like the search, its list floating under it like the ⋯ menu. */
+.lb-sort {
+  position: relative;
+  flex: none;
+}
+
+.lb-sort__btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  height: 42px;
+  padding: 0 14px 0 16px;
+  border: 1px solid var(--hm-glass-edge);
+  border-radius: 999px;
+  background: var(--hm-glass);
+  color: var(--wn-text);
+  font: 700 14px/1 var(--wn-font-ui);
+  white-space: nowrap;
+  cursor: pointer;
+  transition: background-color 0.15s ease;
+}
+
+.lb-sort__btn svg {
+  width: 14px;
+  height: 14px;
+  color: var(--wn-text-secondary);
+  transition: transform 0.2s var(--hm-ease);
+}
+
+.lb-sort__btn[aria-expanded="true"] {
+  background: var(--hm-glass-raised);
+}
+
+.lb-sort__btn[aria-expanded="true"] svg {
+  transform: rotate(180deg);
+}
+
+.lb-sort__list {
+  position: absolute;
+  top: calc(100% + 6px);
+  right: 0;
+  z-index: 80;
+  min-width: 100%;
+  margin: 0;
+  padding: 6px;
+  border-radius: 16px;
+  background: #1d1c27;
+  box-shadow: 0 18px 40px rgb(0 0 0 / 55%);
+  list-style: none;
+  outline: none;
+  animation: lb-pop 0.18s var(--hm-ease);
+}
+
+.lb-sort__list[hidden] {
+  display: none;
+}
+
+.lb-sort__list li {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 11px 12px;
+  border-radius: 10px;
+  color: var(--wn-text-secondary);
+  font: 600 14px/1.2 var(--wn-font-ui);
+  white-space: nowrap;
+  cursor: pointer;
+}
+
+.lb-sort__list li svg {
+  width: 16px;
+  height: 16px;
+  color: var(--wn-teal);
+  visibility: hidden;
+}
+
+.lb-sort__list li.is-at {
+  background: rgb(255 255 255 / 7%);
+  color: #fff;
+}
+
+.lb-sort__list li[aria-selected="true"] {
+  color: #fff;
+}
+
+.lb-sort__list li[aria-selected="true"] svg {
+  visibility: visible;
+}
+
+@keyframes lb-pop {
+  from {
+    opacity: 0;
+    transform: translateY(-4px) scale(0.98);
+  }
+}
+
+/* --- The shelves. --- */
+.lb-shelves {
+  display: flex;
+  flex-direction: column;
+  gap: 44px;
+}
+
+.lb-shelf {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  min-width: 0;
+}
+
+.lb-shelf[hidden] {
+  display: none;
+}
+
+.lb-shelf__head {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-height: 40px;
+}
+
+.lb-shelf__count {
+  color: var(--wn-text-muted);
+  font: 600 15px/1 var(--wn-font-ui);
+}
+
+.lb-shelf__pos {
+  display: none;
+  margin-left: auto;
+  color: var(--wn-text-secondary);
+  font: 700 13px/1 var(--wn-font-ui);
+}
+
+.lb-shelf__nav {
+  display: flex;
+  gap: 8px;
+  margin-left: auto;
+}
+
+.lb-shelf__nav[hidden],
+.lb-shelf__nav [hidden] {
+  display: none;
+}
+
+.lb-round {
+  display: grid;
+  place-items: center;
+  width: 40px;
+  height: 40px;
+  padding: 0;
+  border: 1px solid var(--hm-glass-edge);
+  border-radius: 50%;
+  background: var(--hm-glass);
+  color: var(--wn-text-secondary);
+  cursor: pointer;
+  transition: color 0.15s ease, background-color 0.15s ease;
+}
+
+.lb-round svg {
+  width: 18px;
+  height: 18px;
+}
+
+/* The shelf's card is .hl-flow's: dark, its chosen cover washed into it (.hl-art). */
+.lb-shelf__body {
+  --w: 168px;
+  position: relative;
+  isolation: isolate;
+  display: grid;
+  grid-template-columns: 340px minmax(0, 1fr);
+  align-items: center;
+  gap: 36px;
+  overflow: hidden;
+  padding: 28px 0 28px 36px;
+  border: 1px solid var(--hm-glass-edge);
+  border-radius: 28px;
+  background: #0d0d13;
+}
+
+.lb-shelf__body[hidden] {
+  display: none;
+}
+
+.lb-shelf--small .lb-shelf__body {
+  --w: 128px;
+  padding-block: 22px;
+}
+
+.lb-shelf__art {
+  opacity: 0.3;
+  transition: opacity 0.9s ease;
+}
+
+.lb-shelf__art.is-hidden {
+  opacity: 0;
+}
+
+.lb-shelf__empty {
+  margin: 0;
+  padding: 18px 22px;
+  border: 1px dashed var(--wn-border-strong);
+  border-radius: 16px;
+  color: var(--wn-text-secondary);
+  font: 600 14px/1.5 var(--wn-font-ui);
+}
+
+.lb-shelf__empty[hidden] {
+  display: none;
+}
+
+/* The details of the book in front. With script every book's details share one cell
+   and cross-fade; without it only the first book's show. */
+.lb-shelf__panels {
+  display: grid;
+  min-width: 0;
+}
+
+.lb-panel {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 10px;
+  min-width: 0;
+}
+
+.lb-panel[hidden] {
+  display: none;
+}
+
+.lb-shelf[data-live] .lb-panel {
+  grid-area: 1 / 1;
+  visibility: hidden;
+  opacity: 0;
+  pointer-events: none;
+  transition:
+    opacity 0.3s ease,
+    visibility 0s linear 0.3s;
+}
+
+.lb-shelf[data-live] .lb-panel.is-active {
+  visibility: visible;
+  opacity: 1;
+  pointer-events: auto;
+  transition-delay: 0s;
+}
+
+.lb-panel__name {
+  display: -webkit-box;
+  margin: 0;
+  overflow: hidden;
+  color: #fff;
+  font: 800 24px/1.15 var(--wn-font-ui);
+  letter-spacing: -0.02em;
+  text-wrap: balance;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 3;
+  line-clamp: 3;
+}
+
+.lb-shelf--small .lb-panel__name {
+  font-size: 20px;
+}
+
+.lb-panel__name a {
+  color: inherit;
+  text-decoration: none;
+}
+
+.lb-panel__meta {
+  margin: 0;
+  color: var(--wn-text-secondary);
+  font: 600 14px/1.45 var(--wn-font-ui);
+}
+
+.lb-panel__meta b {
+  color: #fff;
+  font-weight: 700;
+}
+
+.lb-panel .hl-progress {
+  max-width: none;
+}
+
+.lb-panel__actions {
+  margin-top: 6px;
+  gap: 12px 16px;
+}
+
+.lb-panel .hm-go {
+  min-height: 52px;
+  padding: 8px 18px 8px 22px;
+}
+
+.lb-panel .hm-go__label {
+  font-size: 15px;
+}
+
+.lb-panel__more {
+  position: relative;
+}
+
+/* The ⋯ of _library_actions.html, round beside the light button (as .lb-round). */
+.lb-panel__more .wn-library-more {
+  width: 40px;
+  height: 40px;
+  margin: 0;
+  border: 1px solid var(--hm-glass-edge);
+  border-radius: 50%;
+  background: var(--hm-glass);
+  color: var(--wn-text-secondary);
+}
+
+.lb-panel__more .wn-library-more[aria-expanded="true"] {
+  background: var(--hm-glass-raised);
+  color: #fff;
+}
+
+/* One row of covers, scrolled sideways (held and dragged, or ‹ ›) when they do not fit. */
+.lb-shelf__row {
+  display: flex;
+  align-items: flex-end;
+  gap: 16px;
+  min-width: 0;
+  height: calc(var(--w) * 1.5 * 1.06 + 8px);
+  padding: 0 36px 4px 4px;
+  overflow-x: auto;
+  overscroll-behavior-x: contain;
+  scroll-snap-type: x proximity;
+  scrollbar-width: none;
+  /* The shelf fades out under the card's right edge instead of cutting a cover. */
+  -webkit-mask-image: linear-gradient(90deg, #000 calc(100% - 56px), transparent);
+  mask-image: linear-gradient(90deg, #000 calc(100% - 56px), transparent);
+}
+
+.lb-shelf__row::-webkit-scrollbar {
+  display: none;
+}
+
+.lb-shelf__row.can-scroll {
+  cursor: grab;
+}
+
+.lb-shelf__row.is-dragging {
+  cursor: grabbing;
+  scroll-snap-type: none;
+  user-select: none;
+}
+
+.lb-shelf__row.is-dragging .lb-book {
+  pointer-events: none;
+}
+
+.lb-book {
+  position: relative;
+  flex: none;
+  width: var(--w);
+  border-radius: 14px;
+  scroll-snap-align: start;
+  transform-origin: 50% 100%;
+  transition:
+    transform 0.7s var(--glide),
+    filter 0.6s var(--glide);
+}
+
+.lb-book[hidden] {
+  display: none;
+}
+
+.lb-book__cover {
+  box-shadow: 0 24px 50px -24px rgb(0 0 0 / 85%);
+}
+
+.lb-shelf__row.is-pointing .lb-book:not(.is-active) {
+  filter: brightness(0.5) saturate(0.8);
+  transform: scale(0.97);
+}
+
+.lb-book.is-active {
+  z-index: 2;
+  transform: scale(1.06);
+}
+
+.lb-book.is-active .lb-book__cover {
+  box-shadow: 0 36px 70px -28px rgb(0 0 0 / 90%);
+}
+
+.lb-empty {
+  margin: 0;
+  padding: 24px 28px;
+  color: var(--wn-text-secondary);
+  font: 600 15px/1.5 var(--wn-font-ui);
+}
+
+@media (hover: hover) {
+  .lb-tabs button:hover,
+  .lb-round:hover {
+    color: #fff;
+  }
+
+  .lb-sort__btn:hover,
+  .lb-round:hover {
+    background: var(--hm-glass-raised);
+  }
+
+  .lb-book:hover .hm-cover img {
+    transform: scale(1.03);
+  }
+}
+
+@media (max-width: 1100px) {
+  .lb-shelf__body {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 20px;
+    padding: 22px 0 22px 22px;
+  }
+
+  .lb-shelf__panels {
+    order: 2;
+    padding-right: 22px;
+  }
+}
+
+/* Phone, as the home page's strip: one big cover in the middle, the neighbours dim at
+   the sides; a swipe brings the next book to the middle and its details change with it
+   at once, as its cover passes the middle (library-shelves.js). */
+@media (max-width: 767px) {
+  .hm--library {
+    gap: 22px;
+  }
+
+  .lb-head__side {
+    width: 100%;
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .lb-head__side .hm-search {
+    width: 100%;
+  }
+
+  .lb-tools {
+    gap: 10px;
+  }
+
+  /* All four on one row: the count under its name. */
+  .lb-tabs {
+    display: grid;
+    width: 100%;
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    border-radius: 22px;
+  }
+
+  .lb-tabs button {
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 4px;
+    min-height: 50px;
+    padding: 6px 2px;
+    border-radius: 18px;
+    font-size: 13px;
+    white-space: nowrap;
+  }
+
+  .lb-tabs button span {
+    font-size: 12px;
+  }
+
+  .lb-find {
+    flex: 1 1 0;
+    width: auto;
+    min-width: 0;
+    height: 44px;
+    margin-left: 0;
+  }
+
+  .lb-sort__btn {
+    max-width: 46vw;
+    height: 44px;
+  }
+
+  .lb-sort__btn span {
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  .lb-shelves {
+    gap: 32px;
+  }
+
+  .lb-shelf__nav {
+    display: none;
+  }
+
+  .lb-shelf__pos {
+    display: block;
+  }
+
+  .lb-shelf__body,
+  .lb-shelf--small .lb-shelf__body {
+    --w: min(56vw, 240px);
+    display: flex;
+    flex-direction: column;
+    align-items: stretch;
+    gap: 18px;
+    padding: 18px 0 22px;
+    border-radius: 22px;
+  }
+
+  .lb-shelf--small .lb-shelf__body {
+    --w: min(46vw, 200px);
+  }
+
+  .lb-shelf__row {
+    gap: 12px;
+    padding: 0 calc(50% - var(--w) / 2) 4px;
+    scroll-snap-type: x mandatory;
+    -webkit-mask-image: none;
+    mask-image: none;
+  }
+
+  .lb-shelf__row.can-scroll {
+    cursor: auto;
+  }
+
+  .lb-book {
+    scroll-snap-align: center;
+    scroll-snap-stop: always;
+    transition-duration: 0.3s;
+  }
+
+  .lb-shelf__row .lb-book:not(.is-active) {
+    filter: brightness(0.5) saturate(0.8);
+    transform: scale(0.9);
+  }
+
+  .lb-book.is-active {
+    transform: none;
+  }
+
+  .lb-shelf__panels {
+    width: 100%;
+    padding: 0 16px;
+  }
+
+  .lb-shelf[data-live] .lb-panel {
+    transition:
+      opacity 0.15s ease,
+      visibility 0s linear 0.15s;
+  }
+
+  .lb-shelf[data-live] .lb-panel.is-active {
+    transition-delay: 0s;
+  }
+
+  .lb-panel__name,
+  .lb-shelf--small .lb-panel__name {
+    font-size: 20px;
+  }
+
+  .lb-panel__actions {
+    flex-wrap: wrap;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .lb-book,
+  .lb-shelf__art,
+  .hm--library .hm-ambient,
+  .lb-shelf[data-live] .lb-panel {
+    transition: none !important;
+  }
+}

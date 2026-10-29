@@ -1,228 +1,172 @@
 {% extends "base.html" %}
 {% block title %}Библиотека — RanobeLib Companion{% endblock %}
 {% block content %}
-{% from "_continue_reading_hero.html" import chapter_label, chapter_short, chapter_meta, continue_reading_hero %}
-{% from "_library_actions.html" import library_actions_menu as actions_menu %}
 {#
-  PR 275 (Webnovells Redesign, screen A3): "Библиотека" heading with the «Библиотека /
-  Каталог» switch (PR 294), catalog search, a search/sort/progress toolbar with a list/grid switch
-  (library-toolbar.js), "Читаю" cards with progress and a continue CTA, not-started
-  titles under "Ещё в библиотеке" (cover skeleton while it loads). A guest gets the
-  locked state instead.
-  PR 297 (LibraryDesktop.dc.html): the catalog's desktop shell - a header card («Ваши
-  тайтлы · N тайтлов» + H1, the switch and catalog search on the right) with the
-  toolbar as a sticky glass panel overlapping its bottom edge.
+  «Полки» - the library as the home page's «Витрина», once per shelf: «Читаю», «Не начаты»,
+  «Дочитаны» (app/api/library.py's _shelf_of). The covers stand face out on each shelf;
+  the one brought forward has its details beside the shelf, and the shelf's backdrop and
+  the page's glow follow its cover (library-shelves.js: pointing, dragging, ‹ ›, and on a
+  phone a strip swiped from book to book, as on the home page). The «Все / Читаю / …»
+  tabs, the search and the sort work over what the server rendered.
+
+  A cover and its details both carry data-role="library-item" and the title's
+  data-slug-url, so the ⋯ menu's removal (library-card-actions.js) takes both away and
+  «Вернуть» puts both back. Without script every cover is a plain link to its title and
+  each shelf shows its first book's details.
 #}
+{% from "_continue_reading_hero.html" import chapter_label, chapter_meta %}
+{% from "home/_macros.html" import search_form, cover_progress, progress_line, go_button %}
+{% from "_library_actions.html" import library_actions_menu as actions_menu %}
 {% macro titles_word(n) -%}
 {{ n }} {% if n % 10 == 1 and n % 100 != 11 %}тайтл{% elif n % 10 in [2, 3, 4] and n % 100 not in [12, 13, 14] %}тайтла{% else %}тайтлов{% endif %}
 {%- endmacro %}
-<div class="library-page wn-library" data-mode="default">
-  <section class="wn-library__head">
-    <div class="wn-library__head-copy">
-      {% if current_user %}<span class="wn-library__eyebrow">Ваши тайтлы · {{ titles_word(items | length) }}</span>{% endif %}
-      <h1 class="wn-library__title">Библиотека</h1>
+{% macro chapters_word(n) -%}
+{{ n }} {% if n % 10 == 1 and n % 100 != 11 %}глава{% elif n % 10 in [2, 3, 4] and n % 100 not in [12, 13, 14] %}главы{% else %}глав{% endif %}
+{%- endmacro %}
+{% macro left_words(n) -%}
+{% if n % 10 == 1 and n % 100 != 11 %}осталась{% else %}осталось{% endif %} <b>{{ chapters_word(n) }}</b>
+{%- endmacro %}
+
+{# What the client sorts and searches by - on the cover and on its details alike. #}
+{% macro sort_data(item) -%}
+data-role="library-item" data-slug-url="{{ item.entry.slug_url }}" data-name="{{ (item.name or item.entry.slug_url) | lower }}" data-read="{{ item.entry.last_read_at or '' }}" data-added="{{ item.entry.added_at }}" data-progress="{% if item.shelf == 'new' %}-1{% elif item.shelf == 'done' %}100{% else %}{{ item.progress_percent or 0 }}{% endif %}"
+{%- endmacro %}
+
+{# «Начать читать» / «Перечитать»: the home's light button, to the title's first chapter. #}
+{% macro start_button(book, href, label, note) -%}
+{% if book and book.first %}
+<a class="hm-go" href="{{ href }}/chapters/{{ book.first.volume }}/{{ book.first.number }}">
+  <span class="hm-go__label">{{ label }}<small>{{ note or chapter_label(book.first.number) }}</small></span>
+  <svg class="hm-go__arrow" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12h14M13 6l6 6-6 6"/></svg>
+</a>
+{% else %}
+<a class="hm-go" href="{{ href }}">
+  <span class="hm-go__label">Открыть<small>страницу тайтла</small></span>
+  <svg class="hm-go__arrow" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12h14M13 6l6 6-6 6"/></svg>
+</a>
+{% endif %}
+{%- endmacro %}
+
+{# The book brought forward, in depth: where the reader is and the way back in. #}
+{% macro panel(item, first) -%}
+{% set entry = item.entry %}
+{% set book = item.focus %}
+{% set name = item.name or entry.slug_url %}
+{% set href = "/titles/" ~ entry.slug_url %}
+<article class="lb-panel{% if first %} is-active{% endif %}" {{ sort_data(item) }} data-panel{% if not first %} hidden{% endif %}>
+  <h3 class="lb-panel__name"><a href="{{ href }}">{{ name }}</a></h3>
+  <p class="lb-panel__meta">
+    {%- if item.shelf == "new" -%}
+    {% if book %}{% if book.status %}{{ book.status }} · {% endif %}{{ chapters_word(book.total) }}{% else %}Ещё не начинали{% endif %}<br>{{ item.added_label }}
+    {%- elif item.shelf == "done" -%}
+    Дочитано{% if book %} · {{ chapters_word(book.total) }}{% endif %}{% if item.last_read_label %}<br>{{ item.last_read_label }}{% endif %}
+    {%- else -%}
+    {{ chapter_meta(entry) }}{% if book and book.position %} из {{ book.total }}{% endif %}{% if book and book.left %} · {{ left_words(book.left) }}{% endif %}{% if item.last_read_label %}<br>{{ item.last_read_label }}{% endif %}
+    {%- endif -%}
+  </p>
+  {% if item.shelf == "reading" %}{{ progress_line(item.progress_percent) }}{% endif %}
+  <div class="hm-hero__actions lb-panel__actions">
+    {% if item.shelf == "reading" %}{{ go_button(entry, href) }}
+    {% elif item.shelf == "new" %}{{ start_button(book, href, "Начать читать") }}
+    {% else %}{{ start_button(book, href, "Перечитать", "с первой главы") }}{% endif %}
+    <a class="hm-link" href="{{ href }}">О тайтле</a>
+    <div class="lb-panel__more">{{ actions_menu(entry.slug_url, name) }}</div>
+  </div>
+</article>
+{%- endmacro %}
+
+{% macro book(item, first) -%}
+{% set name = item.name or item.entry.slug_url %}
+<a class="lb-book{% if first %} is-active{% endif %}" href="/titles/{{ item.entry.slug_url }}" {{ sort_data(item) }} data-book aria-label="{{ name }}" draggable="false"{% if first %} aria-current="true"{% endif %}>
+  <span class="hm-cover lb-book__cover">
+    {% if item.cover_url %}<img src="{{ item.cover_url }}" alt="" draggable="false" loading="lazy">{% endif %}
+    {% if item.shelf == "reading" %}{{ cover_progress(item.progress_percent) }}{% endif %}
+  </span>
+</a>
+{%- endmacro %}
+
+{% set ambient = (items | selectattr("cover_url") | map(attribute="cover_url") | first) if items else none %}
+<main class="hm hm--library library-tabs-content" data-role="library-page">
+  {% if ambient %}<img class="hm-ambient" src="{{ ambient }}" alt="" aria-hidden="true" data-role="library-ambient">{% endif %}
+
+  <header class="hm-head lb-head hm-rise">
+    <div class="lb-head__title">
+      <h1 class="hm-title" id="library-title">Библиотека</h1>
+      {% if current_user %}<span class="lb-head__count hm-num" data-role="library-total">{{ titles_word(items | length) }}</span>{% endif %}
     </div>
-    <div class="wn-library__head-side">
-    {% include "_library_switch.html" %}
-    <form class="wn-library__add" method="get" action="/catalog" role="search" aria-label="Поиск по каталогу">
-      <label class="wn-library__add-field">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="m16 16 4 4"/></svg>
-        <input
-          class="wn-field__control wn-library__add-control"
-          type="search"
-          name="query"
-          placeholder="Найти тайтл по названию…"
-          aria-label="Название тайтла"
-          enterkeyhint="search"
-          required
-        >
+    <div class="lb-head__side">
+      {% include "_library_switch.html" %}
+      {{ search_form() }}
+    </div>
+  </header>
+
+  {% if current_user %}
+  <div class="lb-titles" data-role="library-titles">
+    {% if items %}
+    {# Shown by library-shelves.js; without script the page is just the shelves. #}
+    <div class="lb-tools hm-rise" style="--i: 1" data-role="library-tools" hidden>
+      <div class="lb-tabs" role="radiogroup" aria-label="Какие тайтлы">
+        {% for key, label in [("all", "Все"), ("reading", "Читаю"), ("new", "Не начаты"), ("done", "Дочитаны")] %}
+        <button type="button" role="radio" data-shelf-tab="{{ key }}" aria-checked="{{ 'true' if loop.first else 'false' }}" tabindex="{{ '0' if loop.first else '-1' }}">{{ label }} <span class="hm-num" data-role="tab-count"></span></button>
+        {% endfor %}
+      </div>
+      <label class="lb-find">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="m16 16 4 4"/></svg>
+        <input type="search" placeholder="Поиск в библиотеке" aria-label="Поиск в библиотеке" data-role="library-search" autocomplete="off" enterkeyhint="search">
       </label>
-      <button class="wn-btn wn-btn--primary" type="submit">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="m16 16 4 4"/></svg>
-        Найти
-      </button>
-    </form>
+      <div class="lb-sort" data-role="library-sort">
+        <button type="button" class="lb-sort__btn" aria-haspopup="listbox" aria-expanded="false" aria-label="Сортировка: Недавно читал"><span data-role="library-sort-label">Недавно читал</span><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m6 9 6 6 6-6"/></svg></button>
+        <ul class="lb-sort__list" role="listbox" aria-label="Сортировка" tabindex="-1" hidden>
+          {% for key, label in [("recent", "Недавно читал"), ("added", "Недавно добавленные"), ("name", "По названию"), ("progress", "По прогрессу")] %}
+          <li role="option" data-sort="{{ key }}" aria-selected="{{ 'true' if loop.first else 'false' }}">{{ label }}<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m5 12 5 5 9-10"/></svg></li>
+          {% endfor %}
+        </ul>
+      </div>
     </div>
-  </section>
-  <main class="library-page__content library-tabs-content wn-library__content">
-    {% if current_user %}
-    <div class="wn-library__titles" data-role="library-titles">
-      {% if items %}
-      <div class="wn-library-toolbar" data-role="library-toolbar" hidden>
-        <label class="wn-library-search">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="m21 21-4.3-4.3"/></svg>
-          <input type="search" placeholder="Поиск в библиотеке" aria-label="Поиск в библиотеке" data-role="library-search" autocomplete="off">
-          {# PR 300 (LibraryMobile): phones clear the search from inside the field. #}
-          <button type="button" class="wn-library-search__clear" data-role="library-search-clear" aria-label="Очистить поиск" hidden><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" aria-hidden="true"><path d="M7 7l10 10M17 7 7 17"/></svg></button>
-        </label>
-        <label class="wn-library-select">
-          <span>Сортировка</span>
-          <select data-role="library-sort" aria-label="Сортировка">
-            <option value="recent">Недавно читал</option>
-            <option value="added">Недавно добавленные</option>
-            <option value="name">По названию</option>
-            <option value="progress">По прогрессу</option>
-          </select>
-        </label>
-        <label class="wn-library-select">
-          <span>Прогресс</span>
-          <select data-role="library-progress" aria-label="Прогресс">
-            <option value="any">Любой</option>
-            <option value="started">Начатые</option>
-            <option value="new">Не начатые</option>
-            <option value="done">Дочитанные</option>
-          </select>
-        </label>
-        {# PR 300 (LibraryMobile): on phones the two selects above give way to two
-           buttons - the current sort, and «Прогресс» with a 1 when it's set - that both
-           open the «Сортировка и прогресс» sheet below. library-toolbar.js builds the
-           sheet's options from the selects' own, so the selects stay the one state. #}
-        <button type="button" class="wn-library-sheet-btn wn-library-sheet-btn--sort" data-role="library-filters-open" aria-haspopup="dialog">
-          <span data-role="library-sort-label">Недавно читал</span>
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m6 9 6 6 6-6"/></svg>
-        </button>
-        <button type="button" class="wn-library-sheet-btn wn-library-sheet-btn--progress" data-role="library-filters-open" aria-haspopup="dialog">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" aria-hidden="true"><path d="M3 6h18M6 12h12M10 18h4"/></svg>
-          Прогресс
-          <span class="wn-library-sheet-btn__count" data-role="library-filters-count" hidden>1</span>
-        </button>
-        <div class="wn-library-view" role="radiogroup" aria-label="Вид">
-          <button type="button" role="radio" aria-checked="true" data-view="list" aria-label="Списком" title="Списком">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" aria-hidden="true"><rect x="3" y="4" width="18" height="6" rx="1.5"/><rect x="3" y="14" width="18" height="6" rx="1.5"/></svg>
-          </button>
-          <button type="button" role="radio" aria-checked="false" data-view="grid" aria-label="Сеткой" title="Сеткой">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" aria-hidden="true"><rect x="3" y="3" width="7" height="7" rx="1.5"/><rect x="14" y="3" width="7" height="7" rx="1.5"/><rect x="3" y="14" width="7" height="7" rx="1.5"/><rect x="14" y="14" width="7" height="7" rx="1.5"/></svg>
-          </button>
-        </div>
-        {# PR 297: the results mode's criteria row - library-toolbar.js fills it. PR 300:
-           on phones too, as one strip of chips ending in «Сбросить». #}
-        <div class="wn-library-criteria" data-role="library-criteria" hidden>
-          <span class="wn-library-criteria__label" aria-hidden="true">Условия</span>
-          <div class="wn-library-criteria__chips" data-role="library-criteria-chips"></div>
-          <button type="button" class="wn-library-criteria__reset" data-role="library-criteria-reset">Сбросить<span class="wn-library-criteria__reset-all"> всё</span></button>
-          <span class="wn-library-criteria__count" data-role="library-criteria-count" aria-live="polite"></span>
-        </div>
-        {# PR 300: a draft - nothing changes until «Показать»; closed any other way, the
-           sheet goes back to what the page shows. #}
-        <div class="wn-library-filters" id="library-filters" data-bottom-sheet-title="Сортировка и прогресс" hidden>
-          <fieldset class="wn-library-filters__group" data-filter-for="library-sort"><legend>Сортировка</legend></fieldset>
-          <fieldset class="wn-library-filters__group" data-filter-for="library-progress"><legend>Прогресс</legend></fieldset>
-          <div class="wn-library-filters__actions">
-            <button type="button" class="wn-library-filters__done" data-role="library-filters-done" data-bottom-sheet-close>Показать</button>
+
+    <div class="lb-shelves">
+      {% for shelf in shelves %}
+      <section class="lb-shelf{% if not loop.first %} lb-shelf--small{% endif %} hm-rise" style="--i: {{ loop.index + 1 }}" data-shelf="{{ shelf.key }}" aria-labelledby="shelf-{{ shelf.key }}-title">
+        <div class="lb-shelf__head">
+          <h2 class="hm-h2" id="shelf-{{ shelf.key }}-title">{{ shelf.title }}</h2>
+          <span class="lb-shelf__count hm-num" data-role="shelf-count">{{ shelf.titles | length }}</span>
+          <span class="lb-shelf__pos hm-num" data-role="shelf-pos" aria-hidden="true"></span>
+          <div class="lb-shelf__nav" data-role="shelf-nav" hidden>
+            <button type="button" class="lb-round" data-scroll="-1" aria-label="Листать «{{ shelf.title }}» назад"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m15 6-6 6 6 6"/></svg></button>
+            <button type="button" class="lb-round" data-scroll="1" aria-label="Листать «{{ shelf.title }}» дальше"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m9 6 6 6-6 6"/></svg></button>
           </div>
         </div>
-      </div>
-
-      {% if continue_item %}
-      {# PR 297 (LibraryDesktop): «Продолжить чтение» - the last opened title as the
-         page's hero. Its card in the list below stays hidden while the hero is shown
-         (data-hero; library-toolbar.js shows it again in the results mode). #}
-      {{ continue_reading_hero(continue_item, title_id="library-continue-title") }}
-      {% endif %}
-
-      {# PR 297 (LibraryDesktop): every title in one «Моя библиотека» grid - started or
-         not, the hero's own card included (hidden while the hero is shown) - ending in
-         the «Добавить из каталога» tile (library-toolbar.js keeps it last). #}
-      <section class="wn-library-shelf" aria-labelledby="library-shelf-title" data-role="library-section">
-        <div class="wn-library-shelf__head">
-          <span class="wn-library-shelf__dot" aria-hidden="true"></span>
-          <h2 class="wn-library-shelf__title" id="library-shelf-title">Моя библиотека</h2>
-          <span class="wn-library-shelf__count" data-role="library-rest">{% if continue_item %}{% if items | length > 1 %}ещё {{ titles_word(items | length - 1) }}{% else %}пока только этот{% endif %}{% else %}{{ titles_word(items | length) }}{% endif %}</span>
-          <span class="wn-library-shelf__rule" aria-hidden="true"></span>
+        <div class="lb-shelf__body" data-role="shelf-body"{% if not shelf.titles %} hidden{% endif %}>
+          {% set art = shelf.titles | selectattr("cover_url") | map(attribute="cover_url") | first %}
+          {% if art %}<img class="hl-art lb-shelf__art" src="{{ art }}" alt="" aria-hidden="true" data-role="shelf-art">{% endif %}
+          <div class="lb-shelf__panels" aria-live="polite">
+            {% for item in shelf.titles %}{{ panel(item, loop.first) }}{% endfor %}
+          </div>
+          <div class="lb-shelf__row" data-role="shelf-row" data-no-tab-swipe>
+            {% for item in shelf.titles %}{{ book(item, loop.first) }}{% endfor %}
+          </div>
         </div>
-        <div class="wn-library-grid" data-role="library-list">
-          {% for item in items %}
-          {% set entry = item.entry %}
-          {% set name = item.name or entry.slug_url %}
-          {% set href = "/titles/" ~ entry.slug_url %}
-          {% set started = entry.last_read_volume is not none %}
-          <article
-            class="wn-library-card{% if not started %} wn-library-card--new{% endif %}"
-            data-role="library-item"{% if continue_item and item is sameas continue_item %} data-hero{% endif %}
-            data-name="{{ name | lower }}"
-            data-slug-url="{{ entry.slug_url }}"
-            data-order="{{ loop.index0 }}"
-            data-added="{{ entry.added_at }}"
-            data-progress="{% if not started %}-1{% elif item.progress_percent is not none %}{{ item.progress_percent }}{% else %}0{% endif %}"
-          >
-            <a class="wn-library-card__cover wn-skeleton" href="{{ href }}" tabindex="-1" aria-hidden="true">
-              {% if item.cover_url %}<img class="wn-library-card__glow" src="{{ item.cover_url }}" alt="" loading="lazy"><img src="{{ item.cover_url }}" alt="" loading="lazy">{% endif %}
-            </a>
-            <div class="wn-library-card__body">
-              <div class="wn-library-card__top">
-                <a class="wn-library-card__name" href="{{ href }}" title="{{ name }}">{{ name }}</a>
-                {{ actions_menu(entry.slug_url, name) }}
-              </div>
-              <span class="wn-library-card__meta">{% if started %}{{ chapter_meta(entry) }}{% else %}Не начато{% endif %}</span>
-              {% if item.last_read_label %}
-              <span class="wn-library-card__last">{{ item.last_read_label }}</span>
-              {% endif %}
-              <span class="wn-library-card__spacer"></span>
-              {% if item.progress_percent is not none %}
-              <div class="wn-library-card__progress">
-                <div class="ui-progress ui-progress--lg">
-                  <span class="ui-progress__bar"><span class="ui-progress__fill" style="width: {{ item.progress_percent }}%"></span></span>
-                  <span class="ui-progress__pct">{{ item.progress_percent }}%</span>
-                </div>
-              </div>
-              {% endif %}
-              {% if started %}
-              {# PR 300: a row card under 360px drops the verb («Гл. 92») to fit beside ⋯;
-                 the aria-label keeps the full action for screen readers. #}
-              <a class="wn-library-card__cta" href="{{ href }}/chapters/{{ entry.last_read_volume }}/{{ entry.last_read_number }}" aria-label="Продолжить · {{ chapter_label(entry.last_read_number) }}">
-                <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M7 4v16l13-8z"/></svg>
-                <span class="wn-library-card__cta-verb">Продолжить · </span>{{ chapter_short(entry.last_read_number) }}
-              </a>
-              {% else %}
-              <a class="wn-library-card__cta" href="{{ href }}" aria-label="Открыть «{{ name }}»">Открыть</a>
-              {% endif %}
-            </div>
-          </article>
-          {% endfor %}
-          <a class="wn-library-add-tile" href="/catalog" data-role="library-add-tile">
-            <span class="wn-library-add-tile__icon" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M3 3h7v7H3zM14 3h7v7h-7zM3 14h7v7H3zM17.5 14v7M14 17.5h7"/></svg></span>
-            <span class="wn-library-add-tile__title">Добавить из каталога</span>
-            <span class="wn-library-add-tile__text">Найдите тайтл в каталоге и нажмите «В библиотеку».</span>
-            <span class="wn-library-add-tile__link">Открыть каталог</span>
-          </a>
-        </div>
+        <p class="lb-shelf__empty" data-role="shelf-empty"{% if shelf.titles %} hidden{% endif %}>Пока пусто.</p>
       </section>
-      <div class="wn-library-end" data-role="library-end">
-        <span class="wn-library-end__rule" aria-hidden="true"></span>
-        <span class="wn-library-end__text" data-role="library-end-text">Это вся библиотека · {{ titles_word(items | length) }}</span>
-        <a class="wn-library-end__link" href="/catalog" data-role="library-end-catalog">Найти новое в каталоге</a>
-        <button type="button" class="wn-library-end__reset" data-role="library-end-reset" hidden>Сбросить условия</button>
-        <span class="wn-library-end__rule wn-library-end__rule--right" aria-hidden="true"></span>
-      </div>
-      {# PR 297 (LibraryDesktop preset=empty): nothing in the library matches - only
-         reachable in the results mode; library-toolbar.js names the search in the text. #}
-      <div class="catalog-empty wn-library-no-results" data-role="library-no-results" role="status" hidden>
-        <span class="catalog-empty__icon" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round"><circle cx="11" cy="11" r="7"/><path d="m21 21-4.3-4.3M8.5 11h5"/></svg></span>
-        <h2 class="catalog-empty__title">В библиотеке ничего не нашлось</h2>
-        <p class="catalog-empty__text" data-role="library-no-results-text">Под эти условия не подходит ни один тайтл из библиотеки.</p>
-        <div class="wn-library-no-results__actions">
-          <button type="button" class="catalog-empty__reset" data-role="library-no-results-reset">Сбросить условия</button>
-          <a class="wn-library-end__link" href="/catalog" data-role="library-no-results-catalog">Искать в каталоге</a>
-        </div>
-      </div>
-      {% else %}
-      <p class="wn-library__empty">
-        Пока пусто. <a class="wn-library-end__link" href="/catalog">Открыть каталог</a>
-        и добавить первый тайтл.
-      </p>
-      {% endif %}
+      {% endfor %}
     </div>
     {% else %}
-    {% from "_locked_feature.html" import locked_feature %}
-    {% call locked_feature("Список читаемого скрыт", "/catalog", "Смотреть каталог") %}
-    <a href="/login">Войдите</a> или <a href="/register">зарегистрируйтесь</a>,
-    чтобы видеть свою библиотеку. Каталог тайтлов RanobeLib открыт всем — смотреть
-    и читать можно без регистрации.
-    {% endcall %}
+    <p class="lb-empty hm-panel">
+      Пока пусто. <a class="hm-link" href="/catalog">Открыть каталог</a>
+      и добавить первый тайтл.
+    </p>
     {% endif %}
-  </main>
-</div>
-<script src="{{ static_url('js/library-toolbar.js') }}" defer></script>
+  </div>
+  {% else %}
+  {% from "_locked_feature.html" import locked_feature %}
+  {% call locked_feature("Список читаемого скрыт", "/catalog", "Смотреть каталог") %}
+  <a href="/login">Войдите</a> или <a href="/register">зарегистрируйтесь</a>,
+  чтобы видеть свою библиотеку. Каталог тайтлов RanobeLib открыт всем — смотреть
+  и читать можно без регистрации.
+  {% endcall %}
+  {% endif %}
+</main>
+<script src="{{ static_url('js/library-shelves.js') }}" defer></script>
 <script src="{{ static_url('js/library-card-actions.js') }}" defer></script>
 <script src="{{ static_url('js/library-tabs-swipe.js') }}" defer></script>
 <script src="{{ static_url('js/library-switch.js') }}" defer></script>

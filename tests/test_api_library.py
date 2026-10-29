@@ -474,10 +474,12 @@ async def test_show_library_renders_reading_progress_bar(client: TestClient) -> 
         response = client.get("/library")
 
     assert response.status_code == 200
-    assert 'class="ui-progress ui-progress--lg"' in response.text
+    # «Полки»: the bar under the book's details and the line along its cover.
+    assert '<div class="hl-progress">' in response.text
     assert 'style="width: 50%"' in response.text  # 2 of 4 chapters
-    # PR 252: the percent is also shown as text next to the bar.
-    assert '<span class="ui-progress__pct">50%</span>' in response.text
+    assert 'aria-label="Прочитано 50%"' in response.text
+    assert '<span class="hm-num">50%</span>' in response.text
+    assert "Том 1 · Глава 2 из 4 · осталось <b>2 главы</b>" in response.text
 
 
 def test_show_library_omits_progress_bar_for_unopened_titles(client: TestClient) -> None:
@@ -489,12 +491,14 @@ def test_show_library_omits_progress_bar_for_unopened_titles(client: TestClient)
         response = client.get("/library")
 
     assert response.status_code == 200
-    # PR 297: one «Моя библиотека» grid - a never-opened title is a «Не начато» card
-    # that opens the title page, with no progress bar.
-    assert 'class="wn-library-card wn-library-card--new"' in response.text
-    assert '<span class="wn-library-card__meta">Не начато</span>' in response.text
-    assert 'aria-label="Открыть «Test Novel»">Открыть</a>' in response.text
-    assert 'class="ui-progress' not in response.text
+    # «Полки»: a never-opened title stands on «Не начаты», with no progress; without
+    # chapters to start from, its button opens the title page.
+    shelf = response.text.split('data-shelf="new"', 1)[1].split("</section>", 1)[0]
+    assert 'data-slug-url="6712--test-novel"' in shelf
+    assert "Добавлен сегодня" in shelf
+    assert '<span class="hm-go__label">Открыть<small>страницу тайтла</small></span>' in shelf
+    assert 'class="hl-progress"' not in response.text
+    assert 'aria-label="Прочитано' not in response.text
 
 
 def test_show_library_prefers_russian_name(client: TestClient) -> None:
@@ -761,10 +765,8 @@ async def test_show_library_reading_card_has_continue_cta_and_last_read_line(
         response = client.get("/library")
 
     assert 'href="/titles/6712--test-novel/chapters/2/7"' in response.text
-    assert 'aria-label="Продолжить · Глава 7"' in response.text
-    assert '<span class="wn-library-card__cta-verb">Продолжить · </span>Гл. 7' in response.text
+    assert '<span class="hm-go__label">Читать дальше<small>Глава 7</small></span>' in response.text
     assert "Читали сегодня" in response.text
-    assert "Ещё в библиотеке" not in response.text
 
 
 def test_show_library_wires_the_toolbar_script(client: TestClient) -> None:
@@ -774,6 +776,6 @@ def test_show_library_wires_the_toolbar_script(client: TestClient) -> None:
         client.post("/library/6712--test-novel/add")
         response = client.get("/library")
 
-    assert "static/js/library-toolbar.js" in response.text
-    # Hidden until library-toolbar.js shows it - without JS it would do nothing.
-    assert 'data-role="library-toolbar" hidden' in response.text
+    assert "static/js/library-shelves.js" in response.text
+    # Hidden until library-shelves.js shows it - without JS it would do nothing.
+    assert 'data-role="library-tools" hidden' in response.text
