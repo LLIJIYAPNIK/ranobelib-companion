@@ -356,12 +356,10 @@ async def test_library_count_covers_every_title_on_both_pages(client: TestClient
     ), patch("app.api.library.list_statuses", return_value=[]), patch(
         "app.api.library.get_catalog"
     ), patch(
-        "app.api.library.catalog_stream"
+        "app.api.library.list_catalog_titles"
     ) as list_titles:
         list_titles.return_value.items = []
         list_titles.return_value.has_next_page = False
-        list_titles.return_value.shown = 0
-        list_titles.return_value.featured = 0
         catalog = client.get("/catalog")
 
     assert library.context["library_count"] == 2
@@ -375,12 +373,10 @@ def test_library_count_is_none_for_a_guest(client: TestClient) -> None:
     ), patch("app.api.library.list_statuses", return_value=[]), patch(
         "app.api.library.get_catalog"
     ), patch(
-        "app.api.library.catalog_stream"
+        "app.api.library.list_catalog_titles"
     ) as list_titles:
         list_titles.return_value.items = []
         list_titles.return_value.has_next_page = False
-        list_titles.return_value.shown = 0
-        list_titles.return_value.featured = 0
         catalog = client.get("/catalog")
 
     assert library.context["library_count"] is None
@@ -397,12 +393,10 @@ def test_catalog_item_on_the_switch_has_no_count(client: TestClient) -> None:
     ), patch("app.api.library.list_statuses", return_value=[]), patch(
         "app.api.library.get_catalog"
     ), patch(
-        "app.api.library.catalog_stream"
+        "app.api.library.list_catalog_titles"
     ) as list_titles:
         list_titles.return_value.items = []
         list_titles.return_value.has_next_page = False
-        list_titles.return_value.shown = 0
-        list_titles.return_value.featured = 0
         response = client.get("/catalog")
 
     assert response.status_code == 200

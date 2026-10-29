@@ -30,7 +30,6 @@ class _FakeCatalog:
         exc: Exception | None = None,
         genres: list[Genre] | None = None,
         countries: list[Country] | None = None,
-        featured: list[CatalogPage] | None = None,
         statuses: list[Label] | None = None,
     ) -> None:
         self._page = page
@@ -38,12 +37,8 @@ class _FakeCatalog:
         self._genres = genres or []
         self._countries = countries or []
         self._statuses = statuses or []
-        # PR 295: the editorial feed's `sort="views"` listing (page by page) - empty by
-        # default, so a test about the regular listing sees only its own cards.
-        self._featured = featured or []
         self.received_kwargs: dict[str, object] | None = None
         self.calls: list[dict[str, object]] = []
-        self.featured_calls: list[dict[str, object]] = []
 
     async def __aenter__(self) -> "_FakeCatalog":
         return self
@@ -52,14 +47,6 @@ class _FakeCatalog:
         return False
 
     async def list_titles(self, **kwargs: object) -> CatalogPage:
-        # The featured source call passes only page + sort (catalog_stream()); every
-        # regular listing goes through list_catalog_titles() with the filter kwargs.
-        if kwargs.get("sort") == "views" and "genres" not in kwargs:
-            self.featured_calls.append(kwargs)
-            index = int(kwargs["page"]) - 1  # type: ignore[call-overload]
-            if index < len(self._featured):
-                return self._featured[index]
-            return CatalogPage(items=[], page=index + 1, has_next_page=False)
         self.received_kwargs = kwargs
         self.calls.append(kwargs)
         if self._exc is not None:
@@ -157,7 +144,7 @@ def test_show_catalog_header_reveals_on_scroll_up() -> None:
         response = client.get("/catalog")
 
     assert response.status_code == 200
-    header_tag = re.search(r"<header[^>]*>", response.text)
+    header_tag = re.search(r'<header class="catalog-toolbar"[^>]*>', response.text)
     assert header_tag is not None
     assert 'data-role="catalog-scroll-header"' in header_tag.group(0)
     assert "static/js/catalog-header-scroll.js" in response.text
@@ -916,7 +903,7 @@ def test_old_catalog_redirect_lands_on_the_filtered_catalog() -> None:
     assert 'value="dxd"' in response.text
 
 
-# --- PR 295: editorial vs results mode -----------------------------------------------
+# --- PR 295: editorial vs results mode («Разделы»: the sections or the results) ------
 
 
 @pytest.mark.parametrize(
@@ -941,65 +928,13 @@ def test_catalog_mode_follows_query_sort_and_filters(
 
     assert response.context["editorial"] is editorial
     mode = "editorial" if editorial else "results"
-    assert f'class="catalog-page wn-catalog" data-mode="{mode}"' in response.text
+    assert f'data-mode="{mode}" data-role="catalog-page"' in response.text
+    # The sections are the editorial mode's; results have their criteria instead.
+    assert ('class="cg-sections"' in response.text) is editorial
 
 
 def _titles(start: int, count: int) -> list[Title]:
     return [_fake_title(id_=i, name=f"Novel {i}") for i in range(start, start + count)]
-
-
-def test_editorial_catalog_renders_a_featured_insert_after_twelve_cards() -> None:
-    fake = _FakeCatalog(
-        CatalogPage(items=_titles(1, 30), page=1, has_next_page=True),
-        featured=[CatalogPage(items=_titles(1001, 5), page=1, has_next_page=False)],
-    )
-    with patch("app.services.catalog.Catalog", return_value=fake):
-        response = client.get("/catalog")
-
-    assert response.text.count('data-role="catalog-featured"') == 2
-    assert 'data-issue="1"' in response.text
-    assert "Популярно на RanobeLib" in response.text
-    assert 'data-shown="30"' in response.text
-    assert 'data-featured="2"' in response.text
-
-
-def test_results_catalog_has_no_featured_inserts() -> None:
-    fake = _FakeCatalog(
-        CatalogPage(items=_titles(1, 30), page=1, has_next_page=True),
-        featured=[CatalogPage(items=_titles(1001, 5), page=1, has_next_page=False)],
-    )
-    with patch("app.services.catalog.Catalog", return_value=fake):
-        response = client.get("/catalog", params={"query": "dxd"})
-
-    assert 'data-role="catalog-featured"' not in response.text
-    assert fake.featured_calls == []
-
-
-def test_catalog_page_fragment_carries_the_feed_cursor() -> None:
-    fake = _FakeCatalog(
-        CatalogPage(items=_titles(31, 30), page=2, has_next_page=True),
-        featured=[CatalogPage(items=_titles(1001, 10), page=1, has_next_page=False)],
-    )
-    with patch("app.services.catalog.Catalog", return_value=fake):
-        response = client.get("/catalog/page", params={"page": 2, "shown": 30, "featured": 2})
-
-    # Cards 31..60 of the feed: inserts after the 36th, 48th and 60th.
-    assert response.text.count('data-role="catalog-featured"') == 3
-    assert 'data-issue="3"' in response.text
-    assert response.headers["X-Catalog-Shown"] == "60"
-    assert response.headers["X-Catalog-Featured"] == "5"
-
-
-def test_catalog_scroll_sends_and_updates_the_cursor() -> None:
-    from pathlib import Path
-
-    script = (Path(__file__).parents[1] / "app/static/js/catalog-scroll.js").read_text(
-        encoding="utf-8"
-    )
-    assert 'params.set("shown", grid.dataset.shown || "0")' in script
-    assert 'params.set("featured", grid.dataset.featured || "0")' in script
-    assert 'response.headers.get("X-Catalog-Shown")' in script
-    assert 'response.headers.get("X-Catalog-Featured")' in script
 
 
 def test_criteria_chips_cover_search_and_sort_and_keep_the_rest() -> None:
@@ -1090,35 +1025,3 @@ def test_end_of_feed_hidden_while_more_is_coming_or_nothing_was_found(
         response = client.get("/catalog")
 
     assert _end_block(response.text).startswith(" hidden")
-
-
-def test_featured_title_never_doubles_as_a_card_across_pages() -> None:
-    """End to end: title 3 (2nd by views) is in the regular listing of both pages; the
-    whole feed shows it exactly once - as its featured insert."""
-    top = [_fake_title(id_=1001, name="Top 1"), _fake_title(id_=3, name="Novel 3")]
-    featured = [CatalogPage(items=top, page=1, has_next_page=False)]
-    first = _FakeCatalog(
-        CatalogPage(items=_titles(1, 30), page=1, has_next_page=True), featured=featured
-    )
-    with patch("app.services.catalog.Catalog", return_value=first):
-        page_one = client.get("/catalog")
-    second_items = [_fake_title(id_=3, name="Novel 3"), *_titles(31, 29)]
-    second = _FakeCatalog(
-        CatalogPage(items=second_items, page=2, has_next_page=False), featured=featured
-    )
-    with patch("app.services.catalog.Catalog", return_value=second):
-        page_two = client.get(
-            "/catalog/page",
-            params={
-                "page": 2,
-                "shown": page_one.context["stream"].shown,
-                "featured": page_one.context["stream"].featured,
-            },
-        )
-
-    # Title 3 never shows up as a regular card (its link) - only as its featured insert.
-    feed = page_one.text + page_two.text
-    assert 'class="catalog-card__link" href="/titles/3--test-novel-3"' not in feed
-    assert feed.count('data-role="catalog-featured" data-slug-url="3--test-novel-3"') == 1
-    assert 'data-slug-url="3--test-novel-3" data-issue="2"' in feed
-    assert page_one.context["stream"].shown == 29  # 30 listed, title 3 dropped

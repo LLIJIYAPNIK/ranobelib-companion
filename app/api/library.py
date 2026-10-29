@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from dataclasses import dataclass
 from datetime import UTC, date, datetime, timedelta
 from typing import Annotated
 from urllib.parse import urlencode
@@ -10,6 +11,7 @@ from fastapi import APIRouter, Depends, Form, HTTPException, Query, Request
 from fastapi.responses import HTMLResponse, JSONResponse, RedirectResponse, Response
 from psycopg import AsyncConnection
 from ranobelib import RanobeLibError
+from ranobelib.models import Genre, Label
 
 from app.auth.dependencies import get_current_user, require_current_user
 from app.book_focus import BookFocus, book_focus
@@ -27,8 +29,8 @@ from app.db.library import (
 from app.db.users import User
 from app.reading_progress import reading_progress_percent
 from app.services.catalog import (
-    catalog_stream,
     get_catalog,
+    list_catalog_titles,
     list_countries,
     list_genres,
     list_statuses,
@@ -60,6 +62,51 @@ CATALOG_SORT_OPTIONS = {
 CATALOG_MIN_CHAPTERS_OPTIONS = (100, 500, 1000)
 
 
+@dataclass(frozen=True)
+class CatalogSection:
+    """One of the catalog's sections («Разделы»): with nothing asked, the catalog opens
+    on one of these - each one a plain Catalog.list_titles() listing, cut its own way. A
+    UI choice like the sort labels above, not domain data."""
+
+    key: str
+    title: str
+    note: str
+    sort: str
+    statuses: tuple[int, ...] = ()
+    min_chapters: int = 0
+
+
+DEFAULT_CATALOG_SECTION = "fresh"
+# «Завершённые» filters by the status list_statuses() labels «Завершён» - found by its
+# label there rather than a hardcoded id; with no such status the section isn't offered.
+_FINISHED_STATUS_LABEL = "Завершён"
+_LONG_READ_CHAPTERS = 500
+
+
+def _catalog_sections(all_statuses: list[Label]) -> list[CatalogSection]:
+    finished = tuple(s.id for s in all_statuses if s.label == _FINISHED_STATUS_LABEL)
+    sections = [
+        CatalogSection(
+            "fresh", "Свежие обновления", "по дате последней главы", DEFAULT_CATALOG_SORT
+        ),
+        CatalogSection("new", "Новое в каталоге", "по дате добавления", "created_at"),
+    ]
+    if finished:
+        sections.append(
+            CatalogSection("done", "Завершённые", "можно читать до конца", "views", finished)
+        )
+    sections.append(
+        CatalogSection(
+            "long",
+            "Надолго",
+            f"от {_LONG_READ_CHAPTERS} глав",
+            "chap_count",
+            min_chapters=_LONG_READ_CHAPTERS,
+        )
+    )
+    return sections
+
+
 def _is_editorial(
     query: str | None,
     sort: str,
@@ -70,7 +117,7 @@ def _is_editorial(
     min_chapters: int,
 ) -> bool:
     """PR 295 (Catalog handoff.md): the catalog's default "editorial" mode - no search,
-    the default sort and no filter - gets the featured inserts; anything else is the
+    the default sort and no filter - shows the sections («Разделы»); anything else is the
     "results" mode, a plain listing of exactly what was asked for plus the criteria chips."""
     return (
         not (query or "").strip()
@@ -253,9 +300,8 @@ async def show_catalog(
     statuses: Annotated[list[int] | None, Query()] = None,
     min_chapters: Annotated[int, Query(ge=0)] = 0,
     tag_name: str | None = None,
+    section: str = DEFAULT_CATALOG_SECTION,
     page: Annotated[int, Query(ge=1)] = 1,
-    shown: Annotated[int, Query(ge=0)] = 0,
-    featured: Annotated[int, Query(ge=0)] = 0,
     random_empty: bool = False,
 ) -> Response:
     """The catalog tab - unlike "Читаю", browsing it has never needed an account (see
@@ -290,6 +336,10 @@ async def show_catalog(
     straight through to `Catalog.list_titles(statuses=[...], min_chapters=...)` (SDK
     >=0.12.0) - statuses match OR-style (a title has one status), like `countries`, and
     their labels come from `list_statuses()`. `min_chapters=0` («Любое») is no filter.
+
+    `section` («Разделы»): with nothing asked (the editorial mode), which section the
+    catalog shows - see `_catalog_sections()`; an unknown one is the default. Once
+    anything is asked, the listing is exactly that and the section is left behind.
     """
     genres = genres or []
     countries = countries or []
@@ -309,20 +359,25 @@ async def show_catalog(
     all_countries = await list_countries()
     all_statuses = await list_statuses()
     editorial = _is_editorial(query, sort, genres, countries, tags, statuses, min_chapters)
+    sections = _catalog_sections(all_statuses)
+    current = next((s for s in sections if s.key == section), sections[0]) if editorial else None
+    # What is listed: the section's own cut, or exactly what was asked for.
+    listed = {
+        "sort": current.sort if current else sort,
+        "statuses": list(current.statuses) if current else statuses,
+        "min_chapters": current.min_chapters if current else min_chapters,
+    }
     async with get_catalog() as catalog:
-        stream = await catalog_stream(
+        result = await list_catalog_titles(
             catalog,
-            editorial=editorial,
             page=page,
-            shown=shown,
-            featured=featured,
             query=query or None,
-            sort=sort,
+            sort=listed["sort"],
             genres=genres,
             countries=countries,
             tags=tags,
-            statuses=statuses,
-            min_chapters=min_chapters or None,
+            statuses=listed["statuses"],
+            min_chapters=listed["min_chapters"] or None,
         )
     genre_names_by_id = {genre.id: genre.name for genre in all_genres}
     country_names_by_id = {c.id: c.name for c in all_countries}
@@ -339,10 +394,21 @@ async def show_catalog(
         {
             "active_nav": "library",
             "active_tab": "catalog",
-            "stream": stream,
-            "items": stream.items,
-            "has_next_page": stream.has_next_page,
+            "items": result.items,
+            "has_next_page": result.has_next_page,
             "page": page,
+            "sections": sections if editorial else [],
+            "section": current,
+            "listed": listed,
+            "genre_links": _genre_links(
+                all_genres, query, sort, genres, countries, tags, tag_name, statuses, min_chapters
+            ),
+            # «Случайный тайтл»: one random title matching what was asked for.
+            "random_params": urlencode(
+                _catalog_filter_params(
+                    query, genres, countries, tags, tag_name, statuses, min_chapters
+                )
+            ),
             "query": query,
             "sort": sort,
             "sort_options": CATALOG_SORT_OPTIONS,
@@ -466,6 +532,30 @@ def _criteria_chips(
     return chips
 
 
+def _genre_links(
+    all_genres: list[Genre],
+    query: str | None,
+    sort: str,
+    genres: list[int],
+    countries: list[int],
+    tags: list[int],
+    tag_name: str | None,
+    statuses: list[int],
+    min_chapters: int,
+) -> dict[int, str]:
+    """The genre bar: for each genre, the catalog with that genre added - or dropped,
+    if it is on already - and every other criterion as it is."""
+    base: list[tuple[str, str | int]] = [("sort", sort)] if sort != DEFAULT_CATALOG_SORT else []
+    links = {}
+    for genre in all_genres:
+        chosen = [g for g in genres if g != genre.id] if genre.id in genres else [*genres, genre.id]
+        params = base + _catalog_filter_params(
+            query, chosen, countries, tags, tag_name, statuses, min_chapters
+        )
+        links[genre.id] = f"/catalog?{urlencode(params)}" if params else "/catalog"
+    return links
+
+
 def _catalog_filter_params(
     query: str | None,
     genres: list[int],
@@ -511,47 +601,28 @@ async def catalog_page_fragment(
     statuses: Annotated[list[int] | None, Query()] = None,
     min_chapters: Annotated[int, Query(ge=0)] = 0,
     page: Annotated[int, Query(ge=1)] = 1,
-    shown: Annotated[int, Query(ge=0)] = 0,
-    featured: Annotated[int, Query(ge=0)] = 0,
 ) -> Response:
     """Just the card markup, no base.html - what catalog-scroll.js fetches and appends
-    as the visitor scrolls (see app/static/js/catalog-scroll.js). PR 295: `shown` /
-    `featured` are the feed cursor from the previous page (catalog_stream()), the new
-    one goes back in X-Catalog-Shown / X-Catalog-Featured."""
-    genres = genres or []
-    countries = countries or []
-    tags = tags or []
-    statuses = statuses or []
-    editorial = _is_editorial(query, sort, genres, countries, tags, statuses, min_chapters)
+    as the visitor scrolls (see app/static/js/catalog-scroll.js). A section's cut comes
+    in as its plain sort / statuses / min_chapters, the way the page itself listed it."""
     async with get_catalog() as catalog:
-        stream = await catalog_stream(
+        result = await list_catalog_titles(
             catalog,
-            editorial=editorial,
             page=page,
-            shown=shown,
-            featured=featured,
             query=query or None,
             sort=sort,
-            genres=genres,
-            countries=countries,
-            tags=tags,
-            statuses=statuses,
+            genres=genres or [],
+            countries=countries or [],
+            tags=tags or [],
+            statuses=statuses or [],
             min_chapters=min_chapters or None,
         )
     response = templates.TemplateResponse(
         request,
         "_catalog_cards.html",
-        {
-            "items": stream.items,
-            "editorial": editorial,
-            "page": page,
-            "has_next_page": stream.has_next_page,
-            "in_library": await _in_library(user),
-        },
+        {"items": result.items, "in_library": await _in_library(user)},
     )
-    response.headers["X-Has-Next-Page"] = "true" if stream.has_next_page else "false"
-    response.headers["X-Catalog-Shown"] = str(stream.shown)
-    response.headers["X-Catalog-Featured"] = str(stream.featured)
+    response.headers["X-Has-Next-Page"] = "true" if result.has_next_page else "false"
     return response
 
 

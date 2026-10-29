@@ -63,7 +63,7 @@ def test_either_filter_switches_to_the_results_mode() -> None:
     for params in ({"statuses": 1}, {"min_chapters": 100}):
         fake, html = _get(params)
         assert 'data-mode="results"' in html
-        assert fake.featured_calls == []
+        assert len(fake.calls) == 1  # one listing: exactly what was asked for
 
 
 def test_any_chapter_count_keeps_the_editorial_mode() -> None:
@@ -82,7 +82,7 @@ def test_infinite_scroll_page_forwards_both_filters() -> None:
     assert response.status_code == 200
     assert fake.received_kwargs["statuses"] == [2]
     assert fake.received_kwargs["min_chapters"] == 1000
-    assert fake.featured_calls == []
+    assert len(fake.calls) == 1
 
 
 def test_random_forwards_both_filters_and_keeps_them_when_nothing_matches() -> None:

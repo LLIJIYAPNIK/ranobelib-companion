@@ -2,10 +2,9 @@
 // view, fetches the next page's card markup (app/api/library.py's catalog_page_fragment)
 // and appends it - no client-side templating, the server renders the cards.
 //
-// PR 295 (Catalog handoff.md): the feed cursor travels with each request (see below);
-// while a page loads, a row of skeleton cards and a role=status «Загружаем ещё…»; if it
-// fails, a compact role=alert plate with «Повторить» that retries the same page and
-// cursor - the cards already loaded stay, nothing reloads on its own until then.
+// PR 295 (Catalog handoff.md): while a page loads, a row of skeleton cards and a
+// role=status «Загружаем ещё…»; if it fails, a compact role=alert plate with «Повторить»
+// that retries the same page - the cards already loaded stay, nothing reloads on its own until then.
 (() => {
   const grid = document.querySelector('[data-role="catalog-grid"]');
   const sentinel = document.querySelector('[data-role="catalog-sentinel"]');
@@ -96,10 +95,6 @@
       for (const id of grid.dataset.statuses.split(",")) params.append("statuses", id);
     }
     if (grid.dataset.minChapters) params.set("min_chapters", grid.dataset.minChapters);
-    // PR 295: the feed cursor - regular cards and featured inserts so far - so the
-    // server keeps one featured insert per 12 cards across the whole feed.
-    params.set("shown", grid.dataset.shown || "0");
-    params.set("featured", grid.dataset.featured || "0");
 
     showLoading();
     let response;
@@ -119,8 +114,6 @@
     }
 
     grid.insertAdjacentHTML("beforeend", html);
-    grid.dataset.shown = response.headers.get("X-Catalog-Shown") || grid.dataset.shown;
-    grid.dataset.featured = response.headers.get("X-Catalog-Featured") || grid.dataset.featured;
     nextPage = response.headers.get("X-Has-Next-Page") === "true" ? nextPage + 1 : null;
     if (!nextPage) {
       observer.unobserve(sentinel);

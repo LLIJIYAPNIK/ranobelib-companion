@@ -6,7 +6,7 @@ from unittest.mock import patch
 
 from fastapi.testclient import TestClient
 from ranobelib import CatalogPage
-from ranobelib.models import Cover, Genre, Label, Title
+from ranobelib.models import Country, Cover, Genre, Label, Title
 
 from app.main import app
 from tests.test_api_catalog import _FakeCatalog, _titles
@@ -40,12 +40,13 @@ def _get(**params: object) -> str:
         return client.get("/catalog", params=params).text
 
 
-def test_header_card_has_the_eyebrow_title_and_the_switch() -> None:
+def test_header_is_the_homes_with_the_switch() -> None:
+    # «Разделы»: the home's frame and heading, as on the library's «Полки».
     html = _get()
-    hero = html.split('<section class="wn-catalog__hero">', 1)[1].split("</section>", 1)[0]
-    assert '<span class="wn-catalog__eyebrow">Каталог RanobeLib</span>' in hero
-    assert '<h1 class="wn-catalog__title">Библиотека</h1>' in hero
-    assert 'data-role="library-switch"' in hero
+    head = html.split('<header class="hm-head cg-head hm-rise">', 1)[1].split("</header>", 1)[0]
+    assert '<h1 class="hm-title" id="catalog-title">Каталог</h1>' in head
+    assert 'data-role="library-switch"' in head
+    assert "wn-catalog__hero" not in html
 
 
 def test_criteria_row_sits_inside_the_sticky_panel() -> None:
@@ -94,66 +95,13 @@ def test_search_button_goes_once_sort_autosubmits_at_every_width() -> None:
     )
 
 
-# --- editorial feed: section labels -------------------------------------------------
-
-
-def _labels(html: str) -> list[str]:
-    return re.findall(r'<h2 class="catalog-section__title">([^<]+)</h2>', html)
-
-
-def _feed(html: str) -> list[str]:
-    """The grid's items in order: S(ection), F(eatured), C(ard)."""
-    grid = html.split('data-role="catalog-grid"', 1)[-1]
-    roles = re.findall(
-        r'data-role="(catalog-section|catalog-featured)"|class="(catalog-card)"', grid
-    )
-    return [{"catalog-section": "S", "catalog-featured": "F"}.get(a, "C") for a, _ in roles]
-
-
-def test_editorial_feed_opens_with_fresh_updates_and_continues_after_each_insert() -> None:
-    fake = _FakeCatalog(
-        CatalogPage(items=_titles(1, 30), page=1, has_next_page=True),
-        featured=[CatalogPage(items=_titles(1001, 5), page=1, has_next_page=False)],
-    )
-    with patch("app.services.catalog.Catalog", return_value=fake):
-        html = client.get("/catalog").text
-
-    assert _labels(html) == ["Свежие обновления", "Продолжить каталог", "Продолжить каталог"]
-    feed = _feed(html)
-    assert feed[0] == "S"
-    assert "".join(feed) == "S" + "C" * 12 + "FS" + "C" * 12 + "FS" + "C" * 6
-    assert 'class="catalog-section catalog-section--fresh"' in html
-
-
-def test_no_label_after_an_insert_that_ends_the_feed() -> None:
-    fake = _FakeCatalog(
-        CatalogPage(items=_titles(1, 12), page=1, has_next_page=False),
-        featured=[CatalogPage(items=_titles(1001, 5), page=1, has_next_page=False)],
-    )
-    with patch("app.services.catalog.Catalog", return_value=fake):
-        html = client.get("/catalog").text
-
-    assert "".join(_feed(html)) == "S" + "C" * 12 + "F"
-
-
-def test_later_pages_carry_no_opening_label() -> None:
-    fake = _FakeCatalog(
-        CatalogPage(items=_titles(31, 30), page=2, has_next_page=True),
-        featured=[CatalogPage(items=_titles(1001, 10), page=1, has_next_page=False)],
-    )
-    with patch("app.services.catalog.Catalog", return_value=fake):
-        html = client.get("/catalog/page", params={"page": 2, "shown": 30, "featured": 2}).text
-
-    assert "".join(_feed(html)).startswith("CCCCCCF")
-    assert _labels(html) == ["Продолжить каталог"] * 3
-
-
-def test_results_mode_is_one_unnamed_grid() -> None:
+def test_results_mode_is_one_grid_with_no_sections() -> None:
     fake = _FakeCatalog(CatalogPage(items=_titles(1, 30), page=1, has_next_page=True))
     with patch("app.services.catalog.Catalog", return_value=fake):
         html = client.get("/catalog", params={"sort": "views"}).text
 
-    assert _labels(html) == []
+    assert 'class="cg-sections"' not in html
+    assert html.count('data-role="catalog-card"') == 30
 
 
 def test_desktop_grid_is_six_columns_with_the_mode_gaps() -> None:
@@ -172,7 +120,8 @@ def _card_html(title: Title) -> str:
     fake = _FakeCatalog(CatalogPage(items=[title], page=1, has_next_page=False))
     with patch("app.services.catalog.Catalog", return_value=fake):
         html = client.get("/catalog", params={"sort": "views"}).text
-    return html.split('<div class="catalog-card">', 1)[1].split("</button>\n</div>", 1)[0]
+    card = html.split('<div class="catalog-card" data-role="catalog-card"', 1)[1]
+    return card.split('data-role="catalog-sentinel"', 1)[0]
 
 
 def _title(**overrides: object) -> Title:
@@ -191,110 +140,34 @@ def _title(**overrides: object) -> Title:
     return Title(**fields)
 
 
-def test_card_shows_title_genre_and_status() -> None:
-    card = _card_html(_title())
+def test_card_shows_title_status_and_country() -> None:
+    card = _card_html(_title(country=Country(id=11, name="Корея")))
 
+    assert 'data-slug-url="7--dragon"' in card
     assert 'href="/titles/7--dragon" title="Последнее пламя в долгой ночи"' in card
     assert '<span class="catalog-card__title">Последнее пламя в долгой ночи</span>' in card
-    # PR 299: the status is in both lines - «жанр · статус» shows on desktop,
-    # «статус» on its own on phones (app.css).
-    assert (
-        '<span class="catalog-card__meta">Тёмное фэнтези'
-        '<span class="catalog-card__meta-status"> · Онгоинг</span></span>'
-    ) in card
-    assert '<span class="catalog-card__sub">Онгоинг</span>' in card
+    # The listing's genres are empty on the real catalog; its status and country are not.
+    assert '<span class="catalog-card__meta">Онгоинг · Корея</span>' in card
     # PR 304/305: the listing never has a chapter count (SDK #74) - the card has no
     # «N гл.» line, even for a Title that happens to carry one.
     assert "гл." not in _card_html(_title(chapter_count=1133))
-    assert 'class="catalog-card__glow" src="https://example.com/c.jpg"' in card
+    assert 'class="catalog-card__img" src="https://example.com/c.jpg"' in card
+    assert "catalog-card__glow" not in card
     assert 'href="/login" aria-label="Войдите, чтобы добавить' in card  # a guest
 
 
-def test_card_without_genres_or_cover_drops_those_lines() -> None:
-    card = _card_html(_title(genres=[], cover=Cover()))
+def test_card_without_a_country_or_cover_drops_them() -> None:
+    card = _card_html(_title(cover=Cover()))
 
-    assert (
-        '<span class="catalog-card__meta catalog-card__meta--status-only">'
-        '<span class="catalog-card__meta-status">Онгоинг</span></span>'
-    ) in card
-    # The second line is the status - shown on phones, hidden on desktop.
-    assert '<span class="catalog-card__sub">Онгоинг</span>' in card
-    assert "catalog-card__glow" not in card
+    assert '<span class="catalog-card__meta">Онгоинг</span>' in card
     assert "<img" not in card
 
 
 def test_cinema_hover_follows_the_design() -> None:
-    glow = _desktop_rule(".wn-catalog .catalog-card__glow")
-    assert "filter: blur(26px) saturate(1.4);" in glow
-    assert "opacity: 0;" in glow
-    hover = CSS.split("@media (min-width: 768px) and (hover: hover) {", 1)[1]
-    assert ".wn-catalog .catalog-card:hover {\n    transform: translateY(-4px);" in hover
-    assert "opacity: 0.55;" in hover
+    marker = "@media (min-width: 768px) and (hover: hover) {\n  .wn-catalog .catalog-card"
+    hover = CSS.split(marker, 1)[1]
+    assert ":hover {\n    transform: translateY(-4px);" in hover
     assert "transform: scale(1.03);" in hover
-
-
-# --- FeaturedCard desktop -----------------------------------------------------------
-
-
-def _featured_html(top: list[Title]) -> list[str]:
-    fake = _FakeCatalog(
-        CatalogPage(items=_titles(1, 30), page=1, has_next_page=False),
-        featured=[CatalogPage(items=top, page=1, has_next_page=False)],
-    )
-    with patch("app.services.catalog.Catalog", return_value=fake):
-        html = client.get("/catalog").text
-    return html.split('<article\n  class="catalog-featured')[1:]
-
-
-def test_featured_card_carries_the_design_content() -> None:
-    top = _title(
-        id=1001,
-        slug_url="1001--prince",
-        rus_name="Я стал наследным принцем Франции",
-        summary="Историк просыпается в теле дофина.",
-        genres=[Genre(id=i, name=f"Жанр {i}") for i in range(1, 6)],
-    )
-    first = _featured_html([top, _title(id=1002, slug_url="1002--x")])[0]
-
-    assert 'aria-label="Популярно на RanobeLib: Я стал наследным принцем Франции"' in first
-    assert "Один из самых просматриваемых" in first
-    assert '<h3 class="catalog-featured__name">Я стал наследным принцем Франции</h3>' in first
-    assert '<p class="catalog-featured__facts">Онгоинг</p>' in first
-    assert "Историк просыпается в теле дофина." in first
-    assert first.count("<li>Жанр") == 3
-    assert 'class="catalog-featured__open" href="/titles/1001--prince"' in first
-    assert '<span class="catalog-featured__issue-number">01</span>' in first
-    # PR 298: «В библиотеку» beside «Открыть тайтл» - a login link for a guest.
-    assert 'class="catalog-featured__lib" href="/login"' in first
-    assert "<span>В библиотеку</span>" in first
-
-
-def test_even_inserts_flip_the_cover_to_the_right() -> None:
-    top = [_title(id=1000 + i, slug_url=f"{1000 + i}--t") for i in range(1, 4)]
-    fake = _FakeCatalog(
-        CatalogPage(items=_titles(1, 36), page=1, has_next_page=False),
-        featured=[CatalogPage(items=top, page=1, has_next_page=False)],
-    )
-    with patch("app.services.catalog.Catalog", return_value=fake):
-        html = client.get("/catalog").text
-
-    classes = re.findall(r'class="(catalog-featured(?: catalog-featured--flip)?)"', html)
-    flip = "catalog-featured catalog-featured--flip"
-    assert classes == ["catalog-featured", flip, "catalog-featured"]
-
-
-def test_featured_desktop_layers_follow_the_design() -> None:
-    card = _desktop_rule(".wn-catalog .catalog-featured__card")
-    assert "min-height: 340px;" in card
-    assert "border-radius: 20px;" in card
-    backdrop = _desktop_rule(".wn-catalog .catalog-featured__backdrop")
-    assert "filter: blur(60px) saturate(1.05) brightness(0.62);" in backdrop
-    halo = _desktop_rule(".wn-catalog .catalog-featured__halo")
-    assert "filter: blur(90px) saturate(1.3);" in halo and "opacity: 0.32;" in halo
-    assert "flex-direction: row-reverse;" in _desktop_rule(
-        ".wn-catalog .catalog-featured--flip .catalog-featured__inner"
-    )
-    assert "800 36px/1.12" in _desktop_rule(".wn-catalog .catalog-featured__name")
 
 
 # --- states ---------------------------------------------------------------------------
@@ -305,7 +178,6 @@ def test_empty_results_name_what_was_asked_for_and_offer_one_reset() -> None:
 
     assert "По запросу «dxd» и выбранным фильтрам тайтлов нет." in html
     assert 'class="catalog-empty__reset" href="/catalog">Сбросить поиск и фильтры</a>' in html
-    assert 'data-role="catalog-featured"' not in html  # no popular titles mixed in
 
 
 def test_empty_search_alone_names_just_the_search() -> None:

@@ -28519,3 +28519,786 @@ body.reader-page--offline-copy .reader-paragraph-more {
     transition: none !important;
   }
 }
+
+/* ==========================================================================
+   «Разделы» - the catalog page (catalog.html, catalog-spotlight.js): the home's frame
+   (.hm: the cover glow, the heading) around the catalog's own toolbar and filters, a
+   genre bar, the sections over a wall of covers, and beside the wall a lamp that stays
+   in view - the home's dark card with the lit cover washed into it. On a phone a section
+   opens with the home's strip and the rest of it follows three to a row.
+   The .wn-catalog rules earlier in this file still style the toolbar's controls, the
+   filters popover and sheet and the card; here they are fitted into the home's frame.
+   ========================================================================== */
+.hm--catalog.wn-catalog {
+  --glide: cubic-bezier(0.25, 0.8, 0.25, 1);
+  /* The sort's list and the lamp's backdrop never widen the page. */
+  overflow-x: clip;
+  --cg-lamp-w: 372px;
+  gap: 24px;
+  padding: 36px max(40px, (100% - var(--hm-max)) / 2) 72px;
+  background: var(--wn-canvas);
+}
+
+.hm--catalog.wn-catalog::before,
+.hm--catalog.wn-catalog::after {
+  content: none;
+}
+
+.hm--catalog .hm-ambient {
+  transition: opacity 0.9s ease;
+}
+
+.hm--catalog .hm-ambient.is-hidden {
+  opacity: 0;
+}
+
+.cg-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px 32px;
+}
+
+/* --- The toolbar: the home's glass pills, on the page itself rather than a panel. --- */
+.hm--catalog.wn-catalog .catalog-toolbar {
+  position: static;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px;
+  width: auto;
+  margin: 0;
+  padding: 0;
+  border: 0;
+  border-radius: 0;
+  background: none;
+  box-shadow: none;
+  backdrop-filter: none;
+}
+
+.hm--catalog.wn-catalog .catalog-toolbar__form {
+  display: contents;
+}
+
+.hm--catalog.wn-catalog .catalog-toolbar__search {
+  flex: 1 1 420px;
+  max-width: 640px;
+  height: 52px;
+  padding: 0 18px;
+  border: 1px solid var(--hm-glass-edge);
+  border-radius: 999px;
+  background: var(--hm-glass);
+}
+
+.hm--catalog.wn-catalog .catalog-toolbar__search:focus-within {
+  box-shadow: 0 0 0 2px var(--wn-teal);
+}
+
+.hm--catalog.wn-catalog :is(.catalog-toolbar__sort, .catalog-toolbar__filters, .catalog-toolbar__random, .catalog-toolbar__submit, .catalog-toolbar__sheet-sort, .catalog-toolbar__sheet-filters) {
+  height: 46px;
+  padding: 0 16px;
+  border: 1px solid var(--hm-glass-edge);
+  border-radius: 999px;
+  background: var(--hm-glass);
+  color: var(--wn-text);
+  font: 700 14px/1 var(--wn-font-ui);
+}
+
+.hm--catalog.wn-catalog .catalog-toolbar__filters[aria-expanded="true"],
+.hm--catalog.wn-catalog :is(.catalog-toolbar__filters, .catalog-toolbar__random):hover {
+  background: var(--hm-glass-raised);
+}
+
+.catalog-toolbar__random {
+  display: inline-flex;
+  flex: none;
+  align-items: center;
+  gap: 8px;
+  padding: 0 16px;
+  text-decoration: none;
+  transition: background-color 0.15s;
+}
+
+.catalog-toolbar__random svg {
+  width: 18px;
+  height: 18px;
+  color: var(--wn-text-secondary);
+}
+
+.catalog-toolbar__random:focus-visible {
+  outline: 2px solid var(--wn-teal);
+  outline-offset: 2px;
+}
+
+/* --- The genre bar: a row that scrolls, faded at an edge only while there is more that
+   way, and «Все жанры» after it, never cut off. --- */
+.cg-genres {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-width: 0;
+  margin-top: -8px;
+}
+
+.cg-genres__row {
+  display: flex;
+  flex: 1;
+  gap: 8px;
+  min-width: 0;
+  margin: -4px;
+  padding: 4px;
+  overflow-x: auto;
+  scrollbar-width: none;
+  -webkit-mask-image: linear-gradient(90deg, transparent, #000 24px, #000 calc(100% - 48px), transparent);
+  mask-image: linear-gradient(90deg, transparent, #000 24px, #000 calc(100% - 48px), transparent);
+}
+
+.cg-genres__row::-webkit-scrollbar {
+  display: none;
+}
+
+.cg-genres__row.at-start {
+  -webkit-mask-image: linear-gradient(90deg, #000 calc(100% - 48px), transparent);
+  mask-image: linear-gradient(90deg, #000 calc(100% - 48px), transparent);
+}
+
+.cg-genres__row.at-end:not(.at-start) {
+  -webkit-mask-image: linear-gradient(90deg, transparent, #000 24px);
+  mask-image: linear-gradient(90deg, transparent, #000 24px);
+}
+
+.cg-genres__row.at-start.at-end {
+  -webkit-mask-image: none;
+  mask-image: none;
+}
+
+.cg-genres__row.is-dragging {
+  cursor: grabbing;
+  user-select: none;
+}
+
+.cg-chip {
+  display: inline-flex;
+  flex: none;
+  align-items: center;
+  gap: 6px;
+  height: 36px;
+  padding: 0 14px;
+  border: 1px solid var(--hm-glass-edge);
+  border-radius: 999px;
+  background: transparent;
+  color: var(--wn-text-secondary);
+  font: 600 14px/1 var(--wn-font-ui);
+  white-space: nowrap;
+  text-decoration: none;
+  cursor: pointer;
+  transition: color 0.15s, border-color 0.15s, background-color 0.15s;
+}
+
+.cg-chip:hover {
+  border-color: rgb(255 255 255 / 20%);
+  color: #fff;
+}
+
+.cg-chip[aria-current="true"] {
+  border-color: #f4f2fa;
+  background: #f4f2fa;
+  color: #0c0c12;
+  font-weight: 700;
+}
+
+.cg-chip--all {
+  background: var(--hm-glass);
+  color: #fff;
+}
+
+.cg-chip--all .hm-num {
+  color: var(--wn-text-muted);
+  font-weight: 700;
+}
+
+.cg-chip:focus-visible {
+  outline: 2px solid var(--wn-teal);
+  outline-offset: 2px;
+}
+
+/* --- The wall and the lamp. --- */
+.hm--catalog.wn-catalog > .catalog-layout.cg-split {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) var(--cg-lamp-w);
+  gap: 36px;
+  align-items: start;
+  max-width: none;
+  margin: 4px 0 0;
+}
+
+/* No lamp (narrower than 1024px, or nothing listed): the wall alone. */
+.hm--catalog.wn-catalog > .catalog-layout.cg-split:not(:has(.cg-lamp:not([hidden]))) {
+  grid-template-columns: minmax(0, 1fr);
+}
+
+.cg-sr {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  white-space: nowrap;
+}
+
+.cg-wall {
+  min-width: 0;
+  gap: 22px;
+}
+
+/* The sections: big tabs with how each is cut under its name. */
+.cg-sections {
+  display: flex;
+  gap: 6px;
+  padding: 5px;
+  border: 1px solid var(--hm-glass-edge);
+  border-radius: 22px;
+  background: var(--hm-glass);
+}
+
+.cg-sections__tab {
+  display: flex;
+  flex: 1 1 auto;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 5px;
+  padding: 12px 16px;
+  border-radius: 17px;
+  color: var(--wn-text-secondary);
+  text-decoration: none;
+  transition: color 0.2s, background-color 0.2s;
+}
+
+.cg-sections__tab b {
+  font: 800 15px/1.2 var(--wn-font-ui);
+  white-space: nowrap;
+}
+
+.cg-sections__tab small {
+  color: var(--wn-text-muted);
+  font: 600 12px/1.2 var(--wn-font-ui);
+  white-space: nowrap;
+}
+
+.cg-sections__tab:hover {
+  color: #fff;
+}
+
+.cg-sections__tab[aria-current="page"] {
+  background: var(--hm-glass-raised);
+  color: #fff;
+}
+
+.cg-sections__tab[aria-current="page"] small {
+  color: var(--wn-text-secondary);
+}
+
+.cg-sections__tab:focus-visible {
+  outline: 2px solid var(--wn-teal);
+  outline-offset: -2px;
+}
+
+.hm--catalog.wn-catalog .catalog-grid {
+  grid-template-columns: repeat(auto-fill, minmax(148px, 1fr));
+  gap: 28px 18px;
+}
+
+/* A section's covers rise in one after another. */
+.hm--catalog .catalog-grid > .catalog-card:nth-child(-n + 16) {
+  animation: cg-rise 0.5s var(--hm-ease) both;
+}
+
+.hm--catalog .catalog-grid > .catalog-card:nth-child(2) { animation-delay: 28ms; }
+.hm--catalog .catalog-grid > .catalog-card:nth-child(3) { animation-delay: 56ms; }
+.hm--catalog .catalog-grid > .catalog-card:nth-child(4) { animation-delay: 84ms; }
+.hm--catalog .catalog-grid > .catalog-card:nth-child(5) { animation-delay: 112ms; }
+.hm--catalog .catalog-grid > .catalog-card:nth-child(6) { animation-delay: 140ms; }
+.hm--catalog .catalog-grid > .catalog-card:nth-child(7) { animation-delay: 168ms; }
+.hm--catalog .catalog-grid > .catalog-card:nth-child(8) { animation-delay: 196ms; }
+.hm--catalog .catalog-grid > .catalog-card:nth-child(n + 9):nth-child(-n + 16) { animation-delay: 224ms; }
+
+@keyframes cg-rise {
+  from {
+    opacity: 0;
+    transform: translateY(14px);
+  }
+}
+
+/* The spotlight: the pointed-at cover lifts and takes a ring; the rest of the wall dims. */
+.hm--catalog .catalog-card {
+  transition: opacity 0.35s var(--glide), transform 0.45s var(--glide);
+}
+
+.hm--catalog .catalog-grid.is-pointing > .catalog-card:not(.is-lit) {
+  opacity: 0.45;
+}
+
+.hm--catalog .catalog-card.is-lit {
+  transform: translateY(-4px);
+}
+
+.hm--catalog .catalog-card.is-lit .catalog-card__cover {
+  box-shadow: 0 0 0 2px #f4f2fa, 0 30px 56px -24px rgb(0 0 0 / 90%);
+}
+
+/* «В библиотеку» shows on the card pointed at (and stays once the title is in). */
+.hm--catalog .catalog-card__action {
+  opacity: 0;
+  transition: opacity 0.15s;
+}
+
+.hm--catalog .catalog-card:is(:hover, :focus-within) .catalog-card__action,
+.hm--catalog .catalog-card__action[aria-pressed="true"] {
+  opacity: 1;
+}
+
+@media (hover: none) {
+  .hm--catalog .catalog-card__action {
+    opacity: 1;
+  }
+}
+
+.cg-lamp {
+  position: sticky;
+  top: 24px;
+  isolation: isolate;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  max-height: calc(100vh - 48px);
+  padding: 24px;
+  border: 1px solid var(--hm-glass-edge);
+  border-radius: 28px;
+  background: #0d0d13;
+}
+
+.cg-lamp[hidden] {
+  display: none;
+}
+
+.cg-lamp__art {
+  position: absolute;
+  inset: -30%;
+  z-index: -1;
+  width: 160%;
+  height: 160%;
+  object-fit: cover;
+  opacity: 0.3;
+  filter: blur(60px) saturate(1.4);
+  pointer-events: none;
+  transition: opacity 0.5s ease;
+}
+
+.cg-lamp__art:not([src]),
+.cg-lamp__art.is-hidden {
+  opacity: 0;
+}
+
+.cg-lamp__in {
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  transition: opacity 0.15s ease, transform 0.3s var(--hm-ease);
+}
+
+.cg-lamp__in.is-out {
+  opacity: 0;
+  transform: translateY(6px);
+}
+
+/* The lamp's content - also the phone's sheet (/titles/{slug}/lamp), which the shared
+   bottom sheet moves out of .hm: it brings the home's glass along. */
+.cg-sheet {
+  --hm-glass: rgb(255 255 255 / 4%);
+  --hm-glass-raised: rgb(255 255 255 / 10%);
+  --hm-glass-edge: rgb(255 255 255 / 9%);
+  --hm-ease: cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+.cg-lamp__body .hm-go__label {
+  white-space: nowrap;
+}
+
+.cg-lamp__body {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  min-height: 0;
+}
+
+.cg-lamp__top {
+  display: grid;
+  grid-template-columns: 120px minmax(0, 1fr);
+  gap: 18px;
+  align-items: end;
+}
+
+.cg-lamp__cover {
+  width: 100%;
+  border-radius: 14px;
+  box-shadow: 0 30px 60px -26px rgb(0 0 0 / 90%);
+}
+
+.cg-lamp__side {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  min-width: 0;
+}
+
+.cg-lamp__facts {
+  margin: 0;
+  color: var(--wn-text-secondary);
+  font: 600 13px/1.45 var(--wn-font-ui);
+}
+
+.cg-lamp__facts b {
+  color: #fff;
+  font-weight: 700;
+}
+
+.cg-lamp__genres {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.cg-lamp__genres li {
+  padding: 6px 10px;
+  border-radius: 999px;
+  background: rgb(255 255 255 / 7%);
+  color: var(--wn-text-secondary);
+  font: 600 12px/1 var(--wn-font-ui);
+}
+
+.cg-lamp__name {
+  margin: 0;
+  color: #fff;
+  font: 800 22px/1.2 var(--wn-font-ui);
+  letter-spacing: -0.02em;
+  text-wrap: balance;
+}
+
+.cg-lamp__summary {
+  display: -webkit-box;
+  margin: 0;
+  overflow: hidden;
+  color: var(--wn-text-secondary);
+  font: 500 14px/1.6 var(--wn-font-ui);
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 6;
+}
+
+.cg-lamp__actions {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 10px;
+}
+
+.cg-lamp__actions .hm-go {
+  justify-content: space-between;
+}
+
+.cg-lamp__lib {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  min-height: 52px;
+  padding: 0 16px;
+  border: 1px solid var(--hm-glass-edge);
+  border-radius: 16px;
+  background: var(--hm-glass);
+  color: #fff;
+  font: 700 15px/1 var(--wn-font-ui);
+  white-space: nowrap;
+  text-decoration: none;
+  cursor: pointer;
+  transition: background-color 0.15s;
+}
+
+.cg-lamp__lib svg {
+  width: 18px;
+  height: 18px;
+}
+
+.cg-lamp__lib:hover {
+  background: var(--hm-glass-raised);
+}
+
+.cg-lamp__lib[aria-pressed="true"] svg {
+  color: var(--wn-teal);
+}
+
+.cg-lamp__lib[aria-pressed="true"] .catalog-lib__plus {
+  display: none;
+}
+
+.cg-lamp__lib[aria-pressed="true"] .catalog-lib__check {
+  display: block;
+}
+
+.cg-lamp__lib:focus-visible {
+  outline: 2px solid var(--wn-teal);
+  outline-offset: 2px;
+}
+
+/* Beside the wall the lamp's button is the + alone; the sheet has room for its words. */
+.cg-lamp .cg-lamp__lib span {
+  display: none;
+}
+
+/* The phone's strip and «Ещё в разделе» - phones only. */
+.cg-stage,
+.cg-more {
+  display: none;
+}
+
+@media (max-width: 1180px) {
+  .hm--catalog.wn-catalog {
+    --cg-lamp-w: 320px;
+  }
+
+  .hm--catalog.wn-catalog > .catalog-layout.cg-split {
+    gap: 24px;
+  }
+
+  .cg-lamp__top {
+    grid-template-columns: 104px minmax(0, 1fr);
+  }
+
+  .cg-sections__tab small {
+    display: none;
+  }
+}
+
+@media (max-width: 767px) {
+  .hm--catalog.wn-catalog {
+    gap: 18px;
+    padding: 20px 16px 120px;
+  }
+
+  .hm--catalog.wn-catalog .catalog-toolbar__search {
+    flex-basis: 100%;
+    max-width: none;
+    height: 48px;
+  }
+
+  .catalog-toolbar__random span {
+    display: none;
+  }
+
+  .catalog-toolbar__random {
+    padding: 0 13px;
+  }
+
+  .cg-genres {
+    margin-right: -16px;
+  }
+
+  .cg-chip--all {
+    display: none;
+  }
+
+  .cg-sections {
+    gap: 8px;
+    margin: 0 -16px;
+    padding: 2px 16px;
+    overflow-x: auto;
+    border: 0;
+    border-radius: 0;
+    background: none;
+    scrollbar-width: none;
+  }
+
+  .cg-sections::-webkit-scrollbar {
+    display: none;
+  }
+
+  .cg-sections__tab {
+    flex: none;
+    padding: 10px 14px;
+    border: 1px solid var(--hm-glass-edge);
+    border-radius: 999px;
+  }
+
+  .cg-sections__tab[aria-current="page"] {
+    border-color: #f4f2fa;
+    background: #f4f2fa;
+    color: #0c0c12;
+  }
+
+  /* A tap opens the title's sheet, and «В библиотеку» is in it: no + on every cover. */
+  .hm--catalog .catalog-card__action {
+    display: none;
+  }
+
+  .hm--catalog .catalog-card.is-lit {
+    transform: none;
+  }
+
+  .hm--catalog .catalog-card.is-lit .catalog-card__cover {
+    box-shadow: none;
+  }
+
+  /* The home's strip: one big cover in the middle, the rest smaller and dimmed. */
+  .cg-stage {
+    --w: 46vw;
+    position: relative;
+    isolation: isolate;
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+    padding: 18px 0 20px;
+    border: 1px solid var(--hm-glass-edge);
+    border-radius: 22px;
+    background: #0d0d13;
+  }
+
+  .cg-stage__art {
+    transition: opacity 0.4s ease;
+  }
+
+  .cg-stage__art.is-hidden {
+    opacity: 0;
+  }
+
+  .cg-stage__row {
+    display: flex;
+    gap: 12px;
+    padding: 0 calc(50% - var(--w) / 2) 4px;
+    overflow-x: auto;
+    scroll-snap-type: x mandatory;
+    scrollbar-width: none;
+  }
+
+  .cg-stage__row::-webkit-scrollbar {
+    display: none;
+  }
+
+  .cg-stage__book {
+    width: var(--w);
+    border-radius: 14px;
+    scroll-snap-align: center;
+    scroll-snap-stop: always;
+    box-shadow: 0 26px 50px -24px rgb(0 0 0 / 90%);
+    transition: transform 0.3s var(--glide), filter 0.3s var(--glide);
+  }
+
+  .cg-stage__book:not(.is-mid) {
+    transform: scale(0.9);
+    filter: brightness(0.5) saturate(0.8);
+  }
+
+  .cg-stage__info {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    padding: 0 16px;
+  }
+
+  .cg-stage__top {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: 12px;
+  }
+
+  .cg-stage__name {
+    margin: 0;
+    color: #fff;
+    font: 800 20px/1.2 var(--wn-font-ui);
+    letter-spacing: -0.02em;
+    text-wrap: balance;
+  }
+
+  .cg-stage__pos {
+    flex: none;
+    color: var(--wn-text-muted);
+    font: 700 13px/1 var(--wn-font-ui);
+  }
+
+  .cg-stage__facts {
+    margin: 0;
+    color: var(--wn-text-secondary);
+    font: 600 14px/1.4 var(--wn-font-ui);
+  }
+
+  .cg-more {
+    display: block;
+    margin: 4px 0 -6px;
+    color: #fff;
+    font: 800 17px/1.3 var(--wn-font-ui);
+  }
+
+  /* The rest of a section three to a row: the covers and names, the facts are in the
+     sheet; the strip's eight aren't repeated under it. */
+  .hm--catalog[data-mode="editorial"] .catalog-grid {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 20px 10px;
+  }
+
+  .hm--catalog[data-mode="editorial"] .catalog-card__title {
+    min-height: 2.6em;
+    max-height: 2.6em;
+    font-size: 13px;
+    line-height: 1.3;
+  }
+
+  .hm--catalog[data-mode="editorial"] .catalog-card__meta {
+    display: none;
+  }
+
+  .cg--staged .catalog-grid > .catalog-card:nth-child(-n + 8) {
+    display: none;
+  }
+
+  .hm--catalog[data-mode="results"] .catalog-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 24px 12px;
+  }
+
+  /* The title's sheet: the lamp's content whole, never scrolled. */
+  .cg-sheet .cg-lamp__top {
+    grid-template-columns: 112px minmax(0, 1fr);
+    gap: 16px;
+  }
+
+  .cg-sheet .cg-lamp__summary {
+    -webkit-line-clamp: 4;
+  }
+
+  .cg-sheet .cg-lamp__actions {
+    grid-template-columns: minmax(0, 1fr) auto;
+  }
+
+  .cg-sheet .cg-lamp__actions .hm-go {
+    justify-content: center;
+  }
+
+  .cg-sheet .cg-lamp__actions .hm-go small {
+    display: none;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .hm--catalog .catalog-grid > .catalog-card {
+    animation: none;
+  }
+
+  .hm--catalog .catalog-card,
+  .cg-lamp__in,
+  .cg-stage__book {
+    transition: none;
+  }
+}

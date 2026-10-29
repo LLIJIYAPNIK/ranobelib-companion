@@ -165,10 +165,7 @@ def _toggle(html: str, slug: str) -> str:
 def test_catalog_cards_know_whats_in_the_library(client: TestClient) -> None:
     register(client, "alice@example.com")
     _add(client, "2--test-novel-2")
-    fake = _FakeCatalog(
-        CatalogPage(items=_titles(1, 3), page=1, has_next_page=True),
-        featured=[CatalogPage(items=[], page=1, has_next_page=False)],
-    )
+    fake = _FakeCatalog(CatalogPage(items=_titles(1, 3), page=1, has_next_page=True))
     with patch("app.services.catalog.Catalog", return_value=fake):
         html = client.get("/catalog").text
         fragment = client.get("/catalog/page", params={"page": 2}).text
@@ -183,23 +180,6 @@ def test_catalog_cards_know_whats_in_the_library(client: TestClient) -> None:
     assert 'aria-pressed="true"' in _toggle(fragment, "2--test-novel-2")
     # The switch counts the same set.
     assert 'data-role="library-switch-count">1</span>' in html
-
-
-def test_featured_toggle_reads_in_library(client: TestClient) -> None:
-    register(client, "alice@example.com")
-    _add(client, "1001--test-novel-1001")
-    fake = _FakeCatalog(
-        CatalogPage(items=_titles(1, 12), page=1, has_next_page=False),
-        featured=[CatalogPage(items=_titles(1001, 1), page=1, has_next_page=False)],
-    )
-    with patch("app.services.catalog.Catalog", return_value=fake):
-        html = client.get("/catalog").text
-
-    featured = html.split('data-role="catalog-featured"', 1)[1].split("</article>", 1)[0]
-    toggle = _toggle(featured, "1001--test-novel-1001")
-    assert 'class="catalog-featured__lib"' in toggle
-    assert 'aria-pressed="true"' in toggle
-    assert '<span data-role="catalog-library-label">В библиотеке</span>' in featured
 
 
 def test_toggle_script_flips_at_once_and_never_asks() -> None:
@@ -220,10 +200,7 @@ async def test_library_actions_are_never_mistaken_for_the_old_star(client: TestC
     _add(client, "1--test-novel-1", "2--test-novel-2")
     async with connection() as conn:
         await record_progress(conn, 1, "1--test-novel-1", "1", "3")
-    fake = _FakeCatalog(
-        CatalogPage(items=_titles(1, 14), page=1, has_next_page=False),
-        featured=[CatalogPage(items=_titles(1001, 2), page=1, has_next_page=False)],
-    )
+    fake = _FakeCatalog(CatalogPage(items=_titles(1, 14), page=1, has_next_page=False))
 
     pages = {"/library": _library(client)}
     with patch("app.services.catalog.Catalog", return_value=fake):
@@ -231,6 +208,12 @@ async def test_library_actions_are_never_mistaken_for_the_old_star(client: TestC
     with patch("app.services.client.RanobeLib", return_value=_FakeClient(_fake_title())):
         pages["/profile"] = client.get("/profile").text
     pages["/settings/account"] = client.get("/settings/account").text
+    # The catalog lamp's «В библиотеку» (/titles/{slug}/lamp) for a title in the library.
+    lamp = "/titles/1--test-novel-1/lamp"
+    with patch(
+        "app.services.client.RanobeLib", return_value=_FakeClient(_fake_title("1--test-novel-1"))
+    ):
+        pages[lamp] = client.get(lamp).text
 
     for path, html in pages.items():
         assert STAR_PATH not in html, path
@@ -243,4 +226,4 @@ async def test_library_actions_are_never_mistaken_for_the_old_star(client: TestC
         r'data-role="catalog-library-toggle"[^>]*aria-label="([^"]+)"', pages["/catalog"]
     )
     assert toggles and all("библиотек" in label for label in toggles)
-    assert '<span data-role="catalog-library-label">В библиотеку</span>' in pages["/catalog"]
+    assert '<span data-role="catalog-library-label">В библиотеке</span>' in pages[lamp]
