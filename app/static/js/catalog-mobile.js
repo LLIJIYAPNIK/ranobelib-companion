@@ -4,10 +4,6 @@
 // The ✕ inside the search field shows while it has text. It clears the field, and if the
 // page was already showing a search it sends the form, so the feed drops that search too.
 //
-// Grid or list: two columns of covers (the default) or one column of row cards. The
-// choice is remembered in localStorage. The grid's data-view attribute carries it, and
-// app.css only reads it on phones.
-//
 // The filters sheet: the sort button and «Фильтры» both open #catalog-filters-sheet in
 // the shared bottom sheet (bottom-sheet.js). The sheet's own form is a draft. Only
 // «Показать результаты» sends it, with whatever is typed in the search field right now.
@@ -82,33 +78,4 @@
       window.bottomSheet.close();
     });
   }
-
-  const toggle = document.querySelector('[data-role="catalog-view-toggle"]');
-  if (!toggle || !grid) return;
-  const VIEW_KEY = "catalogView";
-
-  function setView(view) {
-    grid.dataset.view = view;
-    toggle.setAttribute("aria-label", view === "list" ? "Показать сеткой" : "Показать списком");
-    toggle.dataset.view = view;
-  }
-
-  let saved = null;
-  try {
-    saved = localStorage.getItem(VIEW_KEY);
-  } catch {
-    // Storage blocked (private mode, cleared site data) - the grid it is.
-  }
-  setView(saved === "list" ? "list" : "grid");
-  toggle.hidden = false;
-
-  toggle.addEventListener("click", () => {
-    const view = grid.dataset.view === "list" ? "grid" : "list";
-    setView(view);
-    try {
-      localStorage.setItem(VIEW_KEY, view);
-    } catch {
-      // Not remembered - still switched for this page.
-    }
-  });
 })();

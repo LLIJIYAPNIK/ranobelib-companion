@@ -1,6 +1,6 @@
 // Runs app/static/js/catalog-scroll.js in a node:vm sandbox with a fake grid, a fake
 // IntersectionObserver and a scripted fetch, then prints what each scenario did (which
-// URLs were fetched, what the live regions said, the grid's cursor) as JSON for
+// URLs were fetched, what the live regions said, the next page) as JSON for
 // tests/test_catalog_scroll_js.py.
 import { readFileSync } from "node:fs";
 import vm from "node:vm";
@@ -16,7 +16,7 @@ async function run(responses, steps, filters = {}) {
   const clickListeners = [];
 
   const grid = {
-    dataset: { nextPage: "2", shown: "30", featured: "2", sort: "last_chapter_at", ...filters },
+    dataset: { nextPage: "2", sort: "last_chapter_at", ...filters },
     attrs: {},
     skeletons: 0,
     insertAdjacentHTML(_where, html) {
@@ -108,37 +108,33 @@ async function run(responses, steps, filters = {}) {
     fetched,
     loadingSeen,
     appended: appended.length,
-    cursor: { nextPage: grid.dataset.nextPage, shown: grid.dataset.shown, featured: grid.dataset.featured },
+    nextPage: grid.dataset.nextPage,
     observing: observed.has(sentinel),
     endShown: end.hidden === false,
     log,
   };
 }
 
-const ok = (html, more, shown, featured) => ({
+const ok = (html, more) => ({
   ok: true,
   html,
-  headers: {
-    "X-Has-Next-Page": more ? "true" : "false",
-    "X-Catalog-Shown": shown,
-    "X-Catalog-Featured": featured,
-  },
+  headers: { "X-Has-Next-Page": more ? "true" : "false" },
 });
 
 console.log(
   JSON.stringify({
-    success: await run([ok("<a>cards</a>", true, "60", "5"), ok("<a>more</a>", false, "90", "7")], [
+    success: await run([ok("<a>cards</a>", true), ok("<a>more</a>", false)], [
       "scroll",
       "scroll",
     ]),
-    networkFailureThenRetry: await run(["network", ok("<a>cards</a>", true, "60", "5")], [
+    networkFailureThenRetry: await run(["network", ok("<a>cards</a>", true)], [
       "scroll",
       "scroll",
       "retry",
     ]),
     serverError: await run([{ ok: false }], ["scroll"]),
     // PR 303: the status and chapter-count filters ride along on every page.
-    filters: await run([ok("<a>cards</a>", false, "30", "2")], ["scroll"], {
+    filters: await run([ok("<a>cards</a>", false)], ["scroll"], {
       sort: "views",
       statuses: "1,2",
       minChapters: "100",

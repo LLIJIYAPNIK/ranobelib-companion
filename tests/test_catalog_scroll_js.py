@@ -1,5 +1,5 @@
-"""Infinite scroll of the catalog - app/static/js/catalog-scroll.js (PR 295: feed
-cursor, loading status, the «Повторить» plate), run under Node with a fake grid,
+"""Infinite scroll of the catalog - app/static/js/catalog-scroll.js (PR 295: loading
+status, the «Повторить» plate), run under Node with a fake grid,
 IntersectionObserver and fetch (tests/js/catalog_scroll_harness.mjs). Skipped where
 Node isn't installed.
 """
@@ -37,13 +37,12 @@ def test_trigger_zone_is_800px() -> None:
     assert _scenarios()["success"]["rootMargin"] == "800px 0px"
 
 
-def test_pages_carry_the_feed_cursor_and_take_the_next_one() -> None:
+def test_pages_follow_one_another_with_no_feed_cursor() -> None:
+    # «Разделы»: a plain listing page by page - the featured inserts' cursor is gone.
     result = _scenarios()["success"]
     first, second = result["fetched"]
-    assert "page=2" in first and "shown=30" in first and "featured=2" in first
-    assert "page=3" in second and "shown=60" in second and "featured=5" in second
-    assert result["cursor"]["shown"] == "90"
-    assert result["cursor"]["featured"] == "7"
+    assert "page=2" in first and "page=3" in second
+    assert "shown=" not in first + second and "featured=" not in first + second
     assert result["appended"] == 2
 
 
@@ -71,7 +70,7 @@ def test_failure_shows_the_retry_plate_and_pauses_loading() -> None:
     # Scrolling while the plate is up doesn't silently try again.
     assert after_scroll["error"]
     assert len(result["fetched"]) == 2  # the failed one + the retry, nothing in between
-    # «Повторить» asks for the same page with the same cursor, and clears the plate.
+    # «Повторить» asks for the same page again, and clears the plate.
     assert result["fetched"][0] == result["fetched"][1]
     assert after_retry["error"] is False
     assert result["appended"] == 1

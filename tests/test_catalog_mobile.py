@@ -36,12 +36,10 @@ def _get(**params: object) -> str:
         return client.get("/catalog", params=params).text
 
 
-def test_h1_and_the_app_bar_say_library_on_phones() -> None:
+def test_h1_says_catalog_and_the_app_bar_says_library_on_phones() -> None:
     html = _get()
-    assert '<h1 class="wn-catalog__title">Библиотека</h1>' in html
+    assert '<h1 class="hm-title" id="catalog-title">Каталог</h1>' in html
     assert '<span class="sidebar__strip-title">Библиотека</span>' in html
-    assert "800 28px/1.15" in _mobile_rule(".wn-catalog__title")
-    assert "display: none;" in _mobile_rule(".wn-catalog__eyebrow")
 
 
 def test_search_has_its_own_row_and_a_clear_button() -> None:
@@ -55,29 +53,18 @@ def test_search_has_its_own_row_and_a_clear_button() -> None:
     assert "height: 48px;" in search
 
 
-def test_sort_filters_and_view_share_one_row() -> None:
+def test_sort_and_filters_share_one_row() -> None:
     assert "flex: 1 1 0;" in _mobile_rule(".wn-catalog .catalog-toolbar__sort")
     assert "padding: 0 12px;" in _mobile_rule(".wn-catalog .catalog-toolbar__filters")
-    # One look for all three: 44px, #16161f, a 12px radius.
     assert re.search(
-        r"\.wn-catalog \.catalog-toolbar__sort,\n  \.wn-catalog \.catalog-toolbar__filters,\n"
-        r"  \.catalog-toolbar__view:not\(\[hidden\]\) \{\n    height: 44px;",
+        r"\.wn-catalog \.catalog-toolbar__sort,\n  \.wn-catalog \.catalog-toolbar__filters \{"
+        r"\n    height: 44px;",
         CSS,
     )
-    view = _mobile_rule(".catalog-toolbar__view:not([hidden])")
-    assert "width: 44px;" in view
     html = _get()
-    assert (
-        'data-role="catalog-view-toggle"\n      aria-label="Показать списком"\n      hidden' in html
-    )
+    # «Разделы»: the strip and the three-to-a-row grid took the grid/list switch's place.
+    assert "catalog-view-toggle" not in html
     assert "js/catalog-mobile.js" in html
-
-
-def test_view_toggle_is_remembered() -> None:
-    script = (ROOT / "app/static/js/catalog-mobile.js").read_text(encoding="utf-8")
-    assert 'const VIEW_KEY = "catalogView";' in script
-    assert "grid.dataset.view = view;" in script
-    assert 'saved === "list" ? "list" : "grid"' in script
 
 
 def test_criteria_chips_are_one_strip_with_a_short_reset() -> None:
@@ -93,46 +80,6 @@ def test_grid_is_strictly_two_columns() -> None:
     grid = _mobile_rule(".wn-catalog .catalog-grid")
     assert "grid-template-columns: repeat(2, minmax(0, 1fr));" in grid
     assert "gap: 24px 12px;" in grid
-    assert "display: none;" in _mobile_rule(".catalog-section")
-
-
-def test_card_lines_switch_to_genre_then_status() -> None:
-    hidden = _mobile_rule(".catalog-card__meta-status")
-    assert "display: none;" in hidden
-    assert "display: block;" in _mobile_rule(".catalog-card__sub")
-    # Desktop keeps «жанр · статус» in one line - the phone-only status line is off there.
-    assert re.search(r"\n\.catalog-card__sub \{\n  display: none;", CSS)
-
-
-def test_list_view_is_a_row_card() -> None:
-    assert "grid-template-columns: minmax(0, 1fr);" in _mobile_rule(
-        '.wn-catalog .catalog-grid[data-view="list"]'
-    )
-    assert "width: 64px;" in _mobile_rule('.catalog-grid[data-view="list"] .catalog-card__media')
-    action = _mobile_rule('.catalog-grid[data-view="list"] .catalog-card__action')
-    assert "position: static;" in action
-
-
-def test_featured_card_is_a_horizontal_block_with_the_cover_beside_the_copy() -> None:
-    inner = _mobile_rule(".wn-catalog .catalog-featured__inner", last=False)
-    assert "grid-template-columns: 92px minmax(0, 1fr);" in inner
-    assert "display: contents;" in _mobile_rule(".wn-catalog .catalog-featured__copy")
-    assert "grid-row: 1 / 5;" in _mobile_rule(".wn-catalog .catalog-featured__cover")
-    narrow = CSS.split("@media (max-width: 359px) {\n  .wn-catalog .catalog-featured__inner {", 1)
-    assert "grid-template-columns: 80px minmax(0, 1fr);" in narrow[1].split("}", 1)[0]
-    backdrop = _mobile_rule(".wn-catalog .catalog-featured__backdrop")
-    assert "filter: blur(40px) saturate(0.6) brightness(0.6);" in backdrop
-
-
-def test_featured_card_shows_two_genres_and_an_icon_library_button() -> None:
-    assert "display: none;" in _mobile_rule(
-        ".wn-catalog .catalog-featured__genres li:nth-child(n + 3)"
-    )
-    assert "width: 44px;" in _mobile_rule(".wn-catalog .catalog-featured__lib")
-    assert "display: none;" in _mobile_rule(".wn-catalog .catalog-featured__lib > span")
-    # The hidden label is still announced: the toggle carries its own aria-label.
-    cards = (ROOT / "app/templates/_catalog_cards.html").read_text(encoding="utf-8")
-    assert "aria-label=\"{{ ('«' ~ name ~ '» в библиотеке — убрать')" in cards
 
 
 def _sheet(html: str) -> str:
@@ -208,8 +155,3 @@ def test_feed_states_follow_the_phone_mockup() -> None:
     empty = _mobile_rule(".wn-catalog .catalog-empty")
     assert "border: 1px dashed #33304a;" in empty
     assert "display: none;" in _mobile_rule(".wn-catalog .catalog-empty__icon")
-
-
-def test_list_line_has_no_stray_space_before_the_separator() -> None:
-    html = _get()
-    assert '</span></span><span class="catalog-card__sub' in html
