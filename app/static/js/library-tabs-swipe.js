@@ -30,6 +30,8 @@
   content.addEventListener("pointerdown", (event) => {
     if (!mobileQuery.matches) return;
     if (event.clientX < EDGE_EXCLUSION || event.clientX > window.innerWidth - EDGE_EXCLUSION) return;
+    // A strip swiped sideways on its own (the library's shelves) keeps its swipe.
+    if (event.target.closest("[data-no-tab-swipe]")) return;
     pointerId = event.pointerId;
     startX = event.clientX;
     startY = event.clientY;
