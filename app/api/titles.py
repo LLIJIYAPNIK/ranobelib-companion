@@ -152,6 +152,34 @@ async def title_quickview(request: Request, slug_url: str) -> HTMLResponse:
     )
 
 
+@router.get("/{slug_url}/lamp", response_model=None)
+async def title_lamp(
+    request: Request,
+    slug_url: str,
+    user: Annotated[User | None, Depends(get_current_user)],
+) -> HTMLResponse:
+    """The catalog's lamp (catalog-spotlight.js): what a catalog card can't say about the
+    title pointed at - genres, chapters, the story - with «Открыть тайтл» and «В
+    библиотеку»; on phones the same markup fills the title's bottom sheet. The same one
+    open_client()/get_info() call as title_quickview() above, one title at a time and
+    kept by the SDK cache - never one per card of a page."""
+    async with open_client(slug_url) as lib:
+        title = await lib.get_info()
+    in_library = None
+    if user is not None:
+        async with connection() as conn:
+            in_library = {slug_url} if await get_entry(conn, user.id, slug_url) else set()
+    return templates.TemplateResponse(
+        request,
+        "_title_lamp.html",
+        {
+            "title": title,
+            "cover_url": title.cover.default or title.cover.md or title.cover.thumbnail,
+            "in_library": in_library,
+        },
+    )
+
+
 @router.get("/{slug_url}/size-estimate")
 async def title_size_estimate(slug_url: str) -> dict[str, str | None]:
     """PR 43: `estimate_title_size()` samples several chapters' content, which can take

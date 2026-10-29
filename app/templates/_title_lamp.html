@@ -1,0 +1,50 @@
+{#
+  The catalog's lamp (/titles/{slug}/lamp, catalog-spotlight.js): what a catalog card
+  can't say about the title pointed at - its genres, chapters and story - and the two
+  things to do with it, «Открыть тайтл» (the home's light button) and «В библиотеку»
+  (catalog-library-toggle.js, as on the card). On phones the same markup is the title's
+  bottom sheet. data-cover is the cover the lamp and the page's glow wash in.
+#}
+{% set display_name = title.rus_name or title.name %}
+{% macro chapters_word(n) -%}
+{{ n }} {% if n % 10 == 1 and n % 100 != 11 %}глава{% elif n % 10 in [2, 3, 4] and n % 100 not in [12, 13, 14] %}главы{% else %}глав{% endif %}
+{%- endmacro %}
+{% set facts = [title.status.label if title.status else none, title.country.name if title.country else none, title.age_restriction.label if title.age_restriction else none] | select | join(" · ") %}
+<div class="cg-lamp__body" data-role="catalog-lamp-body" data-slug-url="{{ title.slug_url }}" data-cover="{{ cover_url or '' }}">
+  <div class="cg-lamp__top">
+    <a class="hm-cover cg-lamp__cover" href="/titles/{{ title.slug_url }}" tabindex="-1" aria-hidden="true">
+      {% if cover_url %}<img src="{{ cover_url }}" alt="">{% endif %}
+    </a>
+    <div class="cg-lamp__side">
+      <p class="cg-lamp__facts">{{ facts }}{% if title.chapter_count %}<br><b>{{ chapters_word(title.chapter_count) }}</b>{% endif %}</p>
+      {% if title.genres %}
+      <ul class="cg-lamp__genres" aria-label="Жанры">
+        {% for genre in title.genres[:5] %}<li>{{ genre.name }}</li>{% endfor %}
+      </ul>
+      {% endif %}
+    </div>
+  </div>
+  <h3 class="cg-lamp__name">{{ display_name }}</h3>
+  {% if title.summary %}<p class="cg-lamp__summary">{{ title.summary }}</p>{% endif %}
+  <div class="cg-lamp__actions">
+    <a class="hm-go" href="/titles/{{ title.slug_url }}">
+      <span class="hm-go__label">Открыть тайтл<small>оглавление и чтение</small></span>
+      <svg class="hm-go__arrow" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12h14M13 6l6 6-6 6"/></svg>
+    </a>
+    {% set plus %}<svg class="catalog-lib__plus" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg><svg class="catalog-lib__check" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m5 12.5 4.5 4.5L19 7.5"/></svg>{% endset %}
+    {% if in_library is none %}
+    <a class="cg-lamp__lib" href="/login" aria-label="Войдите, чтобы добавить «{{ display_name }}» в библиотеку">{{ plus }}<span>В библиотеку</span></a>
+    {% else %}
+    {% set on = title.slug_url in in_library %}
+    <button
+      type="button"
+      class="cg-lamp__lib"
+      data-role="catalog-library-toggle"
+      data-slug-url="{{ title.slug_url }}"
+      data-title-name="{{ display_name }}"
+      aria-pressed="{{ 'true' if on else 'false' }}"
+      aria-label="{{ ('«' ~ display_name ~ '» в библиотеке — убрать') if on else ('Добавить «' ~ display_name ~ '» в библиотеку') }}"
+    >{{ plus }}<span data-role="catalog-library-label">{{ 'В библиотеке' if on else 'В библиотеку' }}</span></button>
+    {% endif %}
+  </div>
+</div>
