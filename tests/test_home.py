@@ -179,7 +179,7 @@ def _render_signed_in_home(
 
     app.dependency_overrides[get_current_user] = override_current_user
     monkeypatch.setattr(home_api, "_home_dashboard", fake_dashboard)
-    monkeypatch.setattr(home_api, "_book_focus", fake_book)
+    monkeypatch.setattr(home_api, "book_focus", fake_book)
     monkeypatch.setattr(home_api, "_recent_with_progress", no_recent)
     monkeypatch.setattr(home_api, "popular_titles", no_popular)
     try:
@@ -213,16 +213,16 @@ def test_home_is_the_readers_library_shelf(monkeypatch: pytest.MonkeyPatch) -> N
 def test_home_shows_each_books_description_and_chapters_ahead(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    from app.api import home as home_api
+    from app.book_focus import BookChapter, BookFocus
 
-    book = home_api.BookFocus(
+    book = BookFocus(
         summary="Описание книги.",
         status="Онгоинг",
         position=92,
         total=120,
         chapters=[
-            home_api.BookChapter("1", "92", "Банкет", True),
-            home_api.BookChapter("1", "93", "Письмо", False),
+            BookChapter("1", "92", "Банкет", True),
+            BookChapter("1", "93", "Письмо", False),
         ],
     )
     text = _render_signed_in_home(monkeypatch, book=book)
@@ -239,7 +239,7 @@ def test_home_shows_each_books_description_and_chapters_ahead(
 async def test_book_focus_finds_the_current_chapter_in_sdk_order(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    from app.api import home as home_api
+    from app import book_focus as focus_module
     from app.services.titles import TitleDetails
 
     volumes = [
@@ -254,9 +254,9 @@ async def test_book_focus_finds_the_current_chapter_in_sdk_order(
     async def fake_details(slug_url: str) -> TitleDetails:
         return TitleDetails("Тайтл", None, "Онгоинг", volumes, "Описание")
 
-    monkeypatch.setattr(home_api, "title_details", fake_details)
+    monkeypatch.setattr(focus_module, "title_details", fake_details)
     item = {"entry": SimpleNamespace(slug_url="1--t", last_read_volume="1", last_read_number="3")}
-    focus = await home_api._book_focus(item)
+    focus = await focus_module.book_focus(item)
 
     assert focus is not None
     assert (focus.position, focus.total, focus.summary) == (3, 9, "Описание")

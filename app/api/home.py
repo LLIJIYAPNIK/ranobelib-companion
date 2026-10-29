@@ -13,6 +13,7 @@ from ranobelib import RanobeLibError
 from app.api.activity import ActivitySummary, build_activity_summary
 from app.api.library import library_items_for_user
 from app.auth.dependencies import get_current_user
+from app.book_focus import book_focus
 from app.db.connection import connection
 from app.db.library import get_entry, list_entries
 from app.db.users import User
@@ -20,7 +21,6 @@ from app.reading_progress import reading_progress_percent
 from app.recent_titles import forget, read_recent
 from app.services.catalog import popular_titles
 from app.services.client import open_client
-from app.services.titles import title_details
 from app.templating import templates
 
 router = APIRouter()
@@ -29,8 +29,6 @@ _POPULAR_LIMIT = 12
 # Titles with reading progress the home page carries: the book on the go plus the rest
 # of «Читаю».
 _READING_LIMIT = 9
-# Each book on the shelf: chapters listed from the reader's own on.
-_NEXT_CHAPTERS = 4
 
 
 @dataclass(frozen=True)
@@ -49,26 +47,6 @@ class HomeDashboard:
         return self.reading[0] if self.reading else None
 
 
-@dataclass(frozen=True)
-class BookChapter:
-    volume: str
-    number: str
-    name: str | None
-    is_current: bool
-
-
-@dataclass(frozen=True)
-class BookFocus:
-    """A book on the shelf, from the SDK: its description, where the reader is in it, and
-    the chapters from the current one on, in the SDK's order."""
-
-    summary: str | None
-    status: str | None
-    position: int | None  # 1-based place of the current chapter, None if not found
-    total: int
-    chapters: list[BookChapter]
-
-
 @router.get("/")
 async def home(
     request: Request,
@@ -82,7 +60,7 @@ async def home(
     # gets its description and chapters ahead - one SDK lookup per book, in turn (no
     # parallel requests past the SDK's own pacing), cached by the SDK after the first.
     focus = {
-        item["entry"].slug_url: await _book_focus(item)  # type: ignore[attr-defined]
+        item["entry"].slug_url: await book_focus(item)  # type: ignore[attr-defined]
         for item in (dashboard.reading if dashboard else [])
     }
     return templates.TemplateResponse(
@@ -103,42 +81,6 @@ async def home(
                 for title in popular
             ],
         },
-    )
-
-
-async def _book_focus(item: dict[str, object]) -> BookFocus | None:
-    """A book's description and the chapters from the reader's own on. The current
-    chapter is found by its volume and number as the SDK gives them, no parsing; None
-    when ranobelib.me can't be reached (the panel then does without)."""
-    entry = item["entry"]
-    details = await title_details(entry.slug_url)  # type: ignore[attr-defined]
-    if details is None:
-        return None
-    chapters = [chapter for volume in details.volumes for chapter in volume.chapters]
-    current = next(
-        (
-            index
-            for index, chapter in enumerate(chapters)
-            if chapter.volume == entry.last_read_volume  # type: ignore[attr-defined]
-            and chapter.number == entry.last_read_number  # type: ignore[attr-defined]
-        ),
-        None,
-    )
-    start = current or 0
-    return BookFocus(
-        summary=details.summary,
-        status=details.status,
-        position=current + 1 if current is not None else None,
-        total=len(chapters),
-        chapters=[
-            BookChapter(
-                volume=chapter.volume,
-                number=chapter.number,
-                name=chapter.name,
-                is_current=index == current,
-            )
-            for index, chapter in enumerate(chapters[start : start + _NEXT_CHAPTERS], start=start)
-        ],
     )
 
 
