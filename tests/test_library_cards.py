@@ -116,25 +116,6 @@ async def test_card_has_the_menu_and_the_confirmation(client: TestClient) -> Non
     assert ">Отмена</button>" in confirm and ">Удалить</button>" in confirm
 
 
-async def test_hero_menu_has_its_toc_item_for_phones_only(client: TestClient) -> None:
-    register(client, "alice@example.com")
-    _add(client, "1--first")
-    async with connection() as conn:
-        await record_progress(conn, 1, "1--first", "1", "3")
-
-    hero = _library(client).split('data-role="library-hero"', 1)[1].split("</section>", 1)[0]
-    menu = hero.split('data-role="library-menu" hidden>', 1)[1].split("</div>", 1)[0]
-    assert "Страница тайтла" in menu
-    # Desktop has the «Оглавление» button beside «Продолжить»; phones drop it for the
-    # action sheet (PR 300), so the item is there but phone-only.
-    assert 'class="wn-library-menu__item wn-library-menu__item--phone-only"' in menu
-    assert "Оглавление" in menu
-    assert "Удалить из библиотеки" in menu
-    assert (
-        'data-slug-url="1--first"' in _library(client).split('data-role="library-hero"', 1)[1][:80]
-    )
-
-
 async def test_chapter_zero_is_the_prologue(client: TestClient) -> None:
     register(client, "alice@example.com")
     _add(client, "1--first")
@@ -145,8 +126,7 @@ async def test_chapter_zero_is_the_prologue(client: TestClient) -> None:
         html = _library(client)
 
     assert "Том 2 · Пролог" in html
-    assert "Продолжить · Пролог" in html
-    assert "Остановились на прологе" in html
+    assert '<span class="hm-go__label">Читать дальше<small>Пролог</small></span>' in html
 
 
 def test_card_actions_script_is_wired_and_portals_its_popovers() -> None:
@@ -165,8 +145,8 @@ def test_removal_is_undoable_for_six_seconds() -> None:
     assert 'window.addEventListener("pagehide"' in script
     assert "send(p, { keepalive: true });" in script
     assert 'showToast("Не удалось удалить из библиотеки");' in script
-    toolbar = (ROOT / "app/static/js/library-toolbar.js").read_text(encoding="utf-8")
-    assert 'document.addEventListener("library:changed"' in toolbar
+    shelves = (ROOT / "app/static/js/library-shelves.js").read_text(encoding="utf-8")
+    assert 'document.addEventListener("library:changed"' in shelves
 
 
 # --- catalog: «В библиотеку» --------------------------------------------------------

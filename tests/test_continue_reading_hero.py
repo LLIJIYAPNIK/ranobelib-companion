@@ -49,7 +49,8 @@ def test_routes_invoke_the_shared_macro_instead_of_copying_hero_markup() -> None
     )
     library = (ROOT / "app/templates/library.html").read_text(encoding="utf-8")
 
-    assert 'continue_reading_hero(continue_item, title_id="library-continue-title")' in library
+    # «Полки»: the library has no hero of its own - the book on the go is the home's.
+    assert "continue_reading_hero(" not in library
     assert "wn-library-hero__card" not in library
     # The home page's continue card is its own (the dashboard's hero widget), but keeps
     # the hook library-card-actions.js removes it by and the same continue/TOC links.

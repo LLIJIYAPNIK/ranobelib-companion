@@ -12,6 +12,7 @@ from psycopg import AsyncConnection
 from ranobelib import RanobeLibError
 
 from app.auth.dependencies import get_current_user, require_current_user
+from app.book_focus import BookFocus, book_focus
 from app.db.connection import connection, get_connection
 from app.db.library import (
     LibraryEntry,
@@ -106,11 +107,18 @@ async def show_library(
         return RedirectResponse(url="/library", status_code=301)
     if user is None:
         # A guest has no library to count - the switch renders without a number.
-        context = {**_library_context([]), "library_count": None}
+        context = {**_library_context([], {}), "library_count": None}
         return templates.TemplateResponse(request, "library.html", context)
     async with connection() as conn:
         items = await library_items_for_user(user, conn)
-    return templates.TemplateResponse(request, "library.html", _library_context(items))
+    # Each book's place among its chapters (and so which shelf it stands on): one SDK
+    # lookup per title, in turn - no parallel requests past the SDK's own pacing - and a
+    # local cache hit after the first, as for the home page's «Витрина».
+    focus = {
+        item["entry"].slug_url: await book_focus(item, limit=0)  # type: ignore[union-attr]
+        for item in items
+    }
+    return templates.TemplateResponse(request, "library.html", _library_context(items, focus))
 
 
 @router.get("/favorites")
@@ -131,27 +139,50 @@ async def redirect_old_catalog(request: Request) -> RedirectResponse:
     return RedirectResponse(url=f"{path}?{query}" if query else path, status_code=301)
 
 
+# «Полки»: the library's shelves, in this order. A title stands on exactly one.
+LIBRARY_SHELVES = (("reading", "Читаю"), ("new", "Не начаты"), ("done", "Дочитаны"))
+
+
+def _shelf_of(entry: LibraryEntry, focus: BookFocus | None) -> str:
+    """Never opened - «Не начаты»; on the last chapter there is - «Дочитаны» (an ongoing
+    title goes back to «Читаю» by itself once a new chapter comes out); otherwise «Читаю».
+    Without the SDK's chapters (ranobelib.me unreachable) an opened title stays in «Читаю»."""
+    if entry.last_read_volume is None:
+        return "new"
+    if focus is not None and focus.finished:
+        return "done"
+    return "reading"
+
+
 def _library_context(
     items: list[dict[str, LibraryEntry | str | int | None]],
+    focus: dict[str, BookFocus | None],
 ) -> dict[str, object]:
     """The library page's context, from library_items_for_user() in its "most recently
-    read first" order. PR 297 (LibraryDesktop): one «Моя библиотека» grid of every title,
-    with the most recently read one also as the «Продолжить чтение» hero."""
+    read first" order: «Полки» - the titles on shelves by how far the reader is, each
+    shelf keeping that order (the page re-sorts them on the client)."""
     today = datetime.now(UTC).date()
-    items = [
-        {**item, "last_read_label": _last_read_label(item["entry"].last_read_at, today)}  # type: ignore[union-attr]
-        for item in items
-    ]
-    # A title never opened can't be continued - the hero is the first one that was.
-    continue_item = next(
-        (item for item in items if item["entry"].last_read_volume is not None),  # type: ignore[union-attr]
-        None,
-    )
+    shelves: dict[str, list[dict[str, object]]] = {key: [] for key, _ in LIBRARY_SHELVES}
+    for item in items:
+        entry = item["entry"]
+        book = focus.get(entry.slug_url)  # type: ignore[union-attr]
+        shelf = _shelf_of(entry, book)  # type: ignore[arg-type]
+        shelves[shelf].append(
+            {
+                **item,
+                "focus": book,
+                "shelf": shelf,
+                "last_read_label": _last_read_label(entry.last_read_at, today),  # type: ignore[union-attr]
+                "added_label": _added_label(entry.added_at, today),  # type: ignore[union-attr]
+            }
+        )
     return {
         "active_nav": "library",
         "active_tab": "library",
         "items": items,
-        "continue_item": continue_item,
+        "shelves": [
+            {"key": key, "title": title, "titles": shelves[key]} for key, title in LIBRARY_SHELVES
+        ],
         # PR 294: the «Библиотека» switch item counts every title, started or not.
         "library_count": len(items),
     }
@@ -190,6 +221,23 @@ def _last_read_label(last_read_at: str | None, today: date) -> str | None:
     label = f"Последнее чтение {read_on.day} {_MONTHS_GENITIVE[read_on.month - 1]}"
     if read_on.year != today.year:
         label += f" {read_on.year}"
+    return label
+
+
+def _added_label(added_at: str, today: date) -> str:
+    """The line under a «Не начаты» book: "Добавлен сегодня", "Добавлен вчера" or
+    "Добавлен 25 октября" - the same UTC calendar dates as _last_read_label()."""
+    added = datetime.fromisoformat(added_at)
+    if added.tzinfo is None:
+        added = added.replace(tzinfo=UTC)
+    added_on = added.astimezone(UTC).date()
+    if added_on == today:
+        return "Добавлен сегодня"
+    if added_on == today - timedelta(days=1):
+        return "Добавлен вчера"
+    label = f"Добавлен {added_on.day} {_MONTHS_GENITIVE[added_on.month - 1]}"
+    if added_on.year != today.year:
+        label += f" {added_on.year}"
     return label
 
 

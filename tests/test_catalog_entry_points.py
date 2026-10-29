@@ -21,14 +21,17 @@ def _has_route(path: str, method: str) -> bool:
 
 
 def test_home_and_library_use_native_get_catalog_search() -> None:
-    # The home page's search form lives in its shared macros (home/_macros.html).
-    for template in ("home/_macros.html", "library.html"):
-        source = _source(template)
-        assert 'method="get" action="/catalog" role="search"' in source
-        assert 'type="search"' in source
-        assert 'name="query"' in source
-        assert 'enterkeyhint="search"' in source
-        assert 'type="submit"' in source
+    # The search form lives in the home's shared macros (home/_macros.html); the library
+    # («Полки») renders the same one.
+    source = _source("home/_macros.html")
+    assert 'method="get" action="/catalog" role="search"' in source
+    assert 'type="search"' in source
+    assert 'name="query"' in source
+    assert 'enterkeyhint="search"' in source
+    assert 'type="submit"' in source
+    library = _source("library.html")
+    assert 'from "home/_macros.html" import search_form' in library
+    assert "{{ search_form() }}" in library
 
 
 def test_legacy_url_entry_routes_are_not_registered() -> None:

@@ -10,7 +10,7 @@
 //
 // The removal itself, undoable like the download history's (PR 281): every element of
 // that title leaves the page at once (its card, and the hero if it's that title), the page
-// recounts (library-toolbar.js listens for "library:changed"), and a toast offers
+// recounts (library-shelves.js listens for "library:changed"), and a toast offers
 // «Вернуть» for 6 seconds - only then is POST /library/{slug}/remove sent. «Вернуть» puts
 // everything back where it was without anything reaching the server. A removal still
 // waiting is sent right away when another one starts, and with keepalive when the page is
