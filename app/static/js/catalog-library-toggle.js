@@ -4,7 +4,9 @@
 // again without asking - a title picked in the catalog has no progress yet, so there's
 // nothing to lose (the library page's own removal always asks).
 //
-// The button flips at once (aria-pressed, its label, the «Библиотека» switch count),
+// The button flips at once (aria-pressed, its label, the «Библиотека» switch count) -
+// with every other toggle of the same title on the page (the card's + and the lamp's
+// «В библиотеку»), and a catalog:library event tells the lamp its copy is stale -
 // then POST /library/{slug}/add|remove with Accept: application/json. A non-JSON answer
 // means the session ended and the request landed on /login - go there; a failure puts
 // the button back as it was.
@@ -44,6 +46,14 @@
     if (label) label.textContent = on ? "В библиотеке" : "В библиотеку";
   }
 
+  // Every toggle of the title, and the lamp's cache (catalog-spotlight.js).
+  function setAll(slug, on) {
+    document
+      .querySelectorAll('[data-role="catalog-library-toggle"]')
+      .forEach((b) => b.dataset.slugUrl === slug && setState(b, on));
+    document.dispatchEvent(new CustomEvent("catalog:library", { detail: { slug, on } }));
+  }
+
   function bumpCount(delta) {
     const count = document.querySelector('[data-role="library-switch-count"]');
     if (count) count.textContent = String(Math.max(0, Number(count.textContent) + delta));
@@ -55,7 +65,7 @@
     const slug = button.dataset.slugUrl;
     const wasOn = button.getAttribute("aria-pressed") === "true";
 
-    setState(button, !wasOn);
+    setAll(slug, !wasOn);
     bumpCount(wasOn ? -1 : 1);
     button.setAttribute("aria-busy", "true");
     try {
@@ -65,7 +75,7 @@
       );
       const json = (response.headers.get("content-type") || "").includes("application/json");
       if (response.ok && json) return;
-      setState(button, wasOn);
+      setAll(slug, wasOn);
       bumpCount(wasOn ? 1 : -1);
       if (response.ok && !json) {
         window.location.assign("/login");
@@ -73,7 +83,7 @@
       }
       showToast("Не удалось обновить библиотеку");
     } catch {
-      setState(button, wasOn);
+      setAll(slug, wasOn);
       bumpCount(wasOn ? 1 : -1);
       showToast("Не удалось обновить библиотеку");
     } finally {
