@@ -56,6 +56,11 @@ def test_search_has_its_own_row_and_a_clear_button() -> None:
 def test_sort_and_filters_share_one_row() -> None:
     assert "flex: 1 1 0;" in _mobile_rule(".wn-catalog .catalog-toolbar__sort")
     assert "padding: 0 12px;" in _mobile_rule(".wn-catalog .catalog-toolbar__filters")
+    assert re.search(
+        r"\.wn-catalog \.catalog-toolbar__sort,\n  \.wn-catalog \.catalog-toolbar__filters \{"
+        r"\n    height: 44px;",
+        CSS,
+    )
     html = _get()
     # «Разделы»: the strip and the three-to-a-row grid took the grid/list switch's place.
     assert "catalog-view-toggle" not in html
