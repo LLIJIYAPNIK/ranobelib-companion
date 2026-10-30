@@ -29,6 +29,7 @@ from app.db.library import (
 from app.db.users import User
 from app.reading_progress import reading_progress_percent
 from app.services.catalog import (
+    SEARCH_SORT,
     get_catalog,
     list_catalog_titles,
     list_countries,
@@ -57,6 +58,14 @@ CATALOG_SORT_OPTIONS = {
     "rate_avg": "По рейтингу",
     "random": "Случайно",
 }
+
+
+def _default_sort(query: str | None) -> str:
+    """Issue 399: the sort when none was picked - by popularity (SEARCH_SORT) for a
+    search by name, by the last chapter (DEFAULT_CATALOG_SORT) for the listing itself."""
+    return SEARCH_SORT if (query or "").strip() else DEFAULT_CATALOG_SORT
+
+
 # PR 303: the «Количество глав» thresholds - CatalogDesktop/CatalogMobile's own presets,
 # a UI choice like the sort labels above, not domain data. Sent as `min_chapters`
 # (Catalog.list_titles(min_chapters=...), SDK >=0.12.0); 0 is «Любое», no filter.
@@ -294,7 +303,7 @@ async def show_catalog(
     request: Request,
     user: Annotated[User | None, Depends(get_current_user)],
     query: str | None = None,
-    sort: str = DEFAULT_CATALOG_SORT,
+    sort: str | None = None,
     genres: Annotated[list[int] | None, Query()] = None,
     countries: Annotated[list[int] | None, Query()] = None,
     tags: Annotated[list[int] | None, Query()] = None,
@@ -346,6 +355,10 @@ async def show_catalog(
     countries = countries or []
     tags = tags or []
     statuses = statuses or []
+    # Issue 399: no sort given (or an empty one) is "the default for what's asked" - most
+    # viewed first for a search, the last chapter for the listing; a picked one stays.
+    default_sort = _default_sort(query)
+    sort = sort or default_sort
     if sort == "random":
         # PR 230: the no-JS path (catalog-random-redirect.js normally never lets the form
         # submit sort=random) - same one-random-title redirect, not a reshuffled list.
@@ -402,7 +415,16 @@ async def show_catalog(
             "section": current,
             "listed": listed,
             "genre_links": _genre_links(
-                all_genres, query, sort, genres, countries, tags, tag_name, statuses, min_chapters
+                all_genres,
+                query,
+                sort,
+                default_sort,
+                genres,
+                countries,
+                tags,
+                tag_name,
+                statuses,
+                min_chapters,
             ),
             # «Случайный тайтл»: one random title matching what was asked for.
             "random_params": urlencode(
@@ -412,6 +434,7 @@ async def show_catalog(
             ),
             "query": query,
             "sort": sort,
+            "default_sort": default_sort,
             "sort_options": CATALOG_SORT_OPTIONS,
             "all_genres": all_genres,
             "genres": genres,
@@ -431,6 +454,7 @@ async def show_catalog(
             "criteria_chips": [] if editorial else _criteria_chips(
                 query=query,
                 sort=sort,
+                default_sort=default_sort,
                 genres=genres,
                 countries=countries,
                 tags=tags,
@@ -531,6 +555,7 @@ def _criteria_chips(
     *,
     query: str | None,
     sort: str,
+    default_sort: str,
     genres: list[int],
     countries: list[int],
     tags: list[int],
@@ -549,7 +574,9 @@ def _criteria_chips(
     criteria: list[tuple[str, list[tuple[str, str | int]]]] = []
     if (query or "").strip():
         criteria.append((f"«{query.strip()}»", [("query", query.strip())]))  # type: ignore[union-attr]
-    if sort != DEFAULT_CATALOG_SORT:
+    # A sort other than the default for what's asked (issue 399: by popularity for a
+    # search) - dropping its chip goes back to that default.
+    if sort != default_sort:
         criteria.append((CATALOG_SORT_OPTIONS.get(sort, sort), [("sort", sort)]))
     criteria += [
         (label, [("statuses", s)]) for s, label in zip(statuses, status_labels, strict=True)
@@ -579,6 +606,7 @@ def _genre_links(
     all_genres: list[Genre],
     query: str | None,
     sort: str,
+    default_sort: str,
     genres: list[int],
     countries: list[int],
     tags: list[int],
@@ -588,7 +616,7 @@ def _genre_links(
 ) -> dict[int, str]:
     """The genre bar: for each genre, the catalog with that genre added - or dropped,
     if it is on already - and every other criterion as it is."""
-    base: list[tuple[str, str | int]] = [("sort", sort)] if sort != DEFAULT_CATALOG_SORT else []
+    base: list[tuple[str, str | int]] = [("sort", sort)] if sort != default_sort else []
     links = {}
     for genre in all_genres:
         chosen = [g for g in genres if g != genre.id] if genre.id in genres else [*genres, genre.id]
@@ -637,7 +665,7 @@ async def catalog_page_fragment(
     request: Request,
     user: Annotated[User | None, Depends(get_current_user)],
     query: str | None = None,
-    sort: str = DEFAULT_CATALOG_SORT,
+    sort: str | None = None,
     genres: Annotated[list[int] | None, Query()] = None,
     countries: Annotated[list[int] | None, Query()] = None,
     tags: Annotated[list[int] | None, Query()] = None,
@@ -653,7 +681,7 @@ async def catalog_page_fragment(
             catalog,
             page=page,
             query=query or None,
-            sort=sort,
+            sort=sort or _default_sort(query),
             genres=genres or [],
             countries=countries or [],
             tags=tags or [],

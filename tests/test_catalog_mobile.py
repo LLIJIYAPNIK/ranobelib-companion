@@ -94,7 +94,8 @@ def test_filters_sheet_is_its_own_draft_form() -> None:
         sheet = _sheet(client.get("/catalog", params=params).text)
     assert 'data-bottom-sheet-title="Фильтры" hidden' in sheet
     assert 'method="get" action="/catalog"' in sheet
-    assert 'data-default-sort="last_chapter_at" autocomplete="off"' in sheet
+    # Issue 399: «Сбросить» goes back to a search's own default - by popularity.
+    assert 'data-default-sort="views" autocomplete="off"' in sheet
     # What the sheet doesn't show rides along as it is.
     assert '<input type="hidden" name="query" value="dxd"' in sheet
     assert '<input type="hidden" name="tags" value="9">' in sheet
