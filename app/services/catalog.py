@@ -280,3 +280,24 @@ async def popular_titles(limit: int = 12) -> list[Title]:
     except (RanobeLibError, httpx.TransportError):
         return []
     return page.items[:limit]
+
+
+# Issue 394: the shortest query worth a request, and the most suggestions one returns.
+SUGGEST_MIN_QUERY = 2
+SUGGEST_MAX = MIN_PER_PAGE
+
+
+async def suggest_titles(query: str, limit: int = 8) -> list[Title]:
+    """The titles «Найти тайтл по названию» suggests as the visitor types (issue 394):
+    the first page of the very search the catalog runs for the same query on Enter, cut
+    to `limit` - so a suggestion is never a title the catalog itself wouldn't list.
+    Nothing for a query under SUGGEST_MIN_QUERY characters. No cache of its own: a
+    repeated query is answered from the SDK's shared disk cache (`cache_ttl`), like any
+    other `list_titles()` call (CLAUDE.md - no parallel cache over the SDK's)."""
+    query = query.strip()
+    if len(query) < SUGGEST_MIN_QUERY:
+        return []
+    limit = max(1, min(limit, SUGGEST_MAX))
+    async with get_catalog() as catalog:
+        page = await catalog.list_titles(page=1, per_page=MIN_PER_PAGE, query=query)
+    return page.items[:limit]

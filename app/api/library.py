@@ -35,6 +35,7 @@ from app.services.catalog import (
     list_genres,
     list_statuses,
     pick_random_title,
+    suggest_titles,
 )
 from app.services.client import open_client
 from app.templating import templates
@@ -444,6 +445,48 @@ async def show_catalog(
             "library_count": library_count,
             "in_library": in_library,
         },
+    )
+
+
+@catalog_router.get("/suggest")
+async def suggest_catalog_titles(
+    query: str = "",
+    limit: Annotated[int, Query(ge=1, le=10)] = 8,
+) -> JSONResponse:
+    """Issue 394: what «Найти тайтл по названию» (search-suggest.js) offers under the
+    field as the visitor types - `suggest_titles()`, the catalog's own search, as JSON.
+    Each item is what a catalog card shows: the name (Russian first), the cover, «статус
+    · страна»; `alt_names` are the other names the query may have matched. `all_url` is
+    where Enter goes without a pick - the catalog for the same query."""
+    titles = await suggest_titles(query, limit)
+    items = []
+    for title in titles:
+        name = title.rus_name or title.name
+        facts = [
+            title.status.label if title.status else None,
+            title.country.name if title.country else None,
+        ]
+        items.append(
+            {
+                "slug_url": title.slug_url,
+                "url": f"/titles/{title.slug_url}",
+                "name": name,
+                "alt_names": list(
+                    dict.fromkeys(n for n in (title.eng_name, title.name) if n and n != name)
+                ),
+                "cover": title.cover.thumbnail or title.cover.md or title.cover.default,
+                "meta": " · ".join(f for f in facts if f),
+            }
+        )
+    return JSONResponse(
+        {
+            "query": query.strip(),
+            "items": items,
+            "all_url": f"/catalog?{urlencode({'query': query.strip()})}",
+        },
+        # A retyped query in the same minute is answered by the browser; the server side
+        # is the SDK's own cache.
+        headers={"Cache-Control": "private, max-age=60"},
     )
 
 
