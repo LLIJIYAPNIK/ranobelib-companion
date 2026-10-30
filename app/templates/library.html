@@ -124,8 +124,11 @@ data-role="library-item" data-slug-url="{{ item.entry.slug_url }}" data-name="{{
       </div>
     </div>
 
+    {# Issue 396: only the shelves that hold a title - an empty «Не начаты» or «Дочитаны»
+       isn't a section with a 0 and «Пока пусто.»; the first one shown is the big one.
+       Every title stands on exactly one shelf, so with `items` at least one is here. #}
     <div class="lb-shelves">
-      {% for shelf in shelves %}
+      {% for shelf in shelves | selectattr("titles") %}
       <section class="lb-shelf{% if not loop.first %} lb-shelf--small{% endif %} hm-rise" style="--i: {{ loop.index + 1 }}" data-shelf="{{ shelf.key }}" aria-labelledby="shelf-{{ shelf.key }}-title">
         <div class="lb-shelf__head">
           <h2 class="hm-h2" id="shelf-{{ shelf.key }}-title">{{ shelf.title }}</h2>
@@ -136,7 +139,7 @@ data-role="library-item" data-slug-url="{{ item.entry.slug_url }}" data-name="{{
             <button type="button" class="lb-round" data-scroll="1" aria-label="Листать «{{ shelf.title }}» дальше"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m9 6 6 6-6 6"/></svg></button>
           </div>
         </div>
-        <div class="lb-shelf__body" data-role="shelf-body"{% if not shelf.titles %} hidden{% endif %}>
+        <div class="lb-shelf__body" data-role="shelf-body">
           {% set art = shelf.titles | selectattr("cover_url") | map(attribute="cover_url") | first %}
           {% if art %}<img class="hl-art lb-shelf__art" src="{{ art }}" alt="" aria-hidden="true" data-role="shelf-art">{% endif %}
           <div class="lb-shelf__panels" aria-live="polite">
@@ -146,9 +149,10 @@ data-role="library-item" data-slug-url="{{ item.entry.slug_url }}" data-name="{{
             {% for item in shelf.titles %}{{ book(item, loop.first) }}{% endfor %}
           </div>
         </div>
-        <p class="lb-shelf__empty" data-role="shelf-empty"{% if shelf.titles %} hidden{% endif %}>Пока пусто.</p>
       </section>
       {% endfor %}
+      {# What a tab or a search shows when no shelf has anything for it (library-shelves.js). #}
+      <p class="lb-shelf__empty" data-role="library-none" role="status" hidden></p>
     </div>
     {% else %}
     <p class="lb-empty hm-panel">

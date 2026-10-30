@@ -167,6 +167,46 @@ async def test_each_cover_and_its_details_go_and_come_back_together(client: Test
     assert shelf.count('data-role="library-more"') == 2
 
 
+def _sections(html: str) -> list[tuple[str, str, str]]:
+    """(class, --i, key) of every shelf section, in page order."""
+    return re.findall(
+        r'<section class="(lb-shelf[^"]*)" style="--i: (\d+)" data-shelf="(\w+)"', html
+    )
+
+
+def test_empty_shelves_are_not_on_the_page(client: TestClient) -> None:
+    """Issue 396: no «Читаю» / «Дочитаны» section with a 0 and «Пока пусто.» when only
+    «Не начаты» holds titles - and the one left is the big one."""
+    register(client, "alice@example.com")
+    _add(client, "1--first", "2--second")
+
+    html = _library(client)
+
+    assert _sections(html) == [("lb-shelf hm-rise", "2", "new")]
+    assert 'data-shelf="reading"' not in html
+    assert 'data-shelf="done"' not in html
+    assert 'data-role="shelf-empty"' not in html
+    assert "Пока пусто." not in html
+    # The four tabs stay: library-shelves.js counts a shelf that isn't here as 0.
+    assert re.findall(r'data-shelf-tab="(\w+)"', html) == ["all", "reading", "new", "done"]
+    assert '<p class="lb-shelf__empty" data-role="library-none" role="status" hidden></p>' in html
+
+
+async def test_the_first_shelf_shown_is_the_big_one(client: TestClient) -> None:
+    register(client, "alice@example.com")
+    _add(client, "1--new", "2--done")
+    async with connection() as conn:
+        await record_progress(conn, 1, "2--done", "1", "3")
+
+    html = _library(client)
+
+    # No «Читаю»: «Не начаты» leads, large, and the rise order has no gap.
+    assert _sections(html) == [
+        ("lb-shelf hm-rise", "2", "new"),
+        ("lb-shelf lb-shelf--small hm-rise", "3", "done"),
+    ]
+
+
 def test_the_shelves_are_the_homes_pieces() -> None:
     imports = "import search_form, cover_progress, progress_line, go_button"
     assert '{% from "home/_macros.html" ' + imports + " %}" in PAGE
@@ -238,6 +278,30 @@ def test_the_sort_list_is_driven_from_the_keyboard() -> None:
     for key in ('"ArrowDown"', '"ArrowUp"', '"Enter"', '"Escape"'):
         assert key in SCRIPT
     assert "aria-expanded" in SCRIPT
+
+
+def test_a_shelf_with_nothing_to_show_leaves_the_page() -> None:
+    """Issue 396: emptied by the search or a removal, or not on this tab - hidden; the
+    first shelf still shown is made the big one."""
+    hide = 'section.hidden = list.length === 0 || (view.tab !== "all" && view.tab !== key);'
+    assert hide in SCRIPT
+    assert "shelf-empty" not in SCRIPT
+    assert 'shelf.section.classList.toggle("lb-shelf--small", i > 0)' in SCRIPT
+    assert "const lead = visible[0]?.first();" in SCRIPT
+
+
+def test_an_empty_tab_or_search_says_why() -> None:
+    assert "none.hidden = visible.length > 0;" in SCRIPT
+    for copy in (
+        "Дочитанных тайтлов пока нет.",
+        "Все тайтлы в библиотеке уже начаты.",
+        "Сейчас нет начатых тайтлов",
+        "В библиотеке нет «${view.query}».",
+        "На полке «${tabName(view.tab)}» нет «${view.query}».",
+    ):
+        assert copy in SCRIPT, copy
+    # A tab whose shelf the server left out counts 0, not «undefined».
+    assert "String(counts[tab.dataset.shelfTab] ?? 0)" in SCRIPT
 
 
 def test_swiping_a_shelf_never_switches_to_the_catalog() -> None:

@@ -17,6 +17,10 @@
 // library-card-actions.js takes a removed title's cover and details away (both carry
 // data-role="library-item") and puts them back on «Вернуть»; either way it sends
 // "library:changed", and the shelves recount and bring another book forward if needed.
+//
+// Issue 396: a shelf with nothing to show - none rendered by the server, emptied by the
+// search or by a removal - isn't on the page; the first shelf shown is the big one. When
+// the tab or the search leaves no shelf at all, one line under the tools says why.
 (() => {
   const titles = document.querySelector('[data-role="library-titles"]');
   if (!titles) return;
@@ -71,7 +75,6 @@
     const pos = section.querySelector('[data-role="shelf-pos"]');
     const nav = section.querySelector('[data-role="shelf-nav"]');
     const [back, forward] = nav.querySelectorAll("[data-scroll]");
-    const empty = section.querySelector('[data-role="shelf-empty"]');
     const art = crossfade(section.querySelector('[data-role="shelf-art"]'));
     let active = null; // the slug brought forward
     let timer = 0;
@@ -148,9 +151,7 @@
       const list = shown();
       count.textContent = String(list.length);
       body.hidden = list.length === 0;
-      empty.hidden = list.length > 0;
-      empty.textContent = view.query ? `На этой полке нет «${view.query}».` : "Пока пусто.";
-      section.hidden = view.tab !== "all" && view.tab !== key;
+      section.hidden = list.length === 0 || (view.tab !== "all" && view.tab !== key);
       if (list.length) {
         const current = list.find((book) => book.dataset.slugUrl === active);
         if (!current) active = null;
@@ -248,6 +249,7 @@
 
     return {
       key,
+      section,
       apply,
       matching: () => books().filter((book) => !view.query || book.dataset.name.includes(view.query)).length,
       first: () => shown()[0],
@@ -262,17 +264,38 @@
   const sortButton = sortBox.querySelector("button");
   const sortList = sortBox.querySelector('[role="listbox"]');
   const options = [...sortList.querySelectorAll('[role="option"]')];
+  const none = titles.querySelector('[data-role="library-none"]');
   tools.hidden = false;
+
+  // A tab's name without its count, for «На полке «Дочитаны» нет «…».».
+  const tabName = (key) =>
+    tabs.find((tab) => tab.dataset.shelfTab === key)?.firstChild.textContent.trim() || "";
+  // What an empty tab says, the search aside.
+  const NOTHING = {
+    all: "Пока пусто.",
+    reading: "Сейчас нет начатых тайтлов: откройте главу — тайтл встанет на эту полку.",
+    new: "Все тайтлы в библиотеке уже начаты.",
+    done: "Дочитанных тайтлов пока нет.",
+  };
 
   function render(restart = true) {
     for (const shelf of shelves) shelf.apply(restart);
+    const visible = shelves.filter((shelf) => !shelf.section.hidden);
+    visible.forEach((shelf, i) => shelf.section.classList.toggle("lb-shelf--small", i > 0));
+    none.hidden = visible.length > 0;
+    if (!visible.length) {
+      if (!view.query) none.textContent = NOTHING[view.tab];
+      else if (view.tab === "all") none.textContent = `В библиотеке нет «${view.query}».`;
+      else none.textContent = `На полке «${tabName(view.tab)}» нет «${view.query}».`;
+    }
     const counts = Object.fromEntries(shelves.map((shelf) => [shelf.key, shelf.matching()]));
     counts.all = Object.values(counts).reduce((sum, n) => sum + n, 0);
     for (const tab of tabs) {
-      tab.querySelector('[data-role="tab-count"]').textContent = String(counts[tab.dataset.shelfTab]);
+      // A shelf the server didn't render (it had no titles) counts 0.
+      tab.querySelector('[data-role="tab-count"]').textContent = String(counts[tab.dataset.shelfTab] ?? 0);
     }
     // The page's glow: the first shelf on show's book in front.
-    const lead = shelves.find((shelf) => view.tab === "all" || view.tab === shelf.key)?.first();
+    const lead = visible[0]?.first();
     if (lead) glow(coverOf(lead));
   }
 
