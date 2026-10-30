@@ -25520,6 +25520,8 @@ body.reader-page--offline-copy .reader-paragraph-more {
 
 /* --- Search: glass field, the submit inside its right end. --- */
 .hm-search {
+  /* The suggestions (.hm-suggest, issue 394) hang under it. */
+  position: relative;
   display: flex;
   align-items: center;
   gap: 10px;
@@ -25599,6 +25601,199 @@ body.reader-page--offline-copy .reader-paragraph-more {
   padding: 0 22px;
   background: var(--wn-primary);
   color: #fff;
+}
+
+/* --- Suggestions (issue 394): the titles search-suggest.js lists under the field as the
+   visitor types. The popover is the library sort's (.lb-sort__list): the same solid
+   surface, radius, shadow and opening move, and the same highlighted row; a row is a
+   small catalog card - the cover, the name with the typed part marked, «статус ·
+   страна». It ends above the on-screen keyboard and scrolls inside itself. --- */
+/* Over what follows the header: its .hm-rise block keeps a transform, so a stacking
+   context of its own, which later blocks would paint over. */
+.hm-rise:has(.hm-search.is-suggesting) {
+  position: relative;
+  z-index: 60;
+}
+
+.hm-suggest {
+  position: absolute;
+  top: calc(100% + 6px);
+  left: 0;
+  right: 0;
+  z-index: 80;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: min(380px, 100%);
+  /* From the field's bottom to the viewport's (search-suggest.js), less the phone's
+     bottom navigation and a margin; 480px at most. */
+  max-height: min(480px, max(160px, var(--suggest-to, 100vh) - var(--suggest-from, 0px) - var(--shell-bottom, 0px) - 16px));
+  padding: 6px;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  border-radius: 16px;
+  background: #1d1c27;
+  box-shadow: 0 18px 40px rgb(0 0 0 / 55%);
+  scrollbar-width: thin;
+  animation: lb-pop 0.18s var(--hm-ease);
+}
+
+.hm-suggest[hidden] {
+  display: none;
+}
+
+/* Rows keep their height; a short list scrolls instead of squeezing them. */
+.hm-suggest > * {
+  flex: none;
+}
+
+.hm-suggest__item,
+.hm-suggest__skeleton {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 6px 8px;
+  border-radius: 10px;
+}
+
+.hm-suggest__item {
+  color: var(--wn-text-secondary);
+  text-decoration: none;
+  transition: background-color 0.12s ease, color 0.12s ease;
+}
+
+.hm-suggest__item.is-at {
+  background: rgb(255 255 255 / 7%);
+  color: #fff;
+}
+
+.hm-suggest__cover {
+  flex: none;
+  width: 36px;
+  aspect-ratio: 2 / 3;
+  overflow: hidden;
+  border-radius: 6px;
+  background: rgb(255 255 255 / 6%);
+}
+
+.hm-suggest__cover img {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.hm-suggest__text {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  gap: 4px;
+  min-width: 0;
+}
+
+.hm-suggest__name {
+  display: -webkit-box;
+  overflow: hidden;
+  color: var(--wn-text);
+  font: 700 14px/1.3 var(--wn-font-ui);
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+}
+
+.hm-suggest__item.is-at .hm-suggest__name {
+  color: #fff;
+}
+
+.hm-suggest__meta {
+  overflow: hidden;
+  color: var(--wn-text-muted);
+  font: 600 12.5px/1.3 var(--wn-font-ui);
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
+.hm-suggest mark {
+  border-radius: 3px;
+  background: rgb(61 214 195 / 18%);
+  color: inherit;
+}
+
+.hm-suggest__name mark {
+  color: #fff;
+}
+
+.hm-suggest__all {
+  margin-top: 4px;
+  padding: 11px 12px;
+  border-radius: 10px;
+  background: rgb(255 255 255 / 4%);
+  color: var(--wn-text);
+  font: 700 14px/1.2 var(--wn-font-ui);
+  text-decoration: none;
+  transition: background-color 0.12s ease, color 0.12s ease;
+}
+
+.hm-suggest__all.is-at {
+  background: var(--hm-glass-raised);
+  color: #fff;
+}
+
+.hm-suggest__note {
+  margin: 0;
+  padding: 14px 12px;
+  color: var(--wn-text-secondary);
+  font: 600 14px/1.4 var(--wn-font-ui);
+}
+
+.hm-suggest__skeleton .hm-suggest__cover {
+  height: 54px;
+}
+
+.hm-suggest__skeleton .hm-suggest__text span {
+  height: 12px;
+  border-radius: 6px;
+}
+
+.hm-suggest__skeleton .hm-suggest__text span:first-child {
+  width: 72%;
+}
+
+.hm-suggest__skeleton .hm-suggest__text span:last-child {
+  width: 40%;
+}
+
+/* Read out, not shown. */
+.hm-suggest__status {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
+
+/* Phones: the list spans the field's full width (the field itself spans the row) and
+   its rows grow to a thumb's height. */
+@media (max-width: 767px) {
+  .hm-suggest {
+    min-width: 0;
+  }
+
+  .hm-suggest__item {
+    min-height: 56px;
+  }
+
+  .hm-suggest__all {
+    min-height: 44px;
+    display: flex;
+    align-items: center;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .hm-suggest {
+    animation: none;
+  }
 }
 
 .hm-head {
