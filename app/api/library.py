@@ -358,6 +358,7 @@ async def show_catalog(
     # Issue 399: no sort given (or an empty one) is "the default for what's asked" - most
     # viewed first for a search, the last chapter for the listing; a picked one stays.
     default_sort = _default_sort(query)
+    sort_picked = bool(sort)
     sort = sort or default_sort
     if sort == "random":
         # PR 230: the no-JS path (catalog-random-redirect.js normally never lets the form
@@ -381,6 +382,10 @@ async def show_catalog(
         "statuses": list(current.statuses) if current else statuses,
         "min_chapters": current.min_chapters if current else min_chapters,
     }
+    # Whether the sort on the toolbar is the visitor's own - picked, or a section's (a
+    # search from «Новое в каталоге» keeps its order). If not, a search typed into the
+    # toolbar leaves it out and goes by popularity (catalog-search-sort.js).
+    sort_kept = sort_picked or (current is not None and current.key != DEFAULT_CATALOG_SECTION)
     async with get_catalog() as catalog:
         result = await list_catalog_titles(
             catalog,
@@ -435,6 +440,7 @@ async def show_catalog(
             "query": query,
             "sort": sort,
             "default_sort": default_sort,
+            "sort_kept": sort_kept,
             "sort_options": CATALOG_SORT_OPTIONS,
             "all_genres": all_genres,
             "genres": genres,
