@@ -100,7 +100,7 @@ def test_show_title_renders_the_skeleton_and_loader_script() -> None:
     assert response.status_code == 200
     assert 'data-role="title-content"' in response.text
     assert 'data-slug-url="6712--test-novel"' in response.text
-    assert 'class="title-hero title-hero--skeleton"' in response.text
+    assert 'class="tp tp--skeleton"' in response.text
     assert "static/js/title-content-load.js" in response.text
 
 
@@ -294,8 +294,8 @@ def test_title_data_uses_russian_name_as_the_primary_heading() -> None:
 
     assert response.status_code == 200
     assert 'data-display-name="Тестовый роман"' in response.text
-    assert '<h1 class="title-hero__name">Тестовый роман</h1>' in response.text
-    assert 'class="title-hero__alt-name" title="Test Novel">Test Novel</p>' in response.text
+    assert '<h1 class="tp-name">Тестовый роман</h1>' in response.text
+    assert 'class="tp-alt" title="Test Novel">Test Novel</p>' in response.text
     assert 'alt="Обложка «Тестовый роман»"' in response.text
 
 
@@ -314,8 +314,8 @@ def test_title_data_falls_back_to_original_name_without_a_russian_one() -> None:
 
     assert response.status_code == 200
     assert 'data-display-name="Test Novel"' in response.text
-    assert '<h1 class="title-hero__name">Test Novel</h1>' in response.text
-    assert "title-hero__alt-name" not in response.text
+    assert '<h1 class="tp-name">Test Novel</h1>' in response.text
+    assert 'class="tp-alt"' not in response.text
 
 
 def test_title_data_renders_full_metadata() -> None:
@@ -398,7 +398,7 @@ def test_title_data_country_links_to_the_filtered_catalog() -> None:
 
     assert response.status_code == 200
     assert (
-        '<a class="ui-chip title-chip" href="/catalog?countries=1">Япония</a>'
+        '<a class="ui-chip" href="/catalog?countries=1">Япония</a>'
         in response.text
     )
 
@@ -434,10 +434,10 @@ def test_title_data_renders_table_of_contents() -> None:
     assert "1.5" in response.text
     assert "Без названия" in response.text
     # PR 205: the per-chapter "N переводов" badge is gone from the toc row itself - the
-    # fact is aggregated once into .title-credits instead (see the test below), not
-    # repeated per ambiguous chapter.
+    # fact is aggregated once into the lamp's «Перевод по умолчанию» instead (see the test
+    # below), not repeated per ambiguous chapter.
     assert response.text.count("несколько переводов") == 1
-    assert "У 1 глав несколько переводов" in response.text
+    assert 'У <b class="hm-num">1</b> главы несколько переводов' in response.text
     assert 'name="chapters"' in response.text
     assert 'value="1--1"' in response.text
     assert 'value="1--1.5"' in response.text
@@ -461,7 +461,7 @@ def test_title_data_shows_ambiguous_translation_count_once_in_credits() -> None:
 
     assert response.status_code == 200
     assert response.text.count("несколько переводов") == 1
-    assert "У 2 глав несколько переводов" in response.text
+    assert 'У <b class="hm-num">2</b> глав несколько переводов' in response.text
 
 
 def test_title_data_omits_ambiguous_translation_note_when_none_ambiguous() -> None:
@@ -605,14 +605,17 @@ def test_title_data_shows_six_chips_and_folds_the_rest_into_details() -> None:
     assert 'href="/catalog?genres=6"' not in details
 
 
-def test_title_data_mobile_sheets_offer_every_export_format() -> None:
+def test_title_data_download_offers_every_export_format() -> None:
+    # «Лампа»: «Скачать тайтл» is one control on every width - the button and its format -
+    # so the phone gets the same formats the computer does, with no sheet of its own.
     title = _fake_title()
     with patch("app.services.client.RanobeLib", return_value=_FakeClient(title)):
         response = client.get("/titles/6712--test-novel/data")
 
-    sheet = response.text[response.text.index('data-role="title-format-sheet"') :]
+    start = response.text.index('action="/titles/6712--test-novel/download"')
+    download = response.text[start : response.text.index("</form>", start)]
     for fmt in available_export_formats():
-        assert f'name="fmt" value="{fmt}"' in sheet
+        assert f'<option value="{fmt}">{fmt.upper()}</option>' in download
 
 
 def test_show_title_puts_a_back_button_in_the_mobile_strip() -> None:

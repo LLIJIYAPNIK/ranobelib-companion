@@ -43,15 +43,14 @@
 
       container.innerHTML = await response.text();
 
-      const hero = container.querySelector(".title-hero[data-display-name]");
-      if (hero) document.title = `${hero.dataset.displayName} — RanobeLib Companion`;
+      const page = container.querySelector("[data-display-name]");
+      if (page) document.title = `${page.dataset.displayName} — RanobeLib Companion`;
 
       if (window.enhanceCustomDropdowns) window.enhanceCustomDropdowns();
       if (window.initChapterExportPanel) window.initChapterExportPanel();
       if (window.initTitleSizeEstimate) window.initTitleSizeEstimate();
       if (window.initTocTapProgress) window.initTocTapProgress();
       if (window.initTitlePageUi) window.initTitlePageUi();
-      if (window.initTitleActionsSheet) window.initTitleActionsSheet();
       if (window.initOfflineDownload) window.initOfflineDownload();
     })
     .catch(() => showError("Не удалось загрузить тайтл"));

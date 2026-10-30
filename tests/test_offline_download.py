@@ -243,8 +243,8 @@ def test_guest_title_page_gets_the_manager_and_its_triggers(sdk: None) -> None:
     assert 'data-current-index=""' in manager
     assert 'data-default-translation=""' in manager
     assert "hidden" in manager
-    # Both entry points start hidden - the script shows them where storage works.
-    assert len(re.findall(r'data-role="offline-download-open"[^>]*hidden', html)) == 2
+    # The lamp's entry point starts hidden - the script shows it where storage works.
+    assert len(re.findall(r'data-role="offline-download-open"[^>]*hidden', html)) == 1
     assert 'data-role="offline-download-status" hidden' in html
     # «Вариант N» is chosen by the visitor: the select starts on an empty choice.
     assert '<option value="">Выберите вариант</option>' in html
