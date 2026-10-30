@@ -1,5 +1,6 @@
 """Title pages: fetch metadata and render reading details."""
 
+from datetime import date
 from typing import Annotated
 
 from fastapi import APIRouter, Depends, Request
@@ -15,6 +16,7 @@ from app.recent_titles import remember
 from app.services.client import open_client
 from app.services.exports import available_export_formats
 from app.templating import templates
+from app.title_contents import translators, volume_views
 
 router = APIRouter(prefix="/titles")
 
@@ -96,6 +98,10 @@ async def title_data(
         else None
     )
     current_index = positions.index(last_read) if last_read in positions else None
+    # The «Лампа» contents (app/title_contents.py): each volume's reading state and its
+    # chapters with the read run and a long tail folded; and, for a title with nothing to
+    # choose between, who translated how many chapters.
+    contents = volume_views(volumes, current_index, date.today())
     response = templates.TemplateResponse(
         request,
         "_title_content.html",
@@ -121,6 +127,9 @@ async def title_data(
             "default_translation_index": (
                 library_entry.default_translation_index if library_entry is not None else None
             ),
+            "contents": contents,
+            "longest_volume": max((v.chapter_count for v in contents), default=0),
+            "translators": translators(volumes) if not ambiguous_branch_counts else [],
         },
     )
     remember(
