@@ -167,6 +167,46 @@ async def test_each_cover_and_its_details_go_and_come_back_together(client: Test
     assert shelf.count('data-role="library-more"') == 2
 
 
+def _sections(html: str) -> list[tuple[str, str, str]]:
+    """(class, --i, key) of every shelf section, in page order."""
+    return re.findall(
+        r'<section class="(lb-shelf[^"]*)" style="--i: (\d+)" data-shelf="(\w+)"', html
+    )
+
+
+def test_empty_shelves_are_not_on_the_page(client: TestClient) -> None:
+    """Issue 396: no «Читаю» / «Дочитаны» section with a 0 and «Пока пусто.» when only
+    «Не начаты» holds titles - and the one left is the big one."""
+    register(client, "alice@example.com")
+    _add(client, "1--first", "2--second")
+
+    html = _library(client)
+
+    assert _sections(html) == [("lb-shelf hm-rise", "2", "new")]
+    assert 'data-shelf="reading"' not in html
+    assert 'data-shelf="done"' not in html
+    assert 'data-role="shelf-empty"' not in html
+    assert "Пока пусто." not in html
+    # The four tabs stay: library-shelves.js counts a shelf that isn't here as 0.
+    assert re.findall(r'data-shelf-tab="(\w+)"', html) == ["all", "reading", "new", "done"]
+    assert '<p class="lb-shelf__empty" data-role="library-none" role="status" hidden></p>' in html
+
+
+async def test_the_first_shelf_shown_is_the_big_one(client: TestClient) -> None:
+    register(client, "alice@example.com")
+    _add(client, "1--new", "2--done")
+    async with connection() as conn:
+        await record_progress(conn, 1, "2--done", "1", "3")
+
+    html = _library(client)
+
+    # No «Читаю»: «Не начаты» leads, large, and the rise order has no gap.
+    assert _sections(html) == [
+        ("lb-shelf hm-rise", "2", "new"),
+        ("lb-shelf lb-shelf--small hm-rise", "3", "done"),
+    ]
+
+
 def test_the_shelves_are_the_homes_pieces() -> None:
     imports = "import search_form, cover_progress, progress_line, go_button"
     assert '{% from "home/_macros.html" ' + imports + " %}" in PAGE

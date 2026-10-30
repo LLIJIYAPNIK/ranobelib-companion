@@ -124,8 +124,11 @@ data-role="library-item" data-slug-url="{{ item.entry.slug_url }}" data-name="{{
       </div>
     </div>
 
+    {# Issue 396: only the shelves that hold a title - an empty «Не начаты» or «Дочитаны»
+       isn't a section with a 0 and «Пока пусто.»; the first one shown is the big one.
+       Every title stands on exactly one shelf, so with `items` at least one is here. #}
     <div class="lb-shelves">
-      {% for shelf in shelves %}
+      {% for shelf in shelves | selectattr("titles") %}
       <section class="lb-shelf{% if not loop.first %} lb-shelf--small{% endif %} hm-rise" style="--i: {{ loop.index + 1 }}" data-shelf="{{ shelf.key }}" aria-labelledby="shelf-{{ shelf.key }}-title">
         <div class="lb-shelf__head">
           <h2 class="hm-h2" id="shelf-{{ shelf.key }}-title">{{ shelf.title }}</h2>
