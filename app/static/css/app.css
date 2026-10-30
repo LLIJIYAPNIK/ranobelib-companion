@@ -10748,8 +10748,11 @@ a.catalog-card__action {
 
 /* ==========================================================================
    LibraryTabs (PR 294, wave 36): the «Библиотека / Каталог» segment track shared by
-   /library and /catalog (_library_switch.html) - straight from LibraryTabs.dc.html.
-   A 48px hit area with the track (40px items + 4px padding).
+   /library and /catalog (_library_switch.html). Issue 393: dressed as the header's own
+   glass - the track is .hm-search's glass pill and as tall as it (46px: 36px items +
+   4px padding + the edge), the active item is .lb-tabs' raised glass, the count is the
+   muted figure the filter tabs carry. The tokens (--hm-glass*) come from .hm, which
+   both pages are.
    ========================================================================== */
 
 .wn-lib-switch {
@@ -10758,12 +10761,14 @@ a.catalog-card__action {
   box-sizing: border-box;
   width: max-content;
   max-width: 100%;
-  gap: 4px;
+  height: 46px;
+  gap: 2px;
   padding: 4px;
-  border: 1px solid rgb(255 255 255 / 8%);
-  border-radius: 15px;
-  background: rgb(8 8 12 / 55%);
-  box-shadow: inset 0 1px 0 rgb(255 255 255 / 3%);
+  border: 1px solid var(--hm-glass-edge);
+  border-radius: 999px;
+  background: var(--hm-glass);
+  -webkit-backdrop-filter: var(--hm-glass-blur);
+  backdrop-filter: var(--hm-glass-blur);
   font-family: var(--wn-font-ui);
 }
 
@@ -10773,26 +10778,24 @@ a.catalog-card__action {
   align-items: center;
   justify-content: center;
   gap: 8px;
-  min-width: 142px;
-  min-height: 44px;
-  height: 44px;
+  height: 100%;
   padding: 0 18px;
-  border: 1px solid transparent;
-  border-radius: 11px;
+  border-radius: 999px;
   background: transparent;
-  color: #a3a0b5;
-  font: 700 15px/1 var(--wn-font-ui);
+  color: var(--wn-text-secondary);
+  font: 700 14px/1 var(--wn-font-ui);
   white-space: nowrap;
   text-decoration: none;
   transition:
-    background-color 160ms ease,
-    color 160ms ease;
+    background-color 0.15s ease,
+    color 0.15s ease,
+    transform 0.1s ease;
 }
 
 .wn-lib-switch__tab svg {
   flex: none;
-  width: 17px;
-  height: 17px;
+  width: 16px;
+  height: 16px;
 }
 
 .wn-lib-switch__tab > span:not(.wn-lib-switch__count) {
@@ -10802,65 +10805,51 @@ a.catalog-card__action {
 
 @media (hover: hover) {
   .wn-lib-switch__tab:not([aria-selected="true"]):hover {
-    background: rgb(255 255 255 / 5%);
-    color: #eeecf4;
+    background: var(--hm-glass);
+    color: #fff;
   }
 }
 
 .wn-lib-switch__tab[aria-selected="true"] {
-  border-color: #3a3650;
-  background: linear-gradient(180deg, #2a2938, #211f2c);
-  box-shadow:
-    inset 0 1px 0 rgb(255 255 255 / 7%),
-    0 6px 16px -6px rgb(0 0 0 / 60%);
-  color: #f7f5fb;
-}
-
-.wn-lib-switch__tab[aria-selected="true"] svg {
-  color: #3dd6c3;
+  background: var(--hm-glass-raised);
+  color: #fff;
 }
 
 .wn-lib-switch__tab:focus-visible {
-  outline: 2px solid #c5b6ff;
-  outline-offset: 1px;
+  outline: none;
+  box-shadow: var(--wn-focus-ring);
 }
 
-.wn-lib-switch__tab:not([aria-selected="true"]):active {
-  background: rgb(255 255 255 / 9%);
-  color: #f7f5fb;
-}
-
-.wn-lib-switch__tab[aria-selected="true"]:active {
-  background: #1c1b27;
-  box-shadow: inset 0 1px 3px rgb(0 0 0 / 45%);
+.wn-lib-switch__tab:active {
+  transform: scale(0.97);
 }
 
 .wn-lib-switch__count {
   flex: none;
-  box-sizing: border-box;
-  min-width: 22px;
-  height: 22px;
-  padding: 0 6px;
-  border-radius: 999px;
-  background: rgb(255 255 255 / 6%);
-  color: #a3a0b5;
-  font: 800 12px/22px var(--wn-font-ui);
+  color: var(--wn-text-muted);
+  font: 600 13px/1 var(--wn-font-ui);
   font-variant-numeric: tabular-nums;
-  text-align: center;
 }
 
 .wn-lib-switch__tab[aria-selected="true"] .wn-lib-switch__count {
-  background: rgb(61 214 195 / 14%);
-  color: #3dd6c3;
+  color: var(--wn-text-secondary);
 }
 
-/* Mobile: the track spans the row and divides it evenly. Icons yield their space to the
-   labels/count at 320px; neither text nor the count pill is allowed to collapse. */
+@media (prefers-reduced-motion: reduce) {
+  .wn-lib-switch__tab:active {
+    transform: none;
+  }
+}
+
+/* Mobile: the track spans the row and divides it evenly, over the full-width search;
+   its items keep the 44px a thumb needs. Icons yield their space to the labels/count
+   at 320px. */
 @media (max-width: 767px) {
   .wn-lib-switch {
     display: grid;
     grid-template-columns: repeat(2, minmax(0, 1fr));
     width: 100%;
+    height: 54px;
   }
 
   .wn-lib-switch__tab {
@@ -10868,15 +10857,10 @@ a.catalog-card__action {
     min-width: 0;
     gap: 6px;
     padding: 0 6px;
-    font-size: 14px;
   }
 
   .wn-lib-switch__tab svg {
     display: none;
-  }
-
-  .wn-lib-switch__count {
-    padding-inline: 5px;
   }
 }
 
