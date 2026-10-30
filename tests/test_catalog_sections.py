@@ -103,7 +103,8 @@ def test_asking_anything_leaves_the_section_behind() -> None:
 
     assert 'data-mode="results"' in html
     assert 'class="cg-sections"' not in html
-    assert fake.received_kwargs["sort"] == "last_chapter_at"
+    # Not the section's sort, nor the listing's: a search's own, by popularity (issue 399).
+    assert fake.received_kwargs["sort"] == "views"
     assert fake.received_kwargs["min_chapters"] is None
     assert 'data-role="catalog-criteria"' in html
 
@@ -146,14 +147,14 @@ def test_no_strip_for_a_short_section_or_for_results() -> None:
 
 
 def test_each_genre_adds_or_drops_itself_and_keeps_the_rest() -> None:
-    _, html = _get({"query": "dxd", "genres": 5, "sort": "views"})
+    _, html = _get({"query": "dxd", "genres": 5, "sort": "name"})
 
     bar = html.split('data-role="catalog-genre-bar"', 1)[1].split("</nav>", 1)[0]
     assert (
-        '<a class="cg-chip" href="/catalog?sort=views&amp;query=dxd" aria-current="true"'
+        '<a class="cg-chip" href="/catalog?sort=name&amp;query=dxd" aria-current="true"'
         ' draggable="false">Фэнтези</a>'
     ) in bar
-    assert 'href="/catalog?sort=views&amp;query=dxd&amp;genres=5&amp;genres=8"' in bar
+    assert 'href="/catalog?sort=name&amp;query=dxd&amp;genres=5&amp;genres=8"' in bar
     assert 'data-role="catalog-genre-bar-all">Все жанры<span class="hm-num">2</span>' in bar
     assert "data-no-tab-swipe" in bar
 

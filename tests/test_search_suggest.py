@@ -82,9 +82,12 @@ async def test_suggestions_are_the_catalogs_own_search_for_the_query() -> None:
         result = await suggest_titles("  поднятие ", 3)
 
     assert [t.id for t in result] == [0, 1, 2]
-    # The same call the catalog makes for this query on Enter (its default sort, page 1),
-    # at the smallest page the API accepts - no refresh, so the SDK's cache answers repeats.
-    assert catalog.calls == [{"page": 1, "per_page": MIN_PER_PAGE, "query": "поднятие"}]
+    # The same call the catalog makes for this query on Enter (a search's own sort, by
+    # popularity - issue 399; page 1), at the smallest page the API accepts - no refresh,
+    # so the SDK's cache answers repeats.
+    assert catalog.calls == [
+        {"page": 1, "per_page": MIN_PER_PAGE, "query": "поднятие", "sort": "views"}
+    ]
 
 
 @pytest.mark.parametrize(("limit", "expected"), [(0, 1), (-5, 1), (8, 8), (50, SUGGEST_MAX)])

@@ -309,9 +309,7 @@ def test_show_catalog_renders_tag_filter_chip_using_forwarded_name() -> None:
     page = CatalogPage(items=[], page=1, has_next_page=False)
     fake = _FakeCatalog(page)
     with patch("app.services.catalog.Catalog", return_value=fake):
-        response = client.get(
-            "/catalog", params={"tags": 7, "tag_name": "Реинкарнация"}
-        )
+        response = client.get("/catalog", params={"tags": 7, "tag_name": "Реинкарнация"})
 
     assert response.status_code == 200
     # PR 295: a criteria chip; dropping the only criterion goes back to /catalog.
@@ -375,9 +373,7 @@ def test_show_catalog_garbage_country_id_errors_same_as_a_garbage_genre_id() -> 
     fake = _FakeCatalog(page)
     with patch("app.services.catalog.Catalog", return_value=fake):
         genres_response = client.get("/catalog", params={"genres": "not-a-number"})
-        countries_response = client.get(
-            "/catalog", params={"countries": "not-a-number"}
-        )
+        countries_response = client.get("/catalog", params={"countries": "not-a-number"})
 
     assert countries_response.status_code == genres_response.status_code == 422
 
@@ -390,8 +386,8 @@ def test_show_catalog_renders_genre_checkboxes() -> None:
 
     assert response.status_code == 200
     assert 'data-role="catalog-filters"' in response.text
-    assert '<span>Фэнтези</span>' in response.text
-    assert '<span>Романтика</span>' in response.text
+    assert "<span>Фэнтези</span>" in response.text
+    assert "<span>Романтика</span>" in response.text
 
     checkbox_5 = re.search(r'value="5"[^>]*>', response.text)
     checkbox_8 = re.search(r'value="8"[^>]*>', response.text)
@@ -942,17 +938,34 @@ def test_criteria_chips_cover_search_and_sort_and_keep_the_rest() -> None:
     genres = [Genre(id=5, name="Фэнтези")]
     with patch("app.services.catalog.Catalog", return_value=_FakeCatalog(page, genres=genres)):
         response = client.get(
-            "/catalog", params={"query": " dxd ", "sort": "views", "genres": 5}
+            "/catalog", params={"query": " dxd ", "sort": "rate_avg", "genres": 5}
         )
 
     chips = response.context["criteria_chips"]
-    assert [chip["label"] for chip in chips] == ["«dxd»", "По просмотрам", "Фэнтези"]
+    assert [chip["label"] for chip in chips] == ["«dxd»", "По рейтингу", "Фэнтези"]
     assert [chip["href"] for chip in chips] == [
-        "/catalog?sort=views&genres=5",
+        "/catalog?sort=rate_avg&genres=5",
         "/catalog?query=dxd&genres=5",
-        "/catalog?query=dxd&sort=views",
+        "/catalog?query=dxd&sort=rate_avg",
     ]
     assert "Показаны результаты" in response.text
+
+
+def test_popularity_is_a_searchs_default_so_it_has_no_chip() -> None:
+    """Issue 399: «По просмотрам» is what a search goes by anyway - no chip for it; the
+    listing's own default, «По обновлению», is a choice once there's a query."""
+    page = CatalogPage(items=[], page=1, has_next_page=False)
+    with patch("app.services.catalog.Catalog", return_value=_FakeCatalog(page)):
+        views = client.get("/catalog", params={"query": "dxd", "sort": "views"})
+        updated = client.get("/catalog", params={"query": "dxd", "sort": "last_chapter_at"})
+
+    assert [chip["label"] for chip in views.context["criteria_chips"]] == ["«dxd»"]
+    assert [chip["label"] for chip in updated.context["criteria_chips"]] == [
+        "«dxd»",
+        "По обновлению",
+    ]
+    # Dropping the search from «По обновлению» keeps that sort - the listing's default.
+    assert updated.context["criteria_chips"][0]["href"] == "/catalog?sort=last_chapter_at"
 
 
 def test_editorial_catalog_has_no_criteria_row() -> None:
@@ -967,9 +980,7 @@ def test_editorial_catalog_has_no_criteria_row() -> None:
 def test_tag_chip_carries_its_forwarded_name_only_for_a_lone_tag() -> None:
     page = CatalogPage(items=[], page=1, has_next_page=False)
     with patch("app.services.catalog.Catalog", return_value=_FakeCatalog(page)):
-        lone = client.get(
-            "/catalog", params={"query": "x", "tags": 7, "tag_name": "Реинкарнация"}
-        )
+        lone = client.get("/catalog", params={"query": "x", "tags": 7, "tag_name": "Реинкарнация"})
         several = client.get("/catalog", params={"tags": [1, 2], "tag_name": "Магия"})
 
     # Dropping the search keeps the tag and its name together.

@@ -52,10 +52,12 @@
           {%- if not query %} hidden{% endif %}
         ><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" aria-hidden="true"><path d="M7 7l10 10M17 7 7 17"/></svg></button>
       </label>
-      <span class="ui-select catalog-toolbar__sort{% if sort != 'last_chapter_at' %} catalog-toolbar__sort--active{% endif %}">
+      <span class="ui-select catalog-toolbar__sort{% if sort != default_sort %} catalog-toolbar__sort--active{% endif %}">
         {# The sort of what is listed - a section's own (created_at in «Новое в каталоге»),
-           so a search from a section keeps its order. #}
-        <select name="sort" class="toc__export-format" aria-label="Сортировка">
+           so a search from a section keeps its order. Issue 399: unless it's the
+           visitor's own (`sort_kept`), a search typed here leaves it out and goes by
+           popularity - catalog-search-sort.js drops it from the submit. #}
+        <select name="sort" class="toc__export-format" aria-label="Сортировка" data-role="catalog-sort"{% if sort_kept %} data-sort-kept{% endif %}>
           {% for value, label in sort_options.items() %}
           <option value="{{ value }}"{% if value == listed.sort %} selected{% endif %}>{{ label }}</option>
           {% endfor %}
@@ -431,7 +433,7 @@
      autocomplete="off": no browser form restore on Back - the draft starts as the page. #}
   <div class="catalog-sheet" id="catalog-filters-sheet" data-role="catalog-filters-sheet" data-bottom-sheet-title="Фильтры" hidden>
     <button class="catalog-sheet__reset" type="button" data-role="catalog-sheet-reset" data-bottom-sheet-action>Сбросить</button>
-    <form class="catalog-sheet__form" method="get" action="/catalog" data-role="catalog-sheet-form" data-default-sort="last_chapter_at" autocomplete="off">
+    <form class="catalog-sheet__form" method="get" action="/catalog" data-role="catalog-sheet-form" data-default-sort="{{ default_sort }}" autocomplete="off">
       <input type="hidden" name="query" value="{{ query or '' }}" data-role="catalog-sheet-query">
       {% for t in tags %}<input type="hidden" name="tags" value="{{ t }}">{% endfor %}
       {% if tag_name %}<input type="hidden" name="tag_name" value="{{ tag_name }}">{% endif %}
@@ -492,6 +494,7 @@
 <script src="{{ static_url('js/custom-dropdown.js') }}" defer></script>
 <script src="{{ static_url('js/catalog-random-redirect.js') }}" defer></script>
 <script src="{{ static_url('js/catalog-sort-autosubmit.js') }}" defer></script>
+<script src="{{ static_url('js/catalog-search-sort.js') }}" defer></script>
 <script src="{{ static_url('js/catalog-search-shortcut.js') }}" defer></script>
 {% if has_filters %}
 <script src="{{ static_url('js/catalog-filters-toggle.js') }}" defer></script>
