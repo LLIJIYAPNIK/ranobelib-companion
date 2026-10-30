@@ -240,6 +240,30 @@ def test_the_sort_list_is_driven_from_the_keyboard() -> None:
     assert "aria-expanded" in SCRIPT
 
 
+def test_a_shelf_with_nothing_to_show_leaves_the_page() -> None:
+    """Issue 396: emptied by the search or a removal, or not on this tab - hidden; the
+    first shelf still shown is made the big one."""
+    hide = 'section.hidden = list.length === 0 || (view.tab !== "all" && view.tab !== key);'
+    assert hide in SCRIPT
+    assert "shelf-empty" not in SCRIPT
+    assert 'shelf.section.classList.toggle("lb-shelf--small", i > 0)' in SCRIPT
+    assert "const lead = visible[0]?.first();" in SCRIPT
+
+
+def test_an_empty_tab_or_search_says_why() -> None:
+    assert "none.hidden = visible.length > 0;" in SCRIPT
+    for copy in (
+        "Дочитанных тайтлов пока нет.",
+        "Все тайтлы в библиотеке уже начаты.",
+        "Сейчас нет начатых тайтлов",
+        "В библиотеке нет «${view.query}».",
+        "На полке «${tabName(view.tab)}» нет «${view.query}».",
+    ):
+        assert copy in SCRIPT, copy
+    # A tab whose shelf the server left out counts 0, not «undefined».
+    assert "String(counts[tab.dataset.shelfTab] ?? 0)" in SCRIPT
+
+
 def test_swiping_a_shelf_never_switches_to_the_catalog() -> None:
     swipe = (ROOT / "app/static/js/library-tabs-swipe.js").read_text(encoding="utf-8")
     assert 'if (event.target.closest("[data-no-tab-swipe]")) return;' in swipe
