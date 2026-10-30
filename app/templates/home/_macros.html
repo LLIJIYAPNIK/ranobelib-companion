@@ -1,8 +1,10 @@
 {# Shared pieces of the home page (index.html) and its library shelf (home/_flow.html). #}
 {% from "_continue_reading_hero.html" import chapter_label, chapter_short %}
 
+{# Issue 394: search-suggest.js (base.html) turns the field into a combobox with the
+   matching titles under it; without script this is the plain GET search. #}
 {% macro search_form(size="") -%}
-<form class="hm-search{% if size %} hm-search--{{ size }}{% endif %}" method="get" action="/catalog" role="search" aria-label="Поиск по каталогу">
+<form class="hm-search{% if size %} hm-search--{{ size }}{% endif %}" method="get" action="/catalog" role="search" aria-label="Поиск по каталогу" data-role="search-suggest">
   <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="m16 16 4 4"/></svg>
   <input
     id="home-catalog-query"

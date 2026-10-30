@@ -2,6 +2,7 @@
 GET /catalog/suggest and the form/script wiring. The SDK is faked at the services edge."""
 
 from collections.abc import Iterator
+from pathlib import Path
 from typing import Any
 from unittest.mock import patch
 
@@ -15,6 +16,7 @@ from app.config import get_settings
 from app.services.catalog import SUGGEST_MAX, SUGGEST_MIN_QUERY, suggest_titles
 from tests.db_reset import reset_app_database
 
+ROOT = Path(__file__).resolve().parents[1]
 ONGOING = Label(id=1, label="Онгоинг")
 KOREA = Country(id=11, name="Корея")
 
@@ -185,3 +187,38 @@ def test_sdk_errors_go_through_the_central_mapping_as_json(client: TestClient) -
 
     assert response.status_code == 429
     assert "detail" in response.json()
+
+
+# --- The wiring ----------------------------------------------------------------------
+
+
+def test_every_search_form_is_wired_to_the_suggestions() -> None:
+    macros = (ROOT / "app/templates/home/_macros.html").read_text(encoding="utf-8")
+    assert 'aria-label="Поиск по каталогу" data-role="search-suggest"' in macros
+    base = (ROOT / "app/templates/base.html").read_text(encoding="utf-8")
+    assert "{{ static_url('js/search-suggest.js') }}\" defer" in base
+
+
+def test_script_is_a_combobox_over_the_suggest_endpoint() -> None:
+    script = (ROOT / "app/static/js/search-suggest.js").read_text(encoding="utf-8")
+    for fragment in (
+        "`/catalog/suggest?",
+        "AbortController",
+        "DEBOUNCE_MS = 250",
+        "MIN_QUERY = 2",
+        'setAttribute("role", "combobox")',
+        '"aria-expanded"',
+        '"aria-activedescendant"',
+        'setAttribute("role", "listbox")',
+        'setAttribute("role", "option")',
+        "Все результаты в каталоге →",
+        "Ничего не нашлось",
+        "Ищем…",
+        '"Escape"',
+        '"ArrowDown"',
+        '"ArrowUp"',
+    ):
+        assert fragment in script, fragment
+    # Names from the catalog are only ever text, never parsed as HTML.
+    assert "innerHTML = item" not in script
+    assert "item.name.replace" not in script

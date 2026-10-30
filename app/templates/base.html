@@ -260,6 +260,9 @@
   <script src="{{ static_url('js/mobile-navbar-swipe.js') }}" defer></script>
   <!-- PR 279: hides the bottom navigation while the on-screen keyboard is open. -->
   <script src="{{ static_url('js/mobile-keyboard.js') }}" defer></script>
+  <!-- Issue 394: the title suggestions under every «Найти тайтл по названию» field
+       (search_form(), home/_macros.html) - the home, its «Витрина» and the library. -->
+  <script src="{{ static_url('js/search-suggest.js') }}" defer></script>
   <!-- PR 227: loaded on every page (not only from the forms themselves) - see its own
        comment on why the auth modal's injected card can't bring its own copy. -->
   <script src="{{ static_url('js/password-toggle.js') }}" defer></script>
