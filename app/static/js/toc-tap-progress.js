@@ -10,8 +10,6 @@
 // once that markup is in the DOM.
 (() => {
   const PROGRESS_KEY_PREFIX = "tapToReadProgress:";
-  const CHECK_ICON =
-    '<svg viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 13l4 4L19 7"/></svg>';
 
   // Keyed on pathname alone, then matched against every tapToReadProgress: entry -
   // matching against the raw key with startsWith() would be wrong here: chapter "2"'s
@@ -41,34 +39,44 @@
     return null;
   }
 
+  // «Лампа»: the reader's chapter shows its share in its card and on «Продолжить»; any
+  // other chapter begun shows a thin bar under its name, and one read to the end gets a
+  // filled node on the line.
   function initTocTapProgress() {
     for (const link of document.querySelectorAll(".toc__chapter-link")) {
-      const li = link.closest(".toc__chapter");
-      if (!li) continue;
+      const row = link.closest(".tp-row");
+      if (!row) continue;
 
       const progress = findProgress(new URL(link.href, location.origin).pathname);
       if (!progress) continue;
+      const percent = Math.min(100, Math.round((progress.revealed / progress.total) * 100));
 
-      if (progress.revealed >= progress.total) {
-        const check = document.createElement("span");
-        check.className = "toc__chapter-checkmark";
-        check.title = "Глава прочитана";
-        check.setAttribute("aria-label", "Глава прочитана");
-        check.innerHTML = CHECK_ICON;
-        li.appendChild(check);
+      if (row.classList.contains("is-here")) {
+        const slot = row.querySelector('[data-role="chapter-progress"]');
+        if (slot) {
+          slot.querySelector('[data-role="chapter-progress-fill"]').style.width = `${percent}%`;
+          slot.querySelector('[data-role="chapter-progress-label"]').textContent = `прочитано ${percent}% главы`;
+          slot.hidden = false;
+        }
+        const go = document.querySelector('[data-role="title-go-progress"]');
+        if (go) go.textContent = ` · прочитано ${percent}%`;
         continue;
       }
 
-      const percent = Math.round((progress.revealed / progress.total) * 100);
+      if (progress.revealed >= progress.total) {
+        row.classList.add("is-done");
+        link.title = "Глава прочитана";
+        continue;
+      }
+
       const bar = document.createElement("span");
-      bar.className = "toc__chapter-progress";
+      bar.className = "tp-row__mini";
       bar.title = `Прочитано ${percent}%`;
       bar.setAttribute("aria-label", `Прочитано ${percent}%`);
       const fill = document.createElement("span");
-      fill.className = "toc__chapter-progress__fill";
       fill.style.width = `${percent}%`;
       bar.appendChild(fill);
-      li.appendChild(bar);
+      row.querySelector(".tp-row__main")?.appendChild(bar);
     }
   }
 

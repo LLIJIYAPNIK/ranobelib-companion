@@ -181,7 +181,7 @@ async def test_title_page_shows_reading_progress_for_library_entry(client: TestC
     assert "Продолжить · Глава 3" in response.text
     # PR 253: the TOC marks the chapters before it as read and this one as current.
     assert 'aria-current="step"' in response.text
-    assert response.text.count("toc__chapter--read") == 2
+    assert response.text.count('class="tp-row is-read"') == 2
 
 
 def test_title_page_omits_reading_progress_when_not_in_library(client: TestClient) -> None:
@@ -192,7 +192,7 @@ def test_title_page_omits_reading_progress_when_not_in_library(client: TestClien
 
     assert response.status_code == 200
     assert "Прочитано" not in response.text
-    assert 'class="title-progress' not in response.text
+    assert 'class="tp-place"' not in response.text
     assert "Продолжить ·" not in response.text
 
 
@@ -666,10 +666,10 @@ def test_default_translation_dropdown_shown_for_library_entry(client: TestClient
     assert response.status_code == 200
     assert 'action="/library/6712--test-novel/default-translation"' in response.text
     # max_branches across ambiguous chapters is 3 (the second chapter's own branches_count)
-    assert '<option value="0"' in response.text
-    assert '<option value="1"' in response.text
-    assert '<option value="2"' in response.text
-    assert '<option value="3"' not in response.text
+    assert 'name="translation_index" value="0"' in response.text
+    assert 'name="translation_index" value="1"' in response.text
+    assert 'name="translation_index" value="2"' in response.text
+    assert 'name="translation_index" value="3"' not in response.text
 
 
 def test_set_default_translation_requires_login(client: TestClient) -> None:
@@ -708,7 +708,7 @@ def test_set_default_translation_persists_and_preselects(client: TestClient) -> 
 
     assert save_response.status_code == 303
     assert save_response.headers["location"] == "/titles/6712--test-novel"
-    assert '<option value="1" selected>' in page.text
+    assert 'name="translation_index" value="1" checked>' in page.text
 
 
 def test_set_default_translation_empty_clears_it(client: TestClient) -> None:
@@ -725,7 +725,8 @@ def test_set_default_translation_empty_clears_it(client: TestClient) -> None:
         )
         page = client.get("/titles/6712--test-novel/data")
 
-    assert " selected>" not in page.text
+    assert 'name="translation_index" value="1" checked>' not in page.text
+    assert 'name="translation_index" value="" checked>' in page.text
 
 
 def test_set_default_translation_rejects_garbage_value(client: TestClient) -> None:

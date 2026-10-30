@@ -43,8 +43,8 @@
 
       container.innerHTML = await response.text();
 
-      const hero = container.querySelector(".title-hero[data-display-name]");
-      if (hero) document.title = `${hero.dataset.displayName} — RanobeLib Companion`;
+      const page = container.querySelector("[data-display-name]");
+      if (page) document.title = `${page.dataset.displayName} — RanobeLib Companion`;
 
       if (window.enhanceCustomDropdowns) window.enhanceCustomDropdowns();
       if (window.initChapterExportPanel) window.initChapterExportPanel();

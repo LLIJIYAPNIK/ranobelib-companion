@@ -4,190 +4,159 @@
    immediately, instead of show_title() itself blocking on get_info()/
    get_table_of_contents() before returning any HTML at all.
 
-   data-display-name on .title-hero itself (not a separate element) is what
-   title-content-load.js reads to set the real <title> once this loads - the skeleton
-   shell has no display name to render into <title> yet.
+   «Лампа»: in the home page's frame (title.html's .hm, the cover washed into the glow).
+   The right column is the lamp - the cover, the reader's place, «Продолжить», the
+   library and the download, the translation and the credits - and stays in view; the
+   left one is read: the name, the description, the volumes as a shelf of spines (as tall
+   as their chapters, filled as far as they are read) and the chosen volume's chapters as a
+   reading line, the read run before the reader's place and a long tail folded
+   (app/title_contents.py). On a phone the cover, the place and «Продолжить» come first and
+   what the title is about comes last. title-page-ui.js makes the shelf tabs, the folds,
+   the search and «Выбрать главы» work; without it every volume shows.
 
-   PR 253 (Aurora Ink, TITLE-DEFAULT/TITLE-IN-LIBRARY/M-TITLE-*): blurred cover
-   backdrop, hero with chips («Ещё N» in a <details>), progress card, one primary CTA,
-   library toggle and download group; below it Описание and Оглавление side by side
-   (tabs on mobile). On mobile the download/library actions move into bottom sheets
-   behind «⋯» (title-actions-sheet.js). #}
+   data-display-name on .tp is what title-content-load.js reads to set the real <title>. #}
 {% set display_name = title.rus_name or title.name %}
 {% macro chapters_word(n) -%}
 {%- if n % 10 == 1 and n % 100 != 11 -%}глава
 {%- elif n % 10 in [2, 3, 4] and n % 100 not in [12, 13, 14] -%}главы
 {%- else -%}глав{%- endif -%}
 {%- endmacro %}
-{% set format_notes = {
-  "epub": "Для приложений-читалок и телефона",
-  "fb2": "Для электронных книг и FBReader",
-  "txt": "Только текст, без иллюстраций",
-  "pdf": "Фиксированная вёрстка, для печати",
-} %}
 {% set has_progress = in_library and progress_percent is not none %}
 {% set bookmark_icon = "M6 3h12v18l-6-4.5L6 21z" %}
+{% set check_icon = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m5 12.5 4.5 4.5L19 7.5"/></svg>' %}
+{% set chevron_icon = '<svg class="tp-fold__chev" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m6 9 6 6 6-6"/></svg>' %}
+{% set start_volume = (contents | selectattr("is_current") | first) or (contents | first) %}
+
+{% macro chapter_row(row, volume_number) -%}
+<li class="tp-row{% if row.state %} is-{{ row.state }}{% endif %}" data-role="toc-chapter" data-number="{{ row.chapter.number }}" data-name="{{ (row.chapter.name or '') | lower }}">
+  <input class="toc__chapter-checkbox" type="checkbox" name="chapters" value="{{ volume_number }}--{{ row.chapter.number }}" aria-label="Выбрать главу {{ row.chapter.number }}">
+  <a class="tp-row__link toc__chapter-link" href="/titles/{{ title.slug_url }}/chapters/{{ row.chapter.volume }}/{{ row.chapter.number }}"{% if row.state == "here" %} aria-current="step"{% endif %}>
+    <span class="tp-node" aria-hidden="true"></span>
+    <span class="tp-row__main">
+      <span class="tp-row__name"><span class="tp-row__n hm-num">{% if row.state == "here" %}Вы здесь · {% endif %}Глава {{ row.chapter.number }}</span>{{ row.chapter.name or "Без названия" }}</span>
+      {% if row.fresh %}<span class="tp-row__new">{{ row.fresh }}</span>{% endif %}
+      {% if row.state == "here" %}
+      <span class="tp-row__progress" data-role="chapter-progress" hidden><span class="tp-bar"><span data-role="chapter-progress-fill"></span></span><span class="hm-num" data-role="chapter-progress-label"></span></span>
+      {% endif %}
+    </span>
+    {% if row.state == "here" %}
+    <span class="tp-row__cta"><svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M8 5.5v13l10.5-6.5z"/></svg>Продолжить</span>
+    {% else %}
+    <span class="tp-row__go" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m9 6 6 6-6 6"/></svg></span>
+    {% endif %}
+  </a>
+</li>
+{%- endmacro %}
 
 {% if cover_url %}
-<div class="title-backdrop" aria-hidden="true"><img src="{{ cover_url }}" alt=""></div>
+<img class="hm-ambient" src="{{ cover_url }}" alt="" aria-hidden="true">
 {% endif %}
 
-<section class="title-hero" data-display-name="{{ display_name }}">
-  {% if cover_url %}
-  <img class="title-hero__cover" src="{{ cover_url }}" alt="Обложка «{{ display_name }}»">
-  {% endif %}
-  <div class="title-hero__info">
-    <h1 class="title-hero__name">{{ display_name }}</h1>
+<div class="tp" data-display-name="{{ display_name }}" data-role="title-page">
+  <header class="tp-head hm-rise">
+    <h1 class="tp-name">{{ display_name }}</h1>
     {% set alt_names = [] %}
     {% if title.name != display_name %}{% set _ = alt_names.append(title.name) %}{% endif %}
     {% if title.eng_name and title.eng_name != display_name %}{% set _ = alt_names.append(title.eng_name) %}{% endif %}
     {% for other in title.other_names %}{% if other != display_name %}{% set _ = alt_names.append(other) %}{% endif %}{% endfor %}
     {% if alt_names %}
-    <p class="title-hero__alt-name" title="{{ alt_names | join(' / ') }}">{{ alt_names | join(" / ") }}</p>
+    <p class="tp-alt" title="{{ alt_names | join(' / ') }}">{{ alt_names | join(" / ") }}</p>
     {% endif %}
-    <div class="title-hero__meta">
-      <span class="ui-status">{{ title.status.label }}</span>
+    <p class="tp-facts">
+      <span>{{ title.status.label }}</span>
+      {% if title.country %}<span>{{ title.country.name }}</span>{% endif %}
+      {% if title.release_date %}<span>{{ title.release_date }}</span>{% endif %}
       <span>{{ title.age_restriction.label }}</span>
       {% if title.is_licensed %}<span>Лицензировано</span>{% endif %}
-      {% if title.release_date %}<span>{{ title.release_date }}</span>{% endif %}
-      {% if title.chapter_count %}<span>{{ title.chapter_count }} {{ chapters_word(title.chapter_count) }}</span>{% endif %}
+      {% set listed = title.chapter_count or chapter_total %}
+      <span class="hm-num">{{ listed }} {{ chapters_word(listed) }}</span>
       <span class="title-size-estimate" data-role="title-size-estimate" data-slug-url="{{ title.slug_url }}">
         <span class="spinner" aria-hidden="true"></span>
         <span data-role="title-size-estimate-status">Загружаем главы…</span>
       </span>
+    </p>
+  </header>
+
+  <aside class="tp-lamp hm-rise" style="--i: 1" aria-label="Чтение и скачивание">
+    <div class="tp-lamp__top">
+      <div class="tp-tilt" data-role="title-cover-tilt">
+        {% if cover_url %}
+        <img class="tp-cover title-hero__cover" src="{{ cover_url }}" alt="Обложка «{{ display_name }}»">
+        {% else %}
+        <div class="tp-cover tp-cover--none" role="img" aria-label="Обложки нет"><b>{{ display_name }}</b><span>{{ title.authors | map(attribute="name") | join(", ") }}</span></div>
+        {% endif %}
+      </div>
+      {% if has_progress %}
+      <div class="tp-place" role="group" aria-label="Прочитано {{ progress_percent }}%">
+        <b class="tp-place__pct hm-num" data-role="title-progress-pct" data-value="{{ progress_percent }}">{{ progress_percent }}%</b>
+        <span class="tp-place__where">Том {{ last_read_volume }} · глава {{ last_read_number }}{% if current_chapter and current_chapter.name %}<span class="tp-place__name"> · {{ current_chapter.name }}</span>{% endif %}</span>
+        <span class="tp-bar tp-place__bar"><span style="width: {{ progress_percent }}%"></span></span>
+        <span class="tp-place__left hm-num">Осталось {{ chapter_total - current_chapter_index }} {{ chapters_word(chapter_total - current_chapter_index) }}</span>
+      </div>
+      {% else %}
+      <div class="tp-place tp-place--new">
+        <b class="tp-place__lead">{% if first_chapter %}Ещё не начинали{% else %}Глав пока нет{% endif %}</b>
+        <span class="tp-place__left hm-num">{{ chapter_total }} {{ chapters_word(chapter_total) }} в {{ contents | length }} {{ plural(contents | length, "томе", "томах", "томах") }}</span>
+      </div>
+      {% endif %}
     </div>
 
-    {# Mobile only: the library toggle sits under the meta line (M-TITLE-DEFAULT). In the
-       library it asks first (title-actions-sheet.js opens the remove sheet); without JS
-       it just submits. #}
-    <div class="title-hero__bookmark">
+    {% if has_progress %}
+    {# PR 240: progress_percent is only not-none while (last_read_volume,
+       last_read_number) is still a real chapter, so this always links somewhere. #}
+    <a class="tp-go" href="/titles/{{ title.slug_url }}/chapters/{{ last_read_volume }}/{{ last_read_number }}" aria-label="Продолжить · Глава {{ last_read_number }}" data-role="title-go">
+      <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M8 5.5v13l10.5-6.5z"/></svg>
+      <span class="tp-go__label">Продолжить<small>Глава {{ last_read_number }}<span data-role="title-go-progress"></span></small></span>
+    </a>
+    {% elif first_chapter %}
+    <a class="tp-go" href="/titles/{{ title.slug_url }}/chapters/{{ first_chapter.volume }}/{{ first_chapter.number }}" aria-label="Читать · Глава {{ first_chapter.number }}" data-role="title-go">
+      <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M8 5.5v13l10.5-6.5z"/></svg>
+      <span class="tp-go__label">Читать<small>Том {{ first_chapter.volume }} · глава {{ first_chapter.number }}</small></span>
+    </a>
+    {% endif %}
+
+    <div class="tp-lamp__row">
       {% if not current_user %}
-      <a class="title-bookmark" href="/login" data-role="auth-modal-trigger">
+      <a class="tp-btn" href="/login" data-role="auth-modal-trigger">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round" aria-hidden="true"><path d="{{ bookmark_icon }}"/></svg>В библиотеку
       </a>
       {% elif in_library %}
       <form method="post" action="/library/{{ title.slug_url }}/remove">
         <input type="hidden" name="next" value="/titles/{{ title.slug_url }}">
-        <button class="title-bookmark title-bookmark--on" type="submit" aria-pressed="true" aria-label="В библиотеке. Нажмите, чтобы убрать" data-role="title-remove-trigger">
+        <button type="submit" class="tp-btn tp-btn--on" aria-pressed="true" title="Убрать из библиотеки">
           <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="{{ bookmark_icon }}"/></svg>В библиотеке
         </button>
       </form>
       {% else %}
       <form method="post" action="/library/{{ title.slug_url }}/add">
         <input type="hidden" name="next" value="/titles/{{ title.slug_url }}">
-        <button class="title-bookmark" type="submit" aria-pressed="false">
+        <button type="submit" class="tp-btn" aria-pressed="false" title="Добавить в библиотеку">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round" aria-hidden="true"><path d="{{ bookmark_icon }}"/></svg>В библиотеку
         </button>
       </form>
       {% endif %}
-    </div>
-
-    {# Country (PR 229), genres (PR 31) and tags (PR 86) all link into the filtered
-       catalog - the first six show, the rest open from «Ещё N» (a native <details>). #}
-    {% set chips = [] %}
-    {% if title.country %}{% set _ = chips.append(("/catalog?countries=" ~ title.country.id, title.country.name)) %}{% endif %}
-    {% for genre in title.genres %}{% set _ = chips.append(("/catalog?genres=" ~ genre.id, genre.name)) %}{% endfor %}
-    {% for tag in title.tags %}{% set _ = chips.append(("/catalog?tags=" ~ tag.id ~ "&tag_name=" ~ (tag.name | urlencode), tag.name)) %}{% endfor %}
-    {% if chips %}
-    <div class="ui-chips title-hero__chips">
-      {% for href, label in chips[:6] %}
-      <a class="ui-chip title-chip" href="{{ href }}">{{ label }}</a>
-      {% endfor %}
-      {% if chips | length > 6 %}
-      <details class="title-hero__chips-more">
-        <summary class="ui-chip-more">Ещё {{ chips | length - 6 }}</summary>
-        <div class="ui-chips">
-          {% for href, label in chips[6:] %}
-          <a class="ui-chip title-chip" href="{{ href }}">{{ label }}</a>
-          {% endfor %}
-        </div>
-      </details>
-      {% endif %}
-    </div>
-    {% endif %}
-
-    {% if has_progress %}
-    <div class="title-progress" role="group" aria-label="Прочитано {{ progress_percent }}%">
-      <b class="title-progress__pct">{{ progress_percent }}%</b>
-      <div class="title-progress__body">
-        <span class="title-progress__where">
-          Том {{ last_read_volume }}, глава {{ last_read_number }}{% if current_chapter and current_chapter.name %}<span class="title-progress__name"> · {{ current_chapter.name }}</span>{% endif %}
-        </span>
-        <span class="title-progress__bar"><span class="title-progress__fill" style="width: {{ progress_percent }}%"></span></span>
-      </div>
-    </div>
-    {% endif %}
-
-    <div class="title-hero__actions">
-      {% if has_progress %}
-      {# PR 240: progress_percent is only not-none while (last_read_volume,
-         last_read_number) is still a real chapter, so this always links somewhere. #}
-      <a class="ui-btn ui-btn--primary ui-btn--lg title-cta" href="/titles/{{ title.slug_url }}/chapters/{{ last_read_volume }}/{{ last_read_number }}">
-        <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M7 4v16l13-8z"/></svg>Продолжить · Глава {{ last_read_number }}
-      </a>
-      {% elif first_chapter %}
-      <a class="ui-btn ui-btn--primary ui-btn--lg title-cta" href="/titles/{{ title.slug_url }}/chapters/{{ first_chapter.volume }}/{{ first_chapter.number }}">
-        <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M7 4v16l13-8z"/></svg>Читать · Глава {{ first_chapter.number }}
-      </a>
-      {% endif %}
-
-      <div class="title-hero__library">
-        {% if not current_user %}
-        <a class="ui-btn ui-btn--lg" href="/login" data-role="auth-modal-trigger">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round" aria-hidden="true"><path d="{{ bookmark_icon }}"/></svg>В библиотеку
-        </a>
-        {% elif in_library %}
-        <form method="post" action="/library/{{ title.slug_url }}/remove">
-          <input type="hidden" name="next" value="/titles/{{ title.slug_url }}">
-          <button type="submit" class="ui-btn ui-btn--quiet ui-btn--lg title-library-on" aria-pressed="true" title="Убрать из библиотеки">
-            <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="{{ bookmark_icon }}"/></svg>В библиотеке
-          </button>
-        </form>
-        {% else %}
-        <form method="post" action="/library/{{ title.slug_url }}/add">
-          <input type="hidden" name="next" value="/titles/{{ title.slug_url }}">
-          <button type="submit" class="ui-btn ui-btn--lg" aria-pressed="false">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round" aria-hidden="true"><path d="{{ bookmark_icon }}"/></svg>В библиотеку
-          </button>
-        </form>
-        {% endif %}
-      </div>
 
       {% if export_formats %}
-      <form class="title-download" method="post" action="/titles/{{ title.slug_url }}/download">
-        <span class="ui-select title-download__format">
+      <form class="tp-dl" method="post" action="/titles/{{ title.slug_url }}/download">
+        <button type="submit" class="tp-dl__go" aria-label="Скачать тайтл">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 4v11m0 0-4.5-4.5M12 15l4.5-4.5M5 20h14"/></svg><span class="tp-dl__word">Скачать тайтл</span>
+        </button>
+        <span class="ui-select ui-select--sm tp-dl__format">
           <select name="fmt" class="toc__export-format" aria-label="Формат скачивания">
             {% for fmt in export_formats %}
             <option value="{{ fmt }}">{{ fmt | upper }}</option>
             {% endfor %}
           </select>
         </span>
-        <button type="submit" class="title-download__submit">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 4v11M7.5 11 12 15.5 16.5 11M4.5 18.5v1a1 1 0 0 0 1 1h13a1 1 0 0 0 1-1v-1"/></svg>Скачать тайтл
-        </button>
       </form>
       {% endif %}
-
-      {# PR 330: reading without a network - hidden until offline-download.js finds
-         IndexedDB and Cache Storage. On mobile it's a row in the «⋯» sheet instead. #}
-      <button type="button" class="ui-btn ui-btn--lg title-offline-open" data-role="offline-download-open" aria-haspopup="dialog" title="Скачать для чтения без интернета" hidden>
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M7 18a4.5 4.5 0 0 1-.6-8.96A6 6 0 0 1 18 9.5a4 4 0 0 1-.5 7.97M12 11v8m0 0-3-3m3 3 3-3"/></svg><span>Без интернета</span>
-      </button>
-
-      <button
-        type="button"
-        class="ui-btn ui-btn--lg title-hero__more"
-        data-role="title-actions-trigger"
-        aria-haspopup="dialog"
-        aria-label="Действия с тайтлом: скачать, библиотека"
-        hidden
-      >
-        <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><circle cx="5" cy="12" r="2"/><circle cx="12" cy="12" r="2"/><circle cx="19" cy="12" r="2"/></svg>
-      </button>
     </div>
 
-    {# PR 330: the offline download's progress, on the page itself - the sheet that
-       starts it closes, and the queue keeps going while the visitor stays on the page. #}
+    {# PR 330: reading without a network - hidden until offline-download.js finds
+       IndexedDB and Cache Storage. #}
+    <button type="button" class="tp-offline-open" data-role="offline-download-open" aria-haspopup="dialog" hidden>
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M7 18a4.5 4.5 0 0 1-.6-8.96A6 6 0 0 1 18 9.5a4 4 0 0 1-.5 7.97M12 11v8m0 0-3-3m3 3 3-3"/></svg>Скачать для чтения без интернета
+    </button>
     <div class="title-offline-status" data-role="offline-download-status" hidden>
       <div class="ui-download-progress">
         <div class="ui-download-progress__head">
@@ -205,220 +174,191 @@
         </div>
       </div>
     </div>
-  </div>
-</section>
 
-<div class="ui-tabs title-tabs" role="tablist" aria-label="Разделы тайтла" data-role="title-tabs" hidden>
-  <button class="ui-tabs__link" type="button" role="tab" id="title-tab-about" aria-controls="title-panel-about" aria-selected="true" data-role="title-tab">Описание</button>
-  <button class="ui-tabs__link" type="button" role="tab" id="title-tab-toc" aria-controls="title-panel-toc" aria-selected="false" tabindex="-1" data-role="title-tab">Оглавление <span class="title-tabs__count">{{ chapter_total }}</span></button>
-</div>
-
-<div class="title-body">
-  <section class="title-body__about" id="title-panel-about" role="tabpanel" aria-labelledby="title-tab-about" data-role="title-tab-panel">
-    <h2 class="title-body__heading">Описание</h2>
-    {% if title.summary %}
-    <p class="title-summary" data-role="title-summary">{{ title.summary }}</p>
-    <button type="button" class="title-summary__toggle" data-role="title-summary-toggle" aria-expanded="false" hidden>Читать полностью</button>
-    {% endif %}
-    {% if title.authors or title.artists or title.teams or ambiguous_chapter_count %}
-    <div class="title-credits">
-      {% if title.authors %}
-      <span><span class="title-credits__label">Авторы:</span> {{ title.authors | map(attribute="name") | join(", ") }}</span>
-      {% endif %}
-      {% if title.artists %}
-      <span><span class="title-credits__label">Художники:</span> {{ title.artists | map(attribute="name") | join(", ") }}</span>
-      {% endif %}
-      {% if title.teams %}
-      <span><span class="title-credits__label">Переводы:</span> {{ title.teams | map(attribute="name") | join(", ") }}</span>
-      {% endif %}
+    <div class="tp-lamp__secs">
       {% if ambiguous_chapter_count %}
       {# PR 205: shown once here rather than as a badge on every ambiguous chapter. #}
-      <div class="title-credits__ambiguous">
-        <span class="title-credits__ambiguous-note">У {{ ambiguous_chapter_count }} глав несколько переводов</span>
+      <section class="tp-sec" aria-labelledby="tp-tr-h">
+        <h2 class="tp-sec__h" id="tp-tr-h">Перевод по умолчанию</h2>
+        <p class="tp-sec__note">У <b class="hm-num">{{ ambiguous_chapter_count }}</b> {{ plural(ambiguous_chapter_count, "главы", "глав", "глав") }} несколько переводов. Какой открывать сразу:</p>
         {% if in_library %}
-        <form method="post" action="/library/{{ title.slug_url }}/default-translation" class="title-credits__default-translation">
-          <span class="ui-select ui-select--sm">
-            <select name="translation_index" class="toc__export-format" aria-label="Перевод по умолчанию для этого тайтла">
-              <option value="">Спрашивать каждый раз</option>
-              {% for index in range(max_branches) %}
-              <option value="{{ index }}"{% if default_translation_index == index %} selected{% endif %}>Вариант {{ index + 1 }}</option>
-              {% endfor %}
-            </select>
-          </span>
-          <button type="submit" class="ui-btn ui-btn--sm">Сохранить</button>
+        <form method="post" action="/library/{{ title.slug_url }}/default-translation" class="tp-tr" data-role="default-translation-form">
+          <div class="tp-tr__list" role="radiogroup" aria-labelledby="tp-tr-h">
+            {% for index in range(max_branches) %}
+            <label class="tp-tr__option"><input type="radio" name="translation_index" value="{{ index }}"{% if default_translation_index == index %} checked{% endif %}><span>Вариант {{ index + 1 }}</span></label>
+            {% endfor %}
+            <label class="tp-tr__option"><input type="radio" name="translation_index" value=""{% if default_translation_index is none %} checked{% endif %}><span>Спрашивать каждый раз</span></label>
+          </div>
+          <button type="submit" class="ui-btn ui-btn--sm tp-tr__save" data-role="default-translation-save">Сохранить</button>
         </form>
+        {% else %}
+        <p class="tp-sec__note">Перевод по умолчанию можно выбрать, когда тайтл в библиотеке.</p>
         {% endif %}
-      </div>
+      </section>
+      {% elif translators | length > 1 %}
+      <section class="tp-sec" aria-labelledby="tp-tr-h">
+        <h2 class="tp-sec__h" id="tp-tr-h">Перевод</h2>
+        <p class="tp-sec__note">У каждой главы один перевод, выбирать не из чего. Переводили:</p>
+        <ul class="tp-teams">
+          {% for name, count in translators[:3] %}
+          <li><span>{{ name }}</span><small class="hm-num">{{ count }} {{ chapters_word(count) }}</small></li>
+          {% endfor %}
+          {% if translators | length > 3 %}
+          {% set ns_rest = namespace(n=0) %}{% for _, count in translators[3:] %}{% set ns_rest.n = ns_rest.n + count %}{% endfor %}
+          {% set rest = ns_rest.n %}
+          <li><span>Ещё {{ translators | length - 3 }}</span><small class="hm-num">{{ rest }} {{ chapters_word(rest) }}</small></li>
+          {% endif %}
+        </ul>
+      </section>
+      {% endif %}
+
+      {% if title.authors or title.artists or title.teams %}
+      <section class="tp-sec" aria-labelledby="tp-cr-h">
+        <h2 class="tp-sec__h" id="tp-cr-h">Создатели</h2>
+        <dl class="tp-credits">
+          {% if title.authors %}<div><dt>{{ "Автор" if title.authors | length == 1 else "Авторы" }}</dt><dd>{{ title.authors | map(attribute="name") | join(", ") }}</dd></div>{% endif %}
+          {% if title.artists %}<div><dt>{{ "Художник" if title.artists | length == 1 else "Художники" }}</dt><dd>{{ title.artists | map(attribute="name") | join(", ") }}</dd></div>{% endif %}
+          {% if title.teams %}<div><dt>Переводят</dt><dd>{{ title.teams | map(attribute="name") | join(", ") }}</dd></div>{% endif %}
+        </dl>
+      </section>
+      {% endif %}
+    </div>
+  </aside>
+
+  <section class="tp-about hm-rise" style="--i: 2" aria-label="О тайтле">
+    {% if title.summary %}
+    <p class="tp-summary" data-role="title-summary">{{ title.summary }}</p>
+    <button type="button" class="hm-link tp-summary__toggle" data-role="title-summary-toggle" aria-expanded="false" hidden>Читать полностью</button>
+    {% endif %}
+    {# Country (PR 229), genres (PR 31) and tags (PR 86) all link into the filtered
+       catalog - the first six show, the rest open from «Ещё N» (a native <details>). #}
+    {% set chips = [] %}
+    {% if title.country %}{% set _ = chips.append(("/catalog?countries=" ~ title.country.id, title.country.name)) %}{% endif %}
+    {% for genre in title.genres %}{% set _ = chips.append(("/catalog?genres=" ~ genre.id, genre.name)) %}{% endfor %}
+    {% for tag in title.tags %}{% set _ = chips.append(("/catalog?tags=" ~ tag.id ~ "&tag_name=" ~ (tag.name | urlencode), tag.name)) %}{% endfor %}
+    {% if chips %}
+    <div class="ui-chips tp-chips">
+      {% for href, label in chips[:6] %}
+      <a class="ui-chip" href="{{ href }}">{{ label }}</a>
+      {% endfor %}
+      {% if chips | length > 6 %}
+      <details class="tp-chips__more">
+        <summary class="ui-chip-more">Ещё {{ chips | length - 6 }}</summary>
+        <div class="ui-chips">
+          {% for href, label in chips[6:] %}
+          <a class="ui-chip" href="{{ href }}">{{ label }}</a>
+          {% endfor %}
+        </div>
+      </details>
       {% endif %}
     </div>
     {% endif %}
   </section>
 
-  <section class="title-body__toc" id="title-panel-toc" role="tabpanel" aria-labelledby="title-tab-toc" data-role="title-tab-panel">
-    <div class="title-toc__head">
-      <h2 class="title-body__heading">Оглавление</h2>
-      <span class="title-toc__count">{{ chapter_total }} {{ chapters_word(chapter_total) }}</span>
-      {% if export_formats %}
-      <button type="button" class="ui-btn ui-btn--sm title-toc__select" data-role="toc-select-toggle" aria-pressed="false" hidden>Выбрать главы</button>
+  {% if contents %}
+  <section class="tp-vols hm-rise" style="--i: 3" aria-labelledby="tp-vols-h" data-role="title-volumes">
+    <div class="tp-vols__head">
+      <h2 class="hm-h2" id="tp-vols-h">Тома</h2>
+      {% if has_progress %}
+      <span class="tp-vols__sum">Прочитано <b class="hm-num">{{ contents | selectattr("done") | list | length }}</b> из <span class="hm-num">{{ contents | length }}</span> {{ plural(contents | length, "тома", "томов", "томов") }}</span>
+      {% else %}
+      <span class="tp-vols__sum hm-num">{{ contents | length }} {{ plural(contents | length, "том", "тома", "томов") }}</span>
       {% endif %}
+      <span class="tp-vols__nav" data-role="shelf-nav">
+        <button type="button" data-role="shelf-prev" aria-label="Предыдущие тома"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m15 6-6 6 6 6"/></svg></button>
+        <button type="button" data-role="shelf-next" aria-label="Следующие тома"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m9 6 6 6-6 6"/></svg></button>
+      </span>
     </div>
-    <form
-      method="get"
-      action="/titles/{{ title.slug_url }}/export"
-      class="toc"
-      data-role="chapter-toc-form"
-      tabindex="-1"
-    >
-      {% if export_formats %}
-      <div class="toc__export-panel" data-role="chapter-export-panel">
-        <div class="toc__export">
-          <span class="toc__export-label">Выбранные главы</span>
-          <span class="ui-select ui-select--sm">
-            <select name="fmt" class="toc__export-format" aria-label="Формат экспорта">
-              {% for fmt in export_formats %}
-              <option value="{{ fmt }}">{{ fmt | upper }}</option>
-              {% endfor %}
-            </select>
-          </span>
-          <button type="submit" class="ui-btn ui-btn--primary ui-btn--sm">Скачать выбранное</button>
-        </div>
+    <div class="tp-shelf" role="tablist" aria-label="Тома" data-role="shelf">
+      {% for volume in contents %}
+      {% set state = "прочитан" if volume.done else (volume.read_count ~ " из " ~ volume.chapter_count) if volume.read_count else (volume.chapter_count ~ " " ~ chapters_word(volume.chapter_count)) %}
+      <a class="tp-spine" href="#vol-{{ volume.number }}" role="tab" id="spine-{{ volume.number }}" aria-controls="vol-{{ volume.number }}" aria-selected="{{ 'true' if volume is sameas start_volume else 'false' }}"
+         aria-label="Том {{ volume.number }}, {{ volume.chapter_count }} {{ chapters_word(volume.chapter_count) }}, {{ state }}" data-role="shelf-spine" data-volume="{{ volume.number }}"
+         style="--h: {{ (64 + 104 * volume.chapter_count / longest_volume) | round | int }}px; --r: {{ volume.read_percent }}%; --i: {{ loop.index0 }}">
+        <span class="tp-spine__fill"></span>
+        <span class="tp-spine__n hm-num">{{ volume.number }}</span>
+        <span class="tp-spine__meta"><b>Том {{ volume.number }}</b><small class="hm-num">{{ state }}</small></span>
+        {% if volume.is_current %}<span class="tp-spine__here" title="Вы здесь"></span>{% endif %}
+      </a>
+      {% endfor %}
+    </div>
+    <div class="tp-vols__track" aria-hidden="true"><span data-role="shelf-track"></span></div>
+  </section>
+  {% endif %}
+
+  <section class="tp-chap hm-rise" style="--i: 4" id="title-panel-toc" aria-labelledby="tp-chap-h">
+    <h2 class="tp-sr" id="tp-chap-h">Оглавление</h2>
+    <form method="get" action="/titles/{{ title.slug_url }}/export" class="toc" data-role="chapter-toc-form" tabindex="-1">
+      <div class="tp-tools">
+        <label class="tp-find">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="m16 16 4 4"/></svg>
+          <input type="search" placeholder="Номер или название главы" aria-label="Найти главу" enterkeyhint="search" data-role="toc-find">
+        </label>
+        {% if export_formats %}
+        <span class="ui-select ui-select--sm tp-tools__format">
+          <select name="fmt" class="toc__export-format" aria-label="Формат экспорта">
+            {% for fmt in export_formats %}
+            <option value="{{ fmt }}">{{ fmt | upper }}</option>
+            {% endfor %}
+          </select>
+        </span>
+        <button type="button" class="tp-pick" data-role="toc-select-toggle" aria-pressed="false" hidden>
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" aria-hidden="true"><path d="M9 6h11M9 12h11M9 18h11"/><path d="M4.5 6h.01M4.5 12h.01M4.5 18h.01" stroke-width="2.6"/></svg><span>Выбрать главы</span>
+        </button>
+        {% endif %}
       </div>
-      {% endif %}
-      {% set ns = namespace(i=0) %}
-      {% for volume in volumes %}
-      {% set volume_start = ns.i %}
-      {% set volume_read = current_chapter_index is not none and volume.chapters and volume_start + volume.chapters | length <= current_chapter_index %}
-      <div class="toc__volume">
-        <div class="toc__volume-header">
-          <h3 class="toc__volume-title">Том {{ volume.number }}</h3>
-          {% if volume_read %}<span class="toc__volume-read">прочитан</span>{% endif %}
+      <p class="tp-empty" data-role="toc-find-empty" hidden></p>
+
+      {% for volume in contents %}
+      <section class="tp-volume" id="vol-{{ volume.number }}" role="tabpanel" aria-labelledby="spine-{{ volume.number }}" data-role="toc-volume" data-volume="{{ volume.number }}"{% if volume is sameas start_volume %} data-start{% endif %}>
+        <div class="tp-volume__head">
+          <h3 class="tp-volume__title">Том {{ volume.number }}<small class="hm-num">{{ volume.chapter_count }} {{ chapters_word(volume.chapter_count) }}{% if volume.done %} · прочитан{% elif volume.read_count %} · прочитано {{ volume.read_count }}{% endif %}</small></h3>
           {% if export_formats %}
-          <button
-            type="submit"
-            formaction="/titles/{{ title.slug_url }}/volumes/{{ volume.number }}/export"
-            class="toc__volume-download"
-          >Скачать том</button>
+          <button type="button" class="tp-pick tp-volume__all" data-role="toc-pick-volume" hidden>Весь том</button>
+          <button type="submit" formaction="/titles/{{ title.slug_url }}/volumes/{{ volume.number }}/export" class="tp-volume__download">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 4v11m0 0-4.5-4.5M12 15l4.5-4.5M5 20h14"/></svg><span>Скачать том</span>
+          </button>
           {% endif %}
         </div>
-        <ul class="toc__chapters">
-          {% for chapter in volume.chapters %}
-          {% set is_current = current_chapter_index is not none and ns.i == current_chapter_index %}
-          {% set is_read = current_chapter_index is not none and ns.i < current_chapter_index %}
-          <li class="toc__chapter{% if is_current %} toc__chapter--current{% elif is_read %} toc__chapter--read{% endif %}">
-            <input
-              class="toc__chapter-checkbox"
-              type="checkbox"
-              name="chapters"
-              value="{{ volume.number }}--{{ chapter.number }}"
-              aria-label="Выбрать главу {{ chapter.number }}"
-            >
-            <span class="toc__chapter-state" aria-hidden="true">
-              {% if is_read %}<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M4 12.5 9.5 18 20 6"/></svg>
-              {% elif is_current %}<span class="toc__chapter-dot"></span>{% endif %}
-            </span>
-            <a class="toc__chapter-link" href="/titles/{{ title.slug_url }}/chapters/{{ chapter.volume }}/{{ chapter.number }}"{% if is_current %} aria-current="step"{% endif %}>
-              <span class="toc__chapter-number">{{ chapter.number }}</span>
-              <span class="toc__chapter-name">{{ chapter.name or "Без названия" }}</span>
-              {% if is_current %}<span class="toc__chapter-here">вы здесь</span>{% endif %}
-            </a>
+        <ol class="tp-line">
+          {% for item in volume.items %}
+          {% if item.rows is defined %}
+          <li class="tp-fold{% if item.read %} tp-fold--read{% endif %}" data-role="toc-fold" data-open="false">
+            <button type="button" class="tp-fold__head" aria-expanded="false" data-role="toc-fold-toggle">
+              <span class="tp-node" aria-hidden="true">{{ check_icon | safe if item.read }}</span>
+              <span class="tp-fold__label">{% if item.read and item.count == volume.chapter_count %}Прочитан целиком{% elif item.read %}Главы {{ item.first_number }}–{{ item.last_number }} прочитаны{% else %}Главы {{ item.first_number }}–{{ item.last_number }}{% endif %}</span>
+              <span class="tp-fold__count hm-num"><span data-role="toc-fold-word">{{ item.count }} {{ chapters_word(item.count) }} · показать</span>{{ chevron_icon | safe }}</span>
+            </button>
+            <div class="tp-fold__body"><ol class="tp-line" inert>
+              {% for row in item.rows %}{{ chapter_row(row, volume.number) }}{% endfor %}
+            </ol></div>
           </li>
-          {% set ns.i = ns.i + 1 %}
+          {% else %}
+          {{ chapter_row(item, volume.number) }}
+          {% endif %}
           {% endfor %}
-        </ul>
-      </div>
+        </ol>
+      </section>
       {% endfor %}
+
+      {% if export_formats %}
+      <div class="toc__export-panel tp-pickbar" data-role="chapter-export-panel">
+        <span class="tp-pickbar__n" aria-live="polite"><b class="hm-num" data-role="toc-picked-count">0</b> <span data-role="toc-picked-word">глав</span></span>
+        <button type="submit" class="tp-pickbar__go">Скачать выбранное</button>
+        <button type="button" class="tp-pickbar__off" data-role="toc-pick-cancel" aria-label="Отменить выбор"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M7 7l10 10M17 7 7 17"/></svg></button>
+      </div>
+      {% endif %}
     </form>
   </section>
 </div>
 
-{# Mobile sheets (M-TITLE-ACTIONS/-FORMAT/-REMOVE), opened by title-actions-sheet.js. #}
-<dialog class="ui-dialog ui-dialog--sheet title-sheet" data-role="title-actions-sheet" aria-label="Действия с тайтлом">
-  <span class="ui-dialog__grabber" aria-hidden="true"></span>
-  <div class="title-sheet__head">
-    {% if cover_url %}<img class="title-sheet__cover" src="{{ cover_url }}" alt="">{% endif %}
-    <span class="title-sheet__title">
-      <b>{{ display_name }}</b>
-      <span>{{ chapter_total }} {{ chapters_word(chapter_total) }}<span data-role="title-size-label"></span></span>
-    </span>
-    <button type="button" class="ui-icon-btn title-sheet__close" data-role="title-sheet-close" aria-label="Закрыть"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M6 6l12 12M18 6 6 18"/></svg></button>
-  </div>
-  <div class="title-sheet__list">
-    {% if export_formats %}
-    <button type="button" class="title-sheet__row" data-role="title-format-open">
-      <span class="title-sheet__icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 4v11M7.5 11 12 15.5 16.5 11M4.5 18.5v1a1 1 0 0 0 1 1h13a1 1 0 0 0 1-1v-1"/></svg></span>
-      <span class="title-sheet__text"><b>Скачать тайтл</b><span>{{ export_formats | map("upper") | join(", ") }}</span></span>
-      <svg class="title-sheet__chev" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="m9 6 6 6-6 6"/></svg>
-    </button>
-    <button type="button" class="title-sheet__row" data-role="title-select-chapters">
-      <span class="title-sheet__icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" aria-hidden="true"><path d="M9 6h12M9 12h12M9 18h12M4 6h.01M4 12h.01M4 18h.01"/></svg></span>
-      <span class="title-sheet__text"><b>Скачать тома или главы</b><span>Откроет выбор в оглавлении</span></span>
-      <svg class="title-sheet__chev" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="m9 6 6 6-6 6"/></svg>
-    </button>
-    <hr class="title-sheet__sep">
-    {% endif %}
-    <button type="button" class="title-sheet__row" data-role="offline-download-open" hidden>
-      <span class="title-sheet__icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M7 18a4.5 4.5 0 0 1-.6-8.96A6 6 0 0 1 18 9.5a4 4 0 0 1-.5 7.97M12 11v8m0 0-3-3m3 3 3-3"/></svg></span>
-      <span class="title-sheet__text"><b>Скачать для чтения без интернета</b><span>Главы останутся на этом устройстве</span></span>
-      <svg class="title-sheet__chev" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="m9 6 6 6-6 6"/></svg>
-    </button>
-    <hr class="title-sheet__sep" data-role="offline-download-sep" hidden>
-    {% if not current_user %}
-    <a class="title-sheet__row" href="/login" data-role="auth-modal-trigger">
-      <span class="title-sheet__icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round" aria-hidden="true"><path d="{{ bookmark_icon }}"/></svg></span>
-      <span class="title-sheet__text"><b>Добавить в библиотеку</b><span>Нужен аккаунт сайта</span></span>
-    </a>
-    {% elif in_library %}
-    <button type="button" class="title-sheet__row title-sheet__row--danger" data-role="title-remove-open">
-      <span class="title-sheet__icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round" aria-hidden="true"><path d="M6 3h12v18l-6-4.5L6 21zM9 10h6"/></svg></span>
-      <span class="title-sheet__text"><b>Убрать из библиотеки</b><span>Тайтл пропадёт из «Читаю»</span></span>
-    </button>
-    {% else %}
-    <form method="post" action="/library/{{ title.slug_url }}/add">
-      <input type="hidden" name="next" value="/titles/{{ title.slug_url }}">
-      <button type="submit" class="title-sheet__row">
-        <span class="title-sheet__icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round" aria-hidden="true"><path d="{{ bookmark_icon }}"/></svg></span>
-        <span class="title-sheet__text"><b>Добавить в библиотеку</b><span>Появится в «Читаю»</span></span>
-      </button>
-    </form>
-    {% endif %}
-  </div>
-</dialog>
-
-{% if export_formats %}
-<dialog class="ui-dialog ui-dialog--sheet title-sheet" data-role="title-format-sheet" aria-label="Скачать тайтл">
-  <span class="ui-dialog__grabber" aria-hidden="true"></span>
-  <div class="title-sheet__head title-sheet__head--nav">
-    <button type="button" class="ui-icon-btn" data-role="title-format-back" aria-label="Назад к действиям"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M15 5l-7 7 7 7"/></svg></button>
-    <b class="title-sheet__heading">Скачать тайтл</b>
-    <button type="button" class="ui-icon-btn title-sheet__close" data-role="title-sheet-close" aria-label="Закрыть"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M6 6l12 12M18 6 6 18"/></svg></button>
-  </div>
-  <form method="post" action="/titles/{{ title.slug_url }}/download" class="title-sheet__form">
-    <fieldset class="title-formats">
-      <legend class="title-formats__legend">Формат файла</legend>
-      {% for fmt in export_formats %}
-      <label class="title-format">
-        <input type="radio" name="fmt" value="{{ fmt }}"{% if loop.first %} checked{% endif %}>
-        <span class="title-format__text"><b>{{ fmt | upper }}</b>{% if format_notes[fmt] %}<span>{{ format_notes[fmt] }}</span>{% endif %}</span>
-      </label>
-      {% endfor %}
-    </fieldset>
-    <button type="submit" class="ui-btn ui-btn--primary ui-btn--lg ui-btn--block" data-role="title-format-submit"><span>Скачать <span data-role="title-format-name">{{ export_formats[0] | upper }}</span><span data-role="title-size-label"></span></span></button>
-  </form>
-</dialog>
-{% endif %}
-
-{% if in_library %}
-<dialog class="ui-dialog ui-dialog--sheet title-sheet title-sheet--confirm" data-role="title-remove-sheet" role="alertdialog" aria-labelledby="title-remove-heading">
-  <span class="ui-dialog__grabber" aria-hidden="true"></span>
-  <span class="title-sheet__danger-icon" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"><path d="M6 3h12v18l-6-4.5L6 21zM9 10h6"/></svg></span>
-  <b class="title-sheet__confirm-title" id="title-remove-heading">Убрать из библиотеки?</b>
-  <p class="title-sheet__confirm-text">«{{ display_name }}» пропадёт из раздела «Читаю». Вернуть можно в любой момент со страницы тайтла.</p>
-  <form method="post" action="/library/{{ title.slug_url }}/remove">
-    <input type="hidden" name="next" value="/titles/{{ title.slug_url }}">
-    <button type="submit" class="ui-btn ui-btn--destructive ui-btn--lg ui-btn--block">Убрать</button>
-  </form>
-  <button type="button" class="ui-btn ui-btn--lg ui-btn--block title-sheet__cancel" data-role="title-sheet-close">Отмена</button>
-</dialog>
+{# On a phone: «Продолжить» stays at hand once the lamp's button has scrolled away. #}
+{% if has_progress %}
+<a class="tp-dock" href="/titles/{{ title.slug_url }}/chapters/{{ last_read_volume }}/{{ last_read_number }}" data-role="title-dock" aria-hidden="true" tabindex="-1">
+  {% if cover_url %}<img src="{{ cover_url }}" alt="">{% else %}<span class="tp-dock__none"></span>{% endif %}
+  <span class="tp-dock__text"><b>Продолжить</b><small>Том {{ last_read_volume }} · глава {{ last_read_number }}{% if current_chapter and current_chapter.name %} · {{ current_chapter.name }}{% endif %}</small></span>
+  <i><svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M8 5.5v13l10.5-6.5z"/></svg></i>
+</a>
 {% endif %}
 
 {# PR 330: «Скачать без интернета» - the content the shared bottom sheet takes in
