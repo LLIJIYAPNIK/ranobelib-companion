@@ -68,15 +68,45 @@ def test_desktop_geometry_is_compact_but_never_squeezes_content() -> None:
     assert "flex: 0 0 auto;" in track
     assert "width: max-content;" in track
     assert "max-width: 100%;" in track
-    assert "border-radius: 15px;" in track
-    assert "background: rgb(8 8 12 / 55%);" in track
     tab = _rule(css, ".wn-lib-switch__tab")
     assert "flex: 0 0 auto;" in tab
-    assert "min-width: 142px;" in tab
-    assert "min-height: 44px;" in tab
-    assert "height: 44px;" in tab
+    assert "height: 100%;" in tab
     assert "padding: 0 18px;" in tab
-    assert "border-radius: 11px;" in tab
+    assert "border-radius: 999px;" in tab
+
+
+def test_track_is_the_headers_glass_and_as_tall_as_the_search() -> None:
+    """Issue 393: the switch wears .hm-search's glass, not a dark plate of its own."""
+    css = (ROOT / "app/static/css/app.css").read_text(encoding="utf-8")
+    track = _rule(css, ".wn-lib-switch")
+
+    assert "border: 1px solid var(--hm-glass-edge);" in track
+    assert "border-radius: 999px;" in track
+    assert "background: var(--hm-glass);" in track
+    assert "backdrop-filter: var(--hm-glass-blur);" in track
+    assert "box-shadow" not in track
+    search_height = re.search(r"height: (\d+px);", _rule(css, ".hm-search", last=True))
+    assert search_height is not None
+    assert f"height: {search_height.group(1)};" in track
+
+
+def test_active_item_and_count_match_the_library_filter_tabs() -> None:
+    css = (ROOT / "app/static/css/app.css").read_text(encoding="utf-8")
+    active = _rule(css, '.wn-lib-switch__tab[aria-selected="true"]')
+    filter_active = _rule(css, '.lb-tabs button[aria-checked="true"]')
+
+    assert "background: var(--hm-glass-raised);" in active
+    assert "background: var(--hm-glass-raised);" in filter_active
+    assert "gradient" not in active
+    assert "box-shadow" not in active
+    assert "border-color" not in active
+
+    count = _rule(css, ".wn-lib-switch__count")
+    assert "color: var(--wn-text-muted);" in count
+    assert "background" not in count
+    active_count = _rule(css, '.wn-lib-switch__tab[aria-selected="true"] .wn-lib-switch__count')
+    assert "color: var(--wn-text-secondary);" in active_count
+    assert "background" not in active_count
 
 
 def test_labels_and_counts_do_not_shrink_or_wrap_at_large_text_sizes() -> None:
@@ -87,7 +117,6 @@ def test_labels_and_counts_do_not_shrink_or_wrap_at_large_text_sizes() -> None:
     assert "flex: none;" in label
     assert "white-space: nowrap;" in label
     assert "flex: none;" in count
-    assert "min-width: 22px;" in count
 
 
 @pytest.mark.parametrize("viewport_width", [320, 375])
@@ -101,13 +130,12 @@ def test_phone_geometry_splits_the_available_width(viewport_width: int) -> None:
     assert "display: grid;" in track
     assert "grid-template-columns: repeat(2, minmax(0, 1fr));" in track
     assert "width: 100%;" in track
+    # 54px track = 44px thumb-sized items + 4px padding + the 1px edge.
+    assert "height: 54px;" in track
     assert "width: 100%;" in tab
     assert "min-width: 0;" in tab
     assert "padding: 0 6px;" in tab
-    assert "font-size: 14px;" in tab
     assert "display: none;" in icon
-    mobile_count = _rule(css, ".wn-lib-switch__count", last=True)
-    assert "padding-inline: 5px;" in mobile_count
 
 
 def test_hover_focus_and_active_states_do_not_change_geometry() -> None:
@@ -115,17 +143,17 @@ def test_hover_focus_and_active_states_do_not_change_geometry() -> None:
 
     assert '.wn-lib-switch__tab:not([aria-selected="true"]):hover' in css
     assert ".wn-lib-switch__tab:focus-visible" in css
-    assert '.wn-lib-switch__tab:not([aria-selected="true"]):active' in css
-    assert '.wn-lib-switch__tab[aria-selected="true"]:active' in css
+    assert ".wn-lib-switch__tab:active" in css
     for selector in (
         '.wn-lib-switch__tab:not([aria-selected="true"]):hover',
         ".wn-lib-switch__tab:focus-visible",
-        '.wn-lib-switch__tab:not([aria-selected="true"]):active',
-        '.wn-lib-switch__tab[aria-selected="true"]:active',
+        ".wn-lib-switch__tab:active",
     ):
         rule = _rule(css, selector)
         assert "width:" not in rule
         assert "padding:" not in rule
+    # The focus ring is the one the filter tabs and the sort use.
+    assert "box-shadow: var(--wn-focus-ring);" in _rule(css, ".wn-lib-switch__tab:focus-visible")
 
 
 def test_library_and_catalog_templates_use_the_same_switch_partial() -> None:
