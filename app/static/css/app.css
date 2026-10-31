@@ -30576,11 +30576,10 @@ body.reader-hud-visible .reader-hud {
 
 /* ==========================================================================
    «Активность» in the home page's frame (.hm): on the left the title row with the
-   streak, the month as a calendar of reading days with its figures and the picked day,
-   then «Недавно»; on the right «Друзья» and «Читают на сайте» (below 1100px one column).
-   Teal is the reading hue here as everywhere on the site: a read day is a teal circle,
-   stronger the longer the reading, and consecutive days are joined by a pale teal band -
-   the streak drawn as a chain. Panels are the quiet glass of «Загрузки».
+   streak, the month's calendar beside the picked day, «Когда вы читаете» and «Недавно»;
+   on the right «Друзья» and «Популярное на Webnovells» (below 1100px one column). Teal
+   is the reading hue here as everywhere on the site: the mark under a day read, the
+   hours' bars, the popular titles' share. Panels are the quiet glass of «Загрузки».
    ========================================================================== */
 .hm.ac {
   display: grid;
@@ -30588,7 +30587,6 @@ body.reader-hud-visible .reader-hud {
   align-items: start;
   gap: 28px;
   --ac-teal: var(--wn-teal);
-  --ac-dot: 40px;
 }
 
 /* A guest has only the locked card - no side column to keep room for. */
@@ -30604,7 +30602,7 @@ body.reader-hud-visible .reader-hud {
   min-width: 0;
 }
 
-/* The figures' own `font` shorthands reset .hm-num's numerals; digits keep their width. */
+/* Figures set with a `font` shorthand reset .hm-num's numerals; digits keep their width. */
 .hm.ac .hm-num {
   font-variant-numeric: tabular-nums;
 }
@@ -30713,17 +30711,31 @@ body.reader-hud-visible .reader-hud {
 }
 
 .ac-btn:focus-visible,
-.ac-day__dot:focus-visible,
+.ac-day__tile:focus-visible,
 .ac-cal__arrow:focus-visible,
-.ac-friend__book:focus-visible {
+.ac-friend__book:focus-visible,
+.ac-more__toggle:focus-visible {
   outline: none;
   box-shadow: var(--wn-focus-ring);
 }
 
-/* --- The month ---------------------------------------------------------------------- */
+@media (hover: hover) {
+  .ac-dayread__name:hover,
+  .ac-event__title:hover,
+  .ac-pop__name:hover,
+  .ac-friend__name:hover,
+  .ac-more__name:hover {
+    color: #fff;
+    text-decoration: underline;
+    text-decoration-color: var(--wn-border-strong);
+    text-underline-offset: 3px;
+  }
+}
+
+/* --- The month: the calendar beside the picked day ------------------------------------ */
 .ac-month {
   display: grid;
-  grid-template-columns: minmax(300px, 420px) minmax(0, 1fr);
+  grid-template-columns: minmax(280px, 400px) minmax(0, 1fr);
   gap: 36px;
   padding: 24px 28px 26px;
 }
@@ -30777,221 +30789,119 @@ body.reader-hud-visible .reader-hud {
 .ac-cal__grid {
   display: flex;
   flex-direction: column;
-  gap: 6px;
+  gap: 4px;
 }
 
 .ac-cal__row {
   display: grid;
   grid-template-columns: repeat(7, minmax(0, 1fr));
+  gap: 4px;
 }
 
 .ac-cal__weekday {
-  padding-bottom: 2px;
+  padding-bottom: 4px;
   color: var(--wn-text-muted);
   font: 600 12px/1 var(--wn-font-ui);
   text-align: center;
 }
 
-.ac-cal__weekday:nth-child(n + 6) {
-  color: #6f6b84;
-}
-
-/* A day: a circle with its number. The chain is two half bands behind the circle - one
-   to the left edge when the day before was read too, one to the right for the day after;
-   the columns have no gap, so neighbours' halves meet into one band. */
+/* A day: its number on a quiet tile; a day read gets a teal mark under the number,
+   brighter the longer the reading (the profile heatmap's scale). The picked day's tile
+   is lit; today's number is teal. */
 .ac-day {
+  display: grid;
+  min-width: 0;
+}
+
+.ac-day__tile {
   position: relative;
   display: grid;
   place-items: center;
-  height: calc(var(--ac-dot) + 4px);
-}
-
-.ac-day--chain-before::before,
-.ac-day--chain-after::after {
-  content: "";
-  position: absolute;
-  top: 50%;
-  z-index: 0;
-  height: var(--ac-dot);
-  background: color-mix(in srgb, var(--ac-teal) 16%, transparent);
-  transform: translateY(-50%);
-}
-
-.ac-day--chain-before::before {
-  left: 0;
-  right: 50%;
-}
-
-.ac-day--chain-after::after {
-  left: 50%;
-  right: 0;
-}
-
-.ac-day__dot {
-  position: relative;
-  z-index: 1;
-  display: grid;
-  place-items: center;
-  width: var(--ac-dot);
-  height: var(--ac-dot);
-  border-radius: 50%;
-  color: var(--wn-text-secondary);
-  font: 600 14px/1 var(--wn-font-ui);
+  height: 46px;
+  border-radius: 12px;
+  color: var(--wn-text-muted);
+  font: 600 15px/1 var(--wn-font-ui);
   text-decoration: none;
-  transition: background-color 0.15s ease, color 0.15s ease, box-shadow 0.15s ease,
-    transform 0.12s ease;
+  transition: background-color 0.15s ease, color 0.15s ease, transform 0.12s ease;
 }
 
-a.ac-day__dot {
+a.ac-day__tile {
   cursor: pointer;
 }
 
 @media (hover: hover) {
-  a.ac-day__dot:hover {
-    background: var(--hm-glass-raised);
+  a.ac-day__tile:hover {
+    background: var(--hm-glass);
     color: var(--wn-text);
   }
 }
 
-a.ac-day__dot:active {
-  transform: scale(0.92);
+a.ac-day__tile:active {
+  transform: scale(0.94);
 }
 
-.ac-day--read .ac-day__dot {
+.ac-day--read .ac-day__tile {
+  color: var(--wn-text);
   font-weight: 800;
 }
 
-/* The strength of a read day: its reading time on the profile heatmap's scale. */
-.ac-day--l1 .ac-day__dot,
-.ac-cal__swatch--l1 {
-  background: color-mix(in srgb, var(--ac-teal) 30%, var(--wn-canvas));
-  color: var(--wn-text);
-}
-
-.ac-day--l2 .ac-day__dot {
-  background: color-mix(in srgb, var(--ac-teal) 52%, var(--wn-canvas));
-  color: #fff;
-}
-
-.ac-day--l3 .ac-day__dot {
-  background: color-mix(in srgb, var(--ac-teal) 76%, var(--wn-canvas));
-  color: #06201d;
-}
-
-.ac-day--l4 .ac-day__dot,
-.ac-cal__swatch--l4 {
+.ac-day--read .ac-day__tile::after {
+  content: "";
+  position: absolute;
+  bottom: 7px;
+  left: 50%;
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
   background: var(--ac-teal);
-  color: #06201d;
+  opacity: var(--ac-mark, 1);
+  transform: translateX(-50%);
 }
 
-@media (hover: hover) {
-  .ac-day--read a.ac-day__dot:hover {
-    background: color-mix(in srgb, var(--ac-teal) 88%, #fff);
-    color: #06201d;
-  }
+.ac-day--l1 {
+  --ac-mark: 0.45;
 }
 
-.ac-day--future .ac-day__dot {
+.ac-day--l2 {
+  --ac-mark: 0.65;
+}
+
+.ac-day--l3 {
+  --ac-mark: 0.85;
+}
+
+.ac-day--l4 .ac-day__tile::after {
+  width: 16px;
+  border-radius: 999px;
+}
+
+.ac-day--today .ac-day__tile {
+  color: var(--ac-teal);
+  font-weight: 800;
+}
+
+.ac-day--future .ac-day__tile {
   color: #4d4a5e;
 }
 
-.ac-day--today .ac-day__dot {
-  box-shadow: inset 0 0 0 2px var(--wn-text);
+.ac-day--selected .ac-day__tile,
+.ac-day--selected a.ac-day__tile:hover {
+  background: var(--hm-glass-raised);
+  color: #fff;
 }
 
-.ac-day--selected .ac-day__dot {
-  box-shadow: 0 0 0 2px var(--wn-canvas), 0 0 0 4px var(--wn-text);
-}
-
-.ac-day--today.ac-day--selected .ac-day__dot {
-  box-shadow: inset 0 0 0 2px var(--wn-text), 0 0 0 2px var(--wn-canvas),
-    0 0 0 4px var(--wn-text);
-}
-
-.ac-cal__legend {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: 6px 8px;
-  margin: 2px 0 0;
-  color: var(--wn-text-muted);
-  font: 500 12px/1.3 var(--wn-font-ui);
-}
-
-.ac-cal__swatch {
-  display: inline-block;
-  width: 12px;
-  height: 12px;
-  border-radius: 50%;
-}
-
-.ac-cal__swatch + .ac-cal__swatch,
-.ac-cal__legend .ac-cal__swatch:not(:first-child) {
-  margin-left: 8px;
-}
-
-.ac-cal__swatch--chain {
-  width: 22px;
-  border-radius: 999px;
-  background: color-mix(in srgb, var(--ac-teal) 16%, transparent);
-}
-
-/* --- The month's figures and the picked day ------------------------------------------ */
-.ac-month__side {
-  display: flex;
-  flex-direction: column;
-  gap: 24px;
-  min-width: 0;
-  padding-top: 4px;
-}
-
-.ac-figures {
-  display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 18px 20px;
-  margin: 0;
-}
-
-.ac-figure {
-  display: flex;
-  flex-direction: column;
-  gap: 6px;
-  min-width: 0;
-}
-
-.ac-figure dt {
-  color: var(--wn-text-muted);
-  font: 600 13px/1.3 var(--wn-font-ui);
-}
-
-.ac-figure dd {
-  margin: 0;
-  color: var(--wn-text-secondary);
-  font: 600 14px/1 var(--wn-font-ui);
-}
-
-.ac-figure dd b {
-  color: var(--wn-text);
-  font: 800 22px/1 var(--wn-font-ui);
-  letter-spacing: -0.01em;
-}
-
-.ac-figure--lead dd b {
-  font-size: 30px;
-}
-
+/* --- The picked day ------------------------------------------------------------------- */
 .ac-days {
   display: flex;
   flex-direction: column;
   min-width: 0;
+  padding-top: 2px;
 }
 
 .ac-dayread {
   display: flex;
   flex-direction: column;
-  gap: 12px;
-  padding-top: 20px;
-  border-top: 1px solid var(--hm-glass-edge);
+  gap: 14px;
   animation: ac-in 0.28s var(--hm-ease) both;
 }
 
@@ -31006,29 +30916,32 @@ a.ac-day__dot:active {
   }
 }
 
-.ac-dayread__head {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: baseline;
-  gap: 4px 12px;
-}
-
 .ac-dayread__title {
   margin: 0;
   color: var(--wn-text);
-  font: 800 17px/1.3 var(--wn-font-ui);
+  font: 800 20px/1.3 var(--wn-font-ui);
 }
 
 .ac-dayread__sum {
-  color: var(--wn-text-muted);
-  font: 600 13px/1.3 var(--wn-font-ui);
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px 8px;
+  margin: -6px 0 0;
+}
+
+.ac-dayread__sum span {
+  padding: 5px 10px;
+  border-radius: 999px;
+  background: var(--hm-glass);
+  color: var(--wn-text-secondary);
+  font: 700 13px/1.2 var(--wn-font-ui);
 }
 
 .ac-dayread__list {
   display: flex;
   flex-direction: column;
-  gap: 10px;
-  margin: 0;
+  gap: 12px;
+  margin: 4px 0 0;
   padding: 0;
   list-style: none;
 }
@@ -31041,8 +30954,8 @@ a.ac-day__dot:active {
 }
 
 .ac-dayread__cover {
-  width: 34px;
-  height: 50px;
+  width: 40px;
+  height: 58px;
 }
 
 .ac-dayread__copy {
@@ -31055,7 +30968,7 @@ a.ac-day__dot:active {
 .ac-dayread__name {
   overflow: hidden;
   color: var(--wn-text);
-  font: 700 14px/1.3 var(--wn-font-ui);
+  font: 700 15px/1.3 var(--wn-font-ui);
   text-decoration: none;
   text-overflow: ellipsis;
   white-space: nowrap;
@@ -31073,19 +30986,84 @@ a.ac-day__dot:active {
 }
 
 .ac-continue {
-  margin-top: 2px;
+  margin-top: 4px;
 }
 
-@media (hover: hover) {
-  .ac-dayread__name:hover,
-  .ac-event__title:hover,
-  .ac-pop__name:hover,
-  .ac-friend__name:hover {
-    color: #fff;
-    text-decoration: underline;
-    text-decoration-color: var(--wn-border-strong);
-    text-underline-offset: 3px;
-  }
+/* --- Когда вы читаете: the month's time by hour of the day ---------------------------- */
+.ac-hours {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.ac-hours__head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 6px 16px;
+}
+
+.ac-hours__total {
+  margin: 0;
+  color: var(--wn-text-secondary);
+  font: 500 14px/1.4 var(--wn-font-ui);
+}
+
+.ac-hours__total b {
+  color: var(--wn-text);
+  font-weight: 800;
+}
+
+.ac-hours__finding {
+  margin: 0;
+  color: var(--wn-text-secondary);
+  font: 500 15px/1.5 var(--wn-font-ui);
+}
+
+.ac-hours__finding b {
+  color: var(--wn-text);
+  font-weight: 800;
+}
+
+.ac-hours__chart {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-top: 8px;
+}
+
+.ac-hours__plot {
+  display: grid;
+  grid-template-columns: repeat(24, minmax(0, 1fr));
+  align-items: end;
+  gap: 4px;
+  height: 104px;
+  border-bottom: 2px solid var(--hm-glass-edge);
+}
+
+/* Square-cornered columns from the baseline; an hour with no reading shows nothing. */
+.ac-hours__bar {
+  height: var(--h);
+  min-height: 0;
+  border-radius: 3px 3px 0 0;
+  background: color-mix(in srgb, var(--ac-teal) 55%, var(--wn-canvas));
+}
+
+.ac-hours__bar--peak {
+  background: var(--ac-teal);
+}
+
+.ac-hours__axis,
+.ac-hours__parts {
+  display: flex;
+  justify-content: space-between;
+  color: var(--wn-text-muted);
+  font: 500 12px/1 var(--wn-font-ui);
+}
+
+.ac-hours__parts {
+  justify-content: space-around;
 }
 
 /* --- Недавно ------------------------------------------------------------------------- */
@@ -31105,7 +31083,7 @@ a.ac-day__dot:active {
 
 .ac-event {
   display: grid;
-  grid-template-columns: 36px minmax(0, 1fr) auto;
+  grid-template-columns: 34px minmax(0, 1fr) auto;
   align-items: center;
   gap: 14px;
   padding: 10px 0;
@@ -31115,25 +31093,9 @@ a.ac-day__dot:active {
   border-top: 1px solid var(--hm-glass-edge);
 }
 
-.ac-event__icon {
-  display: grid;
-  place-items: center;
-  width: 36px;
-  height: 36px;
-  color: var(--wn-text-muted);
-}
-
-.ac-event__icon svg {
-  width: 18px;
-  height: 18px;
-}
-
-.ac-event--read .ac-event__icon {
-  color: var(--ac-teal);
-}
-
-.ac-event--download_error .ac-event__icon {
-  color: var(--wn-danger);
+.ac-event__cover {
+  width: 34px;
+  height: 50px;
 }
 
 .ac-event__copy {
@@ -31162,6 +31124,10 @@ a.ac-day__dot:active {
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+}
+
+.ac-event--download_error .ac-event__sub {
+  color: var(--wn-danger);
 }
 
 /* --- Друзья -------------------------------------------------------------------------- */
@@ -31197,11 +31163,11 @@ a.ac-day__dot:active {
   border-top: 1px solid var(--hm-glass-edge);
 }
 
-.ac-friend__avatar {
+.ac-friend__avatar,
+.ac-more__avatar,
+.ac-more__face {
   display: grid;
   place-items: center;
-  width: 40px;
-  height: 40px;
   overflow: hidden;
   border-radius: 50%;
   background: var(--wn-surface-raised);
@@ -31210,7 +31176,14 @@ a.ac-day__dot:active {
   text-decoration: none;
 }
 
-.ac-friend__avatar img {
+.ac-friend__avatar {
+  width: 40px;
+  height: 40px;
+}
+
+.ac-friend__avatar img,
+.ac-more__avatar img,
+.ac-more__face img {
   width: 100%;
   height: 100%;
   object-fit: cover;
@@ -31242,7 +31215,8 @@ a.ac-day__dot:active {
   white-space: nowrap;
 }
 
-.ac-friend__when {
+.ac-friend__when,
+.ac-more__when {
   flex: none;
   color: var(--wn-text-muted);
   font: 500 12px/1.3 var(--wn-font-ui);
@@ -31314,7 +31288,106 @@ a.ac-day__dot:active {
   }
 }
 
-/* --- Читают на сайте ----------------------------------------------------------------- */
+/* The friends past the first few: faces and a count that opens a compact list with its
+   own scroll - the panel never grows with a long friends list. */
+.ac-more {
+  margin-top: -4px;
+  border-top: 1px solid var(--hm-glass-edge);
+}
+
+.ac-more__toggle {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  min-height: 52px;
+  padding: 8px 6px;
+  margin: 4px -6px 0;
+  border-radius: 12px;
+  color: var(--wn-text-secondary);
+  font: 700 14px/1.2 var(--wn-font-ui);
+  cursor: pointer;
+  list-style: none;
+  transition: background-color 0.15s ease, color 0.15s ease;
+}
+
+.ac-more__toggle::-webkit-details-marker {
+  display: none;
+}
+
+@media (hover: hover) {
+  .ac-more__toggle:hover {
+    background: var(--hm-glass);
+    color: var(--wn-text);
+  }
+}
+
+.ac-more__faces {
+  display: flex;
+  padding-left: 6px;
+}
+
+.ac-more__face {
+  width: 30px;
+  height: 30px;
+  margin-left: -6px;
+  box-shadow: 0 0 0 2px #15141c;
+  font-size: 10px;
+  letter-spacing: -0.02em;
+}
+
+.ac-more__chevron {
+  width: 18px;
+  height: 18px;
+  margin-left: auto;
+  transition: transform 0.2s ease;
+}
+
+.ac-more[open] .ac-more__chevron {
+  transform: rotate(180deg);
+}
+
+.ac-more__list {
+  display: flex;
+  flex-direction: column;
+  max-height: 336px;
+  margin: 4px 0 0;
+  padding: 0 4px 0 0;
+  overflow-y: auto;
+  list-style: none;
+  overscroll-behavior: contain;
+  scrollbar-width: thin;
+}
+
+.ac-more__item {
+  display: grid;
+  grid-template-columns: 32px minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 12px;
+  min-height: 48px;
+}
+
+.ac-more__avatar {
+  width: 32px;
+  height: 32px;
+  font-size: 12px;
+}
+
+.ac-more__name {
+  overflow: hidden;
+  color: var(--wn-text);
+  font: 700 14px/1.3 var(--wn-font-ui);
+  text-decoration: none;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.ac-more__all {
+  display: inline-block;
+  margin-top: 10px;
+  font-size: 13px;
+}
+
+/* --- Популярное ---------------------------------------------------------------------- */
 .ac-pop {
   display: grid;
   grid-template-columns: 18px 34px minmax(0, 1fr);
@@ -31373,22 +31446,14 @@ a.ac-day__dot:active {
 /* --- Narrower screens ---------------------------------------------------------------- */
 @media (max-width: 1360px) {
   .ac-month {
-    grid-template-columns: minmax(280px, 1fr) minmax(210px, 0.75fr);
+    grid-template-columns: minmax(260px, 1fr) minmax(220px, 0.85fr);
     gap: 28px;
     padding-inline: 22px;
   }
-
-  .ac-figure--lead dd b {
-    font-size: 26px;
-  }
-
-  .ac-figure dd b {
-    font-size: 20px;
-  }
 }
 
-/* One column: the side's blocks go between the month and «Недавно» - what friends and
-   the site read matters more on a phone than the event list. */
+/* One column: the side's blocks go right after the month - what friends and the site
+   read matters more on a phone than the hours and the event list. */
 @media (max-width: 1100px) {
   .hm.ac {
     display: flex;
@@ -31407,8 +31472,6 @@ a.ac-day__dot:active {
 
   .ac-month {
     order: 1;
-    grid-template-columns: minmax(300px, 1fr) minmax(0, 1fr);
-    --ac-dot: 40px;
   }
 
   .ac-friends {
@@ -31419,8 +31482,12 @@ a.ac-day__dot:active {
     order: 3;
   }
 
-  .ac-recent {
+  .ac-hours {
     order: 4;
+  }
+
+  .ac-recent {
+    order: 5;
   }
 }
 
@@ -31429,8 +31496,9 @@ a.ac-day__dot:active {
     grid-template-columns: minmax(0, 1fr);
   }
 
-  .ac-cal {
-    max-width: none;
+  .ac-days {
+    padding-top: 18px;
+    border-top: 1px solid var(--hm-glass-edge);
   }
 }
 
@@ -31446,13 +31514,13 @@ a.ac-day__dot:active {
   }
 
   .ac-month {
-    padding: 18px 14px 20px;
+    padding: 18px 12px 20px;
     border-radius: 20px;
-    --ac-dot: min(40px, calc((100vw - 64px) / 7 - 4px));
   }
 
-  .ac-cal__head {
-    padding: 0 4px;
+  .ac-cal__head,
+  .ac-days {
+    padding-inline: 4px;
   }
 
   .ac-cal__arrow {
@@ -31460,16 +31528,22 @@ a.ac-day__dot:active {
     height: 44px;
   }
 
-  .ac-month__side {
-    padding: 0 4px;
+  .ac-cal__row {
+    gap: 2px;
   }
 
-  .ac-figure--lead dd b {
-    font-size: 26px;
+  .ac-day__tile {
+    height: 44px;
+    font-size: 14px;
   }
 
-  .ac-figure dd b {
-    font-size: 20px;
+  .ac-dayread__title {
+    font-size: 18px;
+  }
+
+  .ac-hours__plot {
+    gap: 2px;
+    height: 88px;
   }
 
   .ac-friends,
@@ -31484,13 +31558,8 @@ a.ac-day__dot:active {
   }
 
   .ac-event {
-    grid-template-columns: 28px minmax(0, 1fr);
     align-items: start;
-  }
-
-  .ac-event__icon {
-    width: 28px;
-    height: 28px;
+    grid-template-columns: 34px minmax(0, 1fr);
   }
 
   .ac-event__time {
@@ -31507,17 +31576,9 @@ a.ac-day__dot:active {
     animation: none;
   }
 
-  .ac-day__dot,
-  .ac-btn {
+  .ac-day__tile,
+  .ac-btn,
+  .ac-more__chevron {
     transition: none;
-  }
-}
-
-/* A day's touch target is 44px on phones though its circle may be smaller. */
-@media (pointer: coarse) {
-  a.ac-day__dot::before {
-    content: "";
-    position: absolute;
-    inset: max(-4px, calc((var(--ac-dot) - 44px) / 2));
   }
 }

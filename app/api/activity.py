@@ -22,6 +22,7 @@ from app.db.activity import (
     daily_active_seconds,
     daily_reading_activity,
     daily_title_activity,
+    hourly_reading_seconds,
     last_chapter_read_at,
     list_chapters_read_today,
     list_recent_chapter_reads,
@@ -90,7 +91,10 @@ async def build_activity_summary(user: User, conn: AsyncConnection) -> ActivityS
 _EVENTS_LIMIT = 6
 # How far back the month calendar goes (the activity queries' own 52-week window).
 _MONTHS_BACK = 11
-_FRIENDS_LIMIT = 6
+# Friends shown in full; the rest are a compact list under «Ещё N», capped (the full
+# list is /friends).
+_FRIENDS_LIMIT = 5
+_FRIENDS_MORE_LIMIT = 60
 _POPULAR_LIMIT = 6
 # Below this many titles read on the site this week, «Читают на сайте» shows ranobelib.me's
 # most viewed instead - a list of one or two isn't «what people read».
@@ -119,6 +123,8 @@ class ActivityEvent:
     time_label: str
     href: str
     sort_key: str
+    slug_url: str = ""
+    cover_url: str | None = None
 
 
 @dataclass(frozen=True)
@@ -130,9 +136,6 @@ class CalendarCell:
     level: int = 0  # 0 (nothing) - 4, calendar_level() - the same scale as the profile's
     is_today: bool = False
     is_future: bool = False
-    # The streak chain: read the day before / after too, drawn as one band in the row.
-    chain_before: bool = False
-    chain_after: bool = False
     label: str = ""  # "14 октября: 4 главы, 23 мин"
     heading: str = ""  # "Сегодня", "Вчера", "14 октября" - the picked day's title
 
@@ -144,11 +147,28 @@ class MonthCalendar:
     weeks: list[list[CalendarCell]]
     prev_month: str | None  # "2026-09", None at the window's start
     next_month: str | None  # None for the current month
-    reading_days: int
-    elapsed_days: int  # days of the month so far (the whole month once it's over)
+
+
+@dataclass(frozen=True)
+class HourBar:
+    hour: int
+    minutes: int
+    height_percent: int  # against the busiest hour
+    is_peak: bool
+    tooltip: str  # "21:00–22:00 · 3 ч 10 мин"
+
+
+@dataclass(frozen=True)
+class ReadingHours:
+    """How much this reader read in the month and when in the day: reading time by hour,
+    and the part of the day that holds most of it."""
+
+    time_label: str  # "12 ч 17 мин"
     chapters: int
-    time_label: str
-    best_streak: int  # the longest run of reading days within the month
+    bars: list[HourBar]  # 24, from 0:00
+    part_label: str | None  # "вечером" - None with no reading time
+    part_share: int  # that part's share of the month's reading time, %
+    peak_label: str | None  # "21:00–22:00"
 
 
 @dataclass(frozen=True)
@@ -169,6 +189,7 @@ class DayReading:
     titles: list[DayTitle]
     chapters: int
     time_label: str | None
+    span_label: str | None  # when in the day: "09:12–14:05", "в 21:40"
     continue_href: str | None  # today only: the last chapter opened
 
 
@@ -190,6 +211,15 @@ class FriendActivity:
 
 
 @dataclass(frozen=True)
+class FriendBrief:
+    """A friend past the first few: who and when they last read - no SDK lookups, so a
+    long friends list stays cheap."""
+
+    user: FriendUser
+    last_read_label: str | None
+
+
+@dataclass(frozen=True)
 class PopularTitle:
     rank: int
     slug_url: str
@@ -202,8 +232,8 @@ class PopularTitle:
 
 @dataclass(frozen=True)
 class ActivityOverview:
-    """«Активность»: the reader's month as a calendar of reading days (the streak drawn as
-    a chain through it), what was read on the picked day, the month's figures, friends'
+    """«Активность»: the reader's month as a calendar of reading days, what was read on
+    the picked day and when, how much and at what hours the month was read, friends'
     reading and what people read on the site - composed from activity_events, the
     friendships and the library, names and covers from the SDK."""
 
@@ -213,10 +243,12 @@ class ActivityOverview:
     today_time_label: str | None
     last_read_label: str | None  # the latest reading day, when it isn't today
     calendar: MonthCalendar
+    hours: ReadingHours
     days: list[DayReading]  # every day of the month with reading, newest first
     selected: date | None
     selected_heading: str | None
     friends: list[FriendActivity] | None  # None: the reader turned the block off
+    friends_more: list[FriendBrief]  # the rest, most recent readers first
     friends_total: int
     popular: list[PopularTitle]
     popular_source: Literal["site", "ranobelib"] | None
@@ -241,7 +273,7 @@ async def build_activity_overview(
         titles.remember(item.slug_url, item.name, item.cover_url)
 
     # A reading day has a chapter opened or reading time logged (PR 323), here as on the
-    # profile's heatmap - the streak, the chain and the circles all count the same days.
+    # profile's heatmap - the streak and the calendar's marks count the same days.
     chapters_by_day = await daily_reading_activity(conn, user.id, tz=tz)
     seconds_by_day = await daily_active_seconds(conn, user.id, tz=tz)
     reading_days = {d for d, n in chapters_by_day.items() if n > 0} | {
@@ -253,14 +285,17 @@ async def build_activity_overview(
     recent_downloads = await list_download_history(conn, user.id, limit=_EVENTS_LIMIT)
 
     calendar = _month_calendar(month, month_end, month_titles, today, first_month)
+    hours = _reading_hours(
+        month_titles, await hourly_reading_seconds(conn, user.id, month, month_end, tz)
+    )
     days = [
-        await _day_reading(date.fromisoformat(key), entries, titles, today, recent_reads)
+        await _day_reading(date.fromisoformat(key), entries, titles, today, recent_reads, tz)
         for key, entries in sorted(month_titles.items(), reverse=True)
     ]
     selected = _selected_day(day, days, month, today)
 
     last_reading_day = max(reading_days, default=None)
-    friends, friends_total = await _friends_activity(user, conn, today, tz)
+    friends, friends_more, friends_total = await _friends_activity(user, conn, today, tz)
     popular, popular_source = await _popular(conn, titles, today, tz)
     return ActivityOverview(
         summary=summary,
@@ -273,10 +308,12 @@ async def build_activity_overview(
             else None
         ),
         calendar=calendar,
+        hours=hours,
         days=days,
         selected=selected,
         selected_heading=_day_heading(selected, today) if selected else None,
         friends=friends,
+        friends_more=friends_more,
         friends_total=friends_total,
         popular=popular,
         popular_source=popular_source,
@@ -339,8 +376,7 @@ def _month_calendar(
     first_month: date,
 ) -> MonthCalendar:
     """The month in whole Monday-to-Sunday weeks. A day's level is calendar_level() of its
-    chapters and seconds, as on the profile; consecutive reading days are chained - across
-    the end of a week row too (the band runs out to the row's edge), not across months."""
+    chapters and seconds, as on the profile."""
     totals = {
         key: (sum(t.chapters for t in entries), sum(t.seconds for t in entries))
         for key, entries in month_titles.items()
@@ -363,22 +399,12 @@ def _month_calendar(
                 level=level,
                 is_today=current == today,
                 is_future=current > today,
-                chain_before=bool(level) and (current - timedelta(days=1)).isoformat() in read,
-                chain_after=bool(level) and (current + timedelta(days=1)).isoformat() in read,
                 label=label,
                 heading=_day_heading(current, today),
             )
         )
         current += timedelta(days=1)
     cells += [CalendarCell(day=None)] * (-len(cells) % 7)
-
-    best = run = 0
-    current = month
-    while current <= month_end:
-        run = run + 1 if current.isoformat() in read else 0
-        best = max(best, run)
-        current += timedelta(days=1)
-
     this_month = today.replace(day=1)
     return MonthCalendar(
         month=month,
@@ -386,11 +412,46 @@ def _month_calendar(
         weeks=[cells[i : i + 7] for i in range(0, len(cells), 7)],
         prev_month=_add_months(month, -1).strftime("%Y-%m") if month > first_month else None,
         next_month=_add_months(month, 1).strftime("%Y-%m") if month < this_month else None,
-        reading_days=len(read),
-        elapsed_days=today.day if month == this_month else month_end.day,
-        chapters=sum(chapters for chapters, _ in totals.values()),
-        time_label=_format_duration(sum(seconds for _, seconds in totals.values())),
-        best_streak=best,
+    )
+
+
+# Parts of the day for «Когда вы читаете», by local hour.
+_DAY_PARTS = (("ночью", 0, 6), ("утром", 6, 12), ("днём", 12, 18), ("вечером", 18, 24))
+
+
+def _reading_hours(month_titles: dict[str, list[TitleDay]], hours: list[int]) -> ReadingHours:
+    """The month's reading time and chapters (the same days the calendar marks) and its
+    reading time by hour of the day. The total is the sum of the hours shown, so the bars
+    and the figure agree."""
+    total = sum(hours)
+    peak = max(hours)
+    minutes = [-(-seconds // 60) for seconds in hours]  # any reading at all shows a bar
+    bars = [
+        HourBar(
+            hour=hour,
+            minutes=m,
+            height_percent=round(seconds * 100 / peak) if peak else 0,
+            is_peak=bool(peak) and seconds == peak,
+            tooltip=f"{hour:02d}:00–{(hour + 1) % 24:02d}:00 · "
+            + (_minutes_label(seconds) or "не читали"),
+        )
+        for hour, (seconds, m) in enumerate(zip(hours, minutes, strict=True))
+    ]
+    part_label, part_share = None, 0
+    if total:
+        name, start, end = max(_DAY_PARTS, key=lambda part: sum(hours[part[1] : part[2]]))
+        part_label = name
+        part_share = round(sum(hours[start:end]) * 100 / total)
+    peak_hour = hours.index(peak) if peak else None
+    return ReadingHours(
+        time_label=_format_duration(total),
+        chapters=sum(t.chapters for entries in month_titles.values() for t in entries),
+        bars=bars,
+        part_label=part_label,
+        part_share=part_share,
+        peak_label=(
+            f"{peak_hour:02d}:00–{(peak_hour + 1) % 24:02d}:00" if peak_hour is not None else None
+        ),
     )
 
 
@@ -400,6 +461,7 @@ async def _day_reading(
     titles: _TitleLookup,
     today: date,
     recent_reads: list[ChapterReadEvent],
+    tz: str,
 ) -> DayReading:
     items = []
     for entry in entries:
@@ -424,8 +486,21 @@ async def _day_reading(
         titles=items,
         chapters=sum(entry.chapters for entry in entries),
         time_label=_minutes_label(sum(entry.seconds for entry in entries)),
+        span_label=_span_label(entries, tz),
         continue_href=continue_href,
     )
+
+
+def _span_label(entries: list[TitleDay], tz: str) -> str | None:
+    """When in the day the reading was: from the first event to the last, on the
+    reader's clock."""
+    firsts = [entry.first_at for entry in entries if entry.first_at]
+    lasts = [entry.last_at for entry in entries if entry.last_at]
+    if not firsts or not lasts:
+        return None
+    start = _local(min(firsts, key=_parse_utc), tz).strftime("%H:%M")
+    end = _local(max(lasts, key=_parse_utc), tz).strftime("%H:%M")
+    return f"в {start}" if start == end else f"{start}–{end}"
 
 
 def _selected_day(
@@ -464,16 +539,18 @@ def _format_duration(seconds: int) -> str:
 
 async def _friends_activity(
     user: User, conn: AsyncConnection, today: date, tz: str
-) -> tuple[list[FriendActivity] | None, int]:
-    """Friends who read most recently first, at most _FRIENDS_LIMIT. None when the reader
-    turned friends' activity off for themselves (show_friends_activity_home, PR 202 - a
-    preference about this reader's own screens). What a friend reads stays hidden when
-    they hide it on their profile (show_currently_reading, PR 90/124)."""
+) -> tuple[list[FriendActivity] | None, list[FriendBrief], int]:
+    """Friends who read most recently first: the first _FRIENDS_LIMIT in full (their book,
+    streak, comment - an SDK lookup each), the rest, up to _FRIENDS_MORE_LIMIT, as name and
+    when they last read. None when the reader turned friends' activity off for themselves
+    (show_friends_activity_home, PR 202 - a preference about this reader's own screens).
+    What a friend reads stays hidden when they hide it on their profile
+    (show_currently_reading, PR 90/124)."""
     if not user.show_friends_activity_home:
-        return None, 0
+        return None, [], 0
     friends = await list_friends(conn, user.id)
     if not friends:
-        return [], 0
+        return [], [], 0
     last_read = await last_chapter_read_at(conn, [entry.user.id for entry in friends])
     friends.sort(key=lambda entry: last_read.get(entry.user.id, ""), reverse=True)
     shown = friends[:_FRIENDS_LIMIT]
@@ -501,7 +578,16 @@ async def _friends_activity(
                 comment=recent[0] if recent else None,
             )
         )
-    return cards, len(friends)
+    more = [
+        FriendBrief(
+            user=entry.user,
+            last_read_label=(
+                _ago(last_read[entry.user.id], today, tz) if entry.user.id in last_read else None
+            ),
+        )
+        for entry in friends[_FRIENDS_LIMIT : _FRIENDS_LIMIT + _FRIENDS_MORE_LIMIT]
+    ]
+    return cards, more, len(friends)
 
 
 def _friend_reading(item: dict[str, object]) -> FriendReading:
@@ -706,7 +792,7 @@ async def _events(
     """«Недавно»: the latest chapter reads and downloads, merged newest first."""
     events: list[ActivityEvent] = []
     for read in reads:
-        name, _ = await titles.get(read.slug_url)
+        name, cover_url = await titles.get(read.slug_url)
         sub = f"Том {read.volume}"
         if read.volume is not None and read.number is not None:
             chapter_name = await titles.chapter_name(read.slug_url, read.volume, read.number)
@@ -720,10 +806,12 @@ async def _events(
                 time_label=_event_time(read.created_at, today, tz),
                 href=f"/titles/{read.slug_url}/chapters/{read.volume}/{read.number}",
                 sort_key=_parse_utc(read.created_at).isoformat(),
+                slug_url=read.slug_url,
+                cover_url=cover_url,
             )
         )
     for entry in downloads:
-        name, _ = await titles.get(entry.slug_url)
+        name, cover_url = await titles.get(entry.slug_url)
         fmt = entry.fmt.upper()
         count = entry.chapter_count
         chapters = f"{count} {_plural(count, 'глава', 'главы', 'глав')}" if count else fmt
@@ -742,6 +830,8 @@ async def _events(
                 time_label=_event_time(entry.finished_at, today, tz),
                 href=f"/titles/{entry.slug_url}",
                 sort_key=_parse_utc(entry.finished_at).isoformat(),
+                slug_url=entry.slug_url,
+                cover_url=cover_url,
             )
         )
     events.sort(key=lambda event: event.sort_key, reverse=True)
