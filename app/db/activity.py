@@ -191,11 +191,14 @@ async def list_recent_chapter_reads(
 @dataclass(frozen=True)
 class TitleDay:
     """One title on one local day: chapters opened and reading seconds (heartbeat ticks)
-    spent in it - a day of «Активность»'s month calendar, what was read that day."""
+    spent in it, and the first and last moment it was read (UTC ISO) - a day of
+    «Активность»'s month calendar, what was read that day and when."""
 
     slug_url: str
     chapters: int
     seconds: int
+    first_at: str = ""
+    last_at: str = ""
 
 
 async def daily_title_activity(
@@ -210,7 +213,7 @@ async def daily_title_activity(
         f"SELECT {LOCAL_DAY_SQL} AS day, slug_url, "
         "COUNT(*) FILTER (WHERE kind = 'chapter_read') AS chapters, "
         "COALESCE(SUM(seconds) FILTER (WHERE kind = 'heartbeat'), 0) AS seconds, "
-        "MAX(created_at) AS last_at "
+        "MIN(created_at) AS first_at, MAX(created_at) AS last_at "
         "FROM activity_events WHERE user_id = %s AND created_at >= %s AND created_at < %s "
         "GROUP BY day, slug_url ORDER BY day, last_at DESC",
         (tz, user_id, day_start_utc(start, tz), day_start_utc(end + timedelta(days=1), tz)),
@@ -224,9 +227,30 @@ async def daily_title_activity(
                     slug_url=row["slug_url"],
                     chapters=row["chapters"],
                     seconds=int(row["seconds"]),
+                    first_at=row["first_at"],
+                    last_at=row["last_at"],
                 )
             )
     return dict(days)
+
+
+async def hourly_reading_seconds(
+    conn: AsyncConnection, user_id: int, start: date, end: date, tz: str = DEFAULT_TIMEZONE
+) -> list[int]:
+    """Reading seconds (heartbeat ticks) by local hour of the day, 0-23, from `start` to
+    `end` inclusive - when in the day this reader reads. A tick is at most a minute
+    (POST /activity/heartbeat), so it lands in the hour it was read in."""
+    cursor = await conn.execute(
+        "SELECT EXTRACT(HOUR FROM (created_at::timestamptz AT TIME ZONE %s))::int AS hour, "
+        "SUM(seconds) AS total FROM activity_events "
+        "WHERE user_id = %s AND kind = 'heartbeat' AND created_at >= %s AND created_at < %s "
+        "GROUP BY hour",
+        (tz, user_id, day_start_utc(start, tz), day_start_utc(end + timedelta(days=1), tz)),
+    )
+    hours = [0] * 24
+    for row in await cursor.fetchall():
+        hours[row["hour"]] = int(row["total"])
+    return hours
 
 
 @dataclass(frozen=True)
