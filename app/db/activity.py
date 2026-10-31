@@ -18,7 +18,7 @@ from __future__ import annotations
 
 from collections import defaultdict
 from dataclasses import dataclass
-from datetime import UTC, datetime, timedelta
+from datetime import UTC, date, datetime, timedelta
 
 from psycopg import AsyncConnection
 
@@ -186,6 +186,88 @@ async def list_recent_chapter_reads(
         )
         for row in rows
     ]
+
+
+@dataclass(frozen=True)
+class TitleDay:
+    """One title on one local day: chapters opened and reading seconds (heartbeat ticks)
+    spent in it - a day of «Активность»'s month calendar, what was read that day."""
+
+    slug_url: str
+    chapters: int
+    seconds: int
+
+
+async def daily_title_activity(
+    conn: AsyncConnection, user_id: int, start: date, end: date, tz: str = DEFAULT_TIMEZONE
+) -> dict[str, list[TitleDay]]:
+    """Per local day from `start` to `end` inclusive (in `tz`), the titles read that day -
+    chapters and reading seconds each, the most recently read first. A day with nothing is
+    absent, as in daily_reading_activity(). One query for the whole range: both event kinds
+    carry slug_url, so a title read only by time (a long chapter, no new one opened) shows
+    too."""
+    cursor = await conn.execute(
+        f"SELECT {LOCAL_DAY_SQL} AS day, slug_url, "
+        "COUNT(*) FILTER (WHERE kind = 'chapter_read') AS chapters, "
+        "COALESCE(SUM(seconds) FILTER (WHERE kind = 'heartbeat'), 0) AS seconds, "
+        "MAX(created_at) AS last_at "
+        "FROM activity_events WHERE user_id = %s AND created_at >= %s AND created_at < %s "
+        "GROUP BY day, slug_url ORDER BY day, last_at DESC",
+        (tz, user_id, day_start_utc(start, tz), day_start_utc(end + timedelta(days=1), tz)),
+    )
+    rows = await cursor.fetchall()
+    days: dict[str, list[TitleDay]] = defaultdict(list)
+    for row in rows:
+        if row["chapters"] or row["seconds"]:
+            days[row["day"]].append(
+                TitleDay(
+                    slug_url=row["slug_url"],
+                    chapters=row["chapters"],
+                    seconds=int(row["seconds"]),
+                )
+            )
+    return dict(days)
+
+
+@dataclass(frozen=True)
+class SiteTitleReaders:
+    slug_url: str
+    readers: int
+    chapters: int
+
+
+async def site_top_titles(
+    conn: AsyncConnection, since: str, limit: int = 6
+) -> list[SiteTitleReaders]:
+    """The titles the most different people opened a chapter of since `since` (a UTC ISO
+    timestamp), across every account - «Читают на сайте» on «Активность». Only counts:
+    who read what stays private. Ties go to more chapters, then slug_url, so the order is
+    stable."""
+    cursor = await conn.execute(
+        "SELECT slug_url, COUNT(DISTINCT user_id) AS readers, COUNT(*) AS chapters "
+        "FROM activity_events WHERE kind = 'chapter_read' AND created_at >= %s "
+        "GROUP BY slug_url ORDER BY readers DESC, chapters DESC, slug_url LIMIT %s",
+        (since, limit),
+    )
+    rows = await cursor.fetchall()
+    return [
+        SiteTitleReaders(slug_url=row["slug_url"], readers=row["readers"], chapters=row["chapters"])
+        for row in rows
+    ]
+
+
+async def last_chapter_read_at(conn: AsyncConnection, user_ids: list[int]) -> dict[int, str]:
+    """When each of these users last opened a chapter (UTC ISO), keyed by user_id - one
+    query for a whole friends list. A user who never read anything is absent."""
+    if not user_ids:
+        return {}
+    cursor = await conn.execute(
+        "SELECT user_id, MAX(created_at) AS last_at FROM activity_events "
+        "WHERE kind = 'chapter_read' AND user_id = ANY(%s) GROUP BY user_id",
+        (user_ids,),
+    )
+    rows = await cursor.fetchall()
+    return {row["user_id"]: row["last_at"] for row in rows}
 
 
 def _today_start(tz: str) -> str:

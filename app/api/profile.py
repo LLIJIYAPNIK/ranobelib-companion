@@ -69,7 +69,7 @@ class CalendarDay:
     """One cell of the reading-activity heatmap (PR 136)."""
 
     count: int
-    level: int  # 0 (no reading) - 4 (90+ min), see _calendar_level()
+    level: int  # 0 (no reading) - 4 (90+ min), see calendar_level()
     label: str  # tooltip text: exact date + chapter count
     is_today: bool = False  # PR 323: ringed, so the newest cell reads as "today"
 
@@ -304,7 +304,7 @@ async def _build_reading_calendar(user_id: int, conn: AsyncConnection, tz: str) 
         day_key = current.isoformat()
         count = counts.get(day_key, 0)
         seconds = active_seconds.get(day_key, 0)
-        level = _calendar_level(count, seconds)
+        level = calendar_level(count, seconds)
         # PR 140: the chapter count alone doesn't say how long that reading actually took
         # - _format_duration() reuses the same heartbeat seconds already summed for
         # "Активность"'s "today" stat (total_active_seconds_today()), just grouped by day
@@ -349,7 +349,7 @@ async def _build_reading_calendar(user_id: int, conn: AsyncConnection, tz: str) 
     )
 
 
-def _calendar_level(chapters: int, seconds: int) -> int:
+def calendar_level(chapters: int, seconds: int) -> int:
     """0-4 on the fixed _LEVEL_LIMITS (see CALENDAR_LEGEND for what each one means)."""
     if seconds <= 0:
         return 1 if chapters > 0 else 0
