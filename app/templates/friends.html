@@ -53,7 +53,7 @@
       {% if current_user %}
       <p class="wn-friends__intro">
         Находите знакомых читателей, отправляйте и принимайте заявки и видьте их активность
-        на главной — если это разрешено настройками приватности.
+        в «Активности» — если это разрешено настройками приватности.
       </p>
       {% endif %}
     </div>
@@ -253,7 +253,7 @@
       <section class="wn-friends-card" aria-labelledby="friends-privacy-title">
         <h2 class="wn-friends-card__title" id="friends-privacy-title">Приватность</h2>
         <form class="wn-friends-privacy" method="post" action="/friends/privacy">
-          <span class="wn-friends-privacy__label" id="friends-privacy-label">Показывать, что я сейчас читаю — друзьям на главной и всем в профиле</span>
+          <span class="wn-friends-privacy__label" id="friends-privacy-label">Показывать, что я сейчас читаю — друзьям в «Активности» и всем в профиле</span>
           <input type="hidden" name="show_currently_reading" value="{{ 'false' if current_user.show_currently_reading else 'true' }}">
           <button
             class="wn-switch"

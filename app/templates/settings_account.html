@@ -106,8 +106,8 @@
     {% endif %}
     <p class="settings-card__hint">
       Большинство переключателей ниже касаются вашей публичной страницы профиля — сами вы
-      всегда видите свой профиль полностью, независимо от них. Показ активности друзей на
-      главной — личная настройка: она влияет только на то, что видите на главной вы сами.
+      всегда видите свой профиль полностью, независимо от них. Показ активности друзей в
+      «Активности» — личная настройка: она влияет только на то, что видите там вы сами.
     </p>
     <form class="settings-form settings-form--switches" method="post" action="/settings/account/privacy">
       <label class="ui-switch settings-switch-row">
@@ -123,7 +123,7 @@
         <input type="checkbox" role="switch" name="show_friends" {% if show_friends %}checked{% endif %}>
       </label>
       <label class="ui-switch settings-switch-row">
-        <span>Показывать активность друзей на главной странице</span>
+        <span>Показывать активность друзей в «Активности»</span>
         <input type="checkbox" role="switch" name="show_friends_activity_home" {% if show_friends_activity_home %}checked{% endif %}>
       </label>
       <button class="ui-btn ui-btn--primary settings-form__submit" type="submit">Сохранить</button>

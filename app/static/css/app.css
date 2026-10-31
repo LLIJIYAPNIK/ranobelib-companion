@@ -2505,7 +2505,7 @@ html:has(dialog[open]) body {
   --reading-calendar-cell: 11px;
   --reading-calendar-gap: 3px;
   /* PR 323: a day's level is its reading time on fixed thresholds, the same for every
-     user (app/api/profile.py's _calendar_level / CALENDAR_LEGEND), in the site's accent
+     user (app/api/profile.py's calendar_level / CALENDAR_LEGEND), in the site's accent
      teal rather than GitHub's own green. Shared as variables (not just set
      directly on .reading-calendar__day--level-N below) so the always-present legend
      swatches can reuse the same colors under their own class names, instead of the
@@ -13929,758 +13929,6 @@ body.reader-hud-visible .reader-hud {
 }
 
 /* ==========================================================================
-   Aurora Ink screens - activity (PR 257): ACTIVITY. "За сегодня." - stat tiles, the
-   titles read today as a grid of .ui-title-card, then "Текущие загрузки"/"Скачано
-   сегодня" with PR 256's .downloads-section and job/history rows. Content capped at
-   1100px, the grid of cards at 520px, as in the design.
-   ========================================================================== */
-.activity-page {
-  --activity-grid-min: 150px;
-  flex: 1;
-  display: flex;
-  flex-direction: column;
-  gap: 22px;
-  width: 100%;
-  max-width: calc(1100px + 2 * var(--s-40));
-  padding: var(--s-32) var(--s-40) var(--s-40);
-}
-
-.activity-page__head {
-  display: flex;
-  flex-direction: column;
-  gap: 6px;
-}
-
-.activity-page__title {
-  margin: 0;
-  color: var(--text-1);
-  font: var(--type-h1);
-}
-
-.activity-page__subtitle {
-  margin: 0;
-  color: var(--text-3);
-  font: 500 14px/1 var(--font-ui);
-}
-
-/* Stat tiles: value 32px (chapters in --accent-text), label under it. */
-.activity-stats {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(170px, 1fr));
-  gap: var(--s-12);
-}
-
-.activity-stats__tile {
-  display: flex;
-  flex-direction: column;
-  gap: var(--s-8);
-  padding: var(--s-16);
-  border: 1px solid var(--border);
-  border-radius: var(--r-xl);
-  background: var(--surface-1);
-}
-
-.activity-stats__value {
-  color: var(--text-1);
-  font: 800 32px/1 var(--font-ui);
-}
-
-.activity-stats__value--accent {
-  color: var(--accent-text);
-}
-
-.activity-stats__label {
-  color: var(--text-2);
-  font: 500 13px/1.3 var(--font-ui);
-}
-
-.activity-page__grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(var(--activity-grid-min), 1fr));
-  gap: 14px;
-  max-width: 520px;
-}
-
-@media (max-width: 1199px) {
-  .activity-page {
-    --activity-grid-min: 140px;
-    padding: 28px var(--s-32) var(--s-32);
-  }
-}
-
-@media (max-width: 767px) {
-  .activity-page {
-    --activity-grid-min: 100px;
-    padding: var(--s-4) var(--s-20) var(--s-8);
-  }
-
-  .activity-page__title {
-    font-size: 22px;
-    line-height: 1;
-  }
-}
-
-/* ==========================================================================
-   Webnovells Redesign - activity (PR 276, screen A4) on the --wn-* tokens from
-   PR 272: period switch, four metric cards, the 30-day reading chart, "Читали
-   сегодня", the two download cards and "История событий".
-   ========================================================================== */
-.wn-activity {
-  max-width: none;
-  gap: var(--wn-space-3);
-  font-family: var(--wn-font-ui);
-}
-
-.wn-activity__head {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: flex-end;
-  gap: var(--wn-space-2);
-}
-
-.wn-activity__heading {
-  display: flex;
-  flex: 1;
-  flex-direction: column;
-  gap: var(--wn-space-1);
-  min-width: 0;
-}
-
-.wn-activity__title {
-  margin: 0;
-  color: #f2f0f7;
-  font: var(--wn-weight-extra-bold) 32px/1.1 var(--wn-font-ui);
-  letter-spacing: -0.02em;
-}
-
-.wn-activity__subtitle {
-  margin: 0;
-  color: var(--wn-text-secondary);
-  font: var(--wn-weight-medium) 15px/1.4 var(--wn-font-ui);
-}
-
-.wn-segmented {
-  display: flex;
-  padding: 3px;
-  border: 1px solid #2a2838;
-  border-radius: 10px;
-  background: var(--wn-surface);
-}
-
-.wn-segmented__item {
-  padding: 10px 16px;
-  border-radius: 7px;
-  color: var(--wn-text-secondary);
-  font: var(--wn-weight-semi-bold) 14px/1 var(--wn-font-ui);
-  text-decoration: none;
-  white-space: nowrap;
-  transition:
-    background-color 160ms ease,
-    color 160ms ease;
-}
-
-@media (hover: hover) {
-  .wn-segmented__item:hover {
-    color: var(--wn-text);
-  }
-}
-
-.wn-segmented__item[aria-current="page"] {
-  background: #232230;
-  color: var(--wn-text);
-}
-
-.wn-segmented__item:focus-visible {
-  outline: none;
-  box-shadow: var(--wn-focus-ring);
-}
-
-.wn-activity-card {
-  display: flex;
-  flex-direction: column;
-  gap: 14px;
-  min-width: 0;
-  padding: 22px 24px;
-  border: 1px solid var(--wn-border);
-  border-radius: var(--wn-radius-lg);
-  background: var(--wn-surface);
-}
-
-.wn-activity-card__head {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: baseline;
-  gap: 12px;
-}
-
-.wn-activity-card__title {
-  margin: 0;
-  color: var(--wn-text);
-  font: var(--wn-weight-bold) 18px/1 var(--wn-font-ui);
-}
-
-.wn-activity-card__aside {
-  color: var(--wn-text-muted);
-  font: var(--wn-weight-semi-bold) 14px/1 var(--wn-font-ui);
-}
-
-.wn-activity-card__more {
-  margin-left: auto;
-}
-
-.wn-activity-card__text {
-  margin: 0;
-  color: var(--wn-text-secondary);
-  font: var(--wn-weight-medium) 14px/1.4 var(--wn-font-ui);
-  text-wrap: pretty;
-}
-
-.wn-activity-link {
-  color: #b7a6ff;
-  font: var(--wn-weight-bold) 14px/1 var(--wn-font-ui);
-  text-decoration: none;
-}
-
-@media (hover: hover) {
-  .wn-activity-link:hover {
-    color: #d3c8ff;
-  }
-}
-
-.wn-activity-link:focus-visible {
-  outline: none;
-  border-radius: 4px;
-  box-shadow: var(--wn-focus-ring);
-}
-
-/* Metric cards. */
-.wn-activity-metrics {
-  display: grid;
-  grid-template-columns: repeat(4, minmax(0, 1fr));
-  gap: var(--wn-space-3);
-}
-
-.wn-activity-metric {
-  gap: 10px;
-  padding: 20px 22px;
-}
-
-.wn-activity-metric__label {
-  color: var(--wn-text-secondary);
-  font: var(--wn-weight-semi-bold) 14px/1 var(--wn-font-ui);
-}
-
-.wn-activity-metric__value {
-  color: #f2f0f7;
-  font: var(--wn-weight-extra-bold) 36px/1 var(--wn-font-ui);
-  letter-spacing: -0.02em;
-  font-variant-numeric: tabular-nums;
-}
-
-.wn-activity-metric__value--accent {
-  color: var(--wn-teal);
-}
-
-.wn-activity-metric__unit {
-  color: #cfcbdd;
-  font-size: 17px;
-  font-weight: var(--wn-weight-bold);
-  letter-spacing: 0;
-}
-
-.wn-activity-metric__note {
-  overflow: hidden;
-  color: var(--wn-text-muted);
-  font: var(--wn-weight-medium) 13px/1.2 var(--wn-font-ui);
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-/* Rows: chart 8 + "Читали сегодня" 4, then downloads 4 + events 8. */
-.wn-activity__row {
-  display: grid;
-  grid-template-columns: repeat(12, minmax(0, 1fr));
-  gap: var(--wn-space-3);
-}
-
-.wn-activity-chart {
-  grid-column: span 8;
-  gap: 20px;
-}
-
-.wn-activity-today {
-  grid-column: span 4;
-  gap: var(--wn-space-2);
-}
-
-.wn-activity__downloads {
-  grid-column: span 4;
-  display: flex;
-  flex-direction: column;
-  gap: var(--wn-space-2);
-  min-width: 0;
-}
-
-.wn-activity-events {
-  grid-column: span 8;
-  gap: var(--wn-space-1);
-}
-
-/* 30-day chart: bar height comes from --bar (percent of the busiest day). */
-.wn-activity-chart__legend {
-  display: inline-flex;
-  align-items: center;
-  gap: var(--wn-space-1);
-  margin-left: auto;
-  color: var(--wn-text-muted);
-  font: var(--wn-weight-medium) 13px/1 var(--wn-font-ui);
-}
-
-.wn-activity-chart__legend span {
-  width: 10px;
-  height: 10px;
-  border-radius: 3px;
-  background: var(--wn-teal);
-}
-
-.wn-activity-chart__plot {
-  position: relative;
-  display: grid;
-  grid-template-columns: repeat(30, minmax(0, 1fr));
-  align-items: end;
-  gap: 6px;
-  height: 180px;
-  padding-bottom: 1px;
-  border-bottom: 1px solid #2a2838;
-}
-
-.wn-activity-chart__guide {
-  position: absolute;
-  left: 0;
-  right: 0;
-  border-top: 1px dashed #23212f;
-  pointer-events: none;
-}
-
-.wn-activity-chart__guide--top {
-  top: 0;
-}
-
-.wn-activity-chart__guide--mid {
-  top: 50%;
-}
-
-.wn-activity-chart__bar {
-  position: relative;
-  height: 3px;
-  border-radius: 4px 4px 2px 2px;
-  background: #1e1d29;
-}
-
-.wn-activity-chart__bar--filled {
-  height: max(6px, var(--bar));
-  background: rgb(61 214 195 / 60%);
-}
-
-.wn-activity-chart__bar--today.wn-activity-chart__bar--filled {
-  background: var(--wn-teal);
-}
-
-.wn-activity-chart__axis {
-  display: flex;
-  justify-content: space-between;
-  margin-top: calc(-1 * var(--wn-space-1));
-  color: var(--wn-text-muted);
-  font: var(--wn-weight-medium) 13px/1 var(--wn-font-ui);
-}
-
-.wn-activity-chart__axis-today {
-  color: var(--wn-teal);
-  font-weight: var(--wn-weight-bold);
-}
-
-/* "Читали сегодня". */
-.wn-activity-today__title {
-  display: flex;
-  gap: var(--wn-space-2);
-}
-
-.wn-activity-today__cover {
-  flex: none;
-  width: 88px;
-  height: 132px;
-  overflow: hidden;
-  border-radius: 10px;
-  background: var(--wn-surface-raised);
-}
-
-.wn-activity-today__cover img {
-  display: block;
-  width: 100%;
-  height: 100%;
-  object-fit: cover;
-  object-position: top;
-}
-
-.wn-activity-today__copy {
-  display: flex;
-  flex-direction: column;
-  gap: var(--wn-space-1);
-  min-width: 0;
-}
-
-.wn-activity-today__name {
-  color: var(--wn-text);
-  font: var(--wn-weight-bold) 16px/1.3 var(--wn-font-ui);
-  text-decoration: none;
-}
-
-@media (hover: hover) {
-  .wn-activity-today__name:hover {
-    color: #ffffff;
-  }
-}
-
-.wn-activity-today__meta {
-  color: var(--wn-text-secondary);
-  font: var(--wn-weight-medium) 14px/1.2 var(--wn-font-ui);
-}
-
-.wn-activity-today__count {
-  color: var(--wn-teal);
-  font: var(--wn-weight-bold) 14px/1 var(--wn-font-ui);
-}
-
-.wn-activity-today__spacer {
-  flex: 1;
-}
-
-.wn-activity-today__more {
-  display: flex;
-  flex-direction: column;
-  gap: 10px;
-  margin: 0;
-  padding: 12px 0 0;
-  border-top: 1px solid #1e1d29;
-  list-style: none;
-}
-
-.wn-activity-today__more li {
-  display: flex;
-  justify-content: space-between;
-  gap: 12px;
-  font: var(--wn-weight-medium) 13px/1.3 var(--wn-font-ui);
-}
-
-.wn-activity-today__more a {
-  overflow: hidden;
-  color: var(--wn-text);
-  font-weight: var(--wn-weight-semi-bold);
-  text-decoration: none;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-.wn-activity-today__more span {
-  flex: none;
-  color: var(--wn-text-muted);
-}
-
-/* Download cards. */
-.wn-activity-idle {
-  display: flex;
-  align-items: center;
-  gap: 14px;
-  padding: var(--wn-space-2);
-  border: 1.5px dashed #2e2b40;
-  border-radius: var(--wn-radius-md);
-  color: var(--wn-text-secondary);
-  font: var(--wn-weight-medium) 14px/1.4 var(--wn-font-ui);
-}
-
-.wn-activity-idle__icon {
-  display: grid;
-  flex: none;
-  place-items: center;
-  width: 40px;
-  height: 40px;
-  border-radius: var(--wn-radius-md);
-  background: rgb(61 214 195 / 10%);
-  color: var(--wn-teal);
-}
-
-.wn-activity-idle__icon svg {
-  width: 18px;
-  height: 18px;
-}
-
-/* "История событий". */
-.wn-activity-events__list {
-  margin: 0;
-  padding: 0;
-  list-style: none;
-}
-
-.wn-activity-event {
-  display: grid;
-  grid-template-columns: 36px minmax(0, 1fr) auto;
-  align-items: center;
-  gap: 14px;
-  padding: 10px 0;
-  border-top: 1px solid #1e1d29;
-}
-
-.wn-activity-event__icon {
-  display: grid;
-  place-items: center;
-  width: 36px;
-  height: 36px;
-  border-radius: 10px;
-  background: #1e1d29;
-  color: var(--wn-text-secondary);
-}
-
-.wn-activity-event--read .wn-activity-event__icon {
-  background: rgb(61 214 195 / 12%);
-  color: var(--wn-teal);
-}
-
-.wn-activity-event--download_error .wn-activity-event__icon {
-  background: rgb(242 104 122 / 12%);
-  color: var(--wn-danger);
-}
-
-.wn-activity-event__icon svg {
-  width: 16px;
-  height: 16px;
-}
-
-.wn-activity-event__copy {
-  display: flex;
-  flex-direction: column;
-  gap: 5px;
-  min-width: 0;
-}
-
-.wn-activity-event__title {
-  overflow: hidden;
-  color: var(--wn-text);
-  font: var(--wn-weight-semi-bold) 15px/1.25 var(--wn-font-ui);
-  text-decoration: none;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-@media (hover: hover) {
-  .wn-activity-event__title:hover {
-    color: #ffffff;
-  }
-}
-
-.wn-activity-event__title:focus-visible {
-  outline: none;
-  border-radius: 4px;
-  box-shadow: var(--wn-focus-ring);
-}
-
-.wn-activity-event__sub {
-  overflow: hidden;
-  color: var(--wn-text-muted);
-  font: var(--wn-weight-medium) 13px/1.2 var(--wn-font-ui);
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-.wn-activity-event__time {
-  color: var(--wn-text-muted);
-  font: var(--wn-weight-medium) 13px/1 var(--wn-font-ui);
-  white-space: nowrap;
-}
-
-@media (max-width: 1199px) {
-  .wn-activity-metrics {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-  }
-
-  .wn-activity-chart,
-  .wn-activity-today,
-  .wn-activity__downloads,
-  .wn-activity-events {
-    grid-column: 1 / -1;
-  }
-
-  .wn-activity__downloads {
-    display: grid;
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-    align-items: start;
-  }
-}
-
-@media (max-width: 767px) {
-  .wn-activity__title {
-    font-size: 26px;
-  }
-
-  .wn-segmented {
-    width: 100%;
-  }
-
-  /* 44px targets, equal thirds (PR 283). */
-  .wn-segmented__item {
-    display: grid;
-    flex: 1 1 0;
-    place-items: center;
-    min-width: 0;
-    min-height: 44px;
-    padding: 0 6px;
-    text-align: center;
-  }
-
-  .wn-activity-metrics,
-  .wn-activity__row {
-    gap: 12px;
-  }
-
-  /* PR 283 (Webnovells Mobile -> Активность): the metric cards two by two, their notes
-     wrapping instead of ellipsizing. */
-  .wn-activity-metrics {
-    gap: 10px;
-  }
-
-  .wn-activity-metric {
-    gap: 8px;
-    padding: 14px;
-  }
-
-  .wn-activity-metric__label {
-    font: 600 13px/1.3 var(--wn-font-ui);
-  }
-
-  .wn-activity-metric__value {
-    font-size: 28px;
-    white-space: nowrap;
-  }
-
-  .wn-activity-metric__unit {
-    font-size: 15px;
-  }
-
-  .wn-activity-metric__note {
-    overflow: visible;
-    font: 500 12px/1.35 var(--wn-font-ui);
-    overflow-wrap: break-word;
-    white-space: normal;
-  }
-
-  .wn-activity-card {
-    padding: var(--wn-space-2);
-  }
-
-  .wn-activity-card__title {
-    font: 800 18px/1.2 var(--wn-font-ui);
-  }
-
-  .wn-activity-card__head {
-    flex-wrap: wrap;
-    gap: 4px 10px;
-  }
-
-  /* «Читали сегодня»: the prototype's smaller cover, «Продолжить» as a 44px button. */
-  .wn-activity-today__cover {
-    width: 64px;
-    height: 96px;
-    border-radius: 8px;
-  }
-
-  .wn-activity-today__name {
-    font-size: 15px;
-    overflow-wrap: break-word;
-  }
-
-  .wn-activity-today .wn-activity-link {
-    display: grid;
-    place-items: center;
-    min-height: 44px;
-    margin-top: 6px;
-    padding: 0 14px;
-    border: 1px solid var(--wn-border-strong);
-    border-radius: var(--wn-radius-md);
-    background: rgb(255 255 255 / 4%);
-    color: var(--wn-text);
-    font: 700 15px/1.2 var(--wn-font-ui);
-  }
-
-  .wn-activity-today__more a {
-    white-space: normal;
-    overflow-wrap: break-word;
-  }
-
-  /* «История событий»: titles and their sub-lines wrap rather than ellipsize. */
-  .wn-activity-event {
-    align-items: start;
-    padding: 12px 0;
-  }
-
-  .wn-activity-event__icon {
-    grid-row: span 2;
-  }
-
-  .wn-activity-event__title {
-    font: 600 14px/1.4 var(--wn-font-ui);
-    overflow-wrap: break-word;
-    white-space: normal;
-  }
-
-  .wn-activity-event__sub {
-    overflow-wrap: break-word;
-    white-space: normal;
-  }
-
-  .wn-activity-card__more {
-    display: inline-flex;
-    align-items: center;
-    min-height: 44px;
-  }
-
-  /* PR 283: the 30 days fitted to the card's width as in the prototype - no sideways
-     scroll, all 30 bars always visible, today at the right edge. */
-  .wn-activity-chart {
-    gap: 14px;
-  }
-
-  .wn-activity-chart__plot {
-    gap: 3px;
-    height: 120px;
-  }
-
-  .wn-activity-chart__bar {
-    border-radius: 3px 3px 1px 1px;
-  }
-
-  .wn-activity-chart__legend {
-    display: none;
-  }
-
-  .wn-activity-chart__axis {
-    margin-top: -6px;
-    font-size: 12px;
-  }
-
-  .wn-activity__downloads {
-    grid-template-columns: minmax(0, 1fr);
-  }
-
-  .wn-activity-event {
-    grid-template-columns: 36px minmax(0, 1fr);
-    gap: 4px 12px;
-  }
-
-  .wn-activity-event__time {
-    grid-column: 2;
-  }
-}
-
-/* ==========================================================================
    Aurora Ink screens - friends (PR 258): FRIENDS. Intro, nickname search, then the
    request/search sections as boxed Friend rows and "Друзья · N" as plain divided rows.
    Content capped at 760px, as in the design.
@@ -19064,7 +18312,6 @@ body.reader-hud-visible .reader-hud {
   .wn-home,
   .wn-library,
   .wn-downloads,
-  .wn-activity,
   .wn-profile,
   .wn-friends {
     width: 100%;
@@ -31324,5 +30571,953 @@ body.reader-hud-visible .reader-hud {
   .dl-go:hover svg {
     transition: none;
     animation: none;
+  }
+}
+
+/* ==========================================================================
+   «Активность» in the home page's frame (.hm): on the left the title row with the
+   streak, the month as a calendar of reading days with its figures and the picked day,
+   then «Недавно»; on the right «Друзья» and «Читают на сайте» (below 1100px one column).
+   Teal is the reading hue here as everywhere on the site: a read day is a teal circle,
+   stronger the longer the reading, and consecutive days are joined by a pale teal band -
+   the streak drawn as a chain. Panels are the quiet glass of «Загрузки».
+   ========================================================================== */
+.hm.ac {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(340px, 400px);
+  align-items: start;
+  gap: 28px;
+  --ac-teal: var(--wn-teal);
+  --ac-dot: 40px;
+}
+
+/* A guest has only the locked card - no side column to keep room for. */
+.hm.ac--guest {
+  grid-template-columns: minmax(0, 1fr);
+}
+
+.ac-main,
+.ac-side {
+  display: flex;
+  flex-direction: column;
+  gap: 28px;
+  min-width: 0;
+}
+
+/* The figures' own `font` shorthands reset .hm-num's numerals; digits keep their width. */
+.hm.ac .hm-num {
+  font-variant-numeric: tabular-nums;
+}
+
+.ac-panel {
+  border: 1px solid var(--hm-glass-edge);
+  border-radius: var(--hm-radius);
+  background: var(--hm-glass);
+}
+
+.ac-head {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.ac-finding {
+  margin: 0;
+  color: var(--wn-text-secondary);
+  font: 500 16px/1.45 var(--wn-font-ui);
+}
+
+.ac-finding b {
+  color: var(--ac-teal);
+  font-weight: 800;
+}
+
+.ac-section-head {
+  display: flex;
+  align-items: baseline;
+  gap: 10px;
+}
+
+.ac-section-head--stack {
+  flex-direction: column;
+  gap: 4px;
+}
+
+.ac-section-head__count {
+  color: var(--wn-text-muted);
+  font: 700 15px/1 var(--wn-font-ui);
+}
+
+.ac-section-head__more {
+  margin-left: auto;
+  font-size: 13px;
+}
+
+.ac-empty {
+  margin: 0;
+  color: var(--wn-text-secondary);
+  font: 500 15px/1.5 var(--wn-font-ui);
+}
+
+.ac-cover {
+  display: grid;
+  flex: none;
+  place-items: center;
+  overflow: hidden;
+  border-radius: 6px;
+  background: #1d1c26;
+  color: var(--wn-text-muted);
+  font: 800 12px/1 var(--wn-font-ui);
+  text-decoration: none;
+}
+
+.ac-cover img {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.ac-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  align-self: flex-start;
+  height: 44px;
+  padding: 0 20px;
+  border-radius: 14px;
+  background: var(--hm-glass-raised);
+  color: var(--wn-text);
+  font: 800 14px/1 var(--wn-font-ui);
+  text-decoration: none;
+  transition: background-color 0.2s ease, transform 0.15s ease;
+}
+
+.ac-btn--light {
+  background: #f4f2fa;
+  color: #14111f;
+}
+
+@media (hover: hover) {
+  .ac-btn:hover {
+    background: rgb(255 255 255 / 16%);
+  }
+
+  .ac-btn--light:hover {
+    background: #fff;
+  }
+}
+
+.ac-btn:active {
+  transform: scale(0.97);
+}
+
+.ac-btn:focus-visible,
+.ac-day__dot:focus-visible,
+.ac-cal__arrow:focus-visible,
+.ac-friend__book:focus-visible {
+  outline: none;
+  box-shadow: var(--wn-focus-ring);
+}
+
+/* --- The month ---------------------------------------------------------------------- */
+.ac-month {
+  display: grid;
+  grid-template-columns: minmax(300px, 420px) minmax(0, 1fr);
+  gap: 36px;
+  padding: 24px 28px 26px;
+}
+
+.ac-cal {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  min-width: 0;
+}
+
+.ac-cal__head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.ac-cal__nav {
+  display: flex;
+  gap: 4px;
+}
+
+.ac-cal__arrow {
+  display: grid;
+  place-items: center;
+  width: 36px;
+  height: 36px;
+  border-radius: 12px;
+  color: var(--wn-text-secondary);
+  transition: background-color 0.15s ease, color 0.15s ease;
+}
+
+.ac-cal__arrow svg {
+  width: 18px;
+  height: 18px;
+}
+
+.ac-cal__arrow[aria-disabled="true"] {
+  color: var(--wn-disabled-text);
+  opacity: 0.5;
+}
+
+@media (hover: hover) {
+  a.ac-cal__arrow:hover {
+    background: var(--hm-glass-raised);
+    color: var(--wn-text);
+  }
+}
+
+.ac-cal__grid {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.ac-cal__row {
+  display: grid;
+  grid-template-columns: repeat(7, minmax(0, 1fr));
+}
+
+.ac-cal__weekday {
+  padding-bottom: 2px;
+  color: var(--wn-text-muted);
+  font: 600 12px/1 var(--wn-font-ui);
+  text-align: center;
+}
+
+.ac-cal__weekday:nth-child(n + 6) {
+  color: #6f6b84;
+}
+
+/* A day: a circle with its number. The chain is two half bands behind the circle - one
+   to the left edge when the day before was read too, one to the right for the day after;
+   the columns have no gap, so neighbours' halves meet into one band. */
+.ac-day {
+  position: relative;
+  display: grid;
+  place-items: center;
+  height: calc(var(--ac-dot) + 4px);
+}
+
+.ac-day--chain-before::before,
+.ac-day--chain-after::after {
+  content: "";
+  position: absolute;
+  top: 50%;
+  z-index: 0;
+  height: var(--ac-dot);
+  background: color-mix(in srgb, var(--ac-teal) 16%, transparent);
+  transform: translateY(-50%);
+}
+
+.ac-day--chain-before::before {
+  left: 0;
+  right: 50%;
+}
+
+.ac-day--chain-after::after {
+  left: 50%;
+  right: 0;
+}
+
+.ac-day__dot {
+  position: relative;
+  z-index: 1;
+  display: grid;
+  place-items: center;
+  width: var(--ac-dot);
+  height: var(--ac-dot);
+  border-radius: 50%;
+  color: var(--wn-text-secondary);
+  font: 600 14px/1 var(--wn-font-ui);
+  text-decoration: none;
+  transition: background-color 0.15s ease, color 0.15s ease, box-shadow 0.15s ease,
+    transform 0.12s ease;
+}
+
+a.ac-day__dot {
+  cursor: pointer;
+}
+
+@media (hover: hover) {
+  a.ac-day__dot:hover {
+    background: var(--hm-glass-raised);
+    color: var(--wn-text);
+  }
+}
+
+a.ac-day__dot:active {
+  transform: scale(0.92);
+}
+
+.ac-day--read .ac-day__dot {
+  font-weight: 800;
+}
+
+/* The strength of a read day: its reading time on the profile heatmap's scale. */
+.ac-day--l1 .ac-day__dot,
+.ac-cal__swatch--l1 {
+  background: color-mix(in srgb, var(--ac-teal) 30%, var(--wn-canvas));
+  color: var(--wn-text);
+}
+
+.ac-day--l2 .ac-day__dot {
+  background: color-mix(in srgb, var(--ac-teal) 52%, var(--wn-canvas));
+  color: #fff;
+}
+
+.ac-day--l3 .ac-day__dot {
+  background: color-mix(in srgb, var(--ac-teal) 76%, var(--wn-canvas));
+  color: #06201d;
+}
+
+.ac-day--l4 .ac-day__dot,
+.ac-cal__swatch--l4 {
+  background: var(--ac-teal);
+  color: #06201d;
+}
+
+@media (hover: hover) {
+  .ac-day--read a.ac-day__dot:hover {
+    background: color-mix(in srgb, var(--ac-teal) 88%, #fff);
+    color: #06201d;
+  }
+}
+
+.ac-day--future .ac-day__dot {
+  color: #4d4a5e;
+}
+
+.ac-day--today .ac-day__dot {
+  box-shadow: inset 0 0 0 2px var(--wn-text);
+}
+
+.ac-day--selected .ac-day__dot {
+  box-shadow: 0 0 0 2px var(--wn-canvas), 0 0 0 4px var(--wn-text);
+}
+
+.ac-day--today.ac-day--selected .ac-day__dot {
+  box-shadow: inset 0 0 0 2px var(--wn-text), 0 0 0 2px var(--wn-canvas),
+    0 0 0 4px var(--wn-text);
+}
+
+.ac-cal__legend {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px 8px;
+  margin: 2px 0 0;
+  color: var(--wn-text-muted);
+  font: 500 12px/1.3 var(--wn-font-ui);
+}
+
+.ac-cal__swatch {
+  display: inline-block;
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+}
+
+.ac-cal__swatch + .ac-cal__swatch,
+.ac-cal__legend .ac-cal__swatch:not(:first-child) {
+  margin-left: 8px;
+}
+
+.ac-cal__swatch--chain {
+  width: 22px;
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--ac-teal) 16%, transparent);
+}
+
+/* --- The month's figures and the picked day ------------------------------------------ */
+.ac-month__side {
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+  min-width: 0;
+  padding-top: 4px;
+}
+
+.ac-figures {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 18px 20px;
+  margin: 0;
+}
+
+.ac-figure {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  min-width: 0;
+}
+
+.ac-figure dt {
+  color: var(--wn-text-muted);
+  font: 600 13px/1.3 var(--wn-font-ui);
+}
+
+.ac-figure dd {
+  margin: 0;
+  color: var(--wn-text-secondary);
+  font: 600 14px/1 var(--wn-font-ui);
+}
+
+.ac-figure dd b {
+  color: var(--wn-text);
+  font: 800 22px/1 var(--wn-font-ui);
+  letter-spacing: -0.01em;
+}
+
+.ac-figure--lead dd b {
+  font-size: 30px;
+}
+
+.ac-days {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.ac-dayread {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding-top: 20px;
+  border-top: 1px solid var(--hm-glass-edge);
+  animation: ac-in 0.28s var(--hm-ease) both;
+}
+
+.ac-dayread[hidden] {
+  display: none;
+}
+
+@keyframes ac-in {
+  from {
+    opacity: 0;
+    transform: translateY(6px);
+  }
+}
+
+.ac-dayread__head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 4px 12px;
+}
+
+.ac-dayread__title {
+  margin: 0;
+  color: var(--wn-text);
+  font: 800 17px/1.3 var(--wn-font-ui);
+}
+
+.ac-dayread__sum {
+  color: var(--wn-text-muted);
+  font: 600 13px/1.3 var(--wn-font-ui);
+}
+
+.ac-dayread__list {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.ac-dayread__item {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  min-width: 0;
+}
+
+.ac-dayread__cover {
+  width: 34px;
+  height: 50px;
+}
+
+.ac-dayread__copy {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  min-width: 0;
+}
+
+.ac-dayread__name {
+  overflow: hidden;
+  color: var(--wn-text);
+  font: 700 14px/1.3 var(--wn-font-ui);
+  text-decoration: none;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.ac-dayread__meta {
+  color: var(--wn-text-muted);
+  font: 500 13px/1.3 var(--wn-font-ui);
+}
+
+.ac-dayread__none {
+  margin: 0;
+  color: var(--wn-text-muted);
+  font: 500 14px/1.4 var(--wn-font-ui);
+}
+
+.ac-continue {
+  margin-top: 2px;
+}
+
+@media (hover: hover) {
+  .ac-dayread__name:hover,
+  .ac-event__title:hover,
+  .ac-pop__name:hover,
+  .ac-friend__name:hover {
+    color: #fff;
+    text-decoration: underline;
+    text-decoration-color: var(--wn-border-strong);
+    text-underline-offset: 3px;
+  }
+}
+
+/* --- Недавно ------------------------------------------------------------------------- */
+.ac-recent {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.ac-events {
+  display: flex;
+  flex-direction: column;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.ac-event {
+  display: grid;
+  grid-template-columns: 36px minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 14px;
+  padding: 10px 0;
+}
+
+.ac-event + .ac-event {
+  border-top: 1px solid var(--hm-glass-edge);
+}
+
+.ac-event__icon {
+  display: grid;
+  place-items: center;
+  width: 36px;
+  height: 36px;
+  color: var(--wn-text-muted);
+}
+
+.ac-event__icon svg {
+  width: 18px;
+  height: 18px;
+}
+
+.ac-event--read .ac-event__icon {
+  color: var(--ac-teal);
+}
+
+.ac-event--download_error .ac-event__icon {
+  color: var(--wn-danger);
+}
+
+.ac-event__copy {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  min-width: 0;
+}
+
+.ac-event__title {
+  overflow: hidden;
+  color: var(--wn-text);
+  font: 700 14px/1.35 var(--wn-font-ui);
+  text-decoration: none;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.ac-event__sub,
+.ac-event__time {
+  color: var(--wn-text-muted);
+  font: 500 13px/1.3 var(--wn-font-ui);
+}
+
+.ac-event__sub {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* --- Друзья -------------------------------------------------------------------------- */
+.ac-friends,
+.ac-popular {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  padding: 22px 22px 18px;
+}
+
+.ac-friends__list,
+.ac-popular__list {
+  display: flex;
+  flex-direction: column;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.ac-friend {
+  display: grid;
+  grid-template-columns: 40px minmax(0, 1fr);
+  gap: 12px;
+  padding: 12px 0;
+}
+
+.ac-friend:first-child {
+  padding-top: 0;
+}
+
+.ac-friend + .ac-friend {
+  border-top: 1px solid var(--hm-glass-edge);
+}
+
+.ac-friend__avatar {
+  display: grid;
+  place-items: center;
+  width: 40px;
+  height: 40px;
+  overflow: hidden;
+  border-radius: 50%;
+  background: var(--wn-surface-raised);
+  color: var(--wn-text-secondary);
+  font: 800 14px/1 var(--wn-font-ui);
+  text-decoration: none;
+}
+
+.ac-friend__avatar img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.ac-friend__body {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 8px;
+  min-width: 0;
+}
+
+.ac-friend__line {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 10px;
+  width: 100%;
+  min-height: 20px;
+}
+
+.ac-friend__name {
+  overflow: hidden;
+  color: var(--wn-text);
+  font: 800 15px/1.3 var(--wn-font-ui);
+  text-decoration: none;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.ac-friend__when {
+  flex: none;
+  color: var(--wn-text-muted);
+  font: 500 12px/1.3 var(--wn-font-ui);
+}
+
+.ac-friend__book {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  max-width: 100%;
+  margin: 0 -6px;
+  padding: 6px;
+  border-radius: 12px;
+  color: inherit;
+  text-decoration: none;
+  transition: background-color 0.15s ease;
+}
+
+@media (hover: hover) {
+  .ac-friend__book:hover {
+    background: var(--hm-glass);
+  }
+}
+
+.ac-friend__cover {
+  width: 28px;
+  height: 42px;
+  border-radius: 5px;
+}
+
+.ac-friend__book-copy {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  min-width: 0;
+}
+
+.ac-friend__book-name {
+  overflow: hidden;
+  color: var(--wn-text);
+  font: 700 14px/1.3 var(--wn-font-ui);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.ac-friend__meta {
+  color: var(--wn-text-muted);
+  font: 500 13px/1.3 var(--wn-font-ui);
+}
+
+.ac-friend__streak {
+  color: var(--ac-teal);
+  font: 700 13px/1.3 var(--wn-font-ui);
+}
+
+.ac-friend__comment {
+  display: -webkit-box;
+  overflow: hidden;
+  color: var(--wn-text-secondary);
+  font: 500 13px/1.45 var(--wn-font-ui);
+  text-decoration: none;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+}
+
+@media (hover: hover) {
+  .ac-friend__comment:hover {
+    color: var(--wn-text);
+  }
+}
+
+/* --- Читают на сайте ----------------------------------------------------------------- */
+.ac-pop {
+  display: grid;
+  grid-template-columns: 18px 34px minmax(0, 1fr);
+  align-items: center;
+  gap: 12px;
+  padding: 8px 0;
+}
+
+.ac-pop__rank {
+  color: var(--wn-text-muted);
+  font: 700 13px/1 var(--wn-font-ui);
+  text-align: right;
+}
+
+.ac-pop__cover {
+  width: 34px;
+  height: 50px;
+}
+
+.ac-pop__copy {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  min-width: 0;
+}
+
+.ac-pop__name {
+  overflow: hidden;
+  color: var(--wn-text);
+  font: 700 14px/1.3 var(--wn-font-ui);
+  text-decoration: none;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.ac-pop__meta {
+  color: var(--wn-text-muted);
+  font: 500 12px/1.3 var(--wn-font-ui);
+}
+
+.ac-pop__bar {
+  display: block;
+  height: 4px;
+  overflow: hidden;
+  border-radius: 999px;
+  background: rgb(255 255 255 / 6%);
+}
+
+.ac-pop__bar span {
+  display: block;
+  height: 100%;
+  border-radius: inherit;
+  background: var(--ac-teal);
+}
+
+/* --- Narrower screens ---------------------------------------------------------------- */
+@media (max-width: 1360px) {
+  .ac-month {
+    grid-template-columns: minmax(280px, 1fr) minmax(210px, 0.75fr);
+    gap: 28px;
+    padding-inline: 22px;
+  }
+
+  .ac-figure--lead dd b {
+    font-size: 26px;
+  }
+
+  .ac-figure dd b {
+    font-size: 20px;
+  }
+}
+
+/* One column: the side's blocks go between the month and «Недавно» - what friends and
+   the site read matters more on a phone than the event list. */
+@media (max-width: 1100px) {
+  .hm.ac {
+    display: flex;
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .ac-main,
+  .ac-side {
+    display: contents;
+  }
+
+  .ac-head {
+    order: 0;
+  }
+
+  .ac-month {
+    order: 1;
+    grid-template-columns: minmax(300px, 1fr) minmax(0, 1fr);
+    --ac-dot: 40px;
+  }
+
+  .ac-friends {
+    order: 2;
+  }
+
+  .ac-popular {
+    order: 3;
+  }
+
+  .ac-recent {
+    order: 4;
+  }
+}
+
+@media (max-width: 860px) {
+  .ac-month {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .ac-cal {
+    max-width: none;
+  }
+}
+
+@media (max-width: 767px) {
+  .hm.ac {
+    gap: 22px;
+    padding: 20px 16px 96px;
+  }
+
+  .ac-main,
+  .ac-side {
+    gap: 22px;
+  }
+
+  .ac-month {
+    padding: 18px 14px 20px;
+    border-radius: 20px;
+    --ac-dot: min(40px, calc((100vw - 64px) / 7 - 4px));
+  }
+
+  .ac-cal__head {
+    padding: 0 4px;
+  }
+
+  .ac-cal__arrow {
+    width: 44px;
+    height: 44px;
+  }
+
+  .ac-month__side {
+    padding: 0 4px;
+  }
+
+  .ac-figure--lead dd b {
+    font-size: 26px;
+  }
+
+  .ac-figure dd b {
+    font-size: 20px;
+  }
+
+  .ac-friends,
+  .ac-popular {
+    padding: 18px 16px 14px;
+    border-radius: 20px;
+  }
+
+  .ac-event__title,
+  .ac-event__sub {
+    white-space: normal;
+  }
+
+  .ac-event {
+    grid-template-columns: 28px minmax(0, 1fr);
+    align-items: start;
+  }
+
+  .ac-event__icon {
+    width: 28px;
+    height: 28px;
+  }
+
+  .ac-event__time {
+    grid-column: 2;
+  }
+
+  .ac-btn {
+    align-self: stretch;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .ac-dayread {
+    animation: none;
+  }
+
+  .ac-day__dot,
+  .ac-btn {
+    transition: none;
+  }
+}
+
+/* A day's touch target is 44px on phones though its circle may be smaller. */
+@media (pointer: coarse) {
+  a.ac-day__dot::before {
+    content: "";
+    position: absolute;
+    inset: max(-4px, calc((var(--ac-dot) - 44px) / 2));
   }
 }
