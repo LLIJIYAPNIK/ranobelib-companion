@@ -149,7 +149,11 @@ def reader_context(
         "volume_total": len(volume_chapters),
         # The reader's own contents: this volume's chapters, opened from the HUD.
         "volume_chapters": [
-            {"number": ch.number, "name": ch.name, "url": _chapter_url(slug_url, (volume, ch.number))}
+            {
+                "number": ch.number,
+                "name": ch.name,
+                "url": _chapter_url(slug_url, (volume, ch.number)),
+            }
             for ch in volume_chapters
         ],
         "title_name": (title.rus_name or title.name) if title is not None else None,
