@@ -335,16 +335,20 @@ async def test_show_activity_omits_friends_when_the_reader_turned_them_off(
     assert 'data-role="friends-activity"' not in response.text
 
 
-async def test_show_activity_folds_friends_past_the_first_five(client: TestClient) -> None:
-    _register(client, "me@example.com")  # id 1, nobody's friend
-    for n in range(2, 10):  # eight friends, ids 2-9
-        _register(client, f"friend{n}@example.com")
-    _register(client, "me@example.com".replace("me", "me2"))  # id 10, the viewer
+async def test_show_activity_groups_friends_by_activity(client: TestClient) -> None:
+    """Friends who read lately: five in full, the rest under «Ещё N читают»; friends
+    without activity in a group of their own."""
+    for n in range(1, 10):  # ids 1-9: eight friends and the viewer (9)
+        _register(client, f"user{n}@example.com")
     async with connection() as conn:
-        for friend_id in range(2, 10):
-            await send_request(conn, friend_id, 10)
-            await accept_request(conn, 10, friend_id)
-        await record_chapter_read(conn, 9, "6712--test-novel", "1", "1")
+        for friend_id in range(1, 9):
+            await send_request(conn, friend_id, 9)
+            await accept_request(conn, 9, friend_id)
+        for friend_id in range(1, 8):  # seven read; friend 8 never did
+            await record_chapter_read(conn, friend_id, "6712--test-novel", "1", str(friend_id))
+        await conn.execute(  # friend 7 read long ago - no activity now
+            "UPDATE activity_events SET created_at = %s WHERE user_id = 7", (_days_ago(40),)
+        )
 
     with patch("app.services.client.RanobeLib", return_value=_FakeClient(_fake_title())):
         response = client.get("/activity")
@@ -352,11 +356,13 @@ async def test_show_activity_folds_friends_past_the_first_five(client: TestClien
     block = response.text[response.text.index('data-role="friends-activity"') :]
     assert '<span class="ac-section-head__count hm-num">8</span>' in block
     assert block.count('class="ac-friend"') == 5
-    assert "Ещё 3 друга" in block
-    assert block.count('class="ac-more__item"') == 3
-    # The friend who read is first.
-    first = block.index('class="ac-friend"')
-    assert block.index('href="/profile/9"', first) < block.index('href="/profile/2"', first)
+    assert "Ещё 1 читает" in block
+    assert "Без активности · 2" in block
+    idle = block[block.index('data-role="friends-idle"') :]
+    assert 'href="/profile/7"' in idle
+    assert 'href="/profile/8"' in idle
+    assert "ещё не читали" in idle
+    assert 'data-role="friends-idle" open' not in block  # someone is reading
 
 
 # --- Популярное на Webnovells --------------------------------------------------------------------
@@ -379,12 +385,10 @@ async def test_show_activity_lists_titles_read_on_the_site(client: TestClient) -
 
     block = response.text[response.text.index('data-role="popular-titles"') :]
     assert "Популярное на Webnovells" in block
-    assert "2 читателя · 2 главы" in block  # 1--a
     assert block.index('href="/titles/1--a"') < block.index('href="/titles/3--c"')
     assert block.index('href="/titles/3--c"') < block.index('href="/titles/2--b"')
     assert "4--old" not in block  # read 10 days ago
-    assert 'style="width: 100%"' in block
-    assert 'style="width: 50%"' in block
+    assert "читател" not in block  # just the titles, no counts
 
 
 async def test_show_activity_falls_back_to_ranobelib_popular(
