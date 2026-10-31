@@ -43,7 +43,8 @@ def test_legacy_url_entry_routes_are_not_registered() -> None:
 def test_empty_states_and_downloads_open_the_catalog() -> None:
     assert _source("index.html").count('href="/catalog"') >= 2
     assert 'href="/catalog">Открыть каталог</a>' in _source("library.html")
-    assert _source("downloads.html").count('href="/catalog"') >= 2
+    # «Загрузки» finds a title itself; without JS its search is the catalog's.
+    assert 'action="/catalog" method="get"' in _source("downloads.html")
 
 
 def test_user_facing_copy_does_not_name_the_upstream_domain() -> None:

@@ -10,6 +10,10 @@
     document.querySelector(".downloads-history");
   if (!list) return;
 
+  // A history row: «Загрузки» (.dl-row, in its .dl-day) or the older list
+  // _download_history.html still renders (.downloads-history__item).
+  const ROW = ".dl-row, .downloads-history__item";
+  const DAY = ".dl-day";
   const UNDO_MS = 5000;
   let pending = null; // { entryId, row, parent, next, group, timer }
   let toast = null;
@@ -17,7 +21,7 @@
   // PR 314: also tells downloads-history-tools.js to recount the «Сводка» card.
   function updateCount() {
     const count = document.querySelector('[data-role="history-count"]');
-    if (count) count.textContent = String(document.querySelectorAll(".downloads-history__item").length);
+    if (count) count.textContent = String(document.querySelectorAll(ROW).length);
     document.dispatchEvent(new CustomEvent("downloads:historychange"));
   }
 
@@ -94,16 +98,16 @@
     // Not `button.closest("[data-entry-id]")` (PR 70) - the button itself also carries
     // `data-entry-id`, so that selector matched the button and stopped there instead of
     // reaching the row.
-    const row = button.closest(".downloads-history__item");
+    const row = button.closest(ROW);
     const entryId = button.dataset.entryId;
     if (!row || !entryId) return;
 
     commit();
     button.disabled = true;
-    const group = row.closest(".wn-downloads-history__group");
+    const group = row.closest(DAY);
     pending = { entryId, row, parent: row.parentNode, next: row.nextSibling, group, timer: null };
     row.remove();
-    if (group && !group.querySelector(".downloads-history__item")) group.hidden = true;
+    if (group && !group.querySelector(ROW)) group.hidden = true;
     updateCount();
     pending.timer = setTimeout(commit, UNDO_MS);
     showToast("Удалено из истории", { label: "Вернуть", run: undo });

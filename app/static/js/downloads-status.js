@@ -101,6 +101,14 @@
         const row = section.querySelector(`[data-job-id="${job.job_id}"]`);
         if (!row) continue;
 
+        // «Загрузки» answers a translation choice right in the job's card - the server
+        // renders that form, so a job that has just come to need one reloads the page.
+        if (row.dataset.status && row.dataset.status !== job.status && job.status === "needs_translation") {
+          window.location.reload();
+          return;
+        }
+        if (row.dataset.status) row.dataset.status = job.status;
+
         if (job.total) {
           const pct = Math.min(100, Math.floor((job.completed / job.total) * 100));
           const bar = row.querySelector('[data-role="bar-fill"]');

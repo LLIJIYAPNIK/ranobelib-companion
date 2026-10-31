@@ -26,26 +26,6 @@ def _rule(selector: str, *, indent: str = "") -> str:
     return matches[-1]
 
 
-def test_steps_carry_a_hint_each() -> None:
-    # PR 314: the steps live in the «Как скачать» card on every width now, so their
-    # hints - mobile-only since PR 281 - show everywhere.
-    for label, hint in (
-        ("Каталог", "найдите тайтл по названию"),
-        ("Главы", "выберите тома или диапазон"),
-        ("Файл", "EPUB, FB2 или TXT появится в истории ниже"),
-    ):
-        assert f'{label}<small class="wn-downloads-steps__hint"> — {hint}</small>' in TEMPLATE
-    assert "display: inline;" in _rule(".wn-downloads-steps__hint")
-
-
-def test_steps_are_a_vertical_list() -> None:
-    assert "flex-direction: column;" in _rule(".wn-downloads-steps")
-    assert "display: none;" in _rule(".wn-downloads-steps li:nth-child(even)")
-    assert "flex: none;" in _rule(".wn-downloads-steps b")
-    # The decorative connectors between steps aren't announced as empty list items.
-    assert TEMPLATE.count('<li aria-hidden="true"><i></i></li>') == 2
-
-
 def _render_history(
     monkeypatch: pytest.MonkeyPatch,
     history: list[DownloadHistoryEntry],
@@ -73,9 +53,13 @@ def _render_history(
         assert slugs == {entry.slug_url for entry in history}
         return titles
 
+    async def no_library(conn: object, user_id: int) -> list[object]:
+        return []
+
     app.dependency_overrides[get_current_user] = override_current_user
     monkeypatch.setattr(downloads_section, "connection", _ConnectionContext)
     monkeypatch.setattr(downloads_section, "list_download_history", fake_history)
+    monkeypatch.setattr(downloads_section, "list_entries", no_library)
     monkeypatch.setattr(downloads_section, "list_active_jobs_for_user", lambda user_id: [])
     monkeypatch.setattr(downloads_section, "ready_file_url", lambda job_id, user_id: None)
     monkeypatch.setattr(downloads_section, "title_summaries", fake_titles)
@@ -93,9 +77,7 @@ def _entry(entry_id: int, slug_url: str, chapters: int | None = 226) -> Download
     )
 
 
-def test_history_card_leads_with_the_title_and_shows_the_file_name_under_it(
-    monkeypatch: pytest.MonkeyPatch,
-) -> None:
+def test_history_row_leads_with_the_title(monkeypatch: pytest.MonkeyPatch) -> None:
     slug = "237596--became-a-medieval-fantasy-wizard"
     html = _render_history(
         monkeypatch,
@@ -104,38 +86,37 @@ def test_history_card_leads_with_the_title_and_shows_the_file_name_under_it(
     )
 
     assert re.search(
-        r'class="downloads-history__link"[^>]*>Я стал магом в средневековом фэнтези</a>', html
+        r'class="dl-row__name downloads-history__link"[^>]*>Я стал магом в средневековом'
+        r" фэнтези</a>",
+        html,
     )
-    assert f'<span class="wn-downloads-row__file">{slug}.epub</span>' in html
     assert '<img src="https://cover/1.jpg" alt="" loading="lazy">' in html
     # Search matches the name and the file name alike.
     assert f'data-history-title="я стал магом в средневековом фэнтези {slug}.epub"' in html
 
 
-def test_history_card_without_a_title_leads_with_the_file_name(
+def test_history_row_without_a_title_leads_with_the_file_name(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     slug = "272794--juin-gong-deurui-dongsim-sogeuro"
     html = _render_history(monkeypatch, [_entry(1, slug, chapters=None)], {})
 
-    assert '<span class="wn-downloads-row__names wn-downloads-row__names--file">' in html
-    assert re.search(rf'class="downloads-history__link"[^>]*>{re.escape(slug)}\.epub</a>', html)
-    assert 'class="wn-downloads-row__file"' not in html
-    assert '<span class="wn-downloads-row__cover" aria-hidden="true">EPUB</span>' in html
-    assert "wn-downloads-row__chapters--none" in html
+    assert re.search(rf'class="dl-row__name[^"]*"[^>]*>{re.escape(slug)}\.epub</a>', html)
+    assert '<span class="dl-row__cover" aria-hidden="true"><span>EPUB</span></span>' in html
+    # No chapter count - nothing about chapters in the line under it.
+    assert re.search(r'class="dl-row__meta">EPUB · \d\d:\d\d', html)
 
 
-def test_history_card_counts_chapters_in_words(monkeypatch: pytest.MonkeyPatch) -> None:
+def test_history_row_counts_chapters_in_words(monkeypatch: pytest.MonkeyPatch) -> None:
     html = _render_history(
         monkeypatch,
         [_entry(1, "1--a", chapters=226), _entry(2, "2--b", chapters=53), _entry(3, "3--c", 1)],
         {},
     )
 
-    assert '<span class="wn-downloads-row__unit"> глав</span>' in html
-    assert '<span class="wn-downloads-row__unit"> главы</span>' in html
-    assert '<span class="wn-downloads-row__unit"> глава</span>' in html
-    assert 'aria-label="53 главы"' in html
+    assert "EPUB · 226 глав · " in html
+    assert "EPUB · 53 главы · " in html
+    assert "EPUB · 1 глава · " in html
 
 
 @pytest.mark.parametrize(
@@ -143,18 +124,6 @@ def test_history_card_counts_chapters_in_words(monkeypatch: pytest.MonkeyPatch) 
 )
 def test_plural(n: int, form: str) -> None:
     assert plural(n, "глава", "главы", "глав") == form
-
-
-def test_history_card_layout_on_mobile() -> None:
-    assert "display: none;" in _rule(".wn-downloads-table__header", indent="  ")
-    row = _rule(".wn-downloads-row", indent="  ")
-    assert "flex-wrap: wrap;" in row
-    assert "min-width: 0;" in row
-    delete = _rule(".wn-downloads-row__actions .downloads-history__delete", indent="  ")
-    assert "position: absolute;" in delete
-    assert "width: 44px;" in delete
-    assert "height: 44px;" in delete
-    assert "overflow-wrap: anywhere;" in _rule(".wn-downloads-row__file", indent="  ")
 
 
 def test_history_delete_is_undoable_instead_of_confirmed() -> None:
@@ -183,7 +152,3 @@ def test_clear_history_confirms_in_the_shared_sheet_on_mobile() -> None:
     assert 'window.confirm("Очистить всю историю загрузок?")' in script
 
 
-def test_history_heading_row_wraps_its_clear_button() -> None:
-    # Found by the five-width check: at 320px «Очистить историю» ran the row 25px off
-    # the screen.
-    assert "flex-wrap: wrap;" in _rule(".wn-downloads__section-head", indent="  ")
