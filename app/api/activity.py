@@ -38,7 +38,7 @@ from app.db.downloads import (
     list_download_history,
     list_download_history_today,
 )
-from app.db.friendships import FriendUser, list_friends
+from app.db.friendships import FriendEntry, FriendUser, list_friends
 from app.db.users import User, get_user_by_id
 from app.jobs.models import DownloadJob
 from app.jobs.store import list_active_jobs_for_user
@@ -95,6 +95,8 @@ _MONTHS_BACK = 11
 # list is /friends).
 _FRIENDS_LIMIT = 5
 _FRIENDS_MORE_LIMIT = 60
+# A friend who hasn't opened a chapter in this many days is «без активности».
+_FRIEND_ACTIVE_DAYS = 30
 _POPULAR_LIMIT = 6
 # Below this many titles read on the site this week, «Читают на сайте» shows ranobelib.me's
 # most viewed instead - a list of one or two isn't «what people read».
@@ -248,7 +250,8 @@ class ActivityOverview:
     selected: date | None
     selected_heading: str | None
     friends: list[FriendActivity] | None  # None: the reader turned the block off
-    friends_more: list[FriendBrief]  # the rest, most recent readers first
+    friends_more: list[FriendBrief]  # active past the first few, most recent first
+    friends_idle: list[FriendBrief]  # no reading in _FRIEND_ACTIVE_DAYS days
     friends_total: int
     popular: list[PopularTitle]
     popular_source: Literal["site", "ranobelib"] | None
@@ -295,7 +298,9 @@ async def build_activity_overview(
     selected = _selected_day(day, days, month, today)
 
     last_reading_day = max(reading_days, default=None)
-    friends, friends_more, friends_total = await _friends_activity(user, conn, today, tz)
+    friends, friends_more, friends_idle, friends_total = await _friends_activity(
+        user, conn, today, tz
+    )
     popular, popular_source = await _popular(conn, titles, today, tz)
     return ActivityOverview(
         summary=summary,
@@ -314,6 +319,7 @@ async def build_activity_overview(
         selected_heading=_day_heading(selected, today) if selected else None,
         friends=friends,
         friends_more=friends_more,
+        friends_idle=friends_idle,
         friends_total=friends_total,
         popular=popular,
         popular_source=popular_source,
@@ -539,21 +545,30 @@ def _format_duration(seconds: int) -> str:
 
 async def _friends_activity(
     user: User, conn: AsyncConnection, today: date, tz: str
-) -> tuple[list[FriendActivity] | None, list[FriendBrief], int]:
-    """Friends who read most recently first: the first _FRIENDS_LIMIT in full (their book,
-    streak, comment - an SDK lookup each), the rest, up to _FRIENDS_MORE_LIMIT, as name and
-    when they last read. None when the reader turned friends' activity off for themselves
-    (show_friends_activity_home, PR 202 - a preference about this reader's own screens).
-    What a friend reads stays hidden when they hide it on their profile
-    (show_currently_reading, PR 90/124)."""
+) -> tuple[list[FriendActivity] | None, list[FriendBrief], list[FriendBrief], int]:
+    """Friends who read in the last _FRIEND_ACTIVE_DAYS days, most recent first: the
+    first _FRIENDS_LIMIT in full (their book, streak, comment - an SDK lookup each), the
+    rest as name and when they last read; and, apart, the friends without activity -
+    up to _FRIENDS_MORE_LIMIT in each list. None when the reader turned friends' activity
+    off for themselves (show_friends_activity_home, PR 202 - a preference about this
+    reader's own screens). What a friend reads stays hidden when they hide it on their
+    profile (show_currently_reading, PR 90/124)."""
     if not user.show_friends_activity_home:
-        return None, [], 0
+        return None, [], [], 0
     friends = await list_friends(conn, user.id)
     if not friends:
-        return [], [], 0
+        return [], [], [], 0
     last_read = await last_chapter_read_at(conn, [entry.user.id for entry in friends])
     friends.sort(key=lambda entry: last_read.get(entry.user.id, ""), reverse=True)
-    shown = friends[:_FRIENDS_LIMIT]
+    active_since = day_start_utc(today - timedelta(days=_FRIEND_ACTIVE_DAYS - 1), tz)
+    active = [
+        entry
+        for entry in friends
+        if entry.user.id in last_read
+        and _parse_utc(last_read[entry.user.id]).isoformat() >= active_since
+    ]
+    idle = [entry for entry in friends if entry not in active]
+    shown = active[:_FRIENDS_LIMIT]
     reading_by_user = await currently_reading_for_users([entry.user.id for entry in shown], conn)
     comment_since = day_start_utc(today - timedelta(days=_FRIEND_COMMENT_DAYS - 1), tz)
     cards = []
@@ -578,16 +593,13 @@ async def _friends_activity(
                 comment=recent[0] if recent else None,
             )
         )
-    more = [
-        FriendBrief(
-            user=entry.user,
-            last_read_label=(
-                _ago(last_read[entry.user.id], today, tz) if entry.user.id in last_read else None
-            ),
-        )
-        for entry in friends[_FRIENDS_LIMIT : _FRIENDS_LIMIT + _FRIENDS_MORE_LIMIT]
-    ]
-    return cards, more, len(friends)
+
+    def brief(entry: FriendEntry) -> FriendBrief:
+        at = last_read.get(entry.user.id)
+        return FriendBrief(user=entry.user, last_read_label=_ago(at, today, tz) if at else None)
+
+    more = [brief(entry) for entry in active[_FRIENDS_LIMIT : _FRIENDS_LIMIT + _FRIENDS_MORE_LIMIT]]
+    return cards, more, [brief(entry) for entry in idle[:_FRIENDS_MORE_LIMIT]], len(friends)
 
 
 def _friend_reading(item: dict[str, object]) -> FriendReading:

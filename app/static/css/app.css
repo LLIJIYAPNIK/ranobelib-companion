@@ -30579,7 +30579,7 @@ body.reader-hud-visible .reader-hud {
    streak, the month's calendar beside the picked day, «Когда вы читаете» and «Недавно»;
    on the right «Друзья» and «Популярное на Webnovells» (below 1100px one column). Teal
    is the reading hue here as everywhere on the site: the mark under a day read, the
-   hours' bars, the popular titles' share. Panels are the quiet glass of «Загрузки».
+   hours' bars. Panels are the quiet glass of «Загрузки».
    ========================================================================== */
 .hm.ac {
   display: grid;
@@ -30868,11 +30868,6 @@ a.ac-day__tile:active {
 
 .ac-day--l3 {
   --ac-mark: 0.85;
-}
-
-.ac-day--l4 .ac-day__tile::after {
-  width: 16px;
-  border-radius: 999px;
 }
 
 .ac-day--today .ac-day__tile {
@@ -31415,32 +31410,24 @@ a.ac-day__tile:active {
 }
 
 .ac-pop__name {
+  display: -webkit-box;
   overflow: hidden;
   color: var(--wn-text);
-  font: 700 14px/1.3 var(--wn-font-ui);
+  font: 700 14px/1.35 var(--wn-font-ui);
   text-decoration: none;
-  text-overflow: ellipsis;
-  white-space: nowrap;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
 }
 
-.ac-pop__meta {
-  color: var(--wn-text-muted);
-  font: 500 12px/1.3 var(--wn-font-ui);
+/* The friends without activity: a group of its own under the readers. */
+.ac-more--idle .ac-more__face {
+  opacity: 0.7;
 }
 
-.ac-pop__bar {
-  display: block;
-  height: 4px;
-  overflow: hidden;
-  border-radius: 999px;
-  background: rgb(255 255 255 / 6%);
-}
-
-.ac-pop__bar span {
-  display: block;
-  height: 100%;
-  border-radius: inherit;
-  background: var(--ac-teal);
+.ac-friends__none {
+  margin: 0;
+  color: var(--wn-text-secondary);
+  font: 500 14px/1.5 var(--wn-font-ui);
 }
 
 /* --- Narrower screens ---------------------------------------------------------------- */

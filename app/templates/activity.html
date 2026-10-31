@@ -20,6 +20,28 @@
 {% macro avatar(user, cls) -%}
 <a class="{{ cls }}" href="/profile/{{ user.id }}" tabindex="-1" aria-hidden="true">{% if user.avatar_url %}<img class="avatar-img" src="{{ user.avatar_url }}" alt="">{% else %}{{ user.avatar_initials }}{% endif %}</a>
 {%- endmacro %}
+{# Friends as a folded compact list: faces and a label that open names and when they
+   last read, in a list with its own scroll - the panel never grows with the friends. #}
+{% macro friend_group(items, label, role, idle=false, open=false) -%}
+<details class="ac-more{% if idle %} ac-more--idle{% endif %}" data-role="{{ role }}"{% if open %} open{% endif %}>
+  <summary class="ac-more__toggle">
+    <span class="ac-more__faces" aria-hidden="true">
+      {% for friend in items[:3] %}<span class="ac-more__face">{% if friend.user.avatar_url %}<img class="avatar-img" src="{{ friend.user.avatar_url }}" alt="">{% else %}{{ friend.user.avatar_initials }}{% endif %}</span>{% endfor %}
+    </span>
+    <span>{{ label }}</span>
+    <svg class="ac-more__chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m6 9 6 6 6-6"/></svg>
+  </summary>
+  <ul class="ac-more__list">
+    {% for friend in items %}
+    <li class="ac-more__item">
+      {{ avatar(friend.user, "ac-more__avatar") }}
+      <a class="ac-more__name" href="/profile/{{ friend.user.id }}">{{ friend.user.display_name }}</a>
+      <span class="ac-more__when hm-num">{{ friend.last_read_label or "ещё не читали" }}</span>
+    </li>
+    {% endfor %}
+  </ul>
+</details>
+{%- endmacro %}
 {% macro chapters(n) -%}{{ n }} {{ plural(n, "глава", "главы", "глав") }}{%- endmacro %}
 {% macro days(n) -%}{{ n }} {{ plural(n, "день", "дня", "дней") }}{%- endmacro %}
 <main class="hm ac{% if not current_user %} ac--guest{% endif %} activity-page" data-role="activity-page">
@@ -173,8 +195,9 @@
       <div class="ac-section-head">
         <h2 class="hm-h2" id="ac-friends-title">Друзья</h2>
         {% if overview.friends_total %}<span class="ac-section-head__count hm-num">{{ overview.friends_total }}</span>{% endif %}
-        <a class="hm-link ac-section-head__more" href="/friends">{{ "Все" if overview.friends else "Найти" }}</a>
+        <a class="hm-link ac-section-head__more" href="/friends">{{ "Все" if overview.friends_total else "Найти" }}</a>
       </div>
+      {% if overview.friends_total %}
       {% if overview.friends %}
       <ul class="ac-friends__list">
         {% for friend in overview.friends %}
@@ -204,29 +227,14 @@
         </li>
         {% endfor %}
       </ul>
+      {% else %}
+      <p class="ac-friends__none">Сейчас никто из друзей не читает.</p>
+      {% endif %}
       {% if overview.friends_more %}
-      {% set rest = overview.friends_total - overview.friends | length %}
-      <details class="ac-more" data-role="friends-more">
-        <summary class="ac-more__toggle">
-          <span class="ac-more__faces" aria-hidden="true">
-            {% for friend in overview.friends_more[:3] %}<span class="ac-more__face">{% if friend.user.avatar_url %}<img class="avatar-img" src="{{ friend.user.avatar_url }}" alt="">{% else %}{{ friend.user.avatar_initials }}{% endif %}</span>{% endfor %}
-          </span>
-          <span>Ещё {{ rest }} {{ plural(rest, "друг", "друга", "друзей") }}</span>
-          <svg class="ac-more__chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m6 9 6 6 6-6"/></svg>
-        </summary>
-        <ul class="ac-more__list">
-          {% for friend in overview.friends_more %}
-          <li class="ac-more__item">
-            {{ avatar(friend.user, "ac-more__avatar") }}
-            <a class="ac-more__name" href="/profile/{{ friend.user.id }}">{{ friend.user.display_name }}</a>
-            <span class="ac-more__when hm-num">{{ friend.last_read_label or "не читали" }}</span>
-          </li>
-          {% endfor %}
-        </ul>
-        {% if rest > overview.friends_more | length %}
-        <a class="hm-link ac-more__all" href="/friends">Все друзья</a>
-        {% endif %}
-      </details>
+      {{ friend_group(overview.friends_more, "Ещё " ~ overview.friends_more | length ~ " " ~ plural(overview.friends_more | length, "читает", "читают", "читают"), "friends-more") }}
+      {% endif %}
+      {% if overview.friends_idle %}
+      {{ friend_group(overview.friends_idle, "Без активности · " ~ overview.friends_idle | length, "friends-idle", idle=true, open=not overview.friends) }}
       {% endif %}
       {% else %}
       <p class="ac-empty">Добавьте друзей — здесь будет видно, что они читают, сколько дней подряд и что пишут в комментариях.</p>
@@ -241,7 +249,7 @@
       <div class="ac-section-head ac-section-head--stack">
         {% if overview.popular_source == "site" %}
         <h2 class="hm-h2" id="ac-popular-title">Популярное на Webnovells</h2>
-        <span class="hm-meta">За неделю, по числу читателей</span>
+        <span class="hm-meta">Что читают на сайте на этой неделе</span>
         {% else %}
         <h2 class="hm-h2" id="ac-popular-title">Популярное</h2>
         <span class="hm-meta">По просмотрам на ranobelib.me</span>
@@ -254,10 +262,6 @@
           {{ cover(title.slug_url, title.name, title.cover_url, "ac-cover ac-pop__cover") }}
           <span class="ac-pop__copy">
             <a class="ac-pop__name" href="/titles/{{ title.slug_url }}">{{ title.name }}</a>
-            {% if title.readers is not none %}
-            <span class="ac-pop__meta hm-num">{{ title.readers }} {{ plural(title.readers, "читатель", "читателя", "читателей") }} · {{ chapters(title.chapters) }}</span>
-            <span class="ac-pop__bar" aria-hidden="true"><span style="width: {{ title.share }}%"></span></span>
-            {% endif %}
           </span>
         </li>
         {% endfor %}
