@@ -29447,3 +29447,74 @@ body.reader-page--offline-copy .reader-paragraph-more {
   user-select: none;
   touch-action: manipulation;
 }
+
+/* The formatting bar over a selection. */
+/* It takes the place of the field's own tools row (emoji, attachment) while text is
+   selected, so it never covers the thread above. */
+.paragraph-comments__format {
+  position: absolute;
+  bottom: 8px;
+  left: 8px;
+  z-index: 2;
+  display: flex;
+  gap: 2px;
+  padding: 4px;
+  border-radius: 12px;
+  background: color-mix(in srgb, var(--pc-text) 10%, var(--pc-field));
+  box-shadow: 0 10px 24px rgb(0 0 0 / 30%);
+  animation: reader-fonts-in 140ms var(--ease);
+}
+
+.paragraph-comments__format[hidden] {
+  display: none;
+}
+
+.paragraph-comments__format-btn {
+  appearance: none;
+  display: grid;
+  place-items: center;
+  width: 32px;
+  height: 32px;
+  padding: 0;
+  border: 0;
+  border-radius: 8px;
+  background: transparent;
+  color: var(--pc-text);
+  font: 15px/1 var(--font-ui);
+  cursor: pointer;
+}
+
+.paragraph-comments__format-btn b,
+.paragraph-comments__format-btn i,
+.paragraph-comments__format-btn s {
+  font-family: var(--font-reader-serif);
+}
+
+.paragraph-comments__format-btn svg {
+  width: 17px;
+  height: 17px;
+}
+
+@media (hover: hover) {
+  .paragraph-comments__format-btn:hover {
+    background: color-mix(in srgb, var(--pc-text) 14%, transparent);
+  }
+}
+
+.paragraph-comments__format-btn:focus-visible {
+  outline: none;
+  box-shadow: 0 0 0 2px var(--pc-focus);
+}
+
+/* Without the old Markdown line under it, the composer's field needs no extra room. */
+.paragraph-comments__field {
+  position: relative;
+}
+
+@media (pointer: coarse) {
+  .paragraph-comments__format-btn {
+    width: 40px;
+    height: 40px;
+  }
+
+}

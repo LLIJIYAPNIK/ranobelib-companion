@@ -35,10 +35,14 @@ def test_every_existing_comment_action_still_calls_its_endpoint() -> None:
     assert 'window.confirm("Удалить комментарий?")' in JS
 
 
-def test_composer_keeps_the_limit_and_the_markdown_hint() -> None:
+def test_composer_keeps_the_limit_and_formats_a_selection() -> None:
     assert "const MAX_COMMENT_LENGTH = 2000; // mirrors MAX_COMMENT_LENGTH" in JS
     assert "textarea.maxLength = MAX_COMMENT_LENGTH;" in JS
-    assert "**жирный**, *курсив*, ~~зачёркнутый~~, [ссылка](url), списки" in JS
+    # The Markdown subset is applied from a bar over the selection, not spelled out.
+    assert "**жирный**" not in JS
+    assert "field.append(buildFormatBar(textarea), textarea);" in JS
+    for mark in ['wrapSelection(t, "**")', 'wrapSelection(t, "*")', 'wrapSelection(t, "~~")']:
+        assert mark in JS
     # One primary action per composer; emoji and attachment are secondary icon buttons.
     assert JS.count("ui-btn--primary") == 1
     assert '"ui-btn ui-btn--primary ui-btn--sm paragraph-comments__submit"' in JS
@@ -96,7 +100,10 @@ def test_touch_targets_are_44px() -> None:
 
 def test_keyboard_and_focus() -> None:
     # Ctrl/Cmd+Enter sends, Escape cancels a reply/edit, focus lands on the result.
-    assert 'event.key === "Enter" && (event.ctrlKey || event.metaKey)' in JS
+    assert "const mod = event.ctrlKey || event.metaKey;" in JS
+    assert 'event.key === "Enter" && mod' in JS
+    # Ctrl+B / Ctrl+I / Ctrl+K by the physical key, so a Russian layout works too.
+    assert '{ KeyB: "bold", KeyI: "italic", KeyK: "link" }[event.code]' in JS
     assert 'event.key === "Escape" && onCancel' in JS
     assert "node.focus({ preventScroll: true });" in JS
     assert 'toggle.setAttribute("aria-controls", layerId);' in JS
