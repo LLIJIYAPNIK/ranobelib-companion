@@ -8,14 +8,14 @@
   and the comment size live on under «Дополнительно». The reader's Aa panel uses the
   same controls (_reader_controls.html) and the same stored object.
 #}
-{% from "_reader_controls.html" import segmented, themes, LINE_HEIGHTS, MARGINS, MODES, PRESETS %}
+{% from "_reader_controls.html" import segmented, themes, fonts, width_range, LINE_HEIGHTS, MARGINS, MODES, PRESETS %}
 {% set AUTO_DOWNLOAD = [("0", "Выкл"), ("3", "3"), ("5", "5"), ("10", "10")] %}
   <div class="reader-settings-page" data-role="reader-settings">
     <section class="reader-settings-card">
       <h2 class="reader-settings-card__title">Текст</h2>
       <div class="reader-settings-row">
         <span class="reader-settings-row__label">Шрифт</span>
-        {{ segmented("fontFamily", "set-font", [("sans", "Без засечек"), ("serif", "С засечками"), ("mono", "Моно")], "Шрифт") }}
+        {{ fonts("set-font") }}
       </div>
       <div class="reader-settings-row">
         <label class="reader-settings-row__head" for="fontSize">
@@ -33,7 +33,7 @@
           <span class="reader-settings-row__label">Ширина колонки (компьютер)</span>
           <span class="reader-settings-row__value"><output for="width"></output> px</span>
         </label>
-        <input class="ui-range" type="range" id="width" data-setting="width" min="420" max="1200" step="20">
+        {{ width_range("width") }}
       </div>
       <div class="reader-settings-row">
         <span class="reader-settings-row__label">Поля (телефон)</span>

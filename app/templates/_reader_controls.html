@@ -16,11 +16,11 @@
 {%- endmacro %}
 
 {% set READER_THEMES = [
-  ("aurora", "Aurora"),
-  ("amoled", "AMOLED"),
-  ("sepia", "Sepia"),
-  ("light", "Light"),
-  ("system", "System"),
+  ("aurora", "Ночь"),
+  ("amoled", "Чёрная"),
+  ("sepia", "Сепия"),
+  ("light", "Светлая"),
+  ("system", "Авто"),
 ] %}
 
 {% macro themes(name) -%}
@@ -48,3 +48,58 @@
 {% set MARGINS = [("compact", "Компактные"), ("normal", "Обычные"), ("wide", "Широкие")] %}
 {% set MODES = [("scroll", "Прокрутка"), ("tap", "Tap Focus")] %}
 {% set PRESETS = [("instant", "Мгновенно"), ("smooth", "Плавно"), ("speed", "По скорости")] %}
+
+{# Reading fonts: (setting value, name, CSS family). The values must match FONT_FAMILIES
+   in reader-settings.js. Literata, Golos Text and JetBrains Mono come with base.html;
+   the rest load here, only on the pages that offer the choice - and a browser fetches a
+   face only once text in it is shown. #}
+{% set READER_FONTS = [
+  ("С засечками", [
+    ("serif", "Literata", "Literata, 'PT Serif', Georgia, serif"),
+    ("pt-serif", "PT Serif", "'PT Serif', Georgia, serif"),
+    ("lora", "Lora", "Lora, Georgia, serif"),
+    ("merriweather", "Merriweather", "Merriweather, Georgia, serif"),
+    ("source-serif", "Source Serif", "'Source Serif 4', Georgia, serif"),
+  ]),
+  ("Без засечек", [
+    ("sans", "Golos", "'Golos Text', 'PT Sans', system-ui, sans-serif"),
+    ("pt-sans", "PT Sans", "'PT Sans', system-ui, sans-serif"),
+    ("inter", "Inter", "Inter, system-ui, sans-serif"),
+    ("noto-sans", "Noto Sans", "'Noto Sans', system-ui, sans-serif"),
+  ]),
+  ("Моноширинный", [
+    ("mono", "JetBrains Mono", "'JetBrains Mono', ui-monospace, monospace"),
+  ]),
+] %}
+
+{# A drop-down: the chosen font, in its own face, opens the list - each name set in its
+   face, grouped by kind. The radios stay plain data-setting inputs (reader-settings.js);
+   it writes the chosen name into [data-setting-text] and folds the list on a choice. #}
+{% macro fonts(name) -%}
+<link rel="stylesheet" crossorigin href="https://fonts.googleapis.com/css2?family=PT+Serif:ital,wght@0,400;0,700;1,400&family=Lora:ital,wght@0,400;0,600;1,400&family=Merriweather:ital,wght@0,400;0,700;1,400&family=Source+Serif+4:ital,opsz,wght@0,8..60,400;0,8..60,600;1,8..60,400&family=PT+Sans:ital,wght@0,400;0,700;1,400&family=Inter:wght@400;600&family=Noto+Sans:ital,wght@0,400;0,600;1,400&display=swap">
+<details class="reader-font-picker" data-role="font-picker">
+  <summary class="reader-font-picker__current">
+    <span data-setting-text="fontFamily">Literata</span>
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m6 9 6 6 6-6"/></svg>
+  </summary>
+  <fieldset class="reader-fonts" aria-label="Шрифт">
+    {% for group, items in READER_FONTS %}
+    <span class="reader-fonts__group" aria-hidden="true">{{ group }}</span>
+    {% for value, text, family in items %}
+    <label class="reader-font">
+      <input type="radio" name="{{ name }}" value="{{ value }}" data-setting="fontFamily">
+      <span style="font-family: {{ family }}">{{ text }}</span>
+      <svg class="reader-font__check" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m5 12.5 4.5 4.5L19 7.5"/></svg>
+    </label>
+    {% endfor %}
+    {% endfor %}
+  </fieldset>
+</details>
+{%- endmacro %}
+
+{# Column width on a computer, 20px at a time - the same key the settings page's slider
+   writes. #}
+{% macro width_range(id) -%}
+<input class="ui-range" type="range" id="{{ id }}" data-setting="width" min="480" max="1200" step="20" aria-label="Ширина колонки">
+{%- endmacro %}
+

@@ -29,9 +29,17 @@
 (() => {
   const STORAGE_KEY = "readerSettings";
   const SETTINGS_VERSION = 2;
+  // Same values as READER_FONTS in _reader_controls.html.
   const FONT_FAMILIES = {
-    sans: "var(--font-reader-sans)",
     serif: "var(--font-reader-serif)",
+    "pt-serif": "'PT Serif', Georgia, serif",
+    lora: "Lora, Georgia, serif",
+    merriweather: "Merriweather, Georgia, serif",
+    "source-serif": "'Source Serif 4', Georgia, serif",
+    sans: "var(--font-reader-sans)",
+    "pt-sans": "'PT Sans', system-ui, sans-serif",
+    inter: "Inter, system-ui, sans-serif",
+    "noto-sans": "'Noto Sans', system-ui, sans-serif",
     mono: "var(--font-mono)",
   };
   const MARGINS = { compact: "16px", normal: "22px", wide: "28px" };
@@ -168,6 +176,15 @@
     for (const output of document.querySelectorAll("[data-setting-value]")) {
       output.textContent = settings[output.dataset.settingValue];
     }
+    // A drop-down's face (the font picker): the chosen option's own label and font.
+    for (const output of document.querySelectorAll("[data-setting-text]")) {
+      const key = output.dataset.settingText;
+      const scope = output.closest("[data-role='font-picker']") || document;
+      const chosen = scope.querySelector(`input[data-setting="${key}"]:checked + span`);
+      if (!chosen) continue;
+      output.textContent = chosen.textContent;
+      output.style.fontFamily = chosen.style.fontFamily;
+    }
     for (const output of document.querySelectorAll("output[for]")) {
       const control = document.getElementById(output.getAttribute("for"));
       if (control?.dataset.setting) output.textContent = settings[control.dataset.setting];
@@ -213,6 +230,15 @@
 
   function bindAll() {
     controls().forEach(bind);
+    // The font picker folds once a font is chosen.
+    for (const picker of document.querySelectorAll("[data-role='font-picker']")) {
+      if (picker.dataset.settingBound) continue;
+      picker.dataset.settingBound = "1";
+      picker.addEventListener("change", () => {
+        picker.open = false;
+        picker.querySelector("summary")?.focus();
+      });
+    }
     for (const button of document.querySelectorAll("[data-setting-step]")) {
       if (button.dataset.settingBound) continue;
       button.dataset.settingBound = "1";

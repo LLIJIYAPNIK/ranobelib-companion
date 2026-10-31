@@ -29304,3 +29304,146 @@ body.reader-page--offline-copy .reader-paragraph-more {
     animation: none;
   }
 }
+
+/* Reading fonts: a drop-down - the chosen font in its own face, then the list grouped by
+   kind, every name in its face, a check on the chosen one. */
+.reader-font-picker {
+  min-width: 0;
+}
+
+.reader-font-picker__current {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  height: 44px;
+  padding: 0 14px 0 16px;
+  border-radius: 14px;
+  background: #0c0c12;
+  color: #eeecf4;
+  font-size: 17px;
+  list-style: none;
+  cursor: pointer;
+  user-select: none;
+  transition: background-color var(--dur-base) var(--ease);
+}
+
+.reader-font-picker__current::-webkit-details-marker {
+  display: none;
+}
+
+.reader-font-picker__current svg {
+  flex: 0 0 auto;
+  width: 18px;
+  height: 18px;
+  color: #a3a0b5;
+  transition: transform var(--dur-base) var(--ease);
+}
+
+.reader-font-picker[open] .reader-font-picker__current svg {
+  transform: rotate(180deg);
+}
+
+@media (hover: hover) {
+  .reader-font-picker__current:hover {
+    background: #1d1c25;
+  }
+}
+
+.reader-font-picker__current:focus-visible {
+  outline: none;
+  box-shadow: var(--focus-ring);
+}
+
+.reader-fonts {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  margin: 6px 0 0;
+  padding: 6px;
+  border: 0;
+  border-radius: 14px;
+  background: #0c0c12;
+  animation: reader-fonts-in var(--dur-base) var(--ease);
+}
+
+@keyframes reader-fonts-in {
+  from {
+    opacity: 0;
+    transform: translateY(calc(-4px * var(--motion-shift)));
+  }
+}
+
+.reader-fonts__group {
+  padding: 10px 10px 4px;
+  color: #8c889f;
+  font: 600 12px/1.2 var(--font-ui);
+}
+
+.reader-fonts__group:first-child {
+  padding-top: 4px;
+}
+
+.reader-font {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  min-height: 40px;
+  padding: 0 10px;
+  border-radius: 10px;
+  color: #cfcde0;
+  cursor: pointer;
+  transition: background-color var(--dur-press) var(--ease);
+}
+
+.reader-font input {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  margin: 0;
+  opacity: 0;
+  cursor: pointer;
+}
+
+.reader-font span {
+  font-size: 16px;
+  line-height: 1.2;
+}
+
+.reader-font__check {
+  width: 16px;
+  height: 16px;
+  color: #eeecf4;
+  opacity: 0;
+}
+
+@media (hover: hover) {
+  .reader-font:hover {
+    background: #1d1c25;
+  }
+}
+
+.reader-font:has(input:checked) {
+  background: #1d1c25;
+  color: #eeecf4;
+}
+
+.reader-font input:checked ~ .reader-font__check {
+  opacity: 1;
+}
+
+.reader-font:has(input:focus-visible) {
+  box-shadow: inset 0 0 0 2px var(--focus);
+}
+
+/* Steppers and segments are buttons, not text: repeated clicks on «+» don't select it,
+   a double tap doesn't zoom. */
+.reader-stepper,
+.reader-aa__content .ui-segmented,
+.reader-themes {
+  -webkit-user-select: none;
+  user-select: none;
+  touch-action: manipulation;
+}
