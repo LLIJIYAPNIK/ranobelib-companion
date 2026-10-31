@@ -1,6 +1,6 @@
 """«Активность»'s month calendar (app/api/activity.py): whole Monday-to-Sunday weeks, a
-day's level on the profile heatmap's scale, the streak chain, the month's figures and
-which day is shown under it. Pure functions - no database."""
+day's level on the profile heatmap's scale, the month's reading by hour of the day, when a
+day was read and which day is shown beside the calendar. Pure functions - no database."""
 
 from datetime import date
 
@@ -9,7 +9,9 @@ from app.api.activity import (
     _day_heading,
     _minutes_label,
     _month_calendar,
+    _reading_hours,
     _selected_day,
+    _span_label,
 )
 from app.db.activity import TitleDay
 
@@ -42,7 +44,6 @@ def test_whole_weeks_with_blanks_around_the_month() -> None:
     assert sum(1 for week in calendar.weeks for c in week if c.day) == 31
     assert calendar.prev_month == "2026-09"
     assert calendar.next_month is None
-    assert calendar.elapsed_days == 31
 
 
 def test_level_follows_reading_time_like_the_profile() -> None:
@@ -59,39 +60,50 @@ def test_level_follows_reading_time_like_the_profile() -> None:
     assert _cell(calendar, 4).label == "4 октября"
 
 
-def test_consecutive_days_are_chained_across_a_week_row() -> None:
-    # Sun 11 - Mon 12 - Tue 13 run over the end of a week row.
-    calendar = _calendar({f"2026-10-{d}": _read() for d in (11, 12, 13, 20)})
+def test_reading_hours_follow_the_hours_and_name_the_busiest_part() -> None:
+    hours = [0] * 24
+    hours[7] = 600  # 10 min in the morning
+    hours[21] = 1800  # 30 min
+    hours[22] = 3000  # 50 min - the peak
+    days = {"2026-10-01": _read(chapters=3, seconds=5400), "2026-10-02": _read(chapters=2)}
 
-    sunday, monday, tuesday = (_cell(calendar, d) for d in (11, 12, 13))
-    assert (sunday.chain_before, sunday.chain_after) == (False, True)
-    assert (monday.chain_before, monday.chain_after) == (True, True)
-    assert (tuesday.chain_before, tuesday.chain_after) == (True, False)
-    lone = _cell(calendar, 20)
-    assert (lone.chain_before, lone.chain_after) == (False, False)
-    assert _cell(calendar, 14).chain_before is False  # not read itself
+    reading = _reading_hours(days, hours)
 
-
-def test_month_figures_add_up_from_the_days() -> None:
-    calendar = _calendar(
-        {
-            "2026-10-01": _read(chapters=3, seconds=600),
-            "2026-10-02": _read(chapters=1, seconds=0) + _read(2, 1200, "2--b"),
-            "2026-10-03": _read(chapters=0, seconds=300),
-            "2026-10-10": _read(chapters=4, seconds=3600),
-        }
-    )
-
-    assert calendar.reading_days == 4
-    assert calendar.chapters == 10
-    assert calendar.time_label == "1 ч 35 мин"
-    assert calendar.best_streak == 3
+    assert reading.time_label == "1 ч 30 мин"  # the sum of the hours shown
+    assert reading.chapters == 5
+    assert reading.part_label == "вечером"
+    assert reading.part_share == 89  # 80 of 90 minutes
+    assert reading.peak_label == "22:00–23:00"
+    assert [bar.height_percent for bar in reading.bars if bar.minutes] == [20, 60, 100]
+    assert [bar.hour for bar in reading.bars if bar.is_peak] == [22]
+    assert reading.bars[22].tooltip == "22:00–23:00 · 50 мин"
+    assert reading.bars[3].tooltip == "03:00–04:00 · не читали"
 
 
-def test_a_past_month_counts_all_its_days_and_links_forward() -> None:
+def test_reading_hours_of_a_month_without_reading_time() -> None:
+    reading = _reading_hours({}, [0] * 24)
+
+    assert reading.time_label == "0 мин"
+    assert reading.part_label is None
+    assert reading.peak_label is None
+    assert all(bar.height_percent == 0 and not bar.is_peak for bar in reading.bars)
+
+
+def test_day_span_is_on_the_readers_clock() -> None:
+    entries = [
+        TitleDay("1--a", 2, 600, "2026-10-01T18:05:00+00:00", "2026-10-01T19:40:00+00:00"),
+        TitleDay("2--b", 1, 60, "2026-10-01T06:12:00+00:00", "2026-10-01T06:30:00+00:00"),
+    ]
+
+    assert _span_label(entries, "Europe/Moscow") == "09:12–22:40"
+    one = [TitleDay("1--a", 1, 0, "2026-10-01T18:05:00+00:00", "2026-10-01T18:05:30+00:00")]
+    assert _span_label(one, "UTC") == "в 18:05"
+    assert _span_label([TitleDay("1--a", 1, 0)], "UTC") is None
+
+
+def test_a_past_month_links_forward() -> None:
     calendar = _calendar({}, month=date(2026, 9, 1))
 
-    assert calendar.elapsed_days == 30
     assert calendar.next_month == "2026-10"
     assert all(not c.is_future for week in calendar.weeks for c in week)
 

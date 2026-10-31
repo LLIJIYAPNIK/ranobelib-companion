@@ -24,9 +24,15 @@ def test_one_column_puts_friends_and_the_site_before_the_event_list() -> None:
     assert "display: contents;" in block
     order = {
         name: int(re.search(rf"\.{name} \{{[^}}]*order: (\d)", block).group(1))
-        for name in ("ac-month", "ac-friends", "ac-popular", "ac-recent")
+        for name in ("ac-month", "ac-friends", "ac-popular", "ac-hours", "ac-recent")
     }
-    assert order["ac-month"] < order["ac-friends"] < order["ac-popular"] < order["ac-recent"]
+    assert sorted(order, key=order.get) == [
+        "ac-month",
+        "ac-friends",
+        "ac-popular",
+        "ac-hours",
+        "ac-recent",
+    ]
 
 
 def test_event_lines_wrap_on_phones() -> None:
@@ -39,16 +45,23 @@ def test_month_arrows_and_days_are_44px_targets_on_phones() -> None:
     arrow = re.search(r"\.ac-cal__arrow \{([^}]*)\}", phone).group(1)
     assert "width: 44px;" in arrow
     assert "height: 44px;" in arrow
-    assert "calc((var(--ac-dot) - 44px) / 2)" in CSS  # the day's hit area under a finger
+    assert "height: 44px;" in re.search(r"\.ac-day__tile \{([^}]*)\}", phone).group(1)
 
 
 def test_figures_keep_tabular_numerals() -> None:
     assert "font-variant-numeric: tabular-nums;" in _rule(".hm.ac .hm-num")
 
 
-def test_the_chain_runs_behind_the_circles() -> None:
-    assert "z-index: 0;" in _rule(".ac-day--chain-before::before,\n.ac-day--chain-after::after")
-    assert "z-index: 1;" in _rule(".ac-day__dot")
+def test_a_day_read_is_marked_under_its_number() -> None:
+    mark = _rule(".ac-day--read .ac-day__tile::after")
+    assert "background: var(--ac-teal);" in mark
+    assert "opacity: var(--ac-mark, 1);" in mark
+
+
+def test_a_long_friends_list_scrolls_inside_the_panel() -> None:
+    more = _rule(".ac-more__list")
+    assert "max-height: 336px;" in more
+    assert "overflow-y: auto;" in more
 
 
 def test_every_day_is_a_link_without_script() -> None:

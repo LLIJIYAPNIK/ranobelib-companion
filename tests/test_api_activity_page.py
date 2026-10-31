@@ -31,7 +31,7 @@ def client(monkeypatch: pytest.MonkeyPatch) -> Iterator[TestClient]:
     reset_app_database(monkeypatch)
     get_settings.cache_clear()
     monkeypatch.setattr(job_store, "_jobs", {})
-    # ranobelib.me's most viewed (the fallback of «Читают на сайте») - never the network.
+    # ranobelib.me's most viewed (the fallback of «Популярное») - never the network.
     monkeypatch.setattr(activity_api, "popular_titles", _no_popular)
 
     from app.main import app
@@ -127,7 +127,7 @@ def test_show_activity_calendar_is_the_current_month_in_whole_weeks(client: Test
     assert 'aria-label="Предыдущий месяц"' in response.text
 
 
-async def test_show_activity_marks_reading_days_and_chains_the_streak(client: TestClient) -> None:
+async def test_show_activity_marks_reading_days_and_the_streak(client: TestClient) -> None:
     _register(client)  # user id 1
     async with connection() as conn:
         await record_chapter_read(conn, 1, "6712--test-novel", "1", "5")
@@ -143,8 +143,6 @@ async def test_show_activity_marks_reading_days_and_chains_the_streak(client: Te
     assert "Сегодня 1 глава" in response.text
     if local_today().day > 1:  # yesterday is in this month too
         assert response.text.count("ac-day--read") == 2
-        assert "ac-day--chain-after" in response.text
-        assert "ac-day--chain-before" in response.text
 
 
 async def test_show_activity_lists_what_was_read_today(client: TestClient) -> None:
@@ -188,8 +186,9 @@ async def test_show_activity_prefers_russian_name(client: TestClient) -> None:
     assert "Test Novel" not in response.text
 
 
-async def test_show_activity_month_figures_count_time_only_days(client: TestClient) -> None:
-    """A day with reading time but no chapter opened is a reading day (PR 323)."""
+async def test_show_activity_shows_when_the_month_was_read(client: TestClient) -> None:
+    """Reading time without a chapter opened still marks the day (PR 323) and counts in
+    «Когда вы читаете»."""
     _register(client)  # user id 1
     async with connection() as conn:
         await record_heartbeat(conn, 1, "6712--test-novel", 90 * 60)
@@ -197,10 +196,27 @@ async def test_show_activity_month_figures_count_time_only_days(client: TestClie
     with patch("app.services.client.RanobeLib", return_value=_FakeClient(_fake_title())):
         response = client.get("/activity")
 
-    figures = response.text[response.text.index('data-role="activity-figures"') :]
-    assert '<b class="hm-num">1</b><span> из ' in figures
-    assert '<b class="hm-num">1 ч 30 мин</b>' in figures
+    hours = response.text[response.text.index('data-role="reading-hours"') :]
+    assert "<b>1 ч 30 мин</b> и 0 глав за " in hours
+    assert '<b class="hm-num">100%</b> времени' in hours
+    assert hours.count("ac-hours__bar--peak") == 1
+    assert hours.count('class="ac-hours__bar') == 24
     assert "ac-day--l4" in response.text  # 90+ minutes
+    assert "Лучшая серия" not in response.text
+    assert "Дней с чтением" not in response.text
+
+
+async def test_show_activity_recent_events_show_the_cover(client: TestClient) -> None:
+    _register(client)  # user id 1
+    title = _fake_title().model_copy(update={"cover": Cover(default="https://cover.example/a.jpg")})
+    async with connection() as conn:
+        await record_chapter_read(conn, 1, "6712--test-novel", "1", "5")
+
+    with patch("app.services.client.RanobeLib", return_value=_FakeClient(title)):
+        response = client.get("/activity")
+
+    feed = response.text[response.text.index('data-role="activity-events"') :]
+    assert '<img src="https://cover.example/a.jpg"' in feed
 
 
 async def test_show_activity_day_parameter_picks_a_past_day(client: TestClient) -> None:
@@ -319,7 +335,31 @@ async def test_show_activity_omits_friends_when_the_reader_turned_them_off(
     assert 'data-role="friends-activity"' not in response.text
 
 
-# --- Читают на сайте --------------------------------------------------------------------
+async def test_show_activity_folds_friends_past_the_first_five(client: TestClient) -> None:
+    _register(client, "me@example.com")  # id 1, nobody's friend
+    for n in range(2, 10):  # eight friends, ids 2-9
+        _register(client, f"friend{n}@example.com")
+    _register(client, "me@example.com".replace("me", "me2"))  # id 10, the viewer
+    async with connection() as conn:
+        for friend_id in range(2, 10):
+            await send_request(conn, friend_id, 10)
+            await accept_request(conn, 10, friend_id)
+        await record_chapter_read(conn, 9, "6712--test-novel", "1", "1")
+
+    with patch("app.services.client.RanobeLib", return_value=_FakeClient(_fake_title())):
+        response = client.get("/activity")
+
+    block = response.text[response.text.index('data-role="friends-activity"') :]
+    assert '<span class="ac-section-head__count hm-num">8</span>' in block
+    assert block.count('class="ac-friend"') == 5
+    assert "Ещё 3 друга" in block
+    assert block.count('class="ac-more__item"') == 3
+    # The friend who read is first.
+    first = block.index('class="ac-friend"')
+    assert block.index('href="/profile/9"', first) < block.index('href="/profile/2"', first)
+
+
+# --- Популярное на Webnovells --------------------------------------------------------------------
 
 
 async def test_show_activity_lists_titles_read_on_the_site(client: TestClient) -> None:
@@ -338,7 +378,7 @@ async def test_show_activity_lists_titles_read_on_the_site(client: TestClient) -
         response = client.get("/activity")
 
     block = response.text[response.text.index('data-role="popular-titles"') :]
-    assert "Читают на сайте" in block
+    assert "Популярное на Webnovells" in block
     assert "2 читателя · 2 главы" in block  # 1--a
     assert block.index('href="/titles/1--a"') < block.index('href="/titles/3--c"')
     assert block.index('href="/titles/3--c"') < block.index('href="/titles/2--b"')
