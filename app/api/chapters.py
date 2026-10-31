@@ -131,6 +131,9 @@ def reader_context(
     chapters = [(vol.number, ch) for vol in volumes for ch in vol.chapters]
     next_chapter = chapters[position[0] + 1][1] if position and not is_last else None
     prev_chapter = chapters[position[0] - 1][1] if position and position[0] > 0 else None
+    # «глава 61 из 198» in the chapter's head - its place in its own volume.
+    volume_chapters = next((vol.chapters for vol in volumes if vol.number == volume), [])
+    volume_index = next((i for i, ch in enumerate(volume_chapters, 1) if ch.number == number), None)
     return {
         "slug_url": slug_url,
         "chapter": chapter,
@@ -142,6 +145,17 @@ def reader_context(
         # прочитан на N%», same measure as the title page's progress.
         "title_percent": reading_progress_percent(volumes, volume, number),
         "is_last_chapter": is_last,
+        "volume_index": volume_index,
+        "volume_total": len(volume_chapters),
+        # The reader's own contents: this volume's chapters, opened from the HUD.
+        "volume_chapters": [
+            {
+                "number": ch.number,
+                "name": ch.name,
+                "url": _chapter_url(slug_url, (volume, ch.number)),
+            }
+            for ch in volume_chapters
+        ],
         "title_name": (title.rus_name or title.name) if title is not None else None,
         "branch_id": branch_id,
     }

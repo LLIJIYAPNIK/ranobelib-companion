@@ -45,9 +45,11 @@ def test_history_file_name_meets_contrast() -> None:
 
 
 def test_comment_kicker_meets_contrast_in_sepia() -> None:
-    # The bare accent was 4.04:1 on the sepia card.
+    # The bare accent was 4.04:1 on the sepia card; the kicker is in the theme's muted
+    # ink now (sentence case, reader redesign), which holds 4.5:1 there.
     kicker = _rule(".paragraph-comments__kicker")
-    assert "color: color-mix(in srgb, var(--pc-accent) 70%, var(--pc-text));" in kicker
+    assert "color: var(--pc-muted);" in kicker
+    assert "var(--pc-accent)" not in kicker
 
 
 @pytest.mark.parametrize(("errors", "red"), [(0, False), (1, True)])

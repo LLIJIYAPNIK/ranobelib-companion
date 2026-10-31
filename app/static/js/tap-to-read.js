@@ -583,7 +583,7 @@
   // emoji picker, ...) is excluded as whole containers.
   const NOT_A_TAP =
     "a, button, input, textarea, select, label, img, sup, summary, dialog, [contenteditable], " +
-    "[role='toolbar'], [role='dialog'], .reader-hud-bottom, .reader-end, .reader-onboarding, " +
+    "[role='toolbar'], [role='dialog'], .reader-end, .reader-onboarding, " +
     ".paragraph-reactions, .paragraph-comments, .paragraph-reactions-host, .paragraph-menu__panel, " +
     ".image-lightbox";
   // PR 321: the shared bottom sheet too (Aa and comments on phones) - a tap on its

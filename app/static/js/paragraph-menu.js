@@ -480,6 +480,98 @@
 
   // Inserts at the caret (replacing any current selection) rather than always appending
   // to the end, so picking an emoji mid-sentence lands where the visitor was typing.
+  // Markdown marks around the selection - the same subset app/markdown_render.py renders.
+  // Applying a mark the selection already has takes it off again.
+  function wrapSelection(textarea, before, after = before) {
+    const { value, selectionStart: start, selectionEnd: end } = textarea;
+    const selected = value.slice(start, end);
+    const outside =
+      value.slice(start - before.length, start) === before && value.slice(end, end + after.length) === after;
+    if (outside) {
+      textarea.value = value.slice(0, start - before.length) + selected + value.slice(end + after.length);
+      textarea.setSelectionRange(start - before.length, end - before.length);
+    } else {
+      textarea.value = value.slice(0, start) + before + selected + after + value.slice(end);
+      textarea.setSelectionRange(start + before.length, end + before.length);
+    }
+    textarea.focus();
+    textarea.dispatchEvent(new Event("input"));
+  }
+
+  function linkSelection(textarea) {
+    const { value, selectionStart: start, selectionEnd: end } = textarea;
+    const text = value.slice(start, end) || "ссылка";
+    textarea.value = `${value.slice(0, start)}[${text}](https://)${value.slice(end)}`;
+    const urlStart = start + text.length + 3;
+    textarea.focus();
+    textarea.setSelectionRange(urlStart, urlStart + "https://".length);
+    textarea.dispatchEvent(new Event("input"));
+  }
+
+  function quoteSelection(textarea) {
+    const { value, selectionStart: start, selectionEnd: end } = textarea;
+    const lineStart = value.lastIndexOf("\n", start - 1) + 1;
+    const quoted = value
+      .slice(lineStart, end)
+      .split("\n")
+      .map((line) => (line.startsWith("> ") ? line.slice(2) : `> ${line}`))
+      .join("\n");
+    textarea.value = value.slice(0, lineStart) + quoted + value.slice(end);
+    textarea.focus();
+    textarea.setSelectionRange(lineStart, lineStart + quoted.length);
+    textarea.dispatchEvent(new Event("input"));
+  }
+
+  const FORMATS = [
+    ["bold", "Жирный (Ctrl+B)", "<b>Ж</b>", (t) => wrapSelection(t, "**")],
+    ["italic", "Курсив (Ctrl+I)", "<i>К</i>", (t) => wrapSelection(t, "*")],
+    ["strike", "Зачёркнутый", "<s>З</s>", (t) => wrapSelection(t, "~~")],
+    [
+      "link",
+      "Ссылка (Ctrl+K)",
+      svgIcon('<path d="M10 14a4 4 0 0 0 5.7 0l3-3a4 4 0 0 0-5.7-5.7l-1 1"/><path d="M14 10a4 4 0 0 0-5.7 0l-3 3a4 4 0 0 0 5.7 5.7l1-1"/>'),
+      linkSelection,
+    ],
+    ["quote", "Цитата", svgIcon('<path d="M5 6h14M9 12h10M9 18h10M5 11v8"/>'), quoteSelection],
+  ];
+
+  // The formatting bar: shown over the field while text in it is selected - select a
+  // word, then make it bold - instead of a line of Markdown syntax under every box.
+  function buildFormatBar(textarea) {
+    const bar = document.createElement("div");
+    bar.className = "paragraph-comments__format";
+    bar.setAttribute("role", "toolbar");
+    bar.setAttribute("aria-label", "Форматирование");
+    bar.hidden = true;
+    function update() {
+      const selected = textarea.selectionEnd > textarea.selectionStart;
+      bar.hidden = !(selected && document.activeElement === textarea);
+    }
+    for (const [name, label, icon, run] of FORMATS) {
+      const button = document.createElement("button");
+      button.type = "button";
+      button.className = `paragraph-comments__format-btn paragraph-comments__format-btn--${name}`;
+      button.setAttribute("aria-label", label);
+      button.title = label;
+      button.innerHTML = icon;
+      // pointerdown, not only click: keep the textarea's selection and focus.
+      button.addEventListener("pointerdown", (event) => event.preventDefault());
+      button.addEventListener("click", () => {
+        run(textarea);
+        update();
+      });
+      bar.append(button);
+    }
+    textarea.addEventListener("select", update);
+    textarea.addEventListener("keyup", update);
+    textarea.addEventListener("mouseup", update);
+    textarea.addEventListener("blur", () => setTimeout(update, 0));
+    document.addEventListener("selectionchange", () => {
+      if (document.activeElement === textarea) update();
+    });
+    return bar;
+  }
+
   function insertAtCursor(textarea, text) {
     const start = textarea.selectionStart ?? textarea.value.length;
     const end = textarea.selectionEnd ?? textarea.value.length;
@@ -544,7 +636,7 @@
     textarea.rows = 2;
     textarea.maxLength = MAX_COMMENT_LENGTH;
     textarea.value = initialValue;
-    field.append(textarea);
+    field.append(buildFormatBar(textarea), textarea);
 
     // PR 150/151: staged client-side until «Отправить» - the file itself travels to the
     // server as multipart (submitComment below). One button for image/video/GIF alike -
@@ -664,6 +756,7 @@
     submit.type = "button";
     submit.className = "ui-btn ui-btn--primary ui-btn--sm paragraph-comments__submit";
     submit.textContent = submitLabel;
+    submit.title = "Ctrl+Enter";
 
     toolbar.append(triggers, counter, submit);
     field.append(toolbar);
@@ -673,16 +766,9 @@
     error.setAttribute("role", "alert");
     error.hidden = true;
 
-    // PR 148: the same minimal subset app/markdown_render.py actually renders.
-    const hint = document.createElement("p");
-    hint.className = "paragraph-comments__hint";
-    hint.textContent = "**жирный**, *курсив*, ~~зачёркнутый~~, [ссылка](url), списки";
-    const hintKeys = document.createElement("span");
-    hintKeys.className = "paragraph-comments__hint-keys"; // hidden on touch screens
-    hintKeys.textContent = " · Ctrl+Enter — отправить";
-    hint.append(hintKeys);
-
-    wrap.append(field, palette, error, hint);
+    // PR 148's line of Markdown syntax is gone: formatting is the bar over a selection
+    // (buildFormatBar) and Ctrl+B / Ctrl+I / Ctrl+K; Ctrl+Enter is the button's title.
+    wrap.append(field, palette, error);
 
     // Grows with its text up to a cap (app.css max-height), then scrolls.
     function autosize() {
@@ -749,9 +835,17 @@
       updateSubmitState();
     });
     textarea.addEventListener("keydown", (event) => {
-      if (event.key === "Enter" && (event.ctrlKey || event.metaKey)) {
+      const mod = event.ctrlKey || event.metaKey;
+      // Layout-independent: Ctrl+B/I/K on a Russian keyboard too.
+      const format = { KeyB: "bold", KeyI: "italic", KeyK: "link" }[event.code];
+      if (event.key === "Enter" && mod) {
         event.preventDefault();
         send();
+      } else if (mod && format && !event.shiftKey && !event.altKey) {
+        event.preventDefault();
+        if (format === "bold") wrapSelection(textarea, "**");
+        else if (format === "italic") wrapSelection(textarea, "*");
+        else linkSelection(textarea);
       } else if (event.key === "Escape" && onCancel) {
         event.preventDefault();
         event.stopPropagation();
