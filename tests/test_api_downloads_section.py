@@ -286,8 +286,8 @@ async def test_show_downloads_history_title_link_downloads_the_file_while_its_re
 
     assert response.status_code == 200
     file_href = f'href="/titles/6712--test-novel/download/{job.id}/file"'
-    # The title link, "Скачать", and (PR 314) the «Последняя загрузка» link in Сводка.
-    assert response.text.count(file_href) == 3
+    # The title link and the row's «Файл».
+    assert response.text.count(file_href) == 2
     assert '>/titles/6712--test-novel<' not in response.text
 
 
@@ -307,7 +307,8 @@ async def test_show_downloads_history_title_link_falls_back_once_the_file_is_gon
     response = client.get("/downloads")
 
     assert response.status_code == 200
-    assert 'class="downloads-history__link" href="/titles/6712--test-novel"' in response.text
+    link = 'class="dl-row__name downloads-history__link" href="/titles/6712--test-novel"'
+    assert link in response.text
 
 
 async def test_show_downloads_history_title_link_for_an_error_row_goes_to_the_title_page(
@@ -320,7 +321,8 @@ async def test_show_downloads_history_title_link_for_an_error_row_goes_to_the_ti
     response = client.get("/downloads")
 
     assert response.status_code == 200
-    assert 'class="downloads-history__link" href="/titles/6712--test-novel"' in response.text
+    link = 'class="dl-row__name downloads-history__link" href="/titles/6712--test-novel"'
+    assert link in response.text
 
 
 async def test_show_downloads_omits_download_link_once_the_file_is_gone(

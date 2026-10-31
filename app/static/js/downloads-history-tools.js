@@ -10,18 +10,21 @@
   const noResults = document.querySelector('[data-role="download-history-no-results"]');
   const clear = document.querySelector('[data-role="clear-download-history"]');
   let selected = "all";
+  // A history row and its day: «Загрузки» (.dl-row / .dl-day) or the older markup.
+  const ROW = ".dl-row, .downloads-history__item";
+  const DAY = ".dl-day";
 
   const update = () => {
     const query = (search?.value || "").trim().toLocaleLowerCase("ru");
     let visible = 0;
-    for (const row of root.querySelectorAll(".downloads-history__item")) {
+    for (const row of root.querySelectorAll(ROW)) {
       const matchesQuery = !query || row.dataset.historyTitle.includes(query);
       const matchesStatus = selected === "all" || row.dataset.historyStatus === selected;
       row.hidden = !(matchesQuery && matchesStatus);
       if (!row.hidden) visible += 1;
     }
-    for (const group of root.querySelectorAll(".wn-downloads-history__group")) {
-      group.hidden = !group.querySelector(".downloads-history__item:not([hidden])");
+    for (const group of root.querySelectorAll(DAY)) {
+      group.hidden = ![...group.querySelectorAll(ROW)].some((row) => !row.hidden);
     }
     if (noResults) noResults.hidden = visible !== 0;
   };
@@ -35,7 +38,7 @@
 
   function refreshSummary() {
     if (!summary) return;
-    const rows = [...root.querySelectorAll(".downloads-history__item")];
+    const rows = [...root.querySelectorAll(ROW)];
     if (rows.length === 0) {
       summary.hidden = true;
       return;
@@ -98,10 +101,10 @@
       if (count) count.textContent = "0";
       clear.remove();
       // PR 314: the whole table (one header for every day) goes, and the toolbar with it.
-      document.querySelector(".wn-downloads__tools")?.remove();
+      document.querySelector('[data-role="download-history-tools"]')?.remove();
       if (noResults) noResults.hidden = true;
       const empty = document.createElement("p");
-      empty.className = "wn-downloads-history-empty wn-downloads-history-empty--plain";
+      empty.className = "dl-empty";
       empty.dataset.role = "download-history-empty";
       empty.textContent = "Пока ничего не скачивали.";
       (document.querySelector('[data-role="download-history-table"]') || root).replaceWith(empty);
