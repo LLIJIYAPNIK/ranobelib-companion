@@ -150,17 +150,17 @@
   /* Reader theme (--r-*): Aurora Dark by default; the other four themes override the
      same names under [data-reader-theme] below. Not to be confused with the radii
      above - those are --r-<size>, these are --r-<role>. */
-  --r-bg: #0e0d17;
-  --r-text: #e6e2f3;
-  --r-text-read: #b4afc7;
-  --r-muted: #a29db8;
-  --r-accent: #22d3c5;
-  --r-active-tint: rgba(34, 211, 197, 0.06);
-  --r-hud: #121120;
-  --r-surface: #17152a;
-  --r-select: rgba(139, 92, 246, 0.2);
-  --r-track: #221f33;
-  --r-focus: #22d3c5;
+  --r-bg: #0c0c12;
+  --r-text: #e9e7f0;
+  --r-text-read: #aaa7b8;
+  --r-muted: #9b98ab;
+  --r-accent: #3dd6c3;
+  --r-active-tint: rgb(61 214 195 / 7%);
+  --r-hud: #0c0c12;
+  --r-surface: #16161e;
+  --r-select: rgb(61 214 195 / 22%);
+  --r-track: #24232d;
+  --r-focus: #3dd6c3;
 }
 
 /* ==========================================================================
@@ -389,7 +389,7 @@
   --r-active-tint: rgba(34, 211, 197, 0.07);
   --r-hud: #0a0a0f;
   --r-surface: #0e0d14;
-  --r-select: rgba(139, 92, 246, 0.22);
+  --r-select: rgb(61 214 195 / 22%);
   --r-track: #16151f;
   --r-focus: #22d3c5;
 }
@@ -403,7 +403,7 @@
   --r-active-tint: rgba(15, 118, 110, 0.08);
   --r-hud: #ede1ca;
   --r-surface: #eadcc3;
-  --r-select: rgba(124, 58, 237, 0.16);
+  --r-select: rgb(15 118 110 / 16%);
   --r-track: #e3d5bb;
   --r-focus: #0f766e;
 }
@@ -417,12 +417,12 @@
   --r-active-tint: rgba(15, 118, 110, 0.07);
   --r-hud: #f1eff6;
   --r-surface: #efedf5;
-  --r-select: rgba(124, 58, 237, 0.14);
+  --r-select: rgb(15 118 110 / 16%);
   --r-track: #e6e3ee;
   --r-focus: #0f766e;
 }
 
-/* "System" follows the OS: Aurora Dark (the :root defaults) when dark, Light when light. */
+/* "System" follows the OS: the dark default (the :root values) when dark, Light when light. */
 @media (prefers-color-scheme: light) {
   [data-reader-theme="system"] {
     --r-bg: #faf9fc;
@@ -433,7 +433,7 @@
     --r-active-tint: rgba(15, 118, 110, 0.07);
     --r-hud: #f1eff6;
     --r-surface: #efedf5;
-    --r-select: rgba(124, 58, 237, 0.14);
+    --r-select: rgb(15 118 110 / 16%);
     --r-track: #e6e3ee;
     --r-focus: #0f766e;
   }
@@ -3509,15 +3509,16 @@ html:has(dialog[open]) body {
   display: none;
 }
 
-/* The layer: context head, status line, thread, composer. */
+/* The layer: context head, status line, thread, composer - one surface step above the
+   page, no frame. */
 .paragraph-comments__layer {
   display: flex;
   flex-direction: column;
-  gap: 16px;
+  gap: 18px;
   margin-top: 12px;
-  padding: 16px 18px 18px;
-  border: 1px solid var(--pc-line);
-  border-radius: var(--r-xl);
+  padding: 18px 20px 20px;
+  border: 0;
+  border-radius: 20px;
   background: var(--pc-surface);
   color: var(--pc-text);
   text-align: left;
@@ -3549,13 +3550,11 @@ html:has(dialog[open]) body {
   min-width: 0;
 }
 
-/* PR 315: the accent alone was 4.04:1 on the sepia card - pulled 30% toward the
-   theme's text it clears 4.5:1 in all five themes. */
+/* «Абзац 4» in sentence case and the theme's muted ink - 4.5:1 on the card in all five
+   themes (PR 315's accent mix was there for the sepia card too). */
 .paragraph-comments__kicker {
-  color: color-mix(in srgb, var(--pc-accent) 70%, var(--pc-text));
-  font: 700 11px/14px var(--font-ui);
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
+  color: var(--pc-muted);
+  font: 600 13px/1.3 var(--font-ui);
 }
 
 .paragraph-comments__quote {
@@ -12750,27 +12749,6 @@ body.reader-hud-visible .reader-hud {
   background: var(--border);
 }
 
-.reader-hud__track,
-.reader-hairline {
-  height: 2px;
-  background: var(--r-track);
-}
-
-.reader-hud__fill,
-.reader-hairline__fill {
-  display: block;
-  width: 0;
-  height: 100%;
-  background: var(--r-accent);
-  transition: width var(--dur-base) var(--ease);
-}
-
-/* Mobile-only pieces. */
-.reader-hud-bottom,
-.reader-hairline {
-  display: none;
-}
-
 /* Reading column. PR 316: a flex item of the .main column - auto side margins there turn
    off stretching and shrink the column to its content (a short paragraph gave a narrow
    frame, one unbreakable word widened it past the screen), so the width is explicit and
@@ -12953,11 +12931,6 @@ body.reader-hud-visible .reader-hud {
   }
 }
 
-/* «⋯» sheet. */
-.reader-sheet .ui-list {
-  border: 0;
-  background: transparent;
-}
 
 /* Tap Focus onboarding (once per device). */
 .reader-onboarding {
@@ -12969,49 +12942,6 @@ body.reader-hud-visible .reader-hud {
 
 .reader-onboarding[hidden] {
   display: none;
-}
-
-.reader-onboarding__zones {
-  position: absolute;
-  inset: 0;
-  display: grid;
-  grid-template-columns: 28% 24% 48%;
-}
-
-.reader-onboarding__zone {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 10px;
-  padding: 30vh 6px 0;
-  border-right: 1px dashed rgba(245, 243, 255, 0.25);
-  color: var(--text-2);
-  font: 500 12px/1.3 var(--font-ui);
-  text-align: center;
-}
-
-.reader-onboarding__zone:last-child {
-  border-right: 0;
-}
-
-.reader-onboarding__zone b {
-  color: var(--text-1);
-  font: 800 14px/1.25 var(--font-ui);
-}
-
-.reader-onboarding__icon {
-  display: grid;
-  place-items: center;
-  width: 44px;
-  height: 44px;
-  border-radius: 50%;
-  background: rgba(245, 243, 255, 0.1);
-  color: var(--text-1);
-}
-
-.reader-onboarding__icon svg {
-  width: 20px;
-  height: 20px;
 }
 
 .reader-onboarding__card {
@@ -13121,78 +13051,6 @@ body.reader-hud-visible .reader-hud {
     font-size: 12px;
   }
 
-  .reader-hud-bottom {
-    position: fixed;
-    right: 0;
-    bottom: 0;
-    left: 0;
-    z-index: 60;
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    height: calc(52px + env(safe-area-inset-bottom, 0px));
-    padding: 0 var(--s-8) env(safe-area-inset-bottom, 0px);
-    border-top: 1px solid var(--r-track);
-    background: var(--r-hud);
-    opacity: 0;
-    transform: translateY(calc(8px * var(--motion-shift)));
-    pointer-events: none;
-    transition:
-      opacity var(--dur-exit) var(--ease-exit),
-      transform var(--dur-exit) var(--ease-exit);
-  }
-
-  body.reader-hud-visible .reader-hud-bottom {
-    opacity: 1;
-    transform: none;
-    pointer-events: auto;
-    transition:
-      opacity var(--dur-base) var(--ease),
-      transform var(--dur-base) var(--ease);
-  }
-
-  .reader-hud-bottom__link {
-    display: flex;
-    align-items: center;
-    gap: 6px;
-    height: 44px;
-    padding: 0 var(--s-12);
-    border-radius: var(--r-lg);
-    color: var(--r-muted);
-    font: 600 15px/1 var(--font-ui);
-    text-decoration: none;
-  }
-
-  .reader-hud-bottom__link svg {
-    width: 16px;
-    height: 16px;
-  }
-
-  .reader-hud-bottom__link:focus-visible {
-    outline: none;
-    box-shadow: 0 0 0 2px var(--r-focus);
-  }
-
-  /* 2px progress along the top edge while the HUD is away. */
-  .reader-hairline {
-    position: fixed;
-    top: env(safe-area-inset-top, 0px);
-    right: 0;
-    left: 0;
-    z-index: 55;
-    display: block;
-    background: var(--r-surface);
-    transition: opacity var(--dur-base) var(--ease);
-  }
-
-  .reader-hairline__fill {
-    opacity: 0.7;
-  }
-
-  body.reader-hud-visible .reader-hairline {
-    opacity: 0;
-  }
-
   .reader {
     max-width: 100%;
     padding: calc(env(safe-area-inset-top, 0px) + var(--s-16)) 22px calc(var(--s-64) + env(safe-area-inset-bottom, 0px));
@@ -13282,8 +13140,8 @@ body.reader-hud-visible .reader-hud {
 }
 
 .reader-theme__swatch--aurora {
-  background: #0e0d17;
-  color: #e6e2f3;
+  background: #0c0c12;
+  color: #e9e7f0;
 }
 
 .reader-theme__swatch--amoled {
@@ -13301,9 +13159,11 @@ body.reader-hud-visible .reader-hud {
   color: #1d1a28;
 }
 
+/* «Авто»: half night, half light - two flat fills, no gradient. */
 .reader-theme__swatch--system {
-  background: linear-gradient(135deg, #0e0d17 50%, #faf9fc 50%);
-  color: #8e88a8;
+  background: #0c0c12;
+  box-shadow: inset -20px 0 0 #faf9fc, 0 0 0 1px var(--border-strong);
+  color: #9b98ab;
 }
 
 .reader-theme__name {
@@ -29305,6 +29165,622 @@ body.reader-page--offline-copy .reader-paragraph-more {
   }
 }
 
+/* ==========================================================================
+   Reader «Корешок»: the reader on the site's canvas - teal only on progress, meta in
+   sentence case, the minutes left at the reader's own speed (reader-hud.js), the
+   controls in a dock at the foot of the screen with the volume's chapters and the
+   download as menus over it, Tap Focus marking the newest paragraph with a short
+   spine, comments in the site's look, and a white pill for every way on.
+   ========================================================================== */
+body.reader-page {
+  /* The middle of the area beside the sidebar and the column's width there - the dock
+     sits under the column. */
+  --rc-center: calc(var(--sidebar-width, 84px) + (100vw - var(--sidebar-width, 84px)) / 2);
+  --rc-col: min(var(--reader-width), calc(100vw - var(--sidebar-width, 84px) - 64px));
+}
+
+.reader__kicker {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0 10px;
+  margin: 0;
+  color: var(--r-muted);
+  font: 600 14px/1.4 var(--font-ui);
+  letter-spacing: 0;
+  text-transform: none;
+}
+
+.reader__minutes::before {
+  content: "·";
+  margin-right: 10px;
+}
+
+.reader__title {
+  font: 500 clamp(26px, 2.2vw, 32px)/1.2 var(--font-reader-serif);
+  letter-spacing: -0.01em;
+}
+
+.reader-hud__aa-mark {
+  font: 500 18px/1 var(--font-reader-serif);
+}
+
+.reader-hud__time {
+  color: var(--r-muted);
+  font: 500 13px/1 var(--font-ui);
+  white-space: nowrap;
+}
+
+.reader-hud__progress {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-right: 6px;
+}
+
+.reader-hud__progress-text {
+  color: var(--r-text);
+}
+
+.reader-hud__btn {
+  transition:
+    background-color var(--dur-press) var(--ease),
+    transform var(--dur-press) var(--ease);
+}
+
+.reader-hud__btn:active {
+  transform: scale(calc(1 - 0.06 * var(--motion-shift)));
+}
+
+/* Theme names at a readable size. */
+.reader-aa__content .reader-theme__name,
+.reader-theme__name {
+  font-size: 12px;
+}
+
+.reader-aa__content .reader-theme__swatch--system {
+  box-shadow: inset -17px 0 0 #faf9fc, 0 0 0 1px var(--border-strong);
+}
+
+.reader-theme input:checked ~ .reader-theme__swatch--system {
+  box-shadow: inset -17px 0 0 #faf9fc, 0 0 0 2px #16161e, 0 0 0 4px #eeecf4;
+}
+
+.reader-theme input:checked ~ .reader-theme__swatch {
+  box-shadow: 0 0 0 2px #16161e, 0 0 0 4px #eeecf4;
+}
+
+/* Aa panel on the site's own surface, rows split by space, not rules. */
+.reader-aa {
+  width: 340px;
+  border: 0;
+  border-radius: 20px;
+  background: #16161e;
+}
+
+.reader-aa__head {
+  height: 52px;
+  padding: 8px 10px 0 20px;
+}
+
+.reader-aa__title {
+  font: 800 16px/1 var(--font-ui);
+}
+
+.reader-aa__body {
+  gap: 6px;
+  padding: 4px 20px 8px;
+}
+
+.reader-aa__row {
+  gap: 10px;
+  padding: 10px 0;
+  border-bottom: 0;
+}
+
+.reader-aa__label {
+  color: #a3a0b5;
+  font: 600 13px/1.3 var(--font-ui);
+}
+
+.reader-aa__row--switch {
+  padding: 8px 0;
+}
+
+.reader-aa__row--switch .reader-aa__label {
+  color: #eeecf4;
+}
+
+.reader-aa__foot {
+  margin: 4px 20px 0;
+  padding: 6px 0 12px;
+  border-top: 1px solid #24222f;
+}
+
+.reader-aa__content .ui-segmented,
+.reader-aa__content .reader-stepper {
+  border-radius: 999px;
+  background: #0c0c12;
+}
+
+.reader-aa__content .ui-segmented__item span,
+.reader-aa__content .reader-stepper__btn {
+  border-radius: 999px;
+}
+
+.reader-aa__content .ui-segmented__item input:checked + span {
+  background: #eeecf4;
+  color: #0c0c12;
+}
+
+@media (hover: hover) {
+  .reader-aa__content .reader-stepper__btn:hover {
+    background: #24232d;
+  }
+}
+
+.reader-aa__content .ui-switch input[type="checkbox"]:checked {
+  background: #1d8c80;
+}
+
+@media (max-width: 767px) {
+  .reader-aa__content .reader-theme__swatch--system {
+    box-shadow: inset -20px 0 0 #faf9fc, 0 0 0 1px var(--border-strong);
+  }
+
+  .reader-aa__content .ui-segmented__item span {
+    padding: 0 4px;
+  }
+}
+
+/* The way on: an inverted pill, the one primary on the page. */
+.reader-end .ui-btn--primary {
+  --ui-btn-bg: var(--r-text);
+  --ui-btn-fg: var(--r-bg);
+  --ui-btn-hover: var(--r-text);
+  --ui-btn-active: var(--r-text-read);
+  border-radius: 999px;
+  transition:
+    transform var(--dur-press) var(--ease),
+    background-color var(--dur-base) var(--ease);
+}
+
+.reader-end .ui-btn--primary:active {
+  transform: scale(calc(1 - 0.03 * var(--motion-shift)));
+}
+
+.reader-end__kicker {
+  color: var(--r-muted);
+  font: 600 14px/1.3 var(--font-ui);
+  letter-spacing: 0;
+  text-transform: none;
+}
+
+.reader-end__name {
+  display: block;
+  color: var(--r-text);
+  font: 500 clamp(22px, 2vw, 28px)/1.25 var(--font-reader-serif);
+  text-wrap: balance;
+}
+
+.reader-end__title {
+  color: var(--r-muted);
+  font: 700 15px/1.3 var(--font-ui);
+}
+
+/* --- The dock ------------------------------------------------------------------- */
+/* The controls: a dock at the foot of the screen, under the column. */
+.reader-hud {
+  top: auto;
+  bottom: 20px;
+  left: var(--rc-center);
+  width: min(720px, calc(100vw - var(--sidebar-width, 84px) - 48px));
+  border: 0;
+  border-radius: 22px;
+  background: var(--r-surface);
+  box-shadow: 0 18px 44px rgb(0 0 0 / 42%);
+  transform: translate(-50%, calc(12px * var(--motion-shift)));
+}
+
+body.reader-hud-visible .reader-hud {
+  transform: translate(-50%, 0);
+}
+
+.reader-hud__bar {
+  height: 64px;
+  padding: 0 10px;
+}
+
+.reader-hud__time {
+  display: inline;
+}
+
+@media (hover: hover) {
+  .reader-hud__btn:hover,
+  .reader-hud__chapter:hover {
+    background: var(--r-track);
+  }
+}
+
+.reader-end {
+  gap: 10px;
+  margin-top: 56px;
+  padding: 28px;
+  border-radius: 22px;
+}
+
+.reader-end .ui-btn--primary {
+  height: 52px;
+  margin-top: 12px;
+}
+
+.reader {
+  padding-bottom: 140px;
+}
+
+@media (min-width: 768px) {
+  .reader {
+    padding-top: 88px;
+  }
+}
+
+@media (max-width: 767px) {
+  .reader-hud {
+    right: 12px;
+    bottom: calc(12px + env(safe-area-inset-bottom, 0px));
+    left: 12px;
+    width: auto;
+    padding-top: 0;
+    border-radius: 20px;
+    transform: translateY(calc(12px * var(--motion-shift)));
+  }
+
+  body.reader-hud-visible .reader-hud {
+    transform: none;
+  }
+
+  .reader-hud__bar {
+    height: 60px;
+    padding: 0 6px;
+  }
+
+  .reader-hud__btn--nav {
+    display: grid;
+  }
+
+  .reader-hud__progress-text--mobile {
+    display: flex;
+    gap: 6px;
+  }
+
+  .reader-hud__progress-text--mobile .reader-hud__time {
+    font-size: 12px;
+  }
+
+  /* No running percent - the page has its own scrollbar; minutes left say enough. */
+  .reader-end {
+    padding: 22px;
+  }
+}
+
+/* --- Tap Focus ------------------------------------------------------------------ */
+/* The newest paragraph has no plate: it is the one in full ink, with a short teal spine
+   in the gutter that grows down its height as it appears; what was read above it steps
+   back to --r-text-read. */
+.reader-content--book .reader-content__paragraph-wrap--active {
+  margin: 0 0 18px;
+  padding: 0 44px 0 0;
+  border-radius: 0;
+  background: none;
+  box-shadow: none;
+}
+
+.reader-content--book .reader-content__paragraph-wrap--active::before {
+  content: "";
+  position: absolute;
+  top: 4px;
+  bottom: 4px;
+  left: -22px;
+  width: 4px;
+  border-radius: 2px;
+  background: var(--r-accent);
+  transform-origin: top;
+  animation: reader-spine-grow 320ms var(--ease) both;
+}
+
+@keyframes reader-spine-grow {
+  from {
+    transform: scaleY(0.2);
+    opacity: 0;
+  }
+}
+
+.reader-content--book .reader-paragraph-more {
+  top: -6px;
+  right: -8px;
+}
+
+/* Onboarding: a card with the screen in miniature instead of dashed zones over it. */
+.reader-onboarding {
+  background: rgb(6 6 10 / 72%);
+}
+
+.reader-onboarding__card {
+  bottom: calc(24px + env(safe-area-inset-bottom, 0px));
+  gap: 10px;
+  max-width: 440px;
+  padding: 20px;
+  border: 0;
+  border-radius: 22px;
+  background: #16161e;
+  box-shadow: 0 24px 60px rgb(0 0 0 / 50%);
+  animation: ui-dialog-in var(--dur-sheet) var(--ease);
+}
+
+.reader-onboarding__map {
+  display: grid;
+  grid-template-columns: 28fr 24fr 48fr;
+  gap: 4px;
+  height: 116px;
+  margin-bottom: 8px;
+}
+
+.reader-onboarding__area {
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-end;
+  gap: 4px;
+  min-width: 0;
+  padding: 10px;
+  border-radius: 12px;
+  background: #0c0c12;
+  color: #a3a0b5;
+  font: 500 12px/1.25 var(--font-ui);
+}
+
+.reader-onboarding__area small {
+  font-size: 12px;
+}
+
+.reader-onboarding__area b {
+  color: #eeecf4;
+  font: 700 14px/1.2 var(--font-ui);
+}
+
+.reader-onboarding__area--next {
+  background: rgb(61 214 195 / 12%);
+}
+
+.reader-onboarding__area--next b {
+  color: #5eead4;
+}
+
+.reader-onboarding__title {
+  color: #eeecf4;
+  font: 800 17px/1.25 var(--font-ui);
+}
+
+.reader-onboarding__text {
+  color: #a3a0b5;
+  font: 500 14px/1.5 var(--font-ui);
+}
+
+.reader-onboarding__foot .ui-checkbox {
+  color: #cfcde0;
+}
+
+.reader-onboarding__foot .ui-checkbox input[type="checkbox"]:checked {
+  border-color: #eeecf4;
+  background: #eeecf4;
+}
+
+.reader-onboarding__foot .ui-checkbox input[type="checkbox"]:checked::after {
+  border-color: #0c0c12;
+}
+
+.reader-onboarding__ok {
+  --ui-btn-bg: #eeecf4;
+  --ui-btn-fg: #0c0c12;
+  --ui-btn-hover: #ffffff;
+  border-radius: 999px;
+}
+
+@media (max-width: 767px) {
+  .reader-content--book .reader-content__paragraph-wrap--active {
+    margin: 0 0 18px;
+    padding: 0 0 36px;
+  }
+
+  .reader-content--book .reader-content__paragraph-wrap--active::before {
+    bottom: 40px;
+    left: -14px;
+    width: 3px;
+  }
+
+  .reader-content--book .reader-paragraph-more {
+    top: auto;
+    right: -10px;
+    bottom: 0;
+  }
+
+  .reader-onboarding__map {
+    height: 104px;
+  }
+
+  .reader-onboarding__area {
+    padding: 8px;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .reader-content--book .reader-content__paragraph-wrap--active::before,
+
+}
+
+/* Tap Focus: quick taps are page turns, not a word or a paragraph to select (a
+   double tap selected text and the next tap only cleared it). Copying a paragraph goes
+   through its menu. */
+.reader-content--tap-to-read {
+  -webkit-user-select: none;
+  user-select: none;
+  -webkit-touch-callout: none;
+}
+
+/* A label with its control or value on the right end of the same line. */
+.reader-aa__label--with-control {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.reader-aa__value {
+  color: #eeecf4;
+  font-variant-numeric: tabular-nums;
+}
+
+.reader-aa__label--with-control .reader-stepper {
+  padding: 2px;
+}
+
+.reader-aa__label--with-control .reader-stepper__btn {
+  width: 34px;
+  height: 30px;
+}
+
+/* Keeping the screen awake is a phone's worry. */
+@media (hover: hover) and (pointer: fine) {
+  .reader-aa__row--wake {
+    display: none;
+  }
+}
+
+@media (max-width: 767px) {
+  /* The desktop progress block (share + minutes) stays out of the phone dock. */
+  .reader-hud__progress {
+    display: none;
+  }
+}
+
+/* --- Reactions and comments ------------------------------------------------------- */
+/* Chips are fills, not outlines; the reader's own reaction is the teal tint. */
+.wn-reaction,
+.paragraph-comments__toggle {
+  border-color: transparent;
+  background: color-mix(in srgb, var(--pc-muted) 12%, transparent);
+}
+
+.wn-reaction--quiet {
+  background: transparent;
+}
+
+.wn-reaction--mine,
+.paragraph-comments--open > .paragraph-comments__toggle {
+  border-color: transparent;
+  background: color-mix(in srgb, var(--pc-accent) 16%, transparent);
+  color: var(--pc-accent);
+}
+
+@media (hover: hover) {
+  .wn-reaction:not(.wn-reaction--mine):hover,
+  .paragraph-comments__toggle:hover {
+    background: color-mix(in srgb, var(--pc-muted) 20%, transparent);
+    color: var(--pc-text);
+  }
+}
+
+.wn-reaction:active,
+.paragraph-comments__toggle:active {
+  transform: scale(calc(1 - 0.05 * var(--motion-shift)));
+}
+
+.paragraph-comments__field {
+  border-color: transparent;
+  border-radius: 16px;
+}
+
+.paragraph-comments__field:focus-within {
+  border-color: var(--pc-focus);
+  box-shadow: none;
+}
+
+/* «Отправить» like every other way on in the reader: an inverted pill. */
+.paragraph-comments__submit {
+  --ui-btn-bg: var(--pc-text);
+  --ui-btn-fg: var(--pc-field);
+  --ui-btn-hover: var(--pc-text);
+  --ui-btn-active: var(--pc-muted);
+  border-radius: 999px;
+}
+
+.paragraph-comments__toolbar .paragraph-comments__submit[aria-disabled="true"] {
+  background: var(--pc-text);
+  color: var(--pc-field);
+  opacity: 0.3;
+}
+
+@media (max-width: 767px) {
+  /* «Пожаловаться» as a flag on a phone - its words stay its accessible name - so a
+     reply's row of actions fits on one line. */
+  /* A reply's actions fit one line at 390px: smaller avatars, tighter chips. */
+  .paragraph-comment {
+    --avatar: 32px;
+    column-gap: 10px;
+  }
+
+  .paragraph-comment--reply {
+    --avatar: 24px;
+  }
+
+  .paragraph-comment__reactions .wn-reaction,
+  .paragraph-comment__action {
+    padding: 0 6px;
+  }
+
+  .paragraph-comment__reactions .wn-reaction {
+    gap: 4px;
+  }
+
+  .paragraph-comment__action.paragraph-comment__report-toggle {
+    justify-content: center;
+    width: 40px;
+    padding: 0;
+    font-size: 0;
+  }
+
+  .paragraph-comment__report-toggle::before {
+    content: "";
+    width: 16px;
+    height: 16px;
+    background: currentColor;
+    -webkit-mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M5 21V4m0 0h11l-2 4 2 4H5'/%3E%3C/svg%3E") center / contain no-repeat;
+    mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M5 21V4m0 0h11l-2 4 2 4H5'/%3E%3C/svg%3E") center / contain no-repeat;
+  }
+
+  /* The way back to the title is the chapter name itself (it opens the contents); the
+     dock keeps its room for what is left to read. */
+  .reader-hud__back {
+    display: none;
+  }
+
+  .reader-hud__chapter {
+    min-width: 0;
+    padding-left: 10px;
+  }
+
+  .reader-hud__progress-text--mobile {
+    overflow: hidden;
+    max-width: 100%;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+}
+
+/* Tap Focus: the reactions under a paragraph start on the text's own left edge. */
+.reader-content__paragraph-wrap > .paragraph-comments {
+  padding-right: 0;
+  padding-left: 0;
+}
+
 /* Reading fonts: a drop-down - the chosen font in its own face, then the list grouped by
    kind, every name in its face, a check on the chosen one. */
 .reader-font-picker {
@@ -29446,6 +29922,310 @@ body.reader-page--offline-copy .reader-paragraph-more {
   -webkit-user-select: none;
   user-select: none;
   touch-action: manipulation;
+}
+
+/* --- Menus over the dock: download, the volume's chapters ------------------------- */
+.reader-menu {
+  position: fixed;
+  inset: auto var(--menu-right, auto) var(--menu-bottom, 96px) var(--menu-left, auto);
+  width: 280px;
+  max-width: calc(100vw - 24px);
+  max-height: min(70dvh, 560px);
+  margin: 0;
+  padding: 0;
+  overflow: hidden;
+  border: 0;
+  border-radius: 18px;
+  background: #16161e;
+  box-shadow: 0 20px 50px rgb(0 0 0 / 50%);
+  color: #eeecf4;
+  font-family: var(--font-ui);
+}
+
+.reader-menu[open] {
+  display: flex;
+  flex-direction: column;
+  animation: reader-menu-in var(--dur-sheet) var(--ease);
+  transform-origin: bottom;
+}
+
+@keyframes reader-menu-in {
+  from {
+    opacity: 0;
+    transform: translateY(calc(8px * var(--motion-shift))) scale(calc(1 - 0.03 * var(--motion-shift)));
+  }
+}
+
+.reader-menu::backdrop {
+  background: transparent;
+}
+
+.reader-menu__head {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 12px 8px 6px 16px;
+}
+
+.reader-menu__title {
+  flex: 1;
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  min-width: 0;
+  margin: 0;
+  font: 800 15px/1.2 var(--font-ui);
+}
+
+.reader-menu__title span {
+  color: #8c889f;
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.reader-menu__more {
+  color: #a3a0b5;
+  font: 600 13px/1 var(--font-ui);
+  text-decoration: none;
+  white-space: nowrap;
+}
+
+.reader-menu__close {
+  appearance: none;
+  display: grid;
+  place-items: center;
+  width: 32px;
+  height: 32px;
+  padding: 0;
+  border: 0;
+  border-radius: 999px;
+  background: transparent;
+  color: #a3a0b5;
+  cursor: pointer;
+}
+
+.reader-menu__close svg {
+  width: 16px;
+  height: 16px;
+}
+
+.reader-menu__list {
+  min-height: 0;
+  margin: 0;
+  padding: 2px 6px 6px;
+  overflow-y: auto;
+  list-style: none;
+  scrollbar-width: thin;
+}
+
+.reader-menu__item {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  padding: 10px 10px;
+  border-radius: 12px;
+  color: #eeecf4;
+  text-decoration: none;
+  transition: background-color var(--dur-press) var(--ease);
+}
+
+.reader-menu__item b {
+  font: 700 14px/1.2 var(--font-ui);
+}
+
+.reader-menu__item span {
+  color: #a3a0b5;
+  font: 500 13px/1.3 var(--font-ui);
+}
+
+@media (hover: hover) {
+  .reader-menu__item:hover,
+  .reader-menu__close:hover,
+  .reader-menu__more:hover {
+    background: #1f1e28;
+    color: #eeecf4;
+  }
+}
+
+.reader-menu__item:focus-visible,
+.reader-menu__close:focus-visible,
+.reader-menu__more:focus-visible {
+  outline: none;
+  box-shadow: inset 0 0 0 2px var(--focus);
+}
+
+/* The chapters: number and name on one line, the open one marked teal. */
+.reader-toc {
+  width: 380px;
+}
+
+.reader-toc__item {
+  flex-direction: row;
+  align-items: baseline;
+  gap: 10px;
+  padding: 9px 10px;
+}
+
+.reader-toc__item b {
+  flex: 0 0 auto;
+  min-width: 78px;
+  color: #8c889f;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+}
+
+.reader-toc__item span {
+  min-width: 0;
+  overflow: hidden;
+  color: #eeecf4;
+  font-size: 14px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.reader-toc__item--current {
+  background: rgb(61 214 195 / 12%);
+}
+
+.reader-toc__item--current b,
+.reader-toc__item--current span {
+  color: #5eead4;
+}
+
+@media (max-width: 767px) {
+  .reader-menu,
+  .reader-toc {
+    right: 12px;
+    left: 12px;
+    width: auto;
+    max-width: none;
+  }
+
+  .reader-menu__item {
+    padding: 12px;
+  }
+}
+
+/* --- Comments in the site's look --------------------------------------------------- */
+.paragraph-comments__quote {
+  border-left-color: var(--pc-line);
+  font: 400 15px/1.55 var(--font-reader-serif);
+}
+
+.paragraph-comments__list {
+  gap: 22px;
+}
+
+.paragraph-comment {
+  --avatar: 36px;
+  column-gap: 12px;
+}
+
+.paragraph-comment--reply {
+  --avatar: 30px;
+}
+
+.paragraph-comment__avatar {
+  color: var(--pc-text);
+  font-weight: 800;
+}
+
+.paragraph-comment__meta {
+  align-items: center;
+  min-height: 22px;
+  font: 500 13px/20px var(--font-ui);
+}
+
+.paragraph-comment__meta .paragraph-comment__author {
+  font: 700 var(--comment-font-size) / 20px var(--font-ui);
+}
+
+.paragraph-comment__time::before {
+  content: "· ";
+}
+
+.paragraph-comment__body {
+  margin-top: 4px;
+  color: var(--pc-text);
+  line-height: 1.6;
+}
+
+.paragraph-comment__body blockquote {
+  border-left-color: color-mix(in srgb, var(--pc-accent) 45%, transparent);
+}
+
+/* Votes as one quiet pill, then the text actions. */
+.paragraph-comment__actions {
+  gap: 4px;
+  margin-top: 8px;
+}
+
+.paragraph-comment__reactions {
+  gap: 0;
+  margin-right: 6px;
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--pc-muted) 12%, transparent);
+}
+
+.paragraph-comment__reactions .wn-reaction {
+  --reaction-h: 30px;
+  background: transparent;
+}
+
+.paragraph-comment__reactions .wn-reaction--mine {
+  background: color-mix(in srgb, var(--pc-accent) 16%, transparent);
+}
+
+.paragraph-comment__action {
+  min-height: 30px;
+  border-radius: 999px;
+  font-size: 13px;
+}
+
+.paragraph-comment__replies::before,
+.paragraph-comment__replies-line {
+  border-radius: 1px;
+}
+
+/* The composer: a field one step darker, its tools quiet until used. */
+.paragraph-comments__field {
+  position: relative;
+  padding: 12px 8px 8px 16px;
+  background: var(--pc-field);
+}
+
+.paragraph-comments__textarea {
+  font-size: var(--comment-font-size);
+  line-height: 1.55;
+}
+
+.paragraph-comments__icon-btn {
+  border-radius: 999px;
+}
+
+/* Emoji: every one at once, no box of its own to scroll - the page keeps the wheel. */
+.paragraph-comments__emoji-palette {
+  grid-template-columns: repeat(auto-fill, minmax(38px, 1fr));
+  max-height: none;
+  padding: 8px;
+  overflow: visible;
+  border: 0;
+  border-radius: 14px;
+  background: var(--pc-field);
+  animation: reader-fonts-in var(--dur-base) var(--ease);
+}
+
+.paragraph-comments__emoji {
+  height: 38px;
+  border-radius: 10px;
+  transition: transform var(--dur-press) var(--ease), background-color var(--dur-press) var(--ease);
+}
+
+@media (hover: hover) {
+  .paragraph-comments__emoji:hover {
+    background: color-mix(in srgb, var(--pc-muted) 16%, transparent);
+    transform: scale(calc(1 + 0.15 * var(--motion-shift)));
+  }
 }
 
 /* The formatting bar over a selection. */

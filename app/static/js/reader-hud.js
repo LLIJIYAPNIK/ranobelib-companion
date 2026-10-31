@@ -1,8 +1,8 @@
 // Reader HUD (PR 254, Aurora Ink "05 Спецификация" -> Reader HUD). Replaces the old
 // in-flow .reader-nav and PR 52's reveal-on-scroll-up copy (reader-scroll-nav.js) with a
-// single fixed bar; data-role="reader-scroll-nav" stays on it. While the HUD is up,
-// body.reader-hud-visible also shows the mobile bottom chapter bar and hides the 2px
-// progress hairline (app.css).
+// single fixed bar; data-role="reader-scroll-nav" stays on it. Reader «Корешок»: the bar
+// is a dock at the foot of the screen (app.css), and instead of a running percent it says
+// what is left - minutes in Scroll mode, paragraphs and minutes in Tap Focus.
 //
 // Shows: a center tap (Tap Focus dispatches "reader:toggle-hud"; in Scroll mode a
 //   touch tap in the middle 24% of the screen does), scrolling up >= 24px, the tab
@@ -12,7 +12,7 @@
 //   inside it.
 // Progress: Tap Focus reports revealed/total ("reader:progress"); in Scroll mode it's how
 //   far the chapter text has been scrolled.
-// Keys: A - Aa (reading settings), T - table of contents, Esc - close the sheet or HUD
+// Keys: A - Aa (reading settings), T - the volume's chapters, Esc - close the menu or HUD
 //   (never while typing in a field).
 (() => {
   const hud = document.querySelector('[data-role="reader-scroll-nav"]');
@@ -29,8 +29,6 @@
   const moreTrigger = document.querySelector('[data-role="reader-more-trigger"]');
   const aa = document.querySelector('[data-role="reader-aa"]');
   const tocLink = document.querySelector('[data-role="reader-toc-link"]');
-  const texts = document.querySelectorAll('[data-role="reader-progress-text"]');
-  const fills = document.querySelectorAll('[data-role="reader-progress-fill"]');
 
   let hideTimer = null;
 
@@ -66,14 +64,60 @@
   }
 
   // --- progress --------------------------------------------------------------------
+  // Minutes left: the words not read yet at the reader's own speed (readingSpeedWpm,
+  // the speed test - PR 77/78), 200 wpm until it's measured, same as tap-to-read.js.
+  const DEFAULT_WPM = 200;
+  const timeLeft = document.querySelectorAll('[data-role="reader-time-left"]');
+  const timeTotal = document.querySelector('[data-role="reader-time-total"]');
+  const words = (content.textContent.match(/\S+/g) || []).length;
+  function wpm() {
+    try {
+      const value = Number(JSON.parse(localStorage.getItem("readerSettings") || "{}").readingSpeedWpm);
+      return value > 0 ? value : DEFAULT_WPM;
+    } catch {
+      return DEFAULT_WPM;
+    }
+  }
+  const speed = wpm();
+  function minutes(count) {
+    return Math.max(1, Math.round(count / speed));
+  }
+  if (timeTotal && words) {
+    timeTotal.textContent = `≈ ${minutes(words)} мин`;
+    timeTotal.hidden = false;
+  }
+
   function setProgress(fraction) {
-    const percent = Math.round(Math.min(1, Math.max(0, fraction)) * 100);
-    texts.forEach((el) => {
-      el.textContent = `${percent}%`;
+    const share = Math.min(1, Math.max(0, fraction));
+    timeLeft.forEach((el) => {
+      el.textContent = leftLabel(share);
     });
-    fills.forEach((el) => {
-      el.style.width = `${percent}%`;
-    });
+  }
+
+  // What is left, in the HUD only - it shows when the reader asks for it (scrolling up,
+  // a tap in the middle), not under every paragraph. Tap Focus counts the paragraphs
+  // still hidden, Scroll mode the share of the text below the screen.
+  function paragraphsWord(count) {
+    const tens = count % 100;
+    const ones = count % 10;
+    if (tens >= 11 && tens <= 14) return "абзацев";
+    if (ones === 1) return "абзац";
+    if (ones >= 2 && ones <= 4) return "абзаца";
+    return "абзацев";
+  }
+  function leftLabel(share) {
+    if (!words) return "";
+    if (content.classList.contains("reader-content--tap-to-read")) {
+      const hidden = content.querySelectorAll(".reader-content__paragraph--hidden");
+      if (!hidden.length) return "глава дочитана";
+      let left = 0;
+      hidden.forEach((wrap) => {
+        left += (wrap.textContent.match(/\S+/g) || []).length;
+      });
+      return `Ещё ${hidden.length} ${paragraphsWord(hidden.length)} · ≈ ${minutes(left)} мин`;
+    }
+    const left = Math.round(words * (1 - share));
+    return left < 30 ? "глава дочитана" : `≈ ${minutes(left)} мин до конца`;
   }
 
   const tapMode = content.classList.contains("reader-content--tap-to-read");
@@ -146,7 +190,7 @@
   if (!tapMode) {
     document.addEventListener("click", (event) => {
       if (lastPointerType === "mouse") return;
-      if (event.target.closest("a, button, input, textarea, select, label, img, sup, dialog, [role='dialog'], [role='toolbar'], .reader-hud-bottom, .paragraph-reactions, .paragraph-comments, .paragraph-menu__panel, .bottom-sheet")) return;
+      if (event.target.closest("a, button, input, textarea, select, label, img, sup, dialog, [role='dialog'], [role='toolbar'], .paragraph-reactions, .paragraph-comments, .paragraph-menu__panel, .bottom-sheet")) return;
       if (String(window.getSelection() || "")) return;
       const x = event.clientX / window.innerWidth;
       if (x >= CENTER_ZONE[0] && x < CENTER_ZONE[1]) toggle();
@@ -164,9 +208,54 @@
     if (document.visibilityState === "visible") show();
   });
 
-  // --- «⋯» sheet -----------------------------------------------------------------------
+  // --- menus over the dock ---------------------------------------------------------------
+  // «Скачать главу» and the volume's chapters open as menus right over the button that
+  // opened them, not as a sheet over the whole screen: their bottom edge 10px above it,
+  // lined up with its right edge (download) or its left edge (chapters), kept on screen.
+  function placeOver(menu, opener, align) {
+    const rect = opener.getBoundingClientRect();
+    const margin = 12;
+    menu.style.setProperty("--menu-bottom", `${Math.max(margin, window.innerHeight - rect.top + 10)}px`);
+    if (align === "right") {
+      menu.style.setProperty("--menu-right", `${Math.max(margin, window.innerWidth - rect.right)}px`);
+      menu.style.removeProperty("--menu-left");
+    } else {
+      menu.style.setProperty("--menu-left", `${Math.max(margin, rect.left)}px`);
+      menu.style.removeProperty("--menu-right");
+    }
+  }
+
+  const toc = document.querySelector('[data-role="reader-toc"]');
+  if (toc && tocLink) {
+    tocLink.setAttribute("aria-haspopup", "dialog");
+    tocLink.addEventListener("click", (event) => {
+      event.preventDefault();
+      if (toc.open) {
+        toc.close();
+        return;
+      }
+      body.classList.add("reader-hud-visible");
+      clearTimeout(hideTimer);
+      placeOver(toc, tocLink, "left");
+      toc.showModal();
+      tocLink.setAttribute("aria-expanded", "true");
+      const current = toc.querySelector('[aria-current="page"]');
+      current?.scrollIntoView({ block: "center" });
+      current?.focus({ preventScroll: true });
+    });
+    toc.querySelector('[data-role="reader-toc-close"]')?.addEventListener("click", () => toc.close());
+    toc.addEventListener("click", (event) => {
+      if (event.target === toc) toc.close();
+    });
+    toc.addEventListener("close", () => {
+      tocLink.setAttribute("aria-expanded", "false");
+      scheduleHide();
+    });
+  }
+
   if (sheet && moreTrigger) {
     moreTrigger.addEventListener("click", () => {
+      placeOver(sheet, moreTrigger, "right");
       sheet.showModal();
       clearTimeout(hideTimer);
     });
