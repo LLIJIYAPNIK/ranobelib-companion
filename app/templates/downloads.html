@@ -2,92 +2,165 @@
 {% block title %}Загрузки — RanobeLib Companion{% endblock %}
 {% block content %}
 {#
-  PR 314 (Webnovells): the desktop composition - a hero with the one primary CTA (the
-  catalog, PR 309), then the queue beside a side column (a «Сводка» counted from the
-  history already on this page, and the «Каталог → Главы → Файл» steps), then the history
-  as one full-width table. Below 1100px the side column drops under the queue; on phones
-  everything is one column (PR 281's cards).
+  «Загрузки» in the home page's frame (.hm). The page answers «what is downloading and
+  where is my file» and does the one job it is for - downloading a title - itself:
+  on the left the title row with the summary, «Скачать тайтл» (a search, the library's
+  latest reads as one-click picks, the format, «Скачать») and «Сейчас»; on the right the
+  history, grouped by the user's own days, in a column with its own scroll. On phones
+  everything is one column in that order.
+
+  Hooks other scripts read: downloads-status.js (data-job-id rows, .downloads-list__link
+  for the cancel URL, bar-fill / bar-pct / status-text / eta-text, cancel-job),
+  download-history-delete.js and downloads-history-tools.js (.dl-row rows and their
+  data-history-*, .dl-day, the search / filter / tools / clear roles, the summary roles),
+  downloads-start.js (download-start*, download-pick).
 #}
-{% macro download_icon() -%}
-<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3v12m0 0 4-4m-4 4-4-4M5 19h14"/></svg>
-{%- endmacro %}
-{% macro history_when(entry) -%}
-{{ entry.finished_at[8:10] }}.{{ entry.finished_at[5:7] }} · {{ entry.finished_at[11:16] }}
+{% macro cover(title, fallback, cls="dl-cover") -%}
+<span class="{{ cls }}" aria-hidden="true">{% if title and title.cover_url %}<img src="{{ title.cover_url }}" alt="" loading="lazy">{% else %}<span>{{ fallback }}</span>{% endif %}</span>
 {%- endmacro %}
 {% macro history_status(entry) -%}
 {% if entry.status == "done" %}Готово{% elif entry.status == "cancelled" %}Отменено{% else %}{{ entry.error or "Ошибка" }}{% endif %}
 {%- endmacro %}
-<main class="downloads-page wn-downloads">
-  <header class="wn-downloads__head wn-downloads__hero">
-    <div class="wn-downloads__hero-copy">
-      <span class="wn-downloads__eyebrow">Локальная библиотека</span>
-      <h1 class="downloads-page__title">Загрузки</h1>
-      <p>Следите за текущими задачами и находите готовые файлы.</p>
-    </div>
-    {% if current_user %}<a class="wn-btn wn-btn--primary" href="/catalog">Открыть каталог</a>{% endif %}
-  </header>
-
+<main class="hm dl" data-role="downloads-page">
   {% if current_user %}
-  <div class="wn-downloads__overview">
-    <section class="downloads-section wn-downloads__section wn-downloads__queue" data-role="active-downloads">
-      <div class="wn-downloads__section-head">
-        <div><h2 class="downloads-section__title">Текущие</h2>{% if active_jobs %}<span>{{ active_jobs | length }}</span>{% endif %}</div>
+  {% set summary = history_summary %}
+  <div class="dl-main">
+    <header class="dl-head">
+      <h1 class="hm-title downloads-page__title">Загрузки</h1>
+      {% if history %}
+      <p class="dl-summary" data-role="downloads-summary">
+        <span><b class="hm-num" data-role="summary-done">{{ summary.done }}</b> {{ plural(summary.done, "файл готов", "файла готовы", "файлов готовы") }}</span>
+        {% if summary.chapters %}<span><b class="hm-num">{{ "{:,}".format(summary.chapters).replace(",", " ") }}</b> {{ plural(summary.chapters, "глава", "главы", "глав") }}</span>{% endif %}
+        <span class="dl-summary__error{% if summary.errors %} wn-downloads-summary__stat--error{% endif %}" data-role="summary-error-stat"{% if not summary.errors %} hidden{% endif %}><b class="hm-num" data-role="summary-error">{{ summary.errors }}</b> с ошибкой</span>
+        <span hidden><b data-role="summary-cancelled">{{ summary.cancelled }}</b></span>
+      </p>
+      {% else %}
+      <p class="dl-summary">Скачайте тайтл целиком в EPUB, FB2 или TXT — файл появится здесь.</p>
+      {% endif %}
+    </header>
+
+    {# --- Скачать тайтл ------------------------------------------------------------ #}
+    <section class="dl-panel dl-start" data-role="download-start" aria-labelledby="dl-start-title">
+      <h2 class="hm-h2" id="dl-start-title">Скачать тайтл</h2>
+      {# Without JS the field is the catalog's own search. #}
+      <form class="dl-search" action="/catalog" method="get" role="search" data-role="download-start-search">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="m16 16 4 4"/></svg>
+        <input type="search" name="query" placeholder="Название тайтла" aria-label="Найти тайтл по названию" autocomplete="off" role="combobox" aria-expanded="false" aria-controls="dl-suggest" aria-autocomplete="list" data-role="download-start-query">
+        <ul class="dl-suggest" id="dl-suggest" role="listbox" aria-label="Найденные тайтлы" data-role="download-start-suggest" hidden></ul>
+      </form>
+
+      {% if quick_picks %}
+      <div class="dl-picks">
+        <h3 class="dl-picks__title">Из библиотеки</h3>
+        <ul class="dl-picks__list">
+          {% for slug in quick_picks %}
+          {% set title = history_titles[slug] %}
+          <li>
+            <a class="dl-pick" href="/titles/{{ slug }}" data-role="download-pick" data-slug="{{ slug }}" data-name="{{ title.name }}" data-cover="{{ title.cover_url or '' }}">
+              {{ cover(title, title.name[:1], "dl-pick__cover") }}
+              <span class="dl-pick__name">{{ title.name }}</span>
+            </a>
+          </li>
+          {% endfor %}
+        </ul>
+      </div>
+      {% endif %}
+
+      {# The chosen title: filled by downloads-start.js; posts to the same endpoint the
+         title page does (POST /titles/{slug}/download). #}
+      <form class="dl-chosen" method="post" data-role="download-start-form" hidden>
+        <span class="dl-chosen__cover" aria-hidden="true"><img alt="" data-role="download-start-cover" hidden></span>
+        <div class="dl-chosen__copy">
+          <b class="dl-chosen__name" data-role="download-start-name"></b>
+          <span class="dl-chosen__meta" data-role="download-start-meta">Все главы, в одном файле</span>
+        </div>
+        <fieldset class="dl-formats" aria-label="Формат файла">
+          {% for fmt in export_formats %}
+          <label class="dl-format"><input type="radio" name="fmt" value="{{ fmt }}"{% if loop.first %} checked{% endif %}><span>{{ fmt | upper }}</span></label>
+          {% endfor %}
+        </fieldset>
+        <div class="dl-chosen__actions">
+          <button type="submit" class="dl-go" data-role="download-start-submit">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 4v11M7 10l5 5 5-5M5 20h14"/></svg>
+            Скачать
+          </button>
+          <button type="button" class="dl-chosen__reset" data-role="download-start-reset" aria-label="Выбрать другой тайтл">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M6 6l12 12M18 6 6 18"/></svg>
+          </button>
+        </div>
+        <p class="dl-chosen__error" data-role="download-start-error" role="alert" hidden></p>
+      </form>
+    </section>
+
+    {# --- Сейчас ------------------------------------------------------------------- #}
+    <section class="dl-now" data-role="active-downloads" aria-labelledby="dl-now-title">
+      <div class="dl-section-head">
+        <h2 class="hm-h2 downloads-section__title" id="dl-now-title">Сейчас</h2>
+        {% if active_jobs %}<span class="hm-num">{{ active_jobs | length }}</span>{% endif %}
       </div>
       {% if active_jobs %}
-      {% from "_active_downloads.html" import active_downloads_list with context %}
-      {{ active_downloads_list(active_jobs) }}
+      <ul class="dl-jobs">
+        {% for job in active_jobs %}
+        {% set title = history_titles.get(job.slug_url) %}
+        {% set pct = ((job.completed / job.total * 100) if job.total else 0) | int %}
+        <li class="dl-job" data-job-id="{{ job.id }}" data-status="{{ job.status }}">
+          {{ cover(title, job.fmt | upper, "dl-job__cover") }}
+          <div class="dl-job__body">
+            <div class="dl-job__line">
+              <a class="dl-job__name downloads-list__link" href="/titles/{{ job.slug_url }}/download/{{ job.id }}">{{ title.name if title else job.slug_url }}</a>
+              <b class="dl-job__pct hm-num" data-role="bar-pct">{{ pct }}%</b>
+            </div>
+            <div class="dl-job__bar" aria-hidden="true"><span data-role="bar-fill" style="width: {{ pct }}%"></span></div>
+            <div class="dl-job__meta">
+              <span class="dl-job__fmt">{{ job.fmt | upper }}</span>
+              <span data-role="status-text">
+                {%- if job.status == "queued" %}В очереди…
+                {%- elif job.status == "running" %}{% if job.total %}Скачивание · {{ job.completed }} из {{ job.total }} глав{% else %}Начинаем скачивание…{% endif %}
+                {%- elif job.status == "exporting" %}Сборка файла…
+                {%- elif job.status == "needs_translation" %}Нужен выбор перевода
+                {%- endif -%}
+              </span>
+              <span class="dl-job__eta" data-role="eta-text"></span>
+            </div>
+            {% if job.status == "needs_translation" %}
+            {# The choice right here (the same /retry the job's own page posts to); the
+               job resumes in place. #}
+            {% set variants = translation_variants.get(job.id, []) %}
+            <form class="dl-translation" method="post" action="/titles/{{ job.slug_url }}/download/{{ job.id }}/retry" data-role="download-translation-form">
+              <p class="dl-translation__text">У {{ job.ambiguous_chapters | length }} {{ plural(job.ambiguous_chapters | length, "главы", "глав", "глав") }} несколько переводов — какой скачать?</p>
+              <fieldset class="dl-translation__variants" aria-label="Вариант перевода">
+                {% for variant in variants %}
+                <label class="dl-variant">
+                  <input type="radio" name="translation_index" value="{{ variant.index }}"{% if loop.first %} checked{% endif %}>
+                  <span><b>Вариант {{ variant.index + 1 }}</b>{% if variant.who %} — {{ variant.who }}{% endif %}<small>{{ variant.chapters }} {{ plural(variant.chapters, "глава", "главы", "глав") }}</small></span>
+                </label>
+                {% endfor %}
+              </fieldset>
+              <div class="dl-translation__actions">
+                <button type="submit" class="dl-go">Скачать с этим переводом</button>
+                <a class="dl-translation__more" href="/titles/{{ job.slug_url }}/download/{{ job.id }}">Какие главы</a>
+              </div>
+            </form>
+            {% endif %}
+          </div>
+          <button type="button" class="dl-icon-btn" data-role="cancel-job" aria-label="Отменить загрузку" title="Отменить загрузку"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M6 6l12 12M18 6 6 18"/></svg></button>
+        </li>
+        {% endfor %}
+      </ul>
       {% else %}
-      <div class="wn-downloads-empty" data-role="downloads-empty-active">
-        <div class="wn-downloads-empty__icon">{{ download_icon() }}</div>
-        <div class="wn-downloads-empty__copy">
-          <h3>Сейчас ничего не скачивается</h3>
-          <p>Выберите тайтл и главы — загрузка появится здесь с прогрессом по главам, а готовый файл попадёт в историю.</p>
-        </div>
-        <a class="wn-btn wn-btn--secondary" href="/catalog">Открыть каталог</a>
-      </div>
+      <p class="dl-empty" data-role="downloads-empty-active">Сейчас ничего не скачивается — выберите тайтл выше, прогресс по главам появится здесь.</p>
       {% endif %}
     </section>
 
-    <aside class="wn-downloads__aside" aria-label="Сводка и подсказка">
-      {% if history %}
-      {% set summary = history_summary %}
-      <section class="wn-downloads-card wn-downloads-summary" data-role="downloads-summary" aria-labelledby="downloads-summary-title">
-        <div class="wn-downloads-card__head">
-          <h2 id="downloads-summary-title">Сводка</h2>
-          <span data-role="summary-scope">{{ summary.total }} {{ plural(summary.total, "последняя загрузка", "последние загрузки", "последних загрузок") }}</span>
-        </div>
-        <dl class="wn-downloads-summary__stats">
-          <div class="wn-downloads-summary__stat wn-downloads-summary__stat--done"><dt>Готово</dt><dd data-role="summary-done">{{ summary.done }}</dd></div>
-          <div class="wn-downloads-summary__stat{% if summary.errors %} wn-downloads-summary__stat--error{% endif %}" data-role="summary-error-stat"><dt>С ошибкой</dt><dd data-role="summary-error">{{ summary.errors }}</dd></div>
-          <div class="wn-downloads-summary__stat"><dt>Отменено</dt><dd data-role="summary-cancelled">{{ summary.cancelled }}</dd></div>
-        </dl>
-        {% set last = summary.last %}
-        {% set last_title = history_titles.get(last.slug_url) %}
-        <div class="wn-downloads-summary__last" data-role="summary-last">
-          <span class="wn-downloads-summary__label">Последняя загрузка</span>
-          <a class="wn-downloads-summary__name" data-role="summary-last-name" href="{{ ready_files[last.id] if last.id in ready_files else '/titles/' ~ last.slug_url }}">{{ last_title.name if last_title else last.slug_url ~ "." ~ last.fmt }}</a>
-          <span class="wn-downloads-summary__meta wn-technical" data-role="summary-last-meta">{{ last.fmt | upper }} · {{ history_when(last) }} · {{ history_status(last) }}</span>
-        </div>
-      </section>
-      {% endif %}
-
-      <section class="wn-downloads-card wn-downloads-howto" aria-labelledby="downloads-howto-title">
-        <div class="wn-downloads-card__head"><h2 id="downloads-howto-title">Как скачать</h2></div>
-        <ol class="wn-downloads-steps" aria-label="Как скачать тайтл">
-          <li><b>1</b><span>Каталог<small class="wn-downloads-steps__hint"> — найдите тайтл по названию</small></span></li><li aria-hidden="true"><i></i></li>
-          <li><b>2</b><span>Главы<small class="wn-downloads-steps__hint"> — выберите тома или диапазон</small></span></li><li aria-hidden="true"><i></i></li>
-          <li><b>3</b><span>Файл<small class="wn-downloads-steps__hint"> — EPUB, FB2 или TXT появится в истории ниже</small></span></li>
-        </ol>
-      </section>
-    </aside>
+    {% include "_offline_saved.html" %}
   </div>
 
-  {% include "_offline_saved.html" %}
-
-  <section class="downloads-section wn-downloads__section" data-role="downloads-history-section">
-    <div class="wn-downloads__section-head wn-downloads__history-head">
-      <div><h2 class="downloads-section__title">История</h2>{% if history %}<span data-role="history-count">{{ history | length }}</span>{% endif %}</div>
-      {% if history %}<button class="wn-downloads__clear" type="button" data-role="clear-download-history" aria-haspopup="dialog"><svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" aria-hidden="true"><path d="M3 6h18M8 6V4h8v2M6 6l1 15h10l1-15"/></svg>Очистить историю</button>{% endif %}
+  {# --- История (its own scroll on a computer) -------------------------------------- #}
+  <aside class="dl-panel dl-history" data-role="downloads-history-section" aria-labelledby="dl-history-title">
+    <div class="dl-section-head">
+      <h2 class="hm-h2 downloads-section__title" id="dl-history-title">История</h2>
+      {% if history %}<span class="hm-num" data-role="history-count">{{ history | length }}</span>
+      <button class="dl-history__clear" type="button" data-role="clear-download-history" aria-haspopup="dialog">Очистить</button>{% endif %}
     </div>
     {% if history %}
     {# PR 281: «Очистить историю?» on mobile - the content the shared bottom sheet
@@ -100,52 +173,46 @@
       </div>
     </div>
 
-    <div class="wn-downloads__tools">
-      <label class="wn-downloads-search">
+    <div class="dl-history__tools" data-role="download-history-tools">
+      <label class="dl-history__search">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="m16 16 4 4"/></svg>
-        <input class="wn-field__control" type="search" placeholder="Название или файл" aria-label="Поиск по названию или файлу" data-role="download-history-search">
+        <input type="search" placeholder="Название или файл" aria-label="Поиск по названию или файлу" data-role="download-history-search">
       </label>
-      <div class="wn-downloads-segments" role="group" aria-label="Фильтр истории">
-        <button type="button" class="wn-downloads-segments__button is-active" data-role="download-history-filter" data-filter="all" aria-pressed="true">Все</button>
-        <button type="button" class="wn-downloads-segments__button" data-role="download-history-filter" data-filter="done" aria-pressed="false">Готово</button>
-        <button type="button" class="wn-downloads-segments__button" data-role="download-history-filter" data-filter="error" aria-pressed="false">С ошибкой</button>
+      <div class="dl-segments" role="group" aria-label="Фильтр истории">
+        <button type="button" class="is-active" data-role="download-history-filter" data-filter="all" aria-pressed="true">Все</button>
+        <button type="button" data-role="download-history-filter" data-filter="done" aria-pressed="false">Готово</button>
+        <button type="button" data-role="download-history-filter" data-filter="error" aria-pressed="false">С ошибкой</button>
       </div>
     </div>
 
-    {# PR 314: one table - a single column header, the days as sub-headings inside it. #}
-    <div class="wn-downloads-table" data-role="download-history-table" role="table" aria-label="История загрузок">
-      <div class="wn-downloads-table__header" role="row">
-        <span role="columnheader">Тайтл</span><span role="columnheader">Формат</span><span role="columnheader">Глав</span><span role="columnheader">Время</span><span role="columnheader">Статус</span><span role="columnheader"><span class="wn-downloads-table__sr">Действия</span></span>
-      </div>
-      <div class="wn-downloads-history" data-role="download-history-groups">
+    <div class="dl-history__scroll" data-role="download-history-table">
+      <div data-role="download-history-groups">
         {% for group in history_groups %}
-        <section class="wn-downloads-history__group" data-history-date="{{ group.date }}" role="rowgroup" aria-label="{{ group.label }}">
-          <h3>{{ group.label }}</h3>
-          <ul class="downloads-history">
+        <section class="dl-day" data-history-date="{{ group.date }}" aria-label="{{ group.label }}">
+          <h3 class="dl-day__title">{{ group.label }}</h3>
+          <ul class="dl-rows">
             {% for entry in group.entries %}
-            {# PR 281: the title's name leads with the file name (the same {slug_url}.{fmt}
-               app/api/downloads.py serves it as) under it in mono; a title the SDK can't
-               resolve leads with the file name instead. #}
             {% set title = history_titles.get(entry.slug_url) %}
             {% set file_name = entry.slug_url ~ "." ~ entry.fmt %}
-            <li class="downloads-history__item wn-downloads-row" data-entry-id="{{ entry.id }}" data-history-status="{{ 'error' if entry.status == 'error' else 'done' }}" data-history-outcome="{{ entry.status }}" data-history-title="{{ ((title.name ~ ' ') if title else '') | lower }}{{ file_name | lower }}" data-history-meta="{{ entry.fmt | upper }} · {{ history_when(entry) }} · {{ history_status(entry) }}" role="row">
-              <span class="wn-downloads-row__title" role="cell">
-                <span class="wn-downloads-row__cover" aria-hidden="true">{% if title and title.cover_url %}<img src="{{ title.cover_url }}" alt="" loading="lazy">{% else %}{{ entry.fmt | upper }}{% endif %}</span>
-                <span class="wn-downloads-row__names{% if not title %} wn-downloads-row__names--file{% endif %}">
-                  <a class="downloads-history__link" href="{{ ready_files[entry.id] if entry.id in ready_files else '/titles/' ~ entry.slug_url }}">{{ title.name if title else file_name }}</a>
-                  {% if title %}<span class="wn-downloads-row__file">{{ file_name }}</span>{% endif %}
+            {% set time = history_times[entry.id] %}
+            {% set ready = entry.id in ready_files %}
+            <li class="dl-row{% if entry.status != 'done' %} dl-row--{{ entry.status }}{% endif %}" data-entry-id="{{ entry.id }}" data-history-status="{{ 'error' if entry.status == 'error' else 'done' }}" data-history-outcome="{{ entry.status }}" data-history-title="{{ ((title.name ~ ' ') if title else '') | lower }}{{ file_name | lower }}" data-history-meta="{{ entry.fmt | upper }} · {{ time }} · {{ history_status(entry) }}">
+              {{ cover(title, entry.fmt | upper, "dl-row__cover") }}
+              <div class="dl-row__body">
+                <a class="dl-row__name downloads-history__link" href="{{ ready_files[entry.id] if ready else '/titles/' ~ entry.slug_url }}">{{ title.name if title else file_name }}</a>
+                <span class="dl-row__meta">
+                  {{- entry.fmt | upper }}{% if entry.chapter_count %} · {{ entry.chapter_count }} {{ plural(entry.chapter_count, "глава", "главы", "глав") }}{% endif %} · {{ time -}}
+                  {% if entry.status != "done" %} · <span class="dl-row__status"{% if entry.status == "error" %} title="{{ history_status(entry) }}"{% endif %}>{{ history_status(entry) }}</span>{% endif %}
                 </span>
-              </span>
-              <span class="downloads-history__fmt" role="cell">{{ entry.fmt | upper }}</span>
-              {% set chapters_unit = plural(entry.chapter_count, "глава", "главы", "глав") if entry.chapter_count else "" %}
-              <span class="wn-technical wn-downloads-row__chapters{% if not entry.chapter_count %} wn-downloads-row__chapters--none{% endif %}" role="cell"{% if entry.chapter_count %} aria-label="{{ entry.chapter_count }} {{ chapters_unit }}"{% endif %}>{{ entry.chapter_count or '—' }}{% if entry.chapter_count %}<span class="wn-downloads-row__unit"> {{ chapters_unit }}</span>{% endif %}</span>
-              <span class="downloads-history__date wn-technical" role="cell">{{ entry.finished_at[11:16] }}</span>
-              <span class="downloads-history__status{% if entry.status == 'error' %} downloads-history__status--error{% elif entry.status == 'cancelled' %} downloads-history__status--cancelled{% endif %}" role="cell"{% if entry.status == 'error' %} title="{{ history_status(entry) }}"{% endif %}>{{ history_status(entry) }}</span>
-              <span class="wn-downloads-row__actions" role="cell">
-                {% if entry.id in ready_files %}<a class="downloads-history__download" href="{{ ready_files[entry.id] }}" aria-label="Скачать готовый файл"><svg class="wn-downloads-row__icon" viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" aria-hidden="true"><path d="M14 3H6a1 1 0 0 0-1 1v16a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1V8zM14 3v5h5"/></svg><span class="wn-downloads-row__label-short">Файл</span><span class="wn-downloads-row__label-long">Открыть</span></a>{% endif %}
-                <a href="/titles/{{ entry.slug_url }}" aria-label="Скачать тайтл снова"><svg class="wn-downloads-row__icon" viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" aria-hidden="true"><path d="M12 3v12M7 10l5 5 5-5M5 21h14"/></svg><span class="wn-downloads-row__label-short">Снова</span><span class="wn-downloads-row__label-long">Скачать снова</span></a>
-                <button type="button" class="downloads-history__delete" data-role="delete-history-entry" data-entry-id="{{ entry.id }}" aria-label="Удалить из истории" title="Удалить запись"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 6h14M9 6V4h6v2M7 6l1 14h8l1-14"/></svg></button>
-              </span>
+              </div>
+              <div class="dl-row__actions">
+                {% if ready %}
+                <a class="dl-row__file" href="{{ ready_files[entry.id] }}" aria-label="Скачать файл {{ file_name }}"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 4v11M7 10l5 5 5-5M5 20h14"/></svg>Файл</a>
+                {% else %}
+                <a class="dl-icon-btn" href="/titles/{{ entry.slug_url }}" data-role="download-pick" data-slug="{{ entry.slug_url }}" data-name="{{ title.name if title else entry.slug_url }}" data-cover="{{ title.cover_url if title and title.cover_url else '' }}" data-fmt="{{ entry.fmt }}" aria-label="Скачать снова" title="Скачать снова"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 12a8 8 0 1 1-2.3-5.6M20 4v5h-5"/></svg></a>
+                {% endif %}
+                <button type="button" class="dl-icon-btn dl-row__delete" data-role="delete-history-entry" data-entry-id="{{ entry.id }}" aria-label="Удалить из истории" title="Удалить запись"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 6h14M9 6V4h6v2M7 6l1 14h8l1-14"/></svg></button>
+              </div>
             </li>
             {% endfor %}
           </ul>
@@ -153,25 +220,23 @@
         {% endfor %}
       </div>
     </div>
-    <p class="wn-downloads__no-results" data-role="download-history-no-results" hidden>По этому запросу загрузок нет.</p>
+    <p class="dl-empty" data-role="download-history-no-results" hidden>По этому запросу загрузок нет.</p>
     {% else %}
-    <div class="wn-downloads-history-empty" data-role="download-history-empty">
-      <div class="wn-downloads-empty__icon">{{ download_icon() }}</div>
-      <div>
-        <h3>Пока ничего не скачивали</h3>
-        <p>Готовые файлы и загрузки с ошибкой появятся здесь — с поиском, фильтром и повторной загрузкой.</p>
-      </div>
-    </div>
+    <p class="dl-empty" data-role="download-history-empty">Пока ничего не скачивали. Готовые файлы и загрузки с ошибкой появятся здесь — с поиском и повторной загрузкой.</p>
     {% endif %}
-  </section>
+  </aside>
   {% else %}
-  {% from "_locked_feature.html" import locked_feature %}
-  {% call locked_feature("Загрузки скрыты", "/login", "Войти") %}
-  <a href="/login">Войдите</a> или <a href="/register">зарегистрируйтесь</a>, чтобы видеть свои загрузки и их историю.
-  {% endcall %}
-  {% include "_offline_saved.html" %}
+  <div class="dl-main">
+    <header class="dl-head"><h1 class="hm-title downloads-page__title">Загрузки</h1></header>
+    {% from "_locked_feature.html" import locked_feature %}
+    {% call locked_feature("Загрузки скрыты", "/login", "Войти") %}
+    <a href="/login">Войдите</a> или <a href="/register">зарегистрируйтесь</a>, чтобы скачивать тайтлы и видеть свои загрузки.
+    {% endcall %}
+    {% include "_offline_saved.html" %}
+  </div>
   {% endif %}
 </main>
+{% if current_user %}<script src="{{ static_url('js/downloads-start.js') }}" defer></script>{% endif %}
 <script src="{{ static_url('js/download-history-delete.js') }}" defer></script>
 <script src="{{ static_url('js/downloads-history-tools.js') }}" defer></script>
 {# PR 330: «Скачано» - read from this device's offline index. #}

@@ -37,8 +37,8 @@ def test_download_history_is_grouped_by_iso_date_in_original_order() -> None:
     )
 
     assert [(group.date, group.label) for group in groups] == [
-        ("2026-10-01", "01.10.2026"),
-        ("2026-09-30", "30.09.2026"),
+        ("2026-10-01", "1 октября"),
+        ("2026-09-30", "30 сентября"),
     ]
     assert [[entry.id for entry in group.entries] for group in groups] == [[1, 2], [3]]
 
@@ -55,9 +55,9 @@ def test_downloads_template_exposes_search_filter_and_clear_contracts() -> None:
     ):
         assert role in template
 
-    assert "Каталог" in template
-    assert "Главы" in template
-    assert "Файл" in template
+    # «Скачать тайтл» right on the page instead of the old «Каталог → Главы → Файл».
+    assert 'data-role="download-start"' in template
+    assert 'data-role="download-start-form"' in template
 
 
 def test_downloads_history_script_uses_existing_delete_endpoint_and_bulk_clear() -> None:
@@ -96,6 +96,11 @@ def test_downloads_redesign_renders_history_without_database(
     app.dependency_overrides[get_current_user] = override_current_user
     monkeypatch.setattr(downloads_section, "connection", _ConnectionContext)
     monkeypatch.setattr(downloads_section, "list_download_history", fake_history)
+
+    async def no_library(conn: object, user_id: int) -> list[object]:
+        return []
+
+    monkeypatch.setattr(downloads_section, "list_entries", no_library)
     monkeypatch.setattr(downloads_section, "list_active_jobs_for_user", lambda user_id: [])
     monkeypatch.setattr(downloads_section, "ready_file_url", lambda job_id, user_id: None)
 

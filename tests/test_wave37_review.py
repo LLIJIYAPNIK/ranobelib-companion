@@ -39,9 +39,10 @@ def test_library_search_button_keeps_its_focus_ring() -> None:
 
 
 def test_history_file_name_meets_contrast() -> None:
-    # #7d7990 on the row was 4.4:1.
-    assert "color: var(--wn-text-muted);" in _rule(".wn-downloads-row__file")
-    assert "#7d7990" not in _rule(".wn-downloads-row__file")
+    # #7d7990 on the row was 4.4:1. The history's line under the name («EPUB · 836 глав ·
+    # 13:43») keeps the muted ink that passes.
+    assert "color: var(--wn-text-muted);" in _rule(".dl-row__meta")
+    assert "#7d7990" not in _rule(".dl-row__meta")
 
 
 def test_comment_kicker_meets_contrast_in_sepia() -> None:
@@ -60,7 +61,7 @@ def test_summary_error_count_is_red_only_when_nonzero(
 
     html = _render(monkeypatch, history)
 
-    stat = re.search(r'<div class="([^"]*)" data-role="summary-error-stat">', html)
+    stat = re.search(r'<span class="([^"]*)" data-role="summary-error-stat"', html)
     assert stat
     assert ("wn-downloads-summary__stat--error" in stat.group(1)) is red
     assert 'toggle("wn-downloads-summary__stat--error", count("error") > 0)' in TOOLS
