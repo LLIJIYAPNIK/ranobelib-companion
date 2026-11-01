@@ -30575,176 +30575,252 @@ body.reader-hud-visible .reader-hud {
 }
 
 /* ==========================================================================
-   «Активность» in the home page's frame (.hm): on the left the title row with the
-   streak, the month's calendar beside the picked day, «Когда вы читаете» and «Недавно»;
-   on the right «Друзья» and «Популярное на Webnovells» (below 1100px one column). Teal
-   is the reading hue here as everywhere on the site: the mark under a day read, the
-   hours' bars. Panels are the quiet glass of «Загрузки».
+   «Активность» drawn as the home page and the library are: the book in front glows
+   behind the page (.hm-ambient), the picked day's card is a dark card washed with its
+   cover (.hl-art, as a library shelf), the month's calendar sits in glass at the card's
+   side, the light «Читать дальше» button, cover cards with a rank chip for the top five.
+   Below the card «Друзья» beside «Популярное», «Когда вы читаете» and «Недавно»; one
+   column below 1100px. Teal is the reading hue here as everywhere on the site: the
+   mark under a day read, a friend's streak, the hours' bars.
    ========================================================================== */
 .hm.ac {
-  display: grid;
-  grid-template-columns: minmax(0, 1fr) minmax(340px, 400px);
-  align-items: start;
-  gap: 28px;
   --ac-teal: var(--wn-teal);
+  --ac-card: #0d0d13;
 }
 
-/* A guest has only the locked card - no side column to keep room for. */
-.hm.ac--guest {
-  grid-template-columns: minmax(0, 1fr);
-}
-
-.ac-main,
-.ac-side {
-  display: flex;
-  flex-direction: column;
-  gap: 28px;
-  min-width: 0;
-}
-
-/* Figures set with a `font` shorthand reset .hm-num's numerals; digits keep their width. */
 .hm.ac .hm-num {
   font-variant-numeric: tabular-nums;
 }
 
-.ac-panel {
-  border: 1px solid var(--hm-glass-edge);
-  border-radius: var(--hm-radius);
-  background: var(--hm-glass);
+/* The glow follows the picked day's cover, cross-fading (activity-calendar.js). */
+.ac .hm-ambient {
+  transition: opacity 0.9s ease;
 }
 
-.ac-head {
+.ac .hm-ambient.is-hidden {
+  opacity: 0;
+}
+
+/* --- The title row: the title with the streak, what today holds; the search. --- */
+.ac-head__title {
   display: flex;
   flex-direction: column;
-  gap: 10px;
+  gap: 8px;
+  min-width: 0;
+}
+
+.ac-head__line {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 6px 14px;
+}
+
+.ac-head__count {
+  color: var(--ac-teal);
+  font: 700 15px/1 var(--wn-font-ui);
 }
 
 .ac-finding {
   margin: 0;
   color: var(--wn-text-secondary);
-  font: 500 16px/1.45 var(--wn-font-ui);
+  font: 500 15px/1.45 var(--wn-font-ui);
 }
 
 .ac-finding b {
-  color: var(--ac-teal);
-  font-weight: 800;
+  color: #fff;
+  font-weight: 700;
 }
 
-.ac-section-head {
-  display: flex;
-  align-items: baseline;
-  gap: 10px;
+.ac-head .hm-search {
+  width: 360px;
 }
 
-.ac-section-head--stack {
-  flex-direction: column;
-  gap: 4px;
-}
-
-.ac-section-head__count {
-  color: var(--wn-text-muted);
-  font: 700 15px/1 var(--wn-font-ui);
-}
-
-.ac-section-head__more {
-  margin-left: auto;
-  font-size: 13px;
-}
-
-.ac-empty {
-  margin: 0;
-  color: var(--wn-text-secondary);
-  font: 500 15px/1.5 var(--wn-font-ui);
-}
-
-.ac-cover {
+/* --- The picked day's card: the day on the left, the month in glass on the right. --- */
+.ac-month {
+  position: relative;
+  isolation: isolate;
   display: grid;
-  flex: none;
-  place-items: center;
+  grid-template-columns: minmax(0, 1fr) 400px;
+  align-items: center;
+  gap: 40px;
+  min-height: 440px;
+  padding: 32px;
   overflow: hidden;
-  border-radius: 6px;
-  background: #1d1c26;
-  color: var(--wn-text-muted);
-  font: 800 12px/1 var(--wn-font-ui);
-  text-decoration: none;
+  border: 1px solid var(--hm-glass-edge);
+  border-radius: 28px;
+  background: var(--ac-card);
 }
 
-.ac-cover img {
-  display: block;
+.ac-month__art {
+  opacity: 0.46;
+  transition: opacity 0.9s ease;
+}
+
+.ac-month__art.is-hidden {
+  opacity: 0;
+}
+
+.ac-days {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  min-width: 0;
+  padding-left: 4px;
+}
+
+/* The day as the home page's card: its covers large on the left, at the card's edge;
+   when and how much, with the way back in, beside them - nothing stands under them. */
+.ac-dayread {
+  display: grid;
+  grid-template-areas:
+    "covers copy"
+    "covers go";
+  grid-template-columns: fit-content(62%) minmax(190px, 1fr);
+  grid-template-rows: auto 1fr;
+  align-items: start;
+  gap: 24px clamp(28px, 3vw, 48px);
+  min-width: 0;
+  min-height: 330px;
+  animation: ac-in 0.45s var(--hm-ease) both;
+}
+
+.ac-dayread__copy {
+  grid-area: copy;
+  min-width: 0;
+  padding-top: 8px;
+}
+
+.ac-continue {
+  grid-area: go;
+  align-self: end;
+  justify-self: start;
+}
+
+.ac-dayread--empty {
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+}
+
+.ac-dayread[hidden] {
+  display: none;
+}
+
+@keyframes ac-in {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+}
+
+.ac-dayread__title {
+  margin: 0;
+  color: #fff;
+  font: 800 clamp(30px, 2.5vw, 44px)/1.08 var(--wn-font-ui);
+  letter-spacing: -0.03em;
+}
+
+.ac-dayread__sum {
+  display: flex;
+  flex-wrap: wrap;
+  margin: 12px 0 0;
+  color: rgb(255 255 255 / 74%);
+  font: 600 16px/1.4 var(--wn-font-ui);
+}
+
+.ac-dayread__span {
+  margin: 6px 0 0;
+  color: rgb(255 255 255 / 56%);
+  font: 600 14px/1.4 var(--wn-font-ui);
+}
+
+.ac-dayread__sum span + span::before {
+  content: "·";
+  margin: 0 8px;
+  color: rgb(255 255 255 / 40%);
+}
+
+/* The day's books as a short shelf of covers - it scrolls sideways when the day held
+   many, fading out under the card's edge instead of cutting a cover. */
+.ac-dayread__list {
+  grid-area: covers;
+  display: grid;
+  grid-auto-columns: 184px;
+  grid-auto-flow: column;
+  justify-content: start;
+  gap: 22px;
+  max-width: 100%;
+  margin: -6px 0 -6px -6px;
+  padding: 6px 40px 6px 6px;
+  overflow-x: auto;
+  overscroll-behavior-x: contain;
+  list-style: none;
+  scrollbar-width: none;
+  -webkit-mask-image: linear-gradient(90deg, #000 calc(100% - 40px), transparent);
+  mask-image: linear-gradient(90deg, #000 calc(100% - 40px), transparent);
+}
+
+.ac-dayread__list::-webkit-scrollbar {
+  display: none;
+}
+
+.ac-dayread__item {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  min-width: 0;
+}
+
+.ac-dayread__cover {
+  width: 100%;
+  box-shadow: 0 22px 44px -22px rgb(0 0 0 / 85%), inset 0 0 0 1px rgb(255 255 255 / 6%);
+  transition: transform 0.4s var(--hm-ease);
+}
+
+.ac-dayread__name {
+  display: -webkit-box;
+  overflow: hidden;
+  color: #fff;
+  font: 700 14px/1.3 var(--wn-font-ui);
+  text-decoration: none;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+  line-clamp: 2;
+}
+
+.ac-dayread__meta {
+  color: rgb(255 255 255 / 62%);
+  font: 600 12px/1.3 var(--wn-font-ui);
+}
+
+/* One book that day: its cover larger still. */
+.ac-dayread__list--one {
+  grid-auto-columns: 212px;
+}
+
+.ac-dayread__none {
+  max-width: 42ch;
+  margin: 14px 0 0;
+  color: rgb(255 255 255 / 70%);
+  font: 500 16px/1.5 var(--wn-font-ui);
+}
+
+.ac-cover__letter {
+  display: grid;
+  place-items: center;
   width: 100%;
   height: 100%;
-  object-fit: cover;
+  color: var(--wn-text-muted);
+  font: 800 22px/1 var(--wn-font-ui);
 }
 
-.ac-btn {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  align-self: flex-start;
-  height: 44px;
-  padding: 0 20px;
-  border-radius: 14px;
-  background: var(--hm-glass-raised);
-  color: var(--wn-text);
-  font: 800 14px/1 var(--wn-font-ui);
-  text-decoration: none;
-  transition: background-color 0.2s ease, transform 0.15s ease;
-}
-
-.ac-btn--light {
-  background: #f4f2fa;
-  color: #14111f;
-}
-
-@media (hover: hover) {
-  .ac-btn:hover {
-    background: rgb(255 255 255 / 16%);
-  }
-
-  .ac-btn--light:hover {
-    background: #fff;
-  }
-}
-
-.ac-btn:active {
-  transform: scale(0.97);
-}
-
-.ac-btn:focus-visible,
-.ac-day__tile:focus-visible,
-.ac-cal__arrow:focus-visible,
-.ac-friend__book:focus-visible,
-.ac-more__toggle:focus-visible {
-  outline: none;
-  box-shadow: var(--wn-focus-ring);
-}
-
-@media (hover: hover) {
-  .ac-dayread__name:hover,
-  .ac-event__title:hover,
-  .ac-pop__name:hover,
-  .ac-friend__name:hover,
-  .ac-more__name:hover {
-    color: #fff;
-    text-decoration: underline;
-    text-decoration-color: var(--wn-border-strong);
-    text-underline-offset: 3px;
-  }
-}
-
-/* --- The month: the calendar beside the picked day ------------------------------------ */
-.ac-month {
-  display: grid;
-  grid-template-columns: minmax(280px, 400px) minmax(0, 1fr);
-  gap: 36px;
-  padding: 24px 28px 26px;
-}
-
+/* The month: glass over the card's wash, as the home card's «Дальше». */
 .ac-cal {
   display: flex;
   flex-direction: column;
-  gap: 14px;
-  min-width: 0;
+  padding: 20px 18px 18px;
+  border-radius: 22px;
 }
 
 .ac-cal__head {
@@ -30752,38 +30828,39 @@ body.reader-hud-visible .reader-hud {
   align-items: center;
   justify-content: space-between;
   gap: 12px;
+  margin: 0 4px 12px;
+}
+
+.ac-cal__title {
+  margin: 0;
+  color: #fff;
+  font: 800 18px/1.2 var(--wn-font-ui);
 }
 
 .ac-cal__nav {
   display: flex;
-  gap: 4px;
+  gap: 8px;
 }
 
 .ac-cal__arrow {
-  display: grid;
-  place-items: center;
   width: 36px;
   height: 36px;
-  border-radius: 12px;
-  color: var(--wn-text-secondary);
-  transition: background-color 0.15s ease, color 0.15s ease;
 }
 
-.ac-cal__arrow svg {
-  width: 18px;
-  height: 18px;
+/* A month not fetched ahead yet: the card dims while it comes. */
+.ac-month .ac-days,
+.ac-month .ac-cal__grid {
+  transition: opacity 0.2s ease;
+}
+
+.ac-month.is-loading .ac-days,
+.ac-month.is-loading .ac-cal__grid {
+  opacity: 0.45;
 }
 
 .ac-cal__arrow[aria-disabled="true"] {
-  color: var(--wn-disabled-text);
-  opacity: 0.5;
-}
-
-@media (hover: hover) {
-  a.ac-cal__arrow:hover {
-    background: var(--hm-glass-raised);
-    color: var(--wn-text);
-  }
+  opacity: 0.35;
+  cursor: default;
 }
 
 .ac-cal__grid {
@@ -30801,15 +30878,11 @@ body.reader-hud-visible .reader-hud {
 .ac-cal__weekday {
   padding-bottom: 4px;
   color: var(--wn-text-muted);
-  font: 600 12px/1 var(--wn-font-ui);
+  font: 600 12px/1.6 var(--wn-font-ui);
   text-align: center;
 }
 
-/* A day: its number on a quiet tile; a day read gets a teal mark under the number,
-   brighter the longer the reading (the profile heatmap's scale). The picked day's tile
-   is lit; today's number is teal. */
 .ac-day {
-  display: grid;
   min-width: 0;
 }
 
@@ -30817,53 +30890,38 @@ body.reader-hud-visible .reader-hud {
   position: relative;
   display: grid;
   place-items: center;
-  height: 46px;
-  border-radius: 12px;
-  color: var(--wn-text-muted);
-  font: 600 15px/1 var(--wn-font-ui);
+  height: 44px;
+  border-radius: 14px;
+  color: var(--wn-text-secondary);
+  font: 700 15px/1 var(--wn-font-ui);
   text-decoration: none;
-  transition: background-color 0.15s ease, color 0.15s ease, transform 0.12s ease;
+  transition: background-color 0.15s ease, color 0.15s ease;
 }
 
-a.ac-day__tile {
-  cursor: pointer;
-}
-
-@media (hover: hover) {
-  a.ac-day__tile:hover {
-    background: var(--hm-glass);
-    color: var(--wn-text);
-  }
-}
-
-a.ac-day__tile:active {
-  transform: scale(0.94);
-}
-
+/* A day read: its number in full white, one teal dot under it - the same size for every
+   day; a longer day is only a brighter dot (--ac-mark). */
 .ac-day--read .ac-day__tile {
-  color: var(--wn-text);
-  font-weight: 800;
+  color: #fff;
 }
 
 .ac-day--read .ac-day__tile::after {
   content: "";
   position: absolute;
-  bottom: 7px;
-  left: 50%;
-  width: 6px;
-  height: 6px;
+  bottom: 6px;
+  left: calc(50% - 2.5px);
+  width: 5px;
+  height: 5px;
   border-radius: 50%;
   background: var(--ac-teal);
   opacity: var(--ac-mark, 1);
-  transform: translateX(-50%);
 }
 
 .ac-day--l1 {
-  --ac-mark: 0.45;
+  --ac-mark: 0.5;
 }
 
 .ac-day--l2 {
-  --ac-mark: 0.65;
+  --ac-mark: 0.7;
 }
 
 .ac-day--l3 {
@@ -30871,273 +30929,114 @@ a.ac-day__tile:active {
 }
 
 .ac-day--today .ac-day__tile {
-  color: var(--ac-teal);
-  font-weight: 800;
+  box-shadow: inset 0 0 0 1.5px rgb(255 255 255 / 32%);
+}
+
+.ac-day--selected .ac-day__tile {
+  background: #f4f2fa;
+  color: #14111f;
+  box-shadow: none;
 }
 
 .ac-day--future .ac-day__tile {
-  color: #4d4a5e;
+  color: var(--wn-text-muted);
+  opacity: 0.45;
 }
 
-.ac-day--selected .ac-day__tile,
-.ac-day--selected a.ac-day__tile:hover {
-  background: var(--hm-glass-raised);
+.ac-day__tile:focus-visible,
+.ac-cal__arrow:focus-visible,
+.ac-more__toggle:focus-visible {
+  outline: none;
+  box-shadow: var(--wn-focus-ring);
+}
+
+.ac-cal__total {
+  margin: 14px 4px 0;
+  color: var(--wn-text-secondary);
+  font: 600 13px/1.4 var(--wn-font-ui);
+}
+
+.ac-cal__total b {
   color: #fff;
-}
-
-/* --- The picked day ------------------------------------------------------------------- */
-.ac-days {
-  display: flex;
-  flex-direction: column;
-  min-width: 0;
-  padding-top: 2px;
-}
-
-.ac-dayread {
-  display: flex;
-  flex-direction: column;
-  gap: 14px;
-  animation: ac-in 0.28s var(--hm-ease) both;
-}
-
-.ac-dayread[hidden] {
-  display: none;
-}
-
-@keyframes ac-in {
-  from {
-    opacity: 0;
-    transform: translateY(6px);
-  }
-}
-
-.ac-dayread__title {
-  margin: 0;
-  color: var(--wn-text);
-  font: 800 20px/1.3 var(--wn-font-ui);
-}
-
-.ac-dayread__sum {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 6px 8px;
-  margin: -6px 0 0;
-}
-
-.ac-dayread__sum span {
-  padding: 5px 10px;
-  border-radius: 999px;
-  background: var(--hm-glass);
-  color: var(--wn-text-secondary);
-  font: 700 13px/1.2 var(--wn-font-ui);
-}
-
-.ac-dayread__list {
-  display: flex;
-  flex-direction: column;
-  gap: 12px;
-  margin: 4px 0 0;
-  padding: 0;
-  list-style: none;
-}
-
-.ac-dayread__item {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  min-width: 0;
-}
-
-.ac-dayread__cover {
-  width: 40px;
-  height: 58px;
-}
-
-.ac-dayread__copy {
-  display: flex;
-  flex-direction: column;
-  gap: 4px;
-  min-width: 0;
-}
-
-.ac-dayread__name {
-  overflow: hidden;
-  color: var(--wn-text);
-  font: 700 15px/1.3 var(--wn-font-ui);
-  text-decoration: none;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-.ac-dayread__meta {
-  color: var(--wn-text-muted);
-  font: 500 13px/1.3 var(--wn-font-ui);
-}
-
-.ac-dayread__none {
-  margin: 0;
-  color: var(--wn-text-muted);
-  font: 500 14px/1.4 var(--wn-font-ui);
-}
-
-.ac-continue {
-  margin-top: 4px;
-}
-
-/* --- Когда вы читаете: the month's time by hour of the day ---------------------------- */
-.ac-hours {
-  display: flex;
-  flex-direction: column;
-  gap: 10px;
-}
-
-.ac-hours__head {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: baseline;
-  justify-content: space-between;
-  gap: 6px 16px;
-}
-
-.ac-hours__total {
-  margin: 0;
-  color: var(--wn-text-secondary);
-  font: 500 14px/1.4 var(--wn-font-ui);
-}
-
-.ac-hours__total b {
-  color: var(--wn-text);
   font-weight: 800;
 }
 
-.ac-hours__finding {
+/* --- Below the card: friends beside the site's top five and the hours. --- */
+.ac-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1.1fr) minmax(0, 1fr);
+  align-items: start;
+  gap: 40px 28px;
+}
+
+.ac-aside {
+  display: flex;
+  flex-direction: column;
+  gap: 40px;
+  min-width: 0;
+}
+
+.ac-block-head {
+  display: flex;
+  align-items: baseline;
+  gap: 10px;
+  min-height: 28px;
+}
+
+.ac-block-head--stack {
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 4px;
+}
+
+.ac-section-head__count {
+  color: var(--wn-text-muted);
+  font: 600 15px/1 var(--wn-font-ui);
+}
+
+.ac-block-head__more,
+.ac-block-head__note {
+  margin-left: auto;
+}
+
+.ac-block-head__note {
+  color: var(--wn-text-muted);
+  font: 600 13px/1 var(--wn-font-ui);
+}
+
+/* A dark card, as a library shelf's, without a wash. */
+.ac-card {
+  margin: 0;
+  border: 1px solid var(--hm-glass-edge);
+  border-radius: 24px;
+  background: var(--ac-card);
+}
+
+.ac-empty {
   margin: 0;
   color: var(--wn-text-secondary);
   font: 500 15px/1.5 var(--wn-font-ui);
 }
 
-.ac-hours__finding b {
-  color: var(--wn-text);
-  font-weight: 800;
+p.ac-card.ac-empty {
+  padding: 22px 24px;
 }
 
-.ac-hours__chart {
+/* --- Друзья --- */
+.ac-friends__card {
   display: flex;
   flex-direction: column;
-  gap: 8px;
-  margin-top: 8px;
+  padding: 10px;
 }
 
-.ac-hours__plot {
-  display: grid;
-  grid-template-columns: repeat(24, minmax(0, 1fr));
-  align-items: end;
-  gap: 4px;
-  height: 104px;
-  border-bottom: 2px solid var(--hm-glass-edge);
+.ac-friends__card > .ac-empty {
+  padding: 14px 14px 18px;
 }
 
-/* Square-cornered columns from the baseline; an hour with no reading shows nothing. */
-.ac-hours__bar {
-  height: var(--h);
-  min-height: 0;
-  border-radius: 3px 3px 0 0;
-  background: color-mix(in srgb, var(--ac-teal) 55%, var(--wn-canvas));
-}
-
-.ac-hours__bar--peak {
-  background: var(--ac-teal);
-}
-
-.ac-hours__axis,
-.ac-hours__parts {
-  display: flex;
-  justify-content: space-between;
-  color: var(--wn-text-muted);
-  font: 500 12px/1 var(--wn-font-ui);
-}
-
-.ac-hours__parts {
-  justify-content: space-around;
-}
-
-/* --- Недавно ------------------------------------------------------------------------- */
-.ac-recent {
+.ac-friends__list {
   display: flex;
   flex-direction: column;
-  gap: 14px;
-}
-
-.ac-events {
-  display: flex;
-  flex-direction: column;
-  margin: 0;
-  padding: 0;
-  list-style: none;
-}
-
-.ac-event {
-  display: grid;
-  grid-template-columns: 34px minmax(0, 1fr) auto;
-  align-items: center;
-  gap: 14px;
-  padding: 10px 0;
-}
-
-.ac-event + .ac-event {
-  border-top: 1px solid var(--hm-glass-edge);
-}
-
-.ac-event__cover {
-  width: 34px;
-  height: 50px;
-}
-
-.ac-event__copy {
-  display: flex;
-  flex-direction: column;
-  gap: 4px;
-  min-width: 0;
-}
-
-.ac-event__title {
-  overflow: hidden;
-  color: var(--wn-text);
-  font: 700 14px/1.35 var(--wn-font-ui);
-  text-decoration: none;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-.ac-event__sub,
-.ac-event__time {
-  color: var(--wn-text-muted);
-  font: 500 13px/1.3 var(--wn-font-ui);
-}
-
-.ac-event__sub {
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-.ac-event--download_error .ac-event__sub {
-  color: var(--wn-danger);
-}
-
-/* --- Друзья -------------------------------------------------------------------------- */
-.ac-friends,
-.ac-popular {
-  display: flex;
-  flex-direction: column;
-  gap: 16px;
-  padding: 22px 22px 18px;
-}
-
-.ac-friends__list,
-.ac-popular__list {
-  display: flex;
-  flex-direction: column;
+  gap: 2px;
   margin: 0;
   padding: 0;
   list-style: none;
@@ -31145,17 +31044,11 @@ a.ac-day__tile:active {
 
 .ac-friend {
   display: grid;
-  grid-template-columns: 40px minmax(0, 1fr);
-  gap: 12px;
-  padding: 12px 0;
-}
-
-.ac-friend:first-child {
-  padding-top: 0;
-}
-
-.ac-friend + .ac-friend {
-  border-top: 1px solid var(--hm-glass-edge);
+  grid-template-columns: 44px minmax(0, 1fr);
+  gap: 14px;
+  padding: 14px;
+  border-radius: 18px;
+  transition: background-color 0.15s ease;
 }
 
 .ac-friend__avatar,
@@ -31167,13 +31060,7 @@ a.ac-day__tile:active {
   border-radius: 50%;
   background: var(--wn-surface-raised);
   color: var(--wn-text-secondary);
-  font: 800 14px/1 var(--wn-font-ui);
   text-decoration: none;
-}
-
-.ac-friend__avatar {
-  width: 40px;
-  height: 40px;
 }
 
 .ac-friend__avatar img,
@@ -31184,62 +31071,63 @@ a.ac-day__tile:active {
   object-fit: cover;
 }
 
+.ac-friend__avatar {
+  width: 44px;
+  height: 44px;
+  font: 800 14px/1 var(--wn-font-ui);
+}
+
 .ac-friend__body {
   display: flex;
   flex-direction: column;
   align-items: flex-start;
-  gap: 8px;
   min-width: 0;
 }
 
 .ac-friend__line {
   display: flex;
+  flex-wrap: wrap;
   align-items: baseline;
-  justify-content: space-between;
-  gap: 10px;
+  gap: 4px 10px;
   width: 100%;
-  min-height: 20px;
+  min-height: 44px;
+  padding-top: 11px;
 }
 
 .ac-friend__name {
-  overflow: hidden;
-  color: var(--wn-text);
+  color: #fff;
   font: 800 15px/1.3 var(--wn-font-ui);
   text-decoration: none;
-  text-overflow: ellipsis;
-  white-space: nowrap;
 }
 
-.ac-friend__when,
-.ac-more__when {
-  flex: none;
+.ac-friend__streak {
+  color: var(--ac-teal);
+  font: 700 13px/1.3 var(--wn-font-ui);
+}
+
+.ac-friend__when {
+  margin-left: auto;
   color: var(--wn-text-muted);
-  font: 500 12px/1.3 var(--wn-font-ui);
+  font: 600 12.5px/1.3 var(--wn-font-ui);
 }
 
 .ac-friend__book {
   display: flex;
   align-items: center;
-  gap: 10px;
+  gap: 12px;
   max-width: 100%;
-  margin: 0 -6px;
-  padding: 6px;
-  border-radius: 12px;
+  margin-top: 2px;
+  padding: 8px 14px 8px 8px;
+  border-radius: 14px;
+  background: rgb(255 255 255 / 4%);
   color: inherit;
   text-decoration: none;
   transition: background-color 0.15s ease;
 }
 
-@media (hover: hover) {
-  .ac-friend__book:hover {
-    background: var(--hm-glass);
-  }
-}
-
 .ac-friend__cover {
-  width: 28px;
-  height: 42px;
-  border-radius: 5px;
+  width: 40px;
+  border-radius: 8px;
 }
 
 .ac-friend__book-copy {
@@ -31251,57 +31139,60 @@ a.ac-day__tile:active {
 
 .ac-friend__book-name {
   overflow: hidden;
-  color: var(--wn-text);
+  color: #fff;
   font: 700 14px/1.3 var(--wn-font-ui);
   text-overflow: ellipsis;
   white-space: nowrap;
 }
 
 .ac-friend__meta {
-  color: var(--wn-text-muted);
-  font: 500 13px/1.3 var(--wn-font-ui);
-}
-
-.ac-friend__streak {
-  color: var(--ac-teal);
-  font: 700 13px/1.3 var(--wn-font-ui);
+  color: rgb(255 255 255 / 62%);
+  font: 600 12px/1.3 var(--wn-font-ui);
 }
 
 .ac-friend__comment {
   display: -webkit-box;
+  margin-top: 10px;
   overflow: hidden;
-  color: var(--wn-text-secondary);
-  font: 500 13px/1.45 var(--wn-font-ui);
+  color: rgb(255 255 255 / 80%);
+  font: 500 14px/1.5 var(--wn-font-ui);
   text-decoration: none;
   -webkit-box-orient: vertical;
   -webkit-line-clamp: 2;
+  line-clamp: 2;
 }
 
-@media (hover: hover) {
-  .ac-friend__comment:hover {
-    color: var(--wn-text);
-  }
+.ac-friends__none {
+  margin: 0;
+  padding: 14px;
+  color: var(--wn-text-secondary);
+  font: 500 15px/1.5 var(--wn-font-ui);
 }
 
-/* The friends past the first few: faces and a count that opens a compact list with its
-   own scroll - the panel never grows with a long friends list. */
-.ac-more {
-  margin-top: -4px;
-  border-top: 1px solid var(--hm-glass-edge);
+.ac-friends__find {
+  align-self: flex-start;
+  margin: 0 14px 14px;
+}
+
+/* The rest of the friends, folded: faces and a label that open a list with its own
+   scroll - the card never grows with the friends. */
+.ac-friends__folds {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  margin-top: 8px;
 }
 
 .ac-more__toggle {
   display: flex;
   align-items: center;
   gap: 12px;
-  min-height: 52px;
-  padding: 8px 6px;
-  margin: 4px -6px 0;
-  border-radius: 12px;
+  padding: 12px 14px;
+  border-radius: 16px;
   color: var(--wn-text-secondary);
-  font: 700 14px/1.2 var(--wn-font-ui);
-  cursor: pointer;
+  font: 700 14px/1.3 var(--wn-font-ui);
   list-style: none;
+  cursor: pointer;
   transition: background-color 0.15s ease, color 0.15s ease;
 }
 
@@ -31309,32 +31200,30 @@ a.ac-day__tile:active {
   display: none;
 }
 
-@media (hover: hover) {
-  .ac-more__toggle:hover {
-    background: var(--hm-glass);
-    color: var(--wn-text);
-  }
-}
-
 .ac-more__faces {
   display: flex;
-  padding-left: 6px;
 }
 
 .ac-more__face {
-  width: 30px;
-  height: 30px;
-  margin-left: -6px;
-  box-shadow: 0 0 0 2px #15141c;
-  font-size: 10px;
-  letter-spacing: -0.02em;
+  width: 28px;
+  height: 28px;
+  border: 2px solid var(--ac-card);
+  font: 800 10px/1 var(--wn-font-ui);
+}
+
+.ac-more__face + .ac-more__face {
+  margin-left: -8px;
+}
+
+.ac-more--idle .ac-more__face {
+  opacity: 0.7;
 }
 
 .ac-more__chevron {
   width: 18px;
   height: 18px;
   margin-left: auto;
-  transition: transform 0.2s ease;
+  transition: transform 0.25s var(--hm-ease);
 }
 
 .ac-more[open] .ac-more__chevron {
@@ -31342,14 +31231,12 @@ a.ac-day__tile:active {
 }
 
 .ac-more__list {
-  display: flex;
-  flex-direction: column;
   max-height: 336px;
-  margin: 4px 0 0;
-  padding: 0 4px 0 0;
+  margin: 0;
+  padding: 2px 14px 10px;
   overflow-y: auto;
-  list-style: none;
   overscroll-behavior: contain;
+  list-style: none;
   scrollbar-width: thin;
 }
 
@@ -31358,98 +31245,259 @@ a.ac-day__tile:active {
   grid-template-columns: 32px minmax(0, 1fr) auto;
   align-items: center;
   gap: 12px;
-  min-height: 48px;
+  padding: 7px 0;
 }
 
 .ac-more__avatar {
   width: 32px;
   height: 32px;
-  font-size: 12px;
+  font: 800 11px/1 var(--wn-font-ui);
 }
 
 .ac-more__name {
   overflow: hidden;
-  color: var(--wn-text);
+  color: #fff;
   font: 700 14px/1.3 var(--wn-font-ui);
   text-decoration: none;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
 
-.ac-more__all {
-  display: inline-block;
-  margin-top: 10px;
-  font-size: 13px;
+.ac-more__when {
+  color: var(--wn-text-muted);
+  font: 600 12px/1.3 var(--wn-font-ui);
 }
 
-/* --- Популярное ---------------------------------------------------------------------- */
-.ac-pop {
+/* --- Популярное: the top five as cover cards, the rank as a glass chip. --- */
+.ac-popular__list {
   display: grid;
-  grid-template-columns: 18px 34px minmax(0, 1fr);
-  align-items: center;
-  gap: 12px;
-  padding: 8px 0;
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  gap: 16px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.ac-pop .hm-card__cover {
+  position: relative;
 }
 
 .ac-pop__rank {
+  position: absolute;
+  top: 8px;
+  left: 8px;
+  display: grid;
+  place-items: center;
+  min-width: 28px;
+  height: 28px;
+  padding: 0 8px;
+  border: 1px solid rgb(255 255 255 / 14%);
+  border-radius: 999px;
+  background: rgb(10 10 16 / 62%);
+  color: #fff;
+  font: 800 13px/1 var(--wn-font-ui);
+  -webkit-backdrop-filter: blur(10px);
+  backdrop-filter: blur(10px);
+  pointer-events: none;
+}
+
+/* --- Когда вы читаете --- */
+.ac-hours__card {
+  padding: 22px 24px 18px;
+}
+
+.ac-hours__finding {
+  margin: 0;
+  color: var(--wn-text);
+  font: 500 15px/1.5 var(--wn-font-ui);
+}
+
+.ac-hours__finding b {
+  color: #fff;
+  font-weight: 800;
+}
+
+.ac-hours__chart {
+  margin-top: 20px;
+}
+
+.ac-hours__plot {
+  display: flex;
+  align-items: flex-end;
+  gap: 4px;
+  height: 120px;
+}
+
+.ac-hours__bar {
+  flex: 1;
+  height: var(--h);
+  border-radius: 4px 4px 2px 2px;
+  background: color-mix(in srgb, var(--ac-teal) 38%, transparent);
+}
+
+.ac-hours__bar--peak {
+  background: var(--ac-teal);
+}
+
+.ac-hours__axis,
+.ac-hours__parts {
   color: var(--wn-text-muted);
-  font: 700 13px/1 var(--wn-font-ui);
-  text-align: right;
+  font: 600 12px/1.4 var(--wn-font-ui);
 }
 
-.ac-pop__cover {
-  width: 34px;
-  height: 50px;
+.ac-hours__axis {
+  display: flex;
+  justify-content: space-between;
+  margin-top: 8px;
 }
 
-.ac-pop__copy {
+.ac-hours__parts {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  margin-top: 2px;
+  text-align: center;
+}
+
+/* --- Недавно: rows in one card. --- */
+.ac-events {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 2px;
+  padding: 10px;
+  list-style: none;
+}
+
+.ac-event {
+  display: grid;
+  grid-template-columns: 40px minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 14px;
+  min-width: 0;
+  padding: 10px;
+  border-radius: 16px;
+  transition: background-color 0.15s ease;
+}
+
+.ac-event__cover {
+  width: 40px;
+  border-radius: 8px;
+}
+
+.ac-event__copy {
   display: flex;
   flex-direction: column;
-  gap: 5px;
+  gap: 3px;
   min-width: 0;
 }
 
-.ac-pop__name {
-  display: -webkit-box;
+.ac-event__title,
+.ac-event__sub {
   overflow: hidden;
-  color: var(--wn-text);
-  font: 700 14px/1.35 var(--wn-font-ui);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.ac-event__title {
+  color: #fff;
+  font: 700 14px/1.3 var(--wn-font-ui);
   text-decoration: none;
-  -webkit-box-orient: vertical;
-  -webkit-line-clamp: 2;
 }
 
-/* The friends without activity: a group of its own under the readers. */
-.ac-more--idle .ac-more__face {
-  opacity: 0.7;
-}
-
-.ac-friends__none {
-  margin: 0;
+.ac-event__sub {
   color: var(--wn-text-secondary);
-  font: 500 14px/1.5 var(--wn-font-ui);
+  font: 600 12px/1.3 var(--wn-font-ui);
+}
+
+.ac-event--download_error .ac-event__sub {
+  color: var(--wn-danger, #ff6b6b);
+}
+
+.ac-event__time {
+  color: var(--wn-text-muted);
+  font: 600 12px/1.3 var(--wn-font-ui);
+  white-space: nowrap;
+}
+
+/* --- Pointer feedback: covers lift, rows and tiles light up. --- */
+@media (hover: hover) {
+  .ac-day a.ac-day__tile:hover {
+    background: var(--hm-glass-raised);
+    color: #fff;
+  }
+
+  .ac-day--selected a.ac-day__tile:hover {
+    background: #fff;
+    color: #14111f;
+  }
+
+  .ac-cal__arrow:not([aria-disabled]):hover {
+    background: var(--hm-glass-raised);
+    color: #fff;
+  }
+
+  .ac-dayread__item:hover .ac-dayread__cover,
+  .ac-pop:hover .hm-card__cover {
+    transform: translateY(-4px);
+  }
+
+  .ac-friend:hover,
+  .ac-event:hover,
+  .ac-more__toggle:hover {
+    background: rgb(255 255 255 / 4%);
+  }
+
+  .ac-more__toggle:hover {
+    color: #fff;
+  }
+
+  .ac-friend__book:hover {
+    background: rgb(255 255 255 / 8%);
+  }
+
+  .ac-friend__name:hover,
+  .ac-event__title:hover,
+  .ac-more__name:hover,
+  .ac-dayread__name:hover {
+    text-decoration: underline;
+    text-underline-offset: 3px;
+  }
+
+  .ac-friend__comment:hover {
+    color: #fff;
+  }
 }
 
 /* --- Narrower screens ---------------------------------------------------------------- */
 @media (max-width: 1360px) {
   .ac-month {
-    grid-template-columns: minmax(260px, 1fr) minmax(220px, 0.85fr);
-    gap: 28px;
-    padding-inline: 22px;
+    grid-template-columns: minmax(0, 1fr) 360px;
+    gap: 32px;
+    padding: 28px;
+  }
+
+  .ac-popular__list {
+    gap: 12px;
+  }
+
+  .ac-dayread__list {
+    grid-auto-columns: 150px;
+    gap: 18px;
+  }
+
+  .ac-dayread__list--one {
+    grid-auto-columns: 184px;
   }
 }
 
-/* One column: the side's blocks go right after the month - what friends and the site
-   read matters more on a phone than the hours and the event list. */
+/* One column: the card, then what friends and the site read - that matters more on a
+   phone than the hours and the event list. */
 @media (max-width: 1100px) {
   .hm.ac {
-    display: flex;
-    flex-direction: column;
-    align-items: stretch;
+    gap: 36px;
   }
 
-  .ac-main,
-  .ac-side {
+  .ac-grid,
+  .ac-aside {
     display: contents;
   }
 
@@ -31478,36 +31526,63 @@ a.ac-day__tile:active {
   }
 }
 
+/* Narrow cards: the day's covers under its numbers, the button last. */
+@media (max-width: 1180px) {
+  .ac-dayread {
+    grid-template-areas:
+      "copy"
+      "covers"
+      "go";
+    grid-template-columns: minmax(0, 1fr);
+    grid-template-rows: auto;
+    min-height: 0;
+  }
+
+  .ac-dayread__list {
+    margin-block: 0;
+  }
+}
+
+/* The month above the day it opens. */
 @media (max-width: 860px) {
   .ac-month {
     grid-template-columns: minmax(0, 1fr);
+    gap: 28px;
+    min-height: 0;
+    padding: 20px;
+  }
+
+  .ac-cal {
+    order: -1;
   }
 
   .ac-days {
-    padding-top: 18px;
-    border-top: 1px solid var(--hm-glass-edge);
+    padding: 0 4px 4px;
   }
 }
 
 @media (max-width: 767px) {
   .hm.ac {
-    gap: 22px;
+    gap: 30px;
     padding: 20px 16px 96px;
   }
 
-  .ac-main,
-  .ac-side {
-    gap: 22px;
+  .ac-head {
+    gap: 16px;
+  }
+
+  .ac-head .hm-search {
+    width: 100%;
   }
 
   .ac-month {
-    padding: 18px 12px 20px;
-    border-radius: 20px;
+    padding: 12px 12px 20px;
+    border-radius: 24px;
   }
 
-  .ac-cal__head,
-  .ac-days {
-    padding-inline: 4px;
+  .ac-cal {
+    padding: 14px 10px 14px;
+    border-radius: 18px;
   }
 
   .ac-cal__arrow {
@@ -31524,19 +31599,65 @@ a.ac-day__tile:active {
     font-size: 14px;
   }
 
+  .ac-days {
+    padding: 0 8px;
+  }
+
   .ac-dayread__title {
-    font-size: 18px;
+    font-size: 28px;
+  }
+
+  .ac-dayread__list {
+    grid-auto-columns: 132px;
+    gap: 14px;
+  }
+
+  .ac-dayread__list--one {
+    grid-auto-columns: 160px;
+  }
+
+  .ac-continue {
+    justify-content: space-between;
+    width: 100%;
+  }
+
+  /* The top five as a strip swiped sideways, running to the screen's edges. */
+  .ac-popular__list {
+    grid-template-columns: none;
+    grid-auto-columns: 116px;
+    grid-auto-flow: column;
+    margin: 0 -16px;
+    padding: 0 16px 6px;
+    overflow-x: auto;
+    overscroll-behavior-x: contain;
+    scroll-snap-type: x proximity;
+    scroll-padding-inline: 16px;
+    scrollbar-width: none;
+  }
+
+  .ac-popular__list::-webkit-scrollbar {
+    display: none;
+  }
+
+  .ac-friends__card {
+    padding: 6px;
+  }
+
+  .ac-friend {
+    padding: 12px 10px;
+  }
+
+  .ac-hours__card {
+    padding: 18px 16px 14px;
   }
 
   .ac-hours__plot {
     gap: 2px;
-    height: 88px;
+    height: 96px;
   }
 
-  .ac-friends,
-  .ac-popular {
-    padding: 18px 16px 14px;
-    border-radius: 20px;
+  .ac-events {
+    padding: 6px;
   }
 
   .ac-event__title,
@@ -31546,15 +31667,11 @@ a.ac-day__tile:active {
 
   .ac-event {
     align-items: start;
-    grid-template-columns: 34px minmax(0, 1fr);
+    grid-template-columns: 40px minmax(0, 1fr);
   }
 
   .ac-event__time {
     grid-column: 2;
-  }
-
-  .ac-btn {
-    align-self: stretch;
   }
 }
 
@@ -31563,8 +31680,11 @@ a.ac-day__tile:active {
     animation: none;
   }
 
+  .ac .hm-ambient,
+  .ac-month__art,
   .ac-day__tile,
-  .ac-btn,
+  .ac-dayread__cover,
+  .ac-pop .hm-card__cover,
   .ac-more__chevron {
     transition: none;
   }
