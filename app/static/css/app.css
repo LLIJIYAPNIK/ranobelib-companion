@@ -2498,214 +2498,6 @@ html:has(dialog[open]) body {
   border: 0;
 }
 
-/* PR 160: GitHub-reference redesign of the heatmap below - shared cell/gap sizing so the
-   month-label row, weekday column, day grid and legend swatches all line up on the same
-   11px grid without repeating the magic numbers four times. */
-.reading-calendar-card {
-  --reading-calendar-cell: 11px;
-  --reading-calendar-gap: 3px;
-  /* PR 323: a day's level is its reading time on fixed thresholds, the same for every
-     user (app/api/profile.py's calendar_level / CALENDAR_LEGEND), in the site's accent
-     teal rather than GitHub's own green. Shared as variables (not just set
-     directly on .reading-calendar__day--level-N below) so the always-present legend
-     swatches can reuse the same colors under their own class names, instead of the
-     legend colliding with the "no level-N cell present" assertions the day grid's own
-     classes are used for elsewhere. */
-  /* PR 260: the Aurora Ink ramp from the design - level 0 is --surface-2, 4 is
-     --accent-text, the teal steps between have no token of their own. */
-  --reading-calendar-level-0: var(--surface-2);
-  --reading-calendar-level-1: #134e4a;
-  --reading-calendar-level-2: #0f766e;
-  --reading-calendar-level-3: #14b8a6;
-  --reading-calendar-level-4: var(--accent-text);
-}
-
-/* Weekday column (left) + the scrollable months/day-grid stack (right) - only the latter
-   scrolls horizontally (see .reading-calendar-scroll below), so the weekday labels stay
-   put at the left edge the same way GitHub's own calendar keeps them pinned. */
-.reading-calendar-body {
-  display: flex;
-  align-items: flex-start;
-  gap: 6px;
-}
-
-.reading-calendar-weekdays {
-  display: grid;
-  grid-template-rows: repeat(7, var(--reading-calendar-cell));
-  gap: var(--reading-calendar-gap);
-  /* Lines the first row (Monday) up with the day grid's own first row, which sits below
-     the months row + its gap inside .reading-calendar-scroll. */
-  margin-top: calc(14px + var(--reading-calendar-gap));
-  font: 500 10px/var(--reading-calendar-cell) var(--font-ui);
-  color: var(--text-3);
-  white-space: nowrap;
-}
-
-/* PR 136: the GitHub-style reading-activity heatmap on /profile - a flat sequence of day
-   cells (app/api/profile.py's _build_reading_calendar(), oldest first, padded back to
-   the Monday on/before the window's own start) auto-flowed into 7-row
-   columns, so the server never has to compute per-cell grid coordinates itself - it just
-   emits the days in order and lets grid-auto-flow: column place them. */
-.reading-calendar {
-  display: grid;
-  grid-auto-flow: column;
-  /* Fixed track size, not 1fr - 1fr rows are shares of the grid container's own block
-     size, but .reading-calendar never sets a height of its own (it's sized by its
-     content), so there's nothing for "1fr" to divide and every cell fell into a single
-     tall column instead of wrapping into 7-row weeks. Matches .reading-calendar__day's
-     own explicit 11px so a row is exactly one cell tall, no more. */
-  grid-template-rows: repeat(7, var(--reading-calendar-cell));
-  gap: var(--reading-calendar-gap);
-}
-
-/* PR 160: months row + day grid scroll together as one unit (overflow-x: auto here,
-   rather than on .reading-calendar alone) so a month label never drifts out of sync with
-   the column of cells it labels. At ~53 columns the full grid is wider than a phone
-   screen, same "wide content scrolls in its own container" rule as everywhere else wide
-   in this app (catalog tables, code-adjacent content). */
-.reading-calendar-scroll {
-  display: flex;
-  flex-direction: column;
-  gap: var(--reading-calendar-gap);
-  overflow-x: auto;
-  padding-bottom: 4px;
-}
-
-/* One label per day-grid column (app/api/profile.py's _month_labels(), empty string for
-   every column that isn't where a month starts) - a single-row grid using the exact same
-   column size/gap as .reading-calendar above it, so column N here sits directly above
-   column N of the day grid. Labels aren't clipped to their own 11px-wide cell
-   (overflow: visible is the grid default) - like GitHub's own graph, the ~3-character
-   abbreviation just overflows rightward over the next (empty) label cells. */
-.reading-calendar-months {
-  display: grid;
-  grid-auto-flow: column;
-  grid-auto-columns: var(--reading-calendar-cell);
-  gap: var(--reading-calendar-gap);
-  height: 14px;
-  font: 500 10px/14px var(--font-ui);
-  color: var(--text-3);
-  white-space: nowrap;
-}
-
-/* Legend for the 5 intensity levels, bottom-left of the card, flush with the weekday
-   column/day grid above it (.reading-calendar-weekdays) - its own swatch class (not
-   .reading-calendar__day--level-N) so a legend, which always shows all 5 levels
-   regardless of this user's actual data, can never be mistaken by a substring check for
-   an actual day cell reaching that level (see tests/test_api_profile.py). Same colors
-   via the --reading-calendar-level-N variables above. */
-.reading-calendar-legend {
-  display: flex;
-  align-items: center;
-  gap: 4px;
-  justify-content: flex-start;
-  font: 500 12px/1 var(--font-ui);
-  color: var(--text-3);
-}
-
-.reading-calendar-legend__swatch {
-  width: var(--reading-calendar-cell);
-  height: var(--reading-calendar-cell);
-  border-radius: 2px;
-  background: var(--reading-calendar-level-0);
-}
-
-.reading-calendar-legend__swatch--level-1 {
-  background: var(--reading-calendar-level-1);
-}
-
-.reading-calendar-legend__swatch--level-2 {
-  background: var(--reading-calendar-level-2);
-}
-
-.reading-calendar-legend__swatch--level-3 {
-  background: var(--reading-calendar-level-3);
-}
-
-.reading-calendar-legend__swatch--level-4 {
-  background: var(--reading-calendar-level-4);
-}
-
-.reading-calendar__day {
-  width: var(--reading-calendar-cell);
-  height: var(--reading-calendar-cell);
-  border-radius: 2px;
-  background: var(--reading-calendar-level-0);
-}
-
-.reading-calendar__day--level-1 {
-  background: var(--reading-calendar-level-1);
-}
-
-.reading-calendar__day--level-2 {
-  background: var(--reading-calendar-level-2);
-}
-
-.reading-calendar__day--level-3 {
-  background: var(--reading-calendar-level-3);
-}
-
-.reading-calendar__day--level-4 {
-  background: var(--reading-calendar-level-4);
-}
-
-/* PR 323: today's cell - an inset ring (an outline would be clipped by the scrolling
-   ribbon, today being its last column), visible on every level's color. */
-.reading-calendar__day--today {
-  box-shadow: inset 0 0 0 2px var(--text-1);
-}
-
-/* PR 160: custom tooltip replacing the native `title` attribute (see reading-calendar-
-   tooltip.js) - same floating-panel language as .profile-menu__panel/.paragraph-menu__panel
-   (fixed position, computed from the hovered cell's own getBoundingClientRect(), fade
-   in/out rather than toggling display). white-space: pre-line renders the "\n"-joined
-   label lines (app/api/profile.py) as real line breaks without needing innerHTML. */
-.reading-calendar-tooltip {
-  position: fixed;
-  z-index: 40;
-  max-width: 240px;
-  padding: 8px 10px;
-  background: var(--surface-2);
-  border: 1px solid var(--border);
-  border-radius: var(--r-md);
-  box-shadow: var(--shadow-popover);
-  font: 500 12px/1.5 var(--font-ui);
-  color: var(--text-2);
-  white-space: pre-line;
-  opacity: 0;
-  pointer-events: none;
-  transition: opacity 0.15s ease;
-}
-
-.reading-calendar-tooltip--open {
-  opacity: 1;
-}
-
-/* PR 241: the heatmap above has no mobile override at all - the same fixed 11px cell and
-   ~53-column year grid as desktop, just inside a much narrower profile card. Compacting
-   the shared cell/gap variables (day grid, weekday column, month row and legend swatches
-   all key off them, see .reading-calendar-card above) fits more of the grid into view
-   before the horizontal scroll (.reading-calendar-scroll) has to kick in, and hiding the
-   month row reclaims some of that width for the day grid itself instead. */
-@media (max-width: 640px) {
-  .reading-calendar-card {
-    --reading-calendar-cell: 8px;
-    --reading-calendar-gap: 2px;
-  }
-
-  .reading-calendar-months {
-    display: none;
-  }
-
-  /* Only exists to line the weekday column's first row up below the month row + its own
-     gap (see the base rule's own comment) - with that row hidden above, this would just
-     push the weekday labels down with nothing to align against. */
-  .reading-calendar-weekdays {
-    margin-top: 0;
-    font-size: 9px;
-  }
-}
-
 @keyframes library-tabs-content-in {
   from {
     opacity: 0;
@@ -15542,15 +15334,6 @@ body.reader-hud-visible .reader-hud {
 
 .profile-section:has(.profile-grid) {
   gap: var(--s-12);
-}
-
-.reading-calendar-card {
-  gap: var(--s-12);
-  padding: 18px;
-  border: 1px solid var(--border);
-  border-radius: var(--r-xl);
-  background: var(--surface-1);
-  overflow: hidden;
 }
 
 .profile__columns {
@@ -30065,6 +29848,13 @@ body.reader-hud-visible .reader-hud {
   font: 600 14px/1.4 var(--wn-font-ui);
 }
 
+.ac-dayread__hint {
+  max-width: 34ch;
+  margin: 14px 0 0;
+  color: rgb(255 255 255 / 50%);
+  font: 500 13px/1.45 var(--wn-font-ui);
+}
+
 .ac-dayread__sum span + span::before {
   content: "·";
   margin: 0 8px;
@@ -30073,8 +29863,16 @@ body.reader-hud-visible .reader-hud {
 
 /* The day's books as a short shelf of covers - it scrolls sideways when the day held
    many, fading out under the card's edge instead of cutting a cover. */
-.ac-dayread__list {
+/* The strip and its pager take the covers' place in the card. */
+.ac-strip {
   grid-area: covers;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  min-width: 0;
+}
+
+.ac-dayread__list {
   display: grid;
   grid-auto-columns: 184px;
   grid-auto-flow: column;
@@ -30089,6 +29887,102 @@ body.reader-hud-visible .reader-hud {
   scrollbar-width: none;
   -webkit-mask-image: linear-gradient(90deg, #000 calc(100% - 40px), transparent);
   mask-image: linear-gradient(90deg, #000 calc(100% - 40px), transparent);
+}
+
+/* A mouse drags the strip (activity-calendar.js). */
+@media (hover: hover) and (pointer: fine) {
+  .ac-dayread__list {
+    cursor: grab;
+  }
+}
+
+.ac-dayread__list.is-dragging {
+  cursor: grabbing;
+  user-select: none;
+}
+
+.ac-dayread__list.is-dragging a {
+  pointer-events: none;
+}
+
+/* The strip's scrollbar: a thin line, the thumb its visible share. The bar is taller
+   than the line so it is easy to catch; the thumb is dragged, a press on the line moves
+   the strip there (activity-calendar.js). */
+.ac-strip__bar {
+  position: relative;
+  width: min(100%, 480px);
+  height: 18px;
+  cursor: pointer;
+  touch-action: none;
+}
+
+.ac-strip__bar[hidden] {
+  display: none;
+}
+
+.ac-strip__bar::before {
+  content: "";
+  position: absolute;
+  top: calc(50% - 2px);
+  right: 0;
+  left: 0;
+  height: 4px;
+  border-radius: 2px;
+  background: rgb(255 255 255 / 12%);
+}
+
+.ac-strip__thumb {
+  position: absolute;
+  top: calc(50% - 2px);
+  left: var(--strip-start, 0%);
+  width: var(--strip-share, 100%);
+  height: 4px;
+  border-radius: 3px;
+  background: rgb(255 255 255 / 62%);
+  cursor: grab;
+  transition: top 0.15s ease, height 0.15s ease, background-color 0.15s ease;
+}
+
+.ac-strip__bar:hover .ac-strip__thumb,
+.ac-strip__bar.is-dragging .ac-strip__thumb {
+  top: calc(50% - 3px);
+  height: 6px;
+  background: #fff;
+}
+
+.ac-strip__bar.is-dragging,
+.ac-strip__bar.is-dragging .ac-strip__thumb {
+  cursor: grabbing;
+}
+
+/* A month switched by a swipe slides in from the side it came from. */
+.ac-cal__grid.is-from-next {
+  animation: ac-cal-from-next 0.3s var(--hm-ease) both;
+}
+
+.ac-cal__grid.is-from-prev {
+  animation: ac-cal-from-prev 0.3s var(--hm-ease) both;
+}
+
+@keyframes ac-cal-from-next {
+  from {
+    opacity: 0;
+    transform: translateX(28px);
+  }
+}
+
+@keyframes ac-cal-from-prev {
+  from {
+    opacity: 0;
+    transform: translateX(-28px);
+  }
+}
+
+/* A swipe across the calendar switches months; vertical scrolling stays the page's. */
+@media (pointer: coarse) {
+  .ac-cal__grid {
+    touch-action: pan-y;
+  }
 }
 
 .ac-dayread__list::-webkit-scrollbar {
@@ -30170,6 +30064,33 @@ body.reader-hud-visible .reader-hud {
 .ac-cal__nav {
   display: flex;
   gap: 8px;
+}
+
+/* The month's name: back to the whole month after a day was picked. */
+.ac-cal__month {
+  margin: -4px -8px;
+  padding: 4px 8px;
+  border-radius: 10px;
+  color: inherit;
+  text-decoration: none;
+  transition: background-color 0.15s ease;
+}
+
+.ac-cal__month[aria-pressed="false"] {
+  text-decoration: underline;
+  text-decoration-color: rgb(255 255 255 / 28%);
+  text-underline-offset: 4px;
+}
+
+.ac-cal__month:focus-visible {
+  outline: none;
+  box-shadow: var(--wn-focus-ring);
+}
+
+@media (hover: hover) {
+  .ac-cal__month:hover {
+    background: var(--hm-glass-raised);
+  }
 }
 
 .ac-cal__arrow {
@@ -31006,8 +30927,14 @@ p.ac-card.ac-empty {
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .ac-dayread {
+  .ac-dayread,
+  .ac-cal__grid.is-from-next,
+  .ac-cal__grid.is-from-prev {
     animation: none;
+  }
+
+  .ac-strip__thumb {
+    transition: none;
   }
 
   .ac .hm-ambient,
@@ -31287,81 +31214,6 @@ p.ac-card.ac-empty {
   margin-top: auto;
 }
 
-/* --- Год чтения: the PR 160 heatmap in a dark card, its legend under it. --- */
-.pf-year__days {
-  margin-left: auto;
-  color: var(--wn-text-muted);
-  font: 600 14px/1 var(--wn-font-ui);
-}
-
-.pf .pf-year__card {
-  --reading-calendar-cell: 15px;
-  --reading-calendar-gap: 4px;
-  --reading-calendar-level-0: rgb(255 255 255 / 6%);
-  --reading-calendar-level-1: rgb(61 214 195 / 28%);
-  --reading-calendar-level-2: rgb(61 214 195 / 50%);
-  --reading-calendar-level-3: rgb(61 214 195 / 75%);
-  --reading-calendar-level-4: var(--wn-teal);
-  display: flex;
-  flex-direction: column;
-  gap: 16px;
-  padding: 24px 26px 20px;
-  overflow: hidden;
-  border: 1px solid var(--hm-glass-edge);
-  border-radius: 24px;
-  background: var(--pf-card);
-}
-
-.pf .reading-calendar__day,
-.pf .reading-calendar-legend__swatch {
-  border-radius: 4px;
-}
-
-.pf .reading-calendar__day--today {
-  box-shadow: inset 0 0 0 2px #fff;
-}
-
-.pf .reading-calendar-weekdays,
-.pf .reading-calendar-months {
-  color: var(--wn-text-muted);
-  font-family: var(--wn-font-ui);
-  font-size: 12px;
-}
-
-.pf .reading-calendar-weekdays {
-  margin-top: calc(16px + var(--reading-calendar-gap));
-}
-
-.pf .reading-calendar-months {
-  height: 16px;
-  line-height: 16px;
-}
-
-.pf .reading-calendar-legend {
-  gap: 5px;
-  color: var(--wn-text-muted);
-  font: 600 12px/1 var(--wn-font-ui);
-}
-
-.pf .reading-calendar-legend__swatch {
-  width: 14px;
-  height: 14px;
-}
-
-.pf .reading-calendar-tooltip {
-  border-color: var(--hm-glass-edge);
-  border-radius: 12px;
-  background: #16151f;
-  color: var(--wn-text-secondary);
-  font-family: var(--wn-font-ui);
-}
-
-@media (min-width: 1400px) {
-  .pf .pf-year__card {
-    --reading-calendar-cell: 18px;
-  }
-}
-
 /* --- «Библиотека» beside «Друзья». --- */
 .pf-grid {
   display: grid;
@@ -31510,11 +31362,6 @@ p.ac-card.ac-empty {
   .pf-library__grid {
     grid-template-columns: repeat(5, minmax(0, 1fr));
   }
-
-  .pf .pf-year__card {
-    --reading-calendar-cell: 13px;
-    --reading-calendar-gap: 3px;
-  }
 }
 
 /* The book under who reads it. */
@@ -31625,34 +31472,6 @@ p.ac-card.ac-empty {
 
   .pf-now__go {
     width: 100%;
-  }
-
-  .pf .pf-year__card {
-    --reading-calendar-cell: 12px;
-    --reading-calendar-gap: 3px;
-    padding: 18px 14px 16px;
-  }
-
-  .pf-year__head {
-    flex-wrap: wrap;
-  }
-
-  /* The year scrolls as a ribbon aligned to the current week (ribbon.js); the month row
-     stays - only the heatmap, not the page, moves sideways (the generic <=640px rule
-     hides it). */
-  .pf .reading-calendar-scroll {
-    max-width: 100%;
-    overscroll-behavior-x: contain;
-    -webkit-overflow-scrolling: touch;
-  }
-
-  .pf .reading-calendar-months {
-    display: grid;
-  }
-
-  .pf .reading-calendar-weekdays {
-    margin-top: calc(16px + var(--reading-calendar-gap));
-    font-size: 11px;
   }
 
   .pf-library__grid {
