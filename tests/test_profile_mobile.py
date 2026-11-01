@@ -17,7 +17,7 @@ def _rule(selector: str, *, indent: str = "") -> str:
 
 
 def test_profile_is_drawn_in_the_home_pages_frame() -> None:
-    assert '<main class="hm pf' in PAGE
+    assert '<main class="hm ac pf' in PAGE
     assert 'class="hm-ambient"' in PAGE
     assert 'class="hl-art pf-hero__art"' in PAGE
     assert 'class="hm-panel pf-now"' in PAGE
@@ -50,31 +50,17 @@ def test_hero_stacks_on_phones() -> None:
     assert "width: 100%;" in _rule(".pf-now__go", indent="  ")
 
 
-def test_reading_heatmap_is_a_ribbon_aligned_to_the_current_week() -> None:
-    assert 'class="reading-calendar-scroll wn-ribbon"' in PAGE
-    assert "data-ribbon-current-week" in PAGE
-    assert "js/ribbon.js" in PAGE
-
-    ribbon = _rule(".pf .reading-calendar-scroll", indent="  ")
-    assert "max-width: 100%;" in ribbon
-    assert "overscroll-behavior-x: contain;" in ribbon
-    assert "display: grid;" in _rule(".pf .reading-calendar-months", indent="  ")
-
-
-def test_heatmap_alignment_is_initial_only_and_keeps_month_context() -> None:
-    script = (ROOT / "app/static/js/ribbon.js").read_text(encoding="utf-8")
-    assert 'hasAttribute("data-ribbon-current-week")' in script
-    assert 'matchMedia("(max-width: 767px)")' in script
-    assert "ribbon.scrollWidth - ribbon.clientWidth" in script
-    assert "requestAnimationFrame" in script
-    assert "new WeakSet()" in script
-
-
-def test_calendar_tooltip_is_outside_the_rising_sections() -> None:
-    # A fixed tooltip inside a transformed (.hm-rise) block would be placed against it.
-    year = PAGE.split('<section class="hm-block pf-year')[1].split("</section>")[0]
-    assert 'data-role="reading-calendar-tooltip"' not in year
-    assert 'data-role="reading-calendar-tooltip"' in PAGE
+def test_reading_is_the_month_calendar_of_activity() -> None:
+    # One macro for both screens - no second calendar to drift from «Активность».
+    assert '{% from "_reading_month.html" import reading_month %}' in PAGE
+    assert "reading_month(reading, weekdays, calendar_base" in PAGE
+    assert "js/activity-calendar.js" in PAGE
+    activity = (ROOT / "app/templates/activity.html").read_text(encoding="utf-8")
+    assert 'reading_month(overview.reading, weekdays, "/activity"' in activity
+    # The year heatmap is gone with its tooltip.
+    assert "reading-calendar" not in PAGE
+    assert ".reading-calendar" not in CSS
+    assert not (ROOT / "app/static/js/reading-calendar-tooltip.js").exists()
 
 
 def test_library_preview_keeps_whole_rows() -> None:

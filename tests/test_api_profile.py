@@ -8,7 +8,7 @@ visitor are covered at the very end.
 
 import itertools
 from collections.abc import Iterator
-from datetime import UTC, datetime
+from datetime import UTC, datetime, timedelta
 from pathlib import Path
 from unittest.mock import patch
 
@@ -82,7 +82,6 @@ class _FakeClient:
         # position - no volumes needed for these tests, which don't assert on the
         # resulting reading-progress percentage.
         return []
-
 
 
 def _stat(html: str, label: str) -> str:
@@ -224,20 +223,21 @@ async def test_profile_shows_the_users_comment_count(client: TestClient) -> None
     assert _stat(response.text, "комментария") == "2"
 
 
-async def test_profile_shows_an_empty_reading_calendar_with_no_history(client: TestClient) -> None:
+async def test_profile_shows_an_empty_month_calendar_with_no_history(client: TestClient) -> None:
     _register(client, "alice@example.com")
 
     response = client.get("/profile")
 
     assert response.status_code == 200
-    assert 'class="reading-calendar"' in response.text
-    # Every cell is level 0 - an empty history is a grid of empty cells, not a missing
-    # grid or an error.
-    assert 'reading-calendar__day--level-1' not in response.text
-    assert response.text.count('reading-calendar__day--level-0') > 300
+    # «Активность»'s month calendar: a whole month of days, none of them read.
+    assert 'data-role="activity-calendar"' in response.text
+    assert 'class="ac-cal__grid"' in response.text
+    assert "ac-day--read" not in response.text
+    assert response.text.count('class="ac-day__tile hm-num"') >= 1
+    assert "js/activity-calendar.js" in response.text
 
 
-async def test_profile_reading_calendar_marks_todays_activity(client: TestClient) -> None:
+async def test_profile_month_calendar_marks_todays_reading(client: TestClient) -> None:
     _register(client, "alice@example.com")
     alice_id = await _user_id("alice@example.com")
     async with connection() as conn:
@@ -248,20 +248,16 @@ async def test_profile_reading_calendar_marks_todays_activity(client: TestClient
         response = client.get("/profile")
 
     assert response.status_code == 200
-    # PR 323: chapters opened but no reading time logged - the lowest reading level, not
-    # "this user's busiest day" (levels are fixed reading-time thresholds now).
-    assert "reading-calendar__day--level-1" in response.text
-    assert "reading-calendar__day--level-4" not in response.text
-    today = datetime.now(UTC).date().strftime("%d.%m.%Y")
-    # PR 140: no heartbeat recorded today, so the tooltip's time portion reads "0 мин" -
-    # always shown, not omitted, same as a real day with reading but no active-time ticks.
-    # PR 159: the title read that day follows on its own line.
-    assert f'data-tooltip="{today}: 2 главы, 0 мин\nTest Novel"' in response.text
+    # PR 323: chapters opened, no reading time logged - the lowest level.
+    assert "ac-day--read ac-day--l1" in response.text
+    today = datetime.now(UTC).date().isoformat()
+    panel = response.text.split(f'data-day-panel="{today}"')[1].split("</article>")[0]
+    assert "Сегодня" in panel
+    assert "2 главы" in panel
+    assert "Test Novel" in panel
 
 
-async def test_profile_reading_calendar_tooltip_shows_active_time_under_an_hour(
-    client: TestClient,
-) -> None:
+async def test_profile_month_calendar_shows_the_days_reading_time(client: TestClient) -> None:
     _register(client, "alice@example.com")
     alice_id = await _user_id("alice@example.com")
     async with connection() as conn:
@@ -271,97 +267,97 @@ async def test_profile_reading_calendar_tooltip_shows_active_time_under_an_hour(
     with patch("app.services.client.RanobeLib", return_value=_FakeClient(_fake_title())):
         response = client.get("/profile")
 
-    assert response.status_code == 200
-    today = datetime.now(UTC).date().strftime("%d.%m.%Y")
-    assert f'data-tooltip="{today}: 1 глава, 25 мин\nTest Novel"' in response.text
+    assert "ac-day--read ac-day--l2" in response.text  # 15-45 min
+    today = datetime.now(UTC).date().isoformat()
+    panel = response.text.split(f'data-day-panel="{today}"')[1].split("</article>")[0]
+    assert "25 мин" in panel
+    assert "<b>25 мин</b> и 1 глава за месяц" in response.text
 
 
-async def test_profile_reading_calendar_tooltip_shows_active_time_over_an_hour(
+async def test_profile_calendar_leaves_continuing_to_the_hero(client: TestClient) -> None:
+    _register(client, "alice@example.com")
+    alice_id = await _user_id("alice@example.com")
+    async with connection() as conn:
+        await record_chapter_read(conn, alice_id, "6712--test-novel", "1", "7")
+
+    with patch("app.services.client.RanobeLib", return_value=_FakeClient(_fake_title())):
+        own = client.get("/profile")
+        _register(client, "bob@example.com")
+        other = client.get(f"/profile/{alice_id}")
+
+    # Today's card has no «Читать дальше» of its own on either profile.
+    assert "ac-continue" not in own.text
+    assert "ac-continue" not in other.text
+    assert "Test Novel" in other.text  # the day's book is still shown
+
+
+async def test_profile_calendar_hides_the_days_books_when_reading_is_hidden(
     client: TestClient,
 ) -> None:
     _register(client, "alice@example.com")
     alice_id = await _user_id("alice@example.com")
     async with connection() as conn:
         await record_chapter_read(conn, alice_id, "6712--test-novel", "1", "1")
-        await record_heartbeat(conn, alice_id, "6712--test-novel", 5400)  # 1h 30min
+    _set_privacy(client, reading=False, library=True)
 
     with patch("app.services.client.RanobeLib", return_value=_FakeClient(_fake_title())):
-        response = client.get("/profile")
+        own = client.get("/profile")
+        _register(client, "bob@example.com")
+        other = client.get(f"/profile/{alice_id}")
 
-    assert response.status_code == 200
-    today = datetime.now(UTC).date().strftime("%d.%m.%Y")
-    assert f'data-tooltip="{today}: 1 глава, 1 ч 30 мин\nTest Novel"' in response.text
+    today = datetime.now(UTC).date().isoformat()
+    own_panel = own.text.split(f'data-day-panel="{today}"')[1].split("</article>")[0]
+    other_panel = other.text.split(f'data-day-panel="{today}"')[1].split("</article>")[0]
+    assert "Test Novel" in own_panel
+    assert "1 глава" in other_panel
+    assert "Test Novel" not in other_panel
 
 
-async def test_profile_reading_calendar_tooltip_lists_multiple_titles_read_that_day(
-    client: TestClient,
-) -> None:
+async def test_profile_calendar_links_stay_on_the_profile(client: TestClient) -> None:
+    _register(client, "alice@example.com")
+    alice_id = await _user_id("alice@example.com")
+    today = datetime.now(UTC).date().isoformat()
+
+    own = client.get("/profile")
+    _register(client, "bob@example.com")
+    other = client.get(f"/profile/{alice_id}")
+
+    assert f'href="/profile?day={today}"' in own.text
+    assert 'href="/profile?month=' in own.text  # the previous month
+    assert f'href="/profile/{alice_id}?day={today}"' in other.text
+    assert "/activity?day=" not in other.text
+
+
+async def test_profile_calendar_opens_a_month_on_its_summary(client: TestClient) -> None:
     _register(client, "alice@example.com")
     alice_id = await _user_id("alice@example.com")
     async with connection() as conn:
-        await record_chapter_read(conn, alice_id, "1--first", "1", "1")
-        await record_chapter_read(conn, alice_id, "2--second", "1", "1")
+        await record_chapter_read(conn, alice_id, "6712--test-novel", "1", "1")
+        await record_chapter_read(conn, alice_id, "6712--test-novel", "1", "2")
+    today = datetime.now(UTC).date()
 
-    titles = {
-        "1--first": _fake_title(slug_url="1--first").model_copy(update={"name": "First Novel"}),
-        "2--second": _fake_title(slug_url="2--second").model_copy(update={"name": "Second Novel"}),
-    }
-    with patch(
-        "app.services.client.RanobeLib",
-        side_effect=lambda url, **_: _FakeClient(titles[url]),
-    ):
-        response = client.get("/profile")
+    with patch("app.services.client.RanobeLib", return_value=_FakeClient(_fake_title())):
+        response = client.get(f"/profile?month={today:%Y-%m}")
 
-    assert response.status_code == 200
-    today = datetime.now(UTC).date().strftime("%d.%m.%Y")
-    # daily_titles_read() orders most-recently-read-within-the-day first - "2--second".
-    assert f'data-tooltip="{today}: 2 главы, 0 мин\nSecond Novel\nFirst Novel"' in response.text
+    head = response.text.split('data-day-panel="month"')[1].split(">")[0]
+    assert "hidden" not in head  # the month shown, not today
+    panel = response.text.split('data-day-panel="month"')[1].split("</article>")[0]
+    assert "1 день с чтением" in panel
+    assert "Test Novel" in panel
+    assert "2 главы" in panel
 
 
-async def test_profile_reading_calendar_tooltip_truncates_many_titles_read_in_one_day(
-    client: TestClient,
-) -> None:
+async def test_profile_calendar_opens_the_month_asked_for(client: TestClient) -> None:
     _register(client, "alice@example.com")
-    alice_id = await _user_id("alice@example.com")
-    slugs = [f"{n}--novel" for n in range(5)]
-    for slug in slugs:
-        async with connection() as conn:
-            await record_chapter_read(conn, alice_id, slug, "1", "1")
+    today = datetime.now(UTC).date()
+    previous = (today.replace(day=1) - timedelta(days=1)).replace(day=1)
 
-    titles = {
-        slug: _fake_title(slug_url=slug).model_copy(update={"name": f"Novel {i}"})
-        for i, slug in enumerate(slugs)
-    }
-    with patch(
-        "app.services.client.RanobeLib",
-        side_effect=lambda url, **_: _FakeClient(titles[url]),
-    ):
-        response = client.get("/profile")
+    response = client.get(f"/profile?month={previous:%Y-%m}")
+    bad = client.get("/profile?month=2026-13")
 
     assert response.status_code == 200
-    today = datetime.now(UTC).date().strftime("%d.%m.%Y")
-    # 5 titles read, only the first _MAX_TITLES_IN_LABEL (3, most recently read first -
-    # "4--novel" was recorded last) are named, the rest collapse into "и ещё 2".
-    expected = f'data-tooltip="{today}: 5 глав, 0 мин\nNovel 4\nNovel 3\nNovel 2\nи ещё 2"'
-    assert expected in response.text
-
-
-async def test_profile_reading_calendar_tooltip_handles_active_time_with_no_chapters_read(
-    client: TestClient,
-) -> None:
-    """A day can have heartbeat ticks (the reader page stayed open) with zero
-    chapter_read events, e.g. every open happened the day before - the two counters are
-    independent, so the tooltip must handle either being present without the other."""
-    _register(client, "alice@example.com")
-    alice_id = await _user_id("alice@example.com")
-    async with connection() as conn:
-        await record_heartbeat(conn, alice_id, "6712--test-novel", 600)  # 10 min
-
-    response = client.get("/profile")
-
-    assert response.status_code == 200
-    today = datetime.now(UTC).date().strftime("%d.%m.%Y")
-    assert f'data-tooltip="{today}: нет прочитанных глав, 10 мин"' in response.text
+    assert f'href="/profile?month={today:%Y-%m}"' in response.text  # the arrow forward
+    assert bad.status_code == 422
 
 
 async def test_profile_has_an_edit_link_to_settings_account(client: TestClient) -> None:
@@ -486,15 +482,10 @@ async def test_public_profile_omits_both_new_sections_when_the_library_is_empty(
     assert response.status_code == 200
     assert "Читает сейчас" not in response.text
     assert 'data-role="profile-library"' not in response.text
-    # Unlike those two, PR 136's calendar section always renders (an empty history is a
-    # grid of empty cells, not an omitted section) - so it's the one case where the
-    # reading-calendar-card section (PR 160) is expected even with nothing else on the
-    # page.
-    assert response.text.count('reading-calendar-card"') == 1
-    # PR 160: the section's own header is now the data-driven "N ч M мин чтения за
-    # последний год" phrase, not a static "Календарь чтения" label - "0 мин" for a user
-    # with no reading history at all, never omitted or blank.
-    assert "чтения за последний год" in response.text
+    # Unlike those two, the reading calendar always renders - an empty month is a month
+    # of unread days, not an omitted section.
+    assert response.text.count('data-role="activity-calendar"') == 1
+    assert _stat(response.text, "за год") == "0 мин"
 
 
 async def test_public_profile_is_the_same_for_the_owner_and_a_different_visitor(
@@ -519,7 +510,6 @@ async def test_public_profile_is_the_same_for_the_owner_and_a_different_visitor(
     assert "Читает сейчас" in response.text
     assert 'id="profile-library-title">Библиотека</h2>' in response.text
     assert "Том 1, глава 5" in response.text
-
 
 
 async def test_own_profile_continues_the_book_from_its_hero(client: TestClient) -> None:
@@ -633,9 +623,7 @@ async def test_privacy_flags_gate_sections_for_a_non_owner_visitor(
 
     assert response.status_code == 200
     assert ("Читает сейчас" in response.text) is show_reading
-    assert ('id="profile-library-title">Библиотека</h2>' in response.text) is (
-        show_library
-    )
+    assert ('id="profile-library-title">Библиотека</h2>' in response.text) is (show_library)
 
 
 async def test_privacy_flags_do_not_affect_the_owners_own_view(client: TestClient) -> None:
@@ -976,15 +964,3 @@ async def test_profile_library_preview_shows_at_most_ten_titles(client: TestClie
     assert "12 тайтлов" in response.text
     assert 'href="/library">Открыть библиотеку</a>' in response.text
     assert "Открыть библиотеку →" not in response.text
-
-
-async def test_profile_calendar_counts_days_with_reading(client: TestClient) -> None:
-    _register(client, "alice@example.com")
-    alice_id = await _user_id("alice@example.com")
-    async with connection() as conn:
-        await record_chapter_read(conn, alice_id, "6712--test-novel", "1", "1")
-
-    with patch("app.services.client.RanobeLib", return_value=_FakeClient(_fake_title())):
-        response = client.get("/profile")
-
-    assert "1 день с чтением" in response.text

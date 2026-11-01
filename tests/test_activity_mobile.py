@@ -6,6 +6,8 @@ from pathlib import Path
 ROOT = Path(__file__).parents[1]
 CSS = (ROOT / "app/static/css/app.css").read_text(encoding="utf-8")
 TEMPLATE = (ROOT / "app/templates/activity.html").read_text(encoding="utf-8")
+# The day card and the month's calendar, shared with the profile.
+MONTH = (ROOT / "app/templates/_reading_month.html").read_text(encoding="utf-8")
 
 
 def _block(media: str) -> str:
@@ -65,8 +67,9 @@ def test_a_long_friends_list_scrolls_inside_the_panel() -> None:
 
 
 def test_every_day_is_a_link_without_script() -> None:
-    assert 'href="/activity?day={{ iso }}" data-day="{{ iso }}"' in TEMPLATE
-    assert 'href="/activity?month={{ cal.prev_month }}"' in TEMPLATE
+    assert 'href="{{ base }}?day={{ iso }}" data-day="{{ iso }}"' in MONTH
+    assert 'href="{{ base }}?month={{ cal.prev_month }}"' in MONTH
+    assert 'reading_month(overview.reading, weekdays, "/activity"' in TEMPLATE
 
 
 def test_no_old_activity_styles_left() -> None:
@@ -81,7 +84,7 @@ def test_months_switch_in_place() -> None:
     """The month arrows swap the month's parts in place (no full reload): the calendar
     card and «Когда вы читаете» are marked, the script fetches the month and swaps them,
     keeps the month in the address and fetches the arrows' months ahead."""
-    assert 'data-role="activity-calendar" data-month-part="calendar"' in TEMPLATE
+    assert 'data-role="activity-calendar" data-month-part="calendar"' in MONTH
     assert 'data-role="reading-hours" data-month-part="hours"' in TEMPLATE
     assert "[data-month-part]" in SCRIPT
     assert "history.pushState" in SCRIPT
@@ -89,9 +92,43 @@ def test_months_switch_in_place() -> None:
     assert "prefetchNeighbours" in SCRIPT
     # A failed fetch still gets the reader to the month.
     assert "window.location.href = url" in SCRIPT
+    # Kept pages are copied in, not moved - going back to a month a second time must not
+    # find its page emptied; only the last of quick clicks is shown.
+    assert "document.importNode(child, true)" in SCRIPT
+    assert "ticket !== latest" in SCRIPT
+
+
+def test_the_month_has_its_own_summary() -> None:
+    """Before a day is picked the card shows the whole month; the month's name over the
+    calendar brings it back."""
+    assert 'data-day-panel="month"' in MONTH
+    assert 'class="ac-cal__month"' in MONTH
+    assert 'data-day="month"' in MONTH
+    assert 'link.parentElement.classList.contains("ac-day")' in SCRIPT
 
 
 def test_the_day_card_has_no_title_link() -> None:
     """«О тайтле» belongs to the library and the home page, not to the day's card - its
     covers are the links."""
     assert "О тайтле" not in TEMPLATE
+    assert "О тайтле" not in MONTH
+
+
+def test_the_books_strip_drags_and_has_a_draggable_scrollbar() -> None:
+    """A mouse drags the day's or the month's books sideways (a drag never opens a
+    cover); a strip holding more than fits has a scrollbar whose thumb is dragged."""
+    assert 'data-role="title-strip"' in MONTH
+    assert 'data-role="strip-bar"' in MONTH
+    assert "из {{" not in MONTH  # no count beside it
+    assert "barDrag.list.scrollLeft" in SCRIPT
+    assert "setPointerCapture" in SCRIPT
+    assert '"pointerdown"' in SCRIPT
+    assert 'event.pointerType !== "mouse"' in SCRIPT
+    assert "swallowClick" in SCRIPT
+    assert "  .ac-dayread__list {\n    cursor: grab;\n  }" in CSS
+
+
+def test_a_swipe_across_the_calendar_switches_months() -> None:
+    assert '"touchend"' in SCRIPT
+    assert 'dx < 0 ? "Следующий месяц" : "Предыдущий месяц"' in SCRIPT
+    assert "  .ac-cal__grid {\n    touch-action: pan-y;\n  }" in CSS
