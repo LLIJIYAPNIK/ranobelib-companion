@@ -5,79 +5,157 @@
 {% block mobile_title %}Профиль{% endblock %}
 {% block content %}
 {#
-  PR 277 (Webnovells Redesign, screen A5): hero with the avatar blurred behind it, a teal
-  ring around the avatar, name, bio or «Добавить о себе», meta line, stat pills and
-  «Редактировать» / the friend-request buttons; the reading calendar (PR 136/160/177/178
-  - same data, hooks and tooltip, new palette); "Читает сейчас" and "Друзья" side by
-  side; then a preview row of the library. Sections hidden by the owner's privacy
-  settings aren't rendered at all (app/api/profile.py). A guest looking at /profile gets
-  the locked state. `.profile__avatar img` is what image-lightbox.js opens (PR 173).
+  «Профиль» drawn as the home page, the library and «Активность» are: the book the person
+  is reading glows behind the page (.hm-ambient, the avatar when there is no book) and
+  washes the hero card (.hl-art). The hero holds who it is - the avatar in a teal ring,
+  the name with «Редактировать» beside it (or the friend buttons and «⋯» on someone
+  else's profile), the bio, since when, four figures set as type - and «Читает сейчас» in
+  glass at its side, with the way back into the book on one's own profile. Then the year
+  of reading (the PR 136/160/323 heatmap, same data, hooks and tooltip) and «Библиотека»
+  beside «Друзья». One column on phones.
+
+  Sections hidden by the owner's privacy settings aren't rendered at all
+  (app/api/profile.py). A guest looking at /profile gets the locked state.
+  `.profile__avatar img` is what image-lightbox.js opens (PR 173).
 #}
 {% from "_friend_row.html" import ui_friend_request_actions %}
-{% macro progress(pct) -%}
-<div class="wn-profile-progress" aria-label="Прочитано {{ pct or 0 }}%">
-  <span class="wn-profile-progress__bar"><span class="wn-profile-progress__fill" style="width: {{ pct or 0 }}%"></span></span>
-  <span class="wn-profile-progress__pct">{{ pct or 0 }}%</span>
-</div>
-{%- endmacro %}
-<main class="profile-page wn-profile">
-  <h1 class="profile-page__title">Профиль</h1>
+{% from "_continue_reading_hero.html" import chapter_label %}
+{% from "home/_macros.html" import cover_progress %}
+{% macro arrow_icon(d, cls="") -%}<svg{% if cls %} class="{{ cls }}"{% endif %} viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="{{ d }}"/></svg>{%- endmacro %}
+
+{% if profile_user %}
+{% set avatar = avatar_url(profile_user) %}
+{% set display_name = profile_user.nickname or profile_user.email %}
+{% set art = (currently_reading.cover_url if currently_reading else none) or avatar %}
+{% endif %}
+<main class="hm pf{% if not profile_user %} pf--guest{% endif %}" data-role="profile-page">
   {% if profile_user %}
-  {% set avatar = avatar_url(profile_user) %}
-  <section class="wn-profile-hero" aria-label="Профиль пользователя">
-    {% if avatar %}<img class="wn-profile-hero__backdrop" src="{{ avatar }}" alt="">{% endif %}
-    <span class="wn-profile-hero__scrim"></span>
-    <div class="wn-profile-hero__content">
-      <div class="wn-profile-hero__ring">
+  {% if art %}<img class="hm-ambient" src="{{ art }}" alt="" aria-hidden="true">{% endif %}
+
+  <section class="pf-hero{% if not currently_reading %} pf-hero--solo{% endif %} hm-rise" aria-label="Профиль пользователя">
+    {% if art %}<img class="hl-art pf-hero__art" src="{{ art }}" alt="" aria-hidden="true">{% endif %}
+
+    <div class="pf-id">
+      <div class="pf-id__ring">
         <div class="profile__avatar" aria-hidden="true">{% if avatar %}<img class="avatar-img" src="{{ avatar }}" alt="">{% else %}{{ avatar_initials(profile_user) }}{% endif %}</div>
       </div>
-      <div class="wn-profile-hero__info">
-        <p class="wn-profile-hero__name">{{ profile_user.nickname or profile_user.email }}</p>
+      <div class="pf-id__copy">
+        <div class="pf-id__line">
+          <h1 class="pf-name">{{ display_name }}</h1>
+          {% if is_own_profile %}
+          <a class="pf-edit" href="/settings/account">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 20h4L19 9l-4-4L4 16zM14 6l4 4"/></svg>
+            Редактировать
+          </a>
+          {% endif %}
+        </div>
         {% if profile_user.bio %}
         <p class="profile__bio">{{ profile_user.bio }}</p>
         {% else %}
-        <p class="wn-profile-hero__bio wn-profile-hero__bio--empty">
+        <p class="pf-bio-empty">
           Пользователь пока не рассказал о себе.
-          {% if is_own_profile %}<a class="wn-profile-link" href="/settings/account">Добавить о себе</a>{% endif %}
+          {% if is_own_profile %}<a class="hm-link" href="/settings/account">Добавить о себе</a>{% endif %}
         </p>
         {% endif %}
-        <p class="wn-profile-hero__meta">На сайте с {{ registered_at }} · Комментариев: {{ comment_count }}</p>
-        <dl class="wn-profile-stats">
-          {% for stat in stats %}
-          <div class="wn-profile-stats__item">
-            <dt class="wn-profile-stats__label">{{ stat.label }}</dt>
-            <dd class="wn-profile-stats__value">{{ stat.value }}</dd>
+        <p class="pf-meta hm-num">На сайте с {{ registered_at }}</p>
+        {% if not is_own_profile %}
+        <div class="pf-actions">
+          {{ ui_friend_request_actions(profile_user.id, friend_state, next_url="/profile/" ~ profile_user.id, sm=false) }}
+          {% if current_user %}
+          {# PR 357: «⋯» -> «Пожаловаться» (profile-more.js: a popover on desktop, the shared
+             bottom sheet on phones; then the report form from base.html). Shown by the
+             script - without it the menu can't open anyway. #}
+          <button class="ui-icon-btn wn-profile-more" type="button" data-role="profile-more" aria-haspopup="menu" aria-expanded="false" aria-controls="profile-more-menu" aria-label="Ещё" data-profile-name="{{ profile_user.nickname or 'Профиль' }}" hidden><svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><circle cx="5" cy="12" r="1.8"/><circle cx="12" cy="12" r="1.8"/><circle cx="19" cy="12" r="1.8"/></svg></button>
+          <div class="ui-menu wn-profile-more__menu" id="profile-more-menu" role="menu" aria-label="Действия с профилем" data-role="profile-more-menu" data-user-id="{{ profile_user.id }}" hidden>
+            <button class="ui-menu__item" type="button" role="menuitem" data-role="profile-report"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 21V4M5 4h11l-2 4 2 4H5"/></svg>Пожаловаться</button>
           </div>
-          {% endfor %}
-        </dl>
-      </div>
-      <div class="wn-profile-hero__actions">
-        {% if is_own_profile %}
-        <a class="wn-profile-edit" href="/settings/account">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 20h4L19 9l-4-4L4 16zM14 6l4 4"/></svg>
-          Редактировать
-        </a>
-        {% else %}
-        {{ ui_friend_request_actions(profile_user.id, friend_state, next_url="/profile/" ~ profile_user.id, sm=false) }}
-        {% if current_user %}
-        {# PR 357: «⋯» -> «Пожаловаться» (profile-more.js: a popover on desktop, the shared
-           bottom sheet on phones; then the report form from base.html). Shown by the
-           script - without it the menu can't open anyway. #}
-        <button class="ui-icon-btn wn-profile-more" type="button" data-role="profile-more" aria-haspopup="menu" aria-expanded="false" aria-controls="profile-more-menu" aria-label="Ещё" data-profile-name="{{ profile_user.nickname or 'Профиль' }}" hidden><svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><circle cx="5" cy="12" r="1.8"/><circle cx="12" cy="12" r="1.8"/><circle cx="19" cy="12" r="1.8"/></svg></button>
-        <div class="ui-menu wn-profile-more__menu" id="profile-more-menu" role="menu" aria-label="Действия с профилем" data-role="profile-more-menu" data-user-id="{{ profile_user.id }}" hidden>
-          <button class="ui-menu__item" type="button" role="menuitem" data-role="profile-report"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 21V4M5 4h11l-2 4 2 4H5"/></svg>Пожаловаться</button>
+          {% endif %}
         </div>
         {% endif %}
-        {% endif %}
       </div>
+      {# Figures as type, not tiles: the value large, what it counts under it. #}
+      <dl class="pf-stats">
+        {% for stat in stats %}
+        <div class="pf-stats__item">
+          <dt class="pf-stats__label">{{ stat.label }}</dt>
+          <dd class="pf-stats__value hm-num">{{ stat.value }}</dd>
+        </div>
+        {% endfor %}
+      </dl>
     </div>
+
+    {% if currently_reading %}
+    {% set current = currently_reading.entry %}
+    {% set current_name = currently_reading.name or current.slug_url %}
+    <aside class="hm-panel pf-now" aria-labelledby="profile-current-title">
+      <h2 class="pf-now__label" id="profile-current-title">Читает сейчас</h2>
+      <div class="pf-now__book">
+        <a class="hm-cover pf-now__cover" href="/titles/{{ current.slug_url }}" tabindex="-1" aria-hidden="true">
+          {% if currently_reading.cover_url %}<img src="{{ currently_reading.cover_url }}" alt="" loading="lazy">{% endif %}
+          {{ cover_progress(currently_reading.progress_percent, chip=false) }}
+        </a>
+        <div class="pf-now__copy">
+          <a class="pf-now__name" href="/titles/{{ current.slug_url }}">{{ current_name }}</a>
+          <p class="pf-now__meta hm-num">Том {{ current.last_read_volume }}, глава {{ current.last_read_number }}</p>
+          {% if currently_reading.progress_percent is not none %}
+          <p class="pf-now__pct hm-num"><b>{{ currently_reading.progress_percent }}%</b> прочитано</p>
+          {% endif %}
+        </div>
+      </div>
+      {% if is_own_profile %}
+      <a class="hm-go pf-now__go" href="/titles/{{ current.slug_url }}/chapters/{{ current.last_read_volume }}/{{ current.last_read_number }}">
+        <span class="hm-go__label">Читать дальше<small>{{ chapter_label(current.last_read_number) }}</small></span>
+        {{ arrow_icon("M5 12h14M13 6l6 6-6 6", "hm-go__arrow") }}
+      </a>
+      {% else %}
+      <a class="hm-link pf-now__open" href="/titles/{{ current.slug_url }}">Открыть тайтл</a>
+      {% endif %}
+    </aside>
+    {% endif %}
   </section>
 
-  <section class="wn-profile-card reading-calendar-card" aria-labelledby="reading-calendar-title">
-    <div class="wn-profile-card__head">
-      <h2 class="wn-profile-card__title" id="reading-calendar-title">{{ reading_calendar.total_duration_label }}</h2>
-      <span class="wn-profile-card__aside">{{ reading_calendar.reading_days }} {% if reading_calendar.reading_days % 10 == 1 and reading_calendar.reading_days % 100 != 11 %}день{% elif reading_calendar.reading_days % 10 in [2, 3, 4] and reading_calendar.reading_days % 100 not in [12, 13, 14] %}дня{% else %}дней{% endif %} с чтением</span>
-      {# PR 323: each swatch names its own threshold (time read that day). #}
+  {# --- Год чтения: the PR 160 heatmap in a dark card ---------------------------------- #}
+  <section class="hm-block pf-year hm-rise" style="--i: 1" aria-labelledby="reading-calendar-title">
+    <div class="ac-block-head pf-year__head">
+      <h2 class="hm-h2" id="reading-calendar-title">{{ reading_calendar.total_duration_label }}</h2>
+      <span class="pf-year__days hm-num">{{ reading_calendar.reading_days }} {{ plural(reading_calendar.reading_days, "день", "дня", "дней") }} с чтением</span>
+    </div>
+    <div class="ac-card pf-year__card reading-calendar-card">
+      <div class="reading-calendar-body">
+        <div class="reading-calendar-weekdays" aria-hidden="true">
+          {# PR 323: rows run Monday to Sunday (see _build_reading_calendar). #}
+          {% for weekday in ["Пн", "", "Ср", "", "Пт", "", ""] %}
+          <span>{{ weekday }}</span>
+          {% endfor %}
+        </div>
+        <div
+          class="reading-calendar-scroll wn-ribbon"
+          data-role="reading-calendar-scroll"
+          data-ribbon
+          data-ribbon-current-week
+        >
+          <div class="reading-calendar-months" aria-hidden="true">
+            {% for month in reading_calendar.month_labels %}
+            <span>{{ month }}</span>
+            {% endfor %}
+          </div>
+          <div
+            class="reading-calendar"
+            data-role="reading-calendar"
+            role="img"
+            aria-label="Календарь активности чтения за последний год"
+          >
+            {% for day in reading_calendar.days %}
+            <span
+              class="reading-calendar__day reading-calendar__day--level-{{ day.level }}{% if day.is_today %} reading-calendar__day--today{% endif %}"
+              data-tooltip="{{ day.label }}"
+            ></span>
+            {% endfor %}
+          </div>
+        </div>
+      </div>
+      {# PR 323: each swatch names its own threshold (time read that day); PR 177: under
+         the calendar, on the left. #}
       <div class="reading-calendar-legend" role="group" aria-label="Время чтения за день">
         <span aria-hidden="true">Меньше</span>
         {% for text in reading_calendar.legend %}
@@ -86,81 +164,61 @@
         <span aria-hidden="true">Больше</span>
       </div>
     </div>
-    <div class="reading-calendar-body">
-      <div class="reading-calendar-weekdays" aria-hidden="true">
-        {# PR 323: rows run Monday to Sunday (see _build_reading_calendar). #}
-        {% for weekday in ["Пн", "", "Ср", "", "Пт", "", ""] %}
-        <span>{{ weekday }}</span>
-        {% endfor %}
-      </div>
-      <div
-        class="reading-calendar-scroll wn-ribbon"
-        data-role="reading-calendar-scroll"
-        data-ribbon
-        data-ribbon-current-week
-      >
-        <div class="reading-calendar-months" aria-hidden="true">
-          {% for month in reading_calendar.month_labels %}
-          <span>{{ month }}</span>
-          {% endfor %}
-        </div>
-        <div
-          class="reading-calendar"
-          data-role="reading-calendar"
-          role="img"
-          aria-label="Календарь активности чтения за последний год"
-        >
-          {% for day in reading_calendar.days %}
-          <span
-            class="reading-calendar__day reading-calendar__day--level-{{ day.level }}{% if day.is_today %} reading-calendar__day--today{% endif %}"
-            data-tooltip="{{ day.label }}"
-          ></span>
-          {% endfor %}
-        </div>
-      </div>
-    </div>
-    <div class="reading-calendar-tooltip" data-role="reading-calendar-tooltip" role="tooltip"></div>
   </section>
 
-  {% if currently_reading or friend_preview %}
-  <div class="wn-profile__row">
-    {% if currently_reading %}
-    {% set current_name = currently_reading.name or currently_reading.entry.slug_url %}
-    <section class="wn-profile-card wn-profile-current" aria-labelledby="profile-current-title">
-      <h2 class="wn-profile-card__title" id="profile-current-title">Читает сейчас</h2>
-      <div class="wn-profile-current__body">
-        <a class="wn-profile-cover wn-profile-current__cover" href="/titles/{{ currently_reading.entry.slug_url }}" tabindex="-1" aria-hidden="true">
-          {% if currently_reading.cover_url %}<img src="{{ currently_reading.cover_url }}" alt="" loading="lazy">{% endif %}
-        </a>
-        <div class="wn-profile-current__copy">
-          <a class="wn-profile-current__name" href="/titles/{{ currently_reading.entry.slug_url }}">{{ current_name }}</a>
-          <p class="wn-profile-current__meta">
-            Том {{ currently_reading.entry.last_read_volume }}, глава {{ currently_reading.entry.last_read_number }}
-          </p>
-          <span class="wn-profile-current__spacer"></span>
-          {% if currently_reading.progress_percent is not none %}{{ progress(currently_reading.progress_percent) }}{% endif %}
-        </div>
+  {# Outside the .hm-rise sections: a fixed tooltip inside a transformed block would be
+     placed against the block instead of the viewport. #}
+  <div class="reading-calendar-tooltip" data-role="reading-calendar-tooltip" role="tooltip"></div>
+
+  {% if library_items or friend_preview %}
+  <div class="pf-grid{% if not (library_items and friend_preview) %} pf-grid--one{% endif %}">
+    {# --- Библиотека: cover cards with their progress -------------------------------- #}
+    {% if library_items %}
+    <section class="hm-block pf-library hm-rise" style="--i: 2" aria-labelledby="profile-library-title">
+      <div class="ac-block-head">
+        <h2 class="hm-h2" id="profile-library-title">Библиотека</h2>
+        <span class="ac-section-head__count hm-num">{{ library_items | length }} {{ plural(library_items | length, "тайтл", "тайтла", "тайтлов") }}</span>
+        {% if is_own_profile %}<a class="hm-link ac-block-head__more" href="/library">Открыть библиотеку</a>{% endif %}
       </div>
+      <ul class="pf-library__grid" data-role="profile-library">
+        {% for item in library_preview %}
+        {% set name = item.name or item.entry.slug_url %}
+        <li class="hm-card pf-book">
+          <div class="hm-cover hm-card__cover">
+            <a class="hm-card__link" href="/titles/{{ item.entry.slug_url }}" aria-label="{{ name }}">
+              {% if item.cover_url %}<img src="{{ item.cover_url }}" alt="" loading="lazy">{% else %}<span class="ac-cover__letter">{{ name[:1] }}</span>{% endif %}
+            </a>
+            {{ cover_progress(item.progress_percent) }}
+          </div>
+          <a class="hm-card__name" href="/titles/{{ item.entry.slug_url }}" title="{{ name }}" tabindex="-1" aria-hidden="true">{{ name }}</a>
+        </li>
+        {% endfor %}
+      </ul>
     </section>
     {% endif %}
 
+    {# --- Друзья: who, and what they read ------------------------------------------- #}
     {% if friend_preview %}
-    <section class="wn-profile-card wn-profile-friends" aria-labelledby="profile-friends-title">
-      <div class="wn-profile-card__head">
-        <h2 class="wn-profile-card__title" id="profile-friends-title">Друзья</h2>
-        <span class="wn-profile-card__count">{{ friend_count }}</span>
+    <section class="hm-block pf-friends hm-rise" style="--i: 3" aria-labelledby="profile-friends-title">
+      <div class="ac-block-head">
+        <h2 class="hm-h2" id="profile-friends-title">Друзья</h2>
+        <span class="ac-section-head__count hm-num" data-role="profile-friend-count">{{ friend_count }}</span>
         {% if friend_count > friend_preview | length %}
-        <a class="wn-profile-link wn-profile-card__more" href="/profile/{{ profile_user.id }}/friends">Все</a>
+        <a class="hm-link ac-block-head__more" href="/profile/{{ profile_user.id }}/friends">Все</a>
         {% endif %}
       </div>
-      <ul class="wn-profile-friends__list">
+      <ul class="ac-card pf-friends__list">
         {% for friend in friend_preview %}
         <li>
-          <a class="wn-profile-friend" href="/profile/{{ friend.user.id }}">
-            <span class="wn-profile-friend__avatar">{% if friend.user.avatar_url %}<img class="avatar-img" src="{{ friend.user.avatar_url }}" alt="">{% else %}{{ friend.user.avatar_initials }}{% endif %}</span>
-            <span class="wn-profile-friend__copy">
-              <span class="wn-profile-friend__name">{{ friend.user.display_name }}</span>
-              <span class="wn-profile-friend__sub">{% if friend.user.id in friend_reading %}Читает «{{ friend_reading[friend.user.id] }}»{% else %}Пока нет активности{% endif %}</span>
+          <a class="pf-friend" href="/profile/{{ friend.user.id }}">
+            <span class="pf-friend__avatar" aria-hidden="true">{% if friend.user.avatar_url %}<img class="avatar-img" src="{{ friend.user.avatar_url }}" alt="">{% else %}{{ friend.user.avatar_initials }}{% endif %}</span>
+            <span class="pf-friend__copy">
+              <span class="pf-friend__name">{{ friend.user.display_name }}</span>
+              {% if friend.user.id in friend_reading %}
+              <span class="pf-friend__sub">Читает «{{ friend_reading[friend.user.id] }}»</span>
+              {% else %}
+              <span class="pf-friend__sub pf-friend__sub--idle">Пока нет активности</span>
+              {% endif %}
             </span>
           </a>
         </li>
@@ -171,26 +229,8 @@
   </div>
   {% endif %}
 
-  {% if library_items %}
-  <section class="wn-profile-library" aria-labelledby="profile-library-title">
-    <div class="wn-profile-card__head">
-      <h2 class="wn-profile-library__title" id="profile-library-title">Библиотека</h2>
-      <span class="wn-profile-card__aside">{{ library_items | length }} {% if library_items | length % 10 == 1 and library_items | length % 100 != 11 %}тайтл{% elif library_items | length % 10 in [2, 3, 4] and library_items | length % 100 not in [12, 13, 14] %}тайтла{% else %}тайтлов{% endif %}</span>
-      {% if is_own_profile %}<a class="wn-profile-link wn-profile-card__more" href="/library">Открыть библиотеку</a>{% endif %}
-    </div>
-    <div class="wn-profile-library__grid" data-role="profile-library">
-      {% for item in library_preview %}
-      {% set name = item.name or item.entry.slug_url %}
-      <a class="wn-profile-poster" href="/titles/{{ item.entry.slug_url }}" title="{{ name }}">
-        <span class="wn-profile-cover wn-profile-poster__cover">{% if item.cover_url %}<img src="{{ item.cover_url }}" alt="" loading="lazy">{% endif %}</span>
-        {{ progress(item.progress_percent) }}
-        <span class="wn-profile-poster__name">{{ name }}</span>
-      </a>
-      {% endfor %}
-    </div>
-  </section>
-  {% endif %}
   {% else %}
+  <header class="hm-head pf-head"><h1 class="hm-title">Профиль</h1></header>
   {% from "_locked_feature.html" import locked_feature %}
   {% call locked_feature("Профиль скрыт", "/login", "Войти") %}
   <a href="/login">Войдите</a> или <a href="/register">зарегистрируйтесь</a>,
@@ -201,7 +241,7 @@
 <script src="{{ static_url('js/image-lightbox.js') }}" defer></script>
 <script src="{{ static_url('js/ribbon.js') }}" defer></script>
 <script src="{{ static_url('js/reading-calendar-tooltip.js') }}" defer></script>
-{% if current_user and not is_own_profile %}
+{% if current_user and profile_user and not is_own_profile %}
 <script src="{{ static_url('js/profile-more.js') }}" defer></script>
 {% endif %}
 {% endblock %}
