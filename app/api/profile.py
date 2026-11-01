@@ -15,84 +15,60 @@ something is set to hidden and go fix it in /settings/account.
 from __future__ import annotations
 
 from dataclasses import dataclass
-from datetime import date, datetime, timedelta
+from datetime import date, datetime
 from typing import Annotated
 
-from fastapi import APIRouter, Depends, HTTPException, Request
+from fastapi import APIRouter, Depends, HTTPException, Query, Request
 from fastapi.responses import HTMLResponse
 from psycopg import AsyncConnection
 
+from app.api.activity import (
+    DAY_PATTERN,
+    MONTH_PATTERN,
+    WEEKDAYS,
+    build_reading_month,
+    parse_calendar_query,
+)
 from app.api.library import currently_reading_for_users, library_items_for_user
 from app.auth.dependencies import get_current_user
-from app.db.activity import daily_active_seconds, daily_reading_activity, daily_titles_read
+from app.db.activity import daily_active_seconds
 from app.db.comments import count_comments_by_user
 from app.db.connection import connection, get_connection
 from app.db.friendships import get_friend_button_state, list_friends
 from app.db.users import User, get_user_by_id
-from app.services.titles import title_summaries
 from app.templating import templates
-from app.timezones import local_today, user_timezone
+from app.timezones import user_timezone
 
 router = APIRouter()
 
-_CALENDAR_WEEKS = 52
+# The «за год» figure: reading time over the trailing year.
+_YEAR_WEEKS = 52
 
-# PR 323: a calendar day's level is that day's reading time (heartbeat seconds) on fixed
-# thresholds, the same for every user - not its chapter count relative to the user's own
-# busiest day, where one outlier repainted the rest of the year and a long reading
-# session on an already-open chapter (minutes, no new chapter_read) read as empty.
-# Level 1 is "under 15 min", which includes a day with chapters opened but no time
-# logged (a short visit); then 15-45, 45-90 and 90+ minutes.
-_LEVEL_LIMITS = (15 * 60, 45 * 60, 90 * 60)
-CALENDAR_LEGEND = ("Нет чтения", "до 15 мин", "15–45 мин", "45–90 мин", "больше 90 мин")
 
 # PR 201: how many friends the profile page's own "Друзья" section previews before
 # pointing at the full list (GET /profile/{user_id}/friends) instead of listing everyone
-# right there - same idea as PR 159's _MAX_TITLES_IN_LABEL, just for this section.
+# right there.
 _FRIEND_PREVIEW_LIMIT = 6
 
-# PR 277: the "Библиотека" block is a preview row of covers (seven in the design), with
-# "Открыть библиотеку" for the rest - not every title in the library.
-_LIBRARY_PREVIEW_LIMIT = 7
+# PR 277: the "Библиотека" block is a preview of covers, with "Открыть библиотеку" for
+# the rest - not every title in the library. Two rows of five, beside "Друзья".
+_LIBRARY_PREVIEW_LIMIT = 10
 
 
 @dataclass(frozen=True)
 class ProfileStat:
-    """One of the hero's stat pills (PR 277): a big value over a small label."""
+    """One of the hero's figures: a big value over a small label."""
 
     value: str
     label: str
-
-
-@dataclass(frozen=True)
-class CalendarDay:
-    """One cell of the reading-activity heatmap (PR 136)."""
-
-    count: int
-    level: int  # 0 (no reading) - 4 (90+ min), see calendar_level()
-    label: str  # tooltip text: exact date + chapter count
-    is_today: bool = False  # PR 323: ringed, so the newest cell reads as "today"
-
-
-@dataclass(frozen=True)
-class ReadingCalendar:
-    """PR 160: the whole GitHub-style heatmap, not just its day cells - the header needs
-    the window's total active time and the grid needs a month label per column, both
-    computed once alongside the day cells themselves in _build_reading_calendar()."""
-
-    days: list[CalendarDay]
-    month_labels: list[str]  # one entry per column of `days` (see _month_labels())
-    total_duration_label: str  # e.g. "128 ч 4 мин чтения за последний год"
-    total_duration: str = ""  # PR 277: just "128 ч 4 мин", for the hero's stat pill
-    reading_days: int = 0  # PR 277: days in the window with reading (PR 323: chapters or time)
-    # PR 323: what each level means, level 0 first - the legend's swatch labels.
-    legend: tuple[str, ...] = CALENDAR_LEGEND
 
 
 @router.get("/profile")
 async def own_profile_page(
     request: Request,
     user: Annotated[User | None, Depends(get_current_user)],
+    month: Annotated[str | None, Query(pattern=MONTH_PATTERN)] = None,
+    day: Annotated[str | None, Query(pattern=DAY_PATTERN)] = None,
 ) -> HTMLResponse:
     """Same locked-screen gate as /library, /downloads, /activity and /settings/*
     (PR 22/90/91) - there's nothing to redirect an anonymous visitor's *own* profile to.
@@ -103,7 +79,12 @@ async def own_profile_page(
         return templates.TemplateResponse(request, "profile.html", {"profile_user": None})
     async with connection() as conn:
         return await _render_profile(
-            request, profile_user=user, is_own_profile=True, viewer_id=user.id, conn=conn
+            request,
+            profile_user=user,
+            is_own_profile=True,
+            viewer_id=user.id,
+            conn=conn,
+            calendar_query=parse_calendar_query(month, day),
         )
 
 
@@ -113,7 +94,10 @@ async def public_profile_page(
     user_id: int,
     viewer: Annotated[User | None, Depends(get_current_user)],
     conn: Annotated[AsyncConnection, Depends(get_connection)],
+    month: Annotated[str | None, Query(pattern=MONTH_PATTERN)] = None,
+    day: Annotated[str | None, Query(pattern=DAY_PATTERN)] = None,
 ) -> HTMLResponse:
+    """`month`/`day` pick the reading calendar's month and day, as on «Активность»."""
     profile_user = await get_user_by_id(conn, user_id)
     if profile_user is None:
         raise HTTPException(status_code=404, detail="Пользователь не найден")
@@ -124,6 +108,7 @@ async def public_profile_page(
         is_own_profile=is_own_profile,
         viewer_id=viewer.id if viewer is not None else None,
         conn=conn,
+        calendar_query=parse_calendar_query(month, day),
     )
 
 
@@ -134,6 +119,7 @@ async def _render_profile(
     is_own_profile: bool,
     viewer_id: int | None,
     conn: AsyncConnection,
+    calendar_query: tuple[date | None, date | None] = (None, None),
 ) -> HTMLResponse:
     items = await library_items_for_user(profile_user, conn)
     # Most recently read first (see library_items_for_user/list_entries's own ordering) -
@@ -168,14 +154,18 @@ async def _render_profile(
     comment_count = await count_comments_by_user(
         conn, profile_user.id, include_hidden=is_own_profile
     )
-    # PR 322: the profile owner's own days, whoever is looking at them.
-    reading_calendar = await _build_reading_calendar(
-        profile_user.id, conn, user_timezone(profile_user.timezone)
+    # PR 322: the profile owner's own days, on their own clock, whoever is looking at
+    # them - the month calendar of «Активность» (without today's «Читать дальше»: the
+    # hero has it).
+    month, day = calendar_query
+    reading_month = await build_reading_month(profile_user, conn, month, day)
+    year_seconds = await daily_active_seconds(
+        conn, profile_user.id, weeks=_YEAR_WEEKS, tz=user_timezone(profile_user.timezone)
     )
     # PR 277: a hidden section counts as empty here too - the same neutral "0" a genuinely
     # empty library/friend list shows, never a different state that would reveal a flag.
     stats = [
-        ProfileStat(reading_calendar.total_duration, "за год"),
+        ProfileStat(_format_duration(sum(year_seconds.values())), "за год"),
         ProfileStat(str(len(items)), _plural(len(items), "тайтл", "тайтла", "тайтлов")),
         ProfileStat(str(len(friends)), _plural(len(friends), "друг", "друга", "друзей")),
         ProfileStat(
@@ -196,7 +186,9 @@ async def _render_profile(
             # gated by any show_* privacy flag - there isn't one for either, same as the
             # avatar/nickname/bio they sit alongside.
             "comment_count": comment_count,
-            "reading_calendar": reading_calendar,
+            "reading": reading_month,
+            "weekdays": WEEKDAYS,
+            "calendar_base": "/profile" if is_own_profile else f"/profile/{profile_user.id}",
             "currently_reading": currently_reading,
             "library_items": items,
             "library_preview": items[:_LIBRARY_PREVIEW_LIMIT],
@@ -266,168 +258,6 @@ def _plural(n: int, one: str, few: str, many: str) -> str:
 
 def _format_date(iso_timestamp: str) -> str:
     return datetime.fromisoformat(iso_timestamp).strftime("%d.%m.%Y")
-
-
-# PR 159: cap on how many title names a tooltip lists by name before collapsing the rest
-# into "и ещё N" - a long-running reading binge could otherwise read a dozen titles in one
-# day, and the native `title` tooltip has no scrolling of its own to fall back on.
-_MAX_TITLES_IN_LABEL = 3
-
-
-async def _build_reading_calendar(user_id: int, conn: AsyncConnection, tz: str) -> ReadingCalendar:
-    """Every day in the trailing _CALENDAR_WEEKS weeks, oldest first, padded back to the
-    Monday on/before the window's own start so the flat list can be dropped straight into
-    a `grid-auto-flow: column; grid-template-rows: repeat(7, ...)` grid (app.css's
-    .reading-calendar) and land each day in the correct weekday row - whole Monday-to-
-    Sunday weeks (PR 323: the Russian week, as the «Пн/Ср/Пт» row labels say; it used to
-    be GitHub's Sunday-first one), partial leading week zero-filled. A day with no reading
-    at all (including every padding day, which by construction predates anything the
-    daily_* queries even looked at) gets level 0 - there's no distinct "no data" state,
-    an empty calendar for a user with no reading history at all just means every cell is
-    level 0, not an empty/missing grid."""
-    counts = await daily_reading_activity(conn, user_id, weeks=_CALENDAR_WEEKS, tz=tz)
-    active_seconds = await daily_active_seconds(conn, user_id, weeks=_CALENDAR_WEEKS, tz=tz)
-    titles_by_day = await daily_titles_read(conn, user_id, weeks=_CALENDAR_WEEKS, tz=tz)
-    # One lookup per unique title across the whole window, not per day it was read on -
-    # a title read on 20 different days over the year still only needs its name fetched
-    # once, reused for every one of that title's cells below.
-    title_names = await _title_names({slug for slugs in titles_by_day.values() for slug in slugs})
-
-    today = local_today(tz)
-    start = today - timedelta(days=_CALENDAR_WEEKS * 7 - 1)
-    # date.weekday() is Monday=0..Sunday=6 - days since the most recent Monday.
-    grid_start = start - timedelta(days=start.weekday())
-
-    days: list[CalendarDay] = []
-    current = grid_start
-    while current <= today:
-        day_key = current.isoformat()
-        count = counts.get(day_key, 0)
-        seconds = active_seconds.get(day_key, 0)
-        level = calendar_level(count, seconds)
-        # PR 140: the chapter count alone doesn't say how long that reading actually took
-        # - _format_duration() reuses the same heartbeat seconds already summed for
-        # "Активность"'s "today" stat (total_active_seconds_today()), just grouped by day
-        # instead of collapsed to one number.
-        #
-        # PR 159: which title(s) that reading was actually on, one per line - joined with
-        # "\n" and rendered as real line breaks by the tooltip's own `white-space:
-        # pre-line` (PR 160's reading-calendar-tooltip.js/app.css), same as the native
-        # `title` attribute this label used to sit in before PR 160 replaced it.
-        label_lines = [
-            f"{current.strftime('%d.%m.%Y')}: {_pluralize_chapters(count)}, "
-            f"{_format_duration(seconds)}",
-            *_title_lines(titles_by_day.get(day_key, []), title_names),
-        ]
-        days.append(
-            CalendarDay(
-                count=count,
-                level=level,
-                label="\n".join(label_lines),
-                is_today=current == today,
-            )
-        )
-        current += timedelta(days=1)
-
-    # PR 160: total across the whole window, not just today's total_active_seconds_today()
-    # - the calendar's own header ("N ч чтения за последний год"), unlike the "Активность"
-    # section's "today" stat, spans the full year the grid itself covers.
-    total_duration = _format_duration(sum(active_seconds.values()))
-    total_duration_label = f"{total_duration} чтения за последний год"
-    month_labels = _month_labels(grid_start, total_days=len(days))
-    return ReadingCalendar(
-        days=days,
-        month_labels=month_labels,
-        total_duration_label=total_duration_label,
-        total_duration=total_duration,
-        # PR 323: a day with only reading time (no chapter opened) is a reading day too -
-        # it's colored as one, and «Активность» counts it the same way.
-        reading_days=len(
-            {day for day, n in counts.items() if n > 0}
-            | {day for day, n in active_seconds.items() if n > 0}
-        ),
-    )
-
-
-def calendar_level(chapters: int, seconds: int) -> int:
-    """0-4 on the fixed _LEVEL_LIMITS (see CALENDAR_LEGEND for what each one means)."""
-    if seconds <= 0:
-        return 1 if chapters > 0 else 0
-    return 1 + sum(seconds >= limit for limit in _LEVEL_LIMITS)
-
-
-# PR 160: Russian 3-letter month abbreviations for the labels above the grid, index 0 = Jan
-# - matches every other Russian-only label already in this module (_pluralize_chapters()
-# etc.), there's no i18n layer to plug a locale-aware formatter into here.
-_MONTH_ABBR_RU = [
-    "Янв", "Фев", "Мар", "Апр", "Май", "Июн",
-    "Июл", "Авг", "Сен", "Окт", "Ноя", "Дек",
-]
-
-# Minimum number of columns between two month labels - without this, a month that starts
-# within a column or two of the previous label's column (e.g. a short adjacent month) would
-# overlap it, since each label's text (~3 characters) is wider than a single 11px+3px cell.
-_MIN_MONTH_LABEL_GAP = 3
-
-
-def _month_labels(grid_start: date, total_days: int) -> list[str]:
-    """One entry per column of the day grid (columns run left→right, oldest first, same
-    order `days` auto-flows into via app.css's `grid-auto-flow: column`), empty unless that
-    column is where a new month starts - i.e. its first (Monday) row falls in a different
-    month than the previous column's first row. Purely a function of `grid_start`/
-    `total_days` (calendar dates), not of any reading activity, so it renders the same
-    correct labels whether the user has a year of history or none at all."""
-    num_columns = -(-total_days // 7)  # ceil division, no partial-week columns dropped
-    labels = [""] * num_columns
-    last_labeled_col = -_MIN_MONTH_LABEL_GAP
-    prev_month: tuple[int, int] | None = None
-    for col in range(num_columns):
-        col_start = grid_start + timedelta(days=col * 7)
-        month = (col_start.year, col_start.month)
-        if month != prev_month:
-            prev_month = month
-            if col - last_labeled_col >= _MIN_MONTH_LABEL_GAP:
-                labels[col] = _MONTH_ABBR_RU[col_start.month - 1]
-                last_labeled_col = col
-    return labels
-
-
-async def _title_names(slugs: set[str]) -> dict[str, str]:
-    """Display name per slug_url (app/services/titles.py). A title that's gone/
-    unreachable on ranobelib.me by the time this renders just falls back to its own
-    slug_url as a label, the same fallback library_items_for_user() effectively lands on
-    too - it doesn't take the whole tooltip down with it."""
-    summaries = await title_summaries(slugs)
-    return {
-        slug_url: summaries[slug_url].name if slug_url in summaries else slug_url
-        for slug_url in slugs
-    }
-
-
-def _title_lines(slugs: list[str], title_names: dict[str, str]) -> list[str]:
-    """Up to _MAX_TITLES_IN_LABEL names, most recently read first (daily_titles_read's own
-    ordering) - `slugs` is already empty for a day with no reading, so this returns []
-    rather than a stray empty tooltip line for every padding/no-activity day."""
-    if not slugs:
-        return []
-    shown = [title_names.get(slug, slug) for slug in slugs[:_MAX_TITLES_IN_LABEL]]
-    remaining = len(slugs) - len(shown)
-    if remaining > 0:
-        shown.append(f"и ещё {remaining}")
-    return shown
-
-
-def _pluralize_chapters(n: int) -> str:
-    if n == 0:
-        return "нет прочитанных глав"
-    mod10, mod100 = n % 10, n % 100
-    if mod10 == 1 and mod100 != 11:
-        word = "глава"
-    elif 2 <= mod10 <= 4 and not (12 <= mod100 <= 14):
-        word = "главы"
-    else:
-        word = "глав"
-    return f"{n} {word}"
 
 
 def _format_duration(seconds: int) -> str:

@@ -3,12 +3,14 @@ day's level on the profile heatmap's scale, the month's reading by hour of the d
 day was read and which day is shown beside the calendar. Pure functions - no database."""
 
 from datetime import date
+from types import SimpleNamespace
 
 from app.api.activity import (
     _add_months,
     _day_heading,
     _minutes_label,
     _month_calendar,
+    _month_reading,
     _reading_hours,
     _selected_day,
     _span_label,
@@ -122,12 +124,43 @@ def test_the_first_month_has_no_way_back() -> None:
 
 
 def test_selected_day() -> None:
+    read_today = [SimpleNamespace(day=TODAY)]
     assert _selected_day(date(2026, 10, 3), [], OCTOBER, TODAY) == date(2026, 10, 3)
-    assert _selected_day(None, [], OCTOBER, TODAY) == TODAY
+    # Today when it was read, else the month's summary (None).
+    assert _selected_day(None, read_today, OCTOBER, TODAY) == TODAY
+    assert _selected_day(None, [], OCTOBER, TODAY) is None
     # A picked day of another month, or in the future, falls back.
-    assert _selected_day(date(2026, 9, 3), [], OCTOBER, TODAY) == TODAY
-    # A past month without a pick: its latest reading day, or nothing.
-    assert _selected_day(None, [], date(2026, 9, 1), TODAY) is None
+    assert _selected_day(date(2026, 9, 3), read_today, OCTOBER, TODAY) == TODAY
+    assert _selected_day(date(2026, 11, 3), [], OCTOBER, TODAY) is None
+    # A past month without a pick: its summary.
+    latest = [SimpleNamespace(day=date(2026, 9, 20))]
+    assert _selected_day(None, latest, date(2026, 9, 1), TODAY) is None
+
+
+async def test_month_reading_sums_the_month_by_title() -> None:
+    class _Titles:
+        async def get(self, slug_url: str) -> tuple[str, str | None]:
+            return slug_url.upper(), None
+
+    month = {
+        "2026-10-02": [TitleDay("1--a", 2, 600), TitleDay("2--b", 1, 3000)],
+        "2026-10-05": [TitleDay("1--a", 3, 900)],
+    }
+
+    summary = await _month_reading(OCTOBER, month, _Titles(), TODAY)
+
+    assert summary.heading == "Октябрь"
+    assert summary.reading_days == 2
+    assert summary.chapters == 6
+    assert summary.time_label == "1 ч 15 мин"
+    # The most read first: 50 min of «b» before 25 min of «a».
+    assert [(t.name, t.chapters, t.time_label) for t in summary.titles] == [
+        ("2--B", 1, "50 мин"),
+        ("1--A", 5, "25 мин"),
+    ]
+    other_year = await _month_reading(date(2025, 12, 1), {}, _Titles(), TODAY)
+    assert other_year.heading == "Декабрь 2025"
+    assert other_year.titles == []
 
 
 def test_day_heading_and_minutes() -> None:

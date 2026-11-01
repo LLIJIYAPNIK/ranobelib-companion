@@ -21,6 +21,7 @@
 #}
 {% from "home/_macros.html" import search_form %}
 {% from "_continue_reading_hero.html" import chapter_label %}
+{% from "_reading_month.html" import reading_month, month_art %}
 {% macro cover(slug, name, url, cls) -%}
 <a class="hm-cover {{ cls }}" href="/titles/{{ slug }}" tabindex="-1" aria-hidden="true">{% if url %}<img src="{{ url }}" alt="" loading="lazy">{% else %}<span class="ac-cover__letter">{{ name[:1] }}</span>{% endif %}</a>
 {%- endmacro %}
@@ -56,13 +57,10 @@
 {% if current_user %}
 {% set cal = overview.calendar %}
 {% set hours = overview.hours %}
-{% set picked = (overview.days | selectattr("day", "equalto", overview.selected) | first) if overview.selected else none %}
-{# The cover each reading day's card is washed with: its first title's. The page opens
-   on the picked day's, else the latest reading day's, else the top popular title's. #}
-{% set art_of = {} %}
-{% for day in overview.days %}{% set url = day.titles | selectattr("cover_url") | map(attribute="cover_url") | first %}{% if url %}{% set _ = art_of.update({day.day.isoformat(): url}) %}{% endif %}{% endfor %}
-{% set latest_art = art_of.values() | first %}
-{% set art = (art_of.get(picked.day.isoformat()) if picked else none) or latest_art or (overview.popular | selectattr("cover_url") | map(attribute="cover_url") | first) %}
+{# The page opens on the picked day's cover, else the latest reading day's, else the
+   top popular title's (_reading_month.html). #}
+{% set popular_art = overview.popular | selectattr("cover_url") | map(attribute="cover_url") | first %}
+{% set art = month_art(overview.reading, popular_art) %}
 {% endif %}
 <main class="hm ac{% if not current_user %} ac--guest{% endif %} activity-page" data-role="activity-page">
   {% if current_user %}
@@ -90,85 +88,7 @@
   </header>
 
   {# --- День и месяц: the picked day's card, the calendar in glass at its side ------- #}
-  <section class="ac-month hm-rise" style="--i: 1" aria-labelledby="ac-month-title" data-role="activity-calendar" data-month-part="calendar">
-    {% if art %}<img class="hl-art ac-month__art" src="{{ art }}" alt="" aria-hidden="true" data-role="activity-art">{% endif %}
-
-    <div class="ac-days" data-role="activity-days" aria-live="polite">
-      {% for day in overview.days %}
-      <article class="ac-dayread" data-day-panel="{{ day.day.isoformat() }}" data-art="{{ art_of.get(day.day.isoformat(), '') }}" aria-label="{{ day.heading }}"{% if overview.selected != day.day %} hidden{% endif %}>
-        <div class="ac-dayread__copy">
-          <h2 class="ac-dayread__title">{{ day.heading }}</h2>
-          <p class="ac-dayread__sum hm-num">
-            <span>{{ chapters(day.chapters) }}</span>
-            {% if day.time_label %}<span>{{ day.time_label }}</span>{% endif %}
-          </p>
-          {% if day.span_label %}<p class="ac-dayread__span hm-num">{{ day.span_label }}</p>{% endif %}
-        </div>
-        {% if day.continue_href %}
-        <a class="hm-go ac-continue" href="{{ day.continue_href }}">
-          <span class="hm-go__label">Читать дальше<small>{{ chapter_label(day.continue_number) if day.continue_number else "с того же места" }}</small></span>
-          {{ arrow_icon("M5 12h14M13 6l6 6-6 6", "hm-go__arrow") }}
-        </a>
-        {% endif %}
-        <ul class="ac-dayread__list{% if day.titles | length == 1 %} ac-dayread__list--one{% endif %}">
-          {% for title in day.titles %}
-          <li class="ac-dayread__item">
-            {{ cover(title.slug_url, title.name, title.cover_url, "ac-dayread__cover") }}
-            <a class="ac-dayread__name" href="/titles/{{ title.slug_url }}">{{ title.name }}</a>
-            <span class="ac-dayread__meta hm-num">{% if title.chapters %}{{ chapters(title.chapters) }}{% endif %}{% if title.chapters and title.time_label %} · {% endif %}{{ title.time_label or "" }}</span>
-          </li>
-          {% endfor %}
-        </ul>
-      </article>
-      {% endfor %}
-      {# A day without reading - activity-calendar.js puts the picked day's name in. #}
-      {% set empty_selected = overview.selected and not picked %}
-      <article class="ac-dayread ac-dayread--empty" data-day-panel="" data-art="" {% if not empty_selected %}hidden{% endif %}>
-        <h2 class="ac-dayread__title" data-role="empty-day-title">{% if empty_selected %}{{ overview.selected_heading }}{% endif %}</h2>
-        <p class="ac-dayread__none">В этот день не читали. Выберите отмеченный день, чтобы увидеть, что читали.</p>
-      </article>
-      {% if not overview.days and not overview.selected %}
-      <div class="ac-dayread ac-dayread--empty">
-        <h2 class="ac-dayread__title">{{ cal.title }}</h2>
-        <p class="ac-dayread__none">В этом месяце не читали{% if cal.prev_month %} — листайте назад, чтобы увидеть прошлые месяцы{% endif %}.</p>
-      </div>
-      {% endif %}
-    </div>
-
-    <div class="hm-panel ac-cal">
-      <div class="ac-cal__head">
-        <h2 class="ac-cal__title" id="ac-month-title">{{ cal.title }}</h2>
-        <nav class="ac-cal__nav" aria-label="Месяц">
-          {% if cal.prev_month %}<a class="lb-round ac-cal__arrow" href="/activity?month={{ cal.prev_month }}" aria-label="Предыдущий месяц">{{ arrow_icon("m15 6-6 6 6 6") }}</a>{% else %}<span class="lb-round ac-cal__arrow" aria-disabled="true">{{ arrow_icon("m15 6-6 6 6 6") }}</span>{% endif %}
-          {% if cal.next_month %}<a class="lb-round ac-cal__arrow" href="/activity?month={{ cal.next_month }}" aria-label="Следующий месяц">{{ arrow_icon("m9 6 6 6-6 6") }}</a>{% else %}<span class="lb-round ac-cal__arrow" aria-disabled="true">{{ arrow_icon("m9 6 6 6-6 6") }}</span>{% endif %}
-        </nav>
-      </div>
-      <div class="ac-cal__grid" role="grid" aria-labelledby="ac-month-title">
-        <div class="ac-cal__row ac-cal__weekdays" role="row">
-          {% for name in weekdays %}<span class="ac-cal__weekday" role="columnheader">{{ name }}</span>{% endfor %}
-        </div>
-        {% for week in cal.weeks %}
-        <div class="ac-cal__row" role="row">
-          {% for cell in week %}
-          {% if cell.day %}
-          {% set iso = cell.day.isoformat() %}
-          <span class="ac-day{% if cell.level %} ac-day--read ac-day--l{{ cell.level }}{% endif %}{% if cell.is_today %} ac-day--today{% endif %}{% if cell.is_future %} ac-day--future{% endif %}{% if overview.selected == cell.day %} ac-day--selected{% endif %}" role="gridcell">
-            {% if cell.is_future %}
-            <span class="ac-day__tile hm-num">{{ cell.day.day }}</span>
-            {% else %}
-            <a class="ac-day__tile hm-num" href="/activity?day={{ iso }}" data-day="{{ iso }}" data-heading="{{ cell.heading }}" aria-label="{{ cell.label }}" title="{{ cell.label }}"{% if cell.is_today %} aria-current="date"{% endif %} aria-pressed="{{ 'true' if overview.selected == cell.day else 'false' }}">{{ cell.day.day }}</a>
-            {% endif %}
-          </span>
-          {% else %}
-          <span class="ac-day ac-day--blank" role="gridcell"></span>
-          {% endif %}
-          {% endfor %}
-        </div>
-        {% endfor %}
-      </div>
-      <p class="ac-cal__total hm-num"><b>{{ hours.time_label }}</b> и {{ chapters(hours.chapters) }} за месяц</p>
-    </div>
-  </section>
+  {{ reading_month(overview.reading, weekdays, "/activity", hours.time_label, hours.chapters, fallback_art=popular_art) }}
 
   <div class="ac-grid">
     {# --- Друзья ------------------------------------------------------------------- #}
