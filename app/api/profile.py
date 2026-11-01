@@ -51,9 +51,9 @@ CALENDAR_LEGEND = ("Нет чтения", "до 15 мин", "15–45 мин", "4
 # right there - same idea as PR 159's _MAX_TITLES_IN_LABEL, just for this section.
 _FRIEND_PREVIEW_LIMIT = 6
 
-# PR 277: the "Библиотека" block is a preview row of covers (seven in the design), with
-# "Открыть библиотеку" for the rest - not every title in the library.
-_LIBRARY_PREVIEW_LIMIT = 7
+# PR 277: the "Библиотека" block is a preview of covers, with "Открыть библиотеку" for
+# the rest - not every title in the library. Two rows of five, beside "Друзья".
+_LIBRARY_PREVIEW_LIMIT = 10
 
 
 @dataclass(frozen=True)
