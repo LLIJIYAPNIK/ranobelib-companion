@@ -14,7 +14,6 @@ from psycopg import AsyncConnection
 from ranobelib import RanobeLibError
 
 from app.api.library import currently_reading_for_users
-from app.api.profile import calendar_level
 from app.auth.dependencies import get_current_user, require_current_user
 from app.db.activity import (
     ChapterReadEvent,
@@ -49,6 +48,22 @@ from app.templating import templates
 from app.timezones import day_start_utc, local_today, user_timezone
 
 router = APIRouter(prefix="/activity")
+
+# PR 323: a calendar day's level is that day's reading time (heartbeat seconds) on fixed
+# thresholds, the same for every user - not its chapter count relative to the user's own
+# busiest day, where one outlier repainted the rest of the month and a long reading
+# session on an already-open chapter (minutes, no new chapter_read) read as empty.
+# Level 1 is "under 15 min", which includes a day with chapters opened but no time
+# logged (a short visit); then 15-45, 45-90 and 90+ minutes.
+_LEVEL_LIMITS = (15 * 60, 45 * 60, 90 * 60)
+
+
+def calendar_level(chapters: int, seconds: int) -> int:
+    """0 (no reading) - 4 (90+ min) on the fixed _LEVEL_LIMITS."""
+    if seconds <= 0:
+        return 1 if chapters > 0 else 0
+    return 1 + sum(seconds >= limit for limit in _LEVEL_LIMITS)
+
 
 _MAX_HEARTBEAT_SECONDS = 60
 """Clamp on a single tick, matching activity-heartbeat.js's own interval (see
@@ -114,8 +129,8 @@ _MONTHS_GENITIVE = (
     "июля", "августа", "сентября", "октября", "ноября", "декабря",
 )  # fmt: skip
 WEEKDAYS = ("Пн", "Вт", "Ср", "Чт", "Пт", "Сб", "Вс")
-_MONTH_PATTERN = r"^\d{4}-(0[1-9]|1[0-2])$"
-_DAY_PATTERN = r"^\d{4}-(0[1-9]|1[0-2])-(0[1-9]|[12]\d|3[01])$"
+MONTH_PATTERN = r"^\d{4}-(0[1-9]|1[0-2])$"
+DAY_PATTERN = r"^\d{4}-(0[1-9]|1[0-2])-(0[1-9]|[12]\d|3[01])$"
 
 
 @dataclass(frozen=True)
@@ -235,6 +250,87 @@ class PopularTitle:
 
 
 @dataclass(frozen=True)
+class MonthReading:
+    """The month as a whole - what the card shows before a day is picked: its reading
+    days, chapters and time, and every title read in it, the most read first."""
+
+    heading: str  # "Октябрь", "Октябрь 2025" in another year
+    reading_days: int
+    chapters: int
+    time_label: str | None
+    titles: list[DayTitle]
+
+
+@dataclass(frozen=True)
+class ReadingMonth:
+    """One reader's month as the calendar shows it - on «Активность» and on the
+    profile: the month's grid, what was read on each reading day, the picked day."""
+
+    calendar: MonthCalendar
+    days: list[DayReading]  # every day of the month with reading, newest first
+    selected: date | None  # None: the month's summary is shown
+    selected_heading: str | None
+    summary: MonthReading
+    month_titles: dict[str, list[TitleDay]]
+    month_end: date
+    # Each reading day's first cover (ISO day -> URL), newest day first: what the day's
+    # card is washed with.
+    covers: dict[str, str]
+    time_label: str  # the month's reading time, "12 ч 17 мин"
+    chapters: int  # the month's chapters
+
+
+async def build_reading_month(
+    user: User,
+    conn: AsyncConnection,
+    month: date | None = None,
+    day: date | None = None,
+    *,
+    titles: _TitleLookup | None = None,
+    recent_reads: list[ChapterReadEvent] | None = None,
+) -> ReadingMonth:
+    """`month`/`day` clamped to the calendar's window (_MONTHS_BACK months back, the
+    current one last), on the reader's own clock. A month asked for without a day opens
+    on its summary; with neither, today opens when it was read. `recent_reads` gives
+    today's card its «Читать дальше»; without it no day has one."""
+    month_asked = month is not None and day is None
+    tz = user_timezone(user.timezone)
+    today = local_today(tz)
+    this_month = today.replace(day=1)
+    first_month = _add_months(this_month, -_MONTHS_BACK)
+    if day is not None:
+        month = day.replace(day=1)
+    month = min(max(month or this_month, first_month), this_month)
+    month_end = _add_months(month, 1) - timedelta(days=1)
+    titles = titles or _TitleLookup()
+
+    month_titles = await daily_title_activity(conn, user.id, month, month_end, tz)
+    days = [
+        await _day_reading(date.fromisoformat(key), entries, titles, today, recent_reads or [], tz)
+        for key, entries in sorted(month_titles.items(), reverse=True)
+    ]
+    selected = None if month_asked else _selected_day(day, days, month, today)
+    return ReadingMonth(
+        calendar=_month_calendar(month, month_end, month_titles, today, first_month),
+        days=days,
+        selected=selected,
+        selected_heading=_day_heading(selected, today) if selected else None,
+        summary=await _month_reading(month, month_titles, titles, today),
+        month_titles=month_titles,
+        month_end=month_end,
+        covers={
+            d.day.isoformat(): url
+            for d in days
+            if (url := next((t.cover_url for t in d.titles if t.cover_url), None))
+        },
+        time_label=_format_duration(
+            sum(t.seconds for entries in month_titles.values() for t in entries)
+        ),
+        chapters=sum(t.chapters for entries in month_titles.values() for t in entries),
+    )
+
+
+@dataclass(frozen=True)
 class ActivityOverview:
     """«Активность»: the reader's month as a calendar of reading days, what was read on
     the picked day and when, how much and at what hours the month was read, friends'
@@ -246,6 +342,7 @@ class ActivityOverview:
     read_today: bool
     today_time_label: str | None
     last_read_label: str | None  # the latest reading day, when it isn't today
+    reading: ReadingMonth  # the calendar card, shared with the profile
     calendar: MonthCalendar
     hours: ReadingHours
     days: list[DayReading]  # every day of the month with reading, newest first
@@ -265,12 +362,6 @@ async def build_activity_overview(
 ) -> ActivityOverview:
     tz = user_timezone(user.timezone)
     today = local_today(tz)
-    this_month = today.replace(day=1)
-    first_month = _add_months(this_month, -_MONTHS_BACK)
-    if day is not None:
-        month = day.replace(day=1)
-    month = min(max(month or this_month, first_month), this_month)
-    month_end = _add_months(month, 1) - timedelta(days=1)
 
     summary = await build_activity_summary(user, conn)
     titles = _TitleLookup()
@@ -285,19 +376,16 @@ async def build_activity_overview(
         d for d, n in seconds_by_day.items() if n > 0
     }
     streak = reading_streak_days(dict.fromkeys(reading_days, 1), tz)
-    month_titles = await daily_title_activity(conn, user.id, month, month_end, tz)
     recent_reads = await list_recent_chapter_reads(conn, user.id, limit=_EVENTS_LIMIT)
     recent_downloads = await list_download_history(conn, user.id, limit=_EVENTS_LIMIT)
 
-    calendar = _month_calendar(month, month_end, month_titles, today, first_month)
-    hours = _reading_hours(
-        month_titles, await hourly_reading_seconds(conn, user.id, month, month_end, tz)
+    reading = await build_reading_month(
+        user, conn, month, day, titles=titles, recent_reads=recent_reads
     )
-    days = [
-        await _day_reading(date.fromisoformat(key), entries, titles, today, recent_reads, tz)
-        for key, entries in sorted(month_titles.items(), reverse=True)
-    ]
-    selected = _selected_day(day, days, month, today)
+    hours = _reading_hours(
+        reading.month_titles,
+        await hourly_reading_seconds(conn, user.id, reading.calendar.month, reading.month_end, tz),
+    )
 
     last_reading_day = max(reading_days, default=None)
     friends, friends_more, friends_idle, friends_total = await _friends_activity(
@@ -314,11 +402,12 @@ async def build_activity_overview(
             if last_reading_day and last_reading_day != today.isoformat()
             else None
         ),
-        calendar=calendar,
+        reading=reading,
+        calendar=reading.calendar,
         hours=hours,
-        days=days,
-        selected=selected,
-        selected_heading=_day_heading(selected, today) if selected else None,
+        days=reading.days,
+        selected=reading.selected,
+        selected_heading=reading.selected_heading,
         friends=friends,
         friends_more=friends_more,
         friends_idle=friends_idle,
@@ -333,8 +422,8 @@ async def build_activity_overview(
 async def show_activity(
     request: Request,
     user: Annotated[User | None, Depends(get_current_user)],
-    month: Annotated[str | None, Query(pattern=_MONTH_PATTERN)] = None,
-    day: Annotated[str | None, Query(pattern=_DAY_PATTERN)] = None,
+    month: Annotated[str | None, Query(pattern=MONTH_PATTERN)] = None,
+    day: Annotated[str | None, Query(pattern=DAY_PATTERN)] = None,
 ) -> HTMLResponse:
     """Same locked-screen gate as /library and /downloads (PR 22): viewing the page
     itself doesn't require an account - build_activity_overview() (which resolves titles
@@ -347,8 +436,7 @@ async def show_activity(
     switches days in place). Both are clamped to the calendar's own window."""
     overview = None
     if user is not None:
-        picked_day = _parse_day(day)
-        picked_month = date.fromisoformat(f"{month}-01") if month else None
+        picked_month, picked_day = parse_calendar_query(month, day)
         async with connection() as conn:
             overview = await build_activity_overview(user, conn, picked_month, picked_day)
     return templates.TemplateResponse(
@@ -360,6 +448,12 @@ async def show_activity(
             "weekdays": WEEKDAYS,
         },
     )
+
+
+def parse_calendar_query(month: str | None, day: str | None) -> tuple[date | None, date | None]:
+    """?month=YYYY-MM and ?day=YYYY-MM-DD (already matched against MONTH_PATTERN and
+    DAY_PATTERN) as dates for build_reading_month()."""
+    return (date.fromisoformat(f"{month}-01") if month else None), _parse_day(day)
 
 
 def _parse_day(raw: str | None) -> date | None:
@@ -501,6 +595,39 @@ async def _day_reading(
     )
 
 
+async def _month_reading(
+    month: date, month_titles: dict[str, list[TitleDay]], titles: _TitleLookup, today: date
+) -> MonthReading:
+    per_title: dict[str, list[int]] = {}  # slug -> [chapters, seconds]
+    for entries in month_titles.values():
+        for entry in entries:
+            totals = per_title.setdefault(entry.slug_url, [0, 0])
+            totals[0] += entry.chapters
+            totals[1] += entry.seconds
+    items = []
+    for slug_url, (chapters, seconds) in sorted(
+        per_title.items(), key=lambda item: (-item[1][1], -item[1][0])
+    ):
+        name, cover_url = await titles.get(slug_url)
+        items.append(
+            DayTitle(
+                slug_url=slug_url,
+                name=name,
+                cover_url=cover_url,
+                chapters=chapters,
+                time_label=_minutes_label(seconds),
+            )
+        )
+    heading = _MONTHS_NOMINATIVE[month.month - 1]
+    return MonthReading(
+        heading=heading if month.year == today.year else f"{heading} {month.year}",
+        reading_days=len(month_titles),
+        chapters=sum(totals[0] for totals in per_title.values()),
+        time_label=_minutes_label(sum(totals[1] for totals in per_title.values())),
+        titles=items,
+    )
+
+
 def _span_label(entries: list[TitleDay], tz: str) -> str | None:
     """When in the day the reading was: from the first event to the last, on the
     reader's clock."""
@@ -516,13 +643,13 @@ def _span_label(entries: list[TitleDay], tz: str) -> str | None:
 def _selected_day(
     picked: date | None, days: list[DayReading], month: date, today: date
 ) -> date | None:
-    """The day shown under the calendar: the one picked, else today in the current month,
-    else the month's latest reading day."""
+    """The day shown beside the calendar: the one picked, else today when it was read
+    in the current month - else None, the month's own summary (MonthReading)."""
     if picked is not None and picked.replace(day=1) == month and picked <= today:
         return picked
-    if month == today.replace(day=1):
+    if month == today.replace(day=1) and any(d.day == today for d in days):
         return today
-    return days[0].day if days else None
+    return None
 
 
 def _day_heading(day: date, today: date) -> str:
