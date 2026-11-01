@@ -2,163 +2,326 @@
 {% block title %}Активность — RanobeLib Companion{% endblock %}
 {% block content %}
 {#
-  PR 276 (Webnovells Redesign, screen A4): period switch (Сегодня / 7 дней / 30 дней,
-  ?period=) over four metric cards, the last 30 days of reading minutes as a bar chart,
-  "Читали сегодня", "Текущие загрузки" (same job rows and downloads-status.js hooks as
-  /downloads) and "Скачано сегодня", and "История событий" - the latest reads and
-  downloads merged. A guest gets the locked state instead.
+  «Активность» as the home page and the library are drawn: the cover of the book in front
+  glowing behind the page (.hm-ambient), dark cards washed with a book's own cover
+  (.hl-art), cover cards, the light «Читать дальше» button and glass controls.
+
+  The page answers «how is my reading going - and what are people around me reading»:
+  the title row with the streak; the picked day's card (what was read, when, the way
+  back in) with the month's calendar in glass at its side; then «Друзья» beside
+  «Популярное на Webnovells» (a top five of covers), «Когда вы читаете» and «Недавно». On phones one column: the calendar, the day, friends, popular, the hours,
+  «Недавно».
+
+  Without JS every day is a link (?day=) and the arrows switch months (?month=);
+  activity-calendar.js picks a day in place (data-day cells, data-day-panel panels, each
+  panel's data-art the cover the card's wash takes) and switches months in place too:
+  it fetches the month's page and swaps in its calendar card and its «Когда вы читаете»
+  (the parts that depend on the month, data-month-part), the next arrow's month fetched
+  ahead.
 #}
-{% macro plural(n, one, few, many) -%}
-{%- if n % 10 == 1 and n % 100 != 11 -%}{{ one }}
-{%- elif n % 10 in [2, 3, 4] and n % 100 not in [12, 13, 14] -%}{{ few }}
-{%- else -%}{{ many }}{%- endif -%}
+{% from "home/_macros.html" import search_form %}
+{% from "_continue_reading_hero.html" import chapter_label %}
+{% macro cover(slug, name, url, cls) -%}
+<a class="hm-cover {{ cls }}" href="/titles/{{ slug }}" tabindex="-1" aria-hidden="true">{% if url %}<img src="{{ url }}" alt="" loading="lazy">{% else %}<span class="ac-cover__letter">{{ name[:1] }}</span>{% endif %}</a>
 {%- endmacro %}
-{% set icon_download = "M12 3v12M7 10l5 5 5-5M5 21h14" %}
-{% set icon_book = "M2 4h6a4 4 0 0 1 4 4v13a3 3 0 0 0-3-3H2zM22 4h-6a4 4 0 0 0-4 4v13a3 3 0 0 1 3-3h7z" %}
-{% set icon_error = "M12 8v5M12 16.5v.5M10.3 3.9 2.4 18a2 2 0 0 0 1.7 3h15.8a2 2 0 0 0 1.7-3L13.7 3.9a2 2 0 0 0-3.4 0z" %}
-<main class="activity-page wn-activity">
-  <div class="wn-activity__head">
-    <div class="wn-activity__heading">
-      <h1 class="wn-activity__title">Активность</h1>
-      {% if current_user %}<p class="wn-activity__subtitle">Чтение и загрузки — по данным этого аккаунта.</p>{% endif %}
-    </div>
-    {% if current_user %}
-    <nav class="wn-segmented" aria-label="Период">
-      {% for key, label in period_labels.items() %}
-      <a class="wn-segmented__item" href="/activity{% if key != 'today' %}?period={{ key }}{% endif %}"{% if period == key %} aria-current="page"{% endif %}>{{ label }}</a>
-      {% endfor %}
-    </nav>
-    {% endif %}
-  </div>
-
-  {% if current_user %}
-  <div class="wn-activity-metrics" data-role="activity-metrics">
-    {% for metric in overview.metrics %}
-    <div class="wn-activity-card wn-activity-metric">
-      <span class="wn-activity-metric__label">{{ metric.label }}</span>
-      <span class="wn-activity-metric__value{% if metric.accent %} wn-activity-metric__value--accent{% endif %}">{{ metric.value }}{% if metric.unit %}<span class="wn-activity-metric__unit">{{ metric.unit }}</span>{% endif %}</span>
-      <span class="wn-activity-metric__note">{{ metric.note }}</span>
-    </div>
+{% macro avatar(user, cls) -%}
+<a class="{{ cls }}" href="/profile/{{ user.id }}" tabindex="-1" aria-hidden="true">{% if user.avatar_url %}<img class="avatar-img" src="{{ user.avatar_url }}" alt="">{% else %}{{ user.avatar_initials }}{% endif %}</a>
+{%- endmacro %}
+{# Friends as a folded compact list: faces and a label that open names and when they
+   last read, in a list with its own scroll - the card never grows with the friends. #}
+{% macro friend_group(items, label, role, idle=false, open=false) -%}
+<details class="ac-more{% if idle %} ac-more--idle{% endif %}" data-role="{{ role }}"{% if open %} open{% endif %}>
+  <summary class="ac-more__toggle">
+    <span class="ac-more__faces" aria-hidden="true">
+      {% for friend in items[:3] %}<span class="ac-more__face">{% if friend.user.avatar_url %}<img class="avatar-img" src="{{ friend.user.avatar_url }}" alt="">{% else %}{{ friend.user.avatar_initials }}{% endif %}</span>{% endfor %}
+    </span>
+    <span>{{ label }}</span>
+    <svg class="ac-more__chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m6 9 6 6 6-6"/></svg>
+  </summary>
+  <ul class="ac-more__list">
+    {% for friend in items %}
+    <li class="ac-more__item">
+      {{ avatar(friend.user, "ac-more__avatar") }}
+      <a class="ac-more__name" href="/profile/{{ friend.user.id }}">{{ friend.user.display_name }}</a>
+      <span class="ac-more__when hm-num">{{ friend.last_read_label or "ещё не читали" }}</span>
+    </li>
     {% endfor %}
-  </div>
+  </ul>
+</details>
+{%- endmacro %}
+{% macro chapters(n) -%}{{ n }} {{ plural(n, "глава", "главы", "глав") }}{%- endmacro %}
+{% macro days(n) -%}{{ n }} {{ plural(n, "день", "дня", "дней") }}{%- endmacro %}
+{% macro arrow_icon(d, cls="") -%}<svg{% if cls %} class="{{ cls }}"{% endif %} viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="{{ d }}"/></svg>{%- endmacro %}
 
-  <div class="wn-activity__row">
-    <section class="wn-activity-card wn-activity-chart" aria-labelledby="activity-chart-title">
-      <div class="wn-activity-card__head">
-        <h2 class="wn-activity-card__title" id="activity-chart-title">Чтение за 30 дней</h2>
-        <span class="wn-activity-card__aside">{{ overview.chart_total_label }} · {{ overview.chart_reading_days }} {{ plural(overview.chart_reading_days, "день", "дня", "дней") }} с чтением</span>
-        <span class="wn-activity-chart__legend"><span aria-hidden="true"></span>минуты</span>
-      </div>
-      <div class="wn-activity-chart__plot" role="img" aria-label="Минуты чтения по дням за последние 30 дней">
-        <span class="wn-activity-chart__guide wn-activity-chart__guide--top"></span>
-        <span class="wn-activity-chart__guide wn-activity-chart__guide--mid"></span>
-        {% for day in overview.chart_days %}
-        <span
-          class="wn-activity-chart__bar{% if day.minutes %} wn-activity-chart__bar--filled{% endif %}{% if day.is_today %} wn-activity-chart__bar--today{% endif %}"
-          style="--bar: {{ day.height_percent }}%"
-          title="{{ day.tooltip }}"
-        ></span>
-        {% endfor %}
-      </div>
-      <div class="wn-activity-chart__axis" aria-hidden="true">
-        {% for label, is_today in overview.chart_axis %}
-        <span{% if is_today %} class="wn-activity-chart__axis-today"{% endif %}>{{ label }}</span>
-        {% endfor %}
-      </div>
-    </section>
+{% if current_user %}
+{% set cal = overview.calendar %}
+{% set hours = overview.hours %}
+{% set picked = (overview.days | selectattr("day", "equalto", overview.selected) | first) if overview.selected else none %}
+{# The cover each reading day's card is washed with: its first title's. The page opens
+   on the picked day's, else the latest reading day's, else the top popular title's. #}
+{% set art_of = {} %}
+{% for day in overview.days %}{% set url = day.titles | selectattr("cover_url") | map(attribute="cover_url") | first %}{% if url %}{% set _ = art_of.update({day.day.isoformat(): url}) %}{% endif %}{% endfor %}
+{% set latest_art = art_of.values() | first %}
+{% set art = (art_of.get(picked.day.isoformat()) if picked else none) or latest_art or (overview.popular | selectattr("cover_url") | map(attribute="cover_url") | first) %}
+{% endif %}
+<main class="hm ac{% if not current_user %} ac--guest{% endif %} activity-page" data-role="activity-page">
+  {% if current_user %}
+  {% if art %}<img class="hm-ambient" src="{{ art }}" alt="" aria-hidden="true">{% endif %}
 
-    <section class="wn-activity-card wn-activity-today" aria-labelledby="activity-today-title">
-      <h2 class="wn-activity-card__title" id="activity-today-title">Читали сегодня</h2>
-      {% if overview.read_today_highlight %}
-      {% set highlight = overview.read_today_highlight %}
-      {% set first = highlight.item %}
-      {% set first_name = first.name or first.slug_url %}
-      <div class="wn-activity-today__title">
-        <a class="wn-activity-today__cover" href="/titles/{{ first.slug_url }}" tabindex="-1" aria-hidden="true">
-          {% if first.cover_url %}<img src="{{ first.cover_url }}" alt="" loading="lazy">{% endif %}
-        </a>
-        <div class="wn-activity-today__copy">
-          <a class="wn-activity-today__name" href="/titles/{{ first.slug_url }}">{{ first_name }}</a>
-          {% if highlight.volume and highlight.number %}
-          <span class="wn-activity-today__meta">Том {{ highlight.volume }}, глава {{ highlight.number }}</span>
-          {% endif %}
-          <span class="wn-activity-today__count">{{ first.chapters_read }} {{ plural(first.chapters_read, "глава", "главы", "глав") }} сегодня</span>
-          <span class="wn-activity-today__spacer"></span>
-          {% if highlight.volume and highlight.number %}
-          <a class="wn-activity-link" href="/titles/{{ first.slug_url }}/chapters/{{ highlight.volume }}/{{ highlight.number }}">Продолжить</a>
-          {% endif %}
-        </div>
+  <header class="hm-head ac-head hm-rise">
+    <div class="ac-head__title">
+      <div class="ac-head__line">
+        <h1 class="hm-title">Активность</h1>
+        {% if overview.streak_days %}<span class="ac-head__count hm-num">{{ days(overview.streak_days) }} подряд</span>{% endif %}
       </div>
-      {% if overview.summary.read_today | length > 1 %}
-      <ul class="wn-activity-today__more">
-        {% for item in overview.summary.read_today[1:] %}
-        <li>
-          <a href="/titles/{{ item.slug_url }}">{{ item.name or item.slug_url }}</a>
-          <span>{{ item.chapters_read }} {{ plural(item.chapters_read, "глава", "главы", "глав") }} сегодня</span>
-        </li>
-        {% endfor %}
-      </ul>
-      {% endif %}
-      {% else %}
-      <p class="wn-activity-card__text">Сегодня ещё ничего не читали.</p>
-      {% endif %}
-    </section>
-  </div>
-
-  <div class="wn-activity__row">
-    <div class="wn-activity__downloads">
-      <section class="wn-activity-card" data-role="active-downloads" aria-labelledby="activity-jobs-title">
-        <h2 class="wn-activity-card__title" id="activity-jobs-title">Текущие загрузки</h2>
-        {% if overview.summary.active_jobs %}
-        {% from "_active_downloads.html" import active_downloads_list with context %}
-        {{ active_downloads_list(overview.summary.active_jobs) }}
+      <p class="ac-finding" data-role="activity-finding">
+        {% if overview.read_today %}
+        Сегодня {{ chapters(overview.summary.chapters_read_today) }}{% if overview.today_time_label %}, {{ overview.today_time_label }}{% endif %}
+        {% elif overview.streak_days %}
+        Сегодня ещё не читали — откройте главу, чтобы не прервать <b class="hm-num">{{ days(overview.streak_days) }}</b> подряд
+        {% elif overview.last_read_label %}
+        Последний раз читали {{ overview.last_read_label }} — откройте главу, и день отметится в календаре
         {% else %}
-        <div class="wn-activity-idle">
-          <span class="wn-activity-idle__icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" aria-hidden="true"><path d="{{ icon_download }}"/></svg></span>
-          <span>Сейчас ничего не скачивается</span>
+        Откройте любую главу — дни чтения появятся в календаре
+        {% endif %}
+      </p>
+    </div>
+    {{ search_form() }}
+  </header>
+
+  {# --- День и месяц: the picked day's card, the calendar in glass at its side ------- #}
+  <section class="ac-month hm-rise" style="--i: 1" aria-labelledby="ac-month-title" data-role="activity-calendar" data-month-part="calendar">
+    {% if art %}<img class="hl-art ac-month__art" src="{{ art }}" alt="" aria-hidden="true" data-role="activity-art">{% endif %}
+
+    <div class="ac-days" data-role="activity-days" aria-live="polite">
+      {% for day in overview.days %}
+      <article class="ac-dayread" data-day-panel="{{ day.day.isoformat() }}" data-art="{{ art_of.get(day.day.isoformat(), '') }}" aria-label="{{ day.heading }}"{% if overview.selected != day.day %} hidden{% endif %}>
+        <div class="ac-dayread__copy">
+          <h2 class="ac-dayread__title">{{ day.heading }}</h2>
+          <p class="ac-dayread__sum hm-num">
+            <span>{{ chapters(day.chapters) }}</span>
+            {% if day.time_label %}<span>{{ day.time_label }}</span>{% endif %}
+          </p>
+          {% if day.span_label %}<p class="ac-dayread__span hm-num">{{ day.span_label }}</p>{% endif %}
+        </div>
+        {% if day.continue_href %}
+        <a class="hm-go ac-continue" href="{{ day.continue_href }}">
+          <span class="hm-go__label">Читать дальше<small>{{ chapter_label(day.continue_number) if day.continue_number else "с того же места" }}</small></span>
+          {{ arrow_icon("M5 12h14M13 6l6 6-6 6", "hm-go__arrow") }}
+        </a>
+        {% endif %}
+        <ul class="ac-dayread__list{% if day.titles | length == 1 %} ac-dayread__list--one{% endif %}">
+          {% for title in day.titles %}
+          <li class="ac-dayread__item">
+            {{ cover(title.slug_url, title.name, title.cover_url, "ac-dayread__cover") }}
+            <a class="ac-dayread__name" href="/titles/{{ title.slug_url }}">{{ title.name }}</a>
+            <span class="ac-dayread__meta hm-num">{% if title.chapters %}{{ chapters(title.chapters) }}{% endif %}{% if title.chapters and title.time_label %} · {% endif %}{{ title.time_label or "" }}</span>
+          </li>
+          {% endfor %}
+        </ul>
+      </article>
+      {% endfor %}
+      {# A day without reading - activity-calendar.js puts the picked day's name in. #}
+      {% set empty_selected = overview.selected and not picked %}
+      <article class="ac-dayread ac-dayread--empty" data-day-panel="" data-art="" {% if not empty_selected %}hidden{% endif %}>
+        <h2 class="ac-dayread__title" data-role="empty-day-title">{% if empty_selected %}{{ overview.selected_heading }}{% endif %}</h2>
+        <p class="ac-dayread__none">В этот день не читали. Выберите отмеченный день, чтобы увидеть, что читали.</p>
+      </article>
+      {% if not overview.days and not overview.selected %}
+      <div class="ac-dayread ac-dayread--empty">
+        <h2 class="ac-dayread__title">{{ cal.title }}</h2>
+        <p class="ac-dayread__none">В этом месяце не читали{% if cal.prev_month %} — листайте назад, чтобы увидеть прошлые месяцы{% endif %}.</p>
+      </div>
+      {% endif %}
+    </div>
+
+    <div class="hm-panel ac-cal">
+      <div class="ac-cal__head">
+        <h2 class="ac-cal__title" id="ac-month-title">{{ cal.title }}</h2>
+        <nav class="ac-cal__nav" aria-label="Месяц">
+          {% if cal.prev_month %}<a class="lb-round ac-cal__arrow" href="/activity?month={{ cal.prev_month }}" aria-label="Предыдущий месяц">{{ arrow_icon("m15 6-6 6 6 6") }}</a>{% else %}<span class="lb-round ac-cal__arrow" aria-disabled="true">{{ arrow_icon("m15 6-6 6 6 6") }}</span>{% endif %}
+          {% if cal.next_month %}<a class="lb-round ac-cal__arrow" href="/activity?month={{ cal.next_month }}" aria-label="Следующий месяц">{{ arrow_icon("m9 6 6 6-6 6") }}</a>{% else %}<span class="lb-round ac-cal__arrow" aria-disabled="true">{{ arrow_icon("m9 6 6 6-6 6") }}</span>{% endif %}
+        </nav>
+      </div>
+      <div class="ac-cal__grid" role="grid" aria-labelledby="ac-month-title">
+        <div class="ac-cal__row ac-cal__weekdays" role="row">
+          {% for name in weekdays %}<span class="ac-cal__weekday" role="columnheader">{{ name }}</span>{% endfor %}
+        </div>
+        {% for week in cal.weeks %}
+        <div class="ac-cal__row" role="row">
+          {% for cell in week %}
+          {% if cell.day %}
+          {% set iso = cell.day.isoformat() %}
+          <span class="ac-day{% if cell.level %} ac-day--read ac-day--l{{ cell.level }}{% endif %}{% if cell.is_today %} ac-day--today{% endif %}{% if cell.is_future %} ac-day--future{% endif %}{% if overview.selected == cell.day %} ac-day--selected{% endif %}" role="gridcell">
+            {% if cell.is_future %}
+            <span class="ac-day__tile hm-num">{{ cell.day.day }}</span>
+            {% else %}
+            <a class="ac-day__tile hm-num" href="/activity?day={{ iso }}" data-day="{{ iso }}" data-heading="{{ cell.heading }}" aria-label="{{ cell.label }}" title="{{ cell.label }}"{% if cell.is_today %} aria-current="date"{% endif %} aria-pressed="{{ 'true' if overview.selected == cell.day else 'false' }}">{{ cell.day.day }}</a>
+            {% endif %}
+          </span>
+          {% else %}
+          <span class="ac-day ac-day--blank" role="gridcell"></span>
+          {% endif %}
+          {% endfor %}
+        </div>
+        {% endfor %}
+      </div>
+      <p class="ac-cal__total hm-num"><b>{{ hours.time_label }}</b> и {{ chapters(hours.chapters) }} за месяц</p>
+    </div>
+  </section>
+
+  <div class="ac-grid">
+    {# --- Друзья ------------------------------------------------------------------- #}
+    {% if overview.friends is not none %}
+    <section class="hm-block ac-friends hm-rise" style="--i: 2" aria-labelledby="ac-friends-title" data-role="friends-activity">
+      <div class="ac-block-head">
+        <h2 class="hm-h2" id="ac-friends-title">Друзья</h2>
+        {% if overview.friends_total %}<span class="ac-section-head__count hm-num">{{ overview.friends_total }}</span>{% endif %}
+        <a class="hm-link ac-block-head__more" href="/friends">{{ "Все друзья" if overview.friends_total else "Найти" }}</a>
+      </div>
+      <div class="ac-card ac-friends__card">
+        {% if overview.friends_total %}
+        {% if overview.friends %}
+        <ul class="ac-friends__list">
+          {% for friend in overview.friends %}
+          <li class="ac-friend">
+            {{ avatar(friend.user, "ac-friend__avatar") }}
+            <div class="ac-friend__body">
+              <div class="ac-friend__line">
+                <a class="ac-friend__name" href="/profile/{{ friend.user.id }}">{{ friend.user.display_name }}</a>
+                {% if friend.streak_days %}<span class="ac-friend__streak hm-num">{{ days(friend.streak_days) }} подряд</span>{% endif %}
+                {% if friend.last_read_label %}<span class="ac-friend__when hm-num">{{ friend.last_read_label }}</span>{% endif %}
+              </div>
+              {% if friend.reading %}
+              <a class="ac-friend__book" href="/titles/{{ friend.reading.slug_url }}">
+                <span class="hm-cover ac-friend__cover" aria-hidden="true">{% if friend.reading.cover_url %}<img src="{{ friend.reading.cover_url }}" alt="" loading="lazy">{% else %}<span class="ac-cover__letter">{{ friend.reading.name[:1] }}</span>{% endif %}</span>
+                <span class="ac-friend__book-copy">
+                  <span class="ac-friend__book-name">{{ friend.reading.name }}</span>
+                  {% if friend.reading.chapter_label %}<span class="ac-friend__meta hm-num">{{ friend.reading.chapter_label }}</span>{% endif %}
+                </span>
+              </a>
+              {% elif friend.last_read_label %}
+              <span class="ac-friend__meta">Скрывает, что читает</span>
+              {% endif %}
+              {% if friend.comment %}
+              <a class="ac-friend__comment" href="{{ friend.comment.url }}">«{{ friend.comment.body_excerpt }}»</a>
+              {% endif %}
+            </div>
+          </li>
+          {% endfor %}
+        </ul>
+        {% else %}
+        <p class="ac-friends__none">Сейчас никто из друзей не читает.</p>
+        {% endif %}
+        {% if overview.friends_more or overview.friends_idle %}
+        <div class="ac-friends__folds">
+          {% if overview.friends_more %}
+          {{ friend_group(overview.friends_more, "Ещё " ~ overview.friends_more | length ~ " " ~ plural(overview.friends_more | length, "читает", "читают", "читают"), "friends-more") }}
+          {% endif %}
+          {% if overview.friends_idle %}
+          {{ friend_group(overview.friends_idle, "Без активности · " ~ overview.friends_idle | length, "friends-idle", idle=true, open=not overview.friends) }}
+          {% endif %}
         </div>
         {% endif %}
-      </section>
-      <section class="wn-activity-card" aria-labelledby="activity-downloaded-title">
-        <h2 class="wn-activity-card__title" id="activity-downloaded-title">Скачано сегодня</h2>
-        {% if overview.summary.downloads_today %}
-        {% from "_download_history.html" import download_history_list with context %}
-        {{ download_history_list(overview.summary.downloads_today) }}
         {% else %}
-        <p class="wn-activity-card__text">Сегодня ничего не скачивали.{% if overview.last_download_label %} Последняя загрузка — {{ overview.last_download_label }}.{% endif %}</p>
+        <p class="ac-empty">Добавьте друзей — здесь будет видно, что они читают, сколько дней подряд и что пишут в комментариях.</p>
+        <a class="hm-go ac-friends__find" href="/friends"><span class="hm-go__label">Найти друзей<small>по нику</small></span>{{ arrow_icon("M5 12h14M13 6l6 6-6 6", "hm-go__arrow") }}</a>
+        {% endif %}
+      </div>
+    </section>
+    {% endif %}
+
+    <div class="ac-aside">
+      {# --- Популярное: a top five of covers ------------------------------------------ #}
+      {% if overview.popular %}
+      <section class="hm-block ac-popular hm-rise" style="--i: 3" aria-labelledby="ac-popular-title" data-role="popular-titles">
+        <div class="ac-block-head ac-block-head--stack">
+          {% if overview.popular_source == "site" %}
+          <h2 class="hm-h2" id="ac-popular-title">Популярное на Webnovells</h2>
+          <span class="hm-meta">Что читают на сайте на этой неделе</span>
+          {% else %}
+          <h2 class="hm-h2" id="ac-popular-title">Популярное</h2>
+          <span class="hm-meta">Самые просматриваемые тайтлы каталога</span>
+          {% endif %}
+        </div>
+        <ol class="ac-popular__list">
+          {% for title in overview.popular %}
+          <li class="hm-card ac-pop">
+            <div class="hm-cover hm-card__cover">
+              <a class="hm-card__link" href="/titles/{{ title.slug_url }}" aria-label="{{ title.rank }}. {{ title.name }}">
+                {% if title.cover_url %}<img src="{{ title.cover_url }}" alt="" loading="lazy">{% else %}<span class="ac-cover__letter">{{ title.name[:1] }}</span>{% endif %}
+              </a>
+              <span class="ac-pop__rank hm-num" aria-hidden="true">{{ title.rank }}</span>
+            </div>
+            <a class="hm-card__name ac-pop__name" href="/titles/{{ title.slug_url }}" title="{{ title.name }}" tabindex="-1" aria-hidden="true">{{ title.name }}</a>
+          </li>
+          {% endfor %}
+        </ol>
+      </section>
+      {% endif %}
+
+      {# --- Когда вы читаете ----------------------------------------------------------- #}
+      <section class="hm-block ac-hours hm-rise" style="--i: 4" aria-labelledby="ac-hours-title" data-role="reading-hours" data-month-part="hours">
+        <div class="ac-block-head">
+          <h2 class="hm-h2" id="ac-hours-title">Когда вы читаете</h2>
+          <span class="ac-block-head__note hm-num">{{ cal.title }}</span>
+        </div>
+        <div class="ac-card ac-hours__card">
+          {% if hours.part_label %}
+          <p class="ac-hours__finding">Чаще всего — {{ hours.part_label }}, <b class="hm-num">{{ hours.part_share }}%</b> времени; больше всего с {{ hours.peak_label | replace("–", " до ") }}.</p>
+          {% else %}
+          <p class="ac-hours__finding">В этом месяце время чтения ещё не записано — оно считается, пока открыта глава.</p>
+          {% endif %}
+          <div class="ac-hours__chart">
+            <div class="ac-hours__plot" role="img" aria-label="Время чтения по часам суток за {{ cal.title | lower }}">
+              {% for bar in hours.bars %}
+              <span class="ac-hours__bar{% if bar.is_peak %} ac-hours__bar--peak{% endif %}" style="--h: {{ bar.height_percent }}%" title="{{ bar.tooltip }}"></span>
+              {% endfor %}
+            </div>
+            <div class="ac-hours__axis hm-num" aria-hidden="true">
+              <span>0:00</span><span>6:00</span><span>12:00</span><span>18:00</span><span>24:00</span>
+            </div>
+            <div class="ac-hours__parts" aria-hidden="true">
+              <span>ночь</span><span>утро</span><span>день</span><span>вечер</span>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      {# --- Недавно ------------------------------------------------------------------------ #}
+      <section class="hm-block ac-recent hm-rise" style="--i: 5" aria-labelledby="ac-recent-title">
+        <div class="ac-block-head">
+          <h2 class="hm-h2" id="ac-recent-title">Недавно</h2>
+          <a class="hm-link ac-block-head__more" href="/downloads">Все загрузки</a>
+        </div>
+        {% if overview.events %}
+        <ul class="ac-card ac-events" data-role="activity-events">
+          {% for event in overview.events %}
+          <li class="ac-event ac-event--{{ event.kind }}">
+            {{ cover(event.slug_url, event.title, event.cover_url, "ac-event__cover") }}
+            <span class="ac-event__copy">
+              <a class="ac-event__title" href="{{ event.href }}">{{ event.title }}</a>
+              <span class="ac-event__sub">{{ event.sub }}</span>
+            </span>
+            <span class="ac-event__time hm-num">{{ event.time_label }}</span>
+          </li>
+          {% endfor %}
+        </ul>
+        {% else %}
+        <p class="ac-card ac-empty">Здесь появятся прочитанные главы и загрузки.</p>
         {% endif %}
       </section>
     </div>
-
-    <section class="wn-activity-card wn-activity-events" aria-labelledby="activity-events-title">
-      <div class="wn-activity-card__head">
-        <h2 class="wn-activity-card__title" id="activity-events-title">История событий</h2>
-        <a class="wn-activity-link wn-activity-card__more" href="/downloads">Все загрузки</a>
-      </div>
-      {% if overview.events %}
-      <ul class="wn-activity-events__list" data-role="activity-events">
-        {% for event in overview.events %}
-        <li class="wn-activity-event wn-activity-event--{{ event.kind }}">
-          <span class="wn-activity-event__icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="{{ icon_book if event.kind == 'read' else (icon_error if event.kind == 'download_error' else icon_download) }}"/></svg></span>
-          <span class="wn-activity-event__copy">
-            <a class="wn-activity-event__title" href="{{ event.href }}" title="{{ event.title }}">{{ event.title }}</a>
-            <span class="wn-activity-event__sub">{{ event.sub }}</span>
-          </span>
-          <span class="wn-activity-event__time">{{ event.time_label }}</span>
-        </li>
-        {% endfor %}
-      </ul>
-      {% else %}
-      <p class="wn-activity-card__text">Здесь появятся прочитанные главы и загрузки.</p>
-      {% endif %}
-    </section>
   </div>
+
   {% else %}
+  <header class="hm-head ac-head"><h1 class="hm-title">Активность</h1></header>
   {% from "_locked_feature.html" import locked_feature %}
   {% call locked_feature("Активность скрыта", "/login", "Войти") %}
   <a href="/login">Войдите</a> или <a href="/register">зарегистрируйтесь</a>,
-  чтобы видеть свою активность за сегодня.
+  чтобы видеть календарь своего чтения и что читают друзья.
   {% endcall %}
   {% endif %}
 </main>
+{% if current_user %}<script src="{{ static_url('js/activity-calendar.js') }}" defer></script>{% endif %}
 {% endblock %}

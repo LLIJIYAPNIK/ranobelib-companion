@@ -10,8 +10,8 @@
     document.querySelector(".downloads-history");
   if (!list) return;
 
-  // A history row: «Загрузки» (.dl-row, in its .dl-day) or the older list
-  // _download_history.html still renders (.downloads-history__item).
+  // A history row on «Загрузки» (.dl-row, in its .dl-day); .downloads-history__item is
+  // the markup before the redesign, for a page cached from then.
   const ROW = ".dl-row, .downloads-history__item";
   const DAY = ".dl-day";
   const UNDO_MS = 5000;
