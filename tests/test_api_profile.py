@@ -426,6 +426,7 @@ async def test_public_profile_shows_currently_reading_when_a_position_is_recorde
         await record_progress(
             conn, user_id=alice_id, slug_url="6712--test-novel", volume="1", number="5"
         )
+    _register(client, "bob@example.com")  # someone else looks at Alice's profile
 
     with patch("app.services.client.RanobeLib", return_value=_FakeClient(title)):
         response = client.get(f"/profile/{alice_id}")
