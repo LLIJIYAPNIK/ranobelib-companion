@@ -10,9 +10,9 @@
   washes the hero card (.hl-art). The hero holds who it is - the avatar in a teal ring,
   the name with «Редактировать» beside it (or the friend buttons and «⋯» on someone
   else's profile), the bio, since when, four figures set as type - and «Читает сейчас» in
-  glass at its side, with the way back into the book on one's own profile. Then the year
-  of reading (the PR 136/160/323 heatmap, same data, hooks and tooltip) and «Библиотека»
-  beside «Друзья». One column on phones.
+  glass at its side, with the way back into the book on one's own profile. Then the
+  owner's month of reading as «Активность» shows it (_reading_month.html) and
+  «Библиотека» beside «Друзья». One column on phones.
 
   Sections hidden by the owner's privacy settings aren't rendered at all
   (app/api/profile.py). A guest looking at /profile gets the locked state.
@@ -21,6 +21,7 @@
 {% from "_friend_row.html" import ui_friend_request_actions %}
 {% from "_continue_reading_hero.html" import chapter_label %}
 {% from "home/_macros.html" import cover_progress %}
+{% from "_reading_month.html" import reading_month %}
 {% macro arrow_icon(d, cls="") -%}<svg{% if cls %} class="{{ cls }}"{% endif %} viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="{{ d }}"/></svg>{%- endmacro %}
 
 {% if profile_user %}
@@ -28,7 +29,7 @@
 {% set display_name = profile_user.nickname or profile_user.email %}
 {% set art = (currently_reading.cover_url if currently_reading else none) or avatar %}
 {% endif %}
-<main class="hm pf{% if not profile_user %} pf--guest{% endif %}" data-role="profile-page">
+<main class="hm ac pf{% if not profile_user %} pf--guest{% endif %}" data-role="profile-page">
   {% if profile_user %}
   {% if art %}<img class="hm-ambient" src="{{ art }}" alt="" aria-hidden="true">{% endif %}
 
@@ -114,61 +115,16 @@
     {% endif %}
   </section>
 
-  {# --- Год чтения: the PR 160 heatmap in a dark card ---------------------------------- #}
-  <section class="hm-block pf-year hm-rise" style="--i: 1" aria-labelledby="reading-calendar-title">
-    <div class="ac-block-head pf-year__head">
-      <h2 class="hm-h2" id="reading-calendar-title">{{ reading_calendar.total_duration_label }}</h2>
-      <span class="pf-year__days hm-num">{{ reading_calendar.reading_days }} {{ plural(reading_calendar.reading_days, "день", "дня", "дней") }} с чтением</span>
+  {# --- Чтение: the month as «Активность» shows it - the picked day's card and the
+     calendar in glass (_reading_month.html, activity-calendar.js). What was read on a
+     day stays with its figures when the owner hides what they read; «Читать дальше»
+     lives in the hero, not again on today's card. #}
+  <div class="hm-block pf-reading">
+    <div class="ac-block-head">
+      <h2 class="hm-h2" id="profile-reading-title">Чтение</h2>
     </div>
-    <div class="ac-card pf-year__card reading-calendar-card">
-      <div class="reading-calendar-body">
-        <div class="reading-calendar-weekdays" aria-hidden="true">
-          {# PR 323: rows run Monday to Sunday (see _build_reading_calendar). #}
-          {% for weekday in ["Пн", "", "Ср", "", "Пт", "", ""] %}
-          <span>{{ weekday }}</span>
-          {% endfor %}
-        </div>
-        <div
-          class="reading-calendar-scroll wn-ribbon"
-          data-role="reading-calendar-scroll"
-          data-ribbon
-          data-ribbon-current-week
-        >
-          <div class="reading-calendar-months" aria-hidden="true">
-            {% for month in reading_calendar.month_labels %}
-            <span>{{ month }}</span>
-            {% endfor %}
-          </div>
-          <div
-            class="reading-calendar"
-            data-role="reading-calendar"
-            role="img"
-            aria-label="Календарь активности чтения за последний год"
-          >
-            {% for day in reading_calendar.days %}
-            <span
-              class="reading-calendar__day reading-calendar__day--level-{{ day.level }}{% if day.is_today %} reading-calendar__day--today{% endif %}"
-              data-tooltip="{{ day.label }}"
-            ></span>
-            {% endfor %}
-          </div>
-        </div>
-      </div>
-      {# PR 323: each swatch names its own threshold (time read that day); PR 177: under
-         the calendar, on the left. #}
-      <div class="reading-calendar-legend" role="group" aria-label="Время чтения за день">
-        <span aria-hidden="true">Меньше</span>
-        {% for text in reading_calendar.legend %}
-        <span class="reading-calendar-legend__swatch{% if not loop.first %} reading-calendar-legend__swatch--level-{{ loop.index0 }}{% endif %}" role="img" title="{{ text }}" aria-label="{{ text }}"></span>
-        {% endfor %}
-        <span aria-hidden="true">Больше</span>
-      </div>
-    </div>
-  </section>
-
-  {# Outside the .hm-rise sections: a fixed tooltip inside a transformed block would be
-     placed against the block instead of the viewport. #}
-  <div class="reading-calendar-tooltip" data-role="reading-calendar-tooltip" role="tooltip"></div>
+    {{ reading_month(reading, weekdays, calendar_base, reading.time_label, reading.chapters, fallback_art=art, rise=1, show_titles=is_own_profile or profile_user.show_currently_reading, show_continue=false) }}
+  </div>
 
   {% if library_items or friend_preview %}
   <div class="pf-grid{% if not (library_items and friend_preview) %} pf-grid--one{% endif %}">
@@ -239,8 +195,7 @@
   {% endif %}
 </main>
 <script src="{{ static_url('js/image-lightbox.js') }}" defer></script>
-<script src="{{ static_url('js/ribbon.js') }}" defer></script>
-<script src="{{ static_url('js/reading-calendar-tooltip.js') }}" defer></script>
+{% if profile_user %}<script src="{{ static_url('js/activity-calendar.js') }}" defer></script>{% endif %}
 {% if current_user and profile_user and not is_own_profile %}
 <script src="{{ static_url('js/profile-more.js') }}" defer></script>
 {% endif %}
