@@ -84,6 +84,21 @@ class _FakeClient:
         return []
 
 
+
+def _stat(html: str, label: str) -> str:
+    """The hero figure over `label` («за год», «тайтлов», «комментариев» ...)."""
+    stats = html.split('<dl class="pf-stats">')[1].split("</dl>")[0]
+    marker = f'<dt class="pf-stats__label">{label}</dt>'
+    assert marker in stats, label
+    after = stats.split(marker)[1]
+    return after.split('<dd class="pf-stats__value hm-num">')[1].split("</dd>")[0]
+
+
+def _friend_count(html: str) -> str:
+    """The number beside «Друзья» on the profile."""
+    return html.split('data-role="profile-friend-count">')[1].split("</span>")[0]
+
+
 async def test_anonymous_visitor_sees_a_locked_screen_instead_of_the_profile(
     client: TestClient,
 ) -> None:
@@ -150,7 +165,7 @@ async def test_profile_prefers_the_nickname_over_the_email(client: TestClient) -
     response = client.get("/profile")
 
     assert response.status_code == 200
-    assert ">Bob Carter</p>" in response.text
+    assert ">Bob Carter</h1>" in response.text
     assert ">BC</div>" in response.text
 
 
@@ -192,7 +207,8 @@ async def test_profile_shows_zero_comments_for_a_user_with_none(client: TestClie
     response = client.get("/profile")
 
     assert response.status_code == 200
-    assert "Комментариев: 0" in response.text
+    assert _stat(response.text, "комментариев") == "0"
+    assert "Комментариев:" not in response.text  # not in the meta line any more
 
 
 async def test_profile_shows_the_users_comment_count(client: TestClient) -> None:
@@ -205,7 +221,7 @@ async def test_profile_shows_the_users_comment_count(client: TestClient) -> None
     response = client.get("/profile")
 
     assert response.status_code == 200
-    assert "Комментариев: 2" in response.text
+    assert _stat(response.text, "комментария") == "2"
 
 
 async def test_profile_shows_an_empty_reading_calendar_with_no_history(client: TestClient) -> None:
@@ -354,9 +370,10 @@ async def test_profile_has_an_edit_link_to_settings_account(client: TestClient) 
     response = client.get("/profile")
 
     assert response.status_code == 200
-    assert '<a class="wn-profile-edit" href="/settings/account">' in (
-        response.text
-    )
+    # Beside the name, in the hero's name line.
+    line = response.text.split('<div class="pf-id__line">')[1].split("</div>")[0]
+    assert '<a class="pf-edit" href="/settings/account">' in line
+    assert "Редактировать" in line
 
 
 # --- PR 122: /profile/{user_id} - the public profile page ---------------------------
@@ -420,9 +437,10 @@ async def test_public_profile_shows_currently_reading_when_a_position_is_recorde
     assert response.status_code == 200
     assert 'id="profile-current-title"' in response.text
     assert "Читает сейчас" in response.text
-    assert '<a class="wn-profile-current__name" href="/titles/6712--test-novel">' in (
-        response.text
-    )
+    assert '<a class="pf-now__name" href="/titles/6712--test-novel">' in response.text
+    # Someone else's book: open the title, not «Читать дальше» at the owner's chapter.
+    assert 'href="/titles/6712--test-novel/chapters/1/5"' not in response.text
+    assert ">Открыть тайтл</a>" in response.text
     assert "Test Novel" in response.text
     assert "Том 1, глава 5" in response.text
 
@@ -503,6 +521,27 @@ async def test_public_profile_is_the_same_for_the_owner_and_a_different_visitor(
     assert "Том 1, глава 5" in response.text
 
 
+
+async def test_own_profile_continues_the_book_from_its_hero(client: TestClient) -> None:
+    _register(client, "alice@example.com")
+    alice_id = await _user_id("alice@example.com")
+    title = _fake_title()
+    with patch("app.services.client.RanobeLib", return_value=_FakeClient(title)):
+        client.post("/library/6712--test-novel/add")
+    async with connection() as conn:
+        await record_progress(
+            conn, user_id=alice_id, slug_url="6712--test-novel", volume="1", number="5"
+        )
+
+    with patch("app.services.client.RanobeLib", return_value=_FakeClient(title)):
+        response = client.get("/profile")
+
+    hero = response.text.split('<section class="pf-hero')[1].split("</section>")[0]
+    assert "Читает сейчас" in hero
+    assert '<a class="hm-go pf-now__go" href="/titles/6712--test-novel/chapters/1/5">' in hero
+    assert "Читать дальше<small>Глава 5</small>" in hero
+
+
 async def test_public_profile_shows_the_owners_comment_count_to_another_visitor(
     client: TestClient,
 ) -> None:
@@ -515,7 +554,7 @@ async def test_public_profile_shows_the_owners_comment_count_to_another_visitor(
     response = client.get(f"/profile/{alice_id}")
 
     assert response.status_code == 200
-    assert "Комментариев: 1" in response.text
+    assert _stat(response.text, "комментарий") == "1"
 
 
 # --- PR 293: no "Избранное" section ------------------------------------------------
@@ -661,7 +700,7 @@ async def test_profile_shows_a_friend_preview_with_a_count(client: TestClient) -
 
     assert response.status_code == 200
     assert 'id="profile-friends-title">Друзья</h2>' in response.text
-    assert '<span class="wn-profile-card__count">1</span>' in response.text
+    assert _friend_count(response.text) == "1"
     assert "bob@example.com" in response.text
 
 
@@ -698,11 +737,11 @@ async def test_profile_shows_a_show_all_link_over_the_preview_limit(
 
     assert response.status_code == 200
     count = _FRIEND_PREVIEW_LIMIT + 1
-    assert f'<span class="wn-profile-card__count">{count}</span>' in response.text
+    assert _friend_count(response.text) == str(count)
     assert f'href="/profile/{alice_id}/friends">Все</a>' in response.text
     assert "Все →" not in response.text
     # only the preview limit's worth of rows actually render on the profile page itself
-    assert response.text.count('class="wn-profile-friend"') == _FRIEND_PREVIEW_LIMIT
+    assert response.text.count('class="pf-friend"') == _FRIEND_PREVIEW_LIMIT
 
 
 async def test_profile_friends_section_shows_on_the_owners_own_profile_too(
@@ -720,7 +759,7 @@ async def test_profile_friends_section_shows_on_the_owners_own_profile_too(
 
     assert response.status_code == 200
     assert 'id="profile-friends-title">Друзья</h2>' in response.text
-    assert '<span class="wn-profile-card__count">1</span>' in response.text
+    assert _friend_count(response.text) == "1"
 
 
 async def test_profile_friends_page_lists_the_full_friend_list(client: TestClient) -> None:
@@ -808,7 +847,7 @@ async def test_profile_still_shows_the_friends_section_to_its_own_owner(
 
     assert response.status_code == 200
     assert 'id="profile-friends-title">Друзья</h2>' in response.text
-    assert '<span class="wn-profile-card__count">1</span>' in response.text
+    assert _friend_count(response.text) == "1"
 
 
 async def test_profile_friends_page_hides_the_list_from_others_when_opted_out(
@@ -879,12 +918,10 @@ async def test_profile_hero_shows_the_stat_pills(client: TestClient) -> None:
         client.post("/library/6712--test-novel/add")
         response = client.get("/profile")
 
-    stats = response.text.split('<dl class="wn-profile-stats">')[1].split("</dl>")[0]
-    assert '<dt class="wn-profile-stats__label">за год</dt>' in stats
-    assert '<dd class="wn-profile-stats__value">0 мин</dd>' in stats
-    assert '<dt class="wn-profile-stats__label">тайтл</dt>' in stats
-    assert '<dt class="wn-profile-stats__label">друзей</dt>' in stats
-    assert '<dt class="wn-profile-stats__label">комментариев</dt>' in stats
+    assert _stat(response.text, "за год") == "0 мин"
+    assert _stat(response.text, "тайтл") == "1"
+    assert _stat(response.text, "друзей") == "0"
+    assert _stat(response.text, "комментариев") == "0"
     assert alice_id  # the owner's own /profile
 
 
@@ -924,7 +961,7 @@ async def test_profile_friend_preview_shows_what_a_friend_reads_unless_hidden(
     assert ("Пока нет активности" in response.text) is not show_reading
 
 
-async def test_profile_library_preview_shows_at_most_seven_titles(client: TestClient) -> None:
+async def test_profile_library_preview_shows_at_most_ten_titles(client: TestClient) -> None:
     from app.api.profile import _LIBRARY_PREVIEW_LIMIT
 
     _register(client, "alice@example.com")
@@ -934,9 +971,9 @@ async def test_profile_library_preview_shows_at_most_seven_titles(client: TestCl
             client.post(f"/library/{i}--novel/add")
         response = client.get("/profile")
 
-    assert _LIBRARY_PREVIEW_LIMIT == 7
-    assert response.text.count('class="wn-profile-poster"') == 7
-    assert "9 тайтлов" in response.text
+    assert _LIBRARY_PREVIEW_LIMIT == 10
+    assert response.text.count('<li class="hm-card pf-book">') == 10
+    assert "12 тайтлов" in response.text
     assert 'href="/library">Открыть библиотеку</a>' in response.text
     assert "Открыть библиотеку →" not in response.text
 
