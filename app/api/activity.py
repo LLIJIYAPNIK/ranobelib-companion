@@ -97,7 +97,8 @@ _FRIENDS_LIMIT = 5
 _FRIENDS_MORE_LIMIT = 60
 # A friend who hasn't opened a chapter in this many days is «без активности».
 _FRIEND_ACTIVE_DAYS = 30
-_POPULAR_LIMIT = 6
+# A top five: the usual length of a «top», and one row of covers.
+_POPULAR_LIMIT = 5
 # Below this many titles read on the site this week, «Читают на сайте» shows ranobelib.me's
 # most viewed instead - a list of one or two isn't «what people read».
 _POPULAR_MIN_SITE = 3
@@ -193,6 +194,7 @@ class DayReading:
     time_label: str | None
     span_label: str | None  # when in the day: "09:12–14:05", "в 21:40"
     continue_href: str | None  # today only: the last chapter opened
+    continue_number: str | None = None  # that chapter's number, for «Читать дальше · Глава N»
 
 
 @dataclass(frozen=True)
@@ -481,11 +483,12 @@ async def _day_reading(
                 time_label=_minutes_label(entry.seconds),
             )
         )
-    continue_href = None
+    continue_href = continue_number = None
     if day == today and recent_reads:
         last = recent_reads[0]
         if last.volume is not None and last.number is not None:
             continue_href = f"/titles/{last.slug_url}/chapters/{last.volume}/{last.number}"
+            continue_number = last.number
     return DayReading(
         day=day,
         heading=_day_heading(day, today),
@@ -494,6 +497,7 @@ async def _day_reading(
         time_label=_minutes_label(sum(entry.seconds for entry in entries)),
         span_label=_span_label(entries, tz),
         continue_href=continue_href,
+        continue_number=continue_number,
     )
 
 
