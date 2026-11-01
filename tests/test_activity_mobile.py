@@ -72,3 +72,26 @@ def test_every_day_is_a_link_without_script() -> None:
 def test_no_old_activity_styles_left() -> None:
     assert "wn-activity" not in CSS
     assert ".activity-page" not in CSS
+
+
+SCRIPT = (ROOT / "app/static/js/activity-calendar.js").read_text(encoding="utf-8")
+
+
+def test_months_switch_in_place() -> None:
+    """The month arrows swap the month's parts in place (no full reload): the calendar
+    card and «Когда вы читаете» are marked, the script fetches the month and swaps them,
+    keeps the month in the address and fetches the arrows' months ahead."""
+    assert 'data-role="activity-calendar" data-month-part="calendar"' in TEMPLATE
+    assert 'data-role="reading-hours" data-month-part="hours"' in TEMPLATE
+    assert "[data-month-part]" in SCRIPT
+    assert "history.pushState" in SCRIPT
+    assert "popstate" in SCRIPT
+    assert "prefetchNeighbours" in SCRIPT
+    # A failed fetch still gets the reader to the month.
+    assert "window.location.href = url" in SCRIPT
+
+
+def test_the_day_card_has_no_title_link() -> None:
+    """«О тайтле» belongs to the library and the home page, not to the day's card - its
+    covers are the links."""
+    assert "О тайтле" not in TEMPLATE

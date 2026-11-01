@@ -12,6 +12,7 @@ from ranobelib.models import Chapter, Cover, Label, Title, Volume
 
 import app.api.activity as activity_api
 import app.jobs.store as job_store
+from app.auth.rate_limit import _attempts
 from app.config import get_settings
 from app.db.activity import record_chapter_read, record_heartbeat
 from app.db.comments import create_comment
@@ -107,7 +108,7 @@ def test_show_activity_empty_state(client: TestClient) -> None:
     assert "Здесь появятся прочитанные главы и загрузки." in response.text
     # No friends yet: the block offers to find some.
     assert 'data-role="friends-activity"' in response.text
-    assert "Найти друзей по нику" in response.text
+    assert "Найти друзей<small>по нику</small>" in response.text
     assert "static/js/activity-calendar.js" in response.text
 
 
@@ -139,7 +140,7 @@ async def test_show_activity_marks_reading_days_and_the_streak(client: TestClien
     with patch("app.services.client.RanobeLib", return_value=_FakeClient(_fake_title())):
         response = client.get("/activity")
 
-    assert '<b class="hm-num">2 дня</b> подряд' in response.text
+    assert '<span class="ac-head__count hm-num">2 дня подряд</span>' in response.text
     assert "Сегодня 1 глава" in response.text
     if local_today().day > 1:  # yesterday is in this month too
         assert response.text.count("ac-day--read") == 2
@@ -196,8 +197,9 @@ async def test_show_activity_shows_when_the_month_was_read(client: TestClient) -
     with patch("app.services.client.RanobeLib", return_value=_FakeClient(_fake_title())):
         response = client.get("/activity")
 
+    # The month's total sits under the calendar.
+    assert "<b>1 ч 30 мин</b> и 0 глав за месяц" in response.text
     hours = response.text[response.text.index('data-role="reading-hours"') :]
-    assert "<b>1 ч 30 мин</b> и 0 глав за " in hours
     assert '<b class="hm-num">100%</b> времени' in hours
     assert hours.count("ac-hours__bar--peak") == 1
     assert hours.count('class="ac-hours__bar') == 24
@@ -339,6 +341,7 @@ async def test_show_activity_groups_friends_by_activity(client: TestClient) -> N
     """Friends who read lately: five in full, the rest under «Ещё N читают»; friends
     without activity in a group of their own."""
     for n in range(1, 10):  # ids 1-9: eight friends and the viewer (9)
+        _attempts.clear()  # /verify-email allows five a minute per IP (PR 188)
         _register(client, f"user{n}@example.com")
     async with connection() as conn:
         for friend_id in range(1, 9):
@@ -383,7 +386,8 @@ async def test_show_activity_lists_titles_read_on_the_site(client: TestClient) -
     with patch("app.services.client.RanobeLib", return_value=_FakeClient(_fake_title())):
         response = client.get("/activity")
 
-    block = response.text[response.text.index('data-role="popular-titles"') :]
+    page = response.text
+    block = page[page.index('data-role="popular-titles"') : page.index('data-role="reading-hours"')]
     assert "Популярное на Webnovells" in block
     assert block.index('href="/titles/1--a"') < block.index('href="/titles/3--c"')
     assert block.index('href="/titles/3--c"') < block.index('href="/titles/2--b"')
@@ -403,6 +407,6 @@ async def test_show_activity_falls_back_to_ranobelib_popular(
     response = client.get("/activity")
 
     block = response.text[response.text.index('data-role="popular-titles"') :]
-    assert "По просмотрам на ranobelib.me" in block
+    assert "Самые просматриваемые тайтлы каталога" in block
     assert 'href="/titles/9--viewed"' in block
     assert "читател" not in block
