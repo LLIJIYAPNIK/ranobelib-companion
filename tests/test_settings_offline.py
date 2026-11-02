@@ -28,7 +28,10 @@ def test_guests_get_the_offline_section_and_it_is_active_in_the_nav() -> None:
     )
     assert 'settings-nav__label">Офлайн</span>' in html
     assert html.count("settings-nav__link--active") == 1
-    assert '<h2 class="settings-content__title">Офлайн</h2>' in html
+    assert (
+        '<h1 class="settings-content__title" data-role="settings-title" data-area="Офлайн">'
+        "Офлайн</h1>" in html
+    )
 
 
 def test_offline_is_listed_after_reading_on_every_settings_page() -> None:
