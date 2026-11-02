@@ -1,158 +1,202 @@
 {% extends "settings_layout.html" %}
 {% block title %}Аккаунт — Настройки — RanobeLib Companion{% endblock %}
+{% block settings_lead %}{% if current_user %}{% if nickname %}{{ nickname }} · {% endif %}{{ email }}{% endif %}{% endblock %}
 {% block settings_content %}
 {#
-  PR 261 (Aurora Ink, SETTINGS-ACCOUNT): avatar (80px, pen badge, the whole circle is
-  the file picker - avatar-upload.js), "Данные профиля" as ui-field inputs, "Приватность"
-  as switch rows. Same forms, field names and data-role hooks as before.
+  Three rows: «Профиль» (the avatar - the whole circle is the file picker,
+  avatar-upload.js - then the nickname, email and bio, beside the profile's header as
+  they will make it), «Приватность» (the four switches
+  beside «Так вас видят другие»: the profile as someone else gets it, which drops the
+  parts switched off as the switches move - settings-preview.js; without the script it
+  shows the saved state) and «Часовой пояс». Same forms, field names and data-role hooks
+  as before; each form saves with its own button at the panel's foot.
 #}
   {% if current_user %}
-  <div class="settings-sections">
-  <section class="settings-card settings-card--avatar">
-    <form
-      class="settings-form--avatar"
-      method="post"
-      action="/settings/account/avatar"
-      enctype="multipart/form-data"
-      data-role="avatar-upload-form"
-    >
-      <label class="avatar-upload" aria-label="Изменить аватар" data-role="avatar-upload-trigger">
-        <span class="avatar-upload__preview" data-role="avatar-upload-preview">
-          {% if avatar_url(current_user) %}
-          <img class="avatar-img" src="{{ avatar_url(current_user) }}" alt="">
-          {% else %}
-          <span class="avatar-upload__initials">{{ avatar_initials(current_user) }}</span>
-          {% endif %}
-        </span>
-        <span class="avatar-upload__overlay" aria-hidden="true">
-          <svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
-            <path d="M12 20h9"/>
-            <path d="M16.5 3.5a2.12 2.12 0 0 1 3 3L7 19l-4 1 1-4Z"/>
-          </svg>
-        </span>
-        <input
-          class="avatar-upload__input"
-          id="account-avatar"
-          type="file"
-          name="avatar"
-          accept="image/png,image/jpeg,image/webp"
-          data-role="avatar-upload-input"
-          required
+  {% set avatar = avatar_url(current_user) %}
+  <div class="st-rows">
+  <section class="st-row" aria-labelledby="st-profile">
+    <div class="st-aside">
+      <h2 class="st-aside__title" id="st-profile">Профиль</h2>
+      <p class="st-aside__text">Аватар, ник и пара слов о себе: это первое, что видят на вашей странице.</p>
+      <figure class="st-preview" data-role="profile-preview">
+        <figcaption class="st-preview__caption">Шапка вашего профиля</figcaption>
+        <div class="st-pv__who">
+          <span class="st-pv__avatar st-pv__avatar--lg" aria-hidden="true">{% if avatar %}<img class="avatar-img" src="{{ avatar }}" alt="">{% else %}{{ avatar_initials(current_user) }}{% endif %}</span>
+          <span class="st-pv__name" data-role="preview-name">{{ nickname or email }}</span>
+        </div>
+        <p class="st-pv__bio{% if not bio %} is-empty{% endif %}" data-role="preview-bio" data-empty="Пользователь пока не рассказал о себе.">{{ bio or "Пользователь пока не рассказал о себе." }}</p>
+      </figure>
+      <a class="hm-link" href="/profile">Открыть профиль</a>
+    </div>
+    <div class="st-panel">
+      <div class="st-avatar">
+        <form
+          class="settings-form--avatar"
+          method="post"
+          action="/settings/account/avatar"
+          enctype="multipart/form-data"
+          data-role="avatar-upload-form"
         >
-      </label>
-    </form>
-    <div class="settings-card__intro">
-      <h2 class="settings-card__title">Аватар</h2>
-      <p class="settings-card__hint">Нажмите, чтобы заменить · PNG, JPEG, WebP</p>
-      {% if avatar_saved %}
-      <p class="ui-notice">Аватар обновлён</p>
-      {% endif %}
-      {% if avatar_error %}
-      <p class="ui-notice ui-notice--error">{{ avatar_error }}</p>
-      {% endif %}
+          <label class="avatar-upload" aria-label="Изменить аватар" data-role="avatar-upload-trigger">
+            <span class="avatar-upload__preview" data-role="avatar-upload-preview">
+              {% if avatar %}
+              <img class="avatar-img" src="{{ avatar }}" alt="">
+              {% else %}
+              <span class="avatar-upload__initials">{{ avatar_initials(current_user) }}</span>
+              {% endif %}
+            </span>
+            <span class="avatar-upload__overlay" aria-hidden="true">
+              <svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M12 20h9"/>
+                <path d="M16.5 3.5a2.12 2.12 0 0 1 3 3L7 19l-4 1 1-4Z"/>
+              </svg>
+            </span>
+            <input
+              class="avatar-upload__input"
+              id="account-avatar"
+              type="file"
+              name="avatar"
+              accept="image/png,image/jpeg,image/webp"
+              data-role="avatar-upload-input"
+              required
+            >
+          </label>
+        </form>
+        <div class="st-avatar__copy">
+          <p class="st-avatar__title">Аватар</p>
+          <p class="st-hint">Нажмите на круг, чтобы заменить · PNG, JPEG или WebP</p>
+          {% if avatar_saved %}
+          <p class="st-stamp" role="status">Аватар обновлён</p>
+          {% endif %}
+          {% if avatar_error %}
+          <p class="st-error" role="alert">{{ avatar_error }}</p>
+          {% endif %}
+        </div>
+      </div>
+
+      <form class="settings-form st-form" method="post" action="/settings/account">
+        {% if error %}
+        <p class="st-error" role="alert">{{ error }}</p>
+        {% endif %}
+        <div class="ui-field">
+          <label class="ui-field__label" for="account-nickname">Никнейм</label>
+          <input
+            class="ui-input"
+            id="account-nickname"
+            type="text"
+            name="nickname"
+            value="{{ nickname or '' }}"
+            maxlength="60"
+            placeholder="Необязательно"
+          >
+        </div>
+        <div class="ui-field">
+          <label class="ui-field__label" for="account-email">Email</label>
+          <input
+            class="ui-input"
+            id="account-email"
+            type="email"
+            name="email"
+            value="{{ email }}"
+            required
+          >
+        </div>
+        <div class="ui-field">
+          <label class="ui-field__label" for="account-bio">О себе</label>
+          <textarea
+            class="ui-input ui-input--textarea"
+            id="account-bio"
+            name="bio"
+            maxlength="280"
+            placeholder="Необязательно"
+            aria-describedby="account-bio-limit"
+            data-role="bio-input"
+          >{{ bio or '' }}</textarea>
+          <p class="ui-field__hint st-count" id="account-bio-limit"><span class="hm-num" data-role="bio-count">{{ (bio or '') | length }}</span> из 280 символов</p>
+        </div>
+        <div class="st-foot">
+          {% if saved %}<p class="st-stamp" role="status">Изменения сохранены</p>{% endif %}
+          <button class="st-save" type="submit">Сохранить</button>
+        </div>
+      </form>
     </div>
   </section>
 
-  <section class="settings-card">
-    <h2 class="settings-card__title">Данные профиля</h2>
-    {% if saved %}
-    <p class="ui-notice">Изменения сохранены</p>
-    {% endif %}
-    {% if error %}
-    <p class="ui-notice ui-notice--error">{{ error }}</p>
-    {% endif %}
-    <form class="settings-form" method="post" action="/settings/account">
-      <div class="ui-field">
-        <label class="ui-field__label" for="account-nickname">Никнейм</label>
-        <input
-          class="ui-input"
-          id="account-nickname"
-          type="text"
-          name="nickname"
-          value="{{ nickname or '' }}"
-          maxlength="60"
-          placeholder="Необязательно"
-        >
-      </div>
-      <div class="ui-field">
-        <label class="ui-field__label" for="account-email">Email</label>
-        <input
-          class="ui-input"
-          id="account-email"
-          type="email"
-          name="email"
-          value="{{ email }}"
-          required
-        >
-      </div>
-      <div class="ui-field">
-        <label class="ui-field__label" for="account-bio">О себе <span class="settings-form__label-note">· до 280 символов</span></label>
-        <textarea
-          class="ui-input ui-input--textarea"
-          id="account-bio"
-          name="bio"
-          maxlength="280"
-          placeholder="Необязательно"
-        >{{ bio or '' }}</textarea>
-      </div>
-      <button class="ui-btn ui-btn--primary settings-form__submit" type="submit">Сохранить</button>
-    </form>
-  </section>
-
-  <section class="settings-card settings-card--switches">
-    <h2 class="settings-card__title">Приватность</h2>
-    {% if privacy_saved %}
-    <p class="ui-notice">Настройки приватности сохранены</p>
-    {% endif %}
-    <p class="settings-card__hint">
-      Большинство переключателей ниже касаются вашей публичной страницы профиля — сами вы
-      всегда видите свой профиль полностью, независимо от них. Показ активности друзей в
-      «Активности» — личная настройка: она влияет только на то, что видите там вы сами.
-    </p>
-    <form class="settings-form settings-form--switches" method="post" action="/settings/account/privacy">
-      <label class="ui-switch settings-switch-row">
-        <span>Показывать, что я сейчас читаю</span>
-        <input type="checkbox" role="switch" name="show_currently_reading" {% if show_currently_reading %}checked{% endif %}>
-      </label>
-      <label class="ui-switch settings-switch-row">
-        <span>Показывать библиотеку целиком</span>
-        <input type="checkbox" role="switch" name="show_library" {% if show_library %}checked{% endif %}>
-      </label>
-      <label class="ui-switch settings-switch-row">
-        <span>Показывать список друзей</span>
-        <input type="checkbox" role="switch" name="show_friends" {% if show_friends %}checked{% endif %}>
-      </label>
-      <label class="ui-switch settings-switch-row">
-        <span>Показывать активность друзей в «Активности»</span>
-        <input type="checkbox" role="switch" name="show_friends_activity_home" {% if show_friends_activity_home %}checked{% endif %}>
-      </label>
-      <button class="ui-btn ui-btn--primary settings-form__submit" type="submit">Сохранить</button>
-    </form>
+  <section class="st-row" aria-labelledby="st-privacy">
+    <div class="st-aside">
+      <h2 class="st-aside__title" id="st-privacy">Приватность</h2>
+      <p class="st-aside__text">Что видят другие на вашей странице. Сами вы всегда видите профиль целиком.</p>
+      <figure class="st-preview" data-role="privacy-preview">
+        <figcaption class="st-preview__caption">Так вас видят другие</figcaption>
+        <div class="st-pv">
+          <div class="st-pv__who">
+            <span class="st-pv__avatar" aria-hidden="true">{% if avatar %}<img class="avatar-img" src="{{ avatar }}" alt="">{% else %}{{ avatar_initials(current_user) }}{% endif %}</span>
+            <span class="st-pv__name" data-role="preview-name">{{ nickname or email }}</span>
+          </div>
+          <ul class="st-pv__parts">
+            {% for name, label in [("show_currently_reading", "Читает сейчас"), ("show_library", "Библиотека"), ("show_friends", "Друзья")] %}
+            {% set on = (name == "show_currently_reading" and show_currently_reading) or (name == "show_library" and show_library) or (name == "show_friends" and show_friends) %}
+            <li class="st-pv__part{% if not on %} is-off{% endif %}" data-preview-for="{{ name }}">
+              <span class="st-pv__label">{{ label }}</span>
+              <span class="st-pv__state" data-preview-state>{{ "видно" if on else "скрыто" }}</span>
+            </li>
+            {% endfor %}
+          </ul>
+        </div>
+      </figure>
+    </div>
+    <div class="st-panel">
+      <form class="settings-form settings-form--switches st-form" method="post" action="/settings/account/privacy" data-role="privacy-form">
+        <label class="ui-switch settings-switch-row">
+          <span class="st-switch__copy"><span class="st-switch__title">Показывать, что я сейчас читаю</span><span class="st-hint">Книга и глава в шапке профиля и в календаре чтения</span></span>
+          <input type="checkbox" role="switch" name="show_currently_reading" {% if show_currently_reading %}checked{% endif %}>
+        </label>
+        <label class="ui-switch settings-switch-row">
+          <span class="st-switch__copy"><span class="st-switch__title">Показывать библиотеку целиком</span><span class="st-hint">Обложки и прогресс в блоке «Библиотека»</span></span>
+          <input type="checkbox" role="switch" name="show_library" {% if show_library %}checked{% endif %}>
+        </label>
+        <label class="ui-switch settings-switch-row">
+          <span class="st-switch__copy"><span class="st-switch__title">Показывать список друзей</span><span class="st-hint">Блок «Друзья» на вашей странице</span></span>
+          <input type="checkbox" role="switch" name="show_friends" {% if show_friends %}checked{% endif %}>
+        </label>
+        <p class="st-group">Только для вас</p>
+        <label class="ui-switch settings-switch-row">
+          <span class="st-switch__copy"><span class="st-switch__title">Показывать активность друзей в «Активности»</span><span class="st-hint">Что читают друзья, на вашей странице «Активность». Другие этого не видят</span></span>
+          <input type="checkbox" role="switch" name="show_friends_activity_home" {% if show_friends_activity_home %}checked{% endif %}>
+        </label>
+        <div class="st-foot">
+          {% if privacy_saved %}<p class="st-stamp" role="status">Настройки приватности сохранены</p>{% endif %}
+          <button class="st-save" type="submit">Сохранить</button>
+        </div>
+      </form>
+    </div>
   </section>
 
   {# PR 322: filled in from the browser after login; changeable here by hand. #}
-  <section class="settings-card">
-    <h2 class="settings-card__title">Часовой пояс</h2>
-    {% if timezone_saved %}
-    <p class="ui-notice">Часовой пояс сохранён</p>
-    {% endif %}
-    {% if timezone_error %}
-    <p class="ui-notice ui-notice--error">{{ timezone_error }}</p>
-    {% endif %}
-    <p class="settings-card__hint">
-      По нему считаются дни в «Активности», календаре чтения и серии дней подряд.
-    </p>
-    <form class="settings-form" method="post" action="/settings/account/timezone" autocomplete="off">
-      <div class="ui-field">
-        <label class="ui-field__label" for="account-timezone">Часовой пояс</label>
-        <select class="ui-input" id="account-timezone" name="timezone">
-          {% for zone in timezone_choices %}
-          <option value="{{ zone }}"{% if zone == timezone %} selected{% endif %}>{{ zone }}</option>
-          {% endfor %}
-        </select>
-      </div>
-      <button class="ui-btn ui-btn--primary settings-form__submit" type="submit">Сохранить</button>
-    </form>
+  <section class="st-row" aria-labelledby="st-timezone">
+    <div class="st-aside">
+      <h2 class="st-aside__title" id="st-timezone">Часовой пояс</h2>
+      <p class="st-aside__text">По нему считаются дни в «Активности», календаре чтения и серии дней подряд.</p>
+    </div>
+    <div class="st-panel">
+      <form class="settings-form st-form" method="post" action="/settings/account/timezone" autocomplete="off">
+        {% if timezone_error %}
+        <p class="st-error" role="alert">{{ timezone_error }}</p>
+        {% endif %}
+        <div class="ui-field">
+          <label class="ui-field__label" for="account-timezone">Часовой пояс</label>
+          <select class="ui-input" id="account-timezone" name="timezone">
+            {% for zone in timezone_choices %}
+            <option value="{{ zone }}"{% if zone == timezone %} selected{% endif %}>{{ zone }}</option>
+            {% endfor %}
+          </select>
+        </div>
+        <div class="st-foot">
+          {% if timezone_saved %}<p class="st-stamp" role="status">Часовой пояс сохранён</p>{% endif %}
+          <button class="st-save" type="submit">Сохранить</button>
+        </div>
+      </form>
+    </div>
   </section>
   </div>
   {% else %}
@@ -166,5 +210,6 @@
 {% block settings_scripts %}
 {% if current_user %}
 <script src="{{ static_url('js/avatar-upload.js') }}" defer></script>
+<script src="{{ static_url('js/settings-preview.js') }}" defer></script>
 {% endif %}
 {% endblock %}

@@ -1,17 +1,37 @@
 {% extends "settings_layout.html" %}
 {% block title %}Настройки чтения — RanobeLib Companion{% endblock %}
+{% block settings_lead %}Сохраняется сразу на этом устройстве. Те же настройки открываются в читалке кнопкой «Aa»{% endblock %}
 {% block settings_content %}
 {#
-  PR 255 (Aurora Ink, SETTINGS-READING): Текст · Тема читалки · Режим чтения · Скорость
-  чтения, then a live preview. Segments replace the old selects for the everyday choices
-  (same data-setting keys); the fine-grained paragraph style / animation / tempo selects
-  and the comment size live on under «Дополнительно». The reader's Aa panel uses the
-  same controls (_reader_controls.html) and the same stored object.
+  One row: the chapter as it will read, pinned on the left while the controls scroll on
+  the right - Текст · Тема читалки · Режим чтения · Скорость чтения · Без интернета ·
+  Приложение, then «Сбросить настройки». Segments replace the old selects for the
+  everyday choices (same data-setting keys); the fine-grained paragraph style /
+  animation / tempo selects and the comment size live on under «Дополнительно». The
+  reader's Aa panel uses the same controls (_reader_controls.html) and the same stored
+  object (reader-settings.js), so nothing here has a Save button.
 #}
 {% from "_reader_controls.html" import segmented, themes, fonts, width_range, LINE_HEIGHTS, MARGINS, MODES, PRESETS %}
 {% set AUTO_DOWNLOAD = [("0", "Выкл"), ("3", "3"), ("5", "5"), ("10", "10")] %}
-  <div class="reader-settings-page" data-role="reader-settings">
-    <section class="reader-settings-card">
+  <div class="st-row st-row--reading reader-settings-page" data-role="reader-settings">
+    <div class="st-aside st-aside--pinned">
+      <figure class="st-preview st-preview--chapter">
+        <figcaption class="st-preview__caption">Так будет выглядеть глава</figcaption>
+        <div class="reader-settings-preview" data-role="reader-settings-preview">
+          <p class="reader-settings-preview__head">Глава 61. Дорога через перевал</p>
+          <p>
+            К утру снег засыпал тропу, и Рен шёл по памяти, считая шаги от старой сосны до
+            каменного указателя. Где-то внизу, за облаками, уже звонили к первой смене.
+          </p>
+          <p>
+            Пример меняется сразу, пока вы двигаете настройки, без сохранения и
+            перезагрузки.
+          </p>
+        </div>
+      </figure>
+    </div>
+    <div class="st-stack">
+    <section class="reader-settings-card st-panel">
       <h2 class="reader-settings-card__title">Текст</h2>
       <div class="reader-settings-row">
         <span class="reader-settings-row__label">Шрифт</span>
@@ -41,12 +61,12 @@
       </div>
     </section>
 
-    <section class="reader-settings-card">
+    <section class="reader-settings-card st-panel">
       <h2 class="reader-settings-card__title">Тема читалки</h2>
       {{ themes("set-theme") }}
     </section>
 
-    <section class="reader-settings-card">
+    <section class="reader-settings-card st-panel">
       <h2 class="reader-settings-card__title">Режим чтения</h2>
       <div class="reader-settings-row">
         <span class="reader-settings-row__label">Режим</span>
@@ -118,14 +138,14 @@
       </details>
     </section>
 
-    <section class="reader-settings-card reader-settings-card--speed reading-speed-test" data-role="reading-speed-test">
+    <section class="reader-settings-card st-panel reader-settings-card--speed reading-speed-test" data-role="reading-speed-test">
       <div class="reader-settings-card__intro">
         <h2 class="reader-settings-card__title">Скорость чтения</h2>
         <p class="reader-settings-row__hint">
           Текущее значение: <span data-role="reading-speed-value">не задано</span> · для «По скорости»
         </p>
       </div>
-      <button type="button" class="ui-btn" data-role="reading-speed-start">Пройти тест</button>
+      <button type="button" class="st-btn" data-role="reading-speed-start">Пройти тест</button>
       <label class="reading-speed-test__manual-field">
         <span class="reading-speed-test__manual-label">Или укажите вручную, слов/мин</span>
         <span class="reading-speed-test__stepper">
@@ -163,17 +183,10 @@
       </div>
     </section>
 
-    <div class="reader-settings-preview" data-role="reader-settings-preview">
-      <p>
-        Так будет выглядеть текст главы с выбранными настройками — пример обновляется
-        сразу, без сохранения и перезагрузки.
-      </p>
-    </div>
-
     {# PR 334: auto-download of the next chapters for titles downloaded for reading
        offline. offline-autodownload.js says what the network allows right now and shows
        the «any network» question only where the browser can't tell Wi-Fi apart. #}
-    <section class="reader-settings-card" data-role="offline-auto-settings">
+    <section class="reader-settings-card st-panel" data-role="offline-auto-settings">
       <h2 class="reader-settings-card__title">Без интернета</h2>
       <div class="reader-settings-row">
         <span class="reader-settings-row__label">Докачивать следующие главы</span>
@@ -195,15 +208,19 @@
 
     {# PR 327: install as an app (pwa-install.js shows this only when there's something
        to offer - a held browser prompt, the iOS hint, or "already installed"). #}
-    <section class="reader-settings-card reader-settings-card--speed" data-role="pwa-install" hidden>
+    <section class="reader-settings-card st-panel reader-settings-card--speed" data-role="pwa-install" hidden>
       <div class="reader-settings-card__intro">
         <h2 class="reader-settings-card__title">Приложение</h2>
         <p class="reader-settings-row__hint" data-role="pwa-install-text">Установите Webnovells на телефон или компьютер — он откроется отдельным окном, как приложение.</p>
       </div>
-      <button type="button" class="ui-btn ui-btn--primary" data-role="pwa-install-button" hidden>Установить приложение</button>
+      <button type="button" class="st-save" data-role="pwa-install-button" hidden>Установить приложение</button>
     </section>
 
-    <button type="button" class="reader-settings-reset" data-role="reader-settings-reset">Сбросить настройки</button>
+    <div class="st-reset">
+      <button type="button" class="reader-settings-reset" data-role="reader-settings-reset">Сбросить настройки</button>
+      <p class="st-hint">Шрифт, тема и режим чтения вернутся к начальным. Скорость чтения, «Не гасить экран» и настройки без интернета останутся.</p>
+    </div>
+    </div>
   </div>
 {% endblock %}
 {% block settings_scripts %}

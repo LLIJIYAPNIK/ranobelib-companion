@@ -1,37 +1,50 @@
 {% extends "settings_layout.html" %}
 {% block title %}Безопасность — Настройки — RanobeLib Companion{% endblock %}
+{% block settings_lead %}{% if current_user %}Вход в аккаунт {{ current_user.email }}{% endif %}{% endblock %}
 {% block settings_content %}
 {#
-  PR 261 (Aurora Ink, SETTINGS-SECURITY): "Изменение пароля" - three ui-field password
-  inputs with their show/hide toggle (_password_field.html, password-toggle.js).
+  «Изменение пароля»: the three password inputs with their show/hide toggle
+  (_password_field.html, password-toggle.js) beside the rules the new one has to meet,
+  ticked as it is typed (settings-preview.js) - the same rules the server checks
+  (app/auth/passwords.py: at least 8 characters, not the part of the email before «@»).
 #}
   {% from "_password_field.html" import password_input %}
   {% if current_user %}
-  <div class="settings-sections">
-  <section class="settings-card">
-    <h2 class="settings-card__title">Изменение пароля</h2>
-    {% if saved %}
-    <p class="ui-notice">Пароль изменён</p>
-    {% endif %}
-    {% if error %}
-    <p class="ui-notice ui-notice--error">{{ error }}</p>
-    {% endif %}
-    <form class="settings-form" method="post" action="/settings/security">
-      <div class="ui-field">
-        <label class="ui-field__label" for="security-current-password">Текущий пароль</label>
-        {{ password_input("security-current-password", "current_password") }}
-      </div>
-      <div class="ui-field">
-        <label class="ui-field__label" for="security-new-password">Новый пароль</label>
-        {{ password_input("security-new-password", "new_password", minlength=8) }}
-        <p class="ui-field__hint">Минимум 8 символов, лучше 12+</p>
-      </div>
-      <div class="ui-field">
-        <label class="ui-field__label" for="security-new-password-confirm">Повторите новый пароль</label>
-        {{ password_input("security-new-password-confirm", "new_password_confirm") }}
-      </div>
-      <button class="ui-btn ui-btn--primary settings-form__submit" type="submit">Сохранить</button>
-    </form>
+  <div class="st-rows">
+  <section class="st-row" aria-labelledby="st-password">
+    <div class="st-aside">
+      <h2 class="st-aside__title" id="st-password">Изменение пароля</h2>
+      <p class="st-aside__text">Сначала текущий пароль, затем новый, дважды.</p>
+      <ul class="st-rules" data-role="password-rules" aria-label="Требования к новому паролю">
+        <li class="st-rules__item" data-rule="length">Не короче 8 символов</li>
+        <li class="st-rules__item" data-rule="email" data-email-local="{{ current_user.email.split('@')[0] | lower }}">Не совпадает с началом email до «@»</li>
+        <li class="st-rules__item" data-rule="match">Повтор совпадает с новым</li>
+        <li class="st-rules__item st-rules__item--soft" data-rule="long">Лучше 12 символов и больше</li>
+      </ul>
+    </div>
+    <div class="st-panel">
+      <form class="settings-form st-form" method="post" action="/settings/security" data-role="password-form">
+        {% if error %}
+        <p class="st-error" role="alert">{{ error }}</p>
+        {% endif %}
+        <div class="ui-field">
+          <label class="ui-field__label" for="security-current-password">Текущий пароль</label>
+          {{ password_input("security-current-password", "current_password") }}
+        </div>
+        <div class="ui-field">
+          <label class="ui-field__label" for="security-new-password">Новый пароль</label>
+          {{ password_input("security-new-password", "new_password", minlength=8) }}
+        </div>
+        <div class="ui-field">
+          <label class="ui-field__label" for="security-new-password-confirm">Повторите новый пароль</label>
+          {{ password_input("security-new-password-confirm", "new_password_confirm") }}
+        </div>
+        <div class="st-foot">
+          {% if saved %}<p class="st-stamp" role="status">Пароль изменён</p>{% endif %}
+          <button class="st-save" type="submit">Сменить пароль</button>
+        </div>
+      </form>
+    </div>
   </section>
   </div>
   {% else %}
@@ -41,4 +54,9 @@
   чтобы изменить пароль.
   {% endcall %}
   {% endif %}
+{% endblock %}
+{% block settings_scripts %}
+{% if current_user %}
+<script src="{{ static_url('js/settings-preview.js') }}" defer></script>
+{% endif %}
 {% endblock %}
