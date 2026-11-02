@@ -15433,398 +15433,6 @@ body.reader-hud-visible .reader-hud {
 }
 
 /* ==========================================================================
-   Aurora Ink screens - settings (PR 261): SETTINGS-ACCOUNT / -SECURITY /
-   -NOTIFICATIONS and the shell /settings/reading (PR 255) sits in. "Настройки", a 200px
-   section nav (active: --surface-selected + cyan edge) beside cards capped at 680px.
-   On phones settings-mobile-nav.js shows the nav as the M-SETTINGS list (summary +
-   chevron per section) or a section with its back button and own title.
-   ========================================================================== */
-.settings-page {
-  flex: 1;
-  display: flex;
-  flex-direction: column;
-  gap: 18px;
-  width: 100%;
-  max-width: calc(908px + 2 * var(--s-40));
-  padding: var(--s-32) var(--s-40) var(--s-40);
-}
-
-.settings-page__title {
-  margin: 0;
-  color: var(--text-1);
-  font: var(--type-h1);
-}
-
-.settings-layout {
-  display: flex;
-  align-items: flex-start;
-  gap: 28px;
-}
-
-.settings-nav {
-  position: sticky;
-  top: calc(var(--shell-top) + var(--s-16));
-  display: flex;
-  flex: 0 0 200px;
-  flex-direction: column;
-  gap: 2px;
-}
-
-.settings-nav__link {
-  display: flex;
-  align-items: center;
-  gap: var(--s-12);
-  min-height: 44px;
-  padding: 0 14px;
-  border-radius: var(--r-lg);
-  color: var(--text-2);
-  text-decoration: none;
-  transition: background-color var(--dur-base) var(--ease), color var(--dur-base) var(--ease);
-}
-
-.settings-nav__text {
-  display: flex;
-  flex: 1;
-  flex-direction: column;
-  gap: 5px;
-  min-width: 0;
-}
-
-.settings-nav__label {
-  font: 600 15px/1.2 var(--font-ui);
-}
-
-/* The one-line summary and chevron belong to the mobile list only. */
-.settings-nav__summary,
-.settings-nav__chevron {
-  display: none;
-}
-
-@media (hover: hover) {
-  .settings-nav__link:hover {
-    background: var(--surface-2);
-    color: var(--text-1);
-  }
-}
-
-.settings-nav__link:focus-visible {
-  outline: none;
-  box-shadow: var(--focus-ring);
-}
-
-.settings-nav__link--active,
-.settings-nav__link--active:hover {
-  background: var(--surface-selected);
-  box-shadow: inset 3px 0 0 var(--accent);
-  color: var(--text-1);
-}
-
-.settings-nav__link--active .settings-nav__label {
-  font-weight: 700;
-}
-
-.settings-nav__link--active:focus-visible {
-  box-shadow: inset 3px 0 0 var(--accent), var(--focus-ring);
-}
-
-.settings-content {
-  display: flex;
-  flex: 1;
-  flex-direction: column;
-  gap: var(--s-16);
-  min-width: 0;
-  max-width: 680px;
-}
-
-/* Back button + section title: mobile section view only (see the media query below). */
-.settings-content__head {
-  display: none;
-}
-
-.settings-sections {
-  display: flex;
-  flex-direction: column;
-  gap: var(--s-16);
-}
-
-.settings-card {
-  display: flex;
-  flex-direction: column;
-  gap: 14px;
-  padding: var(--s-20);
-  border: 1px solid var(--border);
-  border-radius: var(--r-xl);
-  background: var(--surface-1);
-}
-
-.settings-card--switches {
-  gap: 6px;
-}
-
-.settings-card__title {
-  margin: 0;
-  color: var(--text-1);
-  font: 800 16px/1.2 var(--font-ui);
-}
-
-.settings-card__hint {
-  margin: 0;
-  color: var(--text-3);
-  font: 500 13px/1.5 var(--font-ui);
-}
-
-.settings-card--switches .settings-card__hint {
-  margin-bottom: 6px;
-}
-
-.settings-card__intro {
-  display: flex;
-  flex-direction: column;
-  gap: 5px;
-  min-width: 0;
-}
-
-.settings-card__intro .ui-notice {
-  margin-top: var(--s-4);
-}
-
-.settings-card .settings-form {
-  gap: 14px;
-  max-width: none;
-  margin: 0;
-}
-
-/* Fields sit on the page colour inside a card, as in the design. */
-.settings-card .ui-input {
-  background: var(--bg-page);
-}
-
-.settings-form__label-note {
-  color: var(--text-3);
-  font-weight: 500;
-}
-
-.settings-form__submit {
-  align-self: flex-start;
-}
-
-.settings-form--switches {
-  gap: 0;
-}
-
-.settings-form--switches .settings-form__submit {
-  margin-top: var(--s-8);
-}
-
-/* A switch row: label left, the 44x26 switch (.ui-switch's own input) right. */
-.settings-switch-row {
-  display: flex;
-  justify-content: space-between;
-  gap: 14px;
-  min-height: 48px;
-  border-top: 1px solid var(--divider);
-  font: 500 14px/1.35 var(--font-ui);
-}
-
-.ui-input--textarea {
-  height: auto;
-  min-height: 88px;
-  padding: var(--s-12) 14px;
-  font: 500 15px/1.4 var(--font-ui);
-  resize: vertical;
-}
-
-/* Avatar card: 80px circle (the file picker) with a pen badge, then title + hint. */
-.settings-card--avatar {
-  flex-direction: row;
-  align-items: center;
-  gap: 18px;
-}
-
-.settings-card--avatar .avatar-upload,
-.avatar-row .avatar-upload {
-  flex: 0 0 auto;
-  width: 80px;
-  height: 80px;
-}
-
-.settings-card--avatar .avatar-upload:focus-within,
-.avatar-row .avatar-upload:focus-within {
-  outline: none;
-  box-shadow: var(--focus-ring);
-}
-
-.settings-card--avatar .avatar-upload__preview,
-.avatar-row .avatar-upload__preview {
-  background: var(--surface-3);
-  color: var(--text-2);
-}
-
-.settings-card--avatar .avatar-upload__preview .avatar-img,
-.avatar-row .avatar-upload__preview .avatar-img {
-  object-position: 50% 20%;
-}
-
-.settings-card--avatar .avatar-upload__initials,
-.avatar-row .avatar-upload__initials {
-  font: 800 26px/1 var(--font-ui);
-}
-
-.settings-card--avatar .avatar-upload__overlay,
-.avatar-row .avatar-upload__overlay {
-  inset: auto -2px -2px auto;
-  width: 32px;
-  height: 32px;
-  border: 2px solid var(--surface-1);
-  background: var(--surface-2);
-  color: var(--text-1);
-  opacity: 1;
-  transition: background-color var(--dur-base) var(--ease);
-}
-
-@media (hover: hover) {
-  .settings-card--avatar .avatar-upload:hover .avatar-upload__overlay,
-  .avatar-row .avatar-upload:hover .avatar-upload__overlay {
-    background: var(--surface-3);
-  }
-}
-
-@media (max-width: 1199px) {
-  .settings-page {
-    padding: 28px var(--s-32) var(--s-32);
-  }
-}
-
-@media (max-width: 767px) {
-  .settings-page {
-    gap: var(--s-16);
-    padding: var(--s-4) var(--s-20) var(--s-8);
-  }
-
-  .settings-page__title {
-    font-size: 22px;
-    line-height: 1;
-  }
-
-  .settings-layout {
-    flex-direction: column;
-    align-items: stretch;
-    gap: var(--s-16);
-  }
-
-  .settings-content {
-    max-width: none;
-  }
-
-  /* M-SETTINGS: the nav as one card of rows - name, summary, chevron. No selected state
-     here: on this screen nothing has been chosen yet (PR 218). */
-  .settings-nav {
-    position: static;
-    flex-basis: auto;
-    gap: 0;
-    border: 1px solid var(--border);
-    border-radius: var(--r-xl);
-    background: var(--surface-1);
-    overflow: hidden;
-  }
-
-  .settings-nav__link,
-  .settings-nav__link--active,
-  .settings-nav__link--active:hover {
-    min-height: 64px;
-    padding: 10px var(--s-12) 10px var(--s-16);
-    border-bottom: 1px solid var(--divider);
-    border-radius: 0;
-    background: transparent;
-    box-shadow: none;
-    color: var(--text-1);
-  }
-
-  .settings-nav__link:last-child {
-    border-bottom: 0;
-  }
-
-  .settings-nav__link:active {
-    background: var(--surface-pressed);
-  }
-
-  .settings-nav__link:focus-visible {
-    box-shadow: inset 0 0 0 2px var(--focus);
-  }
-
-  .settings-nav__label,
-  .settings-nav__link--active .settings-nav__label {
-    font: 700 16px/1.2 var(--font-ui);
-  }
-
-  .settings-nav__summary {
-    display: block;
-    color: var(--text-3);
-    font: 500 13px/1.3 var(--font-ui);
-  }
-
-  .settings-nav__chevron {
-    display: block;
-    flex: 0 0 auto;
-    width: 18px;
-    height: 18px;
-    color: var(--text-3);
-  }
-
-  .settings-layout--mobile-js:not(.settings-layout--mobile-detail) .settings-content {
-    display: none;
-  }
-
-  .settings-layout--mobile-js.settings-layout--mobile-detail .settings-nav {
-    display: none;
-  }
-
-  /* A section: its back button and title replace "Настройки". */
-  .settings-page:has(.settings-layout--mobile-detail) .settings-page__title {
-    display: none;
-  }
-
-  .settings-layout--mobile-detail .settings-content__head {
-    display: flex;
-    align-items: center;
-    gap: var(--s-4);
-    margin-left: -12px;
-  }
-
-  .settings-back {
-    display: grid;
-    place-items: center;
-    width: 44px;
-    height: 44px;
-    border-radius: var(--r-lg);
-    color: var(--text-1);
-  }
-
-  .settings-back[hidden] {
-    display: none;
-  }
-
-  .settings-back:active {
-    background: var(--surface-pressed);
-  }
-
-  .settings-back:focus-visible {
-    outline: none;
-    box-shadow: var(--focus-ring);
-  }
-
-  .settings-content__title {
-    margin: 0;
-    color: var(--text-1);
-    font: 800 24px/1.15 var(--font-ui);
-  }
-
-  .settings-card {
-    padding: 18px var(--s-16);
-  }
-}
-
-/* ==========================================================================
    Aurora Ink screens - auth (PR 262): AUTH-LOGIN / AUTH-REGISTER, the same card in the
    auth modal (auth-modal.js), and the avatar step after registration. The card is an
    intro column (brand, pitch, perks, disclaimer) beside the form column; on phones only
@@ -31506,6 +31114,1006 @@ p.ac-card.ac-empty {
   .pf .hm-card__cover,
   .pf-edit,
   .pf-friend {
+    transition: none;
+  }
+}
+
+/* ==========================================================================
+   «Настройки» in the home page's frame (.hm), as «Загрузки», «Активность» and the
+   profile are. The section nav on the left; one view per area with the area's name as
+   the h1 and one line about its state under it; then its sections as rows - what the
+   section is for and what it produces (how others see the profile, the chapter in the
+   chosen type, the bell, the password rules) beside its panel. Panels are the site's
+   quiet glass without the blur; teal only on data (the storage meter, a rule met, a part
+   that stays visible); each panel saves with a light pill at its foot, as the home page's
+   one way on. The track of a segmented control and the switch follow the reader's «Aa».
+
+   The grid at 1440: the canvas is 1240 (.hm), nav 208 + gap 40 + content 992; a row is
+   aside 320 + gap 32 + panel 640 = 992; «Чтение» swaps it to preview 500 + 32 + 460.
+   ========================================================================== */
+.hm.st {
+  gap: 0;
+}
+
+/* The nav runs down the left of both the head and the area's rows. */
+.st-layout {
+  display: grid;
+  grid-template-columns: 208px minmax(0, 1fr);
+  grid-template-areas:
+    "nav head"
+    "nav content";
+  align-items: start;
+  gap: 32px 40px;
+}
+
+.st-head {
+  grid-area: head;
+  min-width: 0;
+}
+
+.st .settings-nav {
+  grid-area: nav;
+  position: sticky;
+  top: 36px;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.settings-nav__title {
+  margin: 0 0 12px;
+  padding: 0 14px;
+  color: var(--wn-text-muted);
+  font: 700 14px/1.3 var(--wn-font-ui);
+}
+
+.settings-nav__link {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  min-height: 44px;
+  padding: 0 14px;
+  border-radius: 14px;
+  color: var(--wn-text-secondary);
+  text-decoration: none;
+  transition: background-color 0.15s ease, color 0.15s ease;
+}
+
+.settings-nav__text {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  gap: 5px;
+  min-width: 0;
+}
+
+.settings-nav__label {
+  font: 700 15px/1.2 var(--wn-font-ui);
+}
+
+/* The one-line summary and chevron belong to the phone's list only. */
+.settings-nav__summary,
+.settings-nav__chevron {
+  display: none;
+}
+
+@media (hover: hover) {
+  .settings-nav__link:hover {
+    background: var(--hm-glass);
+    color: var(--wn-text);
+  }
+}
+
+.settings-nav__link:focus-visible {
+  outline: none;
+  box-shadow: var(--wn-focus-ring);
+}
+
+/* The active area: a step of light and the label in white - no colour on the nav. */
+.settings-nav__link--active,
+.settings-nav__link--active:hover {
+  background: var(--hm-glass-raised);
+  color: #fff;
+}
+
+.settings-content {
+  grid-area: content;
+  display: flex;
+  flex-direction: column;
+  gap: 32px;
+  min-width: 0;
+}
+
+.st-head__line {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  min-height: 34px;
+}
+
+.settings-content__title {
+  margin: 0;
+  color: #fff;
+  font: 800 28px/1.15 var(--wn-font-ui);
+  letter-spacing: -0.02em;
+}
+
+.st-lead {
+  margin: 8px 0 0;
+  overflow-wrap: anywhere;
+  color: var(--wn-text-secondary);
+  font: 500 15px/1.5 var(--wn-font-ui);
+}
+
+/* The back button is the phone's (see the media query below). */
+.settings-back {
+  display: none;
+}
+
+/* --- Rows: aside beside panel --------------------------------------------------- */
+.st-rows {
+  display: flex;
+  flex-direction: column;
+}
+
+.st-row {
+  display: grid;
+  grid-template-columns: minmax(240px, 320px) minmax(0, 1fr);
+  align-items: start;
+  gap: 32px;
+  padding: 32px 0;
+  border-top: 1px solid rgb(255 255 255 / 7%);
+}
+
+.st-rows > .st-row:first-child,
+.st-row--reading,
+.st-row--offline {
+  padding-top: 0;
+  border-top: 0;
+}
+
+.st-row--reading {
+  grid-template-columns: minmax(0, 1fr) minmax(400px, 460px);
+}
+
+/* .reader-settings-page (PR 255) capped the old single column at 640px. */
+.st .st-row.reader-settings-page {
+  max-width: none;
+}
+
+.st-row > .offline-settings__unsupported {
+  grid-column: 1 / -1;
+  margin: 0;
+}
+
+.st-aside {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  min-width: 0;
+  padding-top: 6px;
+}
+
+.st-aside--pinned {
+  position: sticky;
+  top: 36px;
+  padding-top: 0;
+}
+
+.st-aside__title {
+  margin: 0;
+  color: var(--wn-text);
+  font: 800 18px/1.3 var(--wn-font-ui);
+}
+
+.st-aside__text {
+  margin: 0;
+  color: var(--wn-text-secondary);
+  font: 500 14px/1.5 var(--wn-font-ui);
+}
+
+.st-aside > .hm-link {
+  align-self: flex-start;
+}
+
+.st-stack {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  min-width: 0;
+}
+
+.st-panel,
+.st .reader-settings-card {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+  min-width: 0;
+  padding: 24px;
+  border: 1px solid var(--hm-glass-edge);
+  border-radius: var(--hm-radius);
+  background: var(--hm-glass);
+  font-variant-numeric: tabular-nums;
+}
+
+.st .reader-settings-card {
+  gap: 16px;
+}
+
+.st .reader-settings-card--speed {
+  flex-direction: row;
+}
+
+.st .reader-settings-card[hidden] {
+  display: none;
+}
+
+.st .reader-settings-card__title {
+  color: var(--wn-text);
+  font: 800 17px/1.3 var(--wn-font-ui);
+}
+
+.st-hint,
+.st .reader-settings-row__hint {
+  margin: 0;
+  color: var(--wn-text-muted);
+  font: 500 13px/1.45 var(--wn-font-ui);
+}
+
+.st .reader-settings-row__label {
+  color: var(--wn-text-secondary);
+}
+
+/* --- Forms -------------------------------------------------------------------- */
+.st .settings-form {
+  gap: 18px;
+  max-width: none;
+  margin: 0;
+}
+
+.st .ui-input {
+  border-color: var(--hm-glass-edge);
+  border-radius: 14px;
+  background: var(--wn-canvas);
+}
+
+.st .ui-input--textarea {
+  height: auto;
+  min-height: 96px;
+  padding: 12px 14px;
+  font: 500 15px/1.45 var(--wn-font-ui);
+  resize: vertical;
+}
+
+.st-count {
+  text-align: right;
+}
+
+.st-foot {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 10px 16px;
+  margin-top: 4px;
+}
+
+/* The one primary of a panel: a light pill, as the home page's way on. */
+.st-save,
+.st-btn {
+  appearance: none;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 44px;
+  padding: 0 22px;
+  border: 0;
+  border-radius: 999px;
+  font: 800 14px/1 var(--wn-font-ui);
+  white-space: nowrap;
+  cursor: pointer;
+  transition: background-color 0.15s ease, transform 0.12s ease;
+}
+
+.st-save {
+  background: #eeecf4;
+  color: #0c0c12;
+}
+
+.st-btn {
+  background: var(--hm-glass-raised);
+  color: var(--wn-text);
+}
+
+@media (hover: hover) {
+  .st-save:hover {
+    background: #fff;
+  }
+
+  .st-btn:hover {
+    background: rgb(255 255 255 / 15%);
+  }
+}
+
+.st-save:active,
+.st-btn:active {
+  transform: scale(0.98);
+}
+
+.st-save:focus-visible,
+.st-btn:focus-visible {
+  outline: none;
+  box-shadow: var(--wn-focus-ring);
+}
+
+.st-save[hidden],
+.st-btn[hidden] {
+  display: none;
+}
+
+/* «Сохранено»: quiet, beside the button that did it. */
+.st-stamp {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  margin: 0;
+  color: #7fded3;
+  font: 700 14px/1.3 var(--wn-font-ui);
+}
+
+.st-stamp::before {
+  content: "";
+  flex: none;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: #3dd6c3;
+}
+
+.st-error {
+  margin: 0;
+  padding: 10px 14px;
+  border-radius: 12px;
+  background: #2c1a20;
+  color: #f2a0ad;
+  font: 600 14px/1.45 var(--wn-font-ui);
+}
+
+/* --- Switch rows -------------------------------------------------------------- */
+.st .settings-form--switches {
+  gap: 0;
+}
+
+.st .settings-switch-row,
+.st .reader-settings-row--switch {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 20px;
+  min-height: 64px;
+  padding: 12px 0;
+  border-top: 1px solid rgb(255 255 255 / 7%);
+  color: var(--wn-text);
+  font: 600 15px/1.35 var(--wn-font-ui);
+}
+
+.st .settings-form--switches > .settings-switch-row:first-child {
+  padding-top: 0;
+  border-top: 0;
+}
+
+.st-switch__copy {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  min-width: 0;
+}
+
+.st-switch__title {
+  color: var(--wn-text);
+  font: 600 15px/1.35 var(--wn-font-ui);
+}
+
+.st .ui-switch input[type="checkbox"] {
+  flex: none;
+}
+
+.st .ui-switch input[type="checkbox"]:checked {
+  background: #1d8c80;
+}
+
+.st-group {
+  margin: 8px 0 0;
+  padding-top: 16px;
+  border-top: 1px solid rgb(255 255 255 / 7%);
+  color: var(--wn-text-muted);
+  font: 700 13px/1.3 var(--wn-font-ui);
+}
+
+.st .st-group + .settings-switch-row {
+  padding-top: 4px;
+  border-top: 0;
+}
+
+.st .settings-form--switches .st-foot {
+  margin-top: 12px;
+}
+
+/* --- Segmented tracks, steppers and «Дополнительно», as in the reader's «Aa» ------- */
+.st .ui-segmented,
+.st .reading-speed-test__stepper {
+  border-radius: 999px;
+  background: var(--wn-canvas);
+}
+
+.st .ui-segmented__item span {
+  border-radius: 999px;
+}
+
+.st .ui-segmented__item input:checked + span {
+  background: #eeecf4;
+  color: #0c0c12;
+}
+
+.st .reading-speed-test__manual-field input,
+.st .reading-speed-test__stepper-btn {
+  height: 40px;
+  border-color: var(--hm-glass-edge);
+  background: var(--wn-canvas);
+  font-family: var(--wn-font-ui);
+}
+
+.st .reading-speed-test__stepper-btn {
+  width: 40px;
+}
+
+.st .reading-speed-test__stepper-btn:first-child {
+  border-radius: 999px 0 0 999px;
+}
+
+.st .reading-speed-test__stepper-btn:last-child {
+  border-radius: 0 999px 999px 0;
+}
+
+.st .reader-settings-more {
+  border-top-color: rgb(255 255 255 / 7%);
+}
+
+.st-reset {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 8px 4px 0;
+}
+
+.st .reader-settings-reset {
+  appearance: none;
+  align-self: flex-start;
+  padding: 0;
+  border: 0;
+  background: none;
+  color: #f2a0ad;
+  font: 700 14px/1.4 var(--wn-font-ui);
+  text-decoration: underline;
+  text-decoration-color: rgb(242 160 173 / 40%);
+  text-underline-offset: 3px;
+  cursor: pointer;
+}
+
+.st .reader-settings-reset:focus-visible {
+  outline: none;
+  border-radius: 4px;
+  box-shadow: var(--wn-focus-ring);
+}
+
+/* --- Avatar (and the same circle on the sign-up avatar step, .avatar-row) ---------- */
+.st-avatar {
+  display: flex;
+  align-items: center;
+  gap: 18px;
+  padding-bottom: 20px;
+  border-bottom: 1px solid rgb(255 255 255 / 7%);
+}
+
+.st-avatar__copy {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  min-width: 0;
+}
+
+.st-avatar__copy .st-stamp,
+.st-avatar__copy .st-error {
+  margin-top: 6px;
+}
+
+.st-avatar__title {
+  margin: 0;
+  color: var(--wn-text);
+  font: 700 15px/1.3 var(--wn-font-ui);
+}
+
+.st-avatar .avatar-upload,
+.avatar-row .avatar-upload {
+  flex: 0 0 auto;
+  width: 80px;
+  height: 80px;
+}
+
+.st-avatar .avatar-upload:focus-within,
+.avatar-row .avatar-upload:focus-within {
+  outline: none;
+  box-shadow: var(--focus-ring);
+}
+
+.st-avatar .avatar-upload__preview,
+.avatar-row .avatar-upload__preview {
+  background: var(--surface-3);
+  color: var(--text-2);
+}
+
+.st-avatar .avatar-upload__preview .avatar-img,
+.avatar-row .avatar-upload__preview .avatar-img {
+  object-position: 50% 20%;
+}
+
+.st-avatar .avatar-upload__initials,
+.avatar-row .avatar-upload__initials {
+  font: 800 26px/1 var(--font-ui);
+}
+
+.st-avatar .avatar-upload__overlay,
+.avatar-row .avatar-upload__overlay {
+  inset: auto -2px -2px auto;
+  width: 32px;
+  height: 32px;
+  border: 2px solid var(--wn-canvas);
+  background: var(--surface-2);
+  color: var(--text-1);
+  opacity: 1;
+  transition: background-color var(--dur-base) var(--ease);
+}
+
+@media (hover: hover) {
+  .st-avatar .avatar-upload:hover .avatar-upload__overlay,
+  .avatar-row .avatar-upload:hover .avatar-upload__overlay {
+    background: var(--surface-3);
+  }
+}
+
+/* --- Previews: what a setting produces ------------------------------------------ */
+.st-preview {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  margin: 8px 0 0;
+  padding: 16px;
+  border: 1px solid var(--hm-glass-edge);
+  border-radius: 18px;
+  background: var(--hm-glass);
+}
+
+.st-preview__caption {
+  color: var(--wn-text-muted);
+  font: 700 13px/1.3 var(--wn-font-ui);
+}
+
+/* «Так вас видят другие»: who, then the profile's parts - visible or hidden. */
+.st-pv__who {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  min-width: 0;
+}
+
+.st-pv__avatar {
+  display: grid;
+  flex: none;
+  place-items: center;
+  width: 40px;
+  height: 40px;
+  overflow: hidden;
+  border-radius: 50%;
+  background: var(--surface-3);
+  color: var(--text-2);
+  font: 800 14px/1 var(--wn-font-ui);
+}
+
+.st-pv__avatar .avatar-img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.st-pv__avatar--lg {
+  width: 52px;
+  height: 52px;
+  font-size: 17px;
+}
+
+.st-pv__bio {
+  margin: 0;
+  overflow-wrap: anywhere;
+  color: var(--wn-text-secondary);
+  font: 500 14px/1.5 var(--wn-font-ui);
+}
+
+.st-pv__bio.is-empty {
+  color: var(--wn-text-muted);
+}
+
+.st-pv__name {
+  min-width: 0;
+  overflow: hidden;
+  color: var(--wn-text);
+  font: 800 16px/1.3 var(--wn-font-ui);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.st-pv__parts {
+  display: flex;
+  flex-direction: column;
+  margin: 8px 0 0;
+  padding: 0;
+  list-style: none;
+}
+
+.st-pv__part {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 10px 0;
+  border-top: 1px solid rgb(255 255 255 / 7%);
+  font: 600 14px/1.3 var(--wn-font-ui);
+}
+
+.st-pv__label {
+  color: var(--wn-text);
+  transition: color 0.2s ease;
+}
+
+.st-pv__state {
+  color: #7fded3;
+  font-weight: 700;
+  transition: color 0.2s ease;
+}
+
+.st-pv__part.is-off .st-pv__label {
+  color: var(--wn-text-muted);
+  text-decoration: line-through;
+  text-decoration-color: rgb(255 255 255 / 25%);
+}
+
+.st-pv__part.is-off .st-pv__state {
+  color: var(--wn-text-muted);
+}
+
+/* The bell as it will be in the sidebar. */
+.st-bell__row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.st-bell__icon {
+  display: grid;
+  flex: none;
+  place-items: center;
+  width: 44px;
+  height: 44px;
+  border-radius: 50%;
+  background: var(--hm-glass-raised);
+  color: var(--wn-text);
+  transition: color 0.2s ease, background-color 0.2s ease;
+}
+
+.st-bell__icon svg {
+  width: 20px;
+  height: 20px;
+}
+
+.st-bell__off,
+.st-bell.is-off .st-bell__on {
+  display: none;
+}
+
+.st-bell.is-off .st-bell__off {
+  display: block;
+}
+
+.st-bell.is-off .st-bell__icon {
+  background: transparent;
+  color: var(--wn-text-muted);
+  box-shadow: inset 0 0 0 1px var(--hm-glass-edge);
+}
+
+.st-bell__text {
+  color: var(--wn-text);
+  font: 600 14px/1.4 var(--wn-font-ui);
+}
+
+/* The rules the new password must meet, ticked as it is typed. */
+.st-rules {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  margin: 8px 0 0;
+  padding: 0;
+  list-style: none;
+}
+
+.st-rules__item {
+  position: relative;
+  padding-left: 28px;
+  color: var(--wn-text-secondary);
+  font: 600 14px/1.4 var(--wn-font-ui);
+  transition: color 0.15s ease;
+}
+
+.st-rules__item::before {
+  content: "";
+  position: absolute;
+  top: 1px;
+  left: 0;
+  width: 18px;
+  height: 18px;
+  box-sizing: border-box;
+  border: 1.5px solid var(--wn-border-strong);
+  border-radius: 50%;
+  background: center / 12px 12px no-repeat;
+  transition: background-color 0.15s ease, border-color 0.15s ease;
+}
+
+.st-rules__item--soft {
+  color: var(--wn-text-muted);
+}
+
+.st-rules__item.is-met {
+  color: var(--wn-text);
+}
+
+.st-rules__item.is-met::before {
+  border-color: #1d8c80;
+  background-color: #1d8c80;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='white' stroke-width='3' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M5 12.5l4.5 4.5L19 7.5'/%3E%3C/svg%3E");
+}
+
+.st-rules__item.is-unmet {
+  color: #f2a0ad;
+}
+
+.st-rules__item.is-unmet::before {
+  border-color: #f2a0ad;
+}
+
+/* The chapter as it will read, in the chosen font, size, spacing and theme. */
+.st-preview--chapter {
+  margin: 0;
+}
+
+.st-preview--chapter .reader-settings-preview {
+  max-width: none;
+  padding: 24px 28px;
+  border: 0;
+  border-radius: 14px;
+  transition: background-color 0.2s ease, color 0.2s ease;
+}
+
+.st-preview--chapter .reader-settings-preview p + p {
+  margin-top: 0.8em;
+}
+
+.st-preview--chapter .reader-settings-preview__head {
+  font-size: 1.15em;
+  font-weight: 700;
+}
+
+/* «Место на устройстве» on the left of «Офлайн». */
+.st-panel--aside {
+  gap: 12px;
+}
+
+/* --- Narrower screens ------------------------------------------------------------ */
+@media (max-width: 1279px) {
+  .st-layout {
+    grid-template-columns: 184px minmax(0, 1fr);
+    gap: 28px;
+  }
+
+  .st-row {
+    grid-template-columns: minmax(220px, 280px) minmax(0, 1fr);
+    gap: 28px;
+  }
+
+  .st-row--reading {
+    grid-template-columns: minmax(0, 1fr) minmax(360px, 420px);
+  }
+}
+
+/* The aside goes above its panel; the pinned preview scrolls with the page. */
+@media (max-width: 1099px) {
+  .st-row,
+  .st-row--reading {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 16px;
+  }
+
+  .st-aside,
+  .st-aside--pinned {
+    position: static;
+    padding-top: 0;
+  }
+}
+
+@media (max-width: 767px) {
+  .st-layout {
+    grid-template-columns: minmax(0, 1fr);
+    grid-template-areas:
+      "head"
+      "nav"
+      "content";
+    gap: 20px;
+  }
+
+  .settings-content {
+    gap: 24px;
+  }
+
+  /* The list of areas has no line of its own under «Настройки». */
+  .settings-layout--mobile-js:not(.settings-layout--mobile-detail) .st-lead {
+    display: none;
+  }
+
+  .settings-content__title {
+    font-size: 24px;
+  }
+
+  .st-row {
+    padding: 24px 0;
+  }
+
+  .st-panel,
+  .st .reader-settings-card {
+    padding: 20px 16px;
+    border-radius: 20px;
+  }
+
+  .st .reader-settings-card--speed {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .st-foot .st-save {
+    flex: 1 1 auto;
+  }
+
+  /* On a phone the chapter keeps to its first paragraph, so the controls start on the
+     first screen. */
+  .st-preview--chapter {
+    padding: 12px;
+  }
+
+  .st-preview--chapter .reader-settings-preview {
+    padding: 16px 18px;
+  }
+
+  .st-preview--chapter .reader-settings-preview p:nth-child(n + 3) {
+    display: none;
+  }
+
+  /* The list of areas: one card of rows - name, summary, chevron. No selected state
+     here: on this screen nothing has been chosen yet (PR 218). */
+  .st .settings-nav {
+    position: static;
+    gap: 0;
+  }
+
+  .settings-nav__title {
+    display: none;
+  }
+
+  .settings-nav__link,
+  .settings-nav__link--active,
+  .settings-nav__link--active:hover {
+    min-height: 64px;
+    padding: 10px 12px 10px 16px;
+    border: 1px solid var(--hm-glass-edge);
+    border-top: 0;
+    border-radius: 0;
+    background: var(--hm-glass);
+    color: var(--wn-text);
+  }
+
+  .settings-nav__title + .settings-nav__link {
+    border-top: 1px solid var(--hm-glass-edge);
+    border-radius: 20px 20px 0 0;
+  }
+
+  .settings-nav__link:last-child {
+    border-radius: 0 0 20px 20px;
+  }
+
+  .settings-nav__link + .settings-nav__link {
+    border-top: 0;
+    box-shadow: inset 0 1px 0 rgb(255 255 255 / 7%);
+  }
+
+  .settings-nav__link:active {
+    background: var(--hm-glass-raised);
+  }
+
+  .settings-nav__link:focus-visible {
+    box-shadow: inset 0 0 0 2px var(--focus);
+  }
+
+  .settings-nav__label {
+    font: 700 16px/1.2 var(--wn-font-ui);
+  }
+
+  .settings-nav__summary {
+    display: block;
+    color: var(--wn-text-muted);
+    font: 500 13px/1.3 var(--wn-font-ui);
+  }
+
+  .settings-nav__chevron {
+    display: block;
+    flex: 0 0 auto;
+    width: 18px;
+    height: 18px;
+    color: var(--wn-text-muted);
+  }
+
+  /* With the script: the list, or one area with its back button. Without it both stay
+     on the page, the list first. */
+  .settings-layout--mobile-js:not(.settings-layout--mobile-detail) .settings-content {
+    display: none;
+  }
+
+  .settings-layout--mobile-js.settings-layout--mobile-detail .settings-nav {
+    display: none;
+  }
+
+  .settings-layout--mobile-detail .st-head__line {
+    margin-left: -12px;
+  }
+
+  .settings-back {
+    display: grid;
+    flex: none;
+    place-items: center;
+    width: 44px;
+    height: 44px;
+    border-radius: 14px;
+    color: var(--wn-text);
+  }
+
+  .settings-back[hidden] {
+    display: none;
+  }
+
+  .settings-back:active {
+    background: var(--hm-glass-raised);
+  }
+
+  .settings-back:focus-visible {
+    outline: none;
+    box-shadow: var(--wn-focus-ring);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .settings-nav__link,
+  .st-save,
+  .st-btn,
+  .st-pv__label,
+  .st-pv__state,
+  .st-bell__icon,
+  .st-rules__item,
+  .st-rules__item::before,
+  .st-preview--chapter .reader-settings-preview {
     transition: none;
   }
 }
