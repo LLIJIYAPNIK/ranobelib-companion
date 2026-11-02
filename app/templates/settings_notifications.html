@@ -1,32 +1,52 @@
 {% extends "settings_layout.html" %}
 {% block title %}Уведомления — Настройки — RanobeLib Companion{% endblock %}
+{% block settings_lead %}{% if current_user %}{% if not notifications_enabled %}Колокольчик выключен{% elif do_not_disturb %}Включено «Не беспокоить»{% else %}Колокольчик показывает новые уведомления{% endif %}{% endif %}{% endblock %}
 {% block settings_content %}
 {#
-  PR 261 (Aurora Ink, SETTINGS-NOTIFICATIONS): the two switches as rows, then «Сохранить».
+  «Колокольчик»: the two switches beside the bell as it will be - shown, or hidden by
+  either switch (both hide it the same way, app/db/users.py) - redrawn as the switches
+  move (settings-preview.js). Neither stops notifications being recorded: the note under
+  the bell says so.
 #}
   {% if current_user %}
-  <div class="settings-sections">
-  <section class="settings-card settings-card--switches">
-    <h2 class="settings-card__title">Уведомления</h2>
-    {% if saved %}
-    <p class="ui-notice">Настройки уведомлений сохранены</p>
-    {% endif %}
-    <p class="settings-card__hint">
-      Ни один из переключателей не отключает сам сбор уведомлений — если кто-то отреагирует
-      на ваш комментарий, это всё равно будет записано, просто не покажется в колокольчике,
-      пока переключатель выключен.
-    </p>
-    <form class="settings-form settings-form--switches" method="post" action="/settings/notifications">
-      <label class="ui-switch settings-switch-row">
-        <span>Показывать уведомления</span>
-        <input type="checkbox" role="switch" name="notifications_enabled" {% if notifications_enabled %}checked{% endif %}>
-      </label>
-      <label class="ui-switch settings-switch-row">
-        <span>Не беспокоить</span>
-        <input type="checkbox" role="switch" name="do_not_disturb" {% if do_not_disturb %}checked{% endif %}>
-      </label>
-      <button class="ui-btn ui-btn--primary settings-form__submit" type="submit">Сохранить</button>
-    </form>
+  {% set bell_on = notifications_enabled and not do_not_disturb %}
+  <div class="st-rows">
+  <section class="st-row" aria-labelledby="st-bell">
+    <div class="st-aside">
+      <h2 class="st-aside__title" id="st-bell">Колокольчик</h2>
+      <p class="st-aside__text">Реакции на ваши комментарии, заявки в друзья и ответы на них приходят в колокольчик.</p>
+      <figure class="st-preview st-bell{% if not bell_on %} is-off{% endif %}" data-role="bell-preview">
+        <figcaption class="st-preview__caption">Так будет у колокольчика</figcaption>
+        <div class="st-bell__row">
+          <span class="st-bell__icon" aria-hidden="true">
+            <svg class="st-bell__on" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M6 16V11a6 6 0 0 1 12 0v5l1.5 2h-15z"/><path d="M10 20a2 2 0 0 0 4 0"/></svg>
+            <svg class="st-bell__off" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M8.5 5.5A6 6 0 0 1 18 11v4M6 11v5l-1.5 2H17"/><path d="M10 20a2 2 0 0 0 4 0"/><path d="M4 4l16 16"/></svg>
+          </span>
+          <span class="st-bell__text" data-role="bell-preview-text">
+            {%- if not notifications_enabled %}Колокольчика нет, уведомления не показываются
+            {%- elif do_not_disturb %}Колокольчик спрятан, пока включено «Не беспокоить»
+            {%- else %}Колокольчик на месте, на нём число новых{% endif -%}
+          </span>
+        </div>
+        <p class="st-hint">Уведомления записываются в любом случае и появятся, когда колокольчик вернётся.</p>
+      </figure>
+    </div>
+    <div class="st-panel">
+      <form class="settings-form settings-form--switches st-form" method="post" action="/settings/notifications" data-role="bell-form">
+        <label class="ui-switch settings-switch-row">
+          <span class="st-switch__copy"><span class="st-switch__title">Показывать уведомления</span><span class="st-hint">Колокольчик и счётчик новых на нём</span></span>
+          <input type="checkbox" role="switch" name="notifications_enabled" {% if notifications_enabled %}checked{% endif %}>
+        </label>
+        <label class="ui-switch settings-switch-row">
+          <span class="st-switch__copy"><span class="st-switch__title">Не беспокоить</span><span class="st-hint">Спрятать колокольчик на время, не выключая уведомления</span></span>
+          <input type="checkbox" role="switch" name="do_not_disturb" {% if do_not_disturb %}checked{% endif %}>
+        </label>
+        <div class="st-foot">
+          {% if saved %}<p class="st-stamp" role="status">Настройки уведомлений сохранены</p>{% endif %}
+          <button class="st-save" type="submit">Сохранить</button>
+        </div>
+      </form>
+    </div>
   </section>
   </div>
   {% else %}
@@ -36,4 +56,9 @@
   чтобы настроить уведомления.
   {% endcall %}
   {% endif %}
+{% endblock %}
+{% block settings_scripts %}
+{% if current_user %}
+<script src="{{ static_url('js/settings-preview.js') }}" defer></script>
+{% endif %}
 {% endblock %}

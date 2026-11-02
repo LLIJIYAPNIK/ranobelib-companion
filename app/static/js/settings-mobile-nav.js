@@ -19,6 +19,9 @@
   const layout = document.querySelector('[data-role="settings-layout"]');
   const nav = document.querySelector('[data-role="settings-nav"]');
   const back = document.querySelector('[data-role="settings-back"]');
+  // The settings redesign: one h1 for the page - the area's name, or «Настройки» while
+  // the phone shows the list of areas.
+  const title = document.querySelector('[data-role="settings-title"]');
   if (!layout || !nav) return;
 
   const mobileQuery = window.matchMedia(MOBILE_BREAKPOINT);
@@ -29,6 +32,7 @@
     layout.classList.toggle("settings-layout--mobile-js", mobile);
     layout.classList.toggle("settings-layout--mobile-detail", detail);
     if (back) back.hidden = !detail;
+    if (title) title.textContent = mobile && !detail ? "Настройки" : title.dataset.area;
   }
 
   nav.querySelectorAll(".settings-nav__link").forEach((link) => {
