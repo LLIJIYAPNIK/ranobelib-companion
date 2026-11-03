@@ -1,10 +1,12 @@
 """PR 360: a title's related releases from `RanobeLib.get_relations()`, grouped into novels on
 ranobelib.me (opened inside the app), manga and anime (links out to their own site)."""
 
+import logging
 from contextlib import asynccontextmanager
 
+import httpx
 import pytest
-from ranobelib import Relation
+from ranobelib import AccessBlockedError, RateLimitError, Relation, TitleNotFoundError
 
 from app.services import relations
 from app.services.relations import group_relations, title_relations
@@ -128,3 +130,32 @@ async def test_title_relations_reads_the_sdk(monkeypatch: pytest.MonkeyPatch) ->
 
     assert opened == ["1--title"]
     assert [r.href for r in result.novels] == ["/titles/2--next"]
+
+
+@pytest.mark.parametrize(
+    "error",
+    [
+        TitleNotFoundError("1--title"),
+        RateLimitError(),
+        AccessBlockedError("https://api.lib.social/api/manga/1--title"),
+        httpx.ConnectError("down"),
+    ],
+)
+async def test_any_sdk_or_network_error_means_no_block_not_a_failed_page(
+    monkeypatch: pytest.MonkeyPatch, caplog: pytest.LogCaptureFixture, error: Exception
+) -> None:
+    class _Lib:
+        async def get_relations(self) -> list[Relation]:
+            raise error
+
+    @asynccontextmanager
+    async def fake_open(slug_url: str):
+        yield _Lib()
+
+    monkeypatch.setattr(relations, "open_client", fake_open)
+
+    with caplog.at_level(logging.WARNING, logger="app.services.relations"):
+        result = await title_relations("1--title")
+
+    assert not result
+    assert "1--title" in caplog.text

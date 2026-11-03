@@ -9,11 +9,15 @@ The relation's wording ("Продолжение", "Адаптация", ...) and
 "OVA", ...) are the API's own labels, shown as they come.
 """
 
+import logging
 from dataclasses import dataclass, field
 
-from ranobelib import RanobeLib, RelatedMedia, Relation
+import httpx
+from ranobelib import RanobeLib, RanobeLibError, RelatedMedia, Relation
 
 from app.services.client import open_client
+
+logger = logging.getLogger(__name__)
 
 # TODO(libsocial-sdk#132): the related title's page URL belongs in the SDK
 # (https://github.com/LLIJIYAPNIK/libsocial-sdk/issues/132) - until it ships, the page of a
@@ -58,9 +62,18 @@ class TitleRelations:
 
 async def title_relations(slug_url: str) -> TitleRelations:
     """The title's related releases, grouped into novels / manga / anime, each group in the
-    order ranobelib.me's title page shows them."""
-    async with open_client(slug_url) as lib:
-        relations = await lib.get_relations()
+    order ranobelib.me's title page shows them.
+
+    The block is an extra on the title page, never the reason it fails: any SDK error (the
+    title gone, a rate limit, the site blocking us) or a network failure is logged and gives
+    no relations, so the page simply goes without the block instead of an error status.
+    """
+    try:
+        async with open_client(slug_url) as lib:
+            relations = await lib.get_relations()
+    except (RanobeLibError, httpx.TransportError):
+        logger.warning("couldn't fetch the related titles of %s", slug_url, exc_info=True)
+        return TitleRelations()
     return group_relations(relations)
 
 
