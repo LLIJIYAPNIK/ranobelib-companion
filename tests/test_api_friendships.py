@@ -196,11 +196,11 @@ async def test_friends_page_lists_incoming_outgoing_and_accepted(client: TestCli
     assert "alice@example.com" in response.text  # outgoing request row
     assert "dave@example.com" in response.text  # accepted friend row
     # PR 278: each list's count sits on its tab.
-    assert 'aria-current="page">Друзья<span class="wn-friends-tabs__count">1</span>' in (
+    assert 'aria-current="page">Друзья<span class="fr-tabs__count hm-num">1</span>' in (
         response.text
     )
-    assert 'Входящие<span class="wn-friends-tabs__count">1</span>' in response.text
-    assert 'Исходящие<span class="wn-friends-tabs__count">1</span>' in response.text
+    assert 'Входящие<span class="fr-tabs__count hm-num">1</span>' in response.text
+    assert 'Исходящие<span class="fr-tabs__count hm-num">1</span>' in response.text
 
 
 async def test_friends_page_with_no_friends_shows_the_empty_hint(
@@ -211,9 +211,9 @@ async def test_friends_page_with_no_friends_shows_the_empty_hint(
     response = client.get("/friends")
 
     assert response.status_code == 200
-    # PR 278: the invite card doubles as the empty state.
+    # PR 278: the invite card doubles as the empty state (in the list's own card).
     assert 'id="friends-invite-title">Друзей пока нет</h2>' in response.text
-    assert 'Друзья<span class="wn-friends-tabs__count">0</span>' in response.text
+    assert 'Друзья<span class="fr-tabs__count hm-num">0</span>' in response.text
 
 
 async def test_sending_a_friend_request_notifies_the_recipient(client: TestClient) -> None:
@@ -435,7 +435,9 @@ async def test_friends_unknown_tab_is_rejected(client: TestClient) -> None:
     assert client.get("/friends?tab=everyone").status_code == 422
 
 
-async def test_friends_requests_card_lists_both_kinds_on_every_tab(client: TestClient) -> None:
+async def test_friends_requests_card_lists_both_kinds_beside_the_friends(
+    client: TestClient,
+) -> None:
     _alice_id, bob_id, carol_id = await _alice_with_requests(client)
 
     response = client.get("/friends")
@@ -443,6 +445,11 @@ async def test_friends_requests_card_lists_both_kinds_on_every_tab(client: TestC
     side = response.text.split('id="friends-requests-title"')[1].split("</section>")[0]
     assert f'action="/friends/{bob_id}/accept"' in side
     assert f'action="/friends/{carol_id}/remove"' in side
+    # The finding under the title names the requests waiting for an answer.
+    finding = response.text.split('data-role="friends-finding"')[1].split("</p>")[0]
+    assert '<b class="hm-num">1 заявка</b> ждёт ответа' in finding
+    # The request tabs are that queue themselves - no second copy at the side.
+    assert 'id="friends-requests-title"' not in client.get("/friends?tab=incoming").text
 
 
 async def test_friends_invite_card_offers_the_nickname_to_copy(client: TestClient) -> None:
