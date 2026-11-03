@@ -512,3 +512,52 @@ def test_delete_404s_for_someone_elses_notification(client: TestClient) -> None:
     response = client.delete(f"/notifications/{notification_id}")
 
     assert response.status_code == 404
+
+
+# The redesigned page: the title row's count and latest one, the bell's own card.
+
+
+def test_notifications_page_title_row_counts_new_and_names_the_latest(
+    client: TestClient,
+) -> None:
+    _register(client, "alice@example.com")
+    comments = [
+        client.post(
+            "/titles/6712--test-novel/chapters/1/5/comments",
+            data={"paragraph_index": str(index), "body": body},
+        ).json()["comments"][0]
+        for index, body in enumerate(("one", "two"))
+    ]
+    _register(client, "bob@example.com")
+    client.post("/settings/account", data={"nickname": "Bob", "email": "bob@example.com"})
+    for comment in comments:
+        client.post(
+            f"/titles/6712--test-novel/chapters/1/5/comments/{comment['id']}/reactions",
+            data={"value": "1"},
+        )
+    _login(client, "alice@example.com")
+
+    html = client.get("/notifications").text
+
+    count = html.split('data-role="notifications-page-count"')[1].split("</span>")[0]
+    assert ">2 новых" in count
+    assert " hidden" not in count.split(">")[0]
+    finding = html.split('class="nt-finding"')[1].split("</p>")[0]
+    assert "Последнее — <b>" in finding
+    assert '<time datetime="' in finding
+    # What the bell does with them now, as the settings left it.
+    assert 'id="nt-bell-title">Колокольчик</h2>' in html
+    assert "Показывает новые уведомления" in html
+
+
+def test_notifications_page_title_row_without_any(client: TestClient) -> None:
+    _register(client, "alice@example.com")
+    client.post(
+        "/settings/notifications", data={"notifications_enabled": "on", "do_not_disturb": "on"}
+    )
+
+    html = client.get("/notifications").text
+
+    assert 'data-role="notifications-page-count" hidden' in html
+    assert "Здесь появятся реакции на ваши комментарии и заявки в друзья" in html
+    assert "Включено «Не беспокоить»" in html

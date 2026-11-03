@@ -12,7 +12,8 @@
 
    PR 311 (Webnovells): avatar with a small kind marker, «<b>actor</b> action» over a
    one-line excerpt and the relative time; an unread card gets a teal dot before the time
-   and a faint tint. The actions keep their own column, so revealing them on hover/focus
+   and a faint tint. The redesign words the action without the «(а)» of a guessed gender:
+   «реакция на ваш комментарий», «хочет добавить вас в друзья», «теперь у вас в друзьях». The actions keep their own column, so revealing them on hover/focus
    (always shown on touch, app.css) never moves the text. #}
 {% macro notification_icon(kind) -%}
 {% if kind == "friend_request" -%}
@@ -36,10 +37,10 @@
     <span class="wn-notice__body">
       <span class="wn-notice__text">
         <strong class="wn-notice__actor">{{ n.actor_name }}</strong>
-        {% if n.kind == "friend_request" %}отправил(а) вам заявку в друзья
-        {% elif n.kind == "friend_accept" %}принял(а) вашу заявку в друзья
-        {% else %}отреагировал(а) на ваш комментарий
-        {% endif %}
+        <span class="wn-notice__what">{% if n.kind == "friend_request" %}хочет добавить вас в друзья
+        {%- elif n.kind == "friend_accept" %}теперь у вас в друзьях
+        {%- else %}реакция на ваш комментарий
+        {%- endif %}</span>
       </span>
       {% if n.comment_excerpt %}<span class="wn-notice__excerpt">{{ n.comment_excerpt }}</span>{% endif %}
       <span class="wn-notice__meta">

@@ -10,6 +10,25 @@
 // (mark-read/delete shift the server's offsets between pages). While a page loads, three
 // skeleton cards and a role=status «Загружаем ещё…»; on failure a role=alert plate with
 // «Повторить» that retries the same page; after the last page, «Это все уведомления».
+// The title row's «N новых» follows the same "notifications:unreadchange" event the bell's
+// badge does (notifications-actions.js), so a card marked read here never leaves it stale.
+(() => {
+  const count = document.querySelector('[data-role="notifications-page-count"]');
+  if (!count) return;
+  const word = (n) => {
+    const tens = n % 100;
+    const ones = n % 10;
+    if (ones === 1 && tens !== 11) return "новое";
+    return "новых";
+  };
+  window.addEventListener("notifications:unreadchange", (event) => {
+    const n = event.detail?.unreadCount;
+    if (typeof n !== "number") return;
+    count.textContent = `${n} ${word(n)}`;
+    count.hidden = n === 0;
+  });
+})();
+
 (() => {
   const list = document.querySelector('[data-role="notifications-page-list"]');
   const sentinel = document.querySelector('[data-role="notifications-page-sentinel"]');

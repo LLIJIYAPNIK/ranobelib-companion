@@ -1587,20 +1587,22 @@ html:has(dialog[open]) body {
   margin: 0 -14px;
 }
 
-/* Notifications popover (PR 311, Webnovells): header with the unread count and a
-   settings link, a height-capped list that scrolls on its own (contained, so the page
-   behind it stays put), footer link to the full page. Portaled to <body> and placed by
-   notifications-panel.js. The cards are .wn-notice (below), shared with /notifications. */
+/* Notifications popover (PR 311, Webnovells), drawn as the redesigned pages' dark card:
+   #0d0d13 under a 9% white edge, the title with the count of new ones in teal, the
+   settings as a round glass button, a height-capped list that scrolls on its own
+   (contained, so the page behind it stays put) and «Все уведомления» as a glass pill.
+   Portaled to <body> and placed by notifications-panel.js. The cards are .wn-notice
+   (below), shared with /notifications. */
 .notifications-panel {
-  --wn-notice-ring: var(--wn-surface);
+  --wn-notice-ring: #0d0d13;
   display: none;
   flex-direction: column;
   width: 400px;
   max-width: calc(100vw - 24px);
   max-height: min(600px, calc(100dvh - 24px));
-  border: 1px solid var(--wn-border);
-  border-radius: var(--wn-radius-xl);
-  background: var(--wn-surface);
+  border: 1px solid rgb(255 255 255 / 9%);
+  border-radius: 24px;
+  background: #0d0d13;
   box-shadow: 0 24px 64px rgb(0 0 0 / 55%);
   color: var(--wn-text);
   font-family: var(--wn-font-ui);
@@ -1622,23 +1624,20 @@ html:has(dialog[open]) body {
   align-items: center;
   gap: 10px;
   flex: 0 0 auto;
-  min-height: 56px;
-  padding: 0 10px 0 20px;
-  border-bottom: 1px solid var(--wn-border);
+  min-height: 60px;
+  padding: 10px 12px 4px 20px;
 }
 
 .notifications-panel__title {
   margin: 0;
-  font: var(--wn-weight-extra-bold) 17px/1.2 var(--wn-font-ui);
+  color: #fff;
+  font: 800 18px/1.2 var(--wn-font-ui);
   letter-spacing: -0.01em;
 }
 
 .notifications-panel__count {
-  padding: 3px 9px;
-  border-radius: 999px;
-  background: rgb(61 214 195 / 12%);
   color: var(--wn-teal);
-  font: var(--wn-weight-bold) 12px/16px var(--wn-font-ui);
+  font: 700 14px/1 var(--wn-font-ui);
   font-variant-numeric: tabular-nums;
   white-space: nowrap;
 }
@@ -1654,9 +1653,10 @@ html:has(dialog[open]) body {
   width: 40px;
   height: 40px;
   margin-left: auto;
-  border-radius: var(--wn-radius-sm);
-  color: var(--wn-text-muted);
-  transition: background-color 160ms ease, color 160ms ease;
+  border-radius: 50%;
+  background: rgb(255 255 255 / 8%);
+  color: rgb(255 255 255 / 82%);
+  transition: background-color 0.15s ease;
 }
 
 .notifications-panel__list {
@@ -1665,45 +1665,38 @@ html:has(dialog[open]) body {
   gap: 2px;
   flex: 1;
   min-height: 0;
-  padding: 8px;
+  padding: 4px 8px 8px;
   overflow-y: auto;
   overscroll-behavior: contain;
   scrollbar-width: thin;
-  scrollbar-color: var(--wn-border-strong) transparent;
+  scrollbar-color: rgb(255 255 255 / 16%) transparent;
 }
 
 .notifications-panel__footer {
   display: grid;
   place-items: center;
   flex: 0 0 auto;
-  height: 48px;
-  border-top: 1px solid var(--wn-border);
-  color: #b7a6ff;
-  font: var(--wn-weight-semi-bold) 14px/1 var(--wn-font-ui);
+  height: 44px;
+  margin: 0 12px 12px;
+  border-radius: 999px;
+  background: rgb(255 255 255 / 8%);
+  color: var(--wn-text);
+  font: 700 14px/1 var(--wn-font-ui);
   text-decoration: none;
-  transition: background-color 160ms ease, color 160ms ease;
+  transition: background-color 0.15s ease;
 }
 
 @media (hover: hover) {
-  .notifications-panel__settings:hover {
-    background: var(--wn-surface-hover);
-    color: var(--wn-text);
-  }
-
+  .notifications-panel__settings:hover,
   .notifications-panel__footer:hover {
-    background: var(--wn-surface-raised);
-    color: #cbbfff;
+    background: rgb(255 255 255 / 14%);
   }
 }
 
-.notifications-panel__settings:focus-visible {
-  outline: none;
-  box-shadow: var(--wn-focus-ring);
-}
-
+.notifications-panel__settings:focus-visible,
 .notifications-panel__footer:focus-visible {
   outline: none;
-  box-shadow: inset 0 0 0 2px var(--wn-teal);
+  box-shadow: var(--wn-focus-ring);
 }
 
 /* Mobile: bottom navigation + top header. PR 279 restyled both to "Webnovells Mobile"
@@ -2017,35 +2010,28 @@ html:has(dialog[open]) body {
 }
 
 /* Notification card (PR 311, Webnovells) - one component for the bell panel and the
-   /notifications page (_notification_card.html). Avatar with a kind marker (violet for a
-   comment reaction, teal for friends), «<b>actor</b> action», a one-line excerpt behind a
-   quote rule, the relative time. Unread: a faint teal tint, a teal dot and teal time.
-   The actions keep their own column: on a mouse they fade in on hover/focus without
-   moving the text, on touch they're always shown. --wn-notice-ring is the surface the
-   card sits on, so the marker's cut-out ring matches it. */
+   /notifications page (_notification_card.html), as a row of the redesigned pages' lists:
+   a 44px avatar with a small neutral kind marker, «<b>actor</b> what happened» over the
+   comment in quotes, the relative time. Unread: the name in full white, a teal dot and
+   teal time - no tint, which inside «Новые» only boxed every row. The actions keep their own column: on a
+   mouse they fade in on hover/focus without moving the text, on touch they're always
+   shown. --wn-notice-ring is the surface the card sits on, so the marker's cut-out ring
+   matches it. */
 .wn-notice {
   position: relative;
   display: flex;
   align-items: flex-start;
   gap: 4px;
-  padding: 10px 6px 10px 10px;
-  border-radius: var(--wn-radius-md);
+  padding: 12px 8px 12px 12px;
+  border-radius: 18px;
   font-family: var(--wn-font-ui);
-  transition: background-color 160ms ease, opacity 160ms ease;
+  transition: background-color 0.15s ease, opacity 0.15s ease;
 }
 
-.wn-notice--unread {
-  background: rgb(61 214 195 / 5%);
-}
-
-/* The panel lists unread ones only - the dot and teal time are enough there. */
-.notifications-panel .wn-notice--unread {
-  background: transparent;
-}
 
 @media (hover: hover) {
   .wn-notice:not(.wn-notice--skeleton):hover {
-    background: var(--wn-surface-hover);
+    background: rgb(255 255 255 / 5%);
   }
 }
 
@@ -2057,8 +2043,8 @@ html:has(dialog[open]) body {
   display: flex;
   flex: 1;
   min-width: 0;
-  gap: 12px;
-  border-radius: var(--wn-radius-sm);
+  gap: 14px;
+  border-radius: 12px;
   color: inherit;
   text-decoration: none;
 }
@@ -2073,32 +2059,34 @@ html:has(dialog[open]) body {
   display: grid;
   place-items: center;
   flex: 0 0 auto;
-  width: 40px;
-  height: 40px;
+  width: 44px;
+  height: 44px;
   border-radius: 50%;
-  background: #272536;
+  background: var(--wn-surface-raised);
   color: var(--wn-text-secondary);
-  font: var(--wn-weight-extra-bold) 13px/1 var(--wn-font-ui);
+  font: 800 14px/1 var(--wn-font-ui);
 }
 
+.wn-notice__avatar > .avatar-img {
+  width: 100%;
+  height: 100%;
+  border-radius: 50%;
+  object-fit: cover;
+}
+
+/* What it is about: one neutral marker for every kind - the words say which. */
 .wn-notice__kind {
   position: absolute;
-  right: -3px;
-  bottom: -3px;
+  right: -4px;
+  bottom: -4px;
   display: grid;
   place-items: center;
-  width: 18px;
-  height: 18px;
+  width: 20px;
+  height: 20px;
   border-radius: 50%;
-  background: var(--wn-primary);
-  box-shadow: 0 0 0 2px var(--wn-notice-ring, var(--wn-surface));
-  color: #fff;
-}
-
-.wn-notice--friend-request .wn-notice__kind,
-.wn-notice--friend-accept .wn-notice__kind {
-  background: var(--wn-teal);
-  color: #062420;
+  background: #2a2a34;
+  box-shadow: 0 0 0 3px var(--wn-notice-ring, #0d0d13);
+  color: rgb(255 255 255 / 85%);
 }
 
 .wn-notice__kind svg {
@@ -2111,28 +2099,39 @@ html:has(dialog[open]) body {
   flex-direction: column;
   gap: 4px;
   min-width: 0;
-  padding-top: 1px;
+  padding-top: 2px;
 }
 
 .wn-notice__text {
   color: var(--wn-text-secondary);
-  font: var(--wn-weight-medium) 14px/20px var(--wn-font-ui);
+  font: 500 14.5px/20px var(--wn-font-ui);
   overflow-wrap: anywhere;
 }
 
 .wn-notice__actor {
-  color: var(--wn-text);
-  font-weight: var(--wn-weight-bold);
+  color: rgb(255 255 255 / 82%);
+  font-weight: 700;
+}
+
+.wn-notice--unread .wn-notice__actor {
+  color: #fff;
+  font-weight: 800;
 }
 
 .wn-notice__excerpt {
   overflow: hidden;
-  padding-left: 8px;
-  border-left: 2px solid var(--wn-border-strong);
-  color: var(--wn-text-muted);
-  font: var(--wn-weight-medium) 13px/18px var(--wn-font-ui);
+  color: rgb(255 255 255 / 62%);
+  font: 500 13.5px/19px var(--wn-font-ui);
   text-overflow: ellipsis;
   white-space: nowrap;
+}
+
+.wn-notice__excerpt::before {
+  content: "«";
+}
+
+.wn-notice__excerpt::after {
+  content: "»";
 }
 
 .wn-notice__meta {
@@ -2140,7 +2139,8 @@ html:has(dialog[open]) body {
   align-items: center;
   gap: 6px;
   color: var(--wn-text-muted);
-  font: var(--wn-weight-medium) 12px/16px var(--wn-font-ui);
+  font: 600 12.5px/16px var(--wn-font-ui);
+  font-variant-numeric: tabular-nums;
 }
 
 .wn-notice__dot {
@@ -2180,11 +2180,11 @@ html:has(dialog[open]) body {
   height: 36px;
   padding: 0;
   border: 0;
-  border-radius: var(--wn-radius-sm);
+  border-radius: 50%;
   background: transparent;
   color: var(--wn-text-muted);
   cursor: pointer;
-  transition: background-color 160ms ease, color 160ms ease;
+  transition: background-color 0.15s ease, color 0.15s ease;
 }
 
 .wn-notice__action--read {
@@ -2210,7 +2210,7 @@ html:has(dialog[open]) body {
 @media (hover: hover) and (pointer: fine) {
   .wn-notice__actions {
     opacity: 0;
-    transition: opacity 120ms ease;
+    transition: opacity 0.12s ease;
   }
 
   .wn-notice:hover .wn-notice__actions,
@@ -2219,7 +2219,7 @@ html:has(dialog[open]) body {
   }
 
   .wn-notice__action:hover {
-    background: #2c2a3a;
+    background: rgb(255 255 255 / 10%);
     color: var(--wn-text);
   }
 
@@ -2228,6 +2228,7 @@ html:has(dialog[open]) body {
   }
 
   .wn-notice__action--delete:hover {
+    background: rgb(242 104 122 / 14%);
     color: var(--wn-danger);
   }
 }
@@ -2249,18 +2250,18 @@ html:has(dialog[open]) body {
   width: 38%;
 }
 
-/* Empty and error states, shared by the panel and the page. */
+/* Empty and error states, shared by the panel and the page: the list's own card keeps
+   its frame with a sentence and the way on - no icon in a tinted circle. */
 .wn-notices-empty {
   display: flex;
   flex-direction: column;
-  align-items: center;
-  gap: 10px;
-  padding: 48px 24px;
-  border: 1px solid var(--wn-border);
-  border-radius: var(--wn-radius-lg);
-  background: var(--wn-surface);
+  align-items: flex-start;
+  gap: 8px;
+  padding: 28px;
+  border: 1px solid rgb(255 255 255 / 9%);
+  border-radius: 24px;
+  background: #0d0d13;
   font-family: var(--wn-font-ui);
-  text-align: center;
 }
 
 .wn-notices-empty[hidden] {
@@ -2268,36 +2269,22 @@ html:has(dialog[open]) body {
 }
 
 .wn-notices-empty--compact {
-  padding: 32px 16px;
+  align-items: center;
+  padding: 28px 16px;
   border: 0;
   background: transparent;
-}
-
-.wn-notices-empty__icon {
-  display: grid;
-  place-items: center;
-  width: 48px;
-  height: 48px;
-  margin-bottom: 4px;
-  border-radius: 50%;
-  background: rgb(61 214 195 / 10%);
-  color: var(--wn-teal);
-}
-
-.wn-notices-empty__icon svg {
-  width: 24px;
-  height: 24px;
+  text-align: center;
 }
 
 .wn-notices-empty b {
-  color: var(--wn-text);
-  font: var(--wn-weight-bold) 16px/1.3 var(--wn-font-ui);
+  color: #fff;
+  font: 800 18px/1.3 var(--wn-font-ui);
 }
 
-.wn-notices-empty > span:not(.wn-notices-empty__icon) {
-  max-width: 380px;
-  color: var(--wn-text-muted);
-  font: var(--wn-weight-medium) 14px/1.45 var(--wn-font-ui);
+.wn-notices-empty > span {
+  max-width: 420px;
+  color: var(--wn-text-secondary);
+  font: 500 14.5px/1.5 var(--wn-font-ui);
   text-wrap: pretty;
 }
 
@@ -2306,13 +2293,13 @@ html:has(dialog[open]) body {
   align-items: center;
   min-height: 44px;
   margin-top: 8px;
-  padding: 0 18px;
-  border: 1px solid var(--wn-border-strong);
-  border-radius: var(--wn-radius-md);
-  color: var(--wn-text);
-  font: var(--wn-weight-semi-bold) 14px/1 var(--wn-font-ui);
+  padding: 0 20px;
+  border-radius: 999px;
+  background: #eeecf4;
+  color: #0c0c12;
+  font: 800 14px/1 var(--wn-font-ui);
   text-decoration: none;
-  transition: background-color 160ms ease;
+  transition: background-color 0.15s ease;
 }
 
 .wn-notices-error {
@@ -2321,31 +2308,33 @@ html:has(dialog[open]) body {
   justify-content: space-between;
   gap: 12px;
   margin: 4px;
-  padding: 10px 10px 10px 16px;
-  border: 1px solid rgb(242 104 122 / 30%);
-  border-radius: var(--wn-radius-md);
-  background: rgb(242 104 122 / 8%);
-  color: #f4b4be;
-  font: var(--wn-weight-medium) 14px/1.4 var(--wn-font-ui);
+  padding: 8px 8px 8px 18px;
+  border-radius: 18px;
+  background: rgb(242 104 122 / 10%);
+  color: #f6b9c2;
+  font: 500 14px/1.4 var(--wn-font-ui);
 }
 
 .wn-notices-error__retry {
   appearance: none;
   flex: 0 0 auto;
   min-height: 36px;
-  padding: 0 14px;
+  padding: 0 16px;
   border: 0;
-  border-radius: var(--wn-radius-sm);
-  background: var(--wn-surface-raised);
+  border-radius: 999px;
+  background: rgb(255 255 255 / 10%);
   color: var(--wn-text);
-  font: var(--wn-weight-semi-bold) 13px/1 var(--wn-font-ui);
+  font: 700 13px/1 var(--wn-font-ui);
   cursor: pointer;
 }
 
 @media (hover: hover) {
-  .wn-notices-empty__cta:hover,
+  .wn-notices-empty__cta:hover {
+    background: #fff;
+  }
+
   .wn-notices-error__retry:hover {
-    background: var(--wn-surface-hover);
+    background: rgb(255 255 255 / 16%);
   }
 }
 
@@ -13886,53 +13875,67 @@ body.reader-hud-visible .reader-hud {
 }
 
 /* ==========================================================================
-   Webnovells - notifications page (PR 311): heading with a settings link, «Новые»/
-   «Ранее» groups as surface cards of .wn-notice rows (44px avatar and actions here),
-   skeleton rows and the «Повторить» plate while/if the next page fails, a closing note.
-   Content capped at 760px.
+   «Уведомления» (PR 311) drawn as the home page and «Друзья»: the title row with the
+   count of new ones in teal and the latest one, «Настройки» as a glass pill at its side;
+   «Новые»/«Ранее» each one dark card of .wn-notice rows, beside them «Колокольчик» (what
+   the bell does now) and «Что сюда приходит». Skeleton rows and the «Повторить» plate
+   while/if the next page fails, a closing note. One column below 1100px.
    ========================================================================== */
-.wn-notices {
-  --wn-notice-ring: var(--wn-surface);
-  flex: 1;
+.hm.nt {
+  --wn-notice-ring: #0d0d13;
+  gap: 32px;
+}
+
+.nt-head__title {
   display: flex;
   flex-direction: column;
-  gap: var(--wn-space-3);
-  width: 100%;
-  max-width: calc(760px + 2 * var(--wn-space-5));
-  padding: var(--wn-space-4) var(--wn-space-5) var(--wn-space-5);
-  font-family: var(--wn-font-ui);
+  gap: 8px;
+  min-width: 0;
 }
 
-.wn-notices__head {
+.nt-head__line {
   display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: var(--wn-space-2);
-}
-
-.wn-notices__title {
-  margin: 0;
-  color: #f2f0f7;
-  font: var(--wn-weight-extra-bold) 32px/1.1 var(--wn-font-ui);
-  letter-spacing: -0.02em;
+  align-items: baseline;
+  gap: 14px;
 }
 
 .wn-notices__title:focus {
   outline: none;
 }
 
+.nt-head__count {
+  color: var(--wn-teal);
+  font: 700 16px/1 var(--wn-font-ui);
+}
+
+.nt-head__count[hidden] {
+  display: none;
+}
+
+.nt-finding {
+  margin: 0;
+  color: var(--wn-text-secondary);
+  font: 500 15px/1.45 var(--wn-font-ui);
+}
+
+.nt-finding b {
+  color: #fff;
+  font-weight: 700;
+}
+
 .wn-notices__settings {
   display: inline-flex;
   align-items: center;
   gap: 8px;
-  min-height: 40px;
-  padding: 0 14px;
-  border: 1px solid var(--wn-border);
-  border-radius: var(--wn-radius-md);
-  color: var(--wn-text-secondary);
-  font: var(--wn-weight-semi-bold) 14px/1 var(--wn-font-ui);
+  min-height: 44px;
+  padding: 0 18px;
+  border: 1px solid var(--hm-glass-edge);
+  border-radius: 999px;
+  background: var(--hm-glass);
+  color: var(--wn-text);
+  font: 700 14px/1 var(--wn-font-ui);
   text-decoration: none;
-  transition: background-color 160ms ease, color 160ms ease;
+  transition: background-color 0.15s ease;
 }
 
 .wn-notices__settings svg {
@@ -13942,8 +13945,7 @@ body.reader-hud-visible .reader-hud {
 
 @media (hover: hover) {
   .wn-notices__settings:hover {
-    background: var(--wn-surface-hover);
-    color: var(--wn-text);
+    background: var(--hm-glass-raised);
   }
 }
 
@@ -13952,45 +13954,53 @@ body.reader-hud-visible .reader-hud {
   box-shadow: var(--wn-focus-ring);
 }
 
+/* The list beside the bell's two cards. */
+.nt-layout {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 360px;
+  align-items: start;
+  gap: 32px 28px;
+}
+
+.nt-main {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+  min-width: 0;
+}
+
 .wn-notices__list {
   display: flex;
   flex-direction: column;
-  gap: 28px;
+  gap: 32px;
+}
+
+.wn-notices__list:empty {
+  display: none;
 }
 
 .wn-notices-group {
   display: flex;
   flex-direction: column;
-  gap: 10px;
+  gap: 14px;
 }
 
 .wn-notices-group__title {
-  margin: 0 0 0 4px;
-  color: var(--wn-text-muted);
-  font: var(--wn-weight-bold) 12px/16px var(--wn-font-ui);
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
+  margin: 0;
+  color: #fff;
+  font: 800 20px/1.3 var(--wn-font-ui);
+  letter-spacing: -0.01em;
 }
 
 .wn-notices-group__list,
 .wn-notices__skeleton {
   display: flex;
   flex-direction: column;
-  gap: 4px;
-  padding: 6px;
-  border: 1px solid var(--wn-border);
-  border-radius: var(--wn-radius-lg);
-  background: var(--wn-surface);
-}
-
-.wn-notices .wn-notice {
-  padding: 12px 8px 12px 12px;
-}
-
-.wn-notices .wn-notice__avatar {
-  width: 44px;
-  height: 44px;
-  font-size: 14px;
+  gap: 2px;
+  padding: 8px;
+  border: 1px solid rgb(255 255 255 / 9%);
+  border-radius: 24px;
+  background: #0d0d13;
 }
 
 .wn-notices .wn-notice__text {
@@ -14020,7 +14030,7 @@ body.reader-hud-visible .reader-hud {
 .wn-notices__end {
   margin: 0;
   color: var(--wn-text-muted);
-  font: var(--wn-weight-medium) 13px/18px var(--wn-font-ui);
+  font: 500 13px/18px var(--wn-font-ui);
   text-align: center;
 }
 
@@ -14032,20 +14042,107 @@ body.reader-hud-visible .reader-hud {
   height: 1px;
 }
 
-@media (max-width: 1199px) {
-  .wn-notices {
-    padding: 28px var(--wn-space-4) var(--wn-space-4);
+/* --- Beside the list: the bell now, and what comes here. --- */
+.nt-side {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+  min-width: 0;
+}
+
+.nt-card {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding: 22px 24px 24px;
+  border: 1px solid rgb(255 255 255 / 9%);
+  border-radius: 24px;
+  background: #0d0d13;
+}
+
+.nt-state {
+  display: flex;
+  align-items: baseline;
+  gap: 10px;
+  margin: 0;
+  color: rgb(255 255 255 / 84%);
+  font: 500 15px/1.5 var(--wn-font-ui);
+}
+
+.nt-state__mark {
+  flex: none;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  transform: translateY(-1px);
+}
+
+.nt-state__mark--on {
+  background: var(--wn-teal);
+}
+
+.nt-state__mark--quiet {
+  background: #e5a93b;
+}
+
+.nt-state__mark--off {
+  background: var(--wn-text-muted);
+}
+
+.nt-note {
+  margin: 0;
+  color: var(--wn-text-muted);
+  font: 500 13px/1.5 var(--wn-font-ui);
+}
+
+.nt-kinds {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.nt-kind {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  color: var(--wn-text-secondary);
+  font: 500 14.5px/1.4 var(--wn-font-ui);
+}
+
+.nt-kind__icon {
+  display: grid;
+  flex: none;
+  place-items: center;
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  background: #2a2a34;
+  color: rgb(255 255 255 / 85%);
+}
+
+.nt-kind__icon svg {
+  width: 15px;
+  height: 15px;
+}
+
+@media (max-width: 1100px) {
+  .nt-layout {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .nt-side {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+    align-items: start;
   }
 }
 
 @media (max-width: 767px) {
-  .wn-notices {
-    gap: 20px;
-    padding: 4px var(--wn-space-2) var(--wn-space-1);
-  }
-
-  .wn-notices__title {
-    font-size: 24px;
+  .hm.nt {
+    gap: 24px;
   }
 
   /* PR 315: at 320px «Настройки» pushed the heading row 1px past the screen - on phones
@@ -14066,8 +14163,13 @@ body.reader-hud-visible .reader-hud {
     white-space: nowrap;
   }
 
+  .nt-head {
+    flex-wrap: nowrap;
+    align-items: flex-start;
+  }
+
   .wn-notices__list {
-    gap: 22px;
+    gap: 24px;
   }
 
   .wn-notices-group__list,
@@ -14076,7 +14178,7 @@ body.reader-hud-visible .reader-hud {
   }
 
   .wn-notices .wn-notice {
-    padding: 10px 4px 10px 10px;
+    padding: 12px 4px 12px 10px;
   }
 
   .wn-notices .wn-notice__avatar {
@@ -14087,6 +14189,20 @@ body.reader-hud-visible .reader-hud {
   .wn-notices .wn-notice__text {
     font-size: 14px;
     line-height: 20px;
+  }
+
+  .wn-notices-empty {
+    padding: 22px 18px;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .wn-notice,
+  .wn-notice__action,
+  .wn-notices__settings,
+  .notifications-panel__footer,
+  .notifications-panel__settings {
+    transition: none;
   }
 }
 

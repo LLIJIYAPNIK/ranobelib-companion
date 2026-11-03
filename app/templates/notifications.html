@@ -5,45 +5,87 @@
 {% block title %}Уведомления — RanobeLib Companion{% endblock %}
 {% block content %}
 {#
-  PR 311 (Webnovells): heading with a link to the notification settings, then the cards
-  grouped as «Новые»/«Ранее» (_notification_groups.html) - the same card macro as the
-  bell panel. notifications-page.js loads further pages on scroll with skeleton cards,
-  a «Повторить» plate on failure and a closing note on the last page; mark-read/delete
-  are notifications-actions.js. The empty state is always in the markup (hidden while
-  there are cards) so deleting the last card can reveal it without a reload.
+  «Уведомления» drawn as the home page and «Друзья»: the title row with the count of new
+  ones (kept current by notifications-page.js from "notifications:unreadchange") and the
+  latest one, «Настройки» at its side; the cards grouped as «Новые»/«Ранее»
+  (_notification_groups.html, the same card macro as the bell panel), each group one
+  dark card of rows; beside them «Колокольчик» (what the bell does with them now) and
+  «Что сюда приходит». notifications-page.js loads further pages on scroll with skeleton
+  rows, a «Повторить» plate on failure and a closing note on the last page; mark-read/
+  delete are notifications-actions.js. The empty state is always in the markup (hidden
+  while there are cards) so deleting the last card can reveal it without a reload.
 #}
-<main class="wn-notices">
-  <header class="wn-notices__head">
-    <h1 class="wn-notices__title" tabindex="-1" data-role="notifications-page-title">Уведомления</h1>
+{% from "_notification_card.html" import notification_icon, notification_skeleton %}
+{% macro new_label(n) -%}{{ n }} {{ plural(n, "новое", "новых", "новых") }}{%- endmacro %}
+<main class="hm nt wn-notices" data-role="notifications-page">
+  <header class="hm-head nt-head hm-rise">
+    <div class="nt-head__title">
+      <div class="nt-head__line">
+        <h1 class="hm-title wn-notices__title" tabindex="-1" data-role="notifications-page-title">Уведомления</h1>
+        <span class="nt-head__count hm-num" data-role="notifications-page-count"{% if not unread_count %} hidden{% endif %}>{{ new_label(unread_count) }}</span>
+      </div>
+      <p class="nt-finding">
+        {% if latest %}
+        Последнее — <b>{{ latest.actor_name }}</b>, <time datetime="{{ latest.created_at }}">{{ latest.created_at_relative }}</time>
+        {% else %}
+        Здесь появятся реакции на ваши комментарии и заявки в друзья
+        {% endif %}
+      </p>
+    </div>
     <a class="wn-notices__settings" href="/settings/notifications">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 7h10M18 7h2M4 17h4M12 17h8"/><circle cx="16" cy="7" r="2"/><circle cx="10" cy="17" r="2"/></svg>
       <span class="wn-notices__settings-label">Настройки</span>
     </a>
   </header>
-  <div
-    class="wn-notices__list"
-    data-role="notifications-page-list"
-    data-next-page="{{ page + 1 if has_next_page else '' }}"
-  >
-    {% include "_notification_groups.html" %}
+
+  <div class="nt-layout">
+    <div class="nt-main hm-rise" style="--i: 1">
+      <div
+        class="wn-notices__list"
+        data-role="notifications-page-list"
+        data-next-page="{{ page + 1 if has_next_page else '' }}"
+      >
+        {% include "_notification_groups.html" %}
+      </div>
+      <div class="wn-notices-empty" data-role="notifications-page-empty"{% if groups %} hidden{% endif %}>
+        <b>Пока нет уведомлений</b>
+        <span>Здесь появятся реакции на ваши комментарии к абзацам, заявки в друзья и ответы на них.</span>
+        <a class="wn-notices-empty__cta" href="/catalog">Открыть каталог</a>
+      </div>
+      <template data-role="notifications-page-skeleton">{{ notification_skeleton(3) }}</template>
+      <div class="wn-notices__status" data-role="notifications-page-loading" role="status"></div>
+      <div data-role="notifications-page-error"></div>
+      <p class="wn-notices__end" data-role="notifications-page-end"{% if has_next_page or not groups %} hidden{% endif %}>Это все уведомления</p>
+      <div class="wn-notices__sentinel" data-role="notifications-page-sentinel" aria-hidden="true"></div>
+      <noscript>
+        {% if has_next_page %}
+        <p class="ui-empty"><a href="?page={{ page + 1 }}">Следующая страница</a></p>
+        {% endif %}
+      </noscript>
+    </div>
+
+    <aside class="nt-side hm-rise" style="--i: 2" aria-label="О колокольчике">
+      <section class="nt-card" aria-labelledby="nt-bell-title">
+        <h2 class="hm-h2" id="nt-bell-title">Колокольчик</h2>
+        {% if not current_user.notifications_enabled %}
+        <p class="nt-state"><span class="nt-state__mark nt-state__mark--off" aria-hidden="true"></span>Выключен — уведомления видны только на этой странице.</p>
+        {% elif current_user.do_not_disturb %}
+        <p class="nt-state"><span class="nt-state__mark nt-state__mark--quiet" aria-hidden="true"></span>Включено «Не беспокоить» — колокольчик спрятан, новые копятся здесь.</p>
+        {% else %}
+        <p class="nt-state"><span class="nt-state__mark nt-state__mark--on" aria-hidden="true"></span>Показывает новые уведомления с отметкой на значке.</p>
+        {% endif %}
+        <p class="nt-note">Прочитанным уведомление становится, когда вы отметите его галочкой, а не когда открыли колокольчик.</p>
+      </section>
+      <section class="nt-card" aria-labelledby="nt-kinds-title">
+        <h2 class="hm-h2" id="nt-kinds-title">Что сюда приходит</h2>
+        <ul class="nt-kinds">
+          <li class="nt-kind"><span class="nt-kind__icon">{{ notification_icon("comment_reaction") }}</span>Реакции на ваши комментарии к абзацам</li>
+          <li class="nt-kind"><span class="nt-kind__icon">{{ notification_icon("friend_request") }}</span>Заявки в друзья</li>
+          <li class="nt-kind"><span class="nt-kind__icon">{{ notification_icon("friend_accept") }}</span>Принятые заявки</li>
+        </ul>
+      </section>
+    </aside>
   </div>
-  <div class="wn-notices-empty" data-role="notifications-page-empty"{% if groups %} hidden{% endif %}>
-    <span class="wn-notices-empty__icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 8a6 6 0 0 1 12 0c0 4 1.5 6 2 6.5H4c.5-.5 2-2.5 2-6.5ZM10 19a2 2 0 0 0 4 0"/></svg></span>
-    <b>Пока нет уведомлений</b>
-    <span>Здесь появятся реакции на ваши комментарии к абзацам, заявки в друзья и ответы на них.</span>
-    <a class="wn-notices-empty__cta" href="/catalog">Открыть каталог</a>
-  </div>
-  {% from "_notification_card.html" import notification_skeleton %}
-  <template data-role="notifications-page-skeleton">{{ notification_skeleton(3) }}</template>
-  <div class="wn-notices__status" data-role="notifications-page-loading" role="status"></div>
-  <div data-role="notifications-page-error"></div>
-  <p class="wn-notices__end" data-role="notifications-page-end"{% if has_next_page or not groups %} hidden{% endif %}>Это все уведомления</p>
-  <div class="wn-notices__sentinel" data-role="notifications-page-sentinel" aria-hidden="true"></div>
-  <noscript>
-    {% if has_next_page %}
-    <p class="ui-empty"><a href="?page={{ page + 1 }}">Следующая страница</a></p>
-    {% endif %}
-  </noscript>
 </main>
 <script src="{{ static_url('js/notifications-page.js') }}" defer></script>
 {% endblock %}
