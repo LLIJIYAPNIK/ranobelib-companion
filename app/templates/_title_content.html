@@ -350,6 +350,10 @@
       {% endif %}
     </form>
   </section>
+
+  {# PR 361: «Связанные релизы» (_title_relations.html) - title-relations.js fills this
+     slot once the content is in, and drops it when the title has none. #}
+  <div class="tp-rel-slot" data-role="title-relations-slot" data-slug-url="{{ title.slug_url }}"></div>
 </div>
 
 {# On a phone: «Продолжить» stays at hand once the lamp's button has scrolled away. #}
