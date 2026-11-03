@@ -25604,6 +25604,7 @@ a.tp-rel__card:active .tp-rel__cover {
     grid-auto-columns: 112px;
     gap: 12px;
     margin-top: 12px;
+    overscroll-behavior-x: contain;
   }
 }
 
