@@ -1,5 +1,5 @@
 version = 1
-revision = 3
+revision = 5
 requires-python = ">=3.12"
 resolution-markers = [
     "python_full_version >= '3.13'",
@@ -477,6 +477,20 @@ dependencies = [
 sdist = { url = "https://files.pythonhosted.org/packages/df/bf/f7da0350254c0ed7c72f3e33cef02e048281fec7ecec5f032d4aac52226b/jinja2-3.1.6.tar.gz", hash = "sha256:0137fb05990d35f1275a587e9aee6d56da821fc83491a0fb838183be43f66d6d", size = 245115, upload-time = "2025-03-05T20:05:02.478Z" }
 wheels = [
     { url = "https://files.pythonhosted.org/packages/62/a1/3d680cbfd5f4b8f15abc1d571870c5fc3e594bb582bc3b64ea099db13e56/jinja2-3.1.6-py3-none-any.whl", hash = "sha256:85ece4451f492d0c13c5dd7c13a64681a86afae63a5f347908daf103ce6d2f67", size = 134899, upload-time = "2025-03-05T20:05:00.369Z" },
+]
+
+[[package]]
+name = "libsocial-core"
+version = "1.1.1"
+source = { registry = "https://pypi.org/simple" }
+dependencies = [
+    { name = "httpx" },
+    { name = "pydantic" },
+    { name = "rich" },
+]
+sdist = { url = "https://files.pythonhosted.org/packages/0f/61/d9cefb101e3d10d47a27bc1c27142a3938cff675d72f76dc177552372ff1/libsocial_core-1.1.1.tar.gz", hash = "sha256:f8f5b365b432abd5681c428acce35f358b4455e104d73564ba2f120bf9645a6f", size = 30987, upload-time = "2026-11-03T16:50:50.528Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/5f/e4/b54370c55437eb15e56c7982f2f11becf15aa339b1e3574657ffb3fc37c9/libsocial_core-1.1.1-py3-none-any.whl", hash = "sha256:4eacab60c95f68d6f77796c68eec518db6f4b1a78b1824507bc253eecc7537a0", size = 37154, upload-time = "2026-11-03T16:50:49.524Z" },
 ]
 
 [[package]]
@@ -1093,7 +1107,7 @@ requires-dist = [
     { name = "nh3", specifier = ">=0.3.6" },
     { name = "psycopg", extras = ["binary", "pool"], specifier = ">=3.2.0" },
     { name = "python-multipart", specifier = ">=0.0.32" },
-    { name = "ranobelib-python-sdk", specifier = ">=0.12.0" },
+    { name = "ranobelib-python-sdk", specifier = ">=1.0.0" },
     { name = "tzdata", specifier = ">=2026.3" },
     { name = "uvicorn", extras = ["standard"], specifier = ">=0.52.1" },
 ]
@@ -1107,18 +1121,18 @@ dev = [
 
 [[package]]
 name = "ranobelib-python-sdk"
-version = "0.12.0"
+version = "1.0.0"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "ebooklib" },
     { name = "httpx" },
+    { name = "libsocial-core" },
     { name = "pydantic" },
-    { name = "rich" },
     { name = "weasyprint" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/67/fd/2d774516835dabdfc92048f9d4f428d0a0141f443803f0312107bc3fbfe1/ranobelib_python_sdk-0.12.0.tar.gz", hash = "sha256:31cded26a04532a1d2c5f027a06ddd590475c61de5740e46646d1acab5577863", size = 39951, upload-time = "2026-10-04T13:30:25.124Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/bb/68/f8de69794bd7d62a4e8da2b8a03fba6e03f59ea7550f2134bf88b2a160cc/ranobelib_python_sdk-1.0.0.tar.gz", hash = "sha256:df85079cd64d3561fc9b7775f72b93c381d8ab7f38f5d33ca99c6596e593560e", size = 29653, upload-time = "2026-11-03T16:45:21.488Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/79/66/df2a4db6ddc9d9f4f60eeb3fccfd4106015594c1070b448c4fdd3b021373/ranobelib_python_sdk-0.12.0-py3-none-any.whl", hash = "sha256:12087230aa5508eb025544bbc23f71abcf532ed0563abbcb07f35beed5fcc4c1", size = 51305, upload-time = "2026-10-04T13:30:24.149Z" },
+    { url = "https://files.pythonhosted.org/packages/54/5f/54040017a2d1c2d22124b2059ff0a37a1186e5286cf4e2f87f7e43130016/ranobelib_python_sdk-1.0.0-py3-none-any.whl", hash = "sha256:0d2820668fbfab55ecd4c3394fd520cadd2cc7e54fd8993c25022fd4dbccff02", size = 39386, upload-time = "2026-11-03T16:45:20.427Z" },
 ]
 
 [[package]]
