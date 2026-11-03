@@ -60,7 +60,8 @@ async def show_friends(
     empty-state message for a search nobody actually ran.
 
     `tab` (PR 278): which list fills the main column - friends (the default), incoming or
-    outgoing requests. The "Заявки" side card lists both request kinds on every tab."""
+    outgoing requests. The "Заявки" side card lists both request kinds on the friends tab
+    (the two request tabs are that same queue in the main column)."""
     incoming: list[FriendRequestEntry] = []
     outgoing: list[FriendRequestEntry] = []
     friends: list[FriendEntry] = []
