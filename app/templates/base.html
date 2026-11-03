@@ -45,14 +45,15 @@
 </head>
 <body class="{% block body_class %}{% endblock %}">
   <div class="app-shell">
-    {# Aurora Ink shell (PR 249, "02 Components" -> Sidebar / Quiet Edge Bar / Account hub):
-       desktop - an 84px rail (icon over label) that expands to 248px; mobile (<= 767px) -
-       the same <nav> becomes the Quiet Edge Bar at the bottom and .sidebar__account the
-       top strip. Only Главная/Библиотека/Загрузки stay in the main list; Активность,
-       Друзья and Настройки live in the Account hub (profile-menu-panel), the bell in
-       .sidebar__account. #}
-    <nav class="sidebar" data-role="sidebar" aria-label="Основная навигация">
+    {# The shell: desktop - an 84px rail that expands to 248px (sidebar-toggle.js); mobile
+       (<= 767px) - the same <nav> is a drawer from the left (sidebar-drawer.js), opened
+       from the menu button of the top bar, and .sidebar__account is that top bar (menu,
+       back or wordmark, the section's name, the bell or «Войти»). The main list holds every
+       section - Главная, Библиотека, Загрузки, Активность, Друзья; .sidebar__me at the foot
+       holds Настройки and the account, whose menu is the profile and «Выйти». #}
+    <nav class="sidebar" id="site-nav" data-role="sidebar" aria-label="Основная навигация">
       <script src="{{ static_url('js/sidebar-expand-init.js') }}"></script>
+      <button class="sidebar__close" type="button" data-role="sidebar-drawer-close" aria-label="Закрыть меню"><svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" aria-hidden="true"><path d="M18 6 6 18M6 6l12 12"/></svg></button>
       <a class="sidebar__brand" href="/" aria-label="Webnovells — на главную"><span aria-hidden="true">W</span><span class="sidebar__brand-rest" aria-hidden="true">ebnovells</span><span class="sidebar__brand-dot" aria-hidden="true"></span></a>
       <button
         class="sidebar__toggle"
@@ -85,8 +86,20 @@
           </span>
           <span class="sidebar__label">Загрузки</span>
         </a>
+        {% if current_user %}
+        <a class="sidebar__link{% if active_nav == 'activity' %} sidebar__link--active{% endif %}" href="/activity"{% if active_nav == 'activity' %} aria-current="page"{% endif %}>
+          <span class="sidebar__icon"><svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 12h4l2.2-6 3.6 12 2.2-6H21"/></svg></span>
+          <span class="sidebar__label">Активность</span>
+        </a>
+        <a class="sidebar__link{% if active_nav == 'friends' %} sidebar__link--active{% endif %}" href="/friends"{% if active_nav == 'friends' %} aria-current="page"{% endif %}>
+          <span class="sidebar__icon"><svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 11a3 3 0 1 0 0-6 3 3 0 0 0 0 6ZM3 20c0-3.3 2.7-6 6-6s6 2.7 6 6M16 8.5a2.5 2.5 0 1 0 0-5 2.5 2.5 0 0 0 0 5ZM15.5 14c2.5.3 4.5 2.5 4.5 5.3"/></svg></span>
+          <span class="sidebar__label">Друзья</span>
+        </a>
+        {% endif %}
       </div>
       <div class="sidebar__account">
+        {# The top bar's menu button (phones only) - opens this <nav> as a drawer. #}
+        <button class="sidebar__menu" type="button" data-role="sidebar-drawer-open" aria-controls="site-nav" aria-expanded="false" aria-label="Открыть меню"><svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M4 7h16M4 12h16M4 17h10"/></svg></button>
         {# PR 253: a page that sets strip_back_href (title page, M-TITLE-*) gets a back
            button in the mobile strip instead of the wordmark - mobile-account-strip.js
            goes back in history when the previous page was ours, the href otherwise. #}
@@ -130,6 +143,23 @@
           </div>
           {% endif %}
         </div>
+        {% if not current_user %}
+        <a
+          class="sidebar__guest"
+          href="/login"
+          data-role="auth-modal-trigger"
+          aria-label="Войти или создать аккаунт"
+        >
+          <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 11a3 3 0 1 0 0-6 3 3 0 0 0 0 6ZM3 20c0-3.3 2.7-6 6-6s6 2.7 6 6"/></svg>
+          <span class="sidebar__guest-label">Войти</span>
+        </a>
+        {% endif %}
+      </div>
+      <div class="sidebar__me">
+        <a class="sidebar__link{% if active_nav == 'settings' %} sidebar__link--active{% endif %}" href="/settings" data-role="settings-link"{% if active_nav == 'settings' %} aria-current="page"{% endif %}>
+          <span class="sidebar__icon"><svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 15a3 3 0 1 0 0-6 3 3 0 0 0 0 6zM10.3 2.5h3.4l.5 2.6 1.9 1.1 2.5-.9 1.7 2.9-2 1.8v2l2 1.8-1.7 2.9-2.5-.9-1.9 1.1-.5 2.6h-3.4l-.5-2.6-1.9-1.1-2.5.9-1.7-2.9 2-1.8v-2l-2-1.8 1.7-2.9 2.5.9 1.9-1.1z"/></svg></span>
+          <span class="sidebar__label">Настройки</span>
+        </a>
         {% if current_user %}
         {% set account_name = current_user.nickname or current_user.email %}
         <div class="profile-menu" data-role="profile-menu">
@@ -140,7 +170,7 @@
             aria-haspopup="true"
             aria-expanded="false"
             title="{{ current_user.email }}"
-            aria-label="Аккаунт {{ account_name }}: профиль, активность, друзья, настройки"
+            aria-label="Аккаунт {{ account_name }}: профиль и выход"
           >
             <span class="sidebar__avatar" aria-hidden="true">{% if avatar_url(current_user) %}<img class="avatar-img" src="{{ avatar_url(current_user) }}" alt="">{% else %}{{ avatar_initials(current_user) }}{% endif %}</span>
             <span class="sidebar__account-info">
@@ -159,28 +189,18 @@
               <svg class="profile-menu__head-chevron" viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m9 6 6 6-6 6"/></svg>
             </a>
             <hr class="profile-menu__sep">
-            <a class="profile-menu__item" href="/activity"{% if active_nav == 'activity' %} aria-current="page"{% endif %}><svg viewBox="0 0 24 24" width="19" height="19" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 12h4l2.2-6 3.6 12 2.2-6H21"/></svg>Активность</a>
-            <a class="profile-menu__item" href="/friends"{% if active_nav == 'friends' %} aria-current="page"{% endif %}><svg viewBox="0 0 24 24" width="19" height="19" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 11a3 3 0 1 0 0-6 3 3 0 0 0 0 6ZM3 20c0-3.3 2.7-6 6-6s6 2.7 6 6M16 8.5a2.5 2.5 0 1 0 0-5 2.5 2.5 0 0 0 0 5ZM15.5 14c2.5.3 4.5 2.5 4.5 5.3"/></svg>Друзья</a>
-            <a class="profile-menu__item" href="/settings" data-role="settings-link"{% if active_nav == 'settings' %} aria-current="page"{% endif %}><svg viewBox="0 0 24 24" width="19" height="19" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 15a3 3 0 1 0 0-6 3 3 0 0 0 0 6zM10.3 2.5h3.4l.5 2.6 1.9 1.1 2.5-.9 1.7 2.9-2 1.8v2l2 1.8-1.7 2.9-2.5-.9-1.9 1.1-.5 2.6h-3.4l-.5-2.6-1.9-1.1-2.5.9-1.7-2.9 2-1.8v-2l-2-1.8 1.7-2.9 2.5.9 1.9-1.1z"/></svg>Настройки</a>
-            <hr class="profile-menu__sep">
             <form class="profile-menu__form" method="post" action="/logout">
               <button class="profile-menu__item profile-menu__item--danger" type="submit"><svg viewBox="0 0 24 24" width="19" height="19" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 21H5V3h4M16 17l5-5-5-5M21 12H9"/></svg>Выйти</button>
             </form>
           </div>
         </div>
         {% else %}
-        <a
-          class="sidebar__guest"
-          href="/login"
-          data-role="auth-modal-trigger"
-          aria-label="Войти или создать аккаунт"
-        >
-          <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 11a3 3 0 1 0 0-6 3 3 0 0 0 0 6ZM3 20c0-3.3 2.7-6 6-6s6 2.7 6 6"/></svg>
-          <span class="sidebar__guest-label">Войти</span>
-        </a>
+        {# The drawer's way in for a guest (phones; on desktop «Войти» is the rail's own). #}
+        <a class="sidebar__me-login" href="/login" data-role="auth-modal-trigger">Войти или создать аккаунт</a>
         {% endif %}
       </div>
     </nav>
+    <div class="sidebar-scrim" data-role="sidebar-scrim" hidden></div>
     <div class="main">
       {% if ban_notice and request.url.path != "/account-blocked" %}
       {# PR 349: a blocked account browses as a guest - this says why, on every page. #}
@@ -257,7 +277,7 @@
   <script src="{{ static_url('js/mobile-account-strip.js') }}" defer></script>
   <!-- PR 217: queries the Quiet Edge Bar's links fresh on every swipe, long after page
        load, not once up front. -->
-  <script src="{{ static_url('js/mobile-navbar-swipe.js') }}" defer></script>
+  <script src="{{ static_url('js/sidebar-drawer.js') }}" defer></script>
   <!-- PR 279: hides the bottom navigation while the on-screen keyboard is open. -->
   <script src="{{ static_url('js/mobile-keyboard.js') }}" defer></script>
   <!-- Issue 394: the title suggestions under every «Найти тайтл по названию» field

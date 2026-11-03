@@ -498,15 +498,15 @@ a {
    Aurora Ink shell (PR 249) - "02 Components" -> Sidebar / Account hub / Quiet Edge
    Bar of the Claude Design import, plus the shell rows of "05 Спецификация". Desktop
    (>= 768px): an 84px rail, icon over label, that expands to 248px (sidebarExpanded in
-   localStorage, as before). Mobile (<= 767px): the same <nav> is the Quiet Edge Bar and
-   .sidebar__account the top strip. PR 310 keeps the toggle at one fixed bottom coordinate
+   localStorage, as before). Mobile (<= 767px): the same <nav> is a drawer from the left
+   and .sidebar__account the top bar - no bottom bar (the mobile block). PR 310 keeps the toggle at one fixed bottom coordinate
    in both desktop states, so expanding the rail never moves its control across the page.
    ========================================================================== */
 
 :root {
   --sidebar-width: 84px;
   /* Room fixed corner UI (toasts, cookie notice, back-to-top, export panel) leaves
-     under itself for the Quiet Edge Bar - 0 on desktop, set in the mobile block below. */
+     under itself - 0 on desktop, the safe area on phones (the mobile block below). */
   --shell-bottom: 0px;
   /* Height of a fixed top bar sticky UI must clear - 0 with the rail, see data-nav="top". */
   --shell-top: 0px;
@@ -540,8 +540,8 @@ body:has(.sidebar--expanded) {
   height: 100dvh;
   display: grid;
   grid-template-columns: minmax(0, 1fr);
-  grid-template-rows: auto auto auto 1fr auto;
-  grid-template-areas: "brand" "sep" "nav" "." "account";
+  grid-template-rows: auto auto auto 1fr auto auto;
+  grid-template-areas: "brand" "sep" "nav" "." "account" "me";
   justify-items: center;
   padding: 18px 0 62px;
   background: var(--bg-nav);
@@ -712,6 +712,25 @@ body:has(.sidebar--expanded) {
 
 .sidebar__account-actions {
   display: contents;
+}
+
+/* The foot: Настройки and the account, under the bell. */
+.sidebar__me {
+  grid-area: me;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  width: 56px;
+  padding-top: 6px;
+}
+
+/* The drawer's own controls - phones only (the mobile block below). */
+.sidebar__menu,
+.sidebar__close,
+.sidebar__me-login,
+.sidebar-scrim {
+  display: none;
 }
 
 .sidebar__strip-brand,
@@ -1069,6 +1088,13 @@ body:has(.sidebar--expanded) {
     padding: 10px 8px 0;
   }
 
+  .sidebar__me {
+    align-items: stretch;
+    gap: 4px;
+    width: auto;
+    padding: 4px 8px 0;
+  }
+
   .profile-menu {
     display: block;
   }
@@ -1201,6 +1227,15 @@ body:has(.sidebar--expanded) {
     clip-path: none;
   }
 
+  html[data-nav="top"] .sidebar__me {
+    flex-direction: row;
+    align-items: center;
+    gap: 8px;
+    width: auto;
+    padding: 0;
+  }
+
+  html[data-nav="top"] .sidebar .sidebar__me .sidebar__label,
   html[data-nav="top"] .sidebar .sidebar__bell .sidebar__label {
     position: absolute;
     width: 1px;
@@ -1699,15 +1734,21 @@ html:has(dialog[open]) body {
   box-shadow: var(--wn-focus-ring);
 }
 
-/* Mobile: bottom navigation + top header. PR 279 restyled both to "Webnovells Mobile"
-   (Mobile handoff.md -> Общие правила): a 60px header + safe-area-top, a 64px bar +
-   safe-area-bottom, and main padded by 104px + safe-area so the last row clears the bar. */
+/* Mobile: a top bar and the sidebar as a drawer from the left - no bottom bar, the
+   screen is the page's. The top bar is .sidebar__account: the menu button, the back
+   button or the wordmark, the section's name and the bell (or «Войти»), opaque, 56px +
+   safe-area-top, centred on the 640px content column. The drawer is the <nav> itself
+   (sidebar-drawer.js opens it): every section in rows, Настройки and the account at its
+   foot, the dark card of the redesigned pages. It slides by `left`, not a transform -
+   the top bar is a fixed child of the same <nav>, and a transform would carry it along.
+   Closed, it's visibility: hidden, so nothing in it takes focus off-screen. */
 @media (max-width: 767px) {
   :root,
   body:has(.sidebar--expanded) {
     --sidebar-width: 0px;
-    --mobile-account-height: 60px;
-    --shell-bottom: calc(64px + env(safe-area-inset-bottom, 0px));
+    --mobile-account-height: 56px;
+    --shell-bottom: env(safe-area-inset-bottom, 0px);
+    --drawer-width: min(320px, 86vw);
   }
 
   /* PR 46's per-section fade-in, now on the shared motion tokens. */
@@ -1721,7 +1762,7 @@ html:has(dialog[open]) body {
   .main {
     margin-left: 0;
     padding-top: calc(var(--mobile-account-height) + env(safe-area-inset-top, 0px));
-    padding-bottom: calc(var(--shell-bottom) + 40px);
+    padding-bottom: calc(var(--shell-bottom) + 32px);
     animation: shell-section-in 150ms var(--ease);
   }
 
@@ -1730,102 +1771,170 @@ html:has(dialog[open]) body {
     animation: none;
   }
 
+  /* --- The drawer --- */
   .sidebar {
-    top: auto;
-    right: 0;
+    top: 0;
     bottom: 0;
-    z-index: 50;
-    width: auto;
-    height: auto;
-    display: block;
-    /* The rail's justify-items: center would also center (and shrink) block children -
-       Chrome applies justify-items in block layout too. */
-    justify-items: normal;
-    padding: 0 0 env(safe-area-inset-bottom, 0px);
-    border-right: 0;
-    border-top: 1px solid rgb(255 255 255 / 7%);
-    /* Opaque: a translucent bar let the page's text show through its labels. */
-    background: #0d0d14;
-    overflow: visible;
-    transition: none;
+    left: calc(-1 * var(--drawer-width) - 32px);
+    z-index: 60;
+    display: flex;
+    flex-direction: column;
+    width: var(--drawer-width);
+    height: 100dvh;
+    padding: calc(14px + env(safe-area-inset-top, 0px)) 12px calc(16px + env(safe-area-inset-bottom, 0px));
+    border-right: 1px solid rgb(255 255 255 / 9%);
+    border-radius: 0 24px 24px 0;
+    background: #0d0d13;
+    overflow-x: hidden;
+    overflow-y: auto;
+    overscroll-behavior: contain;
+    visibility: hidden;
+    transition:
+      left 0.24s cubic-bezier(0.4, 0, 1, 1),
+      visibility 0s linear 0.24s;
   }
 
-  .sidebar__brand,
-  .sidebar__toggle,
-  .sidebar__sep {
+  .sidebar--open {
+    left: 0;
+    visibility: visible;
+    box-shadow: 24px 0 64px rgb(0 0 0 / 50%);
+    transition:
+      left 0.32s cubic-bezier(0.22, 1, 0.36, 1),
+      visibility 0s;
+  }
+
+  .sidebar-scrim {
+    position: fixed;
+    inset: 0;
+    z-index: 55;
+    display: block;
+    background: rgb(4 4 8 / 64%);
+    opacity: 0;
+    transition: opacity 0.24s ease;
+  }
+
+  .sidebar-scrim[hidden] {
     display: none;
   }
 
-  .sidebar__nav {
-    flex-direction: row;
-    gap: 0;
-    max-width: 640px;
-    height: 64px;
-    margin: 0 auto;
+  .sidebar-scrim--on {
+    opacity: 1;
   }
 
-  .sidebar__link {
-    flex: 1 1 0;
-    min-width: 0;
-    gap: 4px;
+  html.sidebar-drawer-open,
+  html.sidebar-drawer-open body {
+    overflow: hidden;
+    overscroll-behavior-y: contain;
+  }
+
+  .sidebar__toggle {
+    display: none;
+  }
+
+  /* The drawer's head: the wordmark, ✕ at its right. */
+  .sidebar__brand {
+    flex: none;
+    gap: 1px;
+    height: 44px;
+    padding: 0 0 0 12px;
+    font-size: 22px;
+    letter-spacing: -0.03em;
+  }
+
+  .sidebar__brand .sidebar__brand-rest {
+    display: inline;
+  }
+
+  .sidebar__brand .sidebar__brand-dot {
+    margin: 10px 0 0 2px;
+    background: var(--wn-teal);
+  }
+
+  .sidebar__close {
+    position: absolute;
+    top: calc(14px + env(safe-area-inset-top, 0px));
+    right: 12px;
+    display: grid;
+    place-items: center;
+    width: 44px;
+    height: 44px;
+    padding: 0;
+    border: 0;
+    border-radius: 50%;
+    background: rgb(255 255 255 / 8%);
+    color: rgb(255 255 255 / 82%);
+    cursor: pointer;
+  }
+
+  .sidebar__sep {
+    flex: none;
     width: auto;
-    height: 64px;
-    padding: 6px 2px;
-    border-radius: 0;
-    background: none;
+    margin: 14px 4px 10px;
+    background: rgb(255 255 255 / 6%);
+  }
+
+  .sidebar__nav {
+    flex: none;
+    gap: 2px;
+  }
+
+  /* Rows: a 44px icon column, the label in ink, the same as the expanded rail. */
+  .sidebar__link {
+    display: grid;
+    grid-template-columns: 44px minmax(0, 1fr);
+    align-items: center;
+    justify-items: start;
+    gap: 0;
+    width: 100%;
+    height: 52px;
+    padding: 0 10px 0 0;
+    border-radius: 16px;
     color: var(--wn-text-secondary);
-    font: 700 13px/1.1 var(--wn-font-ui);
+    font: 600 16px/1 var(--wn-font-ui);
     white-space: nowrap;
   }
 
-  /* Pressed / focus zone: 84x48, radius 12, centered on the item. */
-  .sidebar__link::after {
-    content: "";
-    position: absolute;
-    top: 8px;
-    left: 50%;
-    width: 84px;
-    max-width: 100%;
-    height: 48px;
-    border-radius: var(--r-lg);
-    transform: translateX(-50%);
-    transition: background-color var(--dur-press) var(--ease);
-  }
-
-  .sidebar__link:active::after,
-  .sidebar__link--active::after {
-    background: rgb(255 255 255 / 7%);
-  }
-
-  .sidebar__link:focus-visible {
-    box-shadow: none;
-  }
-
-  .sidebar__link:focus-visible::after {
-    box-shadow: inset 0 0 0 2px var(--focus);
+  .sidebar__link .sidebar__icon {
+    position: static;
+    justify-self: center;
   }
 
   .sidebar__link--active {
-    background: none;
-    color: #f2f0f7;
+    background: rgb(255 255 255 / 8%);
+    color: #fff;
+    font-weight: 700;
   }
 
-  .sidebar__link--active .sidebar__icon {
-    color: var(--wn-teal);
-  }
-
-  /* Active item: the same quiet pill as the desktop top bar (the ::after zone above), the
-     icon in teal - not a bar on the edge, which read as underlining the page above it. */
   .sidebar__link--active::before {
     display: none;
   }
 
+  .sidebar__link--active .sidebar__icon {
+    color: #fff;
+  }
+
+  .sidebar__link:active {
+    background: rgb(255 255 255 / 6%);
+  }
+
+  .sidebar__link:focus-visible {
+    outline: none;
+    box-shadow: inset 0 0 0 2px var(--wn-teal);
+  }
+
+  /* The downloads count as an end-of-row pill. */
   .sidebar__link .sidebar__badge {
-    top: -6px;
-    right: -10px;
-    padding: 0 4px;
-    border: 2px solid var(--bg-nav);
-    line-height: 14px;
+    top: 50%;
+    right: 12px;
+    min-width: 22px;
+    height: 22px;
+    padding: 0 8px;
+    border: 0;
+    border-radius: 11px;
+    background: rgb(61 214 195 / 14%);
+    color: var(--wn-teal);
+    font: 700 12px/22px var(--wn-font-ui);
+    transform: translateY(-50%);
   }
 
   .sidebar__link--desktop-only {
@@ -1840,10 +1949,86 @@ html:has(dialog[open]) body {
     display: block;
   }
 
-  /* Header: logo · section title · bell · avatar, opaque with a blur from the first
-     pixel. Fixed rather than sticky (it lives inside the fixed bottom <nav>), with .main
-     padded by the same height - the same on-screen result. The row is centered to the
-     640px content column. */
+  /* The foot: Настройки, then the account as one glass tile. */
+  .sidebar__me {
+    flex: none;
+    align-items: stretch;
+    gap: 6px;
+    width: auto;
+    margin-top: auto;
+    padding: 12px 0 0;
+  }
+
+  .sidebar__me .profile-menu {
+    display: block;
+  }
+
+  .sidebar__account-trigger {
+    display: grid;
+    grid-template-columns: 44px minmax(0, 1fr) 20px;
+    align-items: center;
+    width: 100%;
+    height: 64px;
+    padding: 0 12px 0 4px;
+    border: 0;
+    border-radius: 18px;
+    background: rgb(255 255 255 / 5%);
+  }
+
+  .sidebar__avatar {
+    justify-self: center;
+    width: 40px;
+    height: 40px;
+    border: 0;
+  }
+
+  .sidebar__account-trigger--current .sidebar__avatar {
+    box-shadow: 0 0 0 2px var(--wn-teal);
+  }
+
+  .sidebar__account-info {
+    display: flex;
+    flex-direction: column;
+    justify-self: start;
+    gap: 4px;
+    min-width: 0;
+    padding-left: 8px;
+  }
+
+  .sidebar__me-login {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    min-height: 52px;
+    border-radius: 999px;
+    background: #eeecf4;
+    color: #0c0c12;
+    font: 800 15px/1 var(--wn-font-ui);
+    text-decoration: none;
+  }
+
+  .sidebar__me-login:focus-visible {
+    outline: none;
+    box-shadow: var(--wn-focus-ring);
+  }
+
+  .sidebar__account-name {
+    color: #fff;
+    font: 700 15px/1.2 var(--wn-font-ui);
+  }
+
+  .sidebar__account-sub {
+    color: var(--wn-text-muted);
+    font: 500 13px/1 var(--wn-font-ui);
+  }
+
+  .sidebar__account-chevron {
+    display: block;
+    color: var(--wn-text-muted);
+    transform: rotate(90deg);
+  }
+
+  /* --- The top bar: menu · back or wordmark · the section · bell or «Войти» --- */
   .sidebar__account {
     position: fixed;
     top: 0;
@@ -1852,43 +2037,73 @@ html:has(dialog[open]) body {
     z-index: 50;
     flex-direction: row;
     align-items: center;
-    gap: 4px;
+    gap: 2px;
     width: auto;
     height: calc(var(--mobile-account-height) + env(safe-area-inset-top, 0px));
-    padding: env(safe-area-inset-top, 0px) max(8px, calc((100% - 640px) / 2 + 8px)) 0
-      max(12px, calc((100% - 640px) / 2 + 12px));
+    padding: env(safe-area-inset-top, 0px) max(8px, calc((100% - 640px) / 2 + 8px)) 0;
     border-top: 0;
-    border-bottom: 1px solid rgb(255 255 255 / 7%);
-    background: #0d0d14;
+    border-bottom: 1px solid rgb(255 255 255 / 6%);
+    background: var(--wn-canvas);
+    visibility: visible;
+    transition: opacity 0.2s ease;
+  }
+
+  .sidebar--open .sidebar__account {
+    opacity: 0;
+    visibility: hidden;
+  }
+
+  .sidebar__menu {
+    display: grid;
+    flex: none;
+    place-items: center;
+    width: 44px;
+    height: 44px;
+    padding: 0;
+    border: 0;
+    border-radius: 50%;
+    background: transparent;
+    color: rgb(255 255 255 / 90%);
+    cursor: pointer;
+  }
+
+  .sidebar__menu:active,
+  .sidebar__bell:active {
+    background: rgb(255 255 255 / 8%);
+  }
+
+  .sidebar__menu:focus-visible {
+    outline: none;
+    box-shadow: var(--wn-focus-ring);
   }
 
   .sidebar__strip-brand {
     display: flex;
+    flex: none;
     align-items: flex-end;
     justify-content: center;
     gap: 3px;
-    min-width: 44px;
+    min-width: 36px;
     height: 44px;
-    padding: 0 4px 9px;
+    padding: 0 2px 10px;
     border-radius: var(--wn-radius-md);
     color: #f2f0f7;
-    font: 800 28px/1 var(--wn-font-ui);
+    font: 800 24px/1 var(--wn-font-ui);
     text-decoration: none;
   }
 
   .sidebar__strip-brand .sidebar__brand-dot {
-    width: 7px;
-    height: 7px;
+    width: 6px;
+    height: 6px;
     margin: 0 0 2px;
     background: var(--wn-teal);
   }
 
-  /* Where the strip has no section title (the home page), the whole wordmark, as in the
-     desktop top bar. */
+  /* Where the bar has no section title (the home page), the whole wordmark. */
   .sidebar__account:has(.sidebar__strip-title:empty) .sidebar__strip-brand {
     gap: 1px;
     padding-bottom: 12px;
-    font-size: 22px;
+    font-size: 21px;
     letter-spacing: -0.03em;
   }
 
@@ -1897,8 +2112,6 @@ html:has(dialog[open]) body {
   }
 
   .sidebar__account:has(.sidebar__strip-title:empty) .sidebar__strip-brand .sidebar__brand-dot {
-    width: 6px;
-    height: 6px;
     margin-left: 2px;
   }
 
@@ -1908,20 +2121,22 @@ html:has(dialog[open]) body {
     min-width: 0;
     padding-left: 6px;
     overflow: hidden;
-    color: #cfcbdd;
-    font: 700 16px/1.2 var(--wn-font-ui);
+    color: #fff;
+    font: 700 17px/1.2 var(--wn-font-ui);
     text-overflow: ellipsis;
     white-space: nowrap;
   }
 
   .sidebar__bell {
+    flex: none;
     width: 44px;
     height: 44px;
-    border-radius: var(--wn-radius-md);
-    color: #cfcbdd;
+    margin-left: auto;
+    border-radius: 50%;
+    color: rgb(255 255 255 / 90%);
   }
 
-  /* Unread = an 8px teal dot, no number, ringed in the header's background. */
+  /* Unread = an 8px teal dot, no number, ringed in the bar's background. */
   .sidebar__bell .sidebar__badge {
     top: -1px;
     right: 0;
@@ -1935,59 +2150,35 @@ html:has(dialog[open]) body {
     font-size: 0;
   }
 
-  /* Avatar: 36px in a 44px hit area, as in the desktop top bar; a teal ring only on
-     the user's own profile. */
-  .sidebar__account-trigger {
-    padding: 4px;
-    border: 0;
-  }
-
-  .sidebar__avatar {
-    width: 100%;
-    height: 100%;
-    border: 0;
-  }
-
-  .sidebar__account-trigger--current .sidebar__avatar {
-    box-shadow: 0 0 0 2px var(--wn-teal);
-  }
-
-  /* 44px: the header's touch-target floor (Mobile handoff.md). */
+  /* 44px: the bar's touch-target floor. */
   .sidebar__guest {
     flex-direction: row;
     width: auto;
     min-height: 44px;
-    margin-right: 4px;
-    padding: 0 16px;
-    border-radius: var(--r-md);
-    font: 700 14px/1 var(--font-ui);
+    margin-left: auto;
+    padding: 0 18px;
+    border-radius: 999px;
+    background: #eeecf4;
+    box-shadow: none;
+    color: #0c0c12;
+    font: 800 14px/1 var(--wn-font-ui);
   }
 
   .sidebar__guest svg {
     display: none;
   }
 
-  /* On-screen keyboard open (mobile-keyboard.js): the bottom bar goes, the header stays -
-     both live in .sidebar, so only the bar's own parts are hidden, and floating pieces
-     placed above the bar (--shell-bottom) drop to the bottom edge. */
+  /* On-screen keyboard open (mobile-keyboard.js): floating pieces placed above the
+     bottom edge (--shell-bottom) sit on it. */
   html.keyboard-open,
   html.keyboard-open body {
     --shell-bottom: 0px;
   }
 
-  html.keyboard-open .sidebar {
-    padding-bottom: 0;
-    border-top: 0;
-    background: none;
-  }
-
-  html.keyboard-open .sidebar__nav {
-    display: none;
-  }
-
-  /* The reader is immersive on mobile - no bar, no strip. */
+  /* The reader is immersive on mobile - no bar, no drawer. */
   body.reader-page .sidebar,
-  body.reader-page .sidebar__account {
+  body.reader-page .sidebar__account,
+  body.reader-page .sidebar-scrim {
     display: none;
   }
 
@@ -1995,6 +2186,15 @@ html:has(dialog[open]) body {
     padding-top: 0;
     padding-bottom: 0;
     animation: none;
+  }
+}
+
+@media (max-width: 767px) and (prefers-reduced-motion: reduce) {
+  .sidebar,
+  .sidebar--open,
+  .sidebar-scrim,
+  .sidebar__account {
+    transition: none;
   }
 }
 
@@ -22738,9 +22938,9 @@ body.reader-page--offline-copy .reader-paragraph-more {
 /* ==========================================================================
    Sidebar - light glass (desktop rail and its expanded state). The rail lets the page
    show through: a translucent fill with a backdrop blur, a hairline edge instead of the
-   opaque --bg-nav and its divider. The active item is a glass pill with the teal icon;
-   the teal bar on its left edge goes. Phone (the Quiet Edge Bar / top strip) is
-   untouched.
+   opaque --bg-nav and its divider. The current section is a glass pill with its icon
+   and label in ink - no teal bar on the edge, no edge around the pill. The phone's top
+   bar and drawer are the mobile block near the top.
    ========================================================================== */
 @media (min-width: 768px) {
   .app-shell .sidebar {
@@ -22760,9 +22960,31 @@ body.reader-page--offline-copy .reader-paragraph-more {
   }
 
   .app-shell .sidebar__link--active,
-  .app-shell .sidebar--expanded .sidebar__link--active {
-    background: rgb(255 255 255 / 7%);
-    box-shadow: inset 0 0 0 1px rgb(255 255 255 / 8%);
+  .app-shell .sidebar--expanded .sidebar__link--active,
+  .app-shell .sidebar__bell--active {
+    background: rgb(255 255 255 / 8%);
+    box-shadow: none;
+    color: #fff;
+  }
+
+  .app-shell .sidebar__link--active .sidebar__icon,
+  .app-shell .sidebar__bell--active .sidebar__icon {
+    color: #fff;
+  }
+
+  .app-shell .sidebar__link,
+  .app-shell .sidebar__bell,
+  .app-shell .sidebar__toggle {
+    border-radius: 14px;
+  }
+
+  .app-shell .sidebar__avatar {
+    border: 0;
+  }
+
+  .app-shell .sidebar--expanded .sidebar__account-trigger {
+    background: rgb(255 255 255 / 4%);
+    box-shadow: none;
   }
 
   .app-shell .sidebar__link--active::before {
@@ -22777,8 +22999,10 @@ body.reader-page--offline-copy .reader-paragraph-more {
 @media (min-width: 768px) and (hover: hover) {
   .app-shell .sidebar__link:not(.sidebar__link--active):hover,
   .app-shell .sidebar__bell:hover,
-  .app-shell .sidebar__toggle:hover {
+  .app-shell .sidebar__toggle:hover,
+  .app-shell .sidebar--expanded .sidebar__account-trigger:hover {
     background: rgb(255 255 255 / 5%);
+    color: #fff;
   }
 }
 
@@ -32038,5 +32262,63 @@ p.ac-card.ac-empty {
   .bottom-sheet__close,
   .catalog-sheet__apply {
     transition: none;
+  }
+}
+
+/* ==========================================================================
+   The account menu as a popover (desktop) in the redesigned pages' look: the same dark
+   card as the bell's panel and the bottom sheet, the profile one glass tile, «Выйти» red.
+   The rail itself is the «Sidebar - light glass» block; the phone's top bar and drawer
+   are the mobile block near the top.
+   ========================================================================== */
+.profile-menu__panel:not(.profile-menu__panel--in-sheet) {
+  width: 260px;
+  padding: 8px;
+  border: 1px solid rgb(255 255 255 / 9%);
+  border-radius: 20px;
+  background: #0d0d13;
+  box-shadow: 0 24px 64px rgb(0 0 0 / 55%);
+}
+
+.profile-menu__panel:not(.profile-menu__panel--in-sheet) .profile-menu__head {
+  padding: 10px 12px;
+  border-radius: 14px;
+  background: rgb(255 255 255 / 5%);
+}
+
+.profile-menu__panel:not(.profile-menu__panel--in-sheet) .profile-menu__profile-link {
+  color: var(--wn-text-muted);
+}
+
+.profile-menu__panel:not(.profile-menu__panel--in-sheet) .profile-menu__head-chevron {
+  display: block;
+}
+
+.profile-menu__panel:not(.profile-menu__panel--in-sheet) .profile-menu__sep {
+  margin: 6px 6px;
+  background: rgb(255 255 255 / 6%);
+}
+
+.profile-menu__panel:not(.profile-menu__panel--in-sheet) .profile-menu__item {
+  min-height: 44px;
+  padding: 0 12px;
+  border-radius: 12px;
+}
+
+.profile-menu__panel:not(.profile-menu__panel--in-sheet) .profile-menu__item--danger {
+  color: #ff8f9c;
+}
+
+@media (hover: hover) {
+  .profile-menu__panel:not(.profile-menu__panel--in-sheet) .profile-menu__head:hover {
+    background: rgb(255 255 255 / 9%);
+  }
+
+  .profile-menu__panel:not(.profile-menu__panel--in-sheet) .profile-menu__item:hover {
+    background: rgb(255 255 255 / 6%);
+  }
+
+  .profile-menu__panel:not(.profile-menu__panel--in-sheet) .profile-menu__item--danger:hover {
+    background: rgb(242 104 122 / 12%);
   }
 }
