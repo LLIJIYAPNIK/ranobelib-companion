@@ -12723,7 +12723,6 @@ body.reader-hud-visible .reader-hud {
   }
 }
 
-
 /* Tap Focus onboarding (once per device). */
 .reader-onboarding {
   position: fixed;
@@ -13720,34 +13719,6 @@ body.reader-hud-visible .reader-hud {
   }
 }
 
-/* ==========================================================================
-   Aurora Ink screens - friends (PR 258): FRIENDS. Intro, nickname search, then the
-   request/search sections as boxed Friend rows and "Друзья · N" as plain divided rows.
-   Content capped at 760px, as in the design.
-   ========================================================================== */
-.friends-page {
-  flex: 1;
-  display: flex;
-  flex-direction: column;
-  gap: var(--s-20);
-  width: 100%;
-  max-width: calc(760px + 2 * var(--s-40));
-  padding: var(--s-32) var(--s-40) var(--s-40);
-}
-
-.friends-page__title {
-  margin: 0;
-  color: var(--text-1);
-  font: var(--type-h1);
-}
-
-.friends-page__intro {
-  max-width: 640px;
-  margin: 0;
-  color: var(--text-2);
-  font: 500 14px/1.55 var(--font-ui);
-}
-
 .friends-section {
   display: flex;
   flex-direction: column;
@@ -13853,749 +13824,6 @@ body.reader-hud-visible .reader-hud {
   font: 600 13px/1 var(--font-ui);
 }
 
-@media (max-width: 1199px) {
-  .friends-page {
-    padding: 28px var(--s-32) var(--s-32);
-  }
-}
-
-@media (max-width: 767px) {
-  .friends-page {
-    padding: var(--s-4) var(--s-20) var(--s-8);
-  }
-
-  .friends-page__title {
-    font-size: 22px;
-    line-height: 1;
-  }
-}
-
-/* ==========================================================================
-   Webnovells Redesign - friends (PR 278, screen A6) on the --wn-* tokens from PR 272:
-   heading + search, tabs with counts, friend / request cards and the invite card in an
-   8-column main area, "Заявки" and "Приватность" in a 4-column side.
-   ========================================================================== */
-.wn-friends {
-  max-width: none;
-  gap: var(--wn-space-3);
-  font-family: var(--wn-font-ui);
-}
-
-.wn-friends__head {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: flex-end;
-  gap: var(--wn-space-3);
-}
-
-.wn-friends__heading {
-  display: flex;
-  flex: 1 1 360px;
-  flex-direction: column;
-  gap: var(--wn-space-1);
-  min-width: 0;
-}
-
-.wn-friends__title {
-  margin: 0;
-  color: #f2f0f7;
-  font: var(--wn-weight-extra-bold) 32px/1.1 var(--wn-font-ui);
-  letter-spacing: -0.02em;
-}
-
-.wn-friends__intro {
-  max-width: 640px;
-  margin: 0;
-  color: var(--wn-text-secondary);
-  font: var(--wn-weight-medium) 15px/1.5 var(--wn-font-ui);
-  text-wrap: pretty;
-}
-
-.wn-friends-link,
-.wn-friends-card__aside a {
-  color: #b7a6ff;
-  font: var(--wn-weight-semi-bold) 14px/1.4 var(--wn-font-ui);
-  text-decoration: none;
-}
-
-@media (hover: hover) {
-  .wn-friends-link:hover,
-  .wn-friends-card__aside a:hover {
-    color: #d3c8ff;
-  }
-}
-
-.wn-friends-link:focus-visible,
-.wn-friends-card__aside a:focus-visible {
-  outline: none;
-  border-radius: 4px;
-  box-shadow: var(--wn-focus-ring);
-}
-
-.wn-friends-note {
-  margin: 0;
-  color: var(--wn-text-secondary);
-  font: var(--wn-weight-medium) 14px/1.5 var(--wn-font-ui);
-  text-wrap: pretty;
-}
-
-/* Search: the field takes the purple focus ring from the design. */
-.wn-friends-search {
-  display: flex;
-  gap: 12px;
-  width: 560px;
-  max-width: 100%;
-}
-
-.wn-friends-search__field {
-  position: relative;
-  display: flex;
-  flex: 1;
-  align-items: center;
-  color: var(--wn-text-muted);
-}
-
-.wn-friends-search__field svg {
-  position: absolute;
-  left: 16px;
-  width: 18px;
-  height: 18px;
-  pointer-events: none;
-}
-
-.wn-friends-search__field input {
-  width: 100%;
-  height: 48px;
-  padding: 0 16px 0 44px;
-  border: 1px solid var(--wn-border-strong);
-  border-radius: var(--wn-radius-md);
-  outline: none;
-  background: var(--wn-surface);
-  color: var(--wn-text);
-  font: var(--wn-weight-medium) 15px/1 var(--wn-font-ui);
-  caret-color: var(--wn-primary);
-  transition:
-    border-color 160ms ease,
-    box-shadow 160ms ease;
-}
-
-.wn-friends-search__field input::placeholder {
-  color: var(--wn-text-muted);
-  opacity: 1;
-}
-
-.wn-friends-search__field input:focus {
-  border-color: var(--wn-primary);
-  box-shadow: 0 0 0 3px rgb(122 82 244 / 18%);
-}
-
-.wn-friends-search .wn-btn {
-  min-height: 48px;
-  padding: 0 22px;
-  font-size: 15px;
-}
-
-/* Search results: compact rows with the existing request actions (PR 199/209). */
-.wn-friends-results {
-  display: flex;
-  flex-direction: column;
-  gap: 12px;
-}
-
-.wn-friends-section-title {
-  margin: 0;
-  color: var(--wn-text);
-  font: var(--wn-weight-bold) 18px/1.2 var(--wn-font-ui);
-}
-
-.wn-friends-results__list {
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(min(100%, 360px), 1fr));
-  gap: 12px;
-}
-
-.wn-friends-result {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 12px;
-  padding: 14px var(--wn-space-2);
-  border: 1px solid var(--wn-border);
-  border-radius: var(--wn-radius-md);
-  background: var(--wn-surface);
-}
-
-.wn-friends-result__actions {
-  display: flex;
-  flex-wrap: wrap;
-  gap: var(--wn-space-1);
-}
-
-.wn-friends-result__actions .ui-btn {
-  min-height: 36px;
-  padding: 0 14px;
-  border: 1px solid var(--wn-border-strong);
-  border-radius: 10px;
-  background: rgb(255 255 255 / 4%);
-  color: var(--wn-text);
-  font: var(--wn-weight-bold) 13px/1 var(--wn-font-ui);
-  box-shadow: none;
-}
-
-.wn-friends-result__actions .ui-btn--quiet {
-  border-color: transparent;
-  background: transparent;
-  color: var(--wn-text-secondary);
-}
-
-.wn-friends-result__actions .ui-friend-row__state {
-  color: var(--wn-text-muted);
-  font: var(--wn-weight-semi-bold) 13px/1 var(--wn-font-ui);
-}
-
-/* Tabs with counts: teal underline and teal count on the current tab. */
-.wn-friends-tabs {
-  display: flex;
-  gap: 28px;
-  overflow-x: auto;
-  border-bottom: 1px solid #22202d;
-  scrollbar-width: none;
-}
-
-.wn-friends-tabs__link {
-  display: inline-flex;
-  flex: none;
-  align-items: center;
-  gap: var(--wn-space-1);
-  margin-bottom: -1px;
-  padding: 0 0 14px;
-  border-bottom: 2px solid transparent;
-  color: var(--wn-text-secondary);
-  font: var(--wn-weight-semi-bold) 16px/1 var(--wn-font-ui);
-  text-decoration: none;
-  white-space: nowrap;
-}
-
-@media (hover: hover) {
-  .wn-friends-tabs__link:hover {
-    color: var(--wn-text);
-  }
-}
-
-.wn-friends-tabs__link[aria-current="page"] {
-  border-bottom-color: var(--wn-teal);
-  color: #f2f0f7;
-  font-weight: var(--wn-weight-bold);
-}
-
-.wn-friends-tabs__link:focus-visible {
-  outline: none;
-  border-radius: 4px;
-  box-shadow: var(--wn-focus-ring);
-}
-
-.wn-friends-tabs__count {
-  padding: 3px 7px;
-  border-radius: 999px;
-  background: #1e1d29;
-  color: var(--wn-text-secondary);
-  font: var(--wn-weight-bold) 13px/1 var(--wn-font-ui);
-}
-
-.wn-friends-tabs__link[aria-current="page"] .wn-friends-tabs__count {
-  background: rgb(61 214 195 / 14%);
-  color: var(--wn-teal);
-}
-
-/* Layout: cards 8 columns (two per row), side 4. */
-.wn-friends__layout {
-  display: grid;
-  grid-template-columns: repeat(12, minmax(0, 1fr));
-  gap: var(--wn-space-3);
-  align-items: start;
-}
-
-.wn-friends__main {
-  grid-column: span 8;
-  display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  align-content: start;
-  gap: var(--wn-space-3);
-}
-
-.wn-friends__side {
-  grid-column: span 4;
-  display: flex;
-  flex-direction: column;
-  gap: var(--wn-space-3);
-}
-
-.wn-friends-avatar {
-  display: grid;
-  flex: none;
-  place-items: center;
-  width: 40px;
-  height: 40px;
-  overflow: hidden;
-  border-radius: 50%;
-  background: var(--wn-surface-raised);
-  color: var(--wn-text);
-  font: var(--wn-weight-bold) 13px/1 var(--wn-font-ui);
-}
-
-.wn-friends-avatar--lg {
-  width: 60px;
-  height: 60px;
-  font-size: 18px;
-}
-
-.wn-friends-avatar img {
-  width: 100%;
-  height: 100%;
-  object-fit: cover;
-}
-
-/* Friend / request card. */
-.wn-friend-card {
-  display: flex;
-  flex-direction: column;
-  gap: 18px;
-  min-width: 0;
-  padding: 20px;
-  border: 1px solid var(--wn-border);
-  border-radius: var(--wn-radius-lg);
-  background: var(--wn-surface);
-  transition: border-color 160ms ease;
-}
-
-@media (hover: hover) {
-  .wn-friend-card:hover {
-    border-color: #3a3650;
-  }
-}
-
-.wn-friend-card__head {
-  display: flex;
-  align-items: center;
-  gap: 14px;
-}
-
-/* «Ещё» is the mobile way into a friend's actions (PR 285, the bottom sheet) - hidden on
-   desktop, where they sit inline. */
-.wn-friend-card__more {
-  display: none;
-}
-
-.wn-friend-card__who {
-  display: flex;
-  flex: 1;
-  align-items: center;
-  gap: 14px;
-  min-width: 0;
-  border-radius: var(--wn-radius-sm);
-  text-decoration: none;
-}
-
-.wn-friend-card__who:focus-visible {
-  outline: none;
-  box-shadow: var(--wn-focus-ring);
-}
-
-.wn-friend-card__copy {
-  display: flex;
-  flex-direction: column;
-  gap: 6px;
-  min-width: 0;
-}
-
-.wn-friend-card__name {
-  overflow: hidden;
-  color: var(--wn-text);
-  font: var(--wn-weight-bold) 17px/1.1 var(--wn-font-ui);
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-@media (hover: hover) {
-  .wn-friend-card__who:hover .wn-friend-card__name {
-    color: #ffffff;
-  }
-}
-
-.wn-friend-card__sub {
-  color: var(--wn-text-muted);
-  font: var(--wn-weight-medium) 14px/1.2 var(--wn-font-ui);
-}
-
-.wn-friend-card__reading {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  padding: 14px;
-  border: 1px solid #1f1e2a;
-  border-radius: var(--wn-radius-md);
-  background: #17171f;
-}
-
-.wn-friend-card__cover {
-  display: block;
-  flex: none;
-  width: 36px;
-  height: 54px;
-  overflow: hidden;
-  border-radius: 6px;
-  background: var(--wn-surface-raised);
-}
-
-.wn-friend-card__cover img {
-  display: block;
-  width: 100%;
-  height: 100%;
-  object-fit: cover;
-  object-position: top;
-}
-
-.wn-friend-card__cover--empty {
-  border: 1px solid #2a2838;
-  background: repeating-linear-gradient(135deg, #1c1b27 0 6px, #211f2e 6px 12px);
-}
-
-.wn-friend-card__reading-copy {
-  display: flex;
-  flex-direction: column;
-  gap: 5px;
-  min-width: 0;
-}
-
-.wn-friend-card__eyebrow {
-  color: var(--wn-text-muted);
-  font: var(--wn-weight-semi-bold) 12px/1 var(--wn-font-ui);
-  letter-spacing: 0.06em;
-  text-transform: uppercase;
-}
-
-.wn-friend-card__title {
-  overflow: hidden;
-  color: var(--wn-text);
-  font: var(--wn-weight-semi-bold) 14px/1.3 var(--wn-font-ui);
-  text-decoration: none;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-.wn-friend-card__chapter {
-  color: var(--wn-text-secondary);
-  font: var(--wn-weight-medium) 14px/1.3 var(--wn-font-ui);
-}
-
-.wn-friend-card__actions {
-  display: flex;
-  gap: var(--wn-space-1);
-  margin-top: auto;
-}
-
-.wn-friend-card__actions form {
-  display: flex;
-}
-
-.wn-friend-card__actions > :first-child {
-  flex: 1;
-}
-
-.wn-friend-card__actions .wn-btn {
-  width: 100%;
-  min-height: 40px;
-  border-radius: 10px;
-}
-
-.wn-friends-secondary {
-  display: flex;
-  flex: 1;
-  align-items: center;
-  justify-content: center;
-  height: 40px;
-  border: 1px solid var(--wn-border-strong);
-  border-radius: 10px;
-  background: rgb(255 255 255 / 4%);
-  color: var(--wn-text);
-  font: var(--wn-weight-bold) 14px/1 var(--wn-font-ui);
-  text-decoration: none;
-  transition: background-color 160ms ease;
-}
-
-@media (hover: hover) {
-  .wn-friends-secondary:hover {
-    background: rgb(255 255 255 / 9%);
-    color: var(--wn-text);
-  }
-}
-
-.wn-friends-quiet {
-  appearance: none;
-  height: 40px;
-  padding: 0 14px;
-  border: 1px solid transparent;
-  border-radius: 10px;
-  background: transparent;
-  color: var(--wn-text-secondary);
-  font: var(--wn-weight-semi-bold) 14px/1 var(--wn-font-ui);
-  cursor: pointer;
-  transition:
-    background-color 160ms ease,
-    border-color 160ms ease,
-    color 160ms ease;
-}
-
-@media (hover: hover) {
-  .wn-friends-quiet:hover {
-    background: rgb(255 255 255 / 5%);
-    color: var(--wn-text);
-  }
-
-  .wn-friends-quiet--danger:hover {
-    border-color: rgb(242 104 122 / 30%);
-    background: rgb(242 104 122 / 6%);
-    color: #f2879a;
-  }
-}
-
-.wn-friends-secondary:focus-visible,
-.wn-friends-quiet:focus-visible,
-.wn-friends-mini:focus-visible,
-.wn-friends-invite__nick button:focus-visible {
-  outline: none;
-  box-shadow: var(--wn-focus-ring);
-}
-
-/* Invite card. */
-.wn-friends-invite {
-  display: flex;
-  flex-direction: column;
-  justify-content: center;
-  gap: 14px;
-  min-width: 0;
-  padding: var(--wn-space-3);
-  border: 1.5px dashed #2e2b40;
-  border-radius: var(--wn-radius-lg);
-}
-
-.wn-friends-invite__icon {
-  display: grid;
-  place-items: center;
-  width: 48px;
-  height: 48px;
-  border-radius: 14px;
-  background: rgb(61 214 195 / 10%);
-  color: var(--wn-teal);
-}
-
-.wn-friends-invite__icon svg {
-  width: 22px;
-  height: 22px;
-}
-
-.wn-friends-invite__title {
-  margin: 0;
-  color: var(--wn-text);
-  font: var(--wn-weight-bold) 17px/1.3 var(--wn-font-ui);
-}
-
-.wn-friends-invite__nick {
-  display: flex;
-  align-items: center;
-  gap: var(--wn-space-1);
-  height: 44px;
-  padding: 0 6px 0 14px;
-  border: 1px solid #2a2838;
-  border-radius: 10px;
-  background: var(--wn-surface);
-}
-
-.wn-friends-invite__nick span {
-  flex: 1;
-  overflow: hidden;
-  color: var(--wn-text);
-  font: var(--wn-type-technical);
-  font-size: 14px;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-.wn-friends-invite__nick button {
-  appearance: none;
-  height: 32px;
-  padding: 0 12px;
-  border: 0;
-  border-radius: var(--wn-radius-sm);
-  background: #232230;
-  color: var(--wn-text);
-  font: var(--wn-weight-bold) 13px/1 var(--wn-font-ui);
-  cursor: pointer;
-}
-
-@media (hover: hover) {
-  .wn-friends-invite__nick button:hover {
-    background: #2c2a3b;
-  }
-}
-
-/* Empty states. */
-.wn-friends-empty {
-  grid-column: 1 / -1;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 10px;
-  padding: var(--wn-space-5) var(--wn-space-3);
-  border: 1px solid var(--wn-border);
-  border-radius: var(--wn-radius-lg);
-  background: var(--wn-surface);
-  text-align: center;
-}
-
-.wn-friends-empty--compact {
-  padding: var(--wn-space-3) var(--wn-space-1);
-  border: 0;
-  background: transparent;
-}
-
-.wn-friends-empty__icon {
-  color: #5e5a70;
-}
-
-.wn-friends-empty__icon svg {
-  width: 28px;
-  height: 28px;
-}
-
-.wn-friends-empty b {
-  color: #cfcbdd;
-  font: var(--wn-weight-bold) 15px/1.2 var(--wn-font-ui);
-}
-
-.wn-friends-empty > span:last-child {
-  max-width: 420px;
-  color: var(--wn-text-muted);
-  font: var(--wn-weight-medium) 14px/1.45 var(--wn-font-ui);
-}
-
-/* Side cards. */
-.wn-friends-card {
-  display: flex;
-  flex-direction: column;
-  gap: 14px;
-  padding: 22px 24px;
-  border: 1px solid var(--wn-border);
-  border-radius: var(--wn-radius-lg);
-  background: var(--wn-surface);
-}
-
-.wn-friends-card__head {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: var(--wn-space-1);
-}
-
-.wn-friends-card__title {
-  margin: 0;
-  color: var(--wn-text);
-  font: var(--wn-weight-bold) 18px/1 var(--wn-font-ui);
-}
-
-.wn-friends-card__aside {
-  margin-left: auto;
-  color: var(--wn-text-muted);
-  font: var(--wn-weight-semi-bold) 13px/1 var(--wn-font-ui);
-}
-
-.wn-friends-card__aside a {
-  font-size: 13px;
-}
-
-.wn-friends-requests {
-  display: flex;
-  flex-direction: column;
-  margin: 0;
-  padding: 0;
-  list-style: none;
-}
-
-.wn-friends-request {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: 10px 12px;
-  padding: 12px 0;
-  border-top: 1px solid #1e1d29;
-}
-
-.wn-friends-request:first-child {
-  border-top: 0;
-  padding-top: 0;
-}
-
-/* A minimum width, so on a narrow card the buttons wrap below the name instead of
-   squeezing it into an ellipsis. */
-.wn-friends-request .wn-friend-card__who {
-  flex: 1 1 180px;
-  gap: 12px;
-}
-
-.wn-friends-request .wn-friend-card__name {
-  font-size: 15px;
-}
-
-.wn-friends-request .wn-friend-card__sub {
-  font-size: 13px;
-}
-
-.wn-friends-request__actions {
-  display: flex;
-  gap: 6px;
-}
-
-.wn-friends-mini {
-  appearance: none;
-  height: 32px;
-  padding: 0 12px;
-  border: 1px solid var(--wn-border-strong);
-  border-radius: var(--wn-radius-sm);
-  background: transparent;
-  color: var(--wn-text-secondary);
-  font: var(--wn-weight-bold) 13px/1 var(--wn-font-ui);
-  cursor: pointer;
-}
-
-.wn-friends-mini--accept {
-  border-color: transparent;
-  background: rgb(61 214 195 / 14%);
-  color: var(--wn-teal);
-}
-
-@media (hover: hover) {
-  .wn-friends-mini:hover {
-    color: var(--wn-text);
-  }
-
-  .wn-friends-mini--accept:hover {
-    background: rgb(61 214 195 / 22%);
-    color: var(--wn-teal);
-  }
-}
-
-.wn-friends-privacy {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: var(--wn-space-2);
-}
-
-.wn-friends-privacy__label {
-  color: var(--wn-text-secondary);
-  font: var(--wn-weight-medium) 14px/1.45 var(--wn-font-ui);
-}
-
 /* Switch: teal when on, as in the design. A submit button, so it works without JS. */
 .wn-switch {
   appearance: none;
@@ -14645,318 +13873,7 @@ body.reader-hud-visible .reader-hud {
   }
 }
 
-@media (max-width: 1199px) {
-  .wn-friends-search {
-    width: 100%;
-  }
-
-  .wn-friends__main,
-  .wn-friends__side {
-    grid-column: 1 / -1;
-  }
-
-  .wn-friends__side {
-    display: grid;
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-    align-items: start;
-  }
-}
-
 @media (max-width: 767px) {
-  .wn-friends__head {
-    gap: var(--wn-space-2);
-  }
-
-  .wn-friends__title {
-    font-size: 28px;
-    line-height: 1.15;
-  }
-
-  /* PR 285 (Webnovells Mobile -> Друзья): «Искать» drops under the field when the two
-     don't fit side by side, without a breakpoint. */
-  .wn-friends-search {
-    flex-wrap: wrap;
-    gap: var(--wn-space-1);
-  }
-
-  .wn-friends-search__field {
-    flex: 1 1 200px;
-    min-width: 0;
-  }
-
-  .wn-friends-search .wn-btn {
-    flex: 1 0 auto;
-    min-width: 112px;
-    padding: 0 18px;
-  }
-
-  /* A search result is a card: who on top, the request actions as a wrapping row of
-     44px buttons under it. */
-  .wn-friends-result {
-    flex-direction: column;
-    align-items: stretch;
-    padding: 14px;
-    border-color: var(--wn-border-strong);
-    border-radius: var(--wn-radius-lg);
-  }
-
-  .wn-friends-result .wn-friend-card__name {
-    font-size: 15px;
-    line-height: 1.3;
-    white-space: normal;
-    overflow-wrap: anywhere;
-  }
-
-  .wn-friends-result__actions form {
-    display: flex;
-    flex: 1 1 140px;
-  }
-
-  .wn-friends-result__actions .ui-btn {
-    width: 100%;
-    min-height: 44px;
-    border-radius: var(--wn-radius-md);
-    font-size: 15px;
-  }
-
-  /* Tabs: a touch ribbon of separate 44px pills, edge to edge across the page gutters,
-     fading where more tabs hide (ribbon.js, PR 282). */
-  .wn-friends-tabs {
-    position: relative;
-    gap: 6px;
-    margin: 0 calc(-1 * var(--wn-space-2));
-    padding: 2px var(--wn-space-2);
-    border-bottom: 0;
-    overscroll-behavior-x: contain;
-  }
-
-  .wn-friends-tabs::-webkit-scrollbar {
-    display: none;
-  }
-
-  .wn-friends-tabs__link {
-    min-height: 44px;
-    margin-bottom: 0;
-    padding: 0 16px;
-    border: 1px solid var(--wn-border);
-    border-radius: var(--wn-radius-md);
-    font: var(--wn-weight-bold) 15px/1 var(--wn-font-ui);
-  }
-
-  .wn-friends-tabs__link[aria-current="page"] {
-    border-color: #3a3650;
-    background: #22212e;
-  }
-
-  .wn-friends-tabs__count,
-  .wn-friends-tabs__link[aria-current="page"] .wn-friends-tabs__count {
-    padding: 0;
-    background: none;
-    font: var(--wn-weight-extra-bold) 13px/1 var(--wn-font-ui);
-  }
-
-  .wn-friends-tabs__count {
-    color: var(--wn-text-muted);
-  }
-
-  /* PR 285: one column of cards - friends, requests, the invite card - and the side
-     cards under them. */
-  .wn-friends__main,
-  .wn-friends__side {
-    grid-template-columns: minmax(0, 1fr);
-    gap: var(--wn-space-2);
-  }
-
-  .wn-friends__layout {
-    gap: var(--wn-space-3);
-  }
-
-  .wn-friend-card {
-    gap: 12px;
-    padding: 14px;
-  }
-
-  .wn-friend-card__head,
-  .wn-friend-card__who {
-    gap: 12px;
-  }
-
-  .wn-friends-avatar--lg {
-    width: 52px;
-    height: 52px;
-    font-size: 17px;
-  }
-
-  .wn-friend-card__copy {
-    gap: 4px;
-  }
-
-  /* No single-line ellipsis for a nickname or a title - they wrap. */
-  .wn-friend-card__name,
-  .wn-friend-card__title {
-    white-space: normal;
-    overflow-wrap: anywhere;
-  }
-
-  .wn-friend-card__name {
-    font-size: 16px;
-    line-height: 1.25;
-  }
-
-  .wn-friend-card__sub {
-    font-size: 13px;
-    line-height: 1.3;
-  }
-
-  .wn-friend-card__reading {
-    padding: 12px;
-  }
-
-  .wn-friend-card__cover {
-    width: 32px;
-    height: 48px;
-    border-radius: 5px;
-  }
-
-  .wn-friend-card__eyebrow {
-    font: var(--wn-weight-bold) 11px/1 var(--wn-font-ui);
-    letter-spacing: 0.08em;
-  }
-
-  .wn-friend-card__actions {
-    flex-wrap: wrap;
-  }
-
-  /* «Удалить» moves behind «Ещё» (the bottom sheet), leaving «Профиль» full width. */
-  .wn-friend-card__more {
-    display: flex;
-    flex: none;
-    align-items: center;
-    justify-content: center;
-    width: 44px;
-    height: 44px;
-    padding: 0;
-    border: 0;
-    border-radius: 10px;
-    background: transparent;
-    color: var(--wn-text-secondary);
-    cursor: pointer;
-  }
-
-  .wn-friend-card__more:active {
-    background: #232230;
-  }
-
-  .wn-friend-card__more:focus-visible {
-    outline: none;
-    box-shadow: var(--wn-focus-ring);
-  }
-
-  .wn-friend-card__actions .wn-friend-card__remove {
-    display: none;
-  }
-
-  .wn-friend-card__actions > *,
-  .wn-friend-card__actions > :first-child {
-    flex: 1 1 120px;
-  }
-
-  :is(.wn-friend-card__actions, .wn-friends-request__actions)
-    :is(.wn-btn, .wn-friends-secondary, .wn-friends-quiet, .wn-friends-mini) {
-    width: 100%;
-    height: auto;
-    min-height: 44px;
-    border-radius: var(--wn-radius-md);
-    font-size: 15px;
-  }
-
-  .wn-friends-quiet {
-    border-color: var(--wn-border-strong);
-    color: #cfcbdd;
-  }
-
-  /* Invite: the nickname and «Копировать» wrap under each other when narrow. */
-  .wn-friends-invite {
-    gap: 12px;
-    padding: var(--wn-space-2);
-  }
-
-  .wn-friends-invite__icon {
-    display: none;
-  }
-
-  .wn-friends-invite__nick {
-    flex-wrap: wrap;
-    height: auto;
-    padding: 4px 4px 4px 14px;
-    border-radius: var(--wn-radius-md);
-  }
-
-  .wn-friends-invite__nick span {
-    flex: 1 1 120px;
-    min-width: 0;
-    line-height: 1.4;
-    white-space: normal;
-    overflow-wrap: anywhere;
-  }
-
-  .wn-friends-invite__nick button {
-    min-height: 44px;
-    padding: 0 14px;
-    border-radius: 10px;
-    font-size: 14px;
-  }
-
-  .wn-friends-card {
-    padding: 18px var(--wn-space-2);
-  }
-
-  /* «Заявки» repeats the Входящие / Исходящие tabs right above it - the mobile design
-     leaves it out; the tabs carry the same requests and actions. */
-  .wn-friends-card--requests {
-    display: none;
-  }
-
-  /* Empty tabs (no requests in or out): the design's dashed note - a bold line and a
-     short hint, no icon. */
-  .wn-friends-empty {
-    gap: var(--wn-space-1);
-    padding: 28px var(--wn-space-2);
-    border: 1.5px dashed #2e2b40;
-    background: transparent;
-  }
-
-  .wn-friends-empty__icon {
-    display: none;
-  }
-
-  .wn-friends-empty b {
-    color: var(--wn-text);
-    font-size: 16px;
-    line-height: 1.3;
-  }
-
-  .wn-friends-empty > span:last-child {
-    max-width: 320px;
-    color: var(--wn-text-secondary);
-    line-height: 1.5;
-  }
-
-  .wn-friends-request .wn-friend-card__name {
-    white-space: normal;
-    overflow-wrap: anywhere;
-  }
-
-  .wn-friends-request__actions {
-    flex: 1 1 100%;
-    flex-wrap: wrap;
-    gap: var(--wn-space-1);
-  }
-
-  .wn-friends-request__actions form {
-    display: flex;
-    flex: 1 1 120px;
-  }
 
   /* The privacy switch is a 44px target; its row wraps the long label. */
   .wn-switch {
@@ -14980,14 +13897,6 @@ body.reader-hud-visible .reader-hud {
     transform: translateX(18px);
   }
 
-  .wn-friends-privacy {
-    min-height: 52px;
-  }
-
-  .wn-friends-privacy__label {
-    color: var(--wn-text);
-    font-size: 15px;
-  }
 }
 
 /* ==========================================================================
@@ -17033,8 +15942,7 @@ body.reader-hud-visible .reader-hud {
   /* The 640px content column with 16px gutters, for every Webnovells screen. */
   .wn-home,
   .wn-library,
-  .wn-downloads,
-  .wn-friends {
+  .wn-downloads {
     width: 100%;
     max-width: 640px;
     margin-inline: auto;
@@ -32114,6 +31022,745 @@ p.ac-card.ac-empty {
   .st-rules__item,
   .st-rules__item::before,
   .st-preview--chapter .reader-settings-preview {
+    transition: none;
+  }
+}
+
+/* ==========================================================================
+   «Друзья» drawn as the home page, «Активность» and the profile: the cover of a
+   friend's book glowing behind the page, the title row with the count and what needs an
+   answer, the nickname search in glass. The active list is one dark card of rows - who,
+   since when, the book they read with its chapter and progress (teal, as everywhere on
+   the site) - beside «Заявки», the nickname to share and «Приватность». One column
+   below 1100px, the queue first; on phones a friend's actions move behind «Ещё».
+   ========================================================================== */
+.hm.fr {
+  --fr-card: #0d0d13;
+  gap: 32px;
+}
+
+.fr-head__title {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  min-width: 0;
+}
+
+.fr-head__line {
+  display: flex;
+  align-items: baseline;
+  gap: 14px;
+}
+
+.fr-head__count,
+.fr-block-count {
+  color: var(--wn-text-muted);
+  font: 700 17px/1 var(--wn-font-ui);
+}
+
+.fr-block-count {
+  font-size: 15px;
+}
+
+.fr-finding {
+  margin: 0;
+  color: var(--wn-text-secondary);
+  font: 500 15px/1.45 var(--wn-font-ui);
+}
+
+.fr-finding a {
+  color: inherit;
+  text-decoration: none;
+}
+
+.fr-finding b {
+  color: #fff;
+  font-weight: 700;
+}
+
+@media (hover: hover) {
+  .fr-finding a:hover b {
+    text-decoration: underline;
+    text-underline-offset: 3px;
+  }
+}
+
+.fr-search {
+  width: 380px;
+}
+
+/* --- The layout: the list on the left, the queue and the side on the right. --- */
+.fr-layout {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 380px;
+  grid-template-areas:
+    "main queue"
+    "main side";
+  grid-template-rows: auto 1fr;
+  align-items: start;
+  gap: 32px 28px;
+}
+
+.fr-layout:not(:has(.fr-queue)) {
+  grid-template-areas: "main side";
+  grid-template-rows: auto;
+}
+
+.fr-main {
+  grid-area: main;
+}
+
+.fr-queue {
+  grid-area: queue;
+}
+
+.fr-side {
+  grid-area: side;
+  gap: 20px;
+}
+
+.fr-side-block {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+/* --- Tabs: a glass track, the current list a raised pill. --- */
+.fr-tabs {
+  position: relative;
+  display: flex;
+  align-self: flex-start;
+  gap: 2px;
+  max-width: 100%;
+  padding: 4px;
+  overflow-x: auto;
+  border: 1px solid var(--hm-glass-edge);
+  border-radius: 999px;
+  background: var(--hm-glass);
+  scrollbar-width: none;
+}
+
+.fr-tabs::-webkit-scrollbar {
+  display: none;
+}
+
+.fr-tabs__link {
+  display: inline-flex;
+  flex: none;
+  align-items: center;
+  gap: 8px;
+  min-height: 38px;
+  padding: 0 16px;
+  border-radius: 999px;
+  color: var(--wn-text-secondary);
+  font: 700 14px/1 var(--wn-font-ui);
+  text-decoration: none;
+  transition: background-color 0.15s ease, color 0.15s ease;
+}
+
+.fr-tabs__count {
+  color: var(--wn-text-muted);
+  font-weight: 600;
+}
+
+.fr-tabs__link[aria-current="page"] {
+  background: var(--hm-glass-raised);
+  color: #fff;
+}
+
+.fr-tabs__link[aria-current="page"] .fr-tabs__count {
+  color: rgb(255 255 255 / 72%);
+}
+
+@media (hover: hover) {
+  .fr-tabs__link:not([aria-current]):hover {
+    color: #fff;
+  }
+}
+
+.fr-tabs__link:focus-visible {
+  outline: none;
+  box-shadow: var(--wn-focus-ring);
+}
+
+/* --- One card of rows. --- */
+.fr .ac-card {
+  margin: 0;
+  border: 1px solid var(--hm-glass-edge);
+  border-radius: 24px;
+  background: var(--fr-card);
+}
+
+.fr-list {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  margin: 0;
+  padding: 8px;
+  list-style: none;
+}
+
+.fr-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 12px 20px;
+  min-height: 76px;
+  padding: 12px 14px;
+  border-radius: 18px;
+  transition: background-color 0.15s ease;
+}
+
+.fr-row--friend {
+  grid-template-columns: minmax(0, 0.85fr) minmax(0, 1.15fr) auto;
+}
+
+@media (hover: hover) {
+  .fr-row:hover {
+    background: rgb(255 255 255 / 3.5%);
+  }
+}
+
+.fr-person {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  min-width: 0;
+}
+
+.fr-avatar {
+  display: grid;
+  flex: none;
+  place-items: center;
+  width: 48px;
+  height: 48px;
+  overflow: hidden;
+  border-radius: 50%;
+  background: var(--wn-surface-raised);
+  color: var(--wn-text-secondary);
+  font: 800 15px/1 var(--wn-font-ui);
+  text-decoration: none;
+}
+
+.fr-avatar img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.fr-person__copy {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  min-width: 0;
+}
+
+.fr-person__name {
+  overflow: hidden;
+  color: #fff;
+  font: 800 15px/1.3 var(--wn-font-ui);
+  text-decoration: none;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.fr-person__sub {
+  overflow: hidden;
+  color: var(--wn-text-muted);
+  font: 600 13px/1.3 var(--wn-font-ui);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+@media (hover: hover) {
+  .fr-person__name:hover {
+    text-decoration: underline;
+    text-decoration-color: var(--wn-border-strong);
+    text-underline-offset: 3px;
+  }
+}
+
+.fr-person__name:focus-visible,
+.fr-book:focus-visible {
+  outline: none;
+  border-radius: 6px;
+  box-shadow: var(--wn-focus-ring);
+}
+
+/* The book a friend reads: its cover with the progress line, the name, where they are. */
+.fr-book {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  min-width: 0;
+  padding: 6px 14px 6px 6px;
+  border-radius: 14px;
+  background: rgb(255 255 255 / 4%);
+  color: inherit;
+  text-decoration: none;
+  transition: background-color 0.15s ease;
+}
+
+@media (hover: hover) {
+  .fr-book:not(.fr-book--none):hover {
+    background: rgb(255 255 255 / 8%);
+  }
+
+  .fr-book:hover .hm-cover img {
+    transform: scale(1.06);
+  }
+}
+
+.fr-book__cover {
+  width: 40px;
+  border-radius: 8px;
+}
+
+.fr-book__cover .hm-cover__bar {
+  height: 3px;
+}
+
+.fr-book__letter {
+  display: grid;
+  place-items: center;
+  height: 100%;
+  color: var(--wn-text-muted);
+  font: 800 16px/1 var(--wn-font-ui);
+}
+
+.fr-book__copy {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  min-width: 0;
+}
+
+.fr-book__name {
+  overflow: hidden;
+  color: #fff;
+  font: 700 14px/1.3 var(--wn-font-ui);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.fr-book__meta {
+  color: rgb(255 255 255 / 62%);
+  font: 600 12.5px/1.3 var(--wn-font-ui);
+}
+
+.fr-book__pct {
+  color: var(--wn-teal);
+}
+
+.fr-book--none {
+  min-height: 72px;
+  padding-left: 16px;
+  background: none;
+  color: var(--wn-text-muted);
+  font: 500 14px/1.4 var(--wn-font-ui);
+}
+
+/* --- Buttons: a glass pill; the one primary of a row is the light pill. --- */
+.fr-btn,
+.fr-result__actions .ui-btn {
+  appearance: none;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  height: 38px;
+  padding: 0 18px;
+  border: 0;
+  border-radius: 999px;
+  background: var(--hm-glass-raised);
+  color: var(--wn-text);
+  font: 700 14px/1 var(--wn-font-ui);
+  white-space: nowrap;
+  cursor: pointer;
+  box-shadow: none;
+  transition: background-color 0.15s ease, color 0.15s ease, transform 0.12s ease;
+}
+
+.fr-btn--primary,
+.fr-result__actions .ui-btn:not(.ui-btn--quiet) {
+  background: #eeecf4;
+  color: #0c0c12;
+  font-weight: 800;
+}
+
+.fr-btn--quiet {
+  background: transparent;
+  color: var(--wn-text-muted);
+}
+
+@media (hover: hover) {
+  .fr-btn:hover,
+  .fr-result__actions .ui-btn--quiet:hover {
+    background: rgb(255 255 255 / 15%);
+  }
+
+  .fr-btn--primary:hover,
+  .fr-result__actions .ui-btn:not(.ui-btn--quiet):hover {
+    background: #fff;
+  }
+
+  .fr-btn--quiet:hover {
+    background: rgb(242 104 122 / 12%);
+    color: var(--wn-danger);
+  }
+}
+
+.fr-btn:active,
+.fr-result__actions .ui-btn:active {
+  transform: scale(0.97);
+}
+
+.fr-btn:focus-visible,
+.fr-result__actions .ui-btn:focus-visible,
+.fr-row__more:focus-visible {
+  outline: none;
+  box-shadow: var(--wn-focus-ring);
+}
+
+.fr-row__actions {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 8px;
+}
+
+.fr-row__actions form,
+.fr-row__remove {
+  margin: 0;
+}
+
+/* «Удалить» comes up with the row it removes - nine of them at rest read as a column
+   of warnings. */
+@media (hover: hover) {
+  .fr-row__remove {
+    opacity: 0;
+    transition: opacity 0.15s ease;
+  }
+
+  .fr-row:hover .fr-row__remove,
+  .fr-row:focus-within .fr-row__remove {
+    opacity: 1;
+  }
+}
+
+.fr-result__actions .ui-friend-row__state {
+  padding: 0 8px;
+  color: var(--wn-text-muted);
+  font: 600 13px/1 var(--wn-font-ui);
+}
+
+/* «Ещё» is the phones' way to a friend's actions. */
+.fr-row__more {
+  display: none;
+  place-items: center;
+  width: 44px;
+  height: 44px;
+  border: 0;
+  border-radius: 50%;
+  background: transparent;
+  color: var(--wn-text-secondary);
+  cursor: pointer;
+}
+
+.fr-row__more:active {
+  background: var(--hm-glass-raised);
+}
+
+/* --- The queue: requests stacked, their actions under the name. --- */
+.fr-list--compact .fr-row--request {
+  grid-template-columns: minmax(0, 1fr);
+  gap: 10px;
+  padding: 14px;
+}
+
+.fr-list--compact .fr-row__actions {
+  justify-content: flex-start;
+  padding-left: 62px;
+}
+
+/* «Хочет добавить вас в друзья · 1 ноября 2026» wraps in the narrow queue, not cut. */
+.fr-list--compact .fr-person__sub {
+  white-space: normal;
+}
+
+/* --- Empty states keep the card. --- */
+.fr-empty {
+  margin: 0;
+  padding: 22px 24px;
+  color: var(--wn-text-secondary);
+  font: 500 15px/1.5 var(--wn-font-ui);
+}
+
+.fr-empty b {
+  color: #fff;
+  font-weight: 700;
+}
+
+/* --- The side: the nickname to share, the one privacy switch of this page. --- */
+.fr-side-card {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 14px;
+  padding: 22px 24px 24px;
+}
+
+.fr-invite {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  width: 100%;
+}
+
+.fr-note {
+  margin: 0;
+  color: var(--wn-text-secondary);
+  font: 500 14px/1.5 var(--wn-font-ui);
+}
+
+.fr-invite__nick {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-top: 6px;
+  padding: 8px 8px 8px 18px;
+  border-radius: 999px;
+  background: rgb(255 255 255 / 5%);
+}
+
+.fr-invite__value {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  color: #fff;
+  font: 800 16px/1.3 var(--wn-font-ui);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.fr-first {
+  padding: 28px;
+}
+
+.fr-first .fr-invite {
+  max-width: 520px;
+}
+
+.fr-privacy {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  width: 100%;
+  margin: 0;
+}
+
+.fr-privacy__copy {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  min-width: 0;
+}
+
+.fr-privacy__title {
+  color: var(--wn-text);
+  font: 600 15px/1.35 var(--wn-font-ui);
+}
+
+.fr-privacy .fr-note {
+  font-size: 13px;
+}
+
+.fr .wn-switch[aria-checked="true"] {
+  background: #1d8c80;
+}
+
+/* Search results: above the list, as wide as it - the queue stays beside them. */
+.fr-results {
+  grid-area: results;
+}
+
+.fr-layout:has(.fr-results) {
+  grid-template-areas:
+    "results queue"
+    "main queue"
+    "main side";
+  grid-template-rows: auto auto 1fr;
+}
+
+.fr-layout:has(.fr-results):not(:has(.fr-queue)) {
+  grid-template-areas:
+    "results side"
+    "main side";
+  grid-template-rows: auto 1fr;
+}
+
+/* --- Tablet: one column, the queue first, the side cards side by side. --- */
+@media (max-width: 1100px) {
+  .fr-list--compact .fr-row--request {
+    grid-template-columns: minmax(0, 1fr) auto;
+  }
+
+  .fr-list--compact .fr-row__actions {
+    justify-content: flex-end;
+    padding-left: 0;
+  }
+
+  .fr-search {
+    width: 100%;
+  }
+
+  /* One column: what was searched, the requests to answer, the list; an empty queue
+     goes under the list, where it does not push the friends down. */
+  .fr-layout {
+    display: flex;
+    flex-direction: column;
+    gap: 32px;
+  }
+
+  .fr-results {
+    order: 1;
+  }
+
+  .fr-queue {
+    order: 2;
+  }
+
+  .fr-main {
+    order: 3;
+  }
+
+  .fr-queue--empty {
+    order: 4;
+  }
+
+  .fr-side {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+    align-items: start;
+    order: 5;
+  }
+}
+
+/* --- Phones: a friend is two lines - who, then the book; «Ещё» holds the actions. --- */
+@media (max-width: 767px) {
+  .hm.fr {
+    gap: 28px;
+  }
+
+  .fr-tabs {
+    align-self: stretch;
+  }
+
+  .fr-tabs__link {
+    flex: 1 0 auto;
+    justify-content: center;
+    min-height: 40px;
+    padding: 0 14px;
+  }
+
+  .fr-list {
+    padding: 6px;
+  }
+
+  .fr-row,
+  .fr-row--friend {
+    grid-template-columns: minmax(0, 1fr) 44px;
+    gap: 10px;
+    padding: 12px 10px;
+  }
+
+  .fr-row--friend .fr-book {
+    grid-column: 1 / -1;
+  }
+
+  .fr-row--friend .fr-book--none {
+    min-height: 0;
+    padding: 0 0 0 62px;
+  }
+
+  .fr-row .fr-row__remove {
+    display: none;
+  }
+
+  .fr-row__more {
+    display: grid;
+    grid-column: 2;
+    grid-row: 1;
+  }
+
+  .fr-person__name,
+  .fr-book__name {
+    white-space: normal;
+    overflow-wrap: anywhere;
+  }
+
+  /* A request or a search result: who on top, the actions a row of 44px pills. */
+  .fr-row--request,
+  .fr-row--result,
+  .fr-list--compact .fr-row--request {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .fr-row--request .fr-row__actions,
+  .fr-row--result .fr-row__actions,
+  .fr-list--compact .fr-row__actions {
+    flex-wrap: wrap;
+    justify-content: stretch;
+    padding-left: 0;
+  }
+
+  .fr-row__actions form {
+    display: flex;
+    flex: 1 1 120px;
+  }
+
+  .fr-btn,
+  .fr-result__actions .ui-btn {
+    flex: 1;
+    height: 44px;
+  }
+
+  .fr-invite__nick {
+    flex-wrap: wrap;
+    padding: 12px;
+    border-radius: 20px;
+  }
+
+  .fr-invite__value {
+    flex-basis: 100%;
+    padding-left: 6px;
+    white-space: normal;
+    overflow-wrap: anywhere;
+  }
+
+  /* The 26px switch keeps a 44px hit area. */
+  .fr .wn-switch {
+    position: relative;
+    flex: none;
+  }
+
+  .fr .wn-switch::before {
+    content: "";
+    position: absolute;
+    inset: -9px 0;
+  }
+
+  .fr-first {
+    padding: 22px 18px;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .fr-tabs__link,
+  .fr-row,
+  .fr-book,
+  .fr-btn,
+  .fr-result__actions .ui-btn {
     transition: none;
   }
 }
