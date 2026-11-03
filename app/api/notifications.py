@@ -78,14 +78,21 @@ async def show_notifications(
     page: Annotated[int, Query(ge=1)] = 1,
 ) -> HTMLResponse:
     notifications, has_next_page = await list_notifications_page(conn, user.id, page, PAGE_SIZE)
+    groups = _group(notifications)
+    # The title row: how many are unread in all (not just on this page - notifications-
+    # page.js keeps it current from "notifications:unreadchange") and the latest one.
+    shown = [n for group in groups for n in group["notifications"]]
+    latest = max(shown, key=lambda n: n["created_at"], default=None) if page == 1 else None
     return templates.TemplateResponse(
         request,
         "notifications.html",
         {
             "active_nav": "notifications",
-            "groups": _group(notifications),
+            "groups": groups,
             "page": page,
             "has_next_page": has_next_page,
+            "unread_count": await count_unread_notifications(conn, user.id),
+            "latest": latest,
         },
     )
 
