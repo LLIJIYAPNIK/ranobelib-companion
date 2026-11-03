@@ -143,7 +143,8 @@ def test_sheet_apply_stays_on_the_sheet_floor() -> None:
     foot = re.search(r"\n\.catalog-sheet__foot \{([^}]*)\}", CSS)
     assert foot
     assert "position: sticky;" in foot[1]
-    assert "background: #16161f;" in foot[1]
+    # The sheet's own ground, so the groups scroll out of sight under it.
+    assert "background: var(--sheet-bg, #0d0d13);" in foot[1]
 
 
 def test_feed_states_follow_the_phone_mockup() -> None:
