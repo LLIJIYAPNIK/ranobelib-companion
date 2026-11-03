@@ -21,7 +21,7 @@ def test_toggle_keeps_one_fixed_coordinate_in_both_desktop_states() -> None:
     for declaration in ("left: 20px;", "bottom: 14px;", "height: 40px;"):
         assert declaration in compact
         assert declaration in expanded
-    assert 'grid-template-areas: "brand" "sep" "nav" "." "account";' in CSS
+    assert 'grid-template-areas: "brand" "sep" "nav" "." "account" "me";' in CSS
     assert "brand toggle" not in CSS
 
 
@@ -98,4 +98,6 @@ def test_mobile_navigation_contract_is_still_isolated_below_767px() -> None:
     assert ".sidebar__toggle" in mobile
     assert "display: none;" in mobile
     assert "env(safe-area-inset-bottom" in mobile
-    assert "html.keyboard-open .sidebar__nav" in CSS
+    # Phones: the <nav> is a drawer from the left, not a bottom bar.
+    assert "left: calc(-1 * var(--drawer-width) - 32px);" in mobile
+    assert "html.keyboard-open .sidebar__nav" not in CSS

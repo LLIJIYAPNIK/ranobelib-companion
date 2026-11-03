@@ -48,30 +48,53 @@ def test_sidebar_applies_saved_expanded_state_synchronously_before_first_paint()
     response = client.get("/")
 
     assert response.status_code == 200
-    nav_start = response.text.index('<nav class="sidebar" data-role="sidebar"')
+    nav_start = response.text.index('<nav class="sidebar" id="site-nav" data-role="sidebar"')
     toggle_start = response.text.index('data-role="sidebar-toggle"')
     inline_script = response.text[nav_start:toggle_start]
     assert "<script src=" in inline_script
     assert "static/js/sidebar-expand-init.js" in inline_script
 
 
-def test_sidebar_main_list_is_home_library_downloads_only() -> None:
-    # PR 249 (Aurora Ink): Активность/Друзья/Настройки moved into the Account hub, so the
-    # main list - desktop rail and mobile Quiet Edge Bar alike - is just these three.
+def test_guest_main_list_is_home_library_downloads_only() -> None:
+    # A guest has no activity or friends of their own; Настройки is in the foot
+    # (.sidebar__me), the bell in .sidebar__account - neither in the main list.
     response = client.get("/")
 
     assert response.status_code == 200
-    nav = response.text[response.text.index('class="sidebar__nav"') : response.text.index(
-        'class="sidebar__account"'
-    )]
+    nav = response.text[
+        response.text.index('class="sidebar__nav"') : response.text.index(
+            'class="sidebar__account"'
+        )
+    ]
     for label in ("Главная", "Библиотека", "Загрузки"):
         assert f'<span class="sidebar__label">{label}</span>' in nav
     for label in ("Активность", "Друзья", "Настройки", "Уведомления"):
         assert label not in nav
 
 
-def test_guest_quiet_edge_bar_shows_catalog_and_hides_downloads_on_mobile() -> None:
-    # Quiet Edge Bar for a guest is «Главная · Каталог»: the library link carries a
+def test_signed_in_main_list_holds_every_section(logged_in_client: TestClient) -> None:
+    # Активность and Друзья came out of the account menu into the main list.
+    response = logged_in_client.get("/")
+
+    nav = response.text[
+        response.text.index('class="sidebar__nav"') : response.text.index(
+            'class="sidebar__account"'
+        )
+    ]
+    for href, label in (
+        ("/", "Главная"),
+        ("/library", "Библиотека"),
+        ("/downloads", "Загрузки"),
+        ("/activity", "Активность"),
+        ("/friends", "Друзья"),
+    ):
+        assert f'href="{href}"' in nav
+        assert f'<span class="sidebar__label">{label}</span>' in nav
+    assert "Настройки" not in nav and "Уведомления" not in nav
+
+
+def test_guest_drawer_shows_catalog_and_hides_downloads_on_mobile() -> None:
+    # The drawer for a guest is «Главная · Каталог»: the library link carries a
     # mobile-only «Каталог» label and Загрузки is desktop-only.
     response = client.get("/")
 
@@ -79,7 +102,7 @@ def test_guest_quiet_edge_bar_shows_catalog_and_hides_downloads_on_mobile() -> N
     assert "sidebar__link--desktop-only" in response.text
 
 
-def test_logged_in_quiet_edge_bar_keeps_downloads_on_mobile(
+def test_logged_in_drawer_keeps_downloads_on_mobile(
     logged_in_client: TestClient,
 ) -> None:
     response = logged_in_client.get("/")
@@ -172,34 +195,30 @@ def test_anonymous_visitor_gets_no_profile_menu() -> None:
     assert "static/js/profile-menu.js" not in response.text
 
 
-def test_profile_menu_is_the_account_hub(
+def test_profile_menu_is_the_profile_and_logout(
     logged_in_client: TestClient,
 ) -> None:
-    # PR 249 (Aurora Ink): Профиль · Активность · Друзья · Настройки · Выйти; «Читаю» is
-    # gone, Настройки carries data-role="settings-link" now that it lives here.
+    # Активность, Друзья and Настройки are the sidebar's own rows now - the account menu
+    # is the profile and «Выйти».
     response = logged_in_client.get("/")
 
     assert response.status_code == 200
     panel = response.text[response.text.index('data-role="profile-menu-panel"') :]
+    panel = panel[: panel.index("</form>")]
     assert '<a class="profile-menu__head" href="/profile">' in panel
-    for href, label in (("/activity", "Активность"), ("/friends", "Друзья")):
-        assert re.search(
-            rf'<a class="profile-menu__item" href="{href}">.*?</svg>{label}</a>', panel
-        )
-    assert re.search(
-        r'<a class="profile-menu__item" href="/settings" data-role="settings-link">'
-        r".*?</svg>Настройки</a>",
-        panel,
-    )
-    assert "Читаю" not in panel[: panel.index("</form>")]
+    for href in ("/activity", "/friends", "/settings"):
+        assert f'href="{href}"' not in panel
+    assert "Читаю" not in panel
 
 
-def test_account_hub_marks_the_current_section(logged_in_client: TestClient) -> None:
+def test_settings_is_a_sidebar_row_marked_on_its_pages(logged_in_client: TestClient) -> None:
     response = logged_in_client.get("/settings/reading")
 
+    me = response.text[response.text.index('class="sidebar__me"') :]
+    me = me[: me.index("</a>")]
     assert (
-        '<a class="profile-menu__item" href="/settings" data-role="settings-link"'
-        ' aria-current="page">' in response.text
+        '<a class="sidebar__link sidebar__link--active" href="/settings"'
+        ' data-role="settings-link" aria-current="page">' in me
     )
 
 
