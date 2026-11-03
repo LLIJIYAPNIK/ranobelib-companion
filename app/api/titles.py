@@ -15,6 +15,7 @@ from app.reading_progress import reading_progress_percent
 from app.recent_titles import remember
 from app.services.client import open_client
 from app.services.exports import available_export_formats
+from app.services.relations import title_relations
 from app.templating import templates
 from app.title_contents import translators, volume_views
 
@@ -187,6 +188,27 @@ async def title_lamp(
             "in_library": in_library,
         },
     )
+
+
+@router.get("/{slug_url}/relations", response_model=None)
+async def title_relations_fragment(request: Request, slug_url: str) -> HTMLResponse:
+    """PR 361: the title page's «Связанные релизы» - fetched by title-relations.js once the
+    page's content is in, so get_relations() never holds up the first render. 204 when
+    there is nothing to show (no relations, or they couldn't be fetched - see
+    title_relations()), and the page simply goes without the section."""
+    related = await title_relations(slug_url)
+    if not related:
+        return HTMLResponse(status_code=204)
+    groups = [
+        (key, label, items)
+        for key, label, items in (
+            ("novels", "Новеллы", related.novels),
+            ("manga", "Манга", related.manga),
+            ("anime", "Аниме", related.anime),
+        )
+        if items
+    ]
+    return templates.TemplateResponse(request, "_title_relations.html", {"groups": groups})
 
 
 @router.get("/{slug_url}/size-estimate")

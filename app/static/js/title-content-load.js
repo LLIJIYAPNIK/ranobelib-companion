@@ -49,6 +49,7 @@
       if (window.enhanceCustomDropdowns) window.enhanceCustomDropdowns();
       if (window.initChapterExportPanel) window.initChapterExportPanel();
       if (window.initTitleSizeEstimate) window.initTitleSizeEstimate();
+      if (window.initTitleRelations) window.initTitleRelations();
       if (window.initTocTapProgress) window.initTocTapProgress();
       if (window.initTitlePageUi) window.initTitlePageUi();
       if (window.initOfflineDownload) window.initOfflineDownload();
