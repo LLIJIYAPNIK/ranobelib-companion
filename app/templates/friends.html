@@ -24,7 +24,8 @@
 {%- endmacro %}
 {% macro date_label(iso) -%}
 {%- set months = ["января", "февраля", "марта", "апреля", "мая", "июня", "июля", "августа", "сентября", "октября", "ноября", "декабря"] -%}
-{{ iso[8:10] | int }} {{ months[(iso[5:7] | int) - 1] }} {{ iso[:4] }}
+{#- one unbreakable date: no year left alone on a line -#}
+{{ iso[8:10] | int }} {{ months[(iso[5:7] | int) - 1] }} {{ iso[:4] }}
 {%- endmacro %}
 {% macro person(user, sub) -%}
 <div class="fr-person">
@@ -37,7 +38,7 @@
 {%- endmacro %}
 {% macro request_row(req, kind, next_url) -%}
 <li class="fr-row fr-row--request">
-  {{ person(req.user, ("Хочет добавить вас · " if kind == "incoming" else "Заявка отправлена ") ~ date_label(req.created_at)) }}
+  {{ person(req.user, ("Хочет добавить вас в друзья · " if kind == "incoming" else "Заявка отправлена ") ~ date_label(req.created_at)) }}
   <div class="fr-row__actions">
     {% if kind == "incoming" %}
     <form method="post" action="/friends/{{ req.user.id }}/accept"><input type="hidden" name="next" value="{{ next_url }}"><button class="fr-btn fr-btn--primary" type="submit">Принять</button></form>
@@ -52,7 +53,7 @@
 <section class="fr-invite" aria-labelledby="friends-invite-title" data-role="friends-invite">
   <h2 class="hm-h2" id="friends-invite-title">{{ title }}</h2>
   {% if current_user.nickname %}
-  <p class="fr-note">Поделитесь ником: по нему вас найдут через поиск на этой странице.{% if first %} Или откройте профиль читателя из комментариев к главе и нажмите «Добавить в друзья».{% endif %}</p>
+  <p class="fr-note">Поделитесь ником: по нему вас найдут через поиск на этой странице.{% if first %} Или найдите читателя в комментариях к главе и откройте его профиль.{% endif %}</p>
   <div class="fr-invite__nick">
     <span class="fr-invite__value" data-role="friends-invite-nickname">{{ current_user.nickname }}</span>
     <button class="fr-btn" type="button" data-role="friends-invite-copy" data-copy="{{ current_user.nickname }}">Копировать</button>

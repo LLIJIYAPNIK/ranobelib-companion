@@ -31482,6 +31482,11 @@ p.ac-card.ac-empty {
   padding-left: 62px;
 }
 
+/* «Хочет добавить вас в друзья · 1 ноября 2026» wraps in the narrow queue, not cut. */
+.fr-list--compact .fr-person__sub {
+  white-space: normal;
+}
+
 /* --- Empty states keep the card. --- */
 .fr-empty {
   margin: 0;
