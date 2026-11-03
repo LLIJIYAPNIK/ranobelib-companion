@@ -1375,10 +1375,21 @@ body:has(.sidebar--expanded) {
   }
 }
 
-/* The one bottom sheet (PR 279, Webnovells Mobile -> Mobile handoff.md). bottom-sheet.js
+/* The one bottom sheet (PR 279, Webnovells Mobile -> Mobile handoff.md), drawn as the
+   redesigned pages' dark card (.ac-card): #0d0d13 under a 9% white edge, a 28px top
+   radius, no rule under the head, the close as a round glass button. bottom-sheet.js
    drives the transform/opacity transitions and the max-height (visual viewport - 24px -
-   safe-area-top); the content element it's handed brings its own styles. */
+   safe-area-top); what goes inside takes the shared rows, pills and fields from the
+   «Inside the bottom sheet» block at the end of this file. */
 .bottom-sheet {
+  --sheet-bg: #0d0d13;
+  --sheet-edge: rgb(255 255 255 / 9%);
+  --sheet-row: rgb(255 255 255 / 6%);
+  --sheet-glass: rgb(255 255 255 / 8%);
+  --sheet-glass-hover: rgb(255 255 255 / 14%);
+  --sheet-light: #eeecf4;
+  --sheet-danger: #ff8f9c;
+  --sheet-danger-bg: rgb(242 104 122 / 16%);
   position: fixed;
   inset: 0;
   z-index: 90;
@@ -1391,7 +1402,7 @@ body:has(.sidebar--expanded) {
 .bottom-sheet__backdrop {
   position: absolute;
   inset: 0;
-  background: rgba(4, 4, 8, 0.68);
+  background: rgb(4 4 8 / 72%);
 }
 
 .bottom-sheet__panel {
@@ -1403,11 +1414,11 @@ body:has(.sidebar--expanded) {
   flex-direction: column;
   max-width: 640px;
   margin: 0 auto;
-  border: 1px solid #2a2838;
+  border: 1px solid var(--sheet-edge);
   border-bottom: 0;
-  border-radius: var(--wn-radius-xl) var(--wn-radius-xl) 0 0;
-  background: #16161f;
-  box-shadow: 0 -24px 60px rgba(0, 0, 0, 0.5);
+  border-radius: 28px 28px 0 0;
+  background: var(--sheet-bg);
+  box-shadow: 0 -24px 60px rgb(0 0 0 / 50%);
   color: var(--wn-text);
   font-family: var(--wn-font-ui);
   outline: none;
@@ -1418,8 +1429,7 @@ body:has(.sidebar--expanded) {
    never taken for a page scroll. */
 .bottom-sheet__head {
   flex: none;
-  padding: 6px 8px 4px 20px;
-  border-bottom: 1px solid #22202d;
+  padding: 6px 12px 4px 20px;
   cursor: grab;
   touch-action: none;
   -webkit-user-select: none;
@@ -1429,28 +1439,29 @@ body:has(.sidebar--expanded) {
 /* Centered on the panel, not on the head's asymmetric padding box. */
 .bottom-sheet__grabber {
   position: relative;
-  left: -6px;
+  left: -4px;
   display: block;
-  width: 40px;
+  width: 36px;
   height: 5px;
-  margin: 4px auto 6px;
-  border-radius: 3px;
-  background: #55506e;
+  margin: 4px auto 4px;
+  border-radius: 999px;
+  background: rgb(255 255 255 / 22%);
 }
 
 .bottom-sheet__bar {
   display: flex;
   align-items: center;
   gap: 8px;
-  min-height: 48px;
+  min-height: 52px;
 }
 
 .bottom-sheet__title {
   flex: 1;
   min-width: 0;
   margin: 0;
-  color: #f2f0f7;
-  font: 800 18px/1.25 var(--wn-font-ui);
+  color: #fff;
+  font: 800 20px/1.25 var(--wn-font-ui);
+  letter-spacing: -0.01em;
   overflow-wrap: break-word;
 }
 
@@ -1462,16 +1473,21 @@ body:has(.sidebar--expanded) {
   height: 44px;
   padding: 0;
   border: 0;
-  border-radius: var(--wn-radius-md);
-  background: #1f1e2a;
-  color: #cfcbdd;
+  border-radius: 50%;
+  background: var(--sheet-glass);
+  color: rgb(255 255 255 / 82%);
   cursor: pointer;
+  transition: background-color 0.15s ease, transform 0.12s ease;
 }
 
 @media (hover: hover) {
   .bottom-sheet__close:hover {
-    background: #2a2838;
+    background: var(--sheet-glass-hover);
   }
+}
+
+.bottom-sheet__close:active {
+  transform: scale(0.94);
 }
 
 .bottom-sheet__close:focus-visible {
@@ -1483,7 +1499,7 @@ body:has(.sidebar--expanded) {
   position: relative;
   flex: 1 1 auto;
   min-height: 0;
-  padding: 8px 20px calc(20px + env(safe-area-inset-bottom, 0px));
+  padding: 4px 20px calc(24px + env(safe-area-inset-bottom, 0px));
   overflow-y: auto;
   overscroll-behavior: contain;
   -webkit-overflow-scrolling: touch;
@@ -1533,12 +1549,14 @@ html:has(dialog[open]) body {
   animation: none;
 }
 
+/* The account at the top as one glass tile, then the sheet's rows (end of this file). */
 .profile-menu__panel--in-sheet .profile-menu__head {
   gap: 14px;
-  min-height: 72px;
-  padding: 8px 0;
-  border-radius: 0;
-  background: transparent;
+  min-height: 76px;
+  margin-bottom: 8px;
+  padding: 12px 14px;
+  border-radius: 20px;
+  background: rgb(255 255 255 / 5%);
 }
 
 .profile-menu__panel--in-sheet .profile-menu__avatar {
@@ -1555,7 +1573,7 @@ html:has(dialog[open]) body {
 }
 
 .profile-menu__panel--in-sheet .profile-menu__profile-link {
-  color: #c9bcff;
+  color: var(--wn-text-muted);
   font: 600 14px/1.2 var(--wn-font-ui);
 }
 
@@ -1564,29 +1582,9 @@ html:has(dialog[open]) body {
   color: var(--wn-text-muted);
 }
 
-.profile-menu__panel--in-sheet .profile-menu__sep {
-  margin: 4px 0;
-  background: var(--wn-border);
-}
-
-.profile-menu__panel--in-sheet .profile-menu__item {
-  gap: 16px;
-  min-height: 52px;
-  padding: 0;
-  border-radius: 0;
-  color: var(--wn-text);
-  font: 600 16px/1.2 var(--wn-font-ui);
-}
-
-.profile-menu__panel--in-sheet .profile-menu__item svg {
-  width: 22px;
-  height: 22px;
-  color: var(--wn-text-secondary);
-}
-
-.profile-menu__panel--in-sheet .profile-menu__item--danger,
-.profile-menu__panel--in-sheet .profile-menu__item--danger svg {
-  color: #f2879a;
+/* Out to 6px from the sheet's edges, so the rows' text keeps the title's 20px edge. */
+.bottom-sheet .profile-menu__panel--in-sheet {
+  margin: 0 -14px;
 }
 
 /* Notifications popover (PR 311, Webnovells): header with the unread count and a
@@ -3209,8 +3207,8 @@ html:has(dialog[open]) body {
   --pc-text: var(--wn-text);
   --pc-muted: var(--wn-text-muted);
   --pc-surface: transparent;
-  --pc-field: #101017;
-  --pc-line: #2a2838;
+  --pc-field: rgb(255 255 255 / 5%);
+  --pc-line: var(--sheet-edge);
   --pc-accent: var(--wn-teal);
   --pc-tint: rgb(61 214 195 / 8%);
   --pc-focus: var(--wn-teal);
@@ -8775,19 +8773,21 @@ a.catalog-card__action {
 }
 
 /* The filters sheet (catalog.html, catalog-mobile.js) inside the shared bottom sheet:
-   uppercase group legends over wrapping pill options (a teal check on the chosen
-   ones - real radios/checkboxes underneath), the hint about the results mode, and
-   «Показать результаты» pinned at the bottom while the groups scroll. */
+   sentence-case group titles over wrapping pills as the catalog's own chips (.cg-chip) -
+   the chosen ones the light pill with a check, real radios/checkboxes underneath - the
+   hint about the results mode, and «Показать результаты», the light pill, pinned at the
+   bottom while the groups scroll. «Сбросить» is a glass pill in the head. */
 .catalog-sheet__reset {
   flex: none;
-  height: 44px;
-  padding: 0 10px;
+  height: 36px;
+  padding: 0 14px;
   border: 0;
-  border-radius: 10px;
-  background: transparent;
-  color: #b7a6ff;
+  border-radius: 999px;
+  background: var(--sheet-glass, rgb(255 255 255 / 8%));
+  color: var(--wn-text);
   font: 700 14px/1 var(--wn-font-ui);
   cursor: pointer;
+  transition: background-color 0.15s ease;
 }
 
 .catalog-sheet__group {
@@ -8798,11 +8798,9 @@ a.catalog-card__action {
 }
 
 .catalog-sheet__legend {
-  padding: 0 0 10px;
-  color: #8c889f;
-  font: 700 13px/1 var(--wn-font-ui);
-  letter-spacing: 0.06em;
-  text-transform: uppercase;
+  padding: 0 0 12px;
+  color: #fff;
+  font: 800 16px/1.2 var(--wn-font-ui);
 }
 
 .catalog-sheet__options {
@@ -8819,11 +8817,12 @@ a.catalog-card__action {
   gap: 6px;
   min-height: 40px;
   padding: 0 14px;
-  border: 1px solid #2a2838;
+  border: 1px solid var(--sheet-edge, rgb(255 255 255 / 9%));
   border-radius: 999px;
-  color: #cfcbdd;
+  color: var(--wn-text-secondary);
   font: 600 14px/1.2 var(--wn-font-ui);
   cursor: pointer;
+  transition: color 0.15s ease, border-color 0.15s ease, background-color 0.15s ease;
 }
 
 .catalog-sheet__option input {
@@ -8840,13 +8839,14 @@ a.catalog-card__action {
   flex: none;
   width: 14px;
   height: 14px;
-  color: #3dd6c3;
+  color: currentColor;
 }
 
 .catalog-sheet__option:has(input:checked) {
-  border-color: #4a4565;
-  background: #24232f;
-  color: #f2f0f7;
+  border-color: #f4f2fa;
+  background: #f4f2fa;
+  color: #0c0c12;
+  font-weight: 700;
 }
 
 .catalog-sheet__option:has(input:checked) .catalog-sheet__check {
@@ -8855,15 +8855,13 @@ a.catalog-card__action {
 
 .catalog-sheet__option:has(input:focus-visible),
 :is(.catalog-sheet__reset, .catalog-sheet__apply):focus-visible {
-  outline: 2px solid #c5b6ff;
-  outline-offset: 2px;
+  outline: none;
+  box-shadow: var(--wn-focus-ring);
 }
 
 .catalog-sheet__hint {
   margin: 0;
-  padding-top: 12px;
-  border-top: 1px solid #24222f;
-  color: #8c889f;
+  color: var(--wn-text-muted);
   font: 500 13px/1.45 var(--wn-font-ui);
 }
 
@@ -8871,31 +8869,45 @@ a.catalog-card__action {
    the sheet's floor; sticky keeps it there while the groups scroll. */
 .catalog-sheet__foot {
   position: sticky;
-  bottom: calc(-20px - env(safe-area-inset-bottom, 0px));
-  margin: 20px -20px calc(-20px - env(safe-area-inset-bottom, 0px));
-  padding: 12px 16px calc(16px + env(safe-area-inset-bottom, 0px));
-  border-top: 1px solid #24222f;
-  background: #16161f;
+  bottom: calc(-24px - env(safe-area-inset-bottom, 0px));
+  margin: 20px -20px calc(-24px - env(safe-area-inset-bottom, 0px));
+  padding: 12px 20px calc(16px + env(safe-area-inset-bottom, 0px));
+  border-top: 1px solid var(--sheet-row, rgb(255 255 255 / 6%));
+  background: var(--sheet-bg, #0d0d13);
 }
 
 .catalog-sheet__apply {
   width: 100%;
   height: 52px;
   border: 0;
-  border-radius: 12px;
-  background: #7a52f4;
-  color: #fff;
-  font: 700 16px/1 var(--wn-font-ui);
+  border-radius: 999px;
+  background: var(--sheet-light, #eeecf4);
+  color: #0c0c12;
+  font: 800 16px/1 var(--wn-font-ui);
   cursor: pointer;
+  transition: background-color 0.15s ease, transform 0.12s ease;
+}
+
+.catalog-sheet__apply:active {
+  transform: scale(0.98);
 }
 
 @media (hover: hover) {
   .catalog-sheet__apply:hover {
-    background: #8a66ff;
+    background: #fff;
+  }
+
+  .catalog-sheet__reset:hover {
+    background: var(--sheet-glass-hover, rgb(255 255 255 / 14%));
   }
 
   .catalog-sheet__option:hover {
-    border-color: #3a3650;
+    border-color: rgb(255 255 255 / 20%);
+    color: #fff;
+  }
+
+  .catalog-sheet__option:has(input:checked):hover {
+    color: #0c0c12;
   }
 }
 
@@ -12180,8 +12192,8 @@ a.catalog-card__action {
 }
 
 /* The ⋯ menu and the removal confirmation inside the bottom sheet (phones,
-   library-card-actions.js): the menu as 52px rows with 20px icons, the confirmation
-   as the sheet's text and two 48px buttons, under a pink top edge. */
+   library-card-actions.js): the menu as the sheet's rows (.bottom-sheet rows at the end
+   of this file), the confirmation as the sheet's text and its two pills. */
 .bottom-sheet :is(.wn-library-menu, .wn-library-confirm) {
   position: static;
   width: auto;
@@ -12193,24 +12205,8 @@ a.catalog-card__action {
 }
 
 .bottom-sheet .wn-library-menu {
-  margin: 0 -12px;
+  margin: 0 -14px;
   padding: 0;
-}
-
-.bottom-sheet .wn-library-menu__item {
-  gap: 14px;
-  min-height: 52px;
-  border-radius: 12px;
-  font: 600 16px/1 var(--wn-font-ui);
-}
-
-.bottom-sheet .wn-library-menu__item svg {
-  width: 20px;
-  height: 20px;
-}
-
-.bottom-sheet .wn-library-menu__sep {
-  margin: 6px 12px;
 }
 
 .bottom-sheet .wn-library-confirm {
@@ -12223,6 +12219,7 @@ a.catalog-card__action {
 }
 
 .bottom-sheet .wn-library-confirm__text {
+  color: rgb(255 255 255 / 80%);
   font: 500 15px/1.55 var(--wn-font-ui);
   overflow-wrap: break-word;
 }
@@ -12230,17 +12227,6 @@ a.catalog-card__action {
 .bottom-sheet .wn-library-confirm__actions {
   flex-wrap: wrap;
   margin: 0;
-}
-
-.bottom-sheet :is(.wn-library-confirm__cancel, .wn-library-confirm__remove) {
-  flex: 1 1 120px;
-  min-height: 48px;
-  border-radius: 12px;
-  font-size: 15px;
-}
-
-.bottom-sheet__panel:has(.wn-library-confirm:not([hidden])) {
-  border-top-color: rgb(240 138 155 / 40%);
 }
 
 /* ==========================================================================
@@ -15863,10 +15849,11 @@ body.reader-hud-visible .reader-hud {
 }
 
 /* A confirmation in the shared bottom sheet (PR 281: «Очистить историю?»): a line of
-   text, then «Отмена» and the destructive action, wrapping under each other when narrow. */
+   text, then «Отмена» and the destructive action as the sheet's two pills (the end of
+   this file), wrapping under each other when narrow. */
 .wn-sheet-confirm__text {
-  margin: 8px 0 20px;
-  color: #cfcbdd;
+  margin: 4px 0 20px;
+  color: rgb(255 255 255 / 80%);
   font: 500 15px/1.55 var(--wn-font-ui);
   text-wrap: pretty;
   overflow-wrap: anywhere;
@@ -15878,64 +15865,11 @@ body.reader-hud-visible .reader-hud {
   gap: 8px;
 }
 
-.wn-sheet-confirm__cancel,
-.wn-sheet-confirm__danger {
-  flex: 1 1 120px;
-  min-height: 48px;
-  border-radius: var(--wn-radius-md);
-  font: 700 15px/1.2 var(--wn-font-ui);
-  cursor: pointer;
-}
-
-.wn-sheet-confirm__cancel {
-  border: 1px solid var(--wn-border-strong);
-  background: transparent;
-  color: var(--wn-text);
-}
-
-.wn-sheet-confirm__danger {
-  border: 0;
-  background: #c9465a;
-  color: #fff;
-}
-
-:is(.wn-sheet-confirm__cancel, .wn-sheet-confirm__danger):focus-visible {
-  outline: none;
-  box-shadow: var(--wn-focus-ring);
-}
-
-/* A friend's actions in the shared bottom sheet (PR 285, friends-actions-sheet.js): 52px
-   rows - «Открыть профиль», a divider, a red «Удалить из друзей» - then the
-   .wn-sheet-confirm text and buttons for the removal. */
-.wn-friend-sheet__item {
-  display: flex;
-  align-items: center;
-  width: 100%;
-  min-height: 52px;
-  padding: 0;
-  border: 0;
-  border-radius: var(--wn-radius-sm);
-  background: transparent;
-  color: var(--wn-text);
-  font: var(--wn-weight-semi-bold) 16px/1.2 var(--wn-font-ui);
-  text-align: left;
-  text-decoration: none;
-  cursor: pointer;
-}
-
-.wn-friend-sheet__item--danger {
-  color: #f2879a;
-}
-
-.wn-friend-sheet__item:focus-visible {
-  outline: none;
-  box-shadow: var(--wn-focus-ring);
-}
-
-.wn-friend-sheet__sep {
-  height: 1px;
-  margin: 4px 0;
-  background: var(--wn-border);
+/* A friend's actions in the shared bottom sheet (PR 285, friends-actions-sheet.js): the
+   sheet's rows - «Открыть профиль», a red «Удалить из друзей» - then the
+   .wn-sheet-confirm text and pills for the removal. */
+.wn-friend-sheet__menu {
+  margin: 0 -14px;
 }
 
 @media (max-width: 767px) {
@@ -20381,18 +20315,11 @@ body.reader-page--offline-copy .reader-paragraph-more {
 .bottom-sheet .wn-profile-more__menu {
   position: static;
   min-width: 0;
-  margin: 0 -12px;
+  margin: 0 -14px;
   padding: 0;
   border: 0;
   background: none;
   box-shadow: none;
-}
-
-.bottom-sheet .wn-profile-more__menu .ui-menu__item {
-  gap: 14px;
-  min-height: 52px;
-  border-radius: 12px;
-  font-size: 16px;
 }
 
 /* PR 358: «Модерация» (admin/moderation.html, RanobeLib Admin.dc.html) - the queue on the
@@ -31761,6 +31688,239 @@ p.ac-card.ac-empty {
   .fr-book,
   .fr-btn,
   .fr-result__actions .ui-btn {
+    transition: none;
+  }
+}
+
+/* ==========================================================================
+   Inside the bottom sheet (bottom-sheet.js, the frame near the top of this file): one
+   look for whatever a page hands it, as the redesigned pages draw it - menus as 52px rows
+   with a glass press, a red row for what removes; a confirmation's two pills (glass
+   «Отмена», the removal tinted red); the one primary as the light pill; chips, segmented
+   tracks and fields in glass on the sheet's #0d0d13. Scoped to .bottom-sheet, so the
+   same menus as desktop popovers keep their own look.
+   ========================================================================== */
+
+/* --- Menu rows: «⋯» of a library card, a friend, a profile; the account menu. --- */
+.bottom-sheet :is(.wn-library-menu__item, .wn-friend-sheet__item, .ui-menu__item, .profile-menu__item) {
+  appearance: none;
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  width: 100%;
+  min-height: 52px;
+  padding: 0 14px;
+  border: 0;
+  border-radius: 16px;
+  background: transparent;
+  color: var(--wn-text);
+  font: 600 16px/1.2 var(--wn-font-ui);
+  text-align: left;
+  text-decoration: none;
+  cursor: pointer;
+  transition: background-color 0.15s ease;
+}
+
+.bottom-sheet :is(.wn-library-menu__item, .wn-friend-sheet__item, .ui-menu__item, .profile-menu__item) svg {
+  flex: none;
+  width: 20px;
+  height: 20px;
+  color: var(--wn-text-secondary);
+}
+
+.bottom-sheet :is(.wn-library-menu__item, .wn-friend-sheet__item, .ui-menu__item, .profile-menu__item):active {
+  background: var(--sheet-row);
+}
+
+@media (hover: hover) {
+  .bottom-sheet :is(.wn-library-menu__item, .wn-friend-sheet__item, .ui-menu__item, .profile-menu__item):hover {
+    background: var(--sheet-row);
+  }
+}
+
+.bottom-sheet :is(.wn-library-menu__item, .wn-friend-sheet__item, .ui-menu__item, .profile-menu__item):focus-visible {
+  outline: none;
+  box-shadow: inset 0 0 0 2px var(--wn-teal);
+}
+
+/* The current page in the account menu: the row filled, as the sidebar marks it. */
+.bottom-sheet .profile-menu__item[aria-current="page"] {
+  background: var(--sheet-row);
+  color: #fff;
+}
+
+.bottom-sheet :is(.wn-library-menu__item--danger, .wn-friend-sheet__item--danger, .profile-menu__item--danger),
+.bottom-sheet :is(.wn-library-menu__item--danger, .profile-menu__item--danger) svg {
+  color: var(--sheet-danger);
+}
+
+.bottom-sheet :is(.wn-library-menu__item--danger, .wn-friend-sheet__item--danger, .profile-menu__item--danger):active {
+  background: var(--sheet-danger-bg);
+}
+
+@media (hover: hover) {
+  .bottom-sheet :is(.wn-library-menu__item--danger, .wn-friend-sheet__item--danger, .profile-menu__item--danger):hover {
+    background: var(--sheet-danger-bg);
+  }
+}
+
+/* What removes sits apart: 8px of air and a faint step, not a box. */
+.bottom-sheet :is(.wn-library-menu__sep, .wn-friend-sheet__sep, .profile-menu__sep, .ui-menu__sep) {
+  height: 1px;
+  margin: 6px 14px;
+  border: 0;
+  background: var(--sheet-row);
+}
+
+/* --- Pills: a confirmation's two, the report's, the offline download's. --- */
+.bottom-sheet :is(.wn-sheet-confirm__cancel, .wn-sheet-confirm__danger, .wn-library-confirm__cancel, .wn-library-confirm__remove) {
+  appearance: none;
+  flex: 1 1 120px;
+  min-height: 52px;
+  padding: 0 18px;
+  border: 0;
+  border-radius: 999px;
+  font: 800 15px/1.2 var(--wn-font-ui);
+  cursor: pointer;
+  transition: background-color 0.15s ease, transform 0.12s ease;
+}
+
+.bottom-sheet :is(.wn-sheet-confirm__cancel, .wn-library-confirm__cancel) {
+  background: var(--sheet-glass);
+  color: var(--wn-text);
+}
+
+.bottom-sheet :is(.wn-sheet-confirm__danger, .wn-library-confirm__remove) {
+  background: var(--sheet-danger-bg);
+  color: var(--sheet-danger);
+}
+
+@media (hover: hover) {
+  .bottom-sheet :is(.wn-sheet-confirm__cancel, .wn-library-confirm__cancel):hover {
+    background: var(--sheet-glass-hover);
+  }
+
+  .bottom-sheet :is(.wn-sheet-confirm__danger, .wn-library-confirm__remove):hover {
+    background: rgb(242 104 122 / 24%);
+  }
+}
+
+.bottom-sheet :is(.wn-sheet-confirm__cancel, .wn-sheet-confirm__danger, .wn-library-confirm__cancel, .wn-library-confirm__remove):active {
+  transform: scale(0.98);
+}
+
+.bottom-sheet :is(.wn-sheet-confirm__cancel, .wn-sheet-confirm__danger, .wn-library-confirm__cancel, .wn-library-confirm__remove):focus-visible {
+  outline: none;
+  box-shadow: var(--wn-focus-ring);
+}
+
+/* The kit's buttons in the sheet: the primary the light pill (never the violet), quiet
+   ones glass - «Отправить» / «Отмена» of a report, «Скачать» for offline reading. */
+.bottom-sheet .ui-btn {
+  min-height: 52px;
+  border-radius: 999px;
+  font: 800 15px/1 var(--wn-font-ui);
+  box-shadow: none;
+}
+
+.bottom-sheet .ui-btn--primary {
+  --ui-btn-bg: var(--sheet-light);
+  --ui-btn-fg: #0c0c12;
+  --ui-btn-border: transparent;
+  --ui-btn-hover: #fff;
+  --ui-btn-active: #fff;
+}
+
+.bottom-sheet .ui-btn--quiet {
+  --ui-btn-bg: var(--sheet-glass);
+  --ui-btn-fg: var(--wn-text);
+  --ui-btn-border: transparent;
+  --ui-btn-hover: var(--sheet-glass-hover);
+  --ui-btn-active: var(--sheet-glass-hover);
+}
+
+/* --- Fields: labels in ink, controls in glass. --- */
+.bottom-sheet .ui-field__label {
+  color: var(--wn-text);
+  font: 700 14px/1.2 var(--wn-font-ui);
+}
+
+.bottom-sheet .ui-field__hint {
+  color: var(--wn-text-muted);
+  font: 500 13px/1.45 var(--wn-font-ui);
+}
+
+.bottom-sheet :is(.ui-input, .ui-select) {
+  min-height: 48px;
+  border: 1px solid var(--sheet-edge);
+  border-radius: 16px;
+  background-color: rgb(255 255 255 / 4%);
+  color: var(--wn-text);
+}
+
+.bottom-sheet .ui-input:focus {
+  border-color: transparent;
+  box-shadow: 0 0 0 2px var(--wn-teal);
+}
+
+.bottom-sheet .ui-segmented {
+  gap: 2px;
+  padding: 4px;
+  border-radius: 999px;
+  background: rgb(255 255 255 / 5%);
+}
+
+.bottom-sheet .ui-segmented__item span {
+  height: 40px;
+  border-radius: 999px;
+  color: var(--wn-text-secondary);
+  font: 700 14px/1 var(--wn-font-ui);
+}
+
+.bottom-sheet .ui-segmented__item input:checked + span {
+  background: var(--sheet-light);
+  color: #0c0c12;
+  font-weight: 800;
+}
+
+/* «Пожаловаться»: the reasons as glass rows, the picked one raised. */
+.bottom-sheet .wn-report__legend {
+  margin-bottom: 10px;
+  color: var(--wn-text);
+  font: 700 14px/1.2 var(--wn-font-ui);
+}
+
+.bottom-sheet .wn-report__reason {
+  min-height: 52px;
+  border: 1px solid var(--sheet-edge);
+  border-radius: 16px;
+  background: transparent;
+  font: 600 15px/1.3 var(--wn-font-ui);
+  transition: background-color 0.15s ease, border-color 0.15s ease;
+}
+
+.bottom-sheet .wn-report__reason input {
+  accent-color: var(--sheet-light);
+}
+
+.bottom-sheet .wn-report__reason:has(input:checked) {
+  border-color: rgb(255 255 255 / 28%);
+  background: var(--sheet-row);
+}
+
+.bottom-sheet .wn-report__count {
+  color: var(--wn-text-muted);
+}
+
+/* The reader's «Aa» in the sheet: its dark steppers would vanish on #0d0d13. */
+.bottom-sheet .reader-aa__content .reader-stepper {
+  background: rgb(255 255 255 / 6%);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .bottom-sheet :is(.wn-library-menu__item, .wn-friend-sheet__item, .ui-menu__item, .profile-menu__item, .wn-sheet-confirm__cancel, .wn-sheet-confirm__danger, .wn-library-confirm__cancel, .wn-library-confirm__remove),
+  .bottom-sheet__close,
+  .catalog-sheet__apply {
     transition: none;
   }
 }
