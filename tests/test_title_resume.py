@@ -1,6 +1,6 @@
 """PR 372: a title already being read puts the way back in first - «Вы остановились» (the
 reader's chapter and the next two) at the top of the reading column, «Связанные релизы»
-folded into one line."""
+folded into one line - and /settings/reading can switch the related releases off."""
 
 from contextlib import asynccontextmanager
 from pathlib import Path
@@ -136,3 +136,16 @@ def test_the_resume_is_desktop_only_and_has_its_place_in_the_grid() -> None:
 
     assert '"head lamp" "resume lamp" "about lamp" "rel lamp"' in css
     assert "@media (max-width: 1023px) {\n  .tp-resume {\n    display: none;" in css
+
+
+def test_related_releases_can_be_switched_off_in_reading_settings() -> None:
+    page = client.get("/settings/reading").text
+    settings_js = (ROOT / "app/static/js/reader-settings.js").read_text(encoding="utf-8")
+    relations_js = (ROOT / "app/static/js/title-relations.js").read_text(encoding="utf-8")
+
+    assert 'type="checkbox" role="switch" data-setting="showRelatedReleases"' in page
+    assert page.index("Страница тайтла") < page.index('data-setting="showRelatedReleases"')
+    assert "showRelatedReleases: true," in settings_js
+    # Off, the page doesn't ask for the relations at all.
+    assert ".showRelatedReleases !== false" in relations_js
+    assert relations_js.index("relationsWanted()") < relations_js.index("fetch(")

@@ -10,10 +10,20 @@
 // without this script every group shows under its own name. The arrows scroll the strip in
 // view and only appear when it holds more than it shows.
 //
-// PR 372: a slot with data-compact (a title already being read) shows the section folded into its one-line
+// PR 372: readerSettings.showRelatedReleases (default true, /settings/reading) set to
+// false drops the slot without asking for the relations at all. A slot with
+// data-compact (a title already being read) shows the section folded into its one-line
 // peek; the peek opens the whole of it.
 (() => {
   const reduced = () => window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+
+  function relationsWanted() {
+    try {
+      return JSON.parse(localStorage.getItem("readerSettings") || "{}").showRelatedReleases !== false;
+    } catch {
+      return true;
+    }
+  }
 
   function fold(section) {
     const peek = section.querySelector('[data-role="relations-peek"]');
@@ -99,6 +109,10 @@
   function initTitleRelations() {
     const slot = document.querySelector('[data-role="title-relations-slot"]');
     if (!slot || slot.dataset.loading) return;
+    if (!relationsWanted()) {
+      slot.remove();
+      return;
+    }
     slot.dataset.loading = "true";
 
     fetch(`/titles/${slot.dataset.slugUrl}/relations`)

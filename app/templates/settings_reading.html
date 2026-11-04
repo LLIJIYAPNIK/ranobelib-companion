@@ -183,6 +183,17 @@
       </div>
     </section>
 
+    {# PR 372: title-relations.js reads it - off, the title page goes without «Связанные
+       релизы» and doesn't ask the source site for them. #}
+    <section class="reader-settings-card st-panel">
+      <h2 class="reader-settings-card__title">Страница тайтла</h2>
+      <label class="reader-settings-row reader-settings-row--switch ui-switch">
+        <span>Связанные релизы</span>
+        <input type="checkbox" role="switch" data-setting="showRelatedReleases" aria-describedby="related-releases-hint">
+      </label>
+      <p class="reader-settings-row__hint" id="related-releases-hint">Аниме, манга и продолжения тайтла. У тайтлов, которые вы читаете, — свёрнуты в одну строку.</p>
+    </section>
+
     {# PR 334: auto-download of the next chapters for titles downloaded for reading
        offline. offline-autodownload.js says what the network allows right now and shows
        the «any network» question only where the browser can't tell Wi-Fi apart. #}
