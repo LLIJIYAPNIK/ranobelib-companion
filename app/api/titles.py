@@ -199,12 +199,14 @@ async def title_relations_fragment(request: Request, slug_url: str) -> HTMLRespo
     related = await title_relations(slug_url)
     if not related:
         return HTMLResponse(status_code=204)
+    # PR 371: adaptations first - an anime or a manga of a novel is the news, so its tab is
+    # the one that opens; the novels' sequels and spin-offs follow.
     groups = [
         (key, label, items)
         for key, label, items in (
-            ("novels", "Новеллы", related.novels),
-            ("manga", "Манга", related.manga),
             ("anime", "Аниме", related.anime),
+            ("manga", "Манга", related.manga),
+            ("novels", "Новеллы", related.novels),
         )
         if items
     ]

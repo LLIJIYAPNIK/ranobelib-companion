@@ -86,16 +86,17 @@ def test_relations_that_cant_be_fetched_are_204_not_an_error() -> None:
     assert _get(RateLimitError()).status_code == 204
 
 
-def test_groups_become_tabs_with_their_counts_in_the_api_order() -> None:
+def test_groups_become_tabs_adaptations_first_items_in_the_api_order() -> None:
     response = _get([TV, SEQUEL, OVA, MANGA])
 
     assert response.status_code == 200
     html = response.text
     assert 'data-role="relations-tabs"' in html
+    # PR 371: the anime and the manga lead - the first tab is the one that opens.
     assert (
-        html.index('data-group="novels"')
+        html.index('data-group="anime"')
         < html.index('data-group="manga"')
-        < html.index('data-group="anime"')
+        < html.index('data-group="novels"')
     )
     assert 'Аниме <span class="hm-num">2</span>' in html
     assert html.index("TV Сериал") < html.index("OVA")

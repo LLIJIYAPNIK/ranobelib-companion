@@ -1,10 +1,10 @@
 {# PR 361: «Связанные релизы» - the title's sequels and spin-offs on the source site, its manga
-   and its anime (app/services/relations.py), fetched by title-relations.js into the end
-   of the title page's reading column once the content is in: arriving last and below the
-   chapters, it never pushes what is already being read.
+   and its anime (app/services/relations.py), fetched by title-relations.js once the
+   content is in, into the slot between the description and the volumes (PR 371).
 
-   One strip of covers per group. With two or more groups, title-relations.js turns the
-   group names into tabs and shows one strip at a time; without it every group shows under
+   One strip of covers per group, adaptations first: anime, manga, then novels
+   (app/api/titles.py). With two or more groups, title-relations.js turns the group names
+   into tabs and shows one strip at a time - the first tab open; without it every group shows under
    its own name. Novels open inside the app; manga and anime leave for their own site, which
    the card says («anilib.me» and the arrow) before it is clicked. A novel's line says how
    it relates to this one («Продолжение», «Спин-офф»); manga and anime say what they are
