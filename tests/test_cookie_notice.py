@@ -1,6 +1,10 @@
-"""The global cookie notice banner in base.html (PR 185) - shown to every visitor,
-logged in or not, since both cookies this site sets (the session cookie and the
-anonymous `recent_titles` history) are functional, not tied to having an account."""
+"""The cookie notice and the visitor's choice (PR 185, reworked in PR 375).
+
+The site sets only its own cookies: ``session`` and ``cookie_consent`` are necessary,
+``recent_titles`` («Недавние») is optional and written only after «Принять все». The
+notice shows until the visitor chooses - decided by the server, from the cookie_consent
+cookie - with «Принять все» and «Только необходимые» as two equal buttons, and links to
+«Настройки → Данные и cookie», where the whole list is and the choice can be changed."""
 
 from collections.abc import Iterator
 from pathlib import Path
@@ -13,7 +17,15 @@ from app.main import app
 from tests.auth_helpers import register
 from tests.db_reset import reset_app_database
 
-client = TestClient(app)
+ROOT = Path(__file__).parent.parent
+client = TestClient(app, follow_redirects=False)
+
+
+@pytest.fixture(autouse=True)
+def _fresh_cookies() -> Iterator[None]:
+    client.cookies.clear()
+    yield
+    client.cookies.clear()
 
 
 @pytest.fixture
@@ -29,41 +41,114 @@ def logged_in_client(monkeypatch: pytest.MonkeyPatch) -> Iterator[TestClient]:
     get_settings.cache_clear()
 
 
-def test_anonymous_visitor_gets_the_cookie_notice() -> None:
-    response = client.get("/")
+def test_a_visitor_who_hasnt_chosen_gets_the_notice_with_two_equal_choices() -> None:
+    html = client.get("/").text
 
-    assert 'data-role="cookie-notice"' in response.text
-    assert 'data-role="cookie-notice-dismiss"' in response.text
-    assert "Понятно" in response.text
-    assert "static/js/cookie-notice.js" in response.text
-
-
-def test_logged_in_visitor_also_gets_the_cookie_notice(
-    logged_in_client: TestClient,
-) -> None:
-    response = logged_in_client.get("/")
-
-    assert 'data-role="cookie-notice"' in response.text
-    assert "static/js/cookie-notice.js" in response.text
+    assert 'data-role="cookie-notice"' in html
+    assert 'action="/cookies/consent"' in html
+    assert 'name="choice" value="all">Принять все</button>' in html
+    assert 'name="choice" value="essential">Только необходимые</button>' in html
+    assert 'href="/settings/cookies"' in html
+    assert "static/js/cookie-notice.js" in html
+    # The server decides: no localStorage flag hides it any more.
+    assert "cookie-notice-init.js" not in html
+    assert not (ROOT / "app/static/js/cookie-notice-init.js").exists()
 
 
-def test_cookie_notice_is_not_hidden_by_default_server_side() -> None:
-    """The dismissed state is only known client-side (localStorage) - the server
-    always renders the banner without a `hidden` attribute; the inline script right
-    after it is what hides it synchronously for a visitor who already dismissed it."""
-    response = client.get("/")
-
-    assert '<div class="cookie-notice" data-role="cookie-notice">' in response.text
+def test_logged_in_visitor_also_gets_the_notice(logged_in_client: TestClient) -> None:
+    assert 'data-role="cookie-notice"' in logged_in_client.get("/").text
 
 
-def test_cookie_notice_init_script_checks_local_storage_not_a_cookie() -> None:
-    # PR 189 moved this from an inline <script> to its own static file (script-src
-    # 'self', no 'unsafe-inline') - the page just references it now.
-    response = client.get("/")
+@pytest.mark.parametrize("choice", ["all", "essential"])
+def test_after_a_choice_the_notice_is_gone(choice: str) -> None:
+    client.cookies.set("cookie_consent", choice)
 
-    assert "static/js/cookie-notice-init.js" in response.text
+    assert 'data-role="cookie-notice"' not in client.get("/").text
 
-    init_script = (
-        Path(__file__).parent.parent / "app" / "static" / "js" / "cookie-notice-init.js"
-    ).read_text(encoding="utf-8")
-    assert 'localStorage.getItem("cookieNoticeDismissed")' in init_script
+
+def test_a_junk_choice_is_no_choice() -> None:
+    client.cookies.set("cookie_consent", "maybe")
+
+    assert 'data-role="cookie-notice"' in client.get("/").text
+
+
+def test_the_settings_page_isnt_covered_by_its_own_notice() -> None:
+    html = client.get("/settings/cookies").text
+
+    assert 'data-role="cookie-notice"' not in html
+    assert 'data-role="cookie-consent-form"' in html
+    assert "Вы ещё не выбирали" in html
+
+
+def test_accepting_all_sets_the_choice_for_a_year_httponly() -> None:
+    response = client.post(
+        "/cookies/consent", data={"choice": "all"}, headers={"X-Requested-With": "fetch"}
+    )
+
+    assert response.status_code == 204
+    cookie = response.headers["set-cookie"]
+    assert "cookie_consent=all" in cookie
+    assert "Max-Age=31536000" in cookie
+    assert "HttpOnly" in cookie
+    assert "SameSite=lax" in cookie
+    assert "recent_titles" not in cookie
+
+
+def test_essential_only_deletes_the_history_already_there() -> None:
+    client.cookies.set("recent_titles", "abc")
+    response = client.post(
+        "/cookies/consent", data={"choice": "essential"}, headers={"X-Requested-With": "fetch"}
+    )
+
+    cookies = response.headers.get_list("set-cookie")
+    assert any(c.startswith("cookie_consent=essential") for c in cookies)
+    assert any(c.startswith('recent_titles=""') and "Max-Age=0" in c for c in cookies)
+
+
+def test_without_the_script_the_form_redirects_back_on_this_site_only() -> None:
+    back = client.post("/cookies/consent", data={"choice": "all", "next": "/catalog?q=x"})
+    assert back.status_code == 303
+    assert back.headers["location"] == "/catalog?q=x"
+
+    for evil in ("https://evil.example/", "//evil.example/", "/\\evil.example"):
+        response = client.post("/cookies/consent", data={"choice": "all", "next": evil})
+        assert response.headers["location"] == "/", evil
+
+
+def test_an_unknown_choice_is_refused() -> None:
+    response = client.post("/cookies/consent", data={"choice": "some"})
+
+    assert response.status_code == 400
+    assert "set-cookie" not in response.headers
+
+
+def test_the_settings_page_lists_every_cookie_with_its_real_lifetime() -> None:
+    html = client.get("/settings/cookies").text
+
+    for name in ("session", "cookie_consent", "recent_titles"):
+        assert f"<code>{name}</code>" in html
+    settings = get_settings()
+    assert f'<span class="hm-num">{settings.session_max_age // 86400}</span>' in html
+    assert f'<span class="hm-num">{settings.session_remember_max_age // 86400}</span>' in html
+    assert '<span class="hm-num">180</span>' in html  # recent_titles
+    assert '<span class="hm-num">365</span>' in html  # cookie_consent
+    assert "Только на этом устройстве" in html
+    assert "Чего здесь нет" in html
+    assert 'href="/settings/cookies"' in html  # its own entry in the settings nav
+
+
+def test_the_settings_page_shows_the_current_choice() -> None:
+    client.cookies.set("cookie_consent", "essential")
+    html = client.get("/settings/cookies").text
+
+    assert "Только необходимые: «Недавние» не сохраняются." in html
+    assert 'value="essential" aria-pressed="true"' in html
+
+
+def test_the_script_drops_the_old_flag_and_falls_back_to_a_plain_submit() -> None:
+    js = (ROOT / "app/static/js/cookie-notice.js").read_text(encoding="utf-8")
+
+    assert 'localStorage.removeItem("cookieNoticeDismissed")' in js
+    assert '"X-Requested-With": "fetch"' in js
+    assert "form.requestSubmit(button)" in js
+    assert "form.dataset.plain" in js

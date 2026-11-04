@@ -4495,46 +4495,227 @@ img.paragraph-comment__attachment {
   }
 }
 
-/* Cookie notice banner (PR 185) - a plain informational bar, not a blocking consent
-   modal: both cookies this site sets (the session cookie and the anonymous
-   recent_titles history) are strictly functional, so this only has to inform, not gate
-   the rest of the page behind an opt-in click. Compact corner card (PR 197) instead of
-   a full-width bottom strip - same visual language as .download-ready__toast (PR 50),
-   just anchored to the bottom-right corner instead of the top-right one, so it doesn't
-   collide with that toast if both happen to be visible at once. */
+/* PR 375: the cookie notice - the site's floating glass (the notification panel's edge
+   and radius, the glass's blur over whatever is under it), anchored to the bottom-right
+   corner (PR 197) so it never meets the «file ready» toast at the top. Two equal buttons:
+   declining is as easy as accepting. Outside .hm, so the glass values are its own. */
 .cookie-notice {
   position: fixed;
-  right: 16px;
-  bottom: calc(16px + var(--shell-bottom));
+  right: 20px;
+  bottom: calc(20px + var(--shell-bottom));
   z-index: 70;
   display: flex;
   flex-direction: column;
-  align-items: flex-start;
   gap: 10px;
-  max-width: 320px;
-  padding: 12px 14px;
-  background: var(--bg-surface);
-  border: 1px solid var(--legacy-border);
-  border-radius: 8px;
-  box-shadow: 0 8px 20px rgba(0, 0, 0, 0.35);
+  width: min(380px, calc(100vw - 40px));
+  padding: 20px;
+  border: 1px solid rgb(255 255 255 / 9%);
+  border-radius: 24px;
+  background: rgb(20 19 28 / 80%);
+  -webkit-backdrop-filter: blur(20px) saturate(140%);
+  backdrop-filter: blur(20px) saturate(140%);
+  box-shadow: 0 24px 64px rgb(0 0 0 / 50%);
+  color: var(--wn-text);
+  animation: cookie-in 0.45s cubic-bezier(0.22, 1, 0.36, 1) 0.4s both;
 }
 
-.cookie-notice[hidden] {
-  display: none;
+.cookie-notice.is-leaving {
+  animation: cookie-out 0.25s ease forwards;
+}
+
+@keyframes cookie-in {
+  from {
+    opacity: 0;
+    transform: translateY(16px);
+  }
+}
+
+@keyframes cookie-out {
+  to {
+    opacity: 0;
+    transform: translateY(12px);
+  }
+}
+
+.cookie-notice__title {
+  margin: 0;
+  color: #fff;
+  font: 800 17px/1.25 var(--wn-font-ui);
+  letter-spacing: -0.01em;
 }
 
 .cookie-notice__text {
   margin: 0;
-  font-size: 13px;
-  color: var(--text-secondary);
+  color: var(--wn-text-secondary);
+  font: 500 14px/1.5 var(--wn-font-ui);
+}
+
+.cookie-notice__actions {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+  margin-top: 6px;
+}
+
+.cookie-notice__btn {
+  min-height: 44px;
+  padding: 0 12px;
+  border-radius: 14px;
+}
+
+.cookie-notice__btn.wn-btn--secondary {
+  border-color: transparent;
+  background: rgb(255 255 255 / 10%);
+}
+
+.cookie-notice__btn:active {
+  transform: scale(0.98);
+}
+
+.cookie-notice__btn:focus-visible {
+  outline: none;
+  box-shadow: var(--wn-focus-ring);
+}
+
+@media (hover: hover) {
+  .cookie-notice__btn.wn-btn--secondary:hover {
+    background: rgb(255 255 255 / 14%);
+  }
+}
+
+.cookie-notice__more {
+  align-self: flex-start;
+  margin-top: 2px;
+  font: 600 13px/1.4 var(--wn-font-ui);
 }
 
 @media (max-width: 640px) {
   .cookie-notice {
-    /* Same 76px clearance above the fixed bottom tab bar as .download-ready/
-       .toc__export-panel (PR 51) use on mobile. */
     right: 12px;
     bottom: calc(var(--shell-bottom) + 16px);
+    left: 12px;
+    width: auto;
+    padding: 18px;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .cookie-notice,
+  .cookie-notice.is-leaving {
+    animation: none;
+  }
+}
+
+/* PR 375: «Настройки → Данные и cookie» - the choice pinned beside the list, each cookie
+   and each kind of on-device data as a row of facts. */
+.ck-choice__state {
+  margin: 0;
+  color: var(--wn-text);
+  font: 600 15px/1.45 var(--wn-font-ui);
+}
+
+.ck-choice__actions {
+  display: grid;
+  gap: 8px;
+}
+
+.ck-choice__actions .wn-btn {
+  border-radius: 14px;
+}
+
+.ck-choice__actions .wn-btn--secondary {
+  border-color: transparent;
+  background: var(--hm-glass-raised);
+}
+
+.ck-choice__actions .wn-btn[aria-pressed="true"] {
+  box-shadow: inset 0 0 0 2px var(--wn-teal);
+}
+
+.ck-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.ck-item {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 16px 18px;
+  border-radius: 18px;
+  background: var(--hm-glass);
+}
+
+.ck-item__head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 6px 16px;
+}
+
+.ck-item__name {
+  margin: 0;
+  color: #fff;
+  font: 700 15px/1.35 var(--wn-font-ui);
+}
+
+.ck-item__name code {
+  margin-left: 8px;
+  color: var(--wn-text-muted);
+  font: 500 13px/1 var(--font-mono, monospace);
+}
+
+.ck-item__kind {
+  color: var(--wn-text-secondary);
+  font: 600 13px/1.3 var(--wn-font-ui);
+}
+
+.ck-item__kind--optional {
+  color: var(--wn-teal);
+}
+
+.ck-item__facts {
+  display: grid;
+  gap: 8px;
+  margin: 0;
+}
+
+.ck-item__facts > div {
+  display: grid;
+  grid-template-columns: 132px minmax(0, 1fr);
+  gap: 16px;
+}
+
+.ck-item__facts dt {
+  color: var(--wn-text-muted);
+  font: 600 13px/1.5 var(--wn-font-ui);
+}
+
+.ck-item__facts dd,
+.ck-item__text {
+  margin: 0;
+  color: var(--wn-text);
+  font: 500 14px/1.5 var(--wn-font-ui);
+}
+
+.ck-none {
+  display: grid;
+  gap: 6px;
+  margin: 0;
+  padding: 0 0 0 18px;
+  color: var(--wn-text);
+  font: 600 15px/1.5 var(--wn-font-ui);
+}
+
+@media (max-width: 767px) {
+  .ck-item__facts > div {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 2px;
   }
 }
 

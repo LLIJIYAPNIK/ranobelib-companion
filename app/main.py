@@ -13,6 +13,7 @@ from app.api import (
     admin,
     auth,
     chapters,
+    cookies,
     downloads,
     downloads_section,
     exports,
@@ -114,6 +115,7 @@ app.include_router(activity.router)
 app.include_router(home.router)
 app.include_router(auth.router)
 app.include_router(chapters.router)
+app.include_router(cookies.router)
 app.include_router(exports.router)
 app.include_router(downloads.router)
 app.include_router(downloads_section.router)
