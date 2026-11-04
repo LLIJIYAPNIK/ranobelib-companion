@@ -94,7 +94,10 @@ def test_the_tabs_are_links_and_the_current_one_is_marked() -> None:
 def test_finished_is_found_by_its_label_or_not_offered() -> None:
     fake, html = _get({"section": "done"}, statuses=[Label(id=1, label="Онгоинг")])
 
-    assert "section=done" not in html
+    # Only the tabs: the page's own URL may still carry it elsewhere (the cookie
+    # notice's `next`, PR 375).
+    tabs = re.findall(r'<a class="cg-sections__tab" href="([^"]+)"', html)
+    assert tabs and "/catalog?section=done" not in tabs
     assert fake.received_kwargs["sort"] == "last_chapter_at"  # back to the default
 
 
