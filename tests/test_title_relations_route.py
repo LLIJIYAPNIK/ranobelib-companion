@@ -148,3 +148,19 @@ def test_the_title_content_carries_the_slot_and_the_page_loads_its_script() -> N
     assert 'data-role="title-relations-slot" data-slug-url="6712--test-novel"' in data.text
     assert "Истинная D×D" not in data.text  # fetched separately, never in the first render
     assert "static/js/title-relations.js" in page.text
+
+
+def test_the_slot_sits_between_the_description_and_the_volumes() -> None:
+    """PR 371: an adaptation is news about the title - the section comes before the
+    volumes and chapters, on every width, not after the last chapter."""
+    from pathlib import Path
+
+    with patch("app.services.client.RanobeLib", return_value=_RelationsClient([SEQUEL])):
+        html = client.get("/titles/6712--test-novel/data").text
+
+    assert html.index('class="tp-about') < html.index('data-role="title-relations-slot"')
+    assert html.index('data-role="title-relations-slot"') < html.index('id="title-panel-toc"')
+
+    css = (Path(__file__).parents[1] / "app/static/css/app.css").read_text(encoding="utf-8")
+    assert '"head lamp" "about lamp" "rel lamp" "vols lamp" "chap lamp"' in css
+    assert '"head" "lamp" "about" "rel" "vols" "chap"' in css
