@@ -100,10 +100,60 @@
       strip.scrollBy({ left: (k ? 1 : -1) * strip.clientWidth * 0.8, behavior: reduced() ? "auto" : "smooth" });
     }));
     panels.forEach((panel) => {
-      panel.querySelector('[data-role="relations-strip"]').addEventListener("scroll", sync, { passive: true });
+      const each = panel.querySelector('[data-role="relations-strip"]');
+      each.addEventListener("scroll", sync, { passive: true });
+      dragToScroll(each);
     });
     window.addEventListener("resize", sync);
     sync();
+  }
+
+  // PR 374: a long strip is dragged with the mouse, the way the library's shelves and the
+  // reading calendar's strip are (activity-calendar.js) - touch already swipes it natively.
+  // A press that moves under 5px is still a click; one that drags doesn't open the cover
+  // it started on, and the covers can't be dragged out of the page as images or links.
+  function dragToScroll(strip) {
+    let drag = null;
+    let swallowClick = false;
+
+    strip.addEventListener("pointerdown", (event) => {
+      if (event.pointerType !== "mouse" || event.button !== 0) return;
+      if (strip.scrollWidth <= strip.clientWidth + 2) return;
+      drag = { x: event.clientX, left: strip.scrollLeft, moved: false, id: event.pointerId };
+    });
+
+    strip.addEventListener("pointermove", (event) => {
+      if (!drag || event.pointerId !== drag.id) return;
+      const dx = event.clientX - drag.x;
+      if (!drag.moved && Math.abs(dx) < 5) return;
+      if (!drag.moved) {
+        drag.moved = true;
+        strip.classList.add("is-dragging");
+        try { strip.setPointerCapture(drag.id); } catch { /* a pointer already gone */ }
+      }
+      strip.scrollLeft = drag.left - dx;
+      event.preventDefault();
+    });
+
+    function end() {
+      if (!drag) return;
+      if (drag.moved) {
+        swallowClick = true;
+        window.setTimeout(() => { swallowClick = false; }, 0);
+      }
+      strip.classList.remove("is-dragging");
+      drag = null;
+    }
+
+    strip.addEventListener("pointerup", end);
+    strip.addEventListener("pointercancel", end);
+    strip.addEventListener("click", (event) => {
+      if (!swallowClick) return;
+      swallowClick = false;
+      event.preventDefault();
+      event.stopPropagation();
+    }, true);
+    strip.addEventListener("dragstart", (event) => event.preventDefault());
   }
 
   function initTitleRelations() {

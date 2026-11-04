@@ -25622,6 +25622,23 @@ body.reader-page--offline-copy .reader-paragraph-more {
   display: none;
 }
 
+/* PR 374: a strip longer than it shows is dragged with the mouse (title-relations.js). */
+@media (hover: hover) and (pointer: fine) {
+  .tp-rel--overflow .tp-rel__strip {
+    cursor: grab;
+  }
+}
+
+.tp-rel__strip.is-dragging {
+  cursor: grabbing;
+  scroll-snap-type: none;
+  user-select: none;
+}
+
+.tp-rel__strip.is-dragging .tp-rel__card {
+  pointer-events: none;
+}
+
 .tp-rel__item {
   min-width: 0;
   scroll-snap-align: start;
