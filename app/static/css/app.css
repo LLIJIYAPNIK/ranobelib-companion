@@ -24546,7 +24546,7 @@ body.reader-page--offline-copy .reader-paragraph-more {
 .tp {
   display: grid;
   grid-template-columns: minmax(0, 1fr) 384px;
-  grid-template-areas: "head lamp" "about lamp" "rel lamp" "vols lamp" "chap lamp";
+  grid-template-areas: "head lamp" "resume lamp" "about lamp" "rel lamp" "vols lamp" "chap lamp";
   gap: 0 56px;
   align-items: start;
 }
@@ -25050,6 +25050,49 @@ body.reader-page--offline-copy .reader-paragraph-more {
   margin: 0;
   color: #fff;
   font: 600 14px/1.45 var(--wn-font-ui);
+}
+
+/* --- PR 372: «Вы остановились» - the reader's chapter and the next two, at the top of the
+   reading column; the rows are the chapters' own (.tp-line/.tp-row). Desktop only: below
+   1024px the lamp with the place and «Продолжить» comes first itself. --- */
+.tp-resume {
+  grid-area: resume;
+  min-width: 0;
+  margin-top: 28px;
+}
+
+.tp-resume__head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 16px;
+  margin-bottom: 10px;
+}
+
+.tp-resume__all {
+  font: 600 14px/1.3 var(--wn-font-ui);
+}
+
+.tp-resume__line > :first-child::before {
+  top: 50%;
+}
+
+.tp-resume__line > :first-child::after {
+  display: none;
+}
+
+.tp-resume__line > :last-child::before {
+  bottom: 50%;
+}
+
+.tp-resume__line > :only-child::before {
+  display: none;
+}
+
+@media (max-width: 1023px) {
+  .tp-resume {
+    display: none;
+  }
 }
 
 /* --- About --- */
