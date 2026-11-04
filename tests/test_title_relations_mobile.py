@@ -40,4 +40,5 @@ def test_the_strip_keeps_the_page_margins_and_its_swipe() -> None:
 
 
 def test_the_section_has_a_place_in_the_phone_grid() -> None:
-    assert re.search(r'"chap chap"\s+"rel rel"\s+"about about"', CSS)
+    # PR 371: right after the actions, before the volumes - not under every chapter.
+    assert re.search(r'"offline offline"\s+"rel rel"\s+"vols vols"', CSS)

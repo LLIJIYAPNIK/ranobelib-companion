@@ -24546,7 +24546,7 @@ body.reader-page--offline-copy .reader-paragraph-more {
 .tp {
   display: grid;
   grid-template-columns: minmax(0, 1fr) 384px;
-  grid-template-areas: "head lamp" "about lamp" "vols lamp" "chap lamp" "rel lamp";
+  grid-template-areas: "head lamp" "about lamp" "rel lamp" "vols lamp" "chap lamp";
   gap: 0 56px;
   align-items: start;
 }
@@ -25346,15 +25346,17 @@ body.reader-page--offline-copy .reader-paragraph-more {
 }
 
 
-/* --- PR 361: «Связанные релизы» - the title's novels, manga and anime as strips of covers,
-   at the end of the reading column (title-relations.js fills .tp-rel-slot) ------------- */
+/* --- PR 361/371: «Связанные релизы» - the title's novels, manga and anime as strips of
+   covers, between the description and the volumes (title-relations.js fills .tp-rel-slot).
+   It arrives after the page: it rises in like the rest did, and only once. ------------- */
 .tp-rel-slot {
   grid-area: rel;
   min-width: 0;
 }
 
 .tp-rel {
-  margin-top: 56px;
+  margin-top: 44px;
+  animation: hm-rise 0.6s var(--hm-ease) both;
 }
 
 .tp-rel__head {
@@ -25609,6 +25611,10 @@ a.tp-rel__card:active .tp-rel__cover {
 }
 
 @media (prefers-reduced-motion: reduce) {
+  .tp-rel {
+    animation: none;
+  }
+
   .tp-rel__cover img {
     transition: none;
   }
@@ -26288,7 +26294,7 @@ a.tp-rel__card:active .tp-rel__cover {
 @media (max-width: 1023px) {
   .tp {
     grid-template-columns: minmax(0, 1fr);
-    grid-template-areas: "head" "lamp" "about" "vols" "chap" "rel";
+    grid-template-areas: "head" "lamp" "about" "rel" "vols" "chap";
   }
 
   .tp-lamp {
@@ -26323,9 +26329,9 @@ a.tp-rel__card:active .tp-rel__cover {
       "go go"
       "row row"
       "offline offline"
+      "rel rel"
       "vols vols"
       "chap chap"
-      "rel rel"
       "about about"
       "secs secs";
     column-gap: 16px;

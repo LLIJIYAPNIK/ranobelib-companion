@@ -255,6 +255,14 @@
     {% endif %}
   </section>
 
+  {# PR 361/371: «Связанные релизы» (_title_relations.html) - title-relations.js fills this
+     slot once the content is in, and drops it when the title has none. Right under what
+     the title is about, before the volumes: a manga or an anime of a novel is news about
+     it, not a footnote under three hundred chapters. Arriving after the first render it
+     only grows below the description; scroll anchoring keeps whatever is already in view
+     where it was. #}
+  <div class="tp-rel-slot" data-role="title-relations-slot" data-slug-url="{{ title.slug_url }}"></div>
+
   {% if contents %}
   <section class="tp-vols hm-rise" style="--i: 3" aria-labelledby="tp-vols-h" data-role="title-volumes">
     <div class="tp-vols__head">
@@ -351,9 +359,6 @@
     </form>
   </section>
 
-  {# PR 361: «Связанные релизы» (_title_relations.html) - title-relations.js fills this
-     slot once the content is in, and drops it when the title has none. #}
-  <div class="tp-rel-slot" data-role="title-relations-slot" data-slug-url="{{ title.slug_url }}"></div>
 </div>
 
 {# On a phone: «Продолжить» stays at hand once the lamp's button has scrolled away. #}
