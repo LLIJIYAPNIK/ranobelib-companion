@@ -41,6 +41,44 @@ def logged_in_client(monkeypatch: pytest.MonkeyPatch) -> Iterator[TestClient]:
     get_settings.cache_clear()
 
 
+def test_a_visitor_who_hasnt_chosen_gets_the_notice_with_two_equal_choices() -> None:
+    html = client.get("/").text
+
+    assert 'data-role="cookie-notice"' in html
+    assert 'action="/cookies/consent"' in html
+    assert 'name="choice" value="all">Принять все</button>' in html
+    assert 'name="choice" value="essential">Только необходимые</button>' in html
+    assert 'href="/settings/cookies"' in html
+    assert "static/js/cookie-notice.js" in html
+    # The server decides: no localStorage flag hides it any more.
+    assert "cookie-notice-init.js" not in html
+    assert not (ROOT / "app/static/js/cookie-notice-init.js").exists()
+
+
+def test_logged_in_visitor_also_gets_the_notice(logged_in_client: TestClient) -> None:
+    assert 'data-role="cookie-notice"' in logged_in_client.get("/").text
+
+
+@pytest.mark.parametrize("choice", ["all", "essential"])
+def test_after_a_choice_the_notice_is_gone(choice: str) -> None:
+    client.cookies.set("cookie_consent", choice)
+
+    assert 'data-role="cookie-notice"' not in client.get("/").text
+
+
+def test_a_junk_choice_is_no_choice() -> None:
+    client.cookies.set("cookie_consent", "maybe")
+
+    assert 'data-role="cookie-notice"' in client.get("/").text
+
+
+def test_the_settings_page_isnt_covered_by_its_own_notice() -> None:
+    html = client.get("/settings/cookies").text
+
+    assert 'data-role="cookie-notice"' not in html
+    assert 'data-role="cookie-consent-form"' in html
+    assert "Вы ещё не выбирали" in html
+
 
 def test_accepting_all_sets_the_choice_for_a_year_httponly() -> None:
     response = client.post(
@@ -105,3 +143,12 @@ def test_the_settings_page_shows_the_current_choice() -> None:
 
     assert "Только необходимые: «Недавние» не сохраняются." in html
     assert 'value="essential" aria-pressed="true"' in html
+
+
+def test_the_script_drops_the_old_flag_and_falls_back_to_a_plain_submit() -> None:
+    js = (ROOT / "app/static/js/cookie-notice.js").read_text(encoding="utf-8")
+
+    assert 'localStorage.removeItem("cookieNoticeDismissed")' in js
+    assert '"X-Requested-With": "fetch"' in js
+    assert "form.requestSubmit(button)" in js
+    assert "form.dataset.plain" in js

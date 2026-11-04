@@ -1,5 +1,18 @@
-<div class="cookie-notice" data-role="cookie-notice">
-  <p class="cookie-notice__text">Сайт использует cookie для входа и истории просмотров.</p>
-  <button class="btn btn--sm cookie-notice__dismiss" type="button" data-role="cookie-notice-dismiss">Понятно</button>
-</div>
-<script src="{{ static_url('js/cookie-notice-init.js') }}"></script>
+{# PR 375: the cookie notice - shown until the visitor chooses (app/cookie_consent.py), so
+   the server decides and nothing flashes in or out on load. Declining is as easy as
+   accepting: two equal buttons, and «Только необходимые» is the default until then (no
+   optional cookie is written before «Принять все»). Not on «Данные и cookie» itself,
+   where the same choice is the page. A plain form without cookie-notice.js; with it, a
+   fetch and the card slides away. #}
+{% if cookie_consent(request) is none and active_settings_section != "cookies" %}
+<section class="cookie-notice" data-role="cookie-notice" aria-labelledby="cookie-notice-title">
+  <h2 class="cookie-notice__title" id="cookie-notice-title">Cookie на этом сайте</h2>
+  <p class="cookie-notice__text">Только свои: чтобы держать вас в аккаунте и показывать «Недавние». Без рекламы, аналитики и чужих трекеров.</p>
+  <form class="cookie-notice__actions" method="post" action="/cookies/consent" data-role="cookie-consent-form">
+    <input type="hidden" name="next" value="{{ request.url.path }}{% if request.url.query %}?{{ request.url.query }}{% endif %}">
+    <button class="wn-btn wn-btn--primary cookie-notice__btn" type="submit" name="choice" value="all">Принять все</button>
+    <button class="wn-btn wn-btn--secondary cookie-notice__btn" type="submit" name="choice" value="essential">Только необходимые</button>
+  </form>
+  <a class="hm-link cookie-notice__more" href="/settings/cookies" data-role="cookie-notice-more">Что и зачем хранится</a>
+</section>
+{% endif %}
