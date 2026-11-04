@@ -9,8 +9,29 @@
 // With two or more groups the group names become tabs and one strip shows at a time;
 // without this script every group shows under its own name. The arrows scroll the strip in
 // view and only appear when it holds more than it shows.
+//
+// PR 372: a slot with data-compact (a title already being read) shows the section folded into its one-line
+// peek; the peek opens the whole of it.
 (() => {
   const reduced = () => window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+
+  function fold(section) {
+    const peek = section.querySelector('[data-role="relations-peek"]');
+    const body = section.querySelector('[data-role="relations-body"]');
+    if (!peek || !body) return;
+    section.classList.add("tp-rel--compact");
+    peek.hidden = false;
+    body.hidden = true;
+    peek.addEventListener("click", () => {
+      section.classList.remove("tp-rel--compact");
+      peek.setAttribute("aria-expanded", "true");
+      peek.hidden = true;
+      body.hidden = false;
+      window.dispatchEvent(new Event("resize")); // the strip's arrows measure it now
+      const first = body.querySelector('[data-role="relations-tab"][aria-selected="true"]') || body.querySelector("a, button");
+      if (first) first.focus({ preventScroll: true });
+    });
+  }
 
   function enhance(section) {
     const tabsBox = section.querySelector('[data-role="relations-tabs"]');
@@ -89,7 +110,9 @@
         }
         slot.innerHTML = html;
         const section = slot.querySelector('[data-role="title-relations"]');
-        if (section) enhance(section);
+        if (!section) return;
+        enhance(section);
+        if (slot.dataset.compact) fold(section);
       })
       .catch(() => slot.remove());
   }

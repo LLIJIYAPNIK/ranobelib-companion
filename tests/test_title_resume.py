@@ -1,5 +1,6 @@
 """PR 372: a title already being read puts the way back in first - «Вы остановились» (the
-reader's chapter and the next two) at the top of the reading column."""
+reader's chapter and the next two) at the top of the reading column, «Связанные релизы»
+folded into one line."""
 
 from contextlib import asynccontextmanager
 from pathlib import Path
@@ -13,6 +14,7 @@ from app.auth.dependencies import get_current_user
 from app.db.library import LibraryEntry
 from app.db.users import User
 from app.main import app
+from tests.test_title_relations_route import MANGA, SEQUEL, TV, _get
 from tests.test_titles import _fake_title, _FakeClient
 
 ROOT = Path(__file__).parents[1]
@@ -106,10 +108,27 @@ def test_the_last_chapter_stands_alone() -> None:
     assert resume.count('<li class="tp-row') == 1
 
 
-def test_a_title_not_started_has_no_resume() -> None:
+def test_a_title_not_started_has_no_resume_and_the_releases_whole() -> None:
     html = _data(None)
 
     assert "tp-resume" not in html
+    assert 'data-role="title-relations-slot" data-slug-url="6712--test-novel">' in html
+
+
+def test_a_title_being_read_folds_the_releases() -> None:
+    html = _data(("1", "1"))
+
+    assert 'data-slug-url="6712--test-novel" data-compact="true"' in html
+
+
+def test_the_releases_fold_into_one_line_with_their_groups() -> None:
+    html = _get([TV, MANGA, SEQUEL]).text
+    peek = html[html.index('data-role="relations-peek"') : html.index("</button>")]
+
+    assert 'aria-controls="tp-rel-body"' in peek
+    assert 'Аниме <span class="hm-num">1</span> · Манга <span class="hm-num">1</span>' in peek
+    assert peek.count("<img") == 1  # only the novel has a cover here
+    assert 'id="tp-rel-body" data-role="relations-body"' in html
 
 
 def test_the_resume_is_desktop_only_and_has_its_place_in_the_grid() -> None:

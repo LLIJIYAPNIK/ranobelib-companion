@@ -298,7 +298,10 @@
      it, not a footnote under three hundred chapters. Arriving after the first render it
      only grows below the description; scroll anchoring keeps whatever is already in view
      where it was. #}
-  <div class="tp-rel-slot" data-role="title-relations-slot" data-slug-url="{{ title.slug_url }}"></div>
+  {# PR 372: for a title already being read the section comes folded into one line
+     (data-compact) - the reader came back to read, not to browse; the whole strip opens
+     from it. A title not started yet shows it whole, while it is still being chosen. #}
+  <div class="tp-rel-slot" data-role="title-relations-slot" data-slug-url="{{ title.slug_url }}"{% if has_progress %} data-compact="true"{% endif %}></div>
 
   {% if contents %}
   <section class="tp-vols hm-rise" style="--i: 3" aria-labelledby="tp-vols-h" data-role="title-volumes">
