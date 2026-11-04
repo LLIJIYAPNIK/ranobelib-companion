@@ -163,5 +163,5 @@ def test_the_slot_sits_between_the_description_and_the_volumes() -> None:
     assert html.index('data-role="title-relations-slot"') < html.index('id="title-panel-toc"')
 
     css = (Path(__file__).parents[1] / "app/static/css/app.css").read_text(encoding="utf-8")
-    assert '"head lamp" "about lamp" "rel lamp" "vols lamp" "chap lamp"' in css
+    assert '"about lamp" "rel lamp" "vols lamp" "chap lamp"' in css
     assert '"head" "lamp" "about" "rel" "vols" "chap"' in css

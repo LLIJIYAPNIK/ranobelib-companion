@@ -42,3 +42,19 @@ def test_the_strip_keeps_the_page_margins_and_its_swipe() -> None:
 def test_the_section_has_a_place_in_the_phone_grid() -> None:
     # PR 371: right after the actions, before the volumes - not under every chapter.
     assert re.search(r'"offline offline"\s+"rel rel"\s+"vols vols"', CSS)
+
+
+def test_a_long_strip_is_dragged_with_the_mouse() -> None:
+    """PR 374: mouse only (touch already swipes), a press under 5px still a click, and the
+    click that ends a drag doesn't open the cover it started on."""
+    js = (ROOT / "app/static/js/title-relations.js").read_text(encoding="utf-8")
+
+    assert "dragToScroll(each);" in js
+    assert 'event.pointerType !== "mouse"' in js
+    assert "Math.abs(dx) < 5" in js
+    assert "swallowClick" in js
+    assert 'strip.addEventListener("dragstart", (event) => event.preventDefault());' in js
+    dragging = _rule(CSS, ".tp-rel__strip.is-dragging")
+    assert "cursor: grabbing;" in dragging
+    assert "scroll-snap-type: none;" in dragging
+    assert "cursor: grab;" in _rule(CSS, ".tp-rel--overflow .tp-rel__strip")

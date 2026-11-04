@@ -11,6 +11,20 @@
    («TV Сериал», «OVA», «Манхва») - their relation is almost always «Адаптация». #}
 {% set out_icon = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M7 17 17 7M9 7h8v8"/></svg>' %}
 <section class="tp-rel" aria-labelledby="tp-rel-h" data-role="title-relations">
+  {# PR 372: the folded form, for a title already being read (the slot's data-compact):
+     one line - a cover from each group, the groups with their counts - that opens the
+     whole section below. title-relations.js shows it; without the flag it stays hidden. #}
+  <button type="button" class="tp-rel__peek" data-role="relations-peek" aria-expanded="false" aria-controls="tp-rel-body" hidden>
+    <span class="tp-rel__thumbs" aria-hidden="true">
+      {% for _, _, items in groups %}{% set cover = (items | selectattr("cover_url") | first) %}{% if cover %}<img src="{{ cover.cover_url }}" alt="" loading="lazy">{% endif %}{% endfor %}
+    </span>
+    <span class="tp-rel__peek-text">
+      <b>Связанные релизы</b>
+      <span>{% for _, label, items in groups %}{{ label }} <span class="hm-num">{{ items | length }}</span>{% if not loop.last %} · {% endif %}{% endfor %}</span>
+    </span>
+    <span class="tp-rel__peek-go">Показать<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m6 9 6 6 6-6"/></svg></span>
+  </button>
+  <div class="tp-rel__body" id="tp-rel-body" data-role="relations-body">
   <div class="tp-rel__head">
     <h2 class="hm-h2" id="tp-rel-h">Связанные релизы</h2>
     {% if groups | length > 1 %}
@@ -56,4 +70,5 @@
     </ul>
   </div>
   {% endfor %}
+  </div>
 </section>

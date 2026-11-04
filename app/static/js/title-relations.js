@@ -9,8 +9,39 @@
 // With two or more groups the group names become tabs and one strip shows at a time;
 // without this script every group shows under its own name. The arrows scroll the strip in
 // view and only appear when it holds more than it shows.
+//
+// PR 372: readerSettings.showRelatedReleases (default true, /settings/reading) set to
+// false drops the slot without asking for the relations at all. A slot with
+// data-compact (a title already being read) shows the section folded into its one-line
+// peek; the peek opens the whole of it.
 (() => {
   const reduced = () => window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+
+  function relationsWanted() {
+    try {
+      return JSON.parse(localStorage.getItem("readerSettings") || "{}").showRelatedReleases !== false;
+    } catch {
+      return true;
+    }
+  }
+
+  function fold(section) {
+    const peek = section.querySelector('[data-role="relations-peek"]');
+    const body = section.querySelector('[data-role="relations-body"]');
+    if (!peek || !body) return;
+    section.classList.add("tp-rel--compact");
+    peek.hidden = false;
+    body.hidden = true;
+    peek.addEventListener("click", () => {
+      section.classList.remove("tp-rel--compact");
+      peek.setAttribute("aria-expanded", "true");
+      peek.hidden = true;
+      body.hidden = false;
+      window.dispatchEvent(new Event("resize")); // the strip's arrows measure it now
+      const first = body.querySelector('[data-role="relations-tab"][aria-selected="true"]') || body.querySelector("a, button");
+      if (first) first.focus({ preventScroll: true });
+    });
+  }
 
   function enhance(section) {
     const tabsBox = section.querySelector('[data-role="relations-tabs"]');
@@ -69,15 +100,69 @@
       strip.scrollBy({ left: (k ? 1 : -1) * strip.clientWidth * 0.8, behavior: reduced() ? "auto" : "smooth" });
     }));
     panels.forEach((panel) => {
-      panel.querySelector('[data-role="relations-strip"]').addEventListener("scroll", sync, { passive: true });
+      const each = panel.querySelector('[data-role="relations-strip"]');
+      each.addEventListener("scroll", sync, { passive: true });
+      dragToScroll(each);
     });
     window.addEventListener("resize", sync);
     sync();
   }
 
+  // PR 374: a long strip is dragged with the mouse, the way the library's shelves and the
+  // reading calendar's strip are (activity-calendar.js) - touch already swipes it natively.
+  // A press that moves under 5px is still a click; one that drags doesn't open the cover
+  // it started on, and the covers can't be dragged out of the page as images or links.
+  function dragToScroll(strip) {
+    let drag = null;
+    let swallowClick = false;
+
+    strip.addEventListener("pointerdown", (event) => {
+      if (event.pointerType !== "mouse" || event.button !== 0) return;
+      if (strip.scrollWidth <= strip.clientWidth + 2) return;
+      drag = { x: event.clientX, left: strip.scrollLeft, moved: false, id: event.pointerId };
+    });
+
+    strip.addEventListener("pointermove", (event) => {
+      if (!drag || event.pointerId !== drag.id) return;
+      const dx = event.clientX - drag.x;
+      if (!drag.moved && Math.abs(dx) < 5) return;
+      if (!drag.moved) {
+        drag.moved = true;
+        strip.classList.add("is-dragging");
+        try { strip.setPointerCapture(drag.id); } catch { /* a pointer already gone */ }
+      }
+      strip.scrollLeft = drag.left - dx;
+      event.preventDefault();
+    });
+
+    function end() {
+      if (!drag) return;
+      if (drag.moved) {
+        swallowClick = true;
+        window.setTimeout(() => { swallowClick = false; }, 0);
+      }
+      strip.classList.remove("is-dragging");
+      drag = null;
+    }
+
+    strip.addEventListener("pointerup", end);
+    strip.addEventListener("pointercancel", end);
+    strip.addEventListener("click", (event) => {
+      if (!swallowClick) return;
+      swallowClick = false;
+      event.preventDefault();
+      event.stopPropagation();
+    }, true);
+    strip.addEventListener("dragstart", (event) => event.preventDefault());
+  }
+
   function initTitleRelations() {
     const slot = document.querySelector('[data-role="title-relations-slot"]');
     if (!slot || slot.dataset.loading) return;
+    if (!relationsWanted()) {
+      slot.remove();
+      return;
+    }
     slot.dataset.loading = "true";
 
     fetch(`/titles/${slot.dataset.slugUrl}/relations`)
@@ -89,7 +174,9 @@
         }
         slot.innerHTML = html;
         const section = slot.querySelector('[data-role="title-relations"]');
-        if (section) enhance(section);
+        if (!section) return;
+        enhance(section);
+        if (slot.dataset.compact) fold(section);
       })
       .catch(() => slot.remove());
   }

@@ -15,7 +15,7 @@
 // (paragraph-menu.js), readingSpeedWpm (reading-speed-test.js), autoDownloadNext and
 // autoDownloadAnyNetwork (offline-autodownload.js, PR 334), keepScreenOn
 // (reader-wake-lock.js, PR 338), openDownloadedFromCopy (offline-store.js hands it to the
-// service worker, PR 339).
+// service worker, PR 339), showRelatedReleases (title-relations.js, PR 372).
 //
 // PR 255 adds four keys:
 // - theme: Aurora Dark (default), AMOLED, Sepia, Light, System - data-reader-theme on
@@ -75,6 +75,9 @@
     // PR 339: a downloaded chapter whose page the network is slow to give opens from the
     // copy on the device (app/pwa/service-worker.js) - on by default.
     openDownloadedFromCopy: true,
+    // PR 372: «Связанные релизы» on the title page - on by default; off, the page doesn't
+    // ask for them at all.
+    showRelatedReleases: true,
   };
   // Not how the text looks - kept by «Сбросить настройки».
   const KEPT_ON_RESET = [
@@ -83,6 +86,7 @@
     "autoDownloadAnyNetwork",
     "keepScreenOn",
     "openDownloadedFromCopy",
+    "showRelatedReleases",
   ];
 
   const root = document.documentElement;

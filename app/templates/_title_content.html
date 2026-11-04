@@ -225,6 +225,43 @@
     </div>
   </aside>
 
+  {# PR 372: «Вы остановились» - on a desktop the lamp with «Продолжить» is off to the
+     right, and the reader's row in the chapters below the description, the related
+     releases and the shelf. This puts the reader's chapter and the next two at the top
+     of the reading column. Below 1024px the lamp itself comes first with the place and
+     «Продолжить», and this stays hidden (app.css). No data-role on the rows: the search,
+     the folds and the chapter picker (title-page-ui.js) work on the full list only. #}
+  {% if has_progress and current_chapter %}
+  <section class="tp-resume hm-rise" style="--i: 1" aria-labelledby="tp-resume-h">
+    <div class="tp-resume__head">
+      <h2 class="hm-h2" id="tp-resume-h">Вы остановились</h2>
+      <a class="hm-link tp-resume__all" href="#title-panel-toc">Всё оглавление</a>
+    </div>
+    <ol class="tp-line tp-resume__line">
+      <li class="tp-row is-here">
+        <a class="tp-row__link" href="/titles/{{ title.slug_url }}/chapters/{{ current_chapter.volume }}/{{ current_chapter.number }}" aria-current="step">
+          <span class="tp-node" aria-hidden="true"></span>
+          <span class="tp-row__main">
+            <span class="tp-row__name"><span class="tp-row__n hm-num">Том {{ current_chapter.volume }} · Глава {{ current_chapter.number }}</span>{{ current_chapter.name or "Без названия" }}</span>
+          </span>
+          <span class="tp-row__cta"><svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M8 5.5v13l10.5-6.5z"/></svg>Продолжить</span>
+        </a>
+      </li>
+      {% for chapter in next_chapters %}
+      <li class="tp-row">
+        <a class="tp-row__link" href="/titles/{{ title.slug_url }}/chapters/{{ chapter.volume }}/{{ chapter.number }}">
+          <span class="tp-node" aria-hidden="true"></span>
+          <span class="tp-row__main">
+            <span class="tp-row__name"><span class="tp-row__n hm-num">{% if chapter.volume != current_chapter.volume %}Том {{ chapter.volume }} · {% endif %}Глава {{ chapter.number }}</span>{{ chapter.name or "Без названия" }}</span>
+          </span>
+          <span class="tp-row__go" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m9 6 6 6-6 6"/></svg></span>
+        </a>
+      </li>
+      {% endfor %}
+    </ol>
+  </section>
+  {% endif %}
+
   <section class="tp-about hm-rise" style="--i: 2" aria-label="О тайтле">
     {% if title.summary %}
     <p class="tp-summary" data-role="title-summary">{{ title.summary }}</p>
@@ -261,7 +298,10 @@
      it, not a footnote under three hundred chapters. Arriving after the first render it
      only grows below the description; scroll anchoring keeps whatever is already in view
      where it was. #}
-  <div class="tp-rel-slot" data-role="title-relations-slot" data-slug-url="{{ title.slug_url }}"></div>
+  {# PR 372: for a title already being read the section comes folded into one line
+     (data-compact) - the reader came back to read, not to browse; the whole strip opens
+     from it. A title not started yet shows it whole, while it is still being chosen. #}
+  <div class="tp-rel-slot" data-role="title-relations-slot" data-slug-url="{{ title.slug_url }}"{% if has_progress %} data-compact="true"{% endif %}></div>
 
   {% if contents %}
   <section class="tp-vols hm-rise" style="--i: 3" aria-labelledby="tp-vols-h" data-role="title-volumes">

@@ -123,6 +123,12 @@ async def title_data(
             "first_chapter": chapters[0] if chapters else None,
             "current_chapter": chapters[current_index] if current_index is not None else None,
             "current_chapter_index": current_index,
+            # PR 372: «Вы остановились» - the reader's chapter and the two after it, at the
+            # top of the reading column, so the way back in doesn't wait under the
+            # description, the related releases and the shelf.
+            "next_chapters": (
+                chapters[current_index + 1 : current_index + 3] if current_index is not None else []
+            ),
             "ambiguous_chapter_count": len(ambiguous_branch_counts),
             "max_branches": max(ambiguous_branch_counts, default=0),
             "default_translation_index": (

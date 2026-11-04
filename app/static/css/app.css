@@ -24546,7 +24546,7 @@ body.reader-page--offline-copy .reader-paragraph-more {
 .tp {
   display: grid;
   grid-template-columns: minmax(0, 1fr) 384px;
-  grid-template-areas: "head lamp" "about lamp" "rel lamp" "vols lamp" "chap lamp";
+  grid-template-areas: "head lamp" "resume lamp" "about lamp" "rel lamp" "vols lamp" "chap lamp";
   gap: 0 56px;
   align-items: start;
 }
@@ -24613,8 +24613,12 @@ body.reader-page--offline-copy .reader-paragraph-more {
   flex-direction: column;
   gap: 14px;
   padding: 22px;
-  border-radius: 26px;
-  background: var(--wn-surface);
+  /* PR 373: the home page's glass (.hm-panel) - over the cover's glow, not a slab on it. */
+  border: 1px solid var(--hm-glass-edge);
+  border-radius: var(--hm-radius);
+  background: var(--hm-glass);
+  -webkit-backdrop-filter: var(--hm-glass-blur);
+  backdrop-filter: var(--hm-glass-blur);
 }
 
 .tp-lamp__top {
@@ -25052,6 +25056,60 @@ body.reader-page--offline-copy .reader-paragraph-more {
   font: 600 14px/1.45 var(--wn-font-ui);
 }
 
+/* --- PR 372: «Вы остановились» - the reader's chapter and the next two, at the top of the
+   reading column; the rows are the chapters' own (.tp-line/.tp-row). Desktop only: below
+   1024px the lamp with the place and «Продолжить» comes first itself. --- */
+.tp-resume {
+  grid-area: resume;
+  min-width: 0;
+  margin-top: 28px;
+  /* PR 373: one glass panel, like the lamp beside it and the home page's. */
+  padding: 18px 10px 8px;
+  border: 1px solid var(--hm-glass-edge);
+  border-radius: var(--hm-radius);
+  background: var(--hm-glass);
+  -webkit-backdrop-filter: var(--hm-glass-blur);
+  backdrop-filter: var(--hm-glass-blur);
+}
+
+.tp-resume__head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 16px;
+  margin: 0 12px 10px;
+}
+
+.tp-resume .tp-row.is-here {
+  margin-top: 0;
+}
+
+.tp-resume__all {
+  font: 600 14px/1.3 var(--wn-font-ui);
+}
+
+.tp-resume__line > :first-child::before {
+  top: 50%;
+}
+
+.tp-resume__line > :first-child::after {
+  display: none;
+}
+
+.tp-resume__line > :last-child::before {
+  bottom: 50%;
+}
+
+.tp-resume__line > :only-child::before {
+  display: none;
+}
+
+@media (max-width: 1023px) {
+  .tp-resume {
+    display: none;
+  }
+}
+
 /* --- About --- */
 .tp-about {
   grid-area: about;
@@ -25359,6 +25417,105 @@ body.reader-page--offline-copy .reader-paragraph-more {
   animation: hm-rise 0.6s var(--hm-ease) both;
 }
 
+/* PR 372: folded into one line for a title already being read - a cover from each group,
+   the groups with their counts, «Показать»; it opens the whole section. */
+.tp-rel__peek {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  width: 100%;
+  min-height: 68px;
+  padding: 12px 20px 12px 14px;
+  /* PR 373: glass, as the lamp and «Вы остановились». */
+  border: 1px solid var(--hm-glass-edge);
+  border-radius: var(--hm-radius);
+  background: var(--hm-glass);
+  -webkit-backdrop-filter: var(--hm-glass-blur);
+  backdrop-filter: var(--hm-glass-blur);
+  color: #fff;
+  text-align: left;
+  cursor: pointer;
+  transition: background-color 0.15s ease;
+}
+
+.tp-rel__peek[hidden] {
+  display: none;
+}
+
+.tp-rel__peek:focus-visible {
+  outline: none;
+  box-shadow: var(--wn-focus-ring);
+}
+
+.tp-rel__peek:active {
+  transform: scale(0.995);
+}
+
+@media (hover: hover) {
+  .tp-rel__peek:hover {
+    background: var(--hm-glass-raised);
+  }
+}
+
+.tp-rel__thumbs {
+  display: flex;
+  flex: none;
+}
+
+.tp-rel__thumbs img {
+  width: 30px;
+  height: 44px;
+  border: 1px solid rgb(255 255 255 / 18%);
+  border-radius: 7px;
+  object-fit: cover;
+}
+
+.tp-rel__thumbs img + img {
+  margin-left: -10px;
+}
+
+.tp-rel__peek-text {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+
+.tp-rel__peek-text b {
+  font: 700 15px/1.3 var(--wn-font-ui);
+}
+
+.tp-rel__peek-text > span {
+  overflow: hidden;
+  color: var(--wn-text-secondary);
+  font: 600 13px/1.35 var(--wn-font-ui);
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
+.tp-rel__peek-go {
+  display: inline-flex;
+  flex: none;
+  align-items: center;
+  gap: 6px;
+  color: var(--wn-text-secondary);
+  font: 700 14px/1 var(--wn-font-ui);
+}
+
+.tp-rel__peek-go svg {
+  width: 16px;
+  height: 16px;
+}
+
+.tp-rel--compact {
+  margin-top: 28px;
+}
+
+.tp-rel__body[hidden] {
+  display: none;
+}
+
 .tp-rel__head {
   display: flex;
   flex-wrap: wrap;
@@ -25463,6 +25620,23 @@ body.reader-page--offline-copy .reader-paragraph-more {
 
 .tp-rel__strip::-webkit-scrollbar {
   display: none;
+}
+
+/* PR 374: a strip longer than it shows is dragged with the mouse (title-relations.js). */
+@media (hover: hover) and (pointer: fine) {
+  .tp-rel--overflow .tp-rel__strip {
+    cursor: grab;
+  }
+}
+
+.tp-rel__strip.is-dragging {
+  cursor: grabbing;
+  scroll-snap-type: none;
+  user-select: none;
+}
+
+.tp-rel__strip.is-dragging .tp-rel__card {
+  pointer-events: none;
 }
 
 .tp-rel__item {
@@ -25575,6 +25749,29 @@ a.tp-rel__card:active .tp-rel__cover {
 
   .tp-rel__head {
     gap: 12px 16px;
+  }
+
+  /* PR 372: the folded line keeps to one line on a phone - the chevron says it opens. */
+  .tp-rel__peek {
+    gap: 12px;
+    padding-right: 14px;
+  }
+
+  .tp-rel__peek-go {
+    font-size: 0;
+  }
+
+  .tp-rel__peek-go svg {
+    width: 20px;
+    height: 20px;
+  }
+
+  .tp-rel__peek-text b {
+    white-space: nowrap;
+  }
+
+  .tp-rel--compact {
+    margin-top: 24px;
   }
 
   .tp-rel__tabs {
@@ -26001,10 +26198,12 @@ a.tp-rel__card:active .tp-rel__cover {
   margin: 6px 0;
 }
 
+/* PR 373: raised glass - the step up the site's selected tabs and secondary buttons take. */
 .tp-row.is-here .tp-row__link {
   min-height: 88px;
   padding: 14px 16px 14px 0;
-  background: #191823;
+  background: var(--hm-glass-raised);
+  box-shadow: inset 0 0 0 1px var(--hm-glass-edge);
 }
 
 .tp-row.is-here .tp-node::before {
@@ -26066,7 +26265,7 @@ a.tp-rel__card:active .tp-rel__cover {
 
 @media (hover: hover) {
   .tp-row.is-here .tp-row__link:hover {
-    background: #1e1d29;
+    background: rgb(255 255 255 / 13%);
   }
 }
 
