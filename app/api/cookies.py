@@ -6,12 +6,39 @@ App-level only - nothing here is about ranobe or the SDK."""
 from typing import Annotated
 
 from fastapi import APIRouter, Form, Request
-from fastapi.responses import RedirectResponse, Response
+from fastapi.responses import HTMLResponse, RedirectResponse, Response
 
 from app.config import get_settings
-from app.cookie_consent import CHOICES, write_consent
+from app.cookie_consent import CHOICES, CONSENT_MAX_AGE_SECONDS, read_consent, write_consent
+from app.recent_titles import MAX_AGE_SECONDS as RECENT_MAX_AGE_SECONDS
+from app.recent_titles import MAX_ENTRIES as RECENT_MAX_ENTRIES
+from app.templating import templates
 
 router = APIRouter()
+
+
+@router.get("/settings/cookies")
+async def settings_cookies_page(request: Request) -> HTMLResponse:
+    """The full list - every cookie and every kind of on-device storage, with what it holds,
+    what for and how long - and the choice, changeable at any time. Guests get it too:
+    cookies belong to the browser, not to an account. The lifetimes come from the config
+    and the modules that set the cookies, so the page can't drift from what they do."""
+    settings = get_settings()
+    day = 24 * 60 * 60
+    return templates.TemplateResponse(
+        request,
+        "settings_cookies.html",
+        {
+            "active_nav": "settings",
+            "active_settings_section": "cookies",
+            "consent": read_consent(request),
+            "session_days": settings.session_max_age // day,
+            "remember_days": settings.session_remember_max_age // day,
+            "recent_days": RECENT_MAX_AGE_SECONDS // day,
+            "recent_entries": RECENT_MAX_ENTRIES,
+            "consent_days": CONSENT_MAX_AGE_SECONDS // day,
+        },
+    )
 
 
 @router.post("/cookies/consent", response_model=None)

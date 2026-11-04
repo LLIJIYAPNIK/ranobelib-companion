@@ -82,3 +82,26 @@ def test_an_unknown_choice_is_refused() -> None:
 
     assert response.status_code == 400
     assert "set-cookie" not in response.headers
+
+
+def test_the_settings_page_lists_every_cookie_with_its_real_lifetime() -> None:
+    html = client.get("/settings/cookies").text
+
+    for name in ("session", "cookie_consent", "recent_titles"):
+        assert f"<code>{name}</code>" in html
+    settings = get_settings()
+    assert f'<span class="hm-num">{settings.session_max_age // 86400}</span>' in html
+    assert f'<span class="hm-num">{settings.session_remember_max_age // 86400}</span>' in html
+    assert '<span class="hm-num">180</span>' in html  # recent_titles
+    assert '<span class="hm-num">365</span>' in html  # cookie_consent
+    assert "Только на этом устройстве" in html
+    assert "Чего здесь нет" in html
+    assert 'href="/settings/cookies"' in html  # its own entry in the settings nav
+
+
+def test_the_settings_page_shows_the_current_choice() -> None:
+    client.cookies.set("cookie_consent", "essential")
+    html = client.get("/settings/cookies").text
+
+    assert "Только необходимые: «Недавние» не сохраняются." in html
+    assert 'value="essential" aria-pressed="true"' in html

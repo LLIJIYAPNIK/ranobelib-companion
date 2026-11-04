@@ -1,0 +1,118 @@
+{% extends "settings_layout.html" %}
+{% block title %}Данные и cookie — RanobeLib Companion{% endblock %}
+{% block settings_lead %}Что сайт хранит в вашем браузере, зачем и сколько — и ваш выбор{% endblock %}
+{% block settings_content %}
+{#
+  PR 375: every cookie this site sets and every kind of data it keeps on the device, with
+  what is inside, what it is for and how long it lives - the lifetimes from the config
+  and the modules that set them (app/api/cookies.py). The choice on the left is the same
+  form as the notice's (_cookie_notice.html, cookie-notice.js) and can be changed here
+  any time. Keep this page in step with app/cookie_consent.py, app/recent_titles.py and
+  what the scripts store (reader-settings.js, device-account.js, offline-store.js,
+  sync-queue.js, the service worker).
+#}
+{% set states = {
+  "all": "Приняты все cookie, включая «Недавние».",
+  "essential": "Только необходимые: «Недавние» не сохраняются.",
+  None: "Вы ещё не выбирали — пока ставятся только необходимые.",
+} %}
+<div class="st-row ck">
+  <div class="st-aside st-aside--pinned">
+    <section class="reader-settings-card st-panel st-panel--aside ck-choice" aria-labelledby="ck-choice-h">
+      <h2 class="reader-settings-card__title" id="ck-choice-h">Ваш выбор</h2>
+      <p class="ck-choice__state" data-role="cookie-consent-state" role="status">{{ states[consent] }}</p>
+      <form class="ck-choice__actions" method="post" action="/cookies/consent" data-role="cookie-consent-form">
+        <input type="hidden" name="next" value="/settings/cookies">
+        <button class="wn-btn wn-btn--primary" type="submit" name="choice" value="all" aria-pressed="{{ 'true' if consent == 'all' else 'false' }}">Принять все</button>
+        <button class="wn-btn wn-btn--secondary" type="submit" name="choice" value="essential" aria-pressed="{{ 'true' if consent == 'essential' else 'false' }}">Только необходимые</button>
+      </form>
+      <p class="reader-settings-row__hint">Необходимые нельзя отключить: без них не получится войти в аккаунт. «Только необходимые» сразу удаляет уже сохранённые «Недавние».</p>
+    </section>
+  </div>
+
+  <div class="st-stack">
+    <section class="reader-settings-card st-panel" aria-labelledby="ck-cookies-h">
+      <h2 class="reader-settings-card__title" id="ck-cookies-h">Cookie</h2>
+      <p class="reader-settings-row__hint">Браузер отправляет их сайту с каждым запросом. Все три ставит сам этот сайт, читать их из скриптов страницы нельзя.</p>
+      <ul class="ck-list">
+        <li class="ck-item">
+          <div class="ck-item__head">
+            <h3 class="ck-item__name">Вход в аккаунт <code>session</code></h3>
+            <span class="ck-item__kind">Необходимый</span>
+          </div>
+          <dl class="ck-item__facts">
+            <div><dt>Что внутри</dt><dd>Номер вашего аккаунта на сайте и служебная отметка сессии, подписанные сервером, — подделать их нельзя. Пароля, email и того, что вы читаете, там нет. У администраторов — ещё отметка входа в админку.</dd></div>
+            <div><dt>Зачем</dt><dd>Чтобы вы оставались в аккаунте, переходя со страницы на страницу.</dd></div>
+            <div><dt>Сколько</dt><dd><span class="hm-num">{{ session_days }}</span> {{ plural(session_days, "день", "дня", "дней") }}, с «Запомнить меня» — <span class="hm-num">{{ remember_days }}</span> {{ plural(remember_days, "день", "дня", "дней") }}. Удаляется, когда вы выходите.</dd></div>
+            <div><dt>Когда ставится</dt><dd>Только когда вы входите или регистрируетесь. Гостям не ставится.</dd></div>
+          </dl>
+        </li>
+        <li class="ck-item">
+          <div class="ck-item__head">
+            <h3 class="ck-item__name">Ваш выбор <code>cookie_consent</code></h3>
+            <span class="ck-item__kind">Необходимый</span>
+          </div>
+          <dl class="ck-item__facts">
+            <div><dt>Что внутри</dt><dd>Одно слово: «все» или «только необходимые».</dd></div>
+            <div><dt>Зачем</dt><dd>Чтобы не спрашивать вас заново на каждой странице.</dd></div>
+            <div><dt>Сколько</dt><dd><span class="hm-num">{{ consent_days }}</span> {{ plural(consent_days, "день", "дня", "дней") }}, потом сайт спросит снова.</dd></div>
+          </dl>
+        </li>
+        <li class="ck-item">
+          <div class="ck-item__head">
+            <h3 class="ck-item__name">«Недавние» <code>recent_titles</code></h3>
+            <span class="ck-item__kind ck-item__kind--optional">По выбору</span>
+          </div>
+          <dl class="ck-item__facts">
+            <div><dt>Что внутри</dt><dd>До <span class="hm-num">{{ recent_entries }}</span> последних открытых тайтлов: адрес страницы, название и ссылка на обложку.</dd></div>
+            <div><dt>Зачем</dt><dd>Блок «Недавние» на главной — вернуться к тайтлу, который вы смотрели, даже без аккаунта.</dd></div>
+            <div><dt>Сколько</dt><dd><span class="hm-num">{{ recent_days }}</span> {{ plural(recent_days, "день", "дня", "дней") }} с последнего открытого тайтла. Отдельный тайтл убирается крестиком на его карточке.</dd></div>
+            <div><dt>Когда ставится</dt><dd>Только после «Принять все».</dd></div>
+          </dl>
+        </li>
+      </ul>
+    </section>
+
+    <section class="reader-settings-card st-panel" aria-labelledby="ck-device-h">
+      <h2 class="reader-settings-card__title" id="ck-device-h">Только на этом устройстве</h2>
+      <p class="reader-settings-row__hint">Это не cookie: браузер не отправляет эти данные сайту сам. Они появляются, когда вы что-то настраиваете или скачиваете, и удаляются вместе с данными сайта в настройках браузера.</p>
+      <ul class="ck-list">
+        <li class="ck-item">
+          <h3 class="ck-item__name">Настройки</h3>
+          <p class="ck-item__text">Шрифт, тема и режим чтения, развёрнут ли сайдбар, свёрнутые разделы фильтров каталога. Чтобы сайт выглядел так, как вы его настроили. Меняются в разделе <a class="hm-link" href="/settings/reading">«Чтение»</a>.</p>
+        </li>
+        <li class="ck-item">
+          <h3 class="ck-item__name">Место чтения</h3>
+          <p class="ck-item__text">До какого абзаца вы дочитали главу — чтобы открыть её с того же места. У вошедших прогресс по тайтлам из библиотеки хранится и в аккаунте, чтобы продолжить на другом устройстве.</p>
+        </li>
+        <li class="ck-item">
+          <h3 class="ck-item__name">Скачанные главы</h3>
+          <p class="ck-item__text">Только то, что вы сами скачали для чтения без интернета, и их картинки. Посмотреть и удалить — в разделе <a class="hm-link" href="/settings/offline">«Офлайн»</a>.</p>
+        </li>
+        <li class="ck-item">
+          <h3 class="ck-item__name">Очередь без сети</h3>
+          <p class="ck-item__text">Отметки о прочитанном, сделанные без интернета, — пока их не получится отправить в ваш аккаунт.</p>
+        </li>
+        <li class="ck-item">
+          <h3 class="ck-item__name">Какой аккаунт входил</h3>
+          <p class="ck-item__text">Номер аккаунта, который последним входил на этом устройстве. Если войдёт другой, личное прежнего (место чтения, очередь, скачанное) стирается, чтобы не смешалось.</p>
+        </li>
+        <li class="ck-item">
+          <h3 class="ck-item__name">Файлы сайта</h3>
+          <p class="ck-item__text">Стили, скрипты, шрифты и недавние обложки — чтобы страницы открывались быстрее и работали без сети.</p>
+        </li>
+      </ul>
+    </section>
+
+    <section class="reader-settings-card st-panel" aria-labelledby="ck-none-h">
+      <h2 class="reader-settings-card__title" id="ck-none-h">Чего здесь нет</h2>
+      <ul class="ck-none">
+        <li>Рекламы и рекламных cookie.</li>
+        <li>Аналитики и счётчиков посещений.</li>
+        <li>Чужих cookie и трекеров.</li>
+      </ul>
+      <p class="reader-settings-row__hint">Обложки и иллюстрации загружаются с сервера изображений сайта-источника. Как при открытии любой картинки в интернете, он видит ваш IP-адрес и браузер.</p>
+    </section>
+  </div>
+</div>
+{% endblock %}

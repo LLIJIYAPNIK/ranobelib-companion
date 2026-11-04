@@ -4538,6 +4538,119 @@ img.paragraph-comment__attachment {
   }
 }
 
+/* PR 375: «Настройки → Данные и cookie» - the choice pinned beside the list, each cookie
+   and each kind of on-device data as a row of facts. */
+.ck-choice__state {
+  margin: 0;
+  color: var(--wn-text);
+  font: 600 15px/1.45 var(--wn-font-ui);
+}
+
+.ck-choice__actions {
+  display: grid;
+  gap: 8px;
+}
+
+.ck-choice__actions .wn-btn {
+  border-radius: 14px;
+}
+
+.ck-choice__actions .wn-btn--secondary {
+  border-color: transparent;
+  background: var(--hm-glass-raised);
+}
+
+.ck-choice__actions .wn-btn[aria-pressed="true"] {
+  box-shadow: inset 0 0 0 2px var(--wn-teal);
+}
+
+.ck-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.ck-item {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 16px 18px;
+  border-radius: 18px;
+  background: var(--hm-glass);
+}
+
+.ck-item__head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 6px 16px;
+}
+
+.ck-item__name {
+  margin: 0;
+  color: #fff;
+  font: 700 15px/1.35 var(--wn-font-ui);
+}
+
+.ck-item__name code {
+  margin-left: 8px;
+  color: var(--wn-text-muted);
+  font: 500 13px/1 var(--font-mono, monospace);
+}
+
+.ck-item__kind {
+  color: var(--wn-text-secondary);
+  font: 600 13px/1.3 var(--wn-font-ui);
+}
+
+.ck-item__kind--optional {
+  color: var(--wn-teal);
+}
+
+.ck-item__facts {
+  display: grid;
+  gap: 8px;
+  margin: 0;
+}
+
+.ck-item__facts > div {
+  display: grid;
+  grid-template-columns: 132px minmax(0, 1fr);
+  gap: 16px;
+}
+
+.ck-item__facts dt {
+  color: var(--wn-text-muted);
+  font: 600 13px/1.5 var(--wn-font-ui);
+}
+
+.ck-item__facts dd,
+.ck-item__text {
+  margin: 0;
+  color: var(--wn-text);
+  font: 500 14px/1.5 var(--wn-font-ui);
+}
+
+.ck-none {
+  display: grid;
+  gap: 6px;
+  margin: 0;
+  padding: 0 0 0 18px;
+  color: var(--wn-text);
+  font: 600 15px/1.5 var(--wn-font-ui);
+}
+
+@media (max-width: 767px) {
+  .ck-item__facts > div {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 2px;
+  }
+}
+
 /* Fullscreen image viewer (PR 66) - image-lightbox.js only ever creates this overlay
    when tap-to-read (PR 62-65) is off, so it never has to coexist with that mode's own
    "tap the reading area to reveal the next paragraph" behavior. z-index above even the
