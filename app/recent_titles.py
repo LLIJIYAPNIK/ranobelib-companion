@@ -22,10 +22,12 @@ import json
 from starlette.requests import Request
 from starlette.responses import Response
 
-_COOKIE_NAME = "recent_titles"
-_MAX_ENTRIES = 8
+from app.cookie_consent import optional_cookies_allowed
+
+COOKIE_NAME = "recent_titles"
+MAX_ENTRIES = 8
 _MAX_NAME_LENGTH = 100
-_MAX_AGE_SECONDS = 180 * 24 * 60 * 60
+MAX_AGE_SECONDS = 180 * 24 * 60 * 60
 
 
 def read_recent(request: Request) -> list[dict[str, str | None]]:
@@ -35,7 +37,7 @@ def read_recent(request: Request) -> list[dict[str, str | None]]:
     `cover_url` is optional in the stored shape - cookies written before it existed just
     don't have it, and that's fine, not a reason to drop the whole entry (see PR 16).
     """
-    raw = request.cookies.get(_COOKIE_NAME)
+    raw = request.cookies.get(COOKIE_NAME)
     if not raw:
         return []
     try:
@@ -63,7 +65,12 @@ def read_recent(request: Request) -> list[dict[str, str | None]]:
 def remember(
     response: Response, request: Request, *, slug_url: str, name: str, cover_url: str | None = None
 ) -> None:
-    """Move `slug_url` to the front of the recent-titles cookie on `response`."""
+    """Move `slug_url` to the front of the recent-titles cookie on `response`.
+
+    PR 375: an optional cookie - written only once the visitor chose «Принять все»
+    (app/cookie_consent.py); before a choice, or with «Только необходимые», nothing is."""
+    if not optional_cookies_allowed(request):
+        return
     if len(name) > _MAX_NAME_LENGTH:
         name = name[: _MAX_NAME_LENGTH - 1].rstrip() + "…"
     recent = [item for item in read_recent(request) if item["slug_url"] != slug_url]
@@ -80,13 +87,13 @@ def forget(response: Response, request: Request, *, slug_url: str) -> None:
 
 
 def _write_cookie(response: Response, entries: list[dict[str, str | None]]) -> None:
-    payload = json.dumps(
-        entries[:_MAX_ENTRIES], ensure_ascii=False, separators=(",", ":")
-    ).encode("utf-8")
+    payload = json.dumps(entries[:MAX_ENTRIES], ensure_ascii=False, separators=(",", ":")).encode(
+        "utf-8"
+    )
     response.set_cookie(
-        _COOKIE_NAME,
+        COOKIE_NAME,
         base64.urlsafe_b64encode(payload).decode("ascii"),
-        max_age=_MAX_AGE_SECONDS,
+        max_age=MAX_AGE_SECONDS,
         httponly=True,
         samesite="lax",
     )

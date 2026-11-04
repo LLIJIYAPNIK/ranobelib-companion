@@ -54,6 +54,7 @@ class _FakeClient:
 
 def test_show_title_sets_recent_titles_cookie() -> None:
     client.cookies.clear()
+    client.cookies.set("cookie_consent", "all")  # PR 375: an optional cookie
     title = _fake_title("1--first-novel", "First Novel")
     with patch("app.services.client.RanobeLib", return_value=_FakeClient(title)):
         response = client.get("/titles/1--first-novel/data")
@@ -67,6 +68,7 @@ def test_show_title_sets_recent_titles_cookie() -> None:
 
 def test_show_title_stores_cover_url_in_recent_titles_cookie() -> None:
     client.cookies.clear()
+    client.cookies.set("cookie_consent", "all")  # PR 375: an optional cookie
     title = _fake_title(
         "1--first-novel", "First Novel", cover=Cover(default="https://example.com/cover.jpg")
     )
@@ -79,6 +81,7 @@ def test_show_title_stores_cover_url_in_recent_titles_cookie() -> None:
 
 def test_show_title_moves_reopened_title_to_front() -> None:
     client.cookies.clear()
+    client.cookies.set("cookie_consent", "all")  # PR 375: an optional cookie
     first = _fake_title("1--first-novel", "First Novel")
     second = _fake_title("2--second-novel", "Second Novel")
 
@@ -99,6 +102,7 @@ def test_show_title_truncates_long_names_in_recent_titles_cookie() -> None:
     # past nginx's default response-header buffer. A single title name long enough to
     # threaten that on its own must be capped when stored, not just the entry count.
     client.cookies.clear()
+    client.cookies.set("cookie_consent", "all")  # PR 375: an optional cookie
     long_name = "Очень длинное название новеллы, " * 10
     assert len(long_name) > _MAX_NAME_LENGTH
     title = _fake_title("1--first-novel", long_name)
@@ -112,6 +116,7 @@ def test_show_title_truncates_long_names_in_recent_titles_cookie() -> None:
 
 def test_home_lists_recent_titles_from_cookie() -> None:
     client.cookies.clear()
+    client.cookies.set("cookie_consent", "all")  # PR 375: an optional cookie
     client.cookies.set(
         "recent_titles",
         _encode_cookie([{"slug_url": "1--first-novel", "name": "First Novel"}]),
@@ -124,10 +129,12 @@ def test_home_lists_recent_titles_from_cookie() -> None:
     assert "<img" not in response.text  # old cookie shape, no cover_url - no crash either
 
     client.cookies.clear()
+    client.cookies.set("cookie_consent", "all")  # PR 375: an optional cookie
 
 
 def test_home_renders_cover_when_present_in_cookie() -> None:
     client.cookies.clear()
+    client.cookies.set("cookie_consent", "all")  # PR 375: an optional cookie
     client.cookies.set(
         "recent_titles",
         _encode_cookie(
@@ -146,10 +153,12 @@ def test_home_renders_cover_when_present_in_cookie() -> None:
     assert 'src="https://example.com/cover.jpg"' in response.text
 
     client.cookies.clear()
+    client.cookies.set("cookie_consent", "all")  # PR 375: an optional cookie
 
 
 def test_home_ignores_malformed_recent_titles_cookie() -> None:
     client.cookies.clear()
+    client.cookies.set("cookie_consent", "all")  # PR 375: an optional cookie
     client.cookies.set("recent_titles", "not-valid-base64!!")
 
     response = client.get("/")
@@ -157,10 +166,12 @@ def test_home_ignores_malformed_recent_titles_cookie() -> None:
     assert response.status_code == 200
 
     client.cookies.clear()
+    client.cookies.set("cookie_consent", "all")  # PR 375: an optional cookie
 
 
 def test_home_renders_a_remove_button_for_each_recent_card() -> None:
     client.cookies.clear()
+    client.cookies.set("cookie_consent", "all")  # PR 375: an optional cookie
     client.cookies.set(
         "recent_titles",
         _encode_cookie([{"slug_url": "1--first-novel", "name": "First Novel"}]),
@@ -172,10 +183,12 @@ def test_home_renders_a_remove_button_for_each_recent_card() -> None:
     assert 'data-slug-url="1--first-novel"' in response.text
 
     client.cookies.clear()
+    client.cookies.set("cookie_consent", "all")  # PR 375: an optional cookie
 
 
 def test_forget_removes_only_the_given_title_from_the_cookie() -> None:
     client.cookies.clear()
+    client.cookies.set("cookie_consent", "all")  # PR 375: an optional cookie
     client.cookies.set(
         "recent_titles",
         _encode_cookie(
@@ -193,10 +206,12 @@ def test_forget_removes_only_the_given_title_from_the_cookie() -> None:
     assert [item["slug_url"] for item in cookie] == ["2--second-novel"]
 
     client.cookies.clear()
+    client.cookies.set("cookie_consent", "all")  # PR 375: an optional cookie
 
 
 def test_forget_unknown_title_is_not_an_error() -> None:
     client.cookies.clear()
+    client.cookies.set("cookie_consent", "all")  # PR 375: an optional cookie
     client.cookies.set(
         "recent_titles",
         _encode_cookie([{"slug_url": "1--first-novel", "name": "First Novel"}]),
@@ -209,3 +224,17 @@ def test_forget_unknown_title_is_not_an_error() -> None:
     assert [item["slug_url"] for item in cookie] == ["1--first-novel"]
 
     client.cookies.clear()
+    client.cookies.set("cookie_consent", "all")  # PR 375: an optional cookie
+
+
+def test_show_title_writes_no_history_before_a_choice_or_with_essential_only() -> None:
+    """PR 375: «Недавние» is an optional cookie - nothing before «Принять все»."""
+    title = _fake_title("1--first-novel", "First Novel")
+    for consent in (None, "essential", "junk"):
+        client.cookies.clear()
+        if consent:
+            client.cookies.set("cookie_consent", consent)
+        with patch("app.services.client.RanobeLib", return_value=_FakeClient(title)):
+            response = client.get("/titles/1--first-novel/data")
+        assert response.status_code == 200
+        assert "recent_titles" not in response.headers.get("set-cookie", ""), consent
