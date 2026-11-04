@@ -24613,8 +24613,12 @@ body.reader-page--offline-copy .reader-paragraph-more {
   flex-direction: column;
   gap: 14px;
   padding: 22px;
-  border-radius: 26px;
-  background: var(--wn-surface);
+  /* PR 373: the home page's glass (.hm-panel) - over the cover's glow, not a slab on it. */
+  border: 1px solid var(--hm-glass-edge);
+  border-radius: var(--hm-radius);
+  background: var(--hm-glass);
+  -webkit-backdrop-filter: var(--hm-glass-blur);
+  backdrop-filter: var(--hm-glass-blur);
 }
 
 .tp-lamp__top {
@@ -25059,6 +25063,13 @@ body.reader-page--offline-copy .reader-paragraph-more {
   grid-area: resume;
   min-width: 0;
   margin-top: 28px;
+  /* PR 373: one glass panel, like the lamp beside it and the home page's. */
+  padding: 18px 10px 8px;
+  border: 1px solid var(--hm-glass-edge);
+  border-radius: var(--hm-radius);
+  background: var(--hm-glass);
+  -webkit-backdrop-filter: var(--hm-glass-blur);
+  backdrop-filter: var(--hm-glass-blur);
 }
 
 .tp-resume__head {
@@ -25066,7 +25077,11 @@ body.reader-page--offline-copy .reader-paragraph-more {
   align-items: baseline;
   justify-content: space-between;
   gap: 16px;
-  margin-bottom: 10px;
+  margin: 0 12px 10px;
+}
+
+.tp-resume .tp-row.is-here {
+  margin-top: 0;
 }
 
 .tp-resume__all {
@@ -25409,11 +25424,14 @@ body.reader-page--offline-copy .reader-paragraph-more {
   align-items: center;
   gap: 16px;
   width: 100%;
-  min-height: 64px;
-  padding: 10px 18px 10px 12px;
-  border: 0;
-  border-radius: 18px;
-  background: var(--wn-surface);
+  min-height: 68px;
+  padding: 12px 20px 12px 14px;
+  /* PR 373: glass, as the lamp and «Вы остановились». */
+  border: 1px solid var(--hm-glass-edge);
+  border-radius: var(--hm-radius);
+  background: var(--hm-glass);
+  -webkit-backdrop-filter: var(--hm-glass-blur);
+  backdrop-filter: var(--hm-glass-blur);
   color: #fff;
   text-align: left;
   cursor: pointer;
@@ -25447,8 +25465,8 @@ body.reader-page--offline-copy .reader-paragraph-more {
 .tp-rel__thumbs img {
   width: 30px;
   height: 44px;
-  border: 2px solid var(--wn-surface);
-  border-radius: 6px;
+  border: 1px solid rgb(255 255 255 / 18%);
+  border-radius: 7px;
   object-fit: cover;
 }
 
@@ -26163,10 +26181,12 @@ a.tp-rel__card:active .tp-rel__cover {
   margin: 6px 0;
 }
 
+/* PR 373: raised glass - the step up the site's selected tabs and secondary buttons take. */
 .tp-row.is-here .tp-row__link {
   min-height: 88px;
   padding: 14px 16px 14px 0;
-  background: #191823;
+  background: var(--hm-glass-raised);
+  box-shadow: inset 0 0 0 1px var(--hm-glass-edge);
 }
 
 .tp-row.is-here .tp-node::before {
@@ -26228,7 +26248,7 @@ a.tp-rel__card:active .tp-rel__cover {
 
 @media (hover: hover) {
   .tp-row.is-here .tp-row__link:hover {
-    background: #1e1d29;
+    background: rgb(255 255 255 / 13%);
   }
 }
 

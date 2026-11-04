@@ -149,3 +149,18 @@ def test_related_releases_can_be_switched_off_in_reading_settings() -> None:
     # Off, the page doesn't ask for the relations at all.
     assert ".showRelatedReleases !== false" in relations_js
     assert relations_js.index("relationsWanted()") < relations_js.index("fetch(")
+
+
+def test_the_lamp_the_resume_and_the_folded_line_are_the_sites_glass() -> None:
+    """PR 373: the home page's .hm-panel glass over the cover's glow, not solid slabs."""
+    import re
+
+    css = (ROOT / "app/static/css/app.css").read_text(encoding="utf-8")
+    for selector in (".tp-lamp", ".tp-resume", ".tp-rel__peek"):
+        rule = re.search(rf"\n{re.escape(selector)} \{{([^}}]*)\}}", css)
+        assert rule, selector
+        assert "background: var(--hm-glass);" in rule.group(1), selector
+        assert "backdrop-filter: var(--hm-glass-blur);" in rule.group(1), selector
+        assert "border: 1px solid var(--hm-glass-edge);" in rule.group(1), selector
+    here = re.search(r"\n\.tp-row\.is-here \.tp-row__link \{([^}]*)\}", css)
+    assert "background: var(--hm-glass-raised);" in here.group(1)
