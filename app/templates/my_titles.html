@@ -1,0 +1,107 @@
+{% extends "base.html" %}
+{% block title %}Мои книги — RanobeLib Companion{% endblock %}
+{% block content %}
+<main class="hm hm--my-titles" data-role="my-titles-page">
+  <header class="hm-head hm-rise">
+    <div class="lb-head__title">
+      <h1 class="hm-title" id="my-titles-heading">Мои книги</h1>
+      <span class="lb-head__count hm-num" data-role="my-titles-count">{{ titles | length }} {{ plural(titles | length, "книга", "книги", "книг") }}</span>
+    </div>
+    <div class="lb-head__side">
+      <a class="hm-link" href="/library">К библиотеке</a>
+    </div>
+  </header>
+
+  {% if deleted %}
+  <p class="ui-notice ut-notice" role="status" data-role="my-titles-deleted">Книга и связанные файлы удалены.</p>
+  {% endif %}
+
+  <section class="ut-upload hm-panel hm-rise" style="--i: 1" id="upload" aria-labelledby="ut-upload-heading">
+    <div class="ut-upload__head">
+      <div>
+        <h2 class="hm-h2" id="ut-upload-heading">Загрузить EPUB</h2>
+        <p class="ut-upload__hint">Книга доступна только вам и открывается в веб-ридере отдельно от общего каталога. Формат <b>.epub</b>, до <span class="hm-num">{{ max_upload_label }}</span>.</p>
+      </div>
+    </div>
+
+    {% if upload_error %}
+    <p class="ui-notice ui-notice--error ut-upload__error" role="alert" data-role="epub-upload-error">{{ upload_error }}</p>
+    {% else %}
+    <p class="ui-notice ui-notice--error ut-upload__error" role="alert" data-role="epub-upload-error" hidden></p>
+    {% endif %}
+
+    <form
+      class="ut-upload__form"
+      method="post"
+      action="/my-titles/upload"
+      enctype="multipart/form-data"
+      data-role="epub-upload-form"
+      data-max-bytes="{{ max_upload_bytes }}"
+      data-max-label="{{ max_upload_label }}"
+    >
+      <label class="ut-dropzone" data-role="epub-dropzone">
+        <input
+          class="ut-dropzone__input"
+          type="file"
+          name="file"
+          accept=".epub,application/epub+zip"
+          required
+          data-role="epub-file-input"
+        >
+        <span class="ut-dropzone__icon" aria-hidden="true">
+          <svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 16V4m0 0-4.5 4.5M12 4l4.5 4.5M4 17v2a1 1 0 0 0 1 1h14a1 1 0 0 0 1-1v-2"/></svg>
+        </span>
+        <span class="ut-dropzone__text">
+          <b data-role="epub-file-label">Выберите файл EPUB</b>
+          <small>Проверка структуры, извлечение обложки и оглавления выполнятся автоматически</small>
+        </span>
+      </label>
+      <div class="ut-upload__actions">
+        <button type="submit" class="wn-btn wn-btn--primary" data-role="epub-upload-submit">Загрузить книгу</button>
+        <span class="ut-upload__status" role="status" aria-live="polite" data-role="epub-upload-status" hidden></span>
+      </div>
+    </form>
+  </section>
+
+  <section class="ut-list hm-rise" style="--i: 2" aria-labelledby="ut-list-heading">
+    <h2 class="hm-h2" id="ut-list-heading">Ваши загруженные книги</h2>
+    {% if titles %}
+    <div class="ut-grid" data-role="my-titles-list">
+      {% for item in titles %}
+      <article class="ut-card hm-panel" data-role="user-title-card" data-title-id="{{ item.id }}">
+        <a class="ut-card__cover-link" href="/my-titles/{{ item.id }}" aria-label="{{ item.title }}">
+          {% if item.cover_storage_key %}
+          <img class="ut-card__cover" src="/my-titles/{{ item.id }}/cover" alt="Обложка «{{ item.title }}»" loading="lazy">
+          {% else %}
+          <span class="ut-card__cover ut-card__cover--none" aria-hidden="true"><b>{{ item.title }}</b></span>
+          {% endif %}
+        </a>
+        <div class="ut-card__body">
+          <h3 class="ut-card__title"><a href="/my-titles/{{ item.id }}">{{ item.title }}</a></h3>
+          {% if item.authors %}
+          <p class="ut-card__authors">{{ item.authors | join(", ") }}</p>
+          {% endif %}
+          <p class="ut-card__meta hm-num">
+            {{ item.chapter_count }} {{ plural(item.chapter_count, "глава", "главы", "глав") }}
+            {% if item.last_read_position %} · глава {{ item.last_read_position }} из {{ item.chapter_count }}{% endif %}
+          </p>
+          <div class="ut-card__actions">
+            {% if item.chapter_count %}
+            {% set target_pos = item.last_read_position if item.last_read_position and item.last_read_position <= item.chapter_count else 1 %}
+            <a class="wn-btn wn-btn--primary ut-card__btn" href="/my-titles/{{ item.id }}/chapters/{{ target_pos }}">{% if item.last_read_position %}Продолжить{% else %}Читать{% endif %}</a>
+            {% endif %}
+            <a class="wn-btn wn-btn--secondary ut-card__btn" href="/my-titles/{{ item.id }}">О книге</a>
+          </div>
+        </div>
+      </article>
+      {% endfor %}
+    </div>
+    {% else %}
+    <p class="lb-empty hm-panel" data-role="my-titles-empty">
+      Вы ещё не загрузили ни одной книги. Выберите файл EPUB выше — он сразу появится здесь и откроется в ридере.
+    </p>
+    {% endif %}
+  </section>
+</main>
+<script src="{{ static_url('js/my-titles-upload.js') }}" defer></script>
+{% endblock %}

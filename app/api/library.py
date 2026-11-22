@@ -26,6 +26,7 @@ from app.db.library import (
     remove_entry,
     set_default_translation_index,
 )
+from app.db.user_titles import UserTitle, list_user_titles
 from app.db.users import User
 from app.reading_progress import reading_progress_percent
 from app.services.catalog import (
@@ -168,6 +169,7 @@ async def show_library(
         return templates.TemplateResponse(request, "library.html", context)
     async with connection() as conn:
         items = await library_items_for_user(user, conn)
+        user_titles = await list_user_titles(conn, user.id)
     # Each book's place among its chapters (and so which shelf it stands on): one SDK
     # lookup per title, in turn - no parallel requests past the SDK's own pacing - and a
     # local cache hit after the first, as for the home page's «Витрина».
@@ -175,7 +177,9 @@ async def show_library(
         item["entry"].slug_url: await book_focus(item, limit=0)  # type: ignore[union-attr]
         for item in items
     }
-    return templates.TemplateResponse(request, "library.html", _library_context(items, focus))
+    return templates.TemplateResponse(
+        request, "library.html", _library_context(items, focus, user_titles=user_titles)
+    )
 
 
 @router.get("/favorites")
@@ -214,6 +218,7 @@ def _shelf_of(entry: LibraryEntry, focus: BookFocus | None) -> str:
 def _library_context(
     items: list[dict[str, LibraryEntry | str | int | None]],
     focus: dict[str, BookFocus | None],
+    user_titles: list[UserTitle] | None = None,
 ) -> dict[str, object]:
     """The library page's context, from library_items_for_user() in its "most recently
     read first" order: «Полки» - the titles on shelves by how far the reader is, each
@@ -242,6 +247,7 @@ def _library_context(
         ],
         # PR 294: the «Библиотека» switch item counts every title, started or not.
         "library_count": len(items),
+        "user_titles": user_titles or [],
     }
 
 

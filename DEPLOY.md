@@ -46,6 +46,8 @@ from ever sending the cookie back).
 | `DATABASE_URL` | no | `postgresql://postgres:postgres@localhost:5432/ranobelib_companion` | This app's own Postgres database (accounts, personal library, activity) - separate from `CACHE_DIR`. A real deploy should point this at a managed/persistent Postgres instance, not a container's own ephemeral storage. |
 | `AVATAR_DIR` | no | `.ranobelib_avatars` | Uploaded profile avatars. Needs the same persistent-volume treatment. |
 | `COMMENT_ATTACHMENT_DIR` | no | `.ranobelib_comment_attachments` | Converted comment attachments (GIF → silent looping mp4). Needs the same persistent-volume treatment. |
+| `USER_TITLES_DIR` | no | `.ranobelib_user_titles` | Private user-uploaded EPUB books, covers and chapter images (issue 432). Kept outside `app/static` and never mounted publicly; needs a persistent volume. |
+| `USER_EPUB_MAX_SIZE_BYTES` | no | `52428800` (50 MB) | Maximum size of an uploaded EPUB file in bytes. Matches nginx's `client_max_body_size 60m` with multipart framing headroom. |
 | `SESSION_MAX_AGE_SECONDS` | no | 14 days | Session cookie lifetime for an ordinary login. |
 | `SESSION_REMEMBER_MAX_AGE_SECONDS` | no | 90 days | Session cookie lifetime when "Запомнить меня" was checked. |
 | `DOWNLOAD_FILE_TTL_SECONDS` | no | 30 minutes | Fallback cleanup window for an exported title's file if nobody comes back to download it. |

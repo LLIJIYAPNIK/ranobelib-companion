@@ -17,3 +17,21 @@ def looks_like_png(contents: bytes) -> bool:
 
 def looks_like_webp(contents: bytes) -> bool:
     return contents[:4] == b"RIFF" and contents[8:12] == b"WEBP"
+
+
+def looks_like_gif(contents: bytes) -> bool:
+    return contents.startswith((b"GIF87a", b"GIF89a"))
+
+
+def sniff_raster_image(contents: bytes) -> tuple[str, str] | None:
+    """Returns ``(media_type, extension)`` for a safe raster image based on magic bytes,
+    or ``None`` if the bytes don't match JPEG/PNG/WEBP/GIF (rejecting SVG/HTML/etc.)."""
+    if looks_like_jpeg(contents):
+        return "image/jpeg", ".jpg"
+    if looks_like_png(contents):
+        return "image/png", ".png"
+    if looks_like_webp(contents):
+        return "image/webp", ".webp"
+    if looks_like_gif(contents):
+        return "image/gif", ".gif"
+    return None

@@ -28,9 +28,11 @@ services:
       - cache_data:/app/.ranobelib_cache
       - avatar_data:/app/.ranobelib_avatars
       - comment_attachment_data:/app/.ranobelib_comment_attachments
+      - user_titles_data:/app/.ranobelib_user_titles
 
 volumes:
   db_data:
   cache_data:
   avatar_data:
   comment_attachment_data:
+  user_titles_data:
