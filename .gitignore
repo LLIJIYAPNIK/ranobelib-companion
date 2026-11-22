@@ -16,5 +16,6 @@ build/
 
 # app database (dev only — prod db_path lives on a persistent volume)
 .ranobelib_companion.db
+.ranobelib_user_titles/
 
 .idea/

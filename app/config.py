@@ -79,6 +79,15 @@ logged and falls back to UTC rather than stopping the app over a display setting
 ``admin_audit_retention_days`` (PR 343) is how long the admin action log keeps an entry
 (365 by default); older ones are removed at startup and then daily. Anything but a
 positive whole number is logged and falls back to the default.
+
+``user_titles_dir`` (issue 432) holds user-uploaded EPUB files and extracted covers/chapter
+images - private per-user data, kept outside ``app/static`` and never mounted publicly via
+``StaticFiles``. Needs the same persistent-volume treatment in a container deployment as
+``avatar_dir`` and ``comment_attachment_dir``.
+
+``user_epub_max_size_bytes`` (issue 432) caps the size of an uploaded EPUB file (50 MB by
+default, matching nginx's 60m ``client_max_body_size`` with multipart headroom). Anything
+but a positive whole number is logged and falls back to the default.
 """
 
 from __future__ import annotations
@@ -107,6 +116,8 @@ _DEFAULT_EMAIL_PORT = 587
 _DEFAULT_ADMIN_SESSION_TTL_SECONDS = 2 * 60 * 60  # 2 hours
 _DEFAULT_ADMIN_TIMEZONE = "UTC"
 _DEFAULT_ADMIN_AUDIT_RETENTION_DAYS = 365
+_DEFAULT_USER_TITLES_DIR = ".ranobelib_user_titles"
+_DEFAULT_USER_EPUB_MAX_SIZE_BYTES = 50 * 1024 * 1024  # 50 MB
 
 
 @dataclass(frozen=True)
@@ -132,6 +143,8 @@ class Settings:
     admin_session_ttl: float = _DEFAULT_ADMIN_SESSION_TTL_SECONDS
     admin_timezone: str = _DEFAULT_ADMIN_TIMEZONE
     admin_audit_retention_days: int = _DEFAULT_ADMIN_AUDIT_RETENTION_DAYS
+    user_titles_dir: Path = Path(_DEFAULT_USER_TITLES_DIR)
+    user_epub_max_size_bytes: int = _DEFAULT_USER_EPUB_MAX_SIZE_BYTES
 
     @property
     def admin_enabled(self) -> bool:
@@ -164,6 +177,24 @@ def _admin_audit_retention_days() -> int:
         )
         return _DEFAULT_ADMIN_AUDIT_RETENTION_DAYS
     return days
+
+
+def _user_epub_max_size_bytes() -> int:
+    raw = os.environ.get("USER_EPUB_MAX_SIZE_BYTES", "").strip()
+    if not raw:
+        return _DEFAULT_USER_EPUB_MAX_SIZE_BYTES
+    try:
+        size = int(raw)
+    except ValueError:
+        size = 0
+    if size < 1:
+        logger.warning(
+            "USER_EPUB_MAX_SIZE_BYTES=%r is not a positive byte count - using %d.",
+            raw,
+            _DEFAULT_USER_EPUB_MAX_SIZE_BYTES,
+        )
+        return _DEFAULT_USER_EPUB_MAX_SIZE_BYTES
+    return size
 
 
 @lru_cache
@@ -224,4 +255,6 @@ def get_settings() -> Settings:
         ),
         admin_timezone=_admin_timezone(),
         admin_audit_retention_days=_admin_audit_retention_days(),
+        user_titles_dir=Path(os.environ.get("USER_TITLES_DIR", _DEFAULT_USER_TITLES_DIR)),
+        user_epub_max_size_bytes=_user_epub_max_size_bytes(),
     )
