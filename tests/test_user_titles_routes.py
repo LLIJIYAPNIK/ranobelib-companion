@@ -36,12 +36,6 @@ def client(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> Iterator[TestClie
     get_settings.cache_clear()
 
 
-def _make_client_for_app() -> TestClient:
-    from app.main import app
-
-    return TestClient(app)
-
-
 def _sample_epub() -> bytes:
     return build_epub_bytes(
         title="Книга Алисы",
@@ -202,29 +196,33 @@ def test_other_user_cannot_access_read_edit_download_or_delete_foreign_title(
     start = ch1_html.index(marker)
     asset_url = ch1_html[start : ch1_html.index('"', start)]
 
-    # Second independent session for Bob.
-    with _make_client_for_app() as bob:
-        register(bob, "bob@example.com")
+    # Switch the same TestClient to Bob's session (avoiding a nested TestClient lifespan
+    # that would close the outer client's DB pool on a different event loop).
+    alice_cookies = dict(client.cookies)
+    client.cookies.clear()
+    register(client, "bob@example.com")
 
-        assert bob.get("/my-titles").status_code == 200
-        assert "Книга Алисы" not in bob.get("/my-titles").text
-        assert bob.get(f"/my-titles/{title_id}").status_code == 404
-        assert bob.get(f"/my-titles/{title_id}/chapters/1").status_code == 404
-        assert bob.get(f"/my-titles/{title_id}/cover").status_code == 404
-        assert bob.get(asset_url).status_code == 404
-        assert bob.get(f"/my-titles/{title_id}/download").status_code == 404
-        assert (
-            bob.post(
-                f"/my-titles/{title_id}/edit",
-                data={"title": "Взлом", "authors": "", "description": ""},
-            ).status_code
-            == 404
-        )
-        assert bob.patch(f"/my-titles/{title_id}", json={"title": "Взлом"}).status_code == 404
-        assert bob.post(f"/my-titles/{title_id}/delete").status_code == 404
-        assert bob.delete(f"/my-titles/{title_id}").status_code == 404
+    assert client.get("/my-titles").status_code == 200
+    assert "Книга Алисы" not in client.get("/my-titles").text
+    assert client.get(f"/my-titles/{title_id}").status_code == 404
+    assert client.get(f"/my-titles/{title_id}/chapters/1").status_code == 404
+    assert client.get(f"/my-titles/{title_id}/cover").status_code == 404
+    assert client.get(asset_url).status_code == 404
+    assert client.get(f"/my-titles/{title_id}/download").status_code == 404
+    assert (
+        client.post(
+            f"/my-titles/{title_id}/edit",
+            data={"title": "Взлом", "authors": "", "description": ""},
+        ).status_code
+        == 404
+    )
+    assert client.patch(f"/my-titles/{title_id}", json={"title": "Взлом"}).status_code == 404
+    assert client.post(f"/my-titles/{title_id}/delete").status_code == 404
+    assert client.delete(f"/my-titles/{title_id}").status_code == 404
 
-    # Alice's book is completely untouched.
+    # Restore Alice's session and verify her book is completely untouched.
+    client.cookies.clear()
+    client.cookies.update(alice_cookies)
     assert client.get(f"/my-titles/{title_id}").status_code == 200
     assert "Книга Алисы" in client.get(f"/my-titles/{title_id}").text
 
