@@ -31,14 +31,17 @@
 #}
 {% set chapter_label = "Глава " ~ chapter.number %}
 {% set export_url = "/titles/" ~ slug_url ~ "/chapters/" ~ chapter.volume ~ "/" ~ chapter.number ~ "/export" %}
+{% set _back_url = back_url if back_url is defined and back_url else "/titles/" ~ slug_url %}
+{% set _toc_url = toc_url if toc_url is defined and toc_url else "/titles/" ~ slug_url ~ "#title-panel-toc" %}
+{% set _finished_url = finished_url if finished_url is defined and finished_url else "/titles/" ~ slug_url ~ "?finished=1" %}
 <a class="reader-skip" href="#reader-text">К тексту</a>
 
 <header class="reader-hud" data-role="reader-scroll-nav" role="toolbar" aria-label="Управление читалкой">
   <div class="reader-hud__bar">
-    <a class="reader-hud__btn reader-hud__back" href="/titles/{{ slug_url }}" aria-label="Назад к тайтлу">
+    <a class="reader-hud__btn reader-hud__back" href="{{ _back_url }}" aria-label="Назад к тайтлу">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M15 5l-7 7 7 7"/></svg>
     </a>
-    <a class="reader-hud__chapter" href="/titles/{{ slug_url }}#title-panel-toc" data-role="reader-toc-link" aria-label="{{ chapter_label }}, открыть оглавление">
+    <a class="reader-hud__chapter" href="{{ _toc_url }}" data-role="reader-toc-link" aria-label="{{ chapter_label }}, открыть оглавление">
       <span class="reader-hud__chapter-line">
         <span class="reader-hud__chapter-num">{{ chapter_label }}{% if chapter.name %}<span class="reader-hud__chapter-sep"> ·</span>{% endif %}</span>
         {% if chapter.name %}<span class="reader-hud__chapter-name">{{ chapter.name }}</span>{% endif %}
@@ -72,7 +75,11 @@
 <main class="reader" id="reader-text" tabindex="-1">
   <div class="reader__head">
     <p class="reader__kicker">
+      {% if user_title_mode %}
+      <span>{{ title_name }} · глава {{ volume_index }} из {{ volume_total }}</span>
+      {% else %}
       <span>Том {{ chapter.volume }} · {% if volume_index and volume_total %}глава {{ volume_index }} из {{ volume_total }}{% else %}глава {{ chapter.number }}{% endif %}</span>
+      {% endif %}
       <span class="reader__minutes" data-role="reader-time-total" hidden></span>
     </p>
     <h1 class="reader__title">{{ chapter.name or chapter_label }}</h1>
@@ -136,18 +143,18 @@
     <b class="reader-end__title">Далее — {% if next_chapter %}глава {{ next_chapter.number }}{% else %}следующая глава{% endif %}</b>
     {% if next_chapter and next_chapter.name %}<span class="reader-end__name">{{ next_chapter.name }}</span>{% endif %}
     {% if title_percent is not none %}
-    <span class="reader-end__meta">Том {{ chapter.volume }} · тайтл прочитан на {{ title_percent }}%</span>
+    <span class="reader-end__meta">{% if user_title_mode %}Книга прочитана на {{ title_percent }}%{% else %}Том {{ chapter.volume }} · тайтл прочитан на {{ title_percent }}%{% endif %}</span>
     {% endif %}
     <a class="ui-btn ui-btn--primary ui-btn--lg ui-btn--block" href="{{ next_url }}" data-role="next-chapter-link">Следующая глава</a>
-    <a class="reader-end__toc" href="/titles/{{ slug_url }}#title-panel-toc">К оглавлению</a>
+    <a class="reader-end__toc" href="{{ _toc_url }}">К оглавлению</a>
     {% elif is_last_chapter %}
-    <span class="reader-end__kicker">Тайтл прочитан</span>
+    <span class="reader-end__kicker">{% if user_title_mode %}Книга прочитана{% else %}Тайтл прочитан{% endif %}</span>
     <b class="reader-end__title">{{ title_name }}</b>
     <span class="reader-end__meta">Это последняя доступная глава.</span>
-    <a class="ui-btn ui-btn--primary ui-btn--lg ui-btn--block" href="/titles/{{ slug_url }}?finished=1">К странице тайтла</a>
+    <a class="ui-btn ui-btn--primary ui-btn--lg ui-btn--block" href="{{ _finished_url }}">{% if user_title_mode %}К странице книги{% else %}К странице тайтла{% endif %}</a>
     {% else %}
     <span class="reader-end__kicker">Глава закончена</span>
-    <a class="ui-btn ui-btn--lg ui-btn--block" href="/titles/{{ slug_url }}#title-panel-toc">К оглавлению</a>
+    <a class="ui-btn ui-btn--lg ui-btn--block" href="{{ _toc_url }}">К оглавлению</a>
     {% endif %}
   </section>
 </main>
@@ -179,8 +186,8 @@
 {% if volume_chapters %}
 <dialog class="reader-menu reader-toc" data-role="reader-toc" aria-labelledby="reader-toc-title">
   <div class="reader-menu__head">
-    <h2 class="reader-menu__title" id="reader-toc-title">Том {{ chapter.volume }}<span>{{ volume_total }} {{ "глава" if volume_total % 10 == 1 and volume_total % 100 != 11 else ("главы" if volume_total % 10 in [2, 3, 4] and volume_total % 100 not in [12, 13, 14] else "глав") }}</span></h2>
-    <a class="reader-menu__more" href="/titles/{{ slug_url }}#title-panel-toc">Всё оглавление</a>
+    <h2 class="reader-menu__title" id="reader-toc-title">{% if user_title_mode %}Оглавление{% else %}Том {{ chapter.volume }}{% endif %}<span>{{ volume_total }} {{ "глава" if volume_total % 10 == 1 and volume_total % 100 != 11 else ("главы" if volume_total % 10 in [2, 3, 4] and volume_total % 100 not in [12, 13, 14] else "глав") }}</span></h2>
+    <a class="reader-menu__more" href="{{ _toc_url }}">Всё оглавление</a>
     <button type="button" class="reader-menu__close" data-role="reader-toc-close" aria-label="Закрыть"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M6 6l12 12M18 6 6 18"/></svg></button>
   </div>
   <ol class="reader-menu__list reader-toc__list">
@@ -278,7 +285,7 @@
 
 {# PR 332: a downloaded copy reports too - for whoever is signed in on the device when its
    queue is sent (it holds no account itself, see app/api/offline.py). #}
-{% if current_user or offline_copy %}
+{% if (current_user or offline_copy) and not user_title_mode %}
 <script src="{{ static_url('js/activity-heartbeat.js') }}" defer></script>
 {# Before tap-to-read.js/reader-progress.js - listening by the time they announce a position. #}
 <script src="{{ static_url('js/reading-progress-tick.js') }}" defer></script>
@@ -291,10 +298,11 @@
 <script src="{{ static_url('js/reader-hud.js') }}" defer></script>
 <script src="{{ static_url('js/image-lightbox.js') }}" defer></script>
 {# Reactions and comments are live data - a downloaded copy (PR 331) says so instead. #}
-{% if not offline_copy %}
+{% if not offline_copy and not user_title_mode %}
 <script src="{{ static_url('js/reaction-state.js') }}" defer></script>
 <script src="{{ static_url('js/paragraph-menu.js') }}" defer></script>
 {% endif %}
+{% if not user_title_mode %}
 {# PR 331: notes the last chapter opened (the offline page's «Продолжить»); in a downloaded
    copy also marks the neighbours that aren't on the device. PR 335: the store comes first
    on every chapter page - reader-offline.js notes when a downloaded title was opened. #}
@@ -307,5 +315,6 @@
 <script src="{{ static_url('js/reader-copy-check.js') }}" defer></script>
 {% else %}
 <script src="{{ static_url('js/offline-autodownload.js') }}" defer></script>
+{% endif %}
 {% endif %}
 {% endblock %}

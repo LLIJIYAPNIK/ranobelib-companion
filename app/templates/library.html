@@ -161,6 +161,45 @@ data-role="library-item" data-slug-url="{{ item.entry.slug_url }}" data-name="{{
     </p>
     {% endif %}
   </div>
+
+  <section class="ut-strip hm-rise" aria-labelledby="user-titles-strip-heading" data-role="library-user-titles">
+    <div class="ut-strip__head">
+      <div class="ut-strip__title-group">
+        <h2 class="hm-h2" id="user-titles-strip-heading">Мои книги (EPUB)</h2>
+        {% if user_titles %}
+        <span class="lb-shelf__count hm-num">{{ user_titles | length }}</span>
+        {% endif %}
+      </div>
+      <div class="ut-strip__links">
+        <a class="hm-link" href="/my-titles">Все мои книги</a>
+        <a class="wn-btn wn-btn--primary ut-strip__upload" href="/my-titles#upload">Загрузить EPUB</a>
+      </div>
+    </div>
+    {% if user_titles %}
+    <div class="ut-grid ut-grid--compact">
+      {% for ut in user_titles[:6] %}
+      <article class="ut-card hm-panel" data-role="library-user-title" data-title-id="{{ ut.id }}">
+        <a class="ut-card__cover-link" href="/my-titles/{{ ut.id }}" aria-label="{{ ut.title }}">
+          {% if ut.cover_storage_key %}
+          <img class="ut-card__cover" src="/my-titles/{{ ut.id }}/cover" alt="Обложка «{{ ut.title }}»" loading="lazy">
+          {% else %}
+          <span class="ut-card__cover ut-card__cover--none" aria-hidden="true"><b>{{ ut.title }}</b></span>
+          {% endif %}
+        </a>
+        <div class="ut-card__body">
+          <h3 class="ut-card__title"><a href="/my-titles/{{ ut.id }}">{{ ut.title }}</a></h3>
+          {% if ut.authors %}
+          <p class="ut-card__authors">{{ ut.authors | join(", ") }}</p>
+          {% endif %}
+          <p class="ut-card__meta hm-num">{{ ut.chapter_count }} {{ plural(ut.chapter_count, "глава", "главы", "глав") }}</p>
+        </div>
+      </article>
+      {% endfor %}
+    </div>
+    {% else %}
+    <p class="ut-strip__note">Есть собственный файл EPUB? Загрузите его в раздел «Мои книги», чтобы читать в ридере сайта отдельно от каталога ranobelib.</p>
+    {% endif %}
+  </section>
   {% else %}
   {% from "_locked_feature.html" import locked_feature %}
   {% call locked_feature("Список читаемого скрыт", "/catalog", "Смотреть каталог") %}

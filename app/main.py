@@ -30,6 +30,7 @@ from app.api import (
     reports,
     settings,
     titles,
+    user_titles,
 )
 from app.auth.dependencies import get_current_user
 from app.auth.session_middleware import RememberMeSessionMiddleware
@@ -131,4 +132,5 @@ app.include_router(reading_progress.router)
 app.include_router(reports.router)
 app.include_router(settings.router)
 app.include_router(titles.router)
+app.include_router(user_titles.router)
 register_exception_handlers(app)

@@ -77,6 +77,12 @@
           <span class="sidebar__label">Библиотека</span>
           {% if not current_user %}<span class="sidebar__label-mobile">Каталог</span>{% endif %}
         </a>
+        {% if current_user %}
+        <a class="sidebar__link{% if active_nav == 'my_titles' %} sidebar__link--active{% endif %}" href="/my-titles"{% if active_nav == 'my_titles' %} aria-current="page"{% endif %}>
+          <span class="sidebar__icon"><svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/><path d="M12 7v6M9 10h6"/></svg></span>
+          <span class="sidebar__label">Мои книги</span>
+        </a>
+        {% endif %}
         <a class="sidebar__link{% if active_nav == 'downloads' %} sidebar__link--active{% endif %}{% if not current_user %} sidebar__link--desktop-only{% endif %}" href="/downloads"{% if active_nav == 'downloads' %} aria-current="page"{% endif %}>
           <span class="sidebar__icon">
             <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 4v11M7.5 11 12 15.5 16.5 11M4.5 18.5v1a1 1 0 0 0 1 1h13a1 1 0 0 0 1-1v-1"/></svg>
@@ -111,7 +117,7 @@
         {# PR 279 (Webnovells Mobile): the section name next to the logo in the mobile
            header - empty on Главная, as in the prototype. A page outside this map
            overrides the block. #}
-        <span class="sidebar__strip-title">{% block mobile_title %}{{ {'library': 'Библиотека', 'downloads': 'Загрузки', 'activity': 'Активность', 'friends': 'Друзья', 'settings': 'Настройки', 'notifications': 'Уведомления'}.get(active_nav, '') }}{% endblock %}</span>
+        <span class="sidebar__strip-title">{% block mobile_title %}{{ {'library': 'Библиотека', 'my_titles': 'Мои книги', 'downloads': 'Загрузки', 'activity': 'Активность', 'friends': 'Друзья', 'settings': 'Настройки', 'notifications': 'Уведомления'}.get(active_nav, '') }}{% endblock %}</span>
         <div class="sidebar__account-actions" data-role="sidebar-account-actions">
           {% if current_user and current_user.notifications_enabled and not current_user.do_not_disturb %}
           <button
