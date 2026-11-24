@@ -1,0 +1,105 @@
+{% extends "base.html" %}
+{% block title %}Книги читателей — RanobeLib Companion{% endblock %}
+{% block content %}
+<main class="hm hm--community-titles" data-role="community-titles-page">
+  <header class="hm-head hm-rise">
+    <div class="lb-head__title">
+      <h1 class="hm-title" id="community-titles-heading">Книги читателей</h1>
+      <span class="lb-head__count hm-num" data-role="community-titles-count">{{ total }} {{ plural(total, "книга", "книги", "книг") }}</span>
+    </div>
+    <div class="lb-head__side">
+      {% if current_user %}
+      <a class="wn-btn wn-btn--secondary ut-strip__upload" href="/my-titles">Мои книги</a>
+      {% endif %}
+      <a class="hm-link" href="/catalog">Каталог RanobeLib</a>
+    </div>
+  </header>
+
+  <section class="ut-toolbar hm-panel hm-rise" style="--i: 1" aria-label="Поиск и сортировка книг читателей">
+    <form class="ut-toolbar__form" method="get" action="/community-titles" data-role="community-search-form">
+      <label class="ut-toolbar__search">
+        <span class="wn-notice__sr">Поиск по названию, автору или описанию</span>
+        <input
+          class="ui-input"
+          type="search"
+          name="q"
+          value="{{ query }}"
+          placeholder="Поиск по названию, автору или описанию…"
+          maxlength="200"
+          data-role="community-search-input"
+        >
+      </label>
+      <label class="ut-toolbar__sort">
+        <span class="wn-notice__sr">Сортировка</span>
+        <select class="ui-input" name="sort" data-role="community-sort-select">
+          {% for value, label in sort_options %}
+          <option value="{{ value }}"{% if sort == value %} selected{% endif %}>{{ label }}</option>
+          {% endfor %}
+        </select>
+      </label>
+      <button type="submit" class="wn-btn wn-btn--primary">Найти</button>
+      {% if query %}
+      <a class="wn-btn wn-btn--secondary" href="/community-titles{% if sort != 'newest' %}?sort={{ sort }}{% endif %}">Сбросить</a>
+      {% endif %}
+    </form>
+  </section>
+
+  <section class="ut-list hm-rise" style="--i: 2" aria-labelledby="community-titles-heading">
+    {% if titles %}
+    <div class="ut-grid" data-role="community-titles-list">
+      {% for item in titles %}
+      <article class="ut-card hm-panel" data-role="community-title-card" data-title-id="{{ item.id }}">
+        <a class="ut-card__cover-link" href="/community-titles/{{ item.id }}" aria-label="{{ item.title }}">
+          {% if item.cover_storage_key %}
+          <img class="ut-card__cover" src="/community-titles/{{ item.id }}/cover" alt="Обложка «{{ item.title }}»" loading="lazy">
+          {% else %}
+          <span class="ut-card__cover ut-card__cover--none" aria-hidden="true"><b>{{ item.title }}</b></span>
+          {% endif %}
+        </a>
+        <div class="ut-card__body">
+          <h2 class="ut-card__title"><a href="/community-titles/{{ item.id }}">{{ item.title }}</a></h2>
+          {% if item.authors %}
+          <p class="ut-card__authors">{{ item.authors | join(", ") }}</p>
+          {% endif %}
+          <p class="ut-card__meta">
+            Опубликовал <a class="hm-link" href="/profile/{{ item.user_id }}">{{ item.owner_name or ("Пользователь #" ~ item.user_id) }}</a>
+          </p>
+          <p class="ut-card__meta hm-num">
+            {{ item.chapter_count }} {{ plural(item.chapter_count, "глава", "главы", "глав") }}
+            {% if item.last_read_position %} · глава {{ item.last_read_position }} из {{ item.chapter_count }}{% endif %}
+          </p>
+          <div class="ut-card__actions">
+            {% if item.chapter_count %}
+            {% set target_pos = item.last_read_position if item.last_read_position and item.last_read_position <= item.chapter_count else 1 %}
+            <a class="wn-btn wn-btn--primary ut-card__btn" href="/community-titles/{{ item.id }}/chapters/{{ target_pos }}">{% if item.last_read_position %}Продолжить{% else %}Читать{% endif %}</a>
+            {% endif %}
+            <a class="wn-btn wn-btn--secondary ut-card__btn" href="/community-titles/{{ item.id }}">О книге</a>
+          </div>
+        </div>
+      </article>
+      {% endfor %}
+    </div>
+
+    {% if pages > 1 %}
+    <nav class="ut-pager" aria-label="Страницы списка книг читателей" data-role="community-pager">
+      {% if has_prev %}
+      <a class="wn-btn wn-btn--secondary" href="/community-titles?page={{ page - 1 }}{% if query %}&amp;q={{ query | urlencode }}{% endif %}{% if sort != 'newest' %}&amp;sort={{ sort }}{% endif %}">← Назад</a>
+      {% endif %}
+      <span class="ut-pager__info hm-num">Страница {{ page }} из {{ pages }}</span>
+      {% if has_next %}
+      <a class="wn-btn wn-btn--secondary" href="/community-titles?page={{ page + 1 }}{% if query %}&amp;q={{ query | urlencode }}{% endif %}{% if sort != 'newest' %}&amp;sort={{ sort }}{% endif %}">Дальше →</a>
+      {% endif %}
+    </nav>
+    {% endif %}
+    {% elif query %}
+    <p class="lb-empty hm-panel" data-role="community-titles-empty">
+      По запросу «{{ query }}» ничего не найдено.
+    </p>
+    {% else %}
+    <p class="lb-empty hm-panel" data-role="community-titles-empty">
+      Пока никто не опубликовал книги.{% if current_user %} Вы можете загрузить и опубликовать свою книгу в разделе <a class="hm-link" href="/my-titles">«Мои книги»</a>.{% endif %}
+    </p>
+    {% endif %}
+  </section>
+</main>
+{% endblock %}

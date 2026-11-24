@@ -8,6 +8,7 @@
       <span class="lb-head__count hm-num" data-role="my-titles-count">{{ titles | length }} {{ plural(titles | length, "книга", "книги", "книг") }}</span>
     </div>
     <div class="lb-head__side">
+      <a class="hm-link" href="/community-titles">Книги читателей</a>
       <a class="hm-link" href="/library">К библиотеке</a>
     </div>
   </header>
@@ -78,6 +79,15 @@
         </a>
         <div class="ut-card__body">
           <h3 class="ut-card__title"><a href="/my-titles/{{ item.id }}">{{ item.title }}</a></h3>
+          <p class="ut-card__status">
+            {% if item.visibility == "published" %}
+            <span class="ut-badge ut-badge--published">Опубликована</span>
+            {% elif item.visibility == "hidden" %}
+            <span class="ut-badge ut-badge--hidden">Скрыта модератором</span>
+            {% else %}
+            <span class="ut-badge ut-badge--private">Приватная</span>
+            {% endif %}
+          </p>
           {% if item.authors %}
           <p class="ut-card__authors">{{ item.authors | join(", ") }}</p>
           {% endif %}

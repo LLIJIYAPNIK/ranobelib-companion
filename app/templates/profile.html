@@ -126,6 +126,36 @@
     {{ reading_month(reading, weekdays, calendar_base, reading.time_label, reading.chapters, fallback_art=art, rise=1, show_titles=is_own_profile or profile_user.show_currently_reading, show_continue=false) }}
   </div>
 
+  {% if published_user_titles %}
+  <section class="hm-block ut-strip hm-rise" style="--i: 2" aria-labelledby="profile-published-titles-title" data-role="profile-published-titles">
+    <div class="ac-block-head">
+      <h2 class="hm-h2" id="profile-published-titles-title">Опубликованные книги</h2>
+      <span class="ac-section-head__count hm-num">{{ published_user_titles | length }} {{ plural(published_user_titles | length, "книга", "книги", "книг") }}</span>
+      {% if is_own_profile %}<a class="hm-link ac-block-head__more" href="/my-titles">Управлять</a>{% endif %}
+    </div>
+    <div class="ut-grid ut-grid--compact">
+      {% for ut in published_user_titles %}
+      <article class="ut-card hm-panel" data-role="profile-published-title" data-title-id="{{ ut.id }}">
+        <a class="ut-card__cover-link" href="/community-titles/{{ ut.id }}" aria-label="{{ ut.title }}">
+          {% if ut.cover_storage_key %}
+          <img class="ut-card__cover" src="/community-titles/{{ ut.id }}/cover" alt="Обложка «{{ ut.title }}»" loading="lazy">
+          {% else %}
+          <span class="ut-card__cover ut-card__cover--none" aria-hidden="true"><b>{{ ut.title }}</b></span>
+          {% endif %}
+        </a>
+        <div class="ut-card__body">
+          <h3 class="ut-card__title"><a href="/community-titles/{{ ut.id }}">{{ ut.title }}</a></h3>
+          {% if ut.authors %}
+          <p class="ut-card__authors">{{ ut.authors | join(", ") }}</p>
+          {% endif %}
+          <p class="ut-card__meta hm-num">{{ ut.chapter_count }} {{ plural(ut.chapter_count, "глава", "главы", "глав") }}</p>
+        </div>
+      </article>
+      {% endfor %}
+    </div>
+  </section>
+  {% endif %}
+
   {% if library_items or friend_preview %}
   <div class="pf-grid{% if not (library_items and friend_preview) %} pf-grid--one{% endif %}">
     {# --- Библиотека: cover cards with their progress -------------------------------- #}

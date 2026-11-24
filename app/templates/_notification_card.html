@@ -20,12 +20,15 @@
 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="9" cy="8" r="3.5"/><path d="M3 20c0-3.3 2.7-6 6-6s6 2.7 6 6M19 8v6M16 11h6"/></svg>
 {%- elif kind == "friend_accept" -%}
 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="9" cy="8" r="3.5"/><path d="M3 20c0-3.3 2.7-6 6-6s6 2.7 6 6M16 11l2 2 4-4"/></svg>
+{%- elif kind == "user_title_hidden" -%}
+<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3 4 7v5c0 5 3.4 8.5 8 9 4.6-.5 8-4 8-9V7l-8-4Z"/><path d="M12 8v4M12 16h.01"/></svg>
 {%- else -%}
 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 5h16v11H9l-5 4z"/></svg>
 {%- endif %}
 {%- endmacro %}
 {% macro notification_card(n) %}
-{% set link_url = n.comment_url or (("/profile/" ~ n.actor_user_id) if n.kind in ("friend_request", "friend_accept") else none) %}
+{% set link_url = n.comment_url or n.target_url or (("/profile/" ~ n.actor_user_id) if n.actor_user_id and n.kind in ("friend_request", "friend_accept") else none) %}
+{% set notice_excerpt = n.comment_excerpt or n.message %}
 <article class="wn-notice wn-notice--{{ n.kind | replace('_', '-') }}{% if not n.is_read %} wn-notice--unread{% endif %}" data-notification-id="{{ n.id }}">
   {% if link_url %}<a class="wn-notice__link" href="{{ link_url }}">
   {% else %}<div class="wn-notice__link">
@@ -39,10 +42,11 @@
         <strong class="wn-notice__actor">{{ n.actor_name }}</strong>
         <span class="wn-notice__what">{% if n.kind == "friend_request" %}хочет добавить вас в друзья
         {%- elif n.kind == "friend_accept" %}теперь у вас в друзьях
+        {%- elif n.kind == "user_title_hidden" %}скрыла вашу книгу с публикации
         {%- else %}реакция на ваш комментарий
         {%- endif %}</span>
       </span>
-      {% if n.comment_excerpt %}<span class="wn-notice__excerpt">{{ n.comment_excerpt }}</span>{% endif %}
+      {% if notice_excerpt %}<span class="wn-notice__excerpt">{{ notice_excerpt }}</span>{% endif %}
       <span class="wn-notice__meta">
         {% if not n.is_read %}<span class="wn-notice__dot" aria-hidden="true"></span><span class="wn-notice__sr">Новое, </span>{% endif %}
         <time class="wn-notice__time" datetime="{{ n.created_at }}">{{ n.created_at_relative }}</time>
