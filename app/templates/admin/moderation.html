@@ -54,7 +54,7 @@
 
       <div class="wn-admin-mod__body">
         {% if card.state == "gone" %}
-        <p class="wn-admin-cm__gone">{{ "Комментария больше нет — его удалили навсегда." if card.target_type == "comment" else "Аккаунта больше нет." }} Жалобы можно только закрыть.</p>
+        <p class="wn-admin-cm__gone">{{ "Комментария больше нет — его удалили навсегда." if card.target_type == "comment" else ("Книги больше нет — её удалили." if card.target_type == "user_title" else "Аккаунта больше нет.") }} Жалобы можно только закрыть.</p>
         {% else %}
         {% if card.target_type == "comment" %}
         {% if card.paragraph_text is not none %}
@@ -82,6 +82,14 @@
             <div class="wn-admin-mod__text-full wn-admin-cm__body">{{ card.body_html | safe }}</div>
             {% if card.attachment %}<p class="wn-admin-field__hint">Вложение: {{ card.attachment }} — видно в главе.</p>{% endif %}
             {% endif %}
+            {% elif card.target_type == "user_title" %}
+            {% if card.state == "hidden" %}<p class="wn-admin-cm__status">{{ kit.badge("скрыта", "warning") }} Уже скрыта модератором{% if card.hidden_reason %} ({{ card.hidden_reason }}){% endif %}.</p>{% elif card.state == "private" %}<p class="wn-admin-cm__status">{{ kit.badge("приватная", "neutral") }} Владелец уже снял книгу с публикации.</p>{% endif %}
+            <dl class="wn-admin-summary">
+              <div class="wn-admin-summary__item"><dt>Название</dt><dd>{{ card.title_name or "—" }}</dd></div>
+              <div class="wn-admin-summary__item"><dt>Авторы</dt><dd>{{ (card.authors | join(", ")) if card.authors else "не указаны" }}</dd></div>
+              <div class="wn-admin-summary__item"><dt>Глав</dt><dd>{{ card.chapter_count if card.chapter_count is not none else 0 }}</dd></div>
+            </dl>
+            <p class="wn-admin-mod__text-full">{% if card.description %}{{ card.description }}{% else %}<span class="wn-admin-cm__gone">Описание не заполнено</span>{% endif %}</p>
             {% else %}
             <dl class="wn-admin-summary">
               <div class="wn-admin-summary__item"><dt>Никнейм</dt><dd>{{ card.nickname or "не задан" }}</dd></div>
@@ -132,6 +140,8 @@
         {% if card.state not in ("gone", "deleted") %}
         {% if card.target_type == "comment" %}
         <button class="wn-admin-btn" type="button" data-kit-open="admin-mod-hide">{{ kit.icon("eye-off") }}Скрыть</button>
+        {% elif card.target_type == "user_title" %}
+        <button class="wn-admin-btn" type="button" data-kit-open="admin-mod-hide-title">{{ kit.icon("eye-off") }}Скрыть книгу</button>
         {% elif card.bio or card.avatar_url %}
         <button class="wn-admin-btn" type="button" data-kit-open="admin-mod-clear">{{ kit.icon("eye-off") }}Очистить профиль</button>
         {% endif %}
@@ -175,8 +185,13 @@
 </fieldset>
 {% endcall %}
 {% endif %}
+{% if card.target_type == "user_title" and card.state not in ("gone", "deleted") %}
+{% call kit.confirm("admin-mod-hide-title", "Скрыть книгу «" ~ (card.title_name or "") ~ "»?", action ~ "/hide", confirm_label="Скрыть книгу", lead="Книга исчезнет из «Книг читателей» и перестанет открываться другим пользователям. Владелец получит уведомление и не сможет сам опубликовать её повторно.", lines=[count ~ " закроются как подтверждённые", "Решение можно отменить кнопкой «Отменить»"], fields={"back": back_href}, tone="primary") %}
+{% call kit.field("Причина скрытия", "mod-title-reason", hint="Её увидит владелец книги в уведомлении и на странице книги") %}<textarea class="wn-admin-input" id="mod-title-reason" name="reason" rows="3" maxlength="1000"></textarea>{% endcall %}
+{% endcall %}
+{% endif %}
 {% if card.author_id and not card.ban %}
-{% call kit.confirm("admin-mod-ban", "Заблокировать «" ~ card.author ~ "»?", action ~ "/ban", confirm_label="Заблокировать", lead="Вход закроется, уже открытые сессии станут гостевыми со следующего запроса.", lines=[count ~ " закроются как подтверждённые", "Пользователь увидит срок и причину, если вы её укажете", (("Комментарий" if card.target_type == "comment" else "Профиль") ~ " остаётся как есть — скройте его отдельно, если нужно")], fields={"back": back_href}, confirm_icon="ban") %}
+{% call kit.confirm("admin-mod-ban", "Заблокировать «" ~ card.author ~ "»?", action ~ "/ban", confirm_label="Заблокировать", lead="Вход закроется, уже открытые сессии станут гостевыми со следующего запроса.", lines=[count ~ " закроются как подтверждённые", "Пользователь увидит срок и причину, если вы её укажете", (("Комментарий" if card.target_type == "comment" else ("Книга" if card.target_type == "user_title" else "Профиль")) ~ " остаётся как есть — скройте отдельно, если нужно")], fields={"back": back_href}, confirm_icon="ban") %}
 {% call kit.field("Срок", "mod-ban-term", required=true) %}
 <select class="wn-admin-input" id="mod-ban-term" name="term" required>
   {% for value, label in ban_terms %}<option value="{{ value }}"{% if value == "7d" %} selected{% endif %}>{{ label }}</option>{% endfor %}

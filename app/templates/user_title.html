@@ -8,10 +8,26 @@
 
   {% if uploaded %}
   <p class="ui-notice tp-notice" role="status" data-role="user-title-uploaded">Книга успешно загружена и готова к чтению.</p>
+  {% elif published %}
+  <p class="ui-notice tp-notice" role="status" data-role="user-title-published">Книга опубликована и теперь доступна в разделе <a class="hm-link" href="/community-titles/{{ title.id }}">«Книги читателей»</a>.</p>
+  {% elif unpublished %}
+  <p class="ui-notice tp-notice" role="status" data-role="user-title-unpublished">Книга снята с публикации и снова доступна только вам.</p>
   {% elif updated %}
-  <p class="ui-notice tp-notice" role="status" data-role="user-title-updated">Метаданные книги сохранены.</p>
+  <p class="ui-notice tp-notice" role="status" data-role="user-title-updated">Настройки и метаданные книги сохранены.</p>
   {% elif finished %}
   <p class="ui-notice tp-notice" role="status" data-role="title-finished-notice">Книга прочитана</p>
+  {% endif %}
+
+  {% if publish_error %}
+  <p class="ui-notice ui-notice--error tp-notice" role="alert" data-role="user-title-publish-error">{{ publish_error }}</p>
+  {% endif %}
+
+  {% if title.visibility == "hidden" %}
+  <p class="ui-notice ui-notice--error tp-notice" role="alert" data-role="user-title-hidden-notice">
+    <strong>Книга скрыта модератором.</strong>
+    {% if title.hidden_reason %}Причина: {{ title.hidden_reason }}. {% endif %}
+    Она недоступна другим пользователям и не может быть опубликована повторно.
+  </p>
   {% endif %}
 
   <div class="tp" data-display-name="{{ title.title }}">
@@ -24,7 +40,13 @@
       <p class="tp-alt">{{ title.authors | join(", ") }}</p>
       {% endif %}
       <p class="tp-facts">
-        <span>Личная книга (EPUB)</span>
+        {% if title.visibility == "published" %}
+        <span class="ut-badge ut-badge--published" data-role="user-title-visibility">Опубликована</span>
+        {% elif title.visibility == "hidden" %}
+        <span class="ut-badge ut-badge--hidden" data-role="user-title-visibility">Скрыта модератором</span>
+        {% else %}
+        <span class="ut-badge ut-badge--private" data-role="user-title-visibility">Приватная</span>
+        {% endif %}
         <span class="hm-num">{{ chapter_total }} {{ plural(chapter_total, "глава", "главы", "глав") }}</span>
         {% if file_info %}
         <span class="hm-num">{{ file_info.size_label }}</span>
@@ -69,6 +91,11 @@
       {% endif %}
 
       <div class="ut-lamp-actions">
+        {% if title.visibility == "published" %}
+        <a class="wn-btn wn-btn--secondary ut-lamp-actions__btn" href="/community-titles/{{ title.id }}" data-role="user-title-public-link">
+          Открыть публичную страницу
+        </a>
+        {% endif %}
         {% if file_info and file_info.import_status == "ready" %}
         <a class="wn-btn wn-btn--secondary ut-lamp-actions__btn" href="/my-titles/{{ title.id }}/download" data-role="user-title-download">
           <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 4v11m0 0-4.5-4.5M12 15l4.5-4.5M5 20h14"/></svg>
@@ -81,6 +108,47 @@
       </div>
 
       <div class="tp-lamp__secs">
+        <section class="tp-sec" aria-labelledby="ut-publish-h" data-role="user-title-publish-section">
+          <h2 class="tp-sec__h" id="ut-publish-h">Публикация</h2>
+          {% if title.visibility == "hidden" %}
+          <p class="ut-publish__hint">
+            Книга скрыта модератором{% if title.hidden_reason %}: «{{ title.hidden_reason }}»{% endif %}. Самостоятельно вернуть её в публичный доступ нельзя.
+          </p>
+          {% elif title.visibility == "published" %}
+          <p class="ut-publish__hint">
+            Книга опубликована{% if published_date %} ({{ published_date }}){% endif %} и видна другим пользователям в разделе «Книги читателей».
+          </p>
+          <form class="ut-publish__form" method="post" action="/my-titles/{{ title.id }}/download-policy" data-role="user-title-download-policy-form">
+            <label class="ut-publish__check">
+              <input type="checkbox" name="allow_download" value="1"{% if title.allow_download %} checked{% endif %}>
+              <span>Разрешить другим читателям скачивать исходный EPUB</span>
+            </label>
+            <button type="submit" class="wn-btn wn-btn--secondary ut-lamp-actions__btn">Сохранить доступ к файлу</button>
+          </form>
+          <form class="ut-publish__form" method="post" action="/my-titles/{{ title.id }}/unpublish" data-role="user-title-unpublish-form">
+            <button type="submit" class="wn-btn wn-btn--secondary ut-lamp-actions__btn" data-role="user-title-unpublish">Снять с публикации</button>
+          </form>
+          {% elif can_publish %}
+          <p class="ut-publish__hint">Сейчас книга приватна и видна только вам. Перед публикацией проверьте название, авторов, описание и обложку.</p>
+          <details class="ut-edit"{% if publish_error %} open{% endif %} data-role="user-title-publish-details">
+            <summary class="wn-btn wn-btn--primary ut-lamp-actions__btn ut-publish__summary" data-role="user-title-publish-trigger">Опубликовать книгу</summary>
+            <form class="ut-publish__form" method="post" action="/my-titles/{{ title.id }}/publish" data-role="user-title-publish-form">
+              <label class="ut-publish__check">
+                <input type="checkbox" name="confirm" value="1" required>
+                <span>Подтверждаю, что книга, её обложка, описание и главы станут доступны другим пользователям сайта</span>
+              </label>
+              <label class="ut-publish__check">
+                <input type="checkbox" name="allow_download" value="1">
+                <span>Разрешить скачивание исходного файла EPUB (по умолчанию отключено)</span>
+              </label>
+              <button type="submit" class="wn-btn wn-btn--primary ut-lamp-actions__btn" data-role="user-title-publish-submit">Подтвердить публикацию</button>
+            </form>
+          </details>
+          {% else %}
+          <p class="ut-publish__hint">Публикация доступна только для успешно импортированных книг с хотя бы одной главой.</p>
+          {% endif %}
+        </section>
+
         {% if title.authors or file_info %}
         <section class="tp-sec" aria-labelledby="ut-info-h">
           <h2 class="tp-sec__h" id="ut-info-h">О файле</h2>

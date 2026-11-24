@@ -30,11 +30,20 @@ from typing import Any
 from fastapi import UploadFile
 from psycopg import AsyncConnection
 
+from app.auth.rate_limit import is_rate_limited
 from app.config import get_settings
 from app.db.user_titles import (
+    VISIBILITY_HIDDEN,
+    VISIBILITY_PRIVATE,
+    VISIBILITY_PUBLISHED,
     UserTitle,
     create_user_title_bundle,
     delete_user_title_and_collect_keys,
+    get_active_title_file,
+    get_user_title,
+    set_user_title_allow_download,
+    set_user_title_private,
+    set_user_title_published,
     update_user_title_metadata,
 )
 from app.user_titles.epub import (
@@ -70,6 +79,19 @@ class InvalidEpubError(UserTitleError):
 
 class UserTitleStorageError(UserTitleError):
     status_code = 500
+
+
+class UserTitleForbiddenError(UserTitleError):
+    status_code = 403
+
+
+class PublishRateLimitError(UserTitleError):
+    status_code = 429
+
+
+# At most 10 publish transitions per account per hour.
+PUBLISH_RATE_LIMIT_MAX = 10
+PUBLISH_RATE_LIMIT_WINDOW_SECONDS = 3600.0
 
 
 @dataclass(frozen=True)
@@ -310,3 +332,71 @@ async def delete_user_title(
             failed,
         )
     return DeleteUserTitleResult(deleted=True, failed_storage_keys=failed)
+
+
+async def publish_user_title(
+    conn: AsyncConnection[Any],
+    *,
+    user_id: int,
+    title_id: uuid.UUID,
+    allow_download: bool = False,
+) -> UserTitle | None:
+    """Publishes an owner's ready user title for other readers (issue 434).
+
+    Enforces:
+    - ownership (returns ``None`` if not found or not owned by ``user_id``),
+    - moderator lock (books with ``visibility == 'hidden'`` cannot be re-published),
+    - readiness (active file must have ``import_status == 'ready'`` and at least 1 chapter),
+    - per-user rate limit on publish transitions.
+    """
+    existing = await get_user_title(conn, user_id, title_id)
+    if existing is None:
+        return None
+    if existing.visibility == VISIBILITY_HIDDEN:
+        raise UserTitleForbiddenError(
+            "Книга скрыта модератором и не может быть опубликована повторно"
+        )
+    active_file = await get_active_title_file(conn, user_id, title_id)
+    if active_file is None or active_file.import_status != "ready":
+        raise UserTitleError("Книга ещё не готова к публикации")
+    if existing.chapter_count < 1:
+        raise UserTitleError("Нельзя опубликовать книгу без глав")
+    if existing.visibility != VISIBILITY_PUBLISHED and is_rate_limited(
+        f"publish_user_title:{user_id}",
+        max_attempts=PUBLISH_RATE_LIMIT_MAX,
+        window_seconds=PUBLISH_RATE_LIMIT_WINDOW_SECONDS,
+    ):
+        raise PublishRateLimitError("Слишком много публикаций за час. Попробуйте позже.")
+    return await set_user_title_published(
+        conn, user_id, title_id, allow_download=allow_download
+    )
+
+
+async def unpublish_user_title(
+    conn: AsyncConnection[Any],
+    *,
+    user_id: int,
+    title_id: uuid.UUID,
+) -> UserTitle | None:
+    """Returns a published book to private mode. Cannot unlock moderator-hidden books."""
+    existing = await get_user_title(conn, user_id, title_id)
+    if existing is None:
+        return None
+    if existing.visibility == VISIBILITY_HIDDEN:
+        raise UserTitleForbiddenError("Книга скрыта модератором")
+    if existing.visibility == VISIBILITY_PRIVATE:
+        return existing
+    return await set_user_title_private(conn, user_id, title_id)
+
+
+async def update_user_title_download_policy(
+    conn: AsyncConnection[Any],
+    *,
+    user_id: int,
+    title_id: uuid.UUID,
+    allow_download: bool,
+) -> UserTitle | None:
+    """Toggles whether other readers may download the source EPUB of a published book."""
+    return await set_user_title_allow_download(
+        conn, user_id, title_id, allow_download=allow_download
+    )

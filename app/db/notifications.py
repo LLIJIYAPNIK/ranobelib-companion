@@ -13,6 +13,7 @@ nullable for the same reason: a future kind might not be about a comment at all.
 
 from __future__ import annotations
 
+import uuid
 from dataclasses import dataclass
 from datetime import UTC, datetime
 from typing import Any
@@ -29,6 +30,8 @@ KIND_COMMENT_REACTION = "comment_reaction"
 # friendships table itself already prevents the same event from happening twice.
 KIND_FRIEND_REQUEST = "friend_request"
 KIND_FRIEND_ACCEPT = "friend_accept"
+# Issue 434: moderation hid a user's published EPUB title.
+KIND_USER_TITLE_HIDDEN = "user_title_hidden"
 
 # PR 168: how much of the comment's own body shows in the notification card - a hint of
 # context ("отреагировали на ваш комментарий «Согласен, но...»"), not the full text (which
@@ -96,6 +99,24 @@ async def notify_friend_accept(
     await _insert_notification(conn, recipient_id, KIND_FRIEND_ACCEPT, actor_user_id)
 
 
+async def notify_user_title_hidden(
+    conn: AsyncConnection,
+    recipient_id: int,
+    title_id: uuid.UUID,
+    title_name: str,
+    reason: str | None = None,
+) -> None:
+    """Notifies the owner that a moderator hid their published book from public view."""
+    clean_reason = (reason or "").strip()
+    message = f"«{title_name}» — {clean_reason}" if clean_reason else f"«{title_name}»"
+    await conn.execute(
+        "INSERT INTO notifications "
+        "(user_id, kind, comment_id, actor_user_id, user_title_id, message, is_read, created_at) "
+        "VALUES (%s, %s, NULL, NULL, %s, %s, 0, %s)",
+        (recipient_id, KIND_USER_TITLE_HIDDEN, title_id, message, datetime.now(UTC).isoformat()),
+    )
+
+
 async def _insert_notification(
     conn: AsyncConnection, recipient_id: int, kind: str, actor_user_id: int
 ) -> None:
@@ -141,7 +162,8 @@ class Notification:
     actor_name: str
     # PR 199: who to link to for a kind that isn't about a comment (friend_request/
     # friend_accept) - _comment_url() below already covers the comment_id case.
-    actor_user_id: int
+    # None for system/moderation notifications (e.g. KIND_USER_TITLE_HIDDEN).
+    actor_user_id: int | None
     # PR 147/comments.py's same picture-or-initials pairing - the bell panel renders one
     # or the other exactly like every other avatar in this codebase.
     actor_avatar_url: str | None
@@ -152,6 +174,9 @@ class Notification:
     comment_id: int | None
     comment_excerpt: str | None
     comment_url: str | None
+    user_title_id: str | None = None
+    target_url: str | None = None
+    message: str | None = None
 
 
 async def count_unread_notifications(conn: AsyncConnection, user_id: int) -> int:
@@ -218,14 +243,17 @@ async def _list_notifications(
     cursor = await conn.execute(
         "SELECT notifications.id, notifications.kind, notifications.is_read, "
         "notifications.created_at, notifications.actor_user_id, "
+        "notifications.user_title_id, notifications.message, "
         "actor.nickname AS actor_nickname, actor.email AS actor_email, "
         "actor.avatar_path AS actor_avatar_path, "
         "comments.id AS comment_id, comments.body AS comment_body, "
         "comments.slug_url AS comment_slug_url, comments.volume AS comment_volume, "
-        "comments.number AS comment_number, comments.branch_id AS comment_branch_id "
+        "comments.number AS comment_number, comments.branch_id AS comment_branch_id, "
+        "user_titles.id AS existing_user_title_id "
         "FROM notifications "
-        "JOIN users AS actor ON actor.id = notifications.actor_user_id "
+        "LEFT JOIN users AS actor ON actor.id = notifications.actor_user_id "
         "LEFT JOIN comments ON comments.id = notifications.comment_id "
+        "LEFT JOIN user_titles ON user_titles.id = notifications.user_title_id "
         "WHERE notifications.user_id = %s " + unread_clause + "ORDER BY "
         "notifications.is_read, notifications.created_at DESC, notifications.id DESC "
         "LIMIT %s OFFSET %s",
@@ -236,18 +264,30 @@ async def _list_notifications(
 
 
 def _row_to_notification(row: dict[str, Any]) -> Notification:
+    is_system = row["actor_user_id"] is None
+    actor_name = "Модерация" if is_system else (row["actor_nickname"] or row["actor_email"])
+    actor_avatar_url = None if is_system else url_for(row["actor_avatar_path"])
+    actor_avatar_initials = (
+        "М" if is_system else initials_for(row["actor_nickname"], row["actor_email"])
+    )
+    existing_title_id = row.get("existing_user_title_id")
+    raw_title_id = row.get("user_title_id")
+    target_url = f"/my-titles/{existing_title_id}" if existing_title_id is not None else None
     return Notification(
         id=row["id"],
         kind=row["kind"],
         is_read=bool(row["is_read"]),
         created_at=row["created_at"],
-        actor_name=row["actor_nickname"] or row["actor_email"],
+        actor_name=actor_name,
         actor_user_id=row["actor_user_id"],
-        actor_avatar_url=url_for(row["actor_avatar_path"]),
-        actor_avatar_initials=initials_for(row["actor_nickname"], row["actor_email"]),
+        actor_avatar_url=actor_avatar_url,
+        actor_avatar_initials=actor_avatar_initials,
         comment_id=row["comment_id"],
         comment_excerpt=_excerpt(row["comment_body"]),
         comment_url=_comment_url(row),
+        user_title_id=str(raw_title_id) if raw_title_id is not None else None,
+        target_url=target_url,
+        message=row.get("message"),
     )
 
 

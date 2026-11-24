@@ -52,12 +52,17 @@ COMMENT_DELETE = "comment_delete"
 REPORTS_DISMISS = "reports_dismiss"
 REPORTS_HIDE_COMMENT = "reports_hide_comment"
 REPORTS_CLEAR_PROFILE = "reports_clear_profile"
+REPORTS_HIDE_USER_TITLE = "reports_hide_user_title"
 REPORTS_BAN_AUTHOR = "reports_ban_author"
 REPORTS_UNDO = "reports_undo"
+# Issue 434: direct moderator actions on published user titles.
+USER_TITLE_HIDE = "user_title_hide"
+USER_TITLE_RESTORE = "user_title_restore"
 MODERATION_DECISIONS = (
     REPORTS_DISMISS,
     REPORTS_HIDE_COMMENT,
     REPORTS_CLEAR_PROFILE,
+    REPORTS_HIDE_USER_TITLE,
     REPORTS_BAN_AUTHOR,
 )
 # PR 352: a CSV export from «Данные БД» - nothing changes, but data leaves the panel.

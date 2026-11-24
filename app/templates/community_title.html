@@ -1,0 +1,138 @@
+{% extends "base.html" %}
+{% block title %}{{ title.title }} — Книги читателей — RanobeLib Companion{% endblock %}
+{% block content %}
+<main class="hm hm--title" data-role="community-title-page" data-title-id="{{ title.id }}">
+  {% if cover_url %}
+  <img class="hm-ambient" src="{{ cover_url }}" alt="" aria-hidden="true">
+  {% endif %}
+
+  {% if finished %}
+  <p class="ui-notice tp-notice" role="status" data-role="title-finished-notice">Книга прочитана</p>
+  {% endif %}
+
+  <div class="tp" data-display-name="{{ title.title }}">
+    <header class="tp-head hm-rise">
+      <div class="ut-breadcrumb">
+        <a class="hm-link" href="/community-titles">← Книги читателей</a>
+      </div>
+      <h1 class="tp-name">{{ title.title }}</h1>
+      {% if title.authors %}
+      <p class="tp-alt">{{ title.authors | join(", ") }}</p>
+      {% endif %}
+      <p class="tp-facts">
+        <span>Книга читателя (EPUB)</span>
+        <span class="hm-num">{{ chapter_total }} {{ plural(chapter_total, "глава", "главы", "глав") }}</span>
+        {% if published_date %}
+        <span class="hm-num">Опубликована {{ published_date }}</span>
+        {% endif %}
+      </p>
+    </header>
+
+    <aside class="tp-lamp hm-rise" style="--i: 1" aria-label="Чтение и сведения о книге">
+      <div class="tp-lamp__top">
+        <div class="tp-tilt">
+          {% if cover_url %}
+          <img class="tp-cover title-hero__cover" src="{{ cover_url }}" alt="Обложка «{{ title.title }}»">
+          {% else %}
+          <div class="tp-cover tp-cover--none" role="img" aria-label="Обложки нет"><b>{{ title.title }}</b><span>{{ title.authors | join(", ") }}</span></div>
+          {% endif %}
+        </div>
+        {% if progress_percent is not none and current_chapter %}
+        <div class="tp-place" role="group" aria-label="Прочитано {{ progress_percent }}%">
+          <b class="tp-place__pct hm-num">{{ progress_percent }}%</b>
+          <span class="tp-place__where">Глава {{ current_chapter.position }}{% if current_chapter.title %}<span class="tp-place__name"> · {{ current_chapter.title }}</span>{% endif %}</span>
+          <span class="tp-bar tp-place__bar"><span style="width: {{ progress_percent }}%"></span></span>
+          <span class="tp-place__left hm-num">Глава {{ last_read_position }} из {{ chapter_total }}</span>
+        </div>
+        {% else %}
+        <div class="tp-place tp-place--new">
+          <b class="tp-place__lead">{% if first_chapter %}Ещё не начинали{% else %}Глав нет{% endif %}</b>
+          <span class="tp-place__left hm-num">{{ chapter_total }} {{ plural(chapter_total, "глава", "главы", "глав") }}</span>
+          {% if not current_user %}
+          <span class="tp-place__left">Войдите, чтобы сохранять прогресс чтения</span>
+          {% endif %}
+        </div>
+        {% endif %}
+      </div>
+
+      {% if current_chapter %}
+      <a class="tp-go" href="/community-titles/{{ title.id }}/chapters/{{ current_chapter.position }}" data-role="community-title-read">
+        <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M8 5.5v13l10.5-6.5z"/></svg>
+        <span class="tp-go__label">Продолжить<small>Глава {{ current_chapter.position }}</small></span>
+      </a>
+      {% elif first_chapter %}
+      <a class="tp-go" href="/community-titles/{{ title.id }}/chapters/{{ first_chapter.position }}" data-role="community-title-read">
+        <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M8 5.5v13l10.5-6.5z"/></svg>
+        <span class="tp-go__label">Читать<small>Глава {{ first_chapter.position }}</small></span>
+      </a>
+      {% endif %}
+
+      <div class="ut-lamp-actions">
+        {% if can_download %}
+        <a class="wn-btn wn-btn--secondary ut-lamp-actions__btn" href="/community-titles/{{ title.id }}/download" data-role="community-title-download">
+          <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 4v11m0 0-4.5-4.5M12 15l4.5-4.5M5 20h14"/></svg>
+          Скачать EPUB
+        </a>
+        {% endif %}
+        {% if is_owner %}
+        <a class="wn-btn wn-btn--secondary ut-lamp-actions__btn" href="/my-titles/{{ title.id }}" data-role="community-title-manage">Управлять в «Моих книгах»</a>
+        {% endif %}
+        {% if can_report %}
+        <button
+          type="button"
+          class="wn-btn wn-btn--secondary ut-lamp-actions__btn"
+          data-role="community-title-report"
+          data-report-target-type="user_title"
+          data-report-target-id="{{ title.id }}"
+          aria-haspopup="dialog"
+        >
+          Пожаловаться
+        </button>
+        {% endif %}
+      </div>
+
+      <div class="tp-lamp__secs">
+        <section class="tp-sec" aria-labelledby="ut-community-info-h">
+          <h2 class="tp-sec__h" id="ut-community-info-h">О книге</h2>
+          <dl class="tp-credits">
+            {% if title.authors %}<div><dt>{{ "Автор" if title.authors | length == 1 else "Авторы" }}</dt><dd>{{ title.authors | join(", ") }}</dd></div>{% endif %}
+            <div><dt>Опубликовал</dt><dd><a class="hm-link" href="/profile/{{ title.user_id }}" data-role="community-title-publisher">{{ publisher_name }}</a></dd></div>
+            {% if published_date %}<div><dt>Дата публикации</dt><dd class="hm-num">{{ published_date }}</dd></div>{% endif %}
+          </dl>
+        </section>
+      </div>
+    </aside>
+
+    {% if title.description %}
+    <section class="tp-about hm-rise" style="--i: 2" aria-label="Описание книги">
+      <p class="tp-summary">{{ title.description }}</p>
+    </section>
+    {% endif %}
+
+    <section class="tp-chap hm-rise" style="--i: 3" id="title-panel-toc" aria-labelledby="tp-chap-h">
+      <div class="tp-volume__head">
+        <h2 class="tp-volume__title" id="tp-chap-h">Оглавление<small class="hm-num">{{ chapter_total }} {{ plural(chapter_total, "глава", "главы", "глав") }}</small></h2>
+      </div>
+      <ol class="tp-line" data-role="community-title-toc">
+        {% for ch in chapters %}
+        {% set is_here = last_read_position == ch.position %}
+        {% set is_read = last_read_position is not none and ch.position < last_read_position %}
+        <li class="tp-row{% if is_here %} is-here{% elif is_read %} is-read{% endif %}" data-role="toc-chapter">
+          <a class="tp-row__link toc__chapter-link" href="/community-titles/{{ title.id }}/chapters/{{ ch.position }}"{% if is_here %} aria-current="step"{% endif %}>
+            <span class="tp-node" aria-hidden="true"></span>
+            <span class="tp-row__main">
+              <span class="tp-row__name"><span class="tp-row__n hm-num">{% if is_here %}Вы здесь · {% endif %}Глава {{ ch.position }}</span>{{ ch.title }}</span>
+            </span>
+            {% if is_here %}
+            <span class="tp-row__cta"><svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M8 5.5v13l10.5-6.5z"/></svg>Продолжить</span>
+            {% else %}
+            <span class="tp-row__go" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m9 6 6 6-6 6"/></svg></span>
+            {% endif %}
+          </a>
+        </li>
+        {% endfor %}
+      </ol>
+    </section>
+  </div>
+</main>
+{% endblock %}

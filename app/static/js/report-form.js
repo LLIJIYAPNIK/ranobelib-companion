@@ -30,7 +30,11 @@
   const phone = window.matchMedia("(max-width: 767px)");
   const home = { parent: root.parentNode, next: root.nextSibling };
 
-  const TITLES = { comment: "Пожаловаться на комментарий", profile: "Пожаловаться на профиль" };
+  const TITLES = {
+    comment: "Пожаловаться на комментарий",
+    profile: "Пожаловаться на профиль",
+    user_title: "Пожаловаться на книгу",
+  };
   const SENT = "Жалоба отправлена";
   const ALREADY = "Вы уже отправили жалобу";
   const TOAST_MS = 4000;
@@ -196,9 +200,11 @@
     const button = event.target.closest("[data-report-target-type]");
     if (!button) return;
     event.preventDefault();
+    const targetType = button.dataset.reportTargetType;
+    const rawId = button.dataset.reportTargetId;
     open({
-      targetType: button.dataset.reportTargetType,
-      targetId: Number(button.dataset.reportTargetId),
+      targetType,
+      targetId: targetType === "user_title" ? rawId : Number(rawId),
       opener: button,
     });
   });

@@ -1,13 +1,14 @@
-"""«Модерация» (PR 358): the queue's tabs and rows, shaped for admin/moderation.html from
-app/db/admin_reports.py. Presentation only.
+"""«Модерация» (PR 358, extended for ``user_title`` in issue 434): the queue's tabs and
+rows, shaped for admin/moderation.html from app/db/admin_reports.py. Presentation only.
 
-An object in the queue is addressed as ``comment-12`` / ``profile-7`` (the ``item`` query
-parameter): the list shows the queue, the card on the right shows that object - or the
-top of the queue when none is asked for.
+An object in the queue is addressed as ``comment-12`` / ``profile-7`` /
+``user_title-<uuid>`` (the ``item`` query parameter): the list shows the queue, the card
+on the right shows that object - or the top of the queue when none is asked for.
 """
 
 from __future__ import annotations
 
+import uuid
 from collections.abc import Mapping
 from dataclasses import dataclass, field, replace
 from urllib.parse import urlencode
@@ -27,18 +28,20 @@ from app.db.admin_reports import (
     COMMENT,
     PROFILE,
     TARGET_TYPES,
+    USER_TITLE,
     AuthorRecord,
     ObjectReports,
     Queue,
     QueueItem,
     ReportedProfile,
+    ReportedUserTitle,
 )
 from app.markdown_render import render_comment_body
 from app.reports import reason_label
 from app.services.titles import TitleSummary
 
-KIND_LABELS = {COMMENT: "Комментарий", PROFILE: "Профиль"}
-TAB_LABELS = {COMMENT: "Комментарии", PROFILE: "Профили"}
+KIND_LABELS = {COMMENT: "Комментарий", PROFILE: "Профиль", USER_TITLE: "Книга"}
+TAB_LABELS = {COMMENT: "Комментарии", PROFILE: "Профили", USER_TITLE: "Книги"}
 EXCERPT_LENGTH = 160
 # From this many reports on one object its count turns red, as in the mockup.
 MANY_REPORTS = 5
@@ -48,17 +51,23 @@ def parse_type(raw: str | None) -> str | None:
     return raw if raw in TARGET_TYPES else None
 
 
-def parse_item(raw: str | None) -> tuple[str, int] | None:
-    """``comment-12`` -> ("comment", 12); anything else -> None."""
-    kind, _, number = (raw or "").partition("-")
-    if kind in TARGET_TYPES and number.isdigit() and 0 < len(number) <= 10:
-        value = int(number)
+def parse_item(raw: str | None) -> tuple[str, int | str] | None:
+    """``comment-12`` -> ("comment", 12), ``user_title-<uuid>`` -> ("user_title", "<uuid>");
+    anything else -> None."""
+    kind, _, ident = (raw or "").partition("-")
+    if kind in (COMMENT, PROFILE) and ident.isdigit() and 0 < len(ident) <= 10:
+        value = int(ident)
         if value <= 2_147_483_647:
             return kind, value
+    if kind == USER_TITLE and ident:
+        try:
+            return kind, str(uuid.UUID(ident))
+        except ValueError:
+            return None
     return None
 
 
-def item_key(target_type: str, target_id: int) -> str:
+def item_key(target_type: str, target_id: int | str) -> str:
     return f"{target_type}-{target_id}"
 
 
@@ -121,10 +130,14 @@ class QueueRow:
 
 
 def item_text(item: QueueItem) -> str:
-    """What the queue shows of the object: the comment's text, the profile's «о себе» -
-    or what stands in for it."""
+    """What the queue shows of the object: the comment's text, the profile's «о себе»,
+    the book's title - or what stands in for it."""
     if item.author is None:
-        return "Комментарий удалён навсегда" if item.target_type == COMMENT else "Аккаунт удалён"
+        if item.target_type == COMMENT:
+            return "Комментарий удалён навсегда"
+        if item.target_type == USER_TITLE:
+            return "Книга удалена"
+        return "Аккаунт удалён"
     if item.deleted:
         return "Комментарий удалён автором"
     if item.target_type == PROFILE and not (item.text or "").strip():
@@ -183,13 +196,13 @@ class HistoryItem:
 
 @dataclass(frozen=True)
 class Card:
-    """What the card shows about one object. ``state`` is ``published``, ``hidden``
-    (a comment hidden already), ``deleted`` (by its author) or ``gone`` (the comment or
-    account no longer exists) - the last two can only be dismissed."""
+    """What the card shows about one object. ``state`` is ``published``, ``private``,
+    ``hidden`` (a comment or book hidden already), ``deleted`` (by its author) or ``gone``
+    (the object no longer exists) - the last two can only be dismissed."""
 
     key: str
     target_type: str
-    target_id: int
+    target_id: int | str
     kind: str
     reports: int
     since: str
@@ -211,6 +224,12 @@ class Card:
     nickname: str | None = None
     bio: str | None = None
     avatar_url: str | None = None
+    # A user title: metadata & visibility state.
+    title_name: str | None = None
+    authors: list[str] = field(default_factory=list)
+    description: str | None = None
+    chapter_count: int | None = None
+    hidden_reason: str | None = None
     reasons: list[ReasonBar] = field(default_factory=list)
     notes: list[Note] = field(default_factory=list)
     history: list[HistoryItem] = field(default_factory=list)
@@ -350,6 +369,47 @@ def profile_card(
         nickname=profile.nickname,
         bio=(profile.bio or "").strip() or None,
         avatar_url=url_for(profile.avatar_path),
+    )
+
+
+def user_title_card(
+    title: ReportedUserTitle | None, title_id: str, reports: ObjectReports, tz: str
+) -> Card:
+    base = {
+        "key": item_key(USER_TITLE, title_id),
+        "target_type": USER_TITLE,
+        "target_id": title_id,
+        "kind": KIND_LABELS[USER_TITLE],
+        "reports": reports.count,
+        "since": format_when(reports.first_at, tz) or "",
+        "reasons": reason_bars(reports),
+        "notes": notes(reports, tz),
+    }
+    if title is None:
+        return Card(
+            **base,
+            state="gone",
+            where="Книга удалена",
+            where_href=None,
+            author=None,
+            author_id=None,
+            author_href=None,
+            initial="?",
+        )
+    return Card(
+        **base,
+        state=title.visibility,
+        where=f"Книга читателя · {title.chapter_count} гл.",
+        where_href=f"/community-titles/{title.id}" if title.visibility == "published" else None,
+        author=title.owner,
+        author_id=title.user_id,
+        author_href=f"/admin/users?{urlencode({'user': title.user_id})}",
+        initial=_initial(title.owner),
+        title_name=title.title,
+        authors=list(title.authors),
+        description=(title.description or "").strip() or None,
+        chapter_count=title.chapter_count,
+        hidden_reason=title.hidden_reason,
     )
 
 
