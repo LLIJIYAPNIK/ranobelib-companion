@@ -86,13 +86,17 @@
     }
 
     // Whole-pixel spines: one gap everywhere, the spare pixels spread one per spine.
+    // Cap spine width so titles with 2-3 volumes stay compact spines, not wide slabs.
     function layout() {
       const style = getComputedStyle(shelf);
       const room = shelf.clientWidth - parseFloat(style.paddingLeft) - parseFloat(style.paddingRight);
       const gap = parseFloat(style.columnGap) || 0;
       const min = phone() ? 28 : 22;
-      const base = Math.max(min, Math.floor((room - gap * (spines.length - 1)) / spines.length));
-      let spare = base > min ? room - gap * (spines.length - 1) - base * spines.length : 0;
+      const max = phone() ? 120 : 148;
+      const raw = Math.floor((room - gap * (spines.length - 1)) / spines.length);
+      const base = Math.min(max, Math.max(min, raw));
+      let spare =
+        base > min && base < max ? room - gap * (spines.length - 1) - base * spines.length : 0;
       spines.forEach((s) => s.style.setProperty("--w", `${base + (spare-- > 0 ? 1 : 0)}px`));
     }
 

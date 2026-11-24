@@ -198,17 +198,24 @@
       {% elif translators | length > 1 %}
       <section class="tp-sec" aria-labelledby="tp-tr-h">
         <h2 class="tp-sec__h" id="tp-tr-h">Перевод</h2>
-        <p class="tp-sec__note">У каждой главы один перевод, выбирать не из чего. Переводили:</p>
+        <p class="tp-sec__note">Главы переводили разные команды:</p>
         <ul class="tp-teams">
           {% for name, count in translators[:3] %}
           <li><span>{{ name }}</span><small class="hm-num">{{ count }} {{ chapters_word(count) }}</small></li>
           {% endfor %}
-          {% if translators | length > 3 %}
-          {% set ns_rest = namespace(n=0) %}{% for _, count in translators[3:] %}{% set ns_rest.n = ns_rest.n + count %}{% endfor %}
-          {% set rest = ns_rest.n %}
-          <li><span>Ещё {{ translators | length - 3 }}</span><small class="hm-num">{{ rest }} {{ chapters_word(rest) }}</small></li>
-          {% endif %}
         </ul>
+        {% if translators | length > 3 %}
+        {% set ns_rest = namespace(n=0) %}{% for _, count in translators[3:] %}{% set ns_rest.n = ns_rest.n + count %}{% endfor %}
+        {% set rest = ns_rest.n %}
+        <details class="tp-teams__more">
+          <summary class="tp-teams__toggle"><span>Ещё {{ translators | length - 3 }}</span><small class="hm-num">{{ rest }} {{ chapters_word(rest) }}</small></summary>
+          <ul class="tp-teams">
+            {% for name, count in translators[3:] %}
+            <li><span>{{ name }}</span><small class="hm-num">{{ count }} {{ chapters_word(count) }}</small></li>
+            {% endfor %}
+          </ul>
+        </details>
+        {% endif %}
       </section>
       {% endif %}
 
@@ -303,7 +310,7 @@
      from it. A title not started yet shows it whole, while it is still being chosen. #}
   <div class="tp-rel-slot" data-role="title-relations-slot" data-slug-url="{{ title.slug_url }}"{% if has_progress %} data-compact="true"{% endif %}></div>
 
-  {% if contents %}
+  {% if contents | length > 1 %}
   <section class="tp-vols hm-rise" style="--i: 3" aria-labelledby="tp-vols-h" data-role="title-volumes">
     <div class="tp-vols__head">
       <h2 class="hm-h2" id="tp-vols-h">Тома</h2>
@@ -323,7 +330,7 @@
       <a class="tp-spine" href="#vol-{{ volume.number }}" role="tab" id="spine-{{ volume.number }}" aria-controls="vol-{{ volume.number }}" aria-selected="{{ 'true' if volume is sameas start_volume else 'false' }}"
          aria-label="Том {{ volume.number }}, {{ volume.chapter_count }} {{ chapters_word(volume.chapter_count) }}, {{ state }}" data-role="shelf-spine" data-volume="{{ volume.number }}"
          style="--h: {{ (64 + 104 * volume.chapter_count / longest_volume) | round | int }}px; --r: {{ volume.read_percent }}%; --i: {{ loop.index0 }}">
-        <span class="tp-spine__fill"></span>
+        <span class="tp-spine__clip" aria-hidden="true"><span class="tp-spine__fill"></span></span>
         <span class="tp-spine__n hm-num">{{ volume.number }}</span>
         <span class="tp-spine__meta"><b>Том {{ volume.number }}</b><small class="hm-num">{{ state }}</small></span>
         {% if volume.is_current %}<span class="tp-spine__here" title="Вы здесь"></span>{% endif %}
@@ -358,7 +365,7 @@
       <p class="tp-empty" data-role="toc-find-empty" hidden></p>
 
       {% for volume in contents %}
-      <section class="tp-volume" id="vol-{{ volume.number }}" role="tabpanel" aria-labelledby="spine-{{ volume.number }}" data-role="toc-volume" data-volume="{{ volume.number }}"{% if volume is sameas start_volume %} data-start{% endif %}>
+      <section class="tp-volume" id="vol-{{ volume.number }}"{% if contents | length > 1 %} role="tabpanel" aria-labelledby="spine-{{ volume.number }}"{% endif %} data-role="toc-volume" data-volume="{{ volume.number }}"{% if volume is sameas start_volume %} data-start{% endif %}>
         <div class="tp-volume__head">
           <h3 class="tp-volume__title">Том {{ volume.number }}<small class="hm-num">{{ volume.chapter_count }} {{ chapters_word(volume.chapter_count) }}{% if volume.done %} · прочитан{% elif volume.read_count %} · прочитано {{ volume.read_count }}{% endif %}</small></h3>
           {% if export_formats %}

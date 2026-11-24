@@ -65,9 +65,9 @@
       li.id = `${id}-option-${index}`;
       li.textContent = option.textContent;
       li.addEventListener("mouseenter", () => setActive(index));
-      li.addEventListener("click", () => {
+      li.addEventListener("click", (event) => {
         choose(index);
-        close();
+        close(event.detail === 0);
       });
       listbox.appendChild(li);
       return li;
@@ -121,7 +121,9 @@
       syncSelected();
     }
 
-    trigger.addEventListener("click", () => (isOpen() ? close() : open()));
+    trigger.addEventListener("click", (event) =>
+      isOpen() ? close(event.detail === 0) : open()
+    );
 
     trigger.addEventListener("keydown", (event) => {
       if (["ArrowDown", "ArrowUp", "Enter", " "].includes(event.key)) {
