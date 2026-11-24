@@ -1,4 +1,5 @@
-"""Readers' reports, ``reports`` (migrations/0032_reports.sql, PR 356).
+"""Readers' reports, ``reports`` (migrations/0032_reports.sql, PR 356; extended for
+``user_title`` UUID targets in migrations/0034_user_titles_publishing.sql, issue 434).
 
 Filed through ``POST /reports`` (app/api/reports.py), which checks who may report what;
 this module only stores them. A reporter has at most one open report per object - a
@@ -11,6 +12,7 @@ only.
 
 from __future__ import annotations
 
+import uuid
 from dataclasses import dataclass
 from datetime import UTC, datetime, timedelta
 
@@ -22,23 +24,45 @@ class Report:
     id: int
     reporter_user_id: int
     target_type: str
-    target_id: int
+    target_id: int | None
     reason: str
     details: str | None
     status: str
     resolution: str | None
     resolved_at: str | None
     created_at: str
+    target_uuid: uuid.UUID | None = None
 
 
 _COLUMNS = (
-    "id, reporter_user_id, target_type, target_id, reason, details, status, resolution, "
-    "resolved_at, created_at"
+    "id, reporter_user_id, target_type, target_id, target_uuid, reason, details, status, "
+    "resolution, resolved_at, created_at"
 )
 
 
 def _now(now: datetime | None) -> datetime:
     return now or datetime.now(UTC)
+
+
+def _as_uuid(value: uuid.UUID | str) -> uuid.UUID:
+    return value if isinstance(value, uuid.UUID) else uuid.UUID(str(value))
+
+
+def _row_to_report(row: dict) -> Report:
+    raw_uuid = row.get("target_uuid")
+    return Report(
+        id=row["id"],
+        reporter_user_id=row["reporter_user_id"],
+        target_type=row["target_type"],
+        target_id=row["target_id"],
+        target_uuid=_as_uuid(raw_uuid) if raw_uuid is not None else None,
+        reason=row["reason"],
+        details=row["details"],
+        status=row["status"],
+        resolution=row["resolution"],
+        resolved_at=row["resolved_at"],
+        created_at=row["created_at"],
+    )
 
 
 @dataclass(frozen=True)
@@ -48,6 +72,14 @@ class CommentTarget:
     user_id: int
     hidden: bool
     deleted: bool
+
+
+@dataclass(frozen=True)
+class UserTitleTarget:
+    """What ``POST /reports`` needs to know about a reported user title."""
+
+    user_id: int
+    visibility: str
 
 
 async def comment_target(conn: AsyncConnection, comment_id: int) -> CommentTarget | None:
@@ -64,17 +96,39 @@ async def comment_target(conn: AsyncConnection, comment_id: int) -> CommentTarge
     )
 
 
-async def open_report(
-    conn: AsyncConnection, reporter_user_id: int, target_type: str, target_id: int
-) -> Report | None:
-    """This reporter's open report on the object, if there is one."""
+async def user_title_target(
+    conn: AsyncConnection, title_id: uuid.UUID
+) -> UserTitleTarget | None:
     cursor = await conn.execute(
-        f"SELECT {_COLUMNS} FROM reports WHERE reporter_user_id = %s AND target_type = %s "
-        "AND target_id = %s AND status = 'open'",
-        (reporter_user_id, target_type, target_id),
+        "SELECT user_id, visibility FROM user_titles WHERE id = %s", (title_id,)
     )
     row = await cursor.fetchone()
-    return Report(**row) if row else None
+    if row is None:
+        return None
+    return UserTitleTarget(user_id=row["user_id"], visibility=str(row["visibility"]))
+
+
+async def open_report(
+    conn: AsyncConnection,
+    reporter_user_id: int,
+    target_type: str,
+    target_id: int | uuid.UUID | str,
+) -> Report | None:
+    """This reporter's open report on the object, if there is one."""
+    if target_type == "user_title":
+        cursor = await conn.execute(
+            f"SELECT {_COLUMNS} FROM reports WHERE reporter_user_id = %s AND target_type = %s "
+            "AND target_uuid = %s AND status = 'open'",
+            (reporter_user_id, target_type, _as_uuid(target_id)),
+        )
+    else:
+        cursor = await conn.execute(
+            f"SELECT {_COLUMNS} FROM reports WHERE reporter_user_id = %s AND target_type = %s "
+            "AND target_id = %s AND status = 'open'",
+            (reporter_user_id, target_type, int(target_id)),
+        )
+    row = await cursor.fetchone()
+    return _row_to_report(row) if row else None
 
 
 async def reports_filed_last_day(
@@ -94,7 +148,7 @@ async def file_report(
     conn: AsyncConnection,
     reporter_user_id: int,
     target_type: str,
-    target_id: int,
+    target_id: int | uuid.UUID | str,
     *,
     reason: str,
     details: str | None = None,
@@ -103,24 +157,42 @@ async def file_report(
     """Files a report, or updates the reporter's open one on the same object. Returns it
     and whether it is new. A report already closed by the admin doesn't count - the
     next one is new. Validating the reason, details and target is the caller's job."""
-    cursor = await conn.execute(
-        "INSERT INTO reports (reporter_user_id, target_type, target_id, reason, details, "
-        "created_at) VALUES (%s, %s, %s, %s, %s, %s) "
-        "ON CONFLICT (reporter_user_id, target_type, target_id) WHERE status = 'open' "
-        "DO UPDATE SET reason = EXCLUDED.reason, details = EXCLUDED.details "
-        f"RETURNING {_COLUMNS}, (xmax = 0) AS created",
-        (
-            reporter_user_id,
-            target_type,
-            target_id,
-            reason,
-            details or None,
-            _now(now).isoformat(),
-        ),
-    )
+    if target_type == "user_title":
+        cursor = await conn.execute(
+            "INSERT INTO reports (reporter_user_id, target_type, target_id, target_uuid, "
+            "reason, details, created_at) VALUES (%s, %s, NULL, %s, %s, %s, %s) "
+            "ON CONFLICT (reporter_user_id, target_type, target_uuid) "
+            "WHERE status = 'open' AND target_uuid IS NOT NULL "
+            "DO UPDATE SET reason = EXCLUDED.reason, details = EXCLUDED.details "
+            f"RETURNING {_COLUMNS}, (xmax = 0) AS created",
+            (
+                reporter_user_id,
+                target_type,
+                _as_uuid(target_id),
+                reason,
+                details or None,
+                _now(now).isoformat(),
+            ),
+        )
+    else:
+        cursor = await conn.execute(
+            "INSERT INTO reports (reporter_user_id, target_type, target_id, target_uuid, "
+            "reason, details, created_at) VALUES (%s, %s, %s, NULL, %s, %s, %s) "
+            "ON CONFLICT (reporter_user_id, target_type, target_id) WHERE status = 'open' "
+            "DO UPDATE SET reason = EXCLUDED.reason, details = EXCLUDED.details "
+            f"RETURNING {_COLUMNS}, (xmax = 0) AS created",
+            (
+                reporter_user_id,
+                target_type,
+                int(target_id),
+                reason,
+                details or None,
+                _now(now).isoformat(),
+            ),
+        )
     row = await cursor.fetchone()
     created = row.pop("created")
-    return Report(**row), created
+    return _row_to_report(row), created
 
 
 # --- decisions in «Модерация» (PR 358) ----------------------------------------------------
@@ -132,7 +204,7 @@ ACTIONED = "actioned"
 async def resolve_reports(
     conn: AsyncConnection,
     target_type: str,
-    target_id: int,
+    target_id: int | uuid.UUID | str,
     *,
     status: str,
     resolution: str,
@@ -140,11 +212,18 @@ async def resolve_reports(
 ) -> list[int]:
     """Closes every open report on the object - ``dismissed`` («Одобрить») or
     ``actioned`` - with what was done. Returns their ids, which «Отменить» reopens."""
-    cursor = await conn.execute(
-        "UPDATE reports SET status = %s, resolution = %s, resolved_at = %s "
-        "WHERE target_type = %s AND target_id = %s AND status = 'open' RETURNING id",
-        (status, resolution, _now(now).isoformat(), target_type, target_id),
-    )
+    if target_type == "user_title":
+        cursor = await conn.execute(
+            "UPDATE reports SET status = %s, resolution = %s, resolved_at = %s "
+            "WHERE target_type = %s AND target_uuid = %s AND status = 'open' RETURNING id",
+            (status, resolution, _now(now).isoformat(), target_type, _as_uuid(target_id)),
+        )
+    else:
+        cursor = await conn.execute(
+            "UPDATE reports SET status = %s, resolution = %s, resolved_at = %s "
+            "WHERE target_type = %s AND target_id = %s AND status = 'open' RETURNING id",
+            (status, resolution, _now(now).isoformat(), target_type, int(target_id)),
+        )
     return sorted(row["id"] for row in await cursor.fetchall())
 
 
@@ -159,7 +238,9 @@ async def reopen_reports(conn: AsyncConnection, report_ids: list[int]) -> list[i
         "WHERE r.id = ANY(%s) AND r.status <> 'open' AND NOT EXISTS ("
         "  SELECT 1 FROM reports o WHERE o.status = 'open' "
         "  AND o.reporter_user_id = r.reporter_user_id "
-        "  AND o.target_type = r.target_type AND o.target_id = r.target_id"
+        "  AND o.target_type = r.target_type "
+        "  AND o.target_id IS NOT DISTINCT FROM r.target_id "
+        "  AND o.target_uuid IS NOT DISTINCT FROM r.target_uuid"
         ") RETURNING r.id",
         (list(report_ids),),
     )
