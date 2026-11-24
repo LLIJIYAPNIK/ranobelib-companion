@@ -12,6 +12,7 @@ from __future__ import annotations
 import logging
 import math
 import time
+import uuid
 from collections.abc import Awaitable, Callable
 from dataclasses import dataclass
 from datetime import datetime
@@ -64,7 +65,13 @@ from app.admin_comments import safe_back as comments_safe_back
 from app.admin_kit import Undo, pop_toast, push_toast
 from app.admin_kit_demo import charts_context, table_context
 from app.admin_moderation import Card as ModerationCard
-from app.admin_moderation import comment_card, moderation_href, profile_card, queue_rows
+from app.admin_moderation import (
+    comment_card,
+    moderation_href,
+    profile_card,
+    queue_rows,
+    user_title_card,
+)
 from app.admin_moderation import item_key as moderation_item_key
 from app.admin_moderation import parse_item as parse_moderation_item
 from app.admin_moderation import parse_type as parse_moderation_type
@@ -185,11 +192,13 @@ from app.db.admin_audit import (
     REPORTS_CLEAR_PROFILE,
     REPORTS_DISMISS,
     REPORTS_HIDE_COMMENT,
+    REPORTS_HIDE_USER_TITLE,
     REPORTS_UNDO,
     USER_BAN,
     USER_CONFIRM_EMAIL,
     USER_END_SESSIONS,
     USER_SEND_PASSWORD_RESET,
+    USER_TITLE_HIDE,
     USER_UNBAN,
 )
 from app.db.admin_comments import DEFAULT_SORT as COMMENT_DEFAULT_SORT
@@ -216,6 +225,7 @@ from app.db.admin_reports import (
     author_record,
     object_reports,
     reported_profile,
+    reported_user_title,
     waiting_objects,
 )
 from app.db.admin_reports import Queue as ReportQueue
@@ -240,7 +250,15 @@ from app.db.bans import BAN_TERMS, AlreadyBanned, active_ban, ban_history, ban_u
 from app.db.bans import REASON_LIMIT as BAN_REASON_LIMIT
 from app.db.comments import hide_comment, purge_comment, show_comment
 from app.db.connection import get_connection
+from app.db.notifications import notify_user_title_hidden
 from app.db.reports import ACTIONED, DISMISSED, reopen_reports, resolve_reports
+from app.db.user_titles import (
+    VISIBILITY_HIDDEN,
+    VISIBILITY_PUBLISHED,
+    get_user_title_for_admin,
+    hide_user_title_by_moderator,
+    restore_user_title_by_moderator,
+)
 from app.db.users import (
     User,
     clear_profile,
@@ -1048,8 +1066,8 @@ async def admin_moderation(
     request: Request,
     _: Admin,
     conn: Connection,
-    kind: Annotated[str | None, Query(alias="type", max_length=10)] = None,
-    item: Annotated[str | None, Query(max_length=24)] = None,
+    kind: Annotated[str | None, Query(alias="type", max_length=16)] = None,
+    item: Annotated[str | None, Query(max_length=64)] = None,
 ) -> HTMLResponse:
     """«Модерация»: the objects readers reported (POST /reports, PR 356), the most
     reported first, then the one waiting longest - tabs by type, the list on the left
@@ -1090,9 +1108,25 @@ async def admin_moderation(
 # closed, one entry in the action log - whose id the toast's «Отменить» sends back - and
 # the queue again, on the next object.
 
-TargetType = Annotated[str, Path(max_length=10)]
-TargetId = Annotated[int, Path(ge=1, le=2_147_483_647)]
+TargetType = Annotated[str, Path(max_length=16)]
+TargetId = Annotated[str, Path(max_length=64)]
 Back = Annotated[str, Form(max_length=2000)]
+
+
+def _parse_moderation_target_id(target_type: str, raw: str) -> int | uuid.UUID:
+    if target_type not in ("comment", "profile", "user_title"):
+        raise HTTPException(status_code=404)
+    if target_type == "user_title":
+        try:
+            return uuid.UUID(raw)
+        except ValueError:
+            raise HTTPException(status_code=404) from None
+    if not raw.isdigit() or len(raw) > 10:
+        raise HTTPException(status_code=422)
+    value = int(raw)
+    if value < 1 or value > 2_147_483_647:
+        raise HTTPException(status_code=422)
+    return value
 
 
 @dataclass(frozen=True)
@@ -1105,11 +1139,12 @@ class ModerationTarget:
 
 
 async def _moderation_target(
-    conn: AsyncConnection, target_type: str, target_id: int
+    conn: AsyncConnection, target_type: str, target_id: int | uuid.UUID
 ) -> ModerationTarget:
-    if target_type not in ("comment", "profile"):
+    if target_type not in ("comment", "profile", "user_title"):
         raise HTTPException(status_code=404)
     if target_type == "comment":
+        assert isinstance(target_id, int)
         detail = await comment_detail(conn, target_id)
         if detail is None:
             return ModerationTarget(f"#{target_id}", None, None)
@@ -1117,6 +1152,18 @@ async def _moderation_target(
         return ModerationTarget(
             comment_label(row), row.user_id, row.author, row, comment_audit_details(row)
         )
+    if target_type == "user_title":
+        assert isinstance(target_id, uuid.UUID)
+        ut = await get_user_title_for_admin(conn, target_id)
+        if ut is None:
+            return ModerationTarget(f"#{target_id}", None, None)
+        return ModerationTarget(
+            ut.title,
+            ut.user_id,
+            ut.owner_name,
+            details={"title": ut.title, "visibility": ut.visibility},
+        )
+    assert isinstance(target_id, int)
     user = await get_user_by_id(conn, target_id)
     if user is None:
         return ModerationTarget(f"#{target_id}", None, None)
@@ -1153,10 +1200,11 @@ async def admin_moderation_dismiss(
 ) -> Response:
     """«Одобрить»: the object stays as it is; its reports close as dismissed."""
     check_csrf(request, csrf)
+    parsed_id = _parse_moderation_target_id(target_type, target_id)
     target = moderation_safe_back(back)
-    found = await _moderation_target(conn, target_type, target_id)
+    found = await _moderation_target(conn, target_type, parsed_id)
     ids = await resolve_reports(
-        conn, target_type, target_id, status=DISMISSED, resolution="dismissed"
+        conn, target_type, parsed_id, status=DISMISSED, resolution="dismissed"
     )
     if not ids:
         return _nothing_open(request, target)
@@ -1165,7 +1213,7 @@ async def admin_moderation_dismiss(
         REPORTS_DISMISS,
         ip=client_ip(request),
         entity=target_type,
-        entity_id=target_id,
+        entity_id=parsed_id,
         entity_label=found.label,
         before={"status": "open"},
         after={"status": "dismissed"},
@@ -1176,7 +1224,7 @@ async def admin_moderation_dismiss(
         "Одобрено: жалобы закрыты, контент остаётся",
         entry,
         target,
-        moderation_item_key(target_type, target_id),
+        moderation_item_key(target_type, str(parsed_id)),
     )
 
 
@@ -1190,35 +1238,39 @@ async def admin_moderation_hide(
     csrf: Csrf = "",
     bio: Annotated[str, Form(max_length=5)] = "",
     avatar: Annotated[str, Form(max_length=5)] = "",
+    reason: Annotated[str, Form(max_length=1000)] = "",
     back: Back = "",
 ) -> Response:
     """«Скрыть»: a comment is hidden from readers (PR 350 - its author still sees it,
-    marked); a profile has «о себе» and/or the avatar cleared (the ticked ones). The
-    reports close as actioned."""
+    marked); a profile has «о себе» and/or the avatar cleared (the ticked ones); a user
+    title is hidden from public view with a reason and owner notification (issue 434).
+    The reports close as actioned."""
     check_csrf(request, csrf)
+    parsed_id = _parse_moderation_target_id(target_type, target_id)
     target = moderation_safe_back(back)
-    found = await _moderation_target(conn, target_type, target_id)
+    found = await _moderation_target(conn, target_type, parsed_id)
     if found.author_id is None:
         push_toast(request, "Объекта больше нет — жалобы можно только закрыть", tone="error")
         return RedirectResponse(target, status_code=303)
     if target_type == "comment":
+        assert isinstance(parsed_id, int)
         if found.comment is not None and found.comment.status == COMMENT_DELETED:
             push_toast(request, "Автор уже удалил комментарий — закройте жалобы", tone="error")
             return RedirectResponse(target, status_code=303)
-        hidden_at = await hide_comment(conn, target_id)
+        hidden_at = await hide_comment(conn, parsed_id)
         ids = await resolve_reports(
-            conn, target_type, target_id, status=ACTIONED, resolution="comment_hidden"
+            conn, target_type, parsed_id, status=ACTIONED, resolution="comment_hidden"
         )
         if not ids:
             if hidden_at is not None:
-                await show_comment(conn, target_id)
+                await show_comment(conn, parsed_id)
             return _nothing_open(request, target)
         entry = await admin_audit.record_change(
             conn,
             REPORTS_HIDE_COMMENT,
             ip=client_ip(request),
             entity="comment",
-            entity_id=target_id,
+            entity_id=parsed_id,
             entity_label=found.label,
             # No hidden_at «after» when it was hidden already: «Отменить» then leaves it so.
             before={"hidden_at": None} if hidden_at else None,
@@ -1231,27 +1283,83 @@ async def admin_moderation_hide(
             else "Комментарий уже был скрыт — жалобы закрыты"
         )
         return _decided(
-            request, message, entry, target, moderation_item_key(target_type, target_id)
+            request, message, entry, target, moderation_item_key(target_type, parsed_id)
         )
+    if target_type == "user_title":
+        assert isinstance(parsed_id, uuid.UUID)
+        clean_reason = reason.strip() or None
+        hidden_result = await hide_user_title_by_moderator(conn, parsed_id, reason=clean_reason)
+        if hidden_result is None:
+            push_toast(request, "Объекта больше нет — жалобы можно только закрыть", tone="error")
+            return RedirectResponse(target, status_code=303)
+        updated_title, prev_visibility, prev_reason = hidden_result
+        ids = await resolve_reports(
+            conn, target_type, parsed_id, status=ACTIONED, resolution="user_title_hidden"
+        )
+        if not ids:
+            if prev_visibility != VISIBILITY_HIDDEN:
+                await restore_user_title_by_moderator(
+                    conn, parsed_id, target_visibility=prev_visibility
+                )
+            return _nothing_open(request, target)
+        changed = prev_visibility != VISIBILITY_HIDDEN
+        if changed:
+            await notify_user_title_hidden(
+                conn,
+                recipient_id=updated_title.user_id,
+                title_id=parsed_id,
+                title_name=updated_title.title,
+                reason=clean_reason,
+            )
+        entry = await admin_audit.record_change(
+            conn,
+            REPORTS_HIDE_USER_TITLE,
+            ip=client_ip(request),
+            entity="user_title",
+            entity_id=str(parsed_id),
+            entity_label=found.label,
+            before={"visibility": prev_visibility, "hidden_reason": prev_reason}
+            if changed
+            else None,
+            after={"visibility": VISIBILITY_HIDDEN, "hidden_reason": clean_reason}
+            if changed
+            else None,
+            extra={
+                "reports": len(ids),
+                "report_ids": ids,
+                "reason": clean_reason,
+                "author_id": found.author_id,
+                "author": found.author,
+            },
+        )
+        message = (
+            "Книга скрыта с публикации, владелец уведомлён"
+            if changed
+            else "Книга уже была скрыта — жалобы закрыты"
+        )
+        return _decided(
+            request, message, entry, target, moderation_item_key(target_type, str(parsed_id))
+        )
+    assert isinstance(parsed_id, int)
     if bio != "1" and avatar != "1":
         push_toast(request, "Не очищено: отметьте «о себе» или аватар", tone="error")
         return RedirectResponse(target, status_code=303)
-    cleared = await clear_profile(conn, target_id, bio=bio == "1", avatar=avatar == "1")
+    cleared = await clear_profile(conn, parsed_id, bio=bio == "1", avatar=avatar == "1")
     if not cleared:
         push_toast(request, "Не очищено: в профиле нечего убирать", tone="error")
         return RedirectResponse(target, status_code=303)
     ids = await resolve_reports(
-        conn, target_type, target_id, status=ACTIONED, resolution="profile_cleared"
+        conn, target_type, parsed_id, status=ACTIONED, resolution="profile_cleared"
     )
     if not ids:
-        await restore_profile(conn, target_id, cleared)
+        await restore_profile(conn, parsed_id, cleared)
         return _nothing_open(request, target)
     entry = await admin_audit.record_change(
         conn,
         REPORTS_CLEAR_PROFILE,
         ip=client_ip(request),
         entity="profile",
-        entity_id=target_id,
+        entity_id=parsed_id,
         entity_label=found.label,
         before=cleared,
         after=dict.fromkeys(cleared),
@@ -1265,7 +1373,7 @@ async def admin_moderation_hide(
         f"Профиль «{found.label}»: {what} очищено",
         entry,
         target,
-        moderation_item_key(target_type, target_id),
+        moderation_item_key(target_type, parsed_id),
     )
 
 
@@ -1284,8 +1392,9 @@ async def admin_moderation_ban(
     """«Заблокировать автора» (PR 349's block: a term and an optional reason the person
     sees). The object itself is left as it is; the reports close as actioned."""
     check_csrf(request, csrf)
+    parsed_id = _parse_moderation_target_id(target_type, target_id)
     target = moderation_safe_back(back)
-    found = await _moderation_target(conn, target_type, target_id)
+    found = await _moderation_target(conn, target_type, parsed_id)
     if found.author_id is None:
         push_toast(request, "Объекта больше нет — жалобы можно только закрыть", tone="error")
         return RedirectResponse(target, status_code=303)
@@ -1298,7 +1407,7 @@ async def admin_moderation_ban(
         push_toast(request, f"«{found.author}» уже заблокирован", tone="error")
         return RedirectResponse(target, status_code=303)
     ids = await resolve_reports(
-        conn, target_type, target_id, status=ACTIONED, resolution="author_banned"
+        conn, target_type, parsed_id, status=ACTIONED, resolution="author_banned"
     )
     if not ids:
         await lift_ban(conn, found.author_id)
@@ -1308,7 +1417,7 @@ async def admin_moderation_ban(
         REPORTS_BAN_AUTHOR,
         ip=client_ip(request),
         entity=target_type,
-        entity_id=target_id,
+        entity_id=parsed_id,
         entity_label=found.label,
         before={"banned": False},
         after={"banned": True, "expires_at": ban.expires_at},
@@ -1327,8 +1436,60 @@ async def admin_moderation_ban(
         f"«{found.author}» заблокирован ({dict(BAN_TERM_LABELS)[term]})",
         entry,
         target,
-        moderation_item_key(target_type, target_id),
+        moderation_item_key(target_type, str(parsed_id)),
     )
+
+
+@router.post("/user-titles/{title_id}/hide", response_model=None, dependencies=WRITES)
+async def admin_user_title_hide(
+    request: Request,
+    title_id: Annotated[str, Path(max_length=64)],
+    _: Admin,
+    conn: Connection,
+    csrf: Csrf = "",
+    reason: Annotated[str, Form(max_length=1000)] = "",
+    back: Back = "",
+) -> Response:
+    """Direct moderator hide/unpublish of a user title (even without open reports)."""
+    check_csrf(request, csrf)
+    try:
+        parsed_uuid = uuid.UUID(title_id)
+    except ValueError:
+        raise HTTPException(status_code=404) from None
+    clean_reason = reason.strip() or None
+    hidden_result = await hide_user_title_by_moderator(conn, parsed_uuid, reason=clean_reason)
+    if hidden_result is None:
+        raise HTTPException(status_code=404)
+    updated_title, prev_visibility, prev_reason = hidden_result
+    closed_ids = await resolve_reports(
+        conn, "user_title", parsed_uuid, status=ACTIONED, resolution="user_title_hidden"
+    )
+    if prev_visibility != VISIBILITY_HIDDEN:
+        await notify_user_title_hidden(
+            conn,
+            recipient_id=updated_title.user_id,
+            title_id=parsed_uuid,
+            title_name=updated_title.title,
+            reason=clean_reason,
+        )
+    await admin_audit.record_change(
+        conn,
+        USER_TITLE_HIDE,
+        ip=client_ip(request),
+        entity="user_title",
+        entity_id=str(parsed_uuid),
+        entity_label=updated_title.title,
+        before={"visibility": prev_visibility, "hidden_reason": prev_reason},
+        after={"visibility": VISIBILITY_HIDDEN, "hidden_reason": clean_reason},
+        extra={
+            "reason": clean_reason,
+            "author_id": updated_title.user_id,
+            "author": updated_title.owner_name,
+            "report_ids": closed_ids,
+        },
+    )
+    push_toast(request, f"Книга «{updated_title.title}» скрыта, владелец уведомлён")
+    return RedirectResponse(moderation_safe_back(back), status_code=303)
 
 
 @router.post("/moderation/undo", response_model=None, dependencies=WRITES)
@@ -1338,14 +1499,13 @@ async def admin_moderation_undo(
     conn: Connection,
     csrf: Csrf = "",
     entry: Annotated[int, Form(ge=1, le=9_223_372_036_854_775_807)] = 1,
-    item: Annotated[str, Form(max_length=24)] = "",
+    item: Annotated[str, Form(max_length=64)] = "",
     back: Back = "",
 ) -> Response:
     """The toast's «Отменить»: reverts the decision its action-log entry describes - a
     hidden comment is shown again, a cleared profile gets back what is still empty in it,
-    the block that decision set is lifted - and its reports return to the queue. Done
-    once; what has changed since (the person filled «о себе» in again, the block ran out
-    or was lifted) is left alone."""
+    a hidden user title returns to its previous visibility, the block that decision set is
+    lifted - and its reports return to the queue."""
     check_csrf(request, csrf)
     target = moderation_safe_back(back)
     decision = await admin_audit.get_entry(conn, entry)
@@ -1356,12 +1516,22 @@ async def admin_moderation_undo(
         push_toast(request, "Это решение уже отменено", tone="error")
         return RedirectResponse(target, status_code=303)
     details = decision.details
-    target_id = int(decision.entity_id or 0)
     effect: dict[str, object] = {}
     if decision.action == REPORTS_HIDE_COMMENT and details.get("after", {}).get("hidden_at"):
+        target_id = int(decision.entity_id or 0)
         effect["shown"] = await show_comment(conn, target_id) is not None
     elif decision.action == REPORTS_CLEAR_PROFILE:
+        target_id = int(decision.entity_id or 0)
         effect["restored"] = await restore_profile(conn, target_id, details.get("before", {}))
+    elif decision.action == REPORTS_HIDE_USER_TITLE and decision.entity_id:
+        prev_visibility = details.get("before", {}).get("visibility")
+        if prev_visibility:
+            restored = await restore_user_title_by_moderator(
+                conn,
+                uuid.UUID(decision.entity_id),
+                target_visibility=str(prev_visibility or VISIBILITY_PUBLISHED),
+            )
+            effect["restored"] = restored is not None
     elif decision.action == REPORTS_BAN_AUTHOR:
         author_id = int(details.get("author_id") or 0)
         ban = await active_ban(conn, author_id)
@@ -1388,7 +1558,7 @@ async def admin_moderation_undo(
 
 
 async def _moderation_card(
-    conn: AsyncConnection, target_type: str, target_id: int, tz: str
+    conn: AsyncConnection, target_type: str, target_id: int | str, tz: str
 ) -> ModerationCard | None:
     """One object's card, or None when nothing about it is open any more (already
     decided, or a stale link)."""
@@ -1396,7 +1566,8 @@ async def _moderation_card(
     if not reports.count:
         return None
     if target_type == "comment":
-        detail = await comment_detail(conn, target_id)
+        cid = int(target_id)
+        detail = await comment_detail(conn, cid)
         quote = None
         titles: dict[str, TitleSummary] = {}
         if detail:
@@ -1405,10 +1576,15 @@ async def _moderation_card(
             quote = await paragraph_text(
                 row.slug_url, row.volume, row.number, row.branch_id, row.paragraph_index
             )
-        card = comment_card(detail, target_id, reports, titles, quote, tz)
+        card = comment_card(detail, cid, reports, titles, quote, tz)
+    elif target_type == "user_title":
+        tid = str(target_id)
+        ut = await reported_user_title(conn, tid)
+        card = user_title_card(ut, tid, reports, tz)
     else:
-        profile = await reported_profile(conn, target_id)
-        card = profile_card(profile, target_id, reports, tz)
+        uid = int(target_id)
+        profile = await reported_profile(conn, uid)
+        card = profile_card(profile, uid, reports, tz)
     if card.author_id is None:
         return card
     record = await author_record(conn, card.author_id)

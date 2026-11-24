@@ -35,6 +35,7 @@ from app.db.activity import daily_active_seconds
 from app.db.comments import count_comments_by_user
 from app.db.connection import connection, get_connection
 from app.db.friendships import get_friend_button_state, list_friends
+from app.db.user_titles import list_published_titles_by_user
 from app.db.users import User, get_user_by_id
 from app.templating import templates
 from app.timezones import user_timezone
@@ -131,6 +132,7 @@ async def _render_profile(
     # sections right below (computed unconditionally so the owner's own visit is
     # unaffected either way).
     friends = await list_friends(conn, profile_user.id)
+    published_user_titles = await list_published_titles_by_user(conn, profile_user.id)
 
     # PR 124/202: hide whichever sections the profile owner has opted out of, but only
     # from someone else's view - computed above unconditionally so the owner's own visit
@@ -140,6 +142,7 @@ async def _render_profile(
             currently_reading = None
         if not profile_user.show_library:
             items = []
+            published_user_titles = []
         if not profile_user.show_friends:
             friends = []
 
@@ -192,6 +195,7 @@ async def _render_profile(
             "currently_reading": currently_reading,
             "library_items": items,
             "library_preview": items[:_LIBRARY_PREVIEW_LIMIT],
+            "published_user_titles": published_user_titles,
             "friend_preview": friend_preview,
             "friend_count": len(friends),
             "friend_reading": await _friends_reading(friend_preview, conn),

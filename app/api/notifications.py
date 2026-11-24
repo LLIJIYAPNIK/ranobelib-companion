@@ -184,6 +184,8 @@ def _to_template_context(notification: Notification, now: datetime) -> dict[str,
         "actor_avatar_initials": notification.actor_avatar_initials,
         "comment_excerpt": notification.comment_excerpt,
         "comment_url": notification.comment_url,
+        "target_url": notification.target_url,
+        "message": notification.message,
         "created_at": notification.created_at,
         "created_at_relative": relative_time(created_at, now),
     }
@@ -222,4 +224,7 @@ def _to_dict(notification: Notification) -> dict[str, Any]:
         "comment_id": notification.comment_id,
         "comment_excerpt": notification.comment_excerpt,
         "comment_url": notification.comment_url,
+        "user_title_id": notification.user_title_id,
+        "target_url": notification.target_url,
+        "message": notification.message,
     }
