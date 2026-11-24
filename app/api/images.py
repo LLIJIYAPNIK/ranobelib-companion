@@ -1,4 +1,4 @@
-"""Proxying image downloads from ranobelib.me/cdnlibs.org/imglib.info (PR 143).
+"""Proxying image downloads from ranobelib.me/cdnlibs.org/imglib.info/mangalib.me (PR 143).
 
 .image-lightbox__download (app/static/js/image-lightbox.js) used to be a plain
 `<a download href="...">` pointing straight at the image's original URL - but browsers
@@ -29,13 +29,14 @@ router = APIRouter()
 # own official domains (see SITE_BASE_URL/API_BASE_URL in the SDK's models.py/client.py),
 # never anything this app doesn't already trust elsewhere. Not just "ranobelib.me" alone,
 # or every cover download would 400. In October 2026 the API started returning covers on
-# cover.imglib.info instead (issue 388) - the same CDN under a new name, so it's trusted
-# the same way; cdnlibs.org stays for anything still served from there.
-_ALLOWED_HOSTS = ("ranobelib.me", "cdnlibs.org", "imglib.info")
+# cover.imglib.info instead (issue 388) and in November 2026 moved them again to
+# cover.mangalib.me (issue 435) - the same CDN under a new name, so each is trusted the
+# same way; older domains stay for anything still served from there.
+_ALLOWED_HOSTS = ("ranobelib.me", "cdnlibs.org", "imglib.info", "mangalib.me")
 
-# cover.cdnlibs.org (and cover.imglib.info) 403s a plain, header-less request - it's
-# checking Referer as anti-hotlink protection (verified directly against the live CDN),
-# same as most image CDNs do; cover.imglib.info accepts this same ranobelib.me Referer.
+# cover.cdnlibs.org, cover.imglib.info and cover.mangalib.me 403 a plain, header-less
+# request - they check Referer as anti-hotlink protection (verified directly against the
+# live CDN), same as most image CDNs do; all three accept this same ranobelib.me Referer.
 # ranobelib.me's own upload host doesn't seem to require it, but sending it
 # unconditionally for every allowed host is simpler than branching on which one this
 # particular URL happens to be, and a same-site Referer is exactly what a real visitor's
