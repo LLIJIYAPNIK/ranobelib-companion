@@ -45,7 +45,8 @@ def test_csp_allows_hotlinked_cover_and_chapter_image_hosts() -> None:
 
     csp = response.headers["Content-Security-Policy"]
     assert (
-        "img-src 'self' blob: https://ranobelib.me https://*.cdnlibs.org https://*.imglib.info"
+        "img-src 'self' blob: https://ranobelib.me https://*.cdnlibs.org "
+        "https://*.imglib.info https://*.mangalib.me"
         in csp
     )
 

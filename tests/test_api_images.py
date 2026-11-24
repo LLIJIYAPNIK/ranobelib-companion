@@ -121,6 +121,32 @@ def test_download_image_allows_imglib_info_subdomain() -> None:
     assert fake.received_headers == {"Referer": "https://ranobelib.me/"}
 
 
+def test_download_image_allows_mangalib_me_subdomain() -> None:
+    # Issue 435: the API moved covers from cover.imglib.info to cover.mangalib.me -
+    # without it in the allowlist every cover download and offline cover save would 400.
+    fake = _FakeHttpxClient(_FakeResponse(b"bytes"))
+    with patch("app.api.images.httpx.AsyncClient", return_value=fake):
+        response = client.get(
+            "/images/download",
+            params={"url": "https://cover.mangalib.me/uploads/cover/x/cover/a.jpg"},
+        )
+
+    assert response.status_code == 200
+    assert fake.received_headers == {"Referer": "https://ranobelib.me/"}
+
+
+def test_view_image_allows_mangalib_me_subdomain() -> None:
+    fake = _FakeHttpxClient(_FakeResponse(b"bytes", content_type="image/jpeg"))
+    with patch("app.api.images.httpx.AsyncClient", return_value=fake):
+        response = client.get(
+            "/images/view",
+            params={"url": "https://cover.mangalib.me/uploads/cover/x/cover/a.jpg"},
+        )
+
+    assert response.status_code == 200
+    assert fake.received_headers == {"Referer": "https://ranobelib.me/"}
+
+
 def test_download_image_rejects_lookalike_host() -> None:
     # "ranobelib.me.evil.com" ends with the right string but isn't actually a subdomain
     # of ranobelib.me - the endswith check must be anchored on a "." boundary.
