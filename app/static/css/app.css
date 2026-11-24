@@ -216,6 +216,16 @@
   --wn-space-3: 24px;
   --wn-space-4: 32px;
   --wn-space-5: 40px;
+
+  /* Floating popovers (menus, selects, search suggestions): frosted dark glass. */
+  --wn-popover-bg: rgb(20 19 28 / 84%);
+  --wn-popover-border: rgb(255 255 255 / 10%);
+  --wn-popover-blur: blur(20px) saturate(140%);
+  --wn-popover-shadow: 0 20px 48px rgb(0 0 0 / 55%);
+  --wn-popover-radius: 16px;
+  --wn-popover-row-radius: 10px;
+  --wn-popover-row-hover: rgb(255 255 255 / 7%);
+  --wn-popover-sep: rgb(255 255 255 / 8%);
 }
 
 /* Technical values such as dates, file formats, chapter counts and percentages. */
@@ -526,6 +536,9 @@ body:has(.sidebar--expanded) {
 .app-shell {
   display: flex;
   min-height: 100vh;
+  /* Clips breathing ambient cover glows (.hm-ambient) at the viewport edges without
+     creating a scroll container, so position: sticky keeps working everywhere. */
+  overflow-x: clip;
 }
 
 /* PR 207's reason for position: fixed still holds - a sticky rail slid up at the end of
@@ -2905,15 +2918,18 @@ html:has(dialog[open]) body {
   max-height: 280px;
   overflow-y: auto;
   opacity: 0;
+  visibility: hidden;
   transform: translateY(-6px);
   pointer-events: none;
-  transition: opacity 0.15s ease, transform 0.15s ease;
+  transition: opacity 0.15s ease, transform 0.15s ease, visibility 0s linear 0.15s;
 }
 
 .dropdown--open .dropdown__listbox {
   opacity: 1;
+  visibility: visible;
   transform: translateY(0);
   pointer-events: auto;
+  transition: opacity 0.15s ease, transform 0.15s ease, visibility 0s;
 }
 
 .dropdown__option {
@@ -5166,8 +5182,8 @@ img.paragraph-comment__attachment {
   white-space: nowrap;
 }
 
-.ui-select:focus-within {
-  box-shadow: var(--focus-ring);
+.ui-select:has(> select:focus-visible, .dropdown__trigger:focus-visible) {
+  box-shadow: var(--wn-focus-ring);
 }
 
 .ui-select__prefix {
@@ -5205,8 +5221,11 @@ img.paragraph-comment__attachment {
   cursor: pointer;
 }
 
-.ui-select .dropdown__trigger:focus {
+.ui-select .dropdown__trigger:focus,
+.ui-select .dropdown__trigger:focus-visible {
   outline: none;
+  border-color: transparent;
+  box-shadow: none;
 }
 
 .ui-select .dropdown__trigger::before {
@@ -5234,23 +5253,31 @@ img.paragraph-comment__attachment {
 
 .ui-select .dropdown__listbox {
   top: calc(100% + 6px);
+  z-index: 80;
   min-width: max(100%, 220px);
-  padding: var(--s-4);
-  border: 1px solid var(--border);
-  border-radius: var(--r-lg);
-  background: var(--surface-2);
-  box-shadow: var(--shadow-popover);
+  padding: 6px;
+  border: 1px solid var(--wn-popover-border);
+  border-radius: var(--wn-popover-radius);
+  background: var(--wn-popover-bg);
+  -webkit-backdrop-filter: var(--wn-popover-blur);
+  backdrop-filter: var(--wn-popover-blur);
+  box-shadow: var(--wn-popover-shadow);
+  outline: none;
+  scrollbar-width: thin;
+  scrollbar-color: rgb(255 255 255 / 18%) transparent;
   transform: translateY(calc(-6px * var(--motion-shift)));
   transition:
     opacity var(--dur-exit) var(--ease-exit),
-    transform var(--dur-exit) var(--ease-exit);
+    transform var(--dur-exit) var(--ease-exit),
+    visibility 0s linear var(--dur-exit);
 }
 
 .ui-select .dropdown--open .dropdown__listbox {
   transform: none;
   transition:
     opacity var(--dur-sheet) var(--ease),
-    transform var(--dur-sheet) var(--ease);
+    transform var(--dur-sheet) var(--ease),
+    visibility 0s;
 }
 
 .ui-select .dropdown__option {
@@ -5259,20 +5286,20 @@ img.paragraph-comment__attachment {
   justify-content: space-between;
   gap: var(--s-12);
   height: 40px;
-  padding: 0 10px;
-  border-radius: var(--r-sm);
-  color: var(--text-2);
-  font: 500 14px/1 var(--font-ui);
+  padding: 0 12px;
+  border-radius: var(--wn-popover-row-radius);
+  color: var(--wn-text-secondary);
+  font: 600 14px/1 var(--wn-font-ui);
 }
 
 .ui-select .dropdown__option--active {
-  background: var(--surface-3);
-  color: var(--text-1);
+  background: var(--wn-popover-row-hover);
+  color: #fff;
 }
 
 .ui-select .dropdown__option--selected {
-  color: var(--text-1);
-  font-weight: 600;
+  color: #fff;
+  font-weight: 700;
 }
 
 .ui-select .dropdown__option--selected::after {
@@ -5281,7 +5308,7 @@ img.paragraph-comment__attachment {
   width: 5px;
   height: 10px;
   margin: -3px 3px 0 0;
-  border: solid var(--accent);
+  border: solid var(--wn-teal);
   border-width: 0 2px 2px 0;
   transform: rotate(45deg);
 }
@@ -9522,8 +9549,8 @@ a.catalog-card__action {
 }
 
 .wn-library-more:focus-visible {
-  outline: 2px solid #c5b6ff;
-  outline-offset: 2px;
+  outline: none;
+  box-shadow: var(--wn-focus-ring);
 }
 
 /* Popovers placed from their ⋯ button by library-card-actions.js. */
@@ -9534,11 +9561,14 @@ a.catalog-card__action {
   display: flex;
   flex-direction: column;
   box-sizing: border-box;
-  border: 1px solid #33304a;
-  border-radius: 14px;
-  background: #191921;
-  box-shadow: 0 24px 50px rgb(0 0 0 / 65%);
+  border: 1px solid var(--wn-popover-border);
+  border-radius: var(--wn-popover-radius);
+  background: var(--wn-popover-bg);
+  -webkit-backdrop-filter: var(--wn-popover-blur);
+  backdrop-filter: var(--wn-popover-blur);
+  box-shadow: var(--wn-popover-shadow);
   font-family: var(--wn-font-ui);
+  animation: lb-pop 0.18s cubic-bezier(0.22, 1, 0.36, 1);
 }
 
 .wn-library-menu[hidden],
@@ -9547,6 +9577,7 @@ a.catalog-card__action {
 }
 
 .wn-library-menu {
+  gap: 2px;
   width: 244px;
   padding: 6px;
 }
@@ -9559,42 +9590,59 @@ a.catalog-card__action {
   min-height: 42px;
   padding: 0 12px;
   border: 0;
-  border-radius: 9px;
+  border-radius: var(--wn-popover-row-radius);
   background: transparent;
-  color: #eeecf4;
+  color: var(--wn-text);
   font: 600 14px/1 var(--wn-font-ui);
   text-align: left;
   text-decoration: none;
   cursor: pointer;
+  transition: background-color 0.12s ease, color 0.12s ease;
 }
 
 .wn-library-menu__item svg {
   flex: none;
   width: 17px;
   height: 17px;
-  color: #a3a0b5;
+  color: var(--wn-text-secondary);
+  transition: color 0.12s ease;
 }
 
-.wn-library-menu__item:hover,
+.wn-library-menu__item:hover {
+  background: var(--wn-popover-row-hover);
+  color: #fff;
+}
+
+.wn-library-menu__item:hover svg {
+  color: #fff;
+}
+
 .wn-library-menu__item:focus-visible {
   outline: none;
-  background: #24232f;
+  background: var(--wn-popover-row-hover);
+  color: #fff;
+  box-shadow: inset 0 0 0 2px var(--wn-teal);
 }
 
 .wn-library-menu__item--danger,
 .wn-library-menu__item--danger svg {
-  color: #ff9dac;
+  color: #ff8f9c;
 }
 
 .wn-library-menu__item--danger:hover,
 .wn-library-menu__item--danger:focus-visible {
-  background: rgb(240 138 155 / 10%);
+  background: rgb(242 104 122 / 12%);
+  color: #ff8f9c;
+}
+
+.wn-library-menu__item--danger:hover svg {
+  color: #ff8f9c;
 }
 
 .wn-library-menu__sep {
   height: 1px;
   margin: 4px 6px;
-  background: #2a2838;
+  background: var(--wn-popover-sep);
 }
 
 .wn-library-confirm {
@@ -9602,16 +9650,16 @@ a.catalog-card__action {
   width: 300px;
   max-width: calc(100vw - 24px);
   padding: 16px;
-  border-color: rgb(240 138 155 / 35%);
+  border-color: rgb(242 104 122 / 28%);
 }
 
 .wn-library-confirm__title {
-  color: #f2f0f7;
+  color: #fff;
   font: 800 16px/1.3 var(--wn-font-ui);
 }
 
 .wn-library-confirm__text {
-  color: #a3a0b5;
+  color: var(--wn-text-secondary);
   font: 500 13px/1.5 var(--wn-font-ui);
   overflow-wrap: anywhere;
 }
@@ -9626,36 +9674,44 @@ a.catalog-card__action {
 .wn-library-confirm__remove {
   flex: 1;
   min-height: 40px;
-  border-radius: 10px;
+  border-radius: var(--wn-popover-row-radius);
   font: 700 14px/1 var(--wn-font-ui);
   cursor: pointer;
+  transition: background-color 0.15s ease;
 }
 
 .wn-library-confirm__cancel {
-  border: 1px solid #33304a;
-  background: transparent;
-  color: #eeecf4;
+  border: 1px solid var(--wn-popover-border);
+  background: rgb(255 255 255 / 4%);
+  color: var(--wn-text);
 }
 
 .wn-library-confirm__remove {
-  border: 1px solid rgb(240 138 155 / 50%);
-  background: rgb(240 138 155 / 14%);
-  color: #ffb3bf;
+  border: 1px solid rgb(242 104 122 / 40%);
+  background: rgb(242 104 122 / 14%);
+  color: #ff9dac;
 }
 
 .wn-library-confirm__cancel:focus-visible,
 .wn-library-confirm__remove:focus-visible {
-  outline: 2px solid #c5b6ff;
-  outline-offset: 2px;
+  outline: none;
+  box-shadow: var(--wn-focus-ring);
 }
 
 @media (hover: hover) {
   .wn-library-confirm__cancel:hover {
-    background: rgb(255 255 255 / 6%);
+    background: rgb(255 255 255 / 10%);
   }
 
   .wn-library-confirm__remove:hover {
-    background: rgb(240 138 155 / 22%);
+    background: rgb(242 104 122 / 22%);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .wn-library-menu,
+  .wn-library-confirm {
+    animation: none;
   }
 }
 
@@ -12571,7 +12627,10 @@ a.catalog-card__action {
   border: 0;
   border-radius: 0;
   background: none;
+  -webkit-backdrop-filter: none;
+  backdrop-filter: none;
   box-shadow: none;
+  animation: none;
 }
 
 .bottom-sheet .wn-library-menu {
@@ -21405,10 +21464,8 @@ body.reader-page--offline-copy .reader-paragraph-more {
 .hm-link {
   color: var(--wn-text-secondary);
   font: 700 14px/1.4 var(--wn-font-ui);
-  text-decoration: underline;
-  text-decoration-color: var(--wn-border-strong);
-  text-underline-offset: 3px;
-  transition: color 0.15s ease, text-decoration-color 0.15s ease;
+  text-decoration: none;
+  transition: color 0.15s ease;
 }
 
 .hm-link:focus-visible {
@@ -21466,23 +21523,21 @@ body.reader-page--offline-copy .reader-paragraph-more {
   }
 }
 
-/* Glass: panels and the search over the page's glow. */
-.hm-panel,
-.hm-search {
+/* Glass: panels over the page's glow. .hm-search draws its glass on ::before rather than
+   on the form itself so the form does not establish a backdrop root over .hm-suggest. */
+.hm-panel {
   border: 1px solid var(--hm-glass-edge);
+  border-radius: var(--hm-radius);
   background: var(--hm-glass);
   -webkit-backdrop-filter: var(--hm-glass-blur);
   backdrop-filter: var(--hm-glass-blur);
-}
-
-.hm-panel {
-  border-radius: var(--hm-radius);
 }
 
 /* --- Search: glass field, the submit inside its right end. --- */
 .hm-search {
   /* The suggestions (.hm-suggest, issue 394) hang under it. */
   position: relative;
+  z-index: 1;
   display: flex;
   align-items: center;
   gap: 10px;
@@ -21491,7 +21546,20 @@ body.reader-page--offline-copy .reader-paragraph-more {
   padding: 0 5px 0 16px;
   border-radius: 999px;
   color: var(--wn-text-muted);
-  transition: background-color 0.15s ease, box-shadow 0.15s ease;
+}
+
+.hm-search::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  border: 1px solid var(--hm-glass-edge);
+  border-radius: inherit;
+  background: var(--hm-glass);
+  -webkit-backdrop-filter: var(--hm-glass-blur);
+  backdrop-filter: var(--hm-glass-blur);
+  pointer-events: none;
+  transition: background-color 0.15s ease, border-color 0.15s ease, box-shadow 0.15s ease;
 }
 
 .hm-search > svg {
@@ -21534,8 +21602,10 @@ body.reader-page--offline-copy .reader-paragraph-more {
   transition: background-color 0.15s ease, transform 0.1s ease;
 }
 
-.hm-search:focus-within {
-  box-shadow: 0 0 0 2px var(--wn-teal);
+.hm-search:focus-within::before {
+  border-color: rgb(255 255 255 / 22%);
+  background: rgb(255 255 255 / 7%);
+  box-shadow: 0 0 0 1px rgb(255 255 255 / 8%);
 }
 
 .hm-search__submit:focus-visible {
@@ -21565,10 +21635,9 @@ body.reader-page--offline-copy .reader-paragraph-more {
 }
 
 /* --- Suggestions (issue 394): the titles search-suggest.js lists under the field as the
-   visitor types. The popover is the library sort's (.lb-sort__list): the same solid
-   surface, radius, shadow and opening move, and the same highlighted row; a row is a
-   small catalog card - the cover, the name with the typed part marked, «статус ·
-   страна». It ends above the on-screen keyboard and scrolls inside itself. --- */
+   visitor types. Uses the shared frosted glass popover tokens (--wn-popover-*); a row is
+   a small catalog card - the cover, the name with the typed part highlighted in teal text,
+   «статус · страна». Ends above the on-screen keyboard and scrolls inside itself. --- */
 /* Over what follows the header: its .hm-rise block keeps a transform, so a stacking
    context of its own, which later blocks would paint over. */
 .hm-rise:has(.hm-search.is-suggesting) {
@@ -21592,11 +21661,33 @@ body.reader-page--offline-copy .reader-paragraph-more {
   padding: 6px;
   overflow-y: auto;
   overscroll-behavior: contain;
-  border-radius: 16px;
-  background: #1d1c27;
-  box-shadow: 0 18px 40px rgb(0 0 0 / 55%);
+  border: 1px solid var(--wn-popover-border);
+  border-radius: var(--wn-popover-radius);
+  background: var(--wn-popover-bg);
+  -webkit-backdrop-filter: var(--wn-popover-blur);
+  backdrop-filter: var(--wn-popover-blur);
+  box-shadow: var(--wn-popover-shadow);
   scrollbar-width: thin;
+  scrollbar-color: rgb(255 255 255 / 18%) transparent;
   animation: lb-pop 0.18s var(--hm-ease);
+}
+
+.hm-suggest::-webkit-scrollbar {
+  width: 6px;
+}
+
+.hm-suggest::-webkit-scrollbar-track {
+  margin: 8px 0;
+  background: transparent;
+}
+
+.hm-suggest::-webkit-scrollbar-thumb {
+  border-radius: 999px;
+  background: rgb(255 255 255 / 18%);
+}
+
+.hm-suggest::-webkit-scrollbar-thumb:hover {
+  background: rgb(255 255 255 / 30%);
 }
 
 .hm-suggest[hidden] {
@@ -21614,7 +21705,7 @@ body.reader-page--offline-copy .reader-paragraph-more {
   align-items: center;
   gap: 12px;
   padding: 6px 8px;
-  border-radius: 10px;
+  border-radius: var(--wn-popover-row-radius);
 }
 
 .hm-suggest__item {
@@ -21624,7 +21715,7 @@ body.reader-page--offline-copy .reader-paragraph-more {
 }
 
 .hm-suggest__item.is-at {
-  background: rgb(255 255 255 / 7%);
+  background: var(--wn-popover-row-hover);
   color: #fff;
 }
 
@@ -21674,19 +21765,19 @@ body.reader-page--offline-copy .reader-paragraph-more {
 }
 
 .hm-suggest mark {
-  border-radius: 3px;
-  background: rgb(61 214 195 / 18%);
-  color: inherit;
+  background: transparent;
+  color: var(--wn-teal);
+  font-weight: 800;
 }
 
 .hm-suggest__name mark {
-  color: #fff;
+  color: var(--wn-teal);
 }
 
 .hm-suggest__all {
   margin-top: 4px;
   padding: 11px 12px;
-  border-radius: 10px;
+  border-radius: var(--wn-popover-row-radius);
   background: rgb(255 255 255 / 4%);
   color: var(--wn-text);
   font: 700 14px/1.2 var(--wn-font-ui);
@@ -22891,11 +22982,10 @@ body.reader-page--offline-copy .reader-paragraph-more {
 
 @media (hover: hover) {
   .hm-link:hover {
-    color: var(--wn-text);
-    text-decoration-color: currentColor;
+    color: #fff;
   }
 
-  .hm-search:hover {
+  .hm-search:hover::before {
     background: var(--hm-glass-raised);
   }
 
@@ -23238,11 +23328,19 @@ body.reader-page--offline-copy .reader-paragraph-more {
 }
 
 /* --- The controls: which titles, a search inside the library, the sort. --- */
+/* Above the shelves (.lb-shelf__body isolates its own stacking context) so .lb-sort__list
+   always opens over them, yet below .hm-head (z-index: 60) when search suggestions open. */
 .lb-tools {
+  position: relative;
+  z-index: 20;
   display: flex;
   flex-wrap: wrap;
   align-items: center;
   gap: 12px;
+}
+
+.lb-tools:has(.lb-sort__btn[aria-expanded="true"]) {
+  z-index: 50;
 }
 
 .lb-tools[hidden] {
@@ -23377,9 +23475,12 @@ body.reader-page--offline-copy .reader-paragraph-more {
   min-width: 100%;
   margin: 0;
   padding: 6px;
-  border-radius: 16px;
-  background: #1d1c27;
-  box-shadow: 0 18px 40px rgb(0 0 0 / 55%);
+  border: 1px solid var(--wn-popover-border);
+  border-radius: var(--wn-popover-radius);
+  background: var(--wn-popover-bg);
+  -webkit-backdrop-filter: var(--wn-popover-blur);
+  backdrop-filter: var(--wn-popover-blur);
+  box-shadow: var(--wn-popover-shadow);
   list-style: none;
   outline: none;
   animation: lb-pop 0.18s var(--hm-ease);
@@ -23395,7 +23496,7 @@ body.reader-page--offline-copy .reader-paragraph-more {
   justify-content: space-between;
   gap: 16px;
   padding: 11px 12px;
-  border-radius: 10px;
+  border-radius: var(--wn-popover-row-radius);
   color: var(--wn-text-secondary);
   font: 600 14px/1.2 var(--wn-font-ui);
   white-space: nowrap;
@@ -23410,7 +23511,7 @@ body.reader-page--offline-copy .reader-paragraph-more {
 }
 
 .lb-sort__list li.is-at {
-  background: rgb(255 255 255 / 7%);
+  background: var(--wn-popover-row-hover);
   color: #fff;
 }
 
@@ -23949,7 +24050,8 @@ body.reader-page--offline-copy .reader-paragraph-more {
 
 /* --- The toolbar: the home's glass pills, on the page itself rather than a panel. --- */
 .hm--catalog.wn-catalog .catalog-toolbar {
-  position: static;
+  position: relative;
+  z-index: 20;
   display: flex;
   flex-wrap: wrap;
   align-items: center;
@@ -23993,6 +24095,7 @@ body.reader-page--offline-copy .reader-paragraph-more {
 }
 
 .hm--catalog.wn-catalog .catalog-toolbar__filters[aria-expanded="true"],
+.hm--catalog.wn-catalog .catalog-toolbar__sort:has(.dropdown--open),
 .hm--catalog.wn-catalog :is(.catalog-toolbar__filters, .catalog-toolbar__random):hover {
   background: var(--hm-glass-raised);
 }
@@ -24701,6 +24804,11 @@ body.reader-page--offline-copy .reader-paragraph-more {
   gap: 24px;
 }
 
+.tp-content {
+  width: 100%;
+  min-width: 0;
+}
+
 .tp-notice {
   align-self: flex-start;
 }
@@ -24743,6 +24851,7 @@ body.reader-page--offline-copy .reader-paragraph-more {
   color: #fff;
   font: 800 34px/1.12 var(--wn-font-ui);
   letter-spacing: -0.025em;
+  overflow-wrap: anywhere;
   text-wrap: balance;
 }
 
@@ -24793,6 +24902,7 @@ body.reader-page--offline-copy .reader-paragraph-more {
   display: flex;
   flex-direction: column;
   gap: 14px;
+  min-width: 0;
   padding: 22px;
   /* PR 373: the home page's glass (.hm-panel) - over the cover's glow, not a slab on it. */
   border: 1px solid var(--hm-glass-edge);
@@ -24956,6 +25066,8 @@ body.reader-page--offline-copy .reader-paragraph-more {
 }
 
 .tp-lamp__row {
+  position: relative;
+  z-index: 20;
   display: grid;
   grid-template-columns: 1fr 1fr;
   gap: 10px;
@@ -25057,6 +25169,12 @@ body.reader-page--offline-copy .reader-paragraph-more {
   background: none;
   color: #fff;
   font: 700 15px/1 var(--wn-font-ui);
+  transition: background-color 0.15s ease;
+}
+
+.tp-dl__format.ui-select:has(.dropdown--open),
+.tp-tools__format.ui-select:has(.dropdown--open) {
+  background: var(--hm-glass-raised);
 }
 
 @media (hover: hover) {
@@ -25204,10 +25322,58 @@ body.reader-page--offline-copy .reader-paragraph-more {
   font: 600 14px/1.35 var(--wn-font-ui);
 }
 
+.tp-teams li > span {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
 .tp-teams small {
   color: var(--wn-text-muted);
   font: 600 13px/1.35 var(--wn-font-ui);
   white-space: nowrap;
+}
+
+.tp-teams__more {
+  margin-top: -4px;
+}
+
+.tp-teams__toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  height: 30px;
+  padding: 0 12px;
+  border-radius: 999px;
+  background: var(--hm-glass-raised);
+  color: #fff;
+  font: 700 13px/1 var(--wn-font-ui);
+  list-style: none;
+  cursor: pointer;
+  transition: background-color 0.15s ease;
+}
+
+.tp-teams__toggle::-webkit-details-marker {
+  display: none;
+}
+
+.tp-teams__toggle small {
+  color: var(--wn-text-secondary);
+  font: 600 12px/1 var(--wn-font-ui);
+}
+
+.tp-teams__toggle:focus-visible {
+  outline: none;
+  box-shadow: var(--wn-focus-ring);
+}
+
+.tp-teams__more[open] > summary {
+  display: none;
+}
+
+@media (hover: hover) {
+  .tp-teams__toggle:hover {
+    background: rgb(255 255 255 / 16%);
+  }
 }
 
 .tp-credits {
@@ -25232,9 +25398,11 @@ body.reader-page--offline-copy .reader-paragraph-more {
 }
 
 .tp-credits dd {
+  min-width: 0;
   margin: 0;
   color: #fff;
   font: 600 14px/1.45 var(--wn-font-ui);
+  overflow-wrap: anywhere;
 }
 
 /* --- PR 372: «Вы остановились» - the reader's chapter and the next two, at the top of the
@@ -25298,14 +25466,17 @@ body.reader-page--offline-copy .reader-paragraph-more {
   flex-direction: column;
   align-items: flex-start;
   gap: 12px;
-  max-width: 74ch;
+  min-width: 0;
+  max-width: min(74ch, 100%);
   margin-top: 26px;
 }
 
 .tp-summary {
+  max-width: 100%;
   margin: 0;
   color: var(--wn-text);
   font: 500 16px/1.65 var(--wn-font-ui);
+  overflow-wrap: anywhere;
   white-space: pre-line;
 }
 
@@ -25445,6 +25616,7 @@ body.reader-page--offline-copy .reader-paragraph-more {
   position: relative;
   flex: 1 1 0;
   min-width: 22px;
+  max-width: 148px;
   height: var(--h);
   container-type: inline-size;
   border-radius: 10px 10px 6px 6px;
@@ -25469,11 +25641,20 @@ body.reader-page--offline-copy .reader-paragraph-more {
   }
 }
 
+/* Clips the progress fill to the spine's rounded silhouette at every percentage (including
+   95-100%) without clipping .tp-spine__here above or the selected bar ::after below. */
+.tp-spine__clip {
+  position: absolute;
+  inset: 0;
+  overflow: hidden;
+  border-radius: inherit;
+  pointer-events: none;
+}
+
 .tp-spine__fill {
   position: absolute;
   inset: auto 0 0;
   height: var(--r);
-  border-radius: 0 0 6px 6px;
   background: rgb(61 214 195 / 34%);
 }
 
@@ -26003,6 +26184,8 @@ a.tp-rel__card:active .tp-rel__cover {
 }
 
 .tp-tools {
+  position: relative;
+  z-index: 20;
   display: flex;
   align-items: center;
   gap: 10px;
@@ -26806,6 +26989,10 @@ a.tp-rel__card:active .tp-rel__cover {
     height: 192px;
     margin-inline: -16px;
     padding-inline: 16px;
+  }
+
+  .tp-spine {
+    max-width: 120px;
   }
 
   .tp-tools__format {
