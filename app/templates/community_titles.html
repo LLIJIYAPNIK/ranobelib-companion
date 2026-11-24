@@ -83,11 +83,11 @@
     {% if pages > 1 %}
     <nav class="ut-pager" aria-label="Страницы списка книг читателей" data-role="community-pager">
       {% if has_prev %}
-      <a class="wn-btn wn-btn--secondary" href="/community-titles?page={{ page - 1 }}{% if query %}&amp;q={{ query | urlencode }}{% endif %}{% if sort != 'newest' %}&amp;sort={{ sort }}{% endif %}">← Назад</a>
+      <a class="wn-btn wn-btn--secondary" href="/community-titles?page={{ page - 1 }}{% if query %}&amp;q={{ query | urlencode }}{% endif %}{% if sort != 'newest' %}&amp;sort={{ sort }}{% endif %}">Назад</a>
       {% endif %}
       <span class="ut-pager__info hm-num">Страница {{ page }} из {{ pages }}</span>
       {% if has_next %}
-      <a class="wn-btn wn-btn--secondary" href="/community-titles?page={{ page + 1 }}{% if query %}&amp;q={{ query | urlencode }}{% endif %}{% if sort != 'newest' %}&amp;sort={{ sort }}{% endif %}">Дальше →</a>
+      <a class="wn-btn wn-btn--secondary" href="/community-titles?page={{ page + 1 }}{% if query %}&amp;q={{ query | urlencode }}{% endif %}{% if sort != 'newest' %}&amp;sort={{ sort }}{% endif %}">Дальше</a>
       {% endif %}
     </nav>
     {% endif %}

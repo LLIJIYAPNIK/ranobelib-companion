@@ -38,6 +38,7 @@ EXPECTED_WITHOUT_ADMIN = {
     ("POST", "/admin/moderation/{target_type}/{target_id}/dismiss"): 303,
     ("POST", "/admin/moderation/{target_type}/{target_id}/hide"): 303,
     ("POST", "/admin/moderation/{target_type}/{target_id}/ban"): 303,
+    ("POST", "/admin/user-titles/{title_id}/hide"): 303,
     ("GET", "/admin/tables/{name}"): 303,
     ("GET", "/admin/tables/{name}/csv"): 303,
     ("GET", "/admin/audit"): 303,
@@ -88,6 +89,7 @@ def _url(path: str) -> str:
         ("{slug_url}", "1--some-title"),
         ("{user_id}", "1"),
         ("{comment_id}", "1"),
+        ("{title_id}", "00000000-0000-0000-0000-000000000001"),
     ):
         path = path.replace(name, value)
     return path

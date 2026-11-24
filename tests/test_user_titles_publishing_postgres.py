@@ -232,7 +232,12 @@ async def test_reporting_and_admin_moderation_hide_notify_and_undo(client: TestC
     client.cookies.clear()
     client.cookies.update(alice_cookies)
     assert (
-        client.post(f"/my-titles/{tid}/publish", data={"confirm": "1"}).status_code == 303
+        client.post(
+            f"/my-titles/{tid}/publish",
+            data={"confirm": "1"},
+            follow_redirects=False,
+        ).status_code
+        == 303
     )
     own_rep = client.post(
         "/reports",
