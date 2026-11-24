@@ -40,11 +40,40 @@ def test_a_long_volume_folds_its_tail_behind_a_head_that_opens_it() -> None:
     assert 'value="1--40"' in html
 
 
+def test_a_single_volume_title_omits_the_volume_shelf_and_renders_chapters_directly() -> None:
+    html = _page([_volume("1", 5)])
+    assert 'data-role="title-volumes"' not in html
+    assert 'data-role="shelf-spine"' not in html
+    assert 'id="vol-1"' in html
+    assert 'role="tabpanel"' not in html
+    assert 'aria-labelledby="spine-1"' not in html
+
+
 def test_a_title_with_one_translation_per_chapter_says_who_translated_what() -> None:
     html = _page([_volume("1", 3, team="DUB1401"), _volume("2", 5, start=4, team="RKT TEAM")])
-    assert "У каждой главы один перевод, выбирать не из чего." in html
+    assert "Главы переводили разные команды:" in html
+    assert "У каждой главы один перевод, выбирать не из чего." not in html
     assert '<span>RKT TEAM</span><small class="hm-num">5 глав</small>' in html
     assert "Перевод по умолчанию" not in html
+
+
+def test_more_than_three_translators_expand_in_a_details_disclosure() -> None:
+    html = _page(
+        [
+            _volume("1", 5, start=1, team="Team A"),
+            _volume("2", 4, start=6, team="Team B"),
+            _volume("3", 3, start=10, team="Team C"),
+            _volume("4", 2, start=13, team="Team D"),
+            _volume("5", 1, start=15, team="Team E"),
+        ]
+    )
+    assert '<details class="tp-teams__more">' in html
+    assert (
+        '<summary class="tp-teams__toggle">'
+        '<span>Ещё 2</span><small class="hm-num">3 главы</small></summary>' in html
+    )
+    assert '<span>Team D</span><small class="hm-num">2 главы</small>' in html
+    assert '<span>Team E</span><small class="hm-num">1 глава</small>' in html
 
 
 def test_a_title_without_a_cover_shows_its_name_in_the_cover_place() -> None:
